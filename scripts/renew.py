@@ -372,7 +372,6 @@ class Deployer:
         self._start_service()
 
         logger.info("\n=== 部署成功! ===\n")
-        logger.info(f"服务地址: http://{self.config.ssh_host}:{self.config.remote_port}")
         logger.info(f"部署目录: {REMOTE_DEPLOY_DIR}\n")
 
     def upgrade(self, image: Optional[str] = None):
@@ -392,9 +391,6 @@ class Deployer:
         if image or self.config.image:
             self._update_image(image or self.config.image)
 
-        # 更新 .env
-        self._deploy_env()
-
         # 拉取镜像
         self._pull_image()
 
@@ -402,7 +398,6 @@ class Deployer:
         self._restart_service()
 
         logger.info("\n=== 更新成功! ===\n")
-        logger.info(f"服务地址: http://{self.config.ssh_host}:{self.config.remote_port}")
         logger.info(f"部署目录: {REMOTE_DEPLOY_DIR}\n")
 
     def _check_environment(self):

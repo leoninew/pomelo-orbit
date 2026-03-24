@@ -75,16 +75,21 @@ Pomelo Orbit 提供两种路由管理方式：
 - Docker Label：在 docker-compose.yml 中声明路由规则，Traefik 自动发现
 - 手动配置：通过 Web UI 手动创建路由规则
 
+### 2.6 Let's Encrypt
+
+Let's Encrypt 自动证书功能代码已实现并经过测试，你需要修改 .env 启用配置
+
+```ini
+POMELO_ORBIT_CERT__LETSENCRYPT__ENABLED=true
+POMELO_ORBIT_CERT__LETSENCRYPT__EMAIL=your-email@example.com
+```
+
 ## 3. 已知问题
 
-### 3.1 Let's Encrypt
+### 3.1 mkcert
 
-Let's Encrypt 自动证书功能代码已实现，但尚未在真实环境测试。
+本地开发推荐使用 [mkcert](https://github.com/FiloSottile/mkcert) 生成受信任的本地证书，容器还没有集成。
 
-### 3.2 mkcert
-
-本地开发推荐使用 [mkcert](https://github.com/FiloSottile/mkcert) 生成受信任的本地证书。
-
-### 3.3 自举部署
+### 3.2 自举部署
 
 理论上支持通过 Web UI 重新部署 Pomelo Orbit 自身实现零停机更新，但尚未经过充分测试。

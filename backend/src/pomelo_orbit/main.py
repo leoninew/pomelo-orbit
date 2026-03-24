@@ -1,0 +1,180 @@
+"""
+FastAPI Application Entry Point
+"""
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+
+# Windows 上需要使用 ProactorEventLoop 支持子进程
+if sys.platform == "win32":
+    import asyncio
+
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+from contextlib import asynccontextmanager
+
+import uvicorn
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from pomelo_orbit.domain import BusinessError
+from pomelo_orbit.infrastructure import get_cors_config, get_settings
+from pomelo_orbit.infrastructure.logging import LOGGING_CONFIG, RequestLoggingMiddleware
+from pomelo_orbit.infrastructure.migration.migrator import run_migrations
+from pomelo_orbit.infrastructure.persistence.database import get_engine
+from pomelo_orbit.interfaces.api.application import router as application_router
+from pomelo_orbit.interfaces.api.auth import router as auth_router
+from pomelo_orbit.interfaces.api.credential import router as credential_router
+from pomelo_orbit.interfaces.api.deployment import router as deployment_router
+from pomelo_orbit.interfaces.api.event import router as event_router
+from pomelo_orbit.interfaces.api.route import router as route_router
+from pomelo_orbit.interfaces.api.settings import router as settings_router
+from pomelo_orbit.interfaces.api.traefik_route import router as traefik_route_router
+from pomelo_orbit.interfaces.api.webhook import router as webhook_router
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events"""
+    logger.info("Running database migrations...")
+    run_migrations(get_engine())
+    logger.info("Database migrations completed successfully!")
+
+    yield
+    logger.info("Shutting down...")
+
+
+settings = get_settings()
+
+app = FastAPI(
+    title=settings.app.name,
+    description="Pomelo Orbit API",
+    version=settings.app.version,
+    debug=settings.app.debug,
+    lifespan=lifespan,
+)
+
+# Configure CORS
+cors_config = get_cors_config()
+app.add_middleware(CORSMiddleware, **cors_config)
+app.add_middleware(RequestLoggingMiddleware)
+
+# Include routers
+app.include_router(auth_router, prefix="/api")
+app.include_router(application_router, prefix="/api")
+app.include_router(deployment_router, prefix="/api")
+app.include_router(event_router, prefix="/api")
+app.include_router(credential_router, prefix="/api")
+app.include_router(webhook_router, prefix="/api")
+app.include_router(route_router, prefix="/api")
+app.include_router(traefik_route_router, prefix="/api")
+app.include_router(settings_router, prefix="/api")
+
+
+@app.exception_handler(BusinessError)
+async def business_exception_handler(request: Request, exc: BusinessError) -> JSONResponse:
+    """Handle business exceptions"""
+    logger.warning(
+        f"Business error: {request.method} {request.url.path}, status={exc.status_code}, message={exc.message}"
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Handle request validation errors (422)"""
+    errors = "; ".join(f"{'.'.join(str(loc_part) for loc_part in e['loc'])}: {e['msg']}" for e in exc.errors())
+    logger.warning(f"Validation error: {request.method} {request.url.path}, errors={errors}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Global exception handler"""
+    logger.error(f"Unhandled exception: {request.method} {request.url.path}", exc_info=True)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
+    )
+
+
+@app.get("/docs")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": settings.app.name,
+        "version": settings.app.version,
+        "docs": "/docs",
+    }
+
+
+@app.get("/api/health")
+async def health():
+    """Health check endpoint"""
+    return {"status": "ok"}
+
+
+# Mount static files for frontend (if exists)
+static_dir = Path("static")
+if static_dir.exists() and static_dir.is_dir():
+    # Serve static files
+    app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
+
+    # SPA fallback - serve index.html for all non-API routes
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        return FileResponse(static_dir / "index.html")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Start Pomelo Orbit FastAPI Service")
+    parser.add_argument("--host", default="localhost", help="Server host (default: localhost)")
+    parser.add_argument("--port", type=int, default=80, help="Server port (default: 80)")
+    parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
+    args = parser.parse_args()
+
+    # 开发模式下静默跳过静态目录检查
+    if not args.reload and not static_dir.exists():
+        logger.warning(f"Static directory not found: path={static_dir.absolute()}")
+
+    # 创建日志目录
+    log_dir = Path("logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    uvicorn_config = {
+        "app": "pomelo_orbit.main:app",
+        "host": args.host,
+        "port": args.port,
+        "log_config": LOGGING_CONFIG,
+    }
+
+    # 开发模式：启用 reload
+    if args.reload:
+        uvicorn_config.update(
+            {
+                "reload": True,
+                "reload_dirs": ["src"],
+            }
+        )
+
+    uvicorn.run(**uvicorn_config)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)

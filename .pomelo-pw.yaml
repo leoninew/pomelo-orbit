@@ -1,0 +1,56 @@
+name: pomelo-orbit-ui-review
+description: UI review for implemented features
+variables:
+  base_url: "http://localhost:9002"
+  username: "admin"
+  password: "admin"
+
+steps:
+  # 设置分辨率
+  - type: set-viewport
+    width: 1600
+    height: 900
+
+  # 登录
+  - type: navigate
+    url: "${base_url}/login"
+
+  - type: wait
+    selector: "input[type='text']"
+
+  - type: fill
+    selector: "input[type='text']"
+    value: "${username}"
+
+  - type: fill
+    selector: "input[type='password']"
+    value: "${password}"
+
+  - type: click
+    selector: "button[type='submit']"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "01-home.png"
+
+  # 应用列表（卡片视图）
+  - type: navigate
+    url: "${base_url}/applications"
+
+  - type: wait
+    selector: ".ant-card"
+
+  - type: screenshot
+    file: "02-applications-card.png"
+
+  # 切换到表格视图
+  - type: click
+    selector: ".ant-btn-group .ant-btn:last-child"
+
+  - type: wait
+    selector: ".ant-table"
+
+  - type: screenshot
+    file: "03-applications-table.png"

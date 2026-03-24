@@ -1,0 +1,150 @@
+-- v0.4.2: Traefik 应用和路由配置
+
+-- Traefik 应用（bridge 网络模式，通用）
+INSERT INTO application (id, name, code, image_pull_policy, status, enabled, created_at, updated_at)
+VALUES (
+    '01KKX2YNPF6VJ9N7QYCWG61KVM',
+    'Traefik',
+    'traefik',
+    'missing',
+    'stopped',
+    1,
+    datetime('now'),
+    datetime('now')
+);
+
+-- Traefik docker-compose.yml.jinja
+INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
+VALUES (
+    '01KKX2YNPF6VJ9N7QYCWG61KVN',
+    '01KKX2YNPF6VJ9N7QYCWG61KVM',
+    'docker-compose.yml.jinja',
+    'services:
+  traefik:
+    image: traefik:3
+    container_name: traefik
+    restart: unless-stopped
+    entrypoint: ["sh", "-c", "chmod 600 /etc/traefik/acme.json && exec traefik"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    networks:
+      - traefik
+    volumes:
+      - {{ app.physical_app_data_dir }}/traefik.yml:/etc/traefik/traefik.yml:ro
+      - {{ app.physical_app_data_dir }}/dynamic:/etc/traefik/dynamic:ro
+      - {{ app.physical_app_data_dir }}/certs:/etc/traefik/certs:ro
+      - {{ app.physical_app_data_dir }}/acme.json:/etc/traefik/acme.json
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
+      - TRAEFIK_DASHBOARD=${TRAEFIK_DASHBOARD}
+      - TRAEFIK_DASHBOARD_INSECURE=${TRAEFIK_DASHBOARD_INSECURE}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`{{ traefik.dashboard_domain }}`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
+
+networks:
+  traefik:
+    name: traefik
+    driver: bridge
+',
+    datetime('now'),
+    datetime('now')
+);
+
+-- Traefik init.sh
+INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
+VALUES (
+    '01KKX2YNPF6VJ9N7QYCWG61KVP',
+    '01KKX2YNPF6VJ9N7QYCWG61KVM',
+    'init.sh',
+    '#!/bin/bash
+set -e
+
+echo "Initializing Traefik..."
+
+# 创建应用数据目录
+mkdir -p data/dynamic
+mkdir -p data/certs
+
+echo "Traefik initialized"
+',
+    datetime('now'),
+    datetime('now')
+);
+
+-- Traefik acme.json (空文件，用于 Let's Encrypt 证书存储)
+INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
+VALUES (
+    '01KKX2YNPF6VJ9N7QYCWG61KVS',
+    '01KKX2YNPF6VJ9N7QYCWG61KVM',
+    'data/acme.json',
+    '',
+    datetime('now'),
+    datetime('now')
+);
+
+-- Traefik traefik.yml.jinja (Jinja 模板)
+INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
+VALUES (
+    '01KKX2YNPF6VJ9N7QYCWG61KVQ',
+    '01KKX2YNPF6VJ9N7QYCWG61KVM',
+    'data/traefik.yml.jinja',
+    'api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+{% if cert.letsencrypt.enabled %}
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: {{ cert.letsencrypt.email }}
+      storage: /etc/traefik/acme.json
+      {% if cert.letsencrypt.challenge == "http" %}
+      httpChallenge:
+        entryPoint: web
+      {% elif cert.letsencrypt.challenge == "dns" %}
+      dnsChallenge:
+        provider: {{ cert.letsencrypt.dns_provider }}
+      {% endif %}
+{% endif %}
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik
+
+log:
+  level: INFO
+',
+    datetime('now'),
+    datetime('now')
+);
+
+-- Traefik .env
+INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
+VALUES (
+    '01KKX2YNPF6VJ9N7QYCWG61KVR',
+    '01KKX2YNPF6VJ9N7QYCWG61KVM',
+    '.env',
+    'TRAEFIK_LOG_LEVEL=INFO
+TRAEFIK_DASHBOARD=true
+TRAEFIK_DASHBOARD_INSECURE=true
+',
+    datetime('now'),
+    datetime('now')
+);

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pomelo Orbit</title>
+    <!-- 运行时配置注入点（Docker 部署时通过 entrypoint.sh 替换） -->
+    <!-- __RUNTIME_CONFIG__ -->
+    <script>
+      window.__CONFIG__ = window.__CONFIG__ || {};
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

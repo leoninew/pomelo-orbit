@@ -1,0 +1,25 @@
+.git
+.gitignore
+.idea
+.vscode
+*.log
+.DS_Store
+.env*.local
+
+# Frontend (built separately)
+frontend/node_modules
+frontend/dist
+frontend/coverage
+
+# Backend
+backend/__pycache__
+backend/.venv
+backend/.pytest_cache
+backend/.mypy_cache
+backend/.ruff_cache
+backend/data/
+backend/tests
+backend/coverage
+
+# Data directory (mounted as volume)
+data/

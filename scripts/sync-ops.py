@@ -77,11 +77,11 @@ def to_unix_path(path: Path) -> str:
     """将 Windows 路径转换为 Unix 风格（用于 rsync）"""
     path_str = str(path.resolve())
     # D:\path -> /d/path
-    if len(path_str) >= 2 and path_str[1] == ':':
+    if len(path_str) >= 2 and path_str[1] == ":":
         drive = path_str[0].lower()
-        rest = path_str[2:].replace('\\', '/')
+        rest = path_str[2:].replace("\\", "/")
         return f"/{drive}{rest}"
-    return path_str.replace('\\', '/')
+    return path_str.replace("\\", "/")
 
 
 def rsync(src: str, dst: str) -> None:

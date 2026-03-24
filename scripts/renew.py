@@ -58,7 +58,8 @@ SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 ENV_FILE = SCRIPT_DIR / ".env"
 PID_FILE = Path.home() / ".ssh" / "pomelo-orbit-forward.pid"
-REMOTE_DEPLOY_DIR = "/opt/pomelo-orbit"
+
+config: "Config"
 
 
 class Config:
@@ -89,8 +90,14 @@ class Config:
         self.remote_port = env_vars.get("REMOTE_PORT")
         self.jwt_secret = env_vars.get("POMELO_ORBIT_JWT__SECRET_KEY")
 
-        if not all([self.ssh_host, self.ssh_user, self.remote_port]):
-            logger.error("缺少必需的配置 (SSH_HOST, SSH_USER, REMOTE_PORT)")
+        self.remote_deploy_dir = env_vars.get("REMOTE_DEPLOY_DIR")
+
+        if not all(
+            [self.ssh_host, self.ssh_user, self.remote_port, self.remote_deploy_dir]
+        ):
+            logger.error(
+                "缺少必需的配置 (SSH_HOST, SSH_USER, REMOTE_PORT, REMOTE_DEPLOY_DIR)"
+            )
             sys.exit(1)
 
         # 可选配置
@@ -136,7 +143,9 @@ class SSHTunnel:
     def __init__(self, config: Config):
         self.config = config
 
-    def start(self, remote_port: Optional[int] = None, local_port: Optional[int] = None) -> bool:
+    def start(
+        self, remote_port: Optional[int] = None, local_port: Optional[int] = None
+    ) -> bool:
         """启动 SSH 隧道，支持多次调用添加多个端口转发"""
         actual_remote_port = int(remote_port or self.config.remote_port)
         actual_local_port = int(local_port or remote_port or self.config.local_port)
@@ -144,20 +153,30 @@ class SSHTunnel:
         # 检查该本地端口是否已在转发
         tunnels = self._load_tunnels()
         for t in tunnels:
-            if t["local_port"] == actual_local_port and self._port_in_use(actual_local_port):
-                logger.info(f"端口转发已在运行: localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']}")
+            if t["local_port"] == actual_local_port and self._port_in_use(
+                actual_local_port
+            ):
+                logger.info(
+                    f"端口转发已在运行: localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']}"
+                )
                 return False
 
-        logger.info(f"启动端口转发: localhost:{actual_local_port} -> {self.config.ssh_host}:{actual_remote_port}")
+        logger.info(
+            f"启动端口转发: localhost:{actual_local_port} -> {self.config.ssh_host}:{actual_remote_port}"
+        )
 
         subprocess.Popen(
             [
                 "ssh",
                 "-fN",
-                "-o", "ControlMaster=no",
-                "-o", "ServerAliveInterval=60",
-                "-o", "ExitOnForwardFailure=yes",
-                "-L", f"{actual_local_port}:localhost:{actual_remote_port}",
+                "-o",
+                "ControlMaster=no",
+                "-o",
+                "ServerAliveInterval=60",
+                "-o",
+                "ExitOnForwardFailure=yes",
+                "-L",
+                f"{actual_local_port}:localhost:{actual_remote_port}",
                 self.config.ssh_target,
             ],
             stdout=subprocess.DEVNULL,
@@ -170,14 +189,18 @@ class SSHTunnel:
             if self._port_in_use(actual_local_port):
                 pid = self._find_pid_by_port(actual_local_port)
                 if pid:
-                    tunnels = [t for t in tunnels if t["local_port"] != actual_local_port]
-                    tunnels.append({
-                        "local_port": actual_local_port,
-                        "remote_port": actual_remote_port,
-                        "ssh_host": self.config.ssh_host,
-                        "ssh_user": self.config.ssh_user,
-                        "pid": pid,
-                    })
+                    tunnels = [
+                        t for t in tunnels if t["local_port"] != actual_local_port
+                    ]
+                    tunnels.append(
+                        {
+                            "local_port": actual_local_port,
+                            "remote_port": actual_remote_port,
+                            "ssh_host": self.config.ssh_host,
+                            "ssh_user": self.config.ssh_user,
+                            "pid": pid,
+                        }
+                    )
                     self._save_tunnels(tunnels)
                     logger.info(f"访问地址: http://localhost:{actual_local_port}")
                     return True
@@ -193,7 +216,12 @@ class SSHTunnel:
             return False
 
         import platform
-        targets = [t for t in tunnels if t["local_port"] == local_port] if local_port else tunnels
+
+        targets = (
+            [t for t in tunnels if t["local_port"] == local_port]
+            if local_port
+            else tunnels
+        )
         if not targets:
             logger.info(f"未找到本地端口 {local_port} 的隧道")
             return False
@@ -207,15 +235,23 @@ class SSHTunnel:
                 logger.warning(f"隧道 localhost:{t['local_port']} 缺少 PID，跳过")
                 continue
             try:
-                logger.info(f"终止进程 {pid} (localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']})...")
+                logger.info(
+                    f"终止进程 {pid} (localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']})..."
+                )
                 if platform.system() == "Windows":
-                    result = subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True, text=True)
+                    result = subprocess.run(
+                        ["taskkill", "/F", "/PID", str(pid)],
+                        capture_output=True,
+                        text=True,
+                    )
                 else:
-                    result = subprocess.run(["kill", "-9", str(pid)], capture_output=True, text=True)
+                    result = subprocess.run(
+                        ["kill", "-9", str(pid)], capture_output=True, text=True
+                    )
                 if result.returncode == 0:
-                    logger.info(f"  已停止")
+                    logger.info("  已停止")
                 else:
-                    logger.warning(f"  进程不存在或已终止")
+                    logger.warning("  进程不存在或已终止")
             except Exception as e:
                 logger.error(f"  停止失败: {e}")
                 success = False
@@ -243,12 +279,16 @@ class SSHTunnel:
                 stale.append(t)
 
         for t in active:
-            logger.info(f"运行中: localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']} (pid={t['pid']})")
+            logger.info(
+                f"运行中: localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']} (pid={t['pid']})"
+            )
 
         # 清理已失效的隧道记录
         if stale:
             for t in stale:
-                logger.info(f"已失效: localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']}")
+                logger.info(
+                    f"已失效: localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']}"
+                )
             if active:
                 self._save_tunnels(active)
             else:
@@ -265,6 +305,7 @@ class SSHTunnel:
     def _port_in_use(self, port: int) -> bool:
         """检查本地端口是否被占用"""
         import socket
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             return s.connect_ex(("127.0.0.1", int(port))) == 0
 
@@ -272,8 +313,9 @@ class SSHTunnel:
         """通过端口查找进程 PID"""
         try:
             import platform
+
             if platform.system() == "Windows":
-                ps_cmd = f'Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | Select-Object -First 1'
+                ps_cmd = f"Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | Select-Object -First 1"
                 result = subprocess.run(
                     ["powershell", "-Command", ps_cmd],
                     capture_output=True,
@@ -287,7 +329,7 @@ class SSHTunnel:
                     capture_output=True,
                     text=True,
                 )
-                pid_str = result.stdout.strip().split('\n')[0]
+                pid_str = result.stdout.strip().split("\n")[0]
                 return int(pid_str) if pid_str.isdigit() else None
         except Exception:
             return None
@@ -335,7 +377,9 @@ class RemoteExecutor:
         """执行 docker-compose 命令"""
         args_str = " ".join(args)
         # 使用双引号包裹整个命令，避免引号嵌套问题
-        os.system(f'ssh {self.config.ssh_target} "cd {REMOTE_DEPLOY_DIR} && docker-compose --env-file .env {args_str}"')
+        os.system(
+            f'ssh {self.config.ssh_target} "cd {self.config.remote_deploy_dir} && docker-compose --env-file .env {args_str}"'
+        )
 
 
 class Deployer:
@@ -348,7 +392,7 @@ class Deployer:
         """初次部署：从数据库读取配置并部署"""
         logger.info("=== Pomelo Orbit 初次部署 ===\n")
         logger.info(f"目标服务器: {self.config.ssh_target}")
-        logger.info(f"部署目录: {REMOTE_DEPLOY_DIR}\n")
+        logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
         # 检查环境
         self._check_environment()
@@ -372,17 +416,20 @@ class Deployer:
         self._start_service()
 
         logger.info("\n=== 部署成功! ===\n")
-        logger.info(f"部署目录: {REMOTE_DEPLOY_DIR}\n")
+        logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
     def upgrade(self, image: Optional[str] = None):
         """更新部署：只更新镜像和 .env"""
         logger.info("=== Pomelo Orbit 更新部署 ===\n")
         logger.info(f"目标服务器: {self.config.ssh_target}")
-        logger.info(f"部署目录: {REMOTE_DEPLOY_DIR}\n")
+        logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
         # 检查是否已部署
         try:
-            run_ssh_command(f"test -f {REMOTE_DEPLOY_DIR}/docker-compose.yml", "检查部署状态")
+            run_ssh_command(
+                f"test -f {self.config.remote_deploy_dir}/docker-compose.yml",
+                "检查部署状态",
+            )
         except SystemExit:
             logger.error("未检测到已有部署，请先执行 install 命令")
             sys.exit(1)
@@ -398,7 +445,7 @@ class Deployer:
         self._restart_service()
 
         logger.info("\n=== 更新成功! ===\n")
-        logger.info(f"部署目录: {REMOTE_DEPLOY_DIR}\n")
+        logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
     def _check_environment(self):
         """检查本地和远程环境"""
@@ -419,7 +466,7 @@ class Deployer:
     def _create_deploy_dir(self):
         """创建远程部署目录"""
         logger.info("创建远程部署目录...")
-        run_ssh_command(f"mkdir -p {REMOTE_DEPLOY_DIR}", "创建目录")
+        run_ssh_command(f"mkdir -p {self.config.remote_deploy_dir}", "创建目录")
         logger.info("目录创建完成\n")
 
     def _deploy_config_first(self, image: Optional[str]):
@@ -429,7 +476,13 @@ class Deployer:
 
         # 查询 pomelo-orbit 应用 ID
         result = subprocess.run(
-            ["pomelo-db", "-d", "local", "-e", "SELECT id FROM application WHERE code='pomelo-orbit'"],
+            [
+                "pomelo-db",
+                "-d",
+                "local",
+                "-e",
+                "SELECT id FROM application WHERE code='pomelo-orbit'",
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -443,8 +496,13 @@ class Deployer:
 
         # 查询 docker-compose.yml.jinja 模板
         result = subprocess.run(
-            ["pomelo-db", "-d", "local", "-e",
-             f"SELECT content FROM application_config_file WHERE application_id='{app_id}' AND path='docker-compose.yml.jinja'"],
+            [
+                "pomelo-db",
+                "-d",
+                "local",
+                "-e",
+                f"SELECT content FROM application_config_file WHERE application_id='{app_id}' AND path='docker-compose.yml.jinja'",
+            ],
             capture_output=True,
             text=True,
             check=True,
@@ -457,13 +515,16 @@ class Deployer:
 
         # 渲染 Jinja 变量
         import re
+
         # 固定路径
-        config_content = re.sub(r"\{\{\s*app\.physical_data_dir\s*\}\}", "/opt/pomelo-orbit/data", config_content)
+        config_content = re.sub(
+            r"\{\{\s*app\.physical_data_dir\s*\}\}",
+            f"{self.config.remote_deploy_dir}/data",
+            config_content,
+        )
         # pomelo-orbit 固定使用 lvh.me 域名
         config_content = re.sub(
-            r"\{\{\s*config\.domain_suffix\s*\}\}",
-            "lvh.me",
-            config_content
+            r"\{\{\s*config\.domain_suffix\s*\}\}", "lvh.me", config_content
         )
 
         # 替换镜像
@@ -476,11 +537,13 @@ class Deployer:
             logger.warning("模板中仍有未渲染的 Jinja 变量，请检查")
 
         # 写入临时文件并传输
-        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".yml", encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", delete=False, suffix=".yml", encoding="utf-8"
+        ) as f:
             f.write(config_content)
             temp_file = f.name
 
-        copy_to_remote(temp_file, f"{REMOTE_DEPLOY_DIR}/docker-compose.yml")
+        copy_to_remote(temp_file, f"{self.config.remote_deploy_dir}/docker-compose.yml")
         os.unlink(temp_file)
         logger.info("配置文件传输完成\n")
 
@@ -489,8 +552,8 @@ class Deployer:
         logger.info(f"更新镜像版本: {image}")
         # 使用 sed 远程修改 docker-compose.yml 的镜像行
         run_ssh_command(
-            f"sed -i 's|image:.*|image: {image}|' {REMOTE_DEPLOY_DIR}/docker-compose.yml",
-            "更新镜像版本"
+            f"sed -i 's|image:.*|image: {image}|' {self.config.remote_deploy_dir}/docker-compose.yml",
+            "更新镜像版本",
         )
         logger.info("镜像版本更新完成\n")
 
@@ -503,13 +566,15 @@ class Deployer:
 
         env_content = f"POMELO_ORBIT_JWT__SECRET_KEY={self.config.jwt_secret}\n"
         if self.config.traefik_api_url:
-            env_content += f"POMELO_ORBIT_TRAEFIK__API_URL={self.config.traefik_api_url}\n"
+            env_content += (
+                f"POMELO_ORBIT_TRAEFIK__API_URL={self.config.traefik_api_url}\n"
+            )
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
             f.write(env_content)
             temp_file = f.name
 
-        copy_to_remote(temp_file, f"{REMOTE_DEPLOY_DIR}/.env")
+        copy_to_remote(temp_file, f"{self.config.remote_deploy_dir}/.env")
         os.unlink(temp_file)
         logger.info(".env 传输完成\n")
 
@@ -517,14 +582,19 @@ class Deployer:
         """传输管理脚本"""
         logger.info("传输管理脚本...")
         boot_script = SCRIPT_DIR / "boot.sh"
-        copy_to_remote(str(boot_script), f"{REMOTE_DEPLOY_DIR}/boot.sh")
-        run_ssh_command(f"chmod +x {REMOTE_DEPLOY_DIR}/boot.sh", "设置执行权限")
+        copy_to_remote(str(boot_script), f"{self.config.remote_deploy_dir}/boot.sh")
+        run_ssh_command(
+            f"chmod +x {self.config.remote_deploy_dir}/boot.sh", "设置执行权限"
+        )
         logger.info("管理脚本传输完成\n")
 
     def _pull_image(self):
         """拉取 Docker 镜像"""
         logger.info("拉取 Docker 镜像...")
-        image = run_ssh_command(f"grep 'image:' {REMOTE_DEPLOY_DIR}/docker-compose.yml | awk '{{print $2}}'", "获取镜像名称")
+        image = run_ssh_command(
+            f"grep 'image:' {self.config.remote_deploy_dir}/docker-compose.yml | awk '{{print $2}}'",
+            "获取镜像名称",
+        )
         logger.info(f"  镜像: {image}")
         run_ssh_command(f"docker pull {image}", "拉取镜像")
         logger.info("镜像拉取完成\n")
@@ -532,7 +602,9 @@ class Deployer:
     def _start_service(self):
         """启动服务"""
         logger.info("启动服务...")
-        run_ssh_command(f"cd {REMOTE_DEPLOY_DIR} && ./boot.sh up", "启动服务")
+        run_ssh_command(
+            f"cd {self.config.remote_deploy_dir} && ./boot.sh up", "启动服务"
+        )
         logger.info("服务启动命令已执行\n")
 
         logger.info("等待服务启动...")
@@ -549,7 +621,10 @@ class Deployer:
     def _restart_service(self):
         """重启服务"""
         logger.info("重启服务...")
-        run_ssh_command(f"cd {REMOTE_DEPLOY_DIR} && docker-compose --env-file .env up -d", "重启服务")
+        run_ssh_command(
+            f"cd {self.config.remote_deploy_dir} && docker-compose --env-file .env up -d",
+            "重启服务",
+        )
         logger.info("服务重启完成\n")
 
 
@@ -568,17 +643,29 @@ def main():
 
     # tunnel 命令
     tunnel_parser = subparsers.add_parser("tunnel", help="SSH 隧道管理")
-    tunnel_parser.add_argument("action", choices=["start", "stop", "status"], help="操作")
-    tunnel_parser.add_argument("-r", "--remote_port", help="远程端口，多个用逗号分隔（仅 start 使用）")
-    tunnel_parser.add_argument("-l", "--local_port", help="本地端口，多个用逗号分隔（start: 指定本地端口；stop: 只停止该端口）")
+    tunnel_parser.add_argument(
+        "action", choices=["start", "stop", "status"], help="操作"
+    )
+    tunnel_parser.add_argument(
+        "-r", "--remote_port", help="远程端口，多个用逗号分隔（仅 start 使用）"
+    )
+    tunnel_parser.add_argument(
+        "-l",
+        "--local_port",
+        help="本地端口，多个用逗号分隔（start: 指定本地端口；stop: 只停止该端口）",
+    )
 
     # exec 命令
     exec_parser = subparsers.add_parser("exec", help="执行远程命令")
-    exec_parser.add_argument("remote_command", nargs=argparse.REMAINDER, help="要执行的命令")
+    exec_parser.add_argument(
+        "remote_command", nargs=argparse.REMAINDER, help="要执行的命令"
+    )
 
     # docker-compose 命令
     dc_parser = subparsers.add_parser("docker-compose", help="执行 docker-compose 命令")
-    dc_parser.add_argument("dc_args", nargs=argparse.REMAINDER, help="docker-compose 参数")
+    dc_parser.add_argument(
+        "dc_args", nargs=argparse.REMAINDER, help="docker-compose 参数"
+    )
 
     args = parser.parse_args()
 
@@ -598,10 +685,18 @@ def main():
     elif args.command == "tunnel":
         tunnel = SSHTunnel(config)
         if args.action == "start":
-            remote_ports = [int(p) for p in args.remote_port.split(",")] if args.remote_port else [None]
-            local_ports = [int(p) for p in args.local_port.split(",")] if args.local_port else [None] * len(remote_ports)
-            for r, l in zip(remote_ports, local_ports):
-                tunnel.start(remote_port=r, local_port=l)
+            remote_ports = (
+                [int(p) for p in args.remote_port.split(",")]
+                if args.remote_port
+                else [None]
+            )
+            local_ports = (
+                [int(p) for p in args.local_port.split(",")]
+                if args.local_port
+                else [None] * len(remote_ports)
+            )
+            for r, lp in zip(remote_ports, local_ports):
+                tunnel.start(remote_port=r, local_port=lp)
         elif args.action == "stop":
             local_port = int(args.local_port) if args.local_port else None
             tunnel.stop(local_port=local_port)

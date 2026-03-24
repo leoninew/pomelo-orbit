@@ -23,8 +23,22 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).parent.resolve()
 CERT_DIR = SCRIPT_DIR.parent / "backend/data/apps/traefik/data/certs"
 
-def run(cmd: list[str], capture: bool = True, input: str | None = None, encoding: str = "utf-8") -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=capture, text=True, input=input, encoding=encoding, errors="ignore")
+
+def run(
+    cmd: list[str],
+    capture: bool = True,
+    input: str | None = None,
+    encoding: str = "utf-8",
+) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        cmd,
+        capture_output=capture,
+        text=True,
+        input=input,
+        encoding=encoding,
+        errors="ignore",
+    )
+
 
 def _mkcert_ca_path() -> Path | None:
     r = run(["mkcert", "-CAROOT"])
@@ -32,9 +46,11 @@ def _mkcert_ca_path() -> Path | None:
         return None
     return Path(r.stdout.strip()) / "rootCA.pem"
 
+
 def _load_cert_from_pem(pem_text: str):
     from cryptography import x509  # noqa: PLC0415
     from cryptography.hazmat.backends import default_backend  # noqa: PLC0415
+
     lines = pem_text.splitlines()
     block: list[str] = []
     in_block = False
@@ -50,11 +66,13 @@ def _load_cert_from_pem(pem_text: str):
     pem_bytes = ("\n".join(block) + "\n").encode()
     return x509.load_pem_x509_certificate(pem_bytes, default_backend())
 
+
 def _check_ca_in_windows_store(ca_cert) -> bool:
     r = run(["certutil", "-store", "Root"])
     if r.returncode != 0 or not r.stdout:
         return False
     return "mkcert" in r.stdout.lower()
+
 
 def _verify_cert_chain(leaf_cert, ca_cert) -> bool:
     try:
@@ -64,25 +82,34 @@ def _verify_cert_chain(leaf_cert, ca_cert) -> bool:
         pass
     try:
         from cryptography.hazmat.primitives.asymmetric import padding, ec
+
         pub = ca_cert.public_key()
         sig_algo = leaf_cert.signature_hash_algorithm
         pub.verify(
             leaf_cert.signature,
             leaf_cert.tbs_certificate_bytes,
-            ec.ECDSA(sig_algo) if "ec" in type(pub).__name__.lower() else padding.PKCS1v15(),
+            ec.ECDSA(sig_algo)
+            if "ec" in type(pub).__name__.lower()
+            else padding.PKCS1v15(),
             sig_algo,
         )
         return True
     except Exception:
         return False
 
+
 def _print_cert_info(cert, domain: str) -> tuple[bool, bool]:
     from cryptography import x509 as x509_mod  # noqa: PLC0415
+
     subject = cert.subject.rfc4514_string()
-    issuer  = cert.issuer.rfc4514_string()
-    expiry  = cert.not_valid_after_utc if hasattr(cert, "not_valid_after_utc") else cert.not_valid_after  # type: ignore[attr-defined]
-    now     = datetime.datetime.now(tz=expiry.tzinfo)
-    days    = (expiry - now).days
+    issuer = cert.issuer.rfc4514_string()
+    expiry = (
+        cert.not_valid_after_utc
+        if hasattr(cert, "not_valid_after_utc")
+        else cert.not_valid_after
+    )  # type: ignore[attr-defined]
+    now = datetime.datetime.now(tz=expiry.tzinfo)
+    days = (expiry - now).days
 
     logger.info(f"Subject: {subject}")
     logger.info(f"Issuer: {issuer}")
@@ -92,7 +119,9 @@ def _print_cert_info(cert, domain: str) -> tuple[bool, bool]:
         logger.warning(f"有效期剩余: {days} 天（到期: {expiry.strftime('%Y-%m-%d')}）")
 
     try:
-        san_ext = cert.extensions.get_extension_for_class(x509_mod.SubjectAlternativeName)
+        san_ext = cert.extensions.get_extension_for_class(
+            x509_mod.SubjectAlternativeName
+        )
         sans = san_ext.value.get_values_for_type(x509_mod.DNSName)
     except Exception:
         sans = []
@@ -110,6 +139,7 @@ def _print_cert_info(cert, domain: str) -> tuple[bool, bool]:
         logger.warning("非 mkcert 签发")
     return san_ok, is_mkcert
 
+
 def cmd_new(domain: str) -> None:
     CERT_DIR.mkdir(parents=True, exist_ok=True)
     out_file = CERT_DIR / f"{domain}.pem"
@@ -120,18 +150,22 @@ def cmd_new(domain: str) -> None:
     with tempfile.TemporaryDirectory(dir=CERT_DIR) as tmp:
         tmp_path = Path(tmp)
         cert_file = tmp_path / "cert.pem"
-        key_file  = tmp_path / "key.pem"
+        key_file = tmp_path / "key.pem"
 
         def to_native(p: Path) -> str:
             r = run(["cygpath", "-w", str(p)])
             return r.stdout.strip() if r.returncode == 0 else str(p)
 
-        result = run([
-            "mkcert",
-            "-cert-file", to_native(cert_file),
-            "-key-file",  to_native(key_file),
-            domain,
-        ])
+        result = run(
+            [
+                "mkcert",
+                "-cert-file",
+                to_native(cert_file),
+                "-key-file",
+                to_native(key_file),
+                domain,
+            ]
+        )
         if result.returncode != 0:
             logger.error(result.stderr)
             sys.exit(1)
@@ -145,7 +179,10 @@ def cmd_new(domain: str) -> None:
 
     pem_text = out_file.read_text()
     logger.info(f"输出: {out_file}")
-    logger.info(f"证书块: {pem_text.count('BEGIN CERTIFICATE')}  私钥块: {pem_text.count('BEGIN PRIVATE KEY')}")
+    logger.info(
+        f"证书块: {pem_text.count('BEGIN CERTIFICATE')}  私钥块: {pem_text.count('BEGIN PRIVATE KEY')}"
+    )
+
 
 def cmd_check(domain: str) -> None:
     from cryptography import x509  # noqa: PLC0415
@@ -160,7 +197,9 @@ def cmd_check(domain: str) -> None:
         logger.warning("找不到 mkcert 根 CA（运行 mkcert -install）")
     else:
         logger.info(f"CA 文件: {ca_path}")
-        ca_cert = x509.load_pem_x509_certificate(ca_path.read_bytes(), default_backend())
+        ca_cert = x509.load_pem_x509_certificate(
+            ca_path.read_bytes(), default_backend()
+        )
         logger.info(f"CA Subject: {ca_cert.subject.rfc4514_string()}")
         if _check_ca_in_windows_store(ca_cert):
             logger.info("已导入 Windows 系统信任库（Root store）")
@@ -173,12 +212,16 @@ def cmd_check(domain: str) -> None:
     leaf_cert = None
     if not pem_file.exists():
         logger.warning(f"文件不存在: {pem_file}")
-        logger.info(f"修复: uv run --project backend/ python scripts/cert.py new -n {domain}")
+        logger.info(
+            f"修复: uv run --project backend/ python scripts/cert.py new -n {domain}"
+        )
     else:
         logger.info(f"文件: {pem_file}")
         pem_text = pem_file.read_text(encoding="utf-8")
         cert_count = pem_text.count("BEGIN CERTIFICATE")
-        key_count  = pem_text.count("BEGIN PRIVATE KEY") + pem_text.count("BEGIN EC PRIVATE KEY")
+        key_count = pem_text.count("BEGIN PRIVATE KEY") + pem_text.count(
+            "BEGIN EC PRIVATE KEY"
+        )
         logger.info(f"证书块: {cert_count}  私钥块: {key_count}")
         if cert_count >= 1:
             logger.info("包含证书")
@@ -212,11 +255,12 @@ def cmd_check(domain: str) -> None:
         ctx.verify_mode = ssl.CERT_REQUIRED
         with socket.create_connection((domain, 443), timeout=5) as sock:
             with ctx.wrap_socket(sock, server_hostname=domain) as ssock:
-                der   = ssock.getpeercert(binary_form=True)
+                der = ssock.getpeercert(binary_form=True)
                 proto = ssock.version()
 
         logger.info(f"TLS 握手成功（{proto}）— 系统信任库验证通过，浏览器不会报红")
 
+        assert der is not None, "未获取到服务端证书"
         server_cert = x509.load_der_x509_certificate(der, default_backend())
         _, is_mkcert = _print_cert_info(server_cert, domain)
         if not is_mkcert:
@@ -231,6 +275,7 @@ def cmd_check(domain: str) -> None:
         logger.error(f"连接超时: {domain}:443")
     except Exception as e:
         logger.error(f"TLS 握手失败: {e}")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -259,6 +304,7 @@ def main() -> None:
         cmd_check(args.domain)
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()

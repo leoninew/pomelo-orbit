@@ -8,8 +8,12 @@
 
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 from dynaconf import Dynaconf
+
+from pomelo_orbit.application.setting_service import SettingService
+from pomelo_orbit.infrastructure.config import get_default_settings
 
 
 def make_settings(base_dir: Path, extra_env: dict[str, str] | None = None) -> Dynaconf:
@@ -174,11 +178,6 @@ class TestFullPriorityChain:
 
 # ── helpers for SettingService tests ──────────────────────────────────────
 
-from unittest.mock import patch
-
-from pomelo_orbit.application.setting_service import SettingService
-from pomelo_orbit.infrastructure.config import get_default_settings
-
 _SETTING_DEFAULTS_YAML = """\
 traefik:
   domain_suffix: "lvh.me"
@@ -220,14 +219,13 @@ def _make_setting_service(base_dir: Path):
 
 # ── get_default_settings 隔离测试 ──────────────────────────────────────────
 
+
 class TestGetDefaultSettingsIsolation:
     """验证 get_default_settings() 不受环境变量和 .env 文件影响"""
 
     def test_env_var_does_not_pollute_defaults(self, tmp_path: Path):
         """POMELO_ORBIT_* 环境变量不应影响使用 __DISABLED__ 前缀的 Dynaconf 实例"""
-        (tmp_path / "config.defaults.yaml").write_text(
-            "traefik:\n  domain_suffix: 'lvh.me'\n", encoding="utf-8"
-        )
+        (tmp_path / "config.defaults.yaml").write_text("traefik:\n  domain_suffix: 'lvh.me'\n", encoding="utf-8")
         env_before = os.environ.copy()
         os.environ["POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX"] = "injected.example.com"
         try:
@@ -245,9 +243,7 @@ class TestGetDefaultSettingsIsolation:
 
     def test_dotenv_file_does_not_pollute_defaults(self, tmp_path: Path):
         """.env 文件存在时，load_dotenv=False 确保不被读取"""
-        (tmp_path / "config.defaults.yaml").write_text(
-            "jwt:\n  expire_minutes: 10080\n", encoding="utf-8"
-        )
+        (tmp_path / "config.defaults.yaml").write_text("jwt:\n  expire_minutes: 10080\n", encoding="utf-8")
         (tmp_path / ".env").write_text("POMELO_ORBIT_JWT__EXPIRE_MINUTES=999\n", encoding="utf-8")
         d = Dynaconf(
             settings_files=[str(tmp_path / "config.defaults.yaml")],
@@ -271,6 +267,7 @@ class TestGetDefaultSettingsIsolation:
 
 
 # ── _build_items value/default 分离 ────────────────────────────────────────
+
 
 class TestBuildItemsValueDefaultSeparation:
     """value 和 default 必须独立，修改 .env 只影响 value"""
@@ -305,9 +302,7 @@ class TestBuildItemsValueDefaultSeparation:
     def test_default_unchanged_after_reset(self, tmp_path: Path):
         """reset 后 value 回到默认值，default 始终不变"""
         (tmp_path / "config.defaults.yaml").write_text(_SETTING_DEFAULTS_YAML, encoding="utf-8")
-        (tmp_path / ".env").write_text(
-            "POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX=custom.com\n", encoding="utf-8"
-        )
+        (tmp_path / ".env").write_text("POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX=custom.com\n", encoding="utf-8")
         svc, patcher = _make_setting_service(tmp_path)
         try:
             svc.reset_config(["traefik__domain_suffix"])
@@ -336,9 +331,7 @@ class TestBuildItemsValueDefaultSeparation:
 
     def test_is_overridden_true_when_env_has_key(self, tmp_path: Path):
         (tmp_path / "config.defaults.yaml").write_text(_SETTING_DEFAULTS_YAML, encoding="utf-8")
-        (tmp_path / ".env").write_text(
-            "POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX=custom.com\n", encoding="utf-8"
-        )
+        (tmp_path / ".env").write_text("POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX=custom.com\n", encoding="utf-8")
         svc, patcher = _make_setting_service(tmp_path)
         try:
             result = svc.get_config()
@@ -350,9 +343,7 @@ class TestBuildItemsValueDefaultSeparation:
 
     def test_is_overridden_false_after_reset(self, tmp_path: Path):
         (tmp_path / "config.defaults.yaml").write_text(_SETTING_DEFAULTS_YAML, encoding="utf-8")
-        (tmp_path / ".env").write_text(
-            "POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX=custom.com\n", encoding="utf-8"
-        )
+        (tmp_path / ".env").write_text("POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX=custom.com\n", encoding="utf-8")
         svc, patcher = _make_setting_service(tmp_path)
         try:
             svc.reset_config(["traefik__domain_suffix"])

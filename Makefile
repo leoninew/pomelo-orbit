@@ -32,8 +32,8 @@ help:
 install:
 	@echo "正在安装后端依赖..."
 	$(if $(force), \
-		cd backend && UV_LINK_MODE=copy uv sync --all-extras --force-reinstall, \
-		cd backend && UV_LINK_MODE=copy uv sync --all-extras)
+		cd backend && UV_LINK_MODE=copy uv sync --all-groups --force-reinstall, \
+		cd backend && UV_LINK_MODE=copy uv sync --all-groups)
 	@echo "正在安装前端依赖..."
 	$(if $(force), \
 		cd frontend && yarn install --force, \

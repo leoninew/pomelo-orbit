@@ -667,6 +667,9 @@ def main():
         "dc_args", nargs=argparse.REMAINDER, help="docker-compose 参数"
     )
 
+    # ssh 命令
+    subparsers.add_parser("ssh", help="SSH 连接到远程服务器")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -708,6 +711,8 @@ def main():
     elif args.command == "docker-compose":
         executor = RemoteExecutor(config)
         executor.docker_compose(args.dc_args)
+    elif args.command == "ssh":
+        os.system(f"ssh {config.ssh_target}")
 
 
 if __name__ == "__main__":

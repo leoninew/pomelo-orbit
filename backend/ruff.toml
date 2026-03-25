@@ -16,7 +16,7 @@ select = [
     "C4",     # flake8-comprehensions
     "SIM",    # flake8-simplify
     "RUF",    # Ruff-specific rules
-    "TCH",    # flake8-type-checking (优化类型导入)
+    "TC",     # flake8-type-checking (优化类型导入)
     "FA",     # flake8-future-annotations (强制使用 PEP 563)
     "PIE",    # flake8-pie (misc lints)
     "T20",    # flake8-print (禁止 print)
@@ -34,7 +34,7 @@ ignore = [
     "T201",   # print found (某些场景需要)
     "RUF002", # docstring contains ambiguous unicode character
     "RUF003", # comment contains ambiguous unicode character
-    "TCH003", # Move standard library import into TYPE_CHECKING block (false positives for runtime usage)
+    "TC003", # Move standard library import into TYPE_CHECKING block (false positives for runtime usage)
 ]
 
 [lint.per-file-ignores]

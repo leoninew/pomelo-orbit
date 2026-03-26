@@ -75,9 +75,7 @@ def sample_deployment():
 class TestApplicationServiceInit:
     """ApplicationService 初始化测试"""
 
-    def test_creates_service_with_repositories(
-        self, mock_app_repo, mock_deployment_repo, mock_config_file_repo
-    ):
+    def test_creates_service_with_repositories(self, mock_app_repo, mock_deployment_repo, mock_config_file_repo):
         """测试使用仓储创建服务"""
         from pomelo_orbit.infrastructure.config import get_settings
         from pomelo_orbit.infrastructure.docker.manager import ApplicationManagerImpl

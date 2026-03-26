@@ -89,4 +89,3 @@ class TraefikManager:
             config_file.unlink()
             logger.info(f"Route config revoked: route={route.name}, path={config_file}")
             self._reload_traefik(traefik_container)
-

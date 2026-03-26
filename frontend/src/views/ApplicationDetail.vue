@@ -26,7 +26,11 @@
 					<a-button :loading="operating" @click="handleStop">停止</a-button>
 					<a-button :loading="operating" @click="handleRestart">重启</a-button>
 					<a-button :disabled="operating" @click="showBasicInfoModal = true">编辑</a-button>
-					<a-button danger :disabled="operating || application.status === 'started'" @click="openDeleteModal">
+					<a-button
+						danger
+						:disabled="operating || application.status === 'started'"
+						@click="openDeleteModal"
+					>
 						删除
 					</a-button>
 					<a-button @click="handleExport">导出</a-button>
@@ -229,7 +233,6 @@
 				<a-button @click="showDeleteModal = false">取消</a-button>
 			</template>
 		</a-modal>
-
 	</a-space>
 </template>
 

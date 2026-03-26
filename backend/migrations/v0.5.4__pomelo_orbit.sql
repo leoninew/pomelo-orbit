@@ -28,7 +28,8 @@ VALUES (
       - traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - {{ app.physical_data_dir }}:/app/data
+      - {{ app.physical_dir }}/data:/app/data
+      - {{ app.physical_dir }}/.env:/app/.env
     ports:
       - "9003:80"
     # environment:

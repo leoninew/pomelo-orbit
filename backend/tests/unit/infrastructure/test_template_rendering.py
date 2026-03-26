@@ -20,16 +20,18 @@ class TestRenderTemplate:
 
     def test_renders_jinja2_template(self, app_manager):
         """Should render Jinja template content."""
-        content = "data_dir: {{ app.physical_data_dir }}"
+        content = "dir: {{ app.physical_dir }}"
         rendered = app_manager._render_template("test-app", content)
-        assert "data_dir:" in rendered
+        assert "dir:" in rendered
         assert rendered != content
 
     def test_provides_settings_in_context(self, app_manager):
-        """Should provide app.physical_data_dir in template context."""
-        content = "data_dir: {{ app.physical_data_dir }}"
+        """Should provide app.physical_dir and app.physical_app_dir in template context."""
+        content = "dir: {{ app.physical_dir }}, app_dir: {{ app.physical_app_dir }}"
         rendered = app_manager._render_template("test-app", content)
         assert rendered != content
+        assert "{{ app.physical_dir }}" not in rendered
+        assert "{{ app.physical_app_dir }}" not in rendered
 
     def test_provides_config_in_context(self, app_manager):
         """Should provide config.domain_suffix in template context."""
@@ -64,7 +66,7 @@ class TestWriteFileWithTemplate:
 
     def test_renders_and_writes_template_file(self, app_manager, tmp_path):
         """Should render template and write to file without .jinja extension."""
-        content = "value: {{ app.physical_data_dir }}"
+        content = "value: {{ app.physical_app_dir }}"
         test_dir = tmp_path / "render-test"
         test_dir.mkdir(parents=True, exist_ok=True)
         with patch.object(app_manager, "get_app_working_dir", return_value=test_dir):
@@ -73,11 +75,11 @@ class TestWriteFileWithTemplate:
         assert not (test_dir / "config.yml.jinja").exists()
         assert (test_dir / "config.yml").exists()
         rendered_content = (test_dir / "config.yml").read_text()
-        assert rendered_content != "value: {{ app.physical_data_dir }}"
+        assert rendered_content != "value: {{ app.physical_app_dir }}"
 
     def test_creates_parent_directories_for_template(self, app_manager, tmp_path):
         """Should create parent directories for template files."""
-        content = "test: {{ app.physical_data_dir }}"
+        content = "test: {{ app.physical_app_dir }}"
         test_dir = tmp_path / "parent-test"
         with patch.object(app_manager, "get_app_working_dir", return_value=test_dir):
             app_manager._write_file("test-app", "data/config.yml.jinja", content)
@@ -86,7 +88,7 @@ class TestWriteFileWithTemplate:
 
     def test_sets_file_mode_for_init_sh(self, app_manager, tmp_path):
         """Should set executable mode for init.sh."""
-        content = "#!/bin/bash\necho {{ app.physical_data_dir }}"
+        content = "#!/bin/bash\necho {{ app.physical_app_dir }}"
         test_dir = tmp_path / "init-test"
         test_dir.mkdir(parents=True, exist_ok=True)
         with patch.object(app_manager, "get_app_working_dir", return_value=test_dir):

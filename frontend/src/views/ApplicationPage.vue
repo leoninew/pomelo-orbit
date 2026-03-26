@@ -28,7 +28,13 @@
 					<template #icon><UploadOutlined /></template>
 					导入
 				</a-button>
-				<input ref="fileInput" type="file" accept=".json" style="display: none" @change="handleFileImport" />
+				<input
+					ref="fileInput"
+					type="file"
+					accept=".json"
+					style="display: none"
+					@change="handleFileImport"
+				/>
 			</a-space>
 		</div>
 		<!-- 卡片视图 -->
@@ -218,7 +224,11 @@
 				</a-form-item>
 				<a-form-item label="配置文件">
 					<div v-if="importForm.config_files.length > 0" class="config-files-list">
-						<div v-for="(file, index) in importForm.config_files" :key="index" class="config-file-item">
+						<div
+							v-for="(file, index) in importForm.config_files"
+							:key="index"
+							class="config-file-item"
+						>
 							<span>{{ file.path }}</span>
 						</div>
 					</div>
@@ -234,7 +244,13 @@
 </template>
 
 <script setup lang="ts">
-import { AppstoreOutlined, CaretRightOutlined, PlusOutlined, UnorderedListOutlined, UploadOutlined } from '@ant-design/icons-vue';
+import {
+	AppstoreOutlined,
+	CaretRightOutlined,
+	PlusOutlined,
+	UnorderedListOutlined,
+	UploadOutlined,
+} from '@ant-design/icons-vue';
 import type { FormInstance } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';

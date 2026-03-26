@@ -72,36 +72,35 @@ class ApplicationManagerImpl(ApplicationManager):
                 return cast("str", source)
         raise RuntimeError("get container mount bind failed")
 
-    def get_physical_data_dir(self, application_code: str | None = None) -> str:
-        """探测数据根目录（宿主机路径）"""
-        root = get_project_root() / "data"
-        container_id = self._detect_container_id()
-        if container_id:
-            root = Path(self._get_container_mount(container_id))
-        if application_code:
-            root = root / application_code / "data"
-        return str(root)
-
     def get_app_working_dir(self, application_code: str) -> Path:
         """获取运行时目录"""
         return get_project_root() / "data" / application_code
 
     # ==================== 模板渲染 ====================
     def _render_template(self, application_code: str, content: str) -> str:
-        physical_data_dir = self.get_physical_data_dir().replace("\\", "/")
-        physical_app_data_dir = self.get_physical_data_dir(application_code).replace("\\", "/")
-
+        # physical_dir: {root} 的宿主机路径（data 目录的上级）
+        # physical_app_dir: {root}/data/{app_code} 的宿主机路径（应用 data 目录的上级）
         container_id = self._detect_container_id()
         logger.debug(f"Rendering template, app={application_code}, container_id={container_id}")
-        if container_id is None:
-            physical_app_data_dir = "./data"
+
+        if container_id:
+            # 容器内：挂载点是 {root}/data，往上一级得到 physical_dir
+            mount = Path(self._get_container_mount(container_id))
+            # pomelo-orbit 自举部署需要完整的宿主机路径配置
+            physical_dir = str(mount.parent).replace("\\", "/")
+            physical_app_dir = str(mount / application_code).replace("\\", "/")
+        else:
+            # pomelo-orbit 自举部署需要完整的宿主机路径配置
+            physical_dir = str(get_project_root()).replace("\\", "/")
+            # 其他应用在 data/{app_code}/ 下执行，./data 即为应用数据目录
+            physical_app_dir = "."
 
         domain_suffix = self.settings.traefik.domain_suffix
         context = {
             "app": {
                 "code": application_code,
-                "physical_data_dir": physical_data_dir,
-                "physical_app_data_dir": physical_app_data_dir,
+                "physical_dir": physical_dir,
+                "physical_app_dir": physical_app_dir,
             },
             "config": {
                 "domain_suffix": domain_suffix,
@@ -177,15 +176,20 @@ class ApplicationManagerImpl(ApplicationManager):
             raise subprocess.CalledProcessError(process.returncode or 1, cmd, output)
         return output
 
-    async def _run_command(self, cmd: list[str], cwd: Path) -> str:
+    async def _run_command(self, cmd: list[str], cwd: Path, log_file: TextIO | None = None) -> str:
+        cmd_str = f"$ {' '.join(cmd)}"
+        logger.info(f"{cmd_str}  (cwd={cwd})")
+        if log_file:
+            self._write_log(log_file, cmd_str)
         if sys.platform == "win32":
             return await self._run_command_win32(cmd, cwd)
         return await self._run_command_unix(cmd, cwd)  # type: ignore[unreachable]
 
-    async def _compose_pull(self, app_dir: Path) -> str:
+    async def _compose_pull(self, app_dir: Path, log_file: TextIO | None = None) -> str:
         return await self._run_command(
             ["docker", "compose", "-f", "docker-compose.yml", "pull"],
             cwd=app_dir,
+            log_file=log_file,
         )
 
     async def _compose_up(
@@ -193,6 +197,7 @@ class ApplicationManagerImpl(ApplicationManager):
         app_dir: Path,
         pull_policy: str = "missing",
         env_file: str | None = None,
+        log_file: TextIO | None = None,
     ) -> str:
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
         if env_file:
@@ -201,13 +206,14 @@ class ApplicationManagerImpl(ApplicationManager):
                 raise FileNotFoundError(f"Environment file not found: {env_path}")
             cmd.extend(["--env-file", env_file])
         cmd.extend(["up", "-d", "--remove-orphans", "--pull", pull_policy])
-        return await self._run_command(cmd, cwd=app_dir)
+        return await self._run_command(cmd, cwd=app_dir, log_file=log_file)
 
     async def _compose_down(
         self,
         app_dir: Path,
         remove_volumes: bool = False,
         env_file: str | None = None,
+        log_file: TextIO | None = None,
     ) -> str:
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
         if env_file:
@@ -215,14 +221,14 @@ class ApplicationManagerImpl(ApplicationManager):
         cmd.append("down")
         if remove_volumes:
             cmd.append("-v")
-        return await self._run_command(cmd, cwd=app_dir)
+        return await self._run_command(cmd, cwd=app_dir, log_file=log_file)
 
-    async def _compose_restart(self, app_dir: Path, env_file: str | None = None) -> str:
+    async def _compose_restart(self, app_dir: Path, env_file: str | None = None, log_file: TextIO | None = None) -> str:
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
         if env_file:
             cmd.extend(["--env-file", env_file])
         cmd.append("restart")
-        return await self._run_command(cmd, cwd=app_dir)
+        return await self._run_command(cmd, cwd=app_dir, log_file=log_file)
 
     async def _compose_logs(self, app_dir: Path, tail: int = 100) -> str:
         return await self._run_command(
@@ -230,17 +236,22 @@ class ApplicationManagerImpl(ApplicationManager):
             cwd=app_dir,
         )
 
-    async def _run_init_script(self, app_dir: Path) -> str:
+    async def _run_init_script(self, app_dir: Path, log_file: TextIO | None = None) -> str:
         script_path = app_dir / "init.sh"
         if not script_path.exists():
             raise FileNotFoundError(f"Init script not found: {script_path}")
 
         if sys.platform != "win32":
-            return await self._run_command(["bash", "init.sh"], cwd=app_dir)
+            return await self._run_command(["bash", "init.sh"], cwd=app_dir, log_file=log_file)
 
         bash_path = shutil.which("bash")
         if not bash_path:
             raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")
+
+        cmd_str = f"$ {bash_path} init.sh"
+        logger.info(f"{cmd_str}  (cwd={app_dir})")
+        if log_file:
+            self._write_log(log_file, cmd_str)
 
         def _run_sync() -> str:
             result = subprocess.run(
@@ -314,11 +325,13 @@ class ApplicationManagerImpl(ApplicationManager):
 
             if init_script_file:
                 self._write_log(log_file, "Running init script...")
-                init_output = await self._run_init_script(working_dir)
+                init_output = await self._run_init_script(working_dir, log_file=log_file)
                 self._write_log(log_file, f"Init script output:\n{init_output}")
 
             self._write_log(log_file, f"Starting services (pull policy: {pull_policy})...")
-            up_output = await self._compose_up(working_dir, pull_policy=pull_policy, env_file=env_file)
+            up_output = await self._compose_up(
+                working_dir, pull_policy=pull_policy, env_file=env_file, log_file=log_file
+            )
             self._write_log(log_file, f"Start output:\n{up_output}")
             logger.info(f"Deploy completed: app={application_code}, deployment={deployment_id}")
         finally:

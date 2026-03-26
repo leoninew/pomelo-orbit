@@ -528,9 +528,7 @@ class ApplicationService:
             }
             if app.image_source
             else None,
-            "config_files": [
-                {"path": cf.path, "content": cf.content} for cf in config_files
-            ],
+            "config_files": [{"path": cf.path, "content": cf.content} for cf in config_files],
         }
 
     def import_application(self, data: dict) -> Application:

@@ -30,14 +30,14 @@ VALUES (
       - "80:80"
       - "443:443"
       - "8080:8080"
-    # environment:
+    env_file: .env
     networks:
       - traefik
     volumes:
-      - {{ app.physical_app_data_dir }}/traefik.yml:/etc/traefik/traefik.yml:ro
-      - {{ app.physical_app_data_dir }}/dynamic:/etc/traefik/dynamic:ro
-      - {{ app.physical_app_data_dir }}/certs:/etc/traefik/certs:ro
-      - {{ app.physical_app_data_dir }}/acme.json:/etc/traefik/acme.json
+      - {{ app.physical_app_dir }}/data/traefik.yml:/etc/traefik/traefik.yml:ro
+      - {{ app.physical_app_dir }}/data/dynamic:/etc/traefik/dynamic:ro
+      - {{ app.physical_app_dir }}/data/certs:/etc/traefik/certs:ro
+      - {{ app.physical_app_dir }}/data/acme.json:/etc/traefik/acme.json
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       {% if cert.letsencrypt.enabled %}

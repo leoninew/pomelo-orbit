@@ -23,7 +23,7 @@ def temp_config_dir():
 @pytest.fixture
 def route_service(db_session: Session, temp_config_dir: Path):
     """Create a route service instance."""
-    from unittest.mock import Mock
+    from unittest.mock import Mock, patch
 
     from pomelo_orbit.infrastructure.config import get_settings
     from pomelo_orbit.infrastructure.traefik import TraefikManager
@@ -32,7 +32,11 @@ def route_service(db_session: Session, temp_config_dir: Path):
     traefik_manager = TraefikManager()
     mkcert_service = Mock()
     settings = get_settings()
-    return RouteService(route_repo, traefik_manager, mkcert_service, settings)
+    svc = RouteService(route_repo, traefik_manager, mkcert_service, settings)
+
+    cert_dir = temp_config_dir / "certs"
+    with patch.object(svc, "_get_traefik_config", return_value=(temp_config_dir, cert_dir, "traefik")):
+        yield svc
 
 
 class TestRouteDomainService:

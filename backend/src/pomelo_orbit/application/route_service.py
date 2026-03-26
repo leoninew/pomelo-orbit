@@ -157,12 +157,8 @@ class RouteService:
         routes = self.route_repo.find_all()
         config_dir, cert_dir, container_name = self._get_traefik_config()
 
-        # 生成集中式 TLS 配置（包含所有路由的证书）
-        self.traefik_manager.generate_tls_config(routes, config_dir, container_name)
-
-        # 同步路由配置
         for route in routes:
-            # 重建证书文件
+            # 重建证书文件（手动证书和 mkcert，Let's Encrypt 不需要）
             if route.https_enabled and route.cert_pem and route.cert_key:
                 self.traefik_manager.restore_cert(route.name, route.cert_pem, route.cert_key, cert_dir)
 
@@ -264,14 +260,10 @@ class RouteService:
         if not route:
             raise BusinessError(f"Route {route_id} not found", status_code=404)
 
-        # 获取证书目录
-        project_root = get_project_root()
-        cert_dir = project_root / self.settings.traefik.cert_dir
-
         # 生成证书（内部会检查 mkcert 可用性和 CA 安装状态）
         cert_pem, key_pem = self.mkcert_service.generate_cert(route.domain)
 
-        config_dir, _, container_name = self._get_traefik_config()
+        config_dir, cert_dir, container_name = self._get_traefik_config()
 
         # 如果之前是手动证书，先删除证书文件
         if route.cert_pem:

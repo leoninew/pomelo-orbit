@@ -99,14 +99,12 @@ class ApplicationManagerImpl(ApplicationManager):
         domain_suffix = self.settings.traefik.domain_suffix
         context = {
             "app": {
+                "code": application_code,
                 "physical_data_dir": physical_data_dir,
                 "physical_app_data_dir": physical_app_data_dir,
             },
             "config": {
                 "domain_suffix": domain_suffix,
-            },
-            "traefik": {
-                "dashboard_domain": f"traefik.{domain_suffix}",
             },
             "cert": {
                 "letsencrypt": {

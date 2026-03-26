@@ -90,29 +90,3 @@ class TraefikManager:
             logger.info(f"Route config revoked: route={route.name}, path={config_file}")
             self._reload_traefik(traefik_container)
 
-    def generate_tls_config(self, routes: list[Route], config_dir: Path, traefik_container: str) -> None:
-        """生成集中式 TLS 配置文件（支持所有路由类型）"""
-        certificates = [
-            {
-                "certFile": f"/certs/{route.name}.pem",
-                "keyFile": f"/certs/{route.name}-key.pem",
-            }
-            for route in routes
-            if route.cert_pem and route.cert_key
-        ]
-
-        if certificates:
-            config_dir.mkdir(parents=True, exist_ok=True)
-            tls_config_file = config_dir / "tls.yml"
-            tls_config = {"tls": {"certificates": certificates}}
-            with tls_config_file.open("w", encoding="utf-8") as f:
-                yaml.dump(tls_config, f, default_flow_style=False, allow_unicode=True)
-            logger.info(f"TLS config generated: path={tls_config_file}, cert_count={len(certificates)}")
-            self._reload_traefik(traefik_container)
-        else:
-            # 如果没有证书，删除 tls.yml 文件
-            tls_config_file = config_dir / "tls.yml"
-            if tls_config_file.exists():
-                tls_config_file.unlink()
-                logger.info("TLS config removed: no certificates")
-                self._reload_traefik(traefik_container)

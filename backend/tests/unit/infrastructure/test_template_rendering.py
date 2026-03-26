@@ -31,11 +31,12 @@ class TestRenderTemplate:
         rendered = app_manager._render_template("test-app", content)
         assert rendered != content
 
-    def test_provides_traefik_in_context(self, app_manager):
-        """Should provide traefik.dashboard_domain in template context."""
-        content = "domain: {{ traefik.dashboard_domain }}"
+    def test_provides_config_in_context(self, app_manager):
+        """Should provide config.domain_suffix in template context."""
+        content = "domain: {{ config.domain_suffix }}"
         rendered = app_manager._render_template("test-app", content)
         assert "domain:" in rendered
+        assert "{{ config.domain_suffix }}" not in rendered
 
     def test_supports_jinja2_conditionals(self, app_manager):
         """Should support Jinja2 conditional statements."""

@@ -38,7 +38,7 @@ class RouteDomainService:
                 config["http"]["routers"] = {https_router_name: https_router_config}
                 # 无需 tls.certificates，Traefik 自动从 Let's Encrypt 获取
             elif route.cert_pem:
-                # 手动证书模式
+                # 手动证书或 mkcert 证书模式（证书文件已写入 certs 目录）
                 https_router_config = {
                     "rule": rule,
                     "service": service_name,

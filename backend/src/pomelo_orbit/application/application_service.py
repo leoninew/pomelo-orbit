@@ -535,9 +535,14 @@ class ApplicationService:
 
     def import_application(self, data: dict) -> Application:
         """导入应用数据"""
+        # 检查 name 是否已存在
+        existing_name = self.app_repo.find_by_name(data["name"])
+        if existing_name:
+            raise BusinessError(f"Application name '{data['name']}' already exists", status_code=400)
+
         # 检查 code 是否已存在
-        existing = self.app_repo.find_by_code(data["code"])
-        if existing:
+        existing_code = self.app_repo.find_by_code(data["code"])
+        if existing_code:
             raise BusinessError(f"Application code '{data['code']}' already exists", status_code=400)
 
         # 创建应用

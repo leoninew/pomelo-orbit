@@ -30,14 +30,14 @@
 		<a-spin v-if="viewMode === 'card'" :spinning="loading">
 			<a-row :gutter="[16, 16]">
 				<a-col v-for="app in applications" :key="app.id" :xs="24" :sm="12" :lg="8" :xl="6">
-					<a-card hoverable>
+					<a-card hoverable class="app-card">
 						<template #title>
 							<router-link :to="`/applications/${app.id}`" style="display: block">
 								{{ app.name }}
 							</router-link>
 						</template>
 						<template #extra>
-							<a-space>
+							<a-space class="card-actions">
 								<a-button
 									size="small"
 									type="primary"
@@ -380,5 +380,14 @@ onMounted(() => {
 a.disabled {
 	color: rgba(0, 0, 0, 0.25);
 	cursor: not-allowed;
+}
+
+.app-card .card-actions {
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.app-card:hover .card-actions {
+	opacity: 1;
 }
 </style>

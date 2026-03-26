@@ -33,23 +33,6 @@ class TestApplicationEntity:
         assert app.enabled is True
         assert app.status == "stopped"
 
-    def test_application_with_credential(self, create_test_application):
-        """测试 Application 实体可以关联凭据"""
-        from pomelo_orbit.domain.entities import Credential
-
-        credential = Credential(
-            id="cred-1",
-            application_id="test-app-1",
-            name="test-cred",
-            type="secret",
-            value_encrypted="encrypted_value",
-        )
-        app = create_test_application(credential=credential)
-
-        assert app.credential is not None
-        assert app.credential.id == "cred-1"
-        assert app.credential.application_id == "test-app-1"
-
     def test_application_with_git_source(self, create_test_application):
         """测试 Application 实体可以关联 Git 源"""
         from pomelo_orbit.domain.entities import GitSource
@@ -343,43 +326,6 @@ class TestWebhookEventEntity:
         assert push_event.event_type == WebhookEventType.PUSH
         assert release_event.event_type == WebhookEventType.RELEASE
         assert ping_event.event_type == WebhookEventType.PING
-
-
-class TestCredentialEntity:
-    """Credential 实体测试"""
-
-    def test_create_credential_with_required_fields(self):
-        """测试创建 Credential 实体"""
-        from pomelo_orbit.domain.entities import Credential
-
-        credential = Credential(
-            id="cred-1",
-            application_id="app-1",
-            name="api-key",
-            type="secret",
-            value_encrypted="encrypted_value",
-        )
-
-        assert credential.id == "cred-1"
-        assert credential.application_id == "app-1"
-        assert credential.name == "api-key"
-        assert credential.type == "secret"
-        assert credential.value_encrypted == "encrypted_value"
-
-    def test_credential_with_extra_data(self):
-        """测试 Credential 包含额外数据"""
-        from pomelo_orbit.domain.entities import Credential
-
-        credential = Credential(
-            id="cred-1",
-            application_id="app-1",
-            name="api-key",
-            type="secret",
-            value_encrypted="encrypted",
-            extra_data='{"scope": "read"}',
-        )
-
-        assert credential.extra_data == '{"scope": "read"}'
 
 
 class TestGitSourceEntity:

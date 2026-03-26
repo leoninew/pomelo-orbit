@@ -8,11 +8,10 @@ import hmac
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 
-from pomelo_orbit.infrastructure.persistence.models import ApplicationModel, CredentialModel, GitSourceModel
+from pomelo_orbit.infrastructure.persistence.models import ApplicationModel, GitSourceModel
 
 # 测试用的 webhook secret
 TEST_WEBHOOK_SECRET = "test_webhook_secret_for_integration_testing"
@@ -48,16 +47,6 @@ def test_project(db_session):
     db_session.add(app)
     db_session.flush()
 
-    # 创建凭据（属于应用）
-    credential = CredentialModel(
-        application_id=app.id,
-        name="test_webhook_credential",
-        type="webhook_secret",
-        value_encrypted=TEST_WEBHOOK_SECRET,
-        extra_data=json.dumps({"description": "Test webhook secret for integration testing"}),
-    )
-    db_session.add(credential)
-
     git_source = GitSourceModel(
         application_id=app.id,
         repository_url=repo["html_url"],
@@ -73,11 +62,21 @@ def test_project(db_session):
 class TestGithubWebhookIntegration:
     """Github Webhook 集成测试"""
 
-    @patch("pomelo_orbit.infrastructure.security.SecurityService.decrypt_value")
-    def test_webhook_with_real_data(self, mock_decrypt, client, test_project):
+    def test_webhook_with_real_data(self, client, test_project, db_session):
         """使用真实 Github Webhook 数据测试"""
-        # Mock decrypt_value 返回明文 secret
-        mock_decrypt.return_value = TEST_WEBHOOK_SECRET
+        # 使用 dependency_overrides 注入测试用的 webhook secret
+        from unittest.mock import MagicMock
+
+        from pomelo_orbit.infrastructure.config import get_settings
+
+        # 使用 Mock 对象模拟 settings，确保 webhook.secret 可访问
+        mock_settings = MagicMock()
+        mock_settings.webhook.secret = TEST_WEBHOOK_SECRET
+
+        def override_get_settings():
+            return mock_settings
+
+        client.app.dependency_overrides[get_settings] = override_get_settings
 
         data = load_test_data()
 
@@ -89,11 +88,15 @@ class TestGithubWebhookIntegration:
         # 计算签名（使用测试凭据中的 secret）并覆盖
         headers["X-Hub-Signature-256"] = compute_github_signature(payload_bytes, TEST_WEBHOOK_SECRET)
 
-        response = client.post(
-            "/api/hooks/github",
-            content=payload_bytes,
-            headers=headers,
-        )
+        try:
+            response = client.post(
+                "/api/hooks/github",
+                content=payload_bytes,
+                headers=headers,
+            )
+        finally:
+            # 清理 dependency override
+            client.app.dependency_overrides.pop(get_settings, None)
 
         # 兼容 header key 大小写
         event_type = None

@@ -3,7 +3,6 @@ import type {
 	ApplicationCreateReq,
 	ApplicationUpdateReq,
 	ConfigFile,
-	Credential,
 	PaginatedResp,
 } from '@/types/api';
 import request from '@/utils/request';
@@ -87,10 +86,5 @@ export const applicationApi = {
 	// 删除应用文件
 	deleteFile(id: string, fileId: string): Promise<void> {
 		return request.delete(`/api/application/${id}/file/${fileId}`);
-	},
-
-	// 获取应用凭据
-	getCredential(id: string): Promise<Credential | null> {
-		return request.get(`/api/application/${id}/credential`);
 	},
 };

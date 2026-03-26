@@ -14,7 +14,6 @@ from pomelo_orbit.domain.application_manager import ApplicationManager
 from pomelo_orbit.domain.entities import (
     Application,
     ApplicationConfigFile,
-    Credential,
     Deployment,
     GitSource,
     ImageSource,
@@ -24,7 +23,6 @@ from pomelo_orbit.domain.exceptions import BusinessError
 from pomelo_orbit.domain.repositories import (
     ApplicationRepository,
     ConfigFileRepository,
-    CredentialRepository,
     DeploymentRepository,
 )
 from pomelo_orbit.domain.value_objects import ApplicationStatus, DeployStatus, OperationType
@@ -40,23 +38,11 @@ class ApplicationService:
         app_repo: ApplicationRepository,
         deployment_repo: DeploymentRepository,
         config_file_repo: ConfigFileRepository,
-        credential_repo: CredentialRepository,
         app_manager: ApplicationManager,
     ):
-        """
-        初始化应用服务
-
-        Args:
-            app_repo: 应用仓储
-            deployment_repo: 部署记录仓储
-            config_file_repo: 配置文件仓储
-            credential_repo: 凭据仓储
-            app_manager: 应用管理器
-        """
         self.app_repo = app_repo
         self.deployment_repo = deployment_repo
         self.config_file_repo = config_file_repo
-        self.credential_repo = credential_repo
         self.app_manager = app_manager
         self._locks: dict[str, asyncio.Lock] = {}
 
@@ -513,57 +499,6 @@ class ApplicationService:
         self.deployment_repo.save(deployment)
         self.deployment_repo.commit()
         return deployment
-
-    # ==================== 凭证管理 ====================
-
-    def get_credential(self, application_id: str) -> Credential | None:
-        """获取应用凭证"""
-        return self.credential_repo.find_by_application(application_id)
-
-    def create_or_update_credential(
-        self,
-        application_id: str,
-        name: str,
-        credential_type: str,
-        value_encrypted: str,
-        extra_data: str | None = None,
-    ) -> Credential:
-        """创建或更新应用凭证"""
-        # 检查应用是否存在
-        application = self.app_repo.find_by_id(application_id)
-        if not application:
-            raise BusinessError(f"Application {application_id} not found", status_code=404)
-
-        # 查找现有凭证
-        credential = self.credential_repo.find_by_application(application_id)
-
-        if credential:
-            # 更新现有凭证
-            credential.name = name
-            credential.type = credential_type
-            credential.value_encrypted = value_encrypted
-            credential.extra_data = extra_data
-        else:
-            # 创建新凭证
-            credential = Credential(
-                id=str(ULID()),
-                application_id=application_id,
-                name=name,
-                type=credential_type,
-                value_encrypted=value_encrypted,
-                extra_data=extra_data,
-            )
-
-        self.credential_repo.save(credential)
-        return credential
-
-    def delete_credential(self, application_id: str) -> None:
-        """删除应用凭证"""
-        credential = self.credential_repo.find_by_application(application_id)
-        if not credential:
-            raise BusinessError(f"Credential for application {application_id} not found", status_code=404)
-
-        self.credential_repo.delete(credential)
 
 
 __all__ = ["ApplicationService"]

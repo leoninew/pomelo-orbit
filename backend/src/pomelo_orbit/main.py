@@ -29,7 +29,6 @@ from pomelo_orbit.infrastructure.migration.migrator import run_migrations
 from pomelo_orbit.infrastructure.persistence.database import get_engine
 from pomelo_orbit.interfaces.api.application import router as application_router
 from pomelo_orbit.interfaces.api.auth import router as auth_router
-from pomelo_orbit.interfaces.api.credential import router as credential_router
 from pomelo_orbit.interfaces.api.deployment import router as deployment_router
 from pomelo_orbit.interfaces.api.event import router as event_router
 from pomelo_orbit.interfaces.api.route import router as route_router
@@ -71,7 +70,6 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(application_router, prefix="/api")
 app.include_router(deployment_router, prefix="/api")
 app.include_router(event_router, prefix="/api")
-app.include_router(credential_router, prefix="/api")
 app.include_router(webhook_router, prefix="/api")
 app.include_router(route_router, prefix="/api")
 app.include_router(traefik_route_router, prefix="/api")

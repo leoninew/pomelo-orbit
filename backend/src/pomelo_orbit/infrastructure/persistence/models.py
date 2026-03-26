@@ -43,26 +43,6 @@ class LoginHistoryModel(Base):
     success: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
-class CredentialModel(Base):
-    """凭据模型（应用的子实体）"""
-
-    __tablename__ = "credential"
-
-    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    application_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("application.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    type: Mapped[str] = mapped_column(String(50), nullable=False)
-    value_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
-    extra_data: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
-
-    # 关系
-    application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="credential")
-
-
 class ApplicationModel(Base):
     """应用模型（聚合根）"""
 
@@ -81,9 +61,6 @@ class ApplicationModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # 关系
-    credential: Mapped["CredentialModel | None"] = relationship(
-        "CredentialModel", back_populates="application", uselist=False, cascade="all, delete-orphan"
-    )
     git_source: Mapped["GitSourceModel | None"] = relationship(
         "GitSourceModel", back_populates="application", uselist=False, cascade="all, delete-orphan"
     )

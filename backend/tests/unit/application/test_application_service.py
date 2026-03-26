@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from pomelo_orbit.application.application_service import ApplicationService
-from pomelo_orbit.domain.entities import Application, ApplicationConfigFile, Credential, Deployment, TriggerType
+from pomelo_orbit.domain.entities import Application, ApplicationConfigFile, Deployment, TriggerType
 from pomelo_orbit.domain.exceptions import BusinessError
 from pomelo_orbit.domain.value_objects import ApplicationStatus, DeployStatus, OperationType
 
@@ -32,13 +32,7 @@ def mock_config_file_repo():
 
 
 @pytest.fixture
-def mock_credential_repo():
-    """Mock 凭据仓储"""
-    return Mock()
-
-
-@pytest.fixture
-def app_service(mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_credential_repo):
+def app_service(mock_app_repo, mock_deployment_repo, mock_config_file_repo):
     """创建应用服务实例"""
     from pomelo_orbit.infrastructure.config import get_settings
     from pomelo_orbit.infrastructure.docker.manager import ApplicationManagerImpl
@@ -47,7 +41,6 @@ def app_service(mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock
         app_repo=mock_app_repo,
         deployment_repo=mock_deployment_repo,
         config_file_repo=mock_config_file_repo,
-        credential_repo=mock_credential_repo,
         app_manager=ApplicationManagerImpl(get_settings()),
     )
 
@@ -83,7 +76,7 @@ class TestApplicationServiceInit:
     """ApplicationService 初始化测试"""
 
     def test_creates_service_with_repositories(
-        self, mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_credential_repo
+        self, mock_app_repo, mock_deployment_repo, mock_config_file_repo
     ):
         """测试使用仓储创建服务"""
         from pomelo_orbit.infrastructure.config import get_settings
@@ -93,14 +86,12 @@ class TestApplicationServiceInit:
             app_repo=mock_app_repo,
             deployment_repo=mock_deployment_repo,
             config_file_repo=mock_config_file_repo,
-            credential_repo=mock_credential_repo,
             app_manager=ApplicationManagerImpl(get_settings()),
         )
 
         assert service.app_repo == mock_app_repo
         assert service.deployment_repo == mock_deployment_repo
         assert service.config_file_repo == mock_config_file_repo
-        assert service.credential_repo == mock_credential_repo
         assert service.app_manager is not None
 
 
@@ -260,102 +251,6 @@ class TestConfigFileManagement:
 
         with pytest.raises(BusinessError, match="Config file cfg-1 not found"):
             app_service.delete_config_file("app-1", "cfg-1")
-
-
-class TestCredentialManagement:
-    """凭据管理测试"""
-
-    def test_get_credential(self, app_service, mock_credential_repo):
-        """测试获取应用凭据"""
-        credential = Credential(
-            id="cred-1", application_id="app-1", name="api-key", type="secret", value_encrypted="encrypted"
-        )
-        mock_credential_repo.find_by_application.return_value = credential
-
-        result = app_service.get_credential("app-1")
-
-        assert result is not None
-        assert result.id == "cred-1"
-        mock_credential_repo.find_by_application.assert_called_once_with("app-1")
-
-    def test_create_new_credential(self, app_service, mock_app_repo, mock_credential_repo):
-        """测试创建新凭据"""
-        app = Application(
-            id="app-1",
-            name="Test",
-            code="test",
-            status=ApplicationStatus.STOPPED,
-            image_pull_policy="IfNotPresent",
-            enabled=True,
-        )
-        mock_app_repo.find_by_id.return_value = app
-        mock_credential_repo.find_by_application.return_value = None
-
-        result = app_service.create_or_update_credential(
-            application_id="app-1", name="api-key", credential_type="secret", value_encrypted="encrypted"
-        )
-
-        assert result.application_id == "app-1"
-        assert result.name == "api-key"
-        assert result.type == "secret"
-        mock_credential_repo.save.assert_called_once()
-
-    def test_update_existing_credential(self, app_service, mock_app_repo, mock_credential_repo):
-        """测试更新现有凭据"""
-        app = Application(
-            id="app-1",
-            name="Test",
-            code="test",
-            status=ApplicationStatus.STOPPED,
-            image_pull_policy="IfNotPresent",
-            enabled=True,
-        )
-        existing_credential = Credential(
-            id="cred-1", application_id="app-1", name="old-key", type="secret", value_encrypted="old"
-        )
-        mock_app_repo.find_by_id.return_value = app
-        mock_credential_repo.find_by_application.return_value = existing_credential
-
-        result = app_service.create_or_update_credential(
-            application_id="app-1", name="new-key", credential_type="token", value_encrypted="new"
-        )
-
-        assert result.id == "cred-1"
-        assert result.name == "new-key"
-        assert result.type == "token"
-        assert result.value_encrypted == "new"
-        mock_credential_repo.save.assert_called_once()
-
-    def test_create_credential_for_nonexistent_app(self, app_service, mock_app_repo):
-        """测试为不存在的应用创建凭据"""
-        from pomelo_orbit.domain.exceptions import BusinessError
-
-        mock_app_repo.find_by_id.return_value = None
-
-        with pytest.raises(BusinessError, match="Application app-1 not found"):
-            app_service.create_or_update_credential(
-                application_id="app-1", name="api-key", credential_type="secret", value_encrypted="encrypted"
-            )
-
-    def test_delete_credential_success(self, app_service, mock_credential_repo):
-        """测试成功删除凭据"""
-        credential = Credential(
-            id="cred-1", application_id="app-1", name="api-key", type="secret", value_encrypted="encrypted"
-        )
-        mock_credential_repo.find_by_application.return_value = credential
-
-        app_service.delete_credential("app-1")
-
-        mock_credential_repo.delete.assert_called_once_with(credential)
-
-    def test_delete_nonexistent_credential(self, app_service, mock_credential_repo):
-        """测试删除不存在的凭据"""
-        from pomelo_orbit.domain.exceptions import BusinessError
-
-        mock_credential_repo.find_by_application.return_value = None
-
-        with pytest.raises(BusinessError, match="Credential for application app-1 not found"):
-            app_service.delete_credential("app-1")
 
 
 class TestDeployBusinessLogic:

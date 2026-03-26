@@ -93,31 +93,6 @@ export interface ConfigFile {
 	created_at: string
 }
 
-// 凭据相关
-export interface Credential {
-	id: string
-	application_id: string
-	name: string
-	type: string
-	value: string
-	extra_data?: string
-	created_at: string
-}
-
-export interface CredentialCreateReq {
-	application_id: string
-	name: string
-	type: string
-	value: string
-	extra_data?: string
-}
-
-export interface CredentialUpdateReq {
-	name?: string
-	value?: string
-	extra_data?: string
-}
-
 // 部署记录相关
 export interface Deployment {
 	id: string

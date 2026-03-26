@@ -21,13 +21,6 @@ from pomelo_orbit.interfaces.api.dto.auth import (
     UserInfo,
 )
 from pomelo_orbit.interfaces.api.dto.common import MessageResp, PaginatedResp
-from pomelo_orbit.interfaces.api.dto.credential import (
-    CredentialAssociationReq,
-    CredentialCreateReq,
-    CredentialDetailResp,
-    CredentialResp,
-    CredentialUpdateReq,
-)
 from pomelo_orbit.interfaces.api.dto.deployment import (
     DeploymentDetailResp,
     DeploymentResp,
@@ -56,11 +49,6 @@ __all__ = [
     "ApplicationUpdateReq",
     "ConfigFileReq",
     "ConfigFileResp",
-    "CredentialAssociationReq",
-    "CredentialCreateReq",
-    "CredentialDetailResp",
-    "CredentialResp",
-    "CredentialUpdateReq",
     "DeploymentDetailResp",
     "DeploymentResp",
     "GitSourceReq",

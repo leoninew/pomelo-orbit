@@ -7,7 +7,6 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.application.application_service import ApplicationService
-from pomelo_orbit.application.credential_service import CredentialService
 from pomelo_orbit.application.deployment_service import DeploymentService
 from pomelo_orbit.application.route_service import RouteService
 from pomelo_orbit.application.setting_service import SettingService
@@ -15,7 +14,6 @@ from pomelo_orbit.domain.application_manager import ApplicationManager
 from pomelo_orbit.domain.repositories import (
     RouteRepository,
 )
-from pomelo_orbit.infrastructure import SecurityService, get_security_service
 from pomelo_orbit.infrastructure.cert.di import get_mkcert_service
 from pomelo_orbit.infrastructure.cert.mkcert import MkcertService
 from pomelo_orbit.infrastructure.config import get_settings
@@ -24,7 +22,6 @@ from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.repositories import (
     ApplicationRepositoryImpl,
     ConfigFileRepositoryImpl,
-    CredentialRepositoryImpl,
     DeploymentRepositoryImpl,
 )
 from pomelo_orbit.infrastructure.repositories.di import get_route_repository
@@ -48,7 +45,6 @@ def get_application_service(
         app_repo=ApplicationRepositoryImpl(db),
         deployment_repo=DeploymentRepositoryImpl(db),
         config_file_repo=ConfigFileRepositoryImpl(db),
-        credential_repo=CredentialRepositoryImpl(db),
         app_manager=app_manager,
     )
 
@@ -65,18 +61,6 @@ def get_route_service(
         traefik_manager=traefik_manager,
         mkcert_service=mkcert_service,
         settings=settings,
-    )
-
-
-def get_credential_service(
-    db: Annotated[Session, Depends(get_db)],
-    security_service: Annotated[SecurityService, Depends(get_security_service)],
-) -> CredentialService:
-    """获取凭据服务实例"""
-    return CredentialService(
-        credential_repo=CredentialRepositoryImpl(db),
-        app_repo=ApplicationRepositoryImpl(db),
-        security_service=security_service,
     )
 
 

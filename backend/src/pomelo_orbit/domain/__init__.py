@@ -6,7 +6,6 @@ Domain Layer - 领域层
 from pomelo_orbit.domain.entities import (
     Application,
     ApplicationConfigFile,
-    Credential,
     Deployment,
     GitSource,
     ImageSource,
@@ -33,7 +32,6 @@ __all__ = [
     "AuthenticationError",
     "AuthorizationError",
     "BusinessError",
-    "Credential",
     "DeployStatus",
     "Deployment",
     "GitSource",

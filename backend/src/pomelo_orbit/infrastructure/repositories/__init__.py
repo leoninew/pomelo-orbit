@@ -10,10 +10,6 @@ from pomelo_orbit.infrastructure.repositories.config_file import (
     ConfigFileRepositoryImpl,
     get_config_file_repository,
 )
-from pomelo_orbit.infrastructure.repositories.credential import (
-    CredentialRepositoryImpl,
-    get_credential_repository,
-)
 from pomelo_orbit.infrastructure.repositories.deployment import (
     DeploymentRepositoryImpl,
     get_deployment_repository,
@@ -26,14 +22,12 @@ from pomelo_orbit.infrastructure.repositories.webhook_event import WebhookEventR
 __all__ = [
     "ApplicationRepositoryImpl",
     "ConfigFileRepositoryImpl",
-    "CredentialRepositoryImpl",
     "DeploymentRepositoryImpl",
     "RouteRepositoryImpl",
     "UserRepositoryImpl",
     "WebhookEventRepositoryImpl",
     "get_application_repository",
     "get_config_file_repository",
-    "get_credential_repository",
     "get_deployment_repository",
     "get_route_repository",
     "get_user_repository",

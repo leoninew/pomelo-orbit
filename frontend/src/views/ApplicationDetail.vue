@@ -101,38 +101,6 @@
 			<a-empty v-else description="暂无配置文件" />
 		</a-card>
 
-		<!-- 凭据管理卡片 -->
-		<a-card title="凭据管理" :loading="credentialLoading">
-			<template #extra>
-				<a-button v-if="!credential" type="primary" @click="showCredentialModal = true">
-					添加凭据
-				</a-button>
-				<a-space v-else>
-					<a-button @click="handleEditCredential">编辑</a-button>
-					<a-popconfirm title="确定删除此凭据？" @confirm="handleDeleteCredential">
-						<a-button danger>删除</a-button>
-					</a-popconfirm>
-				</a-space>
-			</template>
-			<a-descriptions v-if="credential" :column="2" bordered size="small">
-				<a-descriptions-item label="名称">{{ credential.name }}</a-descriptions-item>
-				<a-descriptions-item label="类型">
-					<a-tag :color="getTypeColor(credential.type)">
-						{{ credential.type }}
-					</a-tag>
-				</a-descriptions-item>
-				<a-descriptions-item label="凭据值" :span="2">
-					<pre style="margin: 0; white-space: pre-wrap; word-break: break-all">{{
-						credential.value
-					}}</pre>
-				</a-descriptions-item>
-				<a-descriptions-item label="创建时间" :span="2">
-					{{ formatTime(credential.created_at) }}
-				</a-descriptions-item>
-			</a-descriptions>
-			<a-empty v-else description="未配置凭据" />
-		</a-card>
-
 		<!-- 文件查看/编辑/新建抽屉 -->
 		<a-drawer
 			v-model:open="fileDrawerVisible"
@@ -261,46 +229,6 @@
 			</template>
 		</a-modal>
 
-		<!-- 凭据编辑/新增弹窗 -->
-		<a-modal
-			v-model:open="showCredentialModal"
-			:title="editingCredentialId ? '编辑凭据' : '添加凭据'"
-		>
-			<a-form
-				ref="credentialFormRef"
-				:model="credentialForm"
-				:rules="credentialFormRules"
-				:label-col="{ span: 6 }"
-				:wrapper-col="{ span: 16 }"
-			>
-				<a-form-item label="凭据名称" name="name">
-					<a-input v-model:value="credentialForm.name" placeholder="例如：Github Token" />
-				</a-form-item>
-				<a-form-item v-if="!editingCredentialId" label="凭据类型" name="type">
-					<a-select v-model:value="credentialForm.type">
-						<a-select-option value="github_token">Github Token</a-select-option>
-						<a-select-option value="docker_registry">Docker Registry</a-select-option>
-						<a-select-option value="ssh_key">SSH Key</a-select-option>
-					</a-select>
-				</a-form-item>
-				<a-form-item label="凭据值" :name="editingCredentialId ? undefined : 'value'">
-					<a-textarea
-						v-model:value="credentialForm.value"
-						:rows="4"
-						:placeholder="editingCredentialId ? '留空则不修改' : '请输入凭据值（将被加密存储）'"
-					/>
-				</a-form-item>
-				<a-form-item label="附加信息" name="extra_data">
-					<a-input v-model:value="credentialForm.extra_data" placeholder="JSON 格式（可选）" />
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button type="primary" :loading="credentialLoading" @click="handleCredentialOk">
-					保存
-				</a-button>
-				<a-button @click="showCredentialModal = false">取消</a-button>
-			</template>
-		</a-modal>
 	</a-space>
 </template>
 
@@ -312,10 +240,9 @@ import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { applicationApi } from '@/api/application';
-import { credentialApi } from '@/api/credential';
 import { deploymentApi } from '@/api/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
-import type { Application, ConfigFile, Credential } from '@/types/api';
+import type { Application, ConfigFile } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -325,10 +252,8 @@ const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync(
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
 const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
-const { loading: credentialLoading, execute: executeCredential } = useStatusAsync();
 
 const application = ref<Application>();
-const credential = ref<Credential>();
 const envs = computed(() => {
 	const envFiles = files.value.filter((f) => f.path.match(/^\.env(\..+)?$/));
 	return envFiles.map((f) => f.path);
@@ -359,22 +284,6 @@ const currentFileLanguage = computed(() => {
 const showBasicInfoModal = ref(false);
 const showDeleteModal = ref(false);
 const deleteDir = ref(false);
-
-const showCredentialModal = ref(false);
-const editingCredentialId = ref<string>();
-const credentialFormRef = ref<FormInstance>();
-const credentialForm = reactive({
-	name: 'Github Token',
-	type: 'github_token',
-	value: '',
-	extra_data: '',
-});
-
-const credentialFormRules = {
-	name: [{ required: true, message: '请输入凭据名称' }],
-	type: [{ required: true, message: '请选择凭据类型' }],
-	value: [{ required: true, message: '请输入凭据值' }],
-};
 
 const basicInfoFormRef = ref<FormInstance>();
 const basicInfoForm = reactive({
@@ -410,17 +319,6 @@ async function fetchApplication() {
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '获取应用信息失败');
 		router.push('/applications');
-	}
-}
-
-async function fetchCredential() {
-	try {
-		await executeCredential(async () => {
-			const data = await applicationApi.getCredential(applicationId);
-			credential.value = data ?? undefined;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取凭据信息失败');
 	}
 }
 
@@ -628,92 +526,8 @@ function openAddFileDrawer() {
 	fileDrawerVisible.value = true;
 }
 
-function getTypeColor(type: string) {
-	const colors: Record<string, string> = {
-		github_token: 'blue',
-		gitlab_token: 'orange',
-		docker_registry: 'cyan',
-		ssh_key: 'purple',
-	};
-	return colors[type] || 'default';
-}
-
-async function handleEditCredential() {
-	if (!credential.value) return;
-	const cred = credential.value;
-
-	try {
-		await executeCredential(async () => {
-			const detail = await credentialApi.get(cred.id);
-			credentialForm.name = detail.name;
-			credentialForm.type = detail.type;
-			credentialForm.value = detail.value;
-			credentialForm.extra_data = detail.extra_data || '';
-			editingCredentialId.value = detail.id;
-			showCredentialModal.value = true;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取凭据详情失败');
-	}
-}
-
-async function handleDeleteCredential() {
-	if (!credential.value) return;
-	const cred = credential.value;
-
-	try {
-		await executeCredential(async () => {
-			await credentialApi.delete(cred.id);
-			message.success('删除成功');
-			fetchCredential();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-async function handleCredentialOk() {
-	try {
-		await credentialFormRef.value?.validate();
-	} catch {
-		return;
-	}
-
-	try {
-		await executeCredential(async () => {
-			if (editingCredentialId.value) {
-				await credentialApi.update(editingCredentialId.value, {
-					name: credentialForm.name,
-					value: credentialForm.value || undefined,
-					extra_data: credentialForm.extra_data || undefined,
-				});
-				message.success('更新成功');
-			} else {
-				await credentialApi.create({
-					application_id: applicationId,
-					name: credentialForm.name,
-					type: credentialForm.type,
-					value: credentialForm.value,
-					extra_data: credentialForm.extra_data || undefined,
-				});
-				message.success('创建成功');
-			}
-			showCredentialModal.value = false;
-			editingCredentialId.value = undefined;
-			credentialForm.name = '';
-			credentialForm.type = 'github_token';
-			credentialForm.value = '';
-			credentialForm.extra_data = '';
-			fetchCredential();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '操作失败');
-	}
-}
-
 onMounted(() => {
 	fetchApplication();
-	fetchCredential();
 	loadFiles();
 });
 </script>

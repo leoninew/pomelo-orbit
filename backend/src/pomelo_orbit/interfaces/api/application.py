@@ -8,8 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, status
 
 from pomelo_orbit.application.application_service import ApplicationService
-from pomelo_orbit.application.credential_service import CredentialService
-from pomelo_orbit.application.di import get_application_service, get_credential_service
+from pomelo_orbit.application.di import get_application_service
 from pomelo_orbit.domain.entities import TriggerType
 from pomelo_orbit.domain.value_objects import OperationType
 from pomelo_orbit.interfaces.api.auth import get_current_user
@@ -19,7 +18,6 @@ from pomelo_orbit.interfaces.api.schemas import (
     ApplicationUpdateReq,
     ConfigFileReq,
     ConfigFileResp,
-    CredentialDetailResp,
     PaginatedResp,
 )
 
@@ -168,29 +166,6 @@ def delete_application_file(
 ):
     """删除应用配置文件"""
     app_service.delete_config_file(app_id, file_id)
-
-
-@router.get("/{app_id}/credential")
-def get_application_credential(
-    app_id: str,
-    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
-) -> CredentialDetailResp | None:
-    """获取应用凭据"""
-    credential = credential_service.get_credential_by_application(app_id)
-    if not credential:
-        return None
-
-    decrypted_value = credential_service.decrypt_credential_value(credential)
-    return CredentialDetailResp(
-        id=credential.id,
-        application_id=credential.application_id,
-        name=credential.name,
-        type=credential.type,
-        value=decrypted_value,
-        extra_data=credential.extra_data,
-        created_at=credential.created_at,
-    )
 
 
 @router.post("/{app_id}/deploy")

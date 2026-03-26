@@ -10,7 +10,6 @@ from pomelo_orbit.domain.entities import User
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
-    CredentialModel,
 )
 
 
@@ -61,25 +60,6 @@ def test_config_file(db_session, test_app):
     db_session.commit()
     db_session.refresh(config_file)
     return config_file
-
-
-@pytest.fixture
-def test_credential(db_session, test_app):
-    """创建测试凭据"""
-    from pomelo_orbit.infrastructure.config import get_settings
-    from pomelo_orbit.infrastructure.security import SecurityService
-
-    security_service = SecurityService(get_settings())
-    credential = CredentialModel(
-        application_id=test_app.id,
-        name="test-credential",
-        type="github_token",
-        value_encrypted=security_service.encrypt_value("test-token-value"),
-    )
-    db_session.add(credential)
-    db_session.commit()
-    db_session.refresh(credential)
-    return credential
 
 
 class TestApplicationAPI:
@@ -249,16 +229,6 @@ class TestApplicationAPI:
         db_session.expire_all()
         config_file = db_session.query(ApplicationConfigFileModel).filter_by(id=test_config_file.id).first()
         assert config_file is None
-
-    def test_get_application_credential(self, auth_client, test_app, test_credential):
-        """测试获取应用凭据"""
-        response = auth_client.get(f"/api/application/{test_app.id}/credential")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["id"] == test_credential.id
-        assert data["name"] == "test-credential"
-        assert data["value"] == "test-token-value"  # 验证解密
 
     @patch("pomelo_orbit.application.application_service.ApplicationService.deploy")
     def test_deploy_application(self, mock_deploy, auth_client, db_session, test_app):

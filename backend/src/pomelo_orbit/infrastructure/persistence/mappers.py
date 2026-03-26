@@ -6,7 +6,6 @@ from pomelo_orbit.domain.entities import (
     Application,
     ApplicationConfigFile,
     CertType,
-    Credential,
     Deployment,
     GitSource,
     ImageSource,
@@ -23,7 +22,6 @@ from pomelo_orbit.domain.value_objects import OperationType
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
-    CredentialModel,
     DeploymentModel,
     GitSourceModel,
     ImageSourceModel,
@@ -89,38 +87,6 @@ class LoginHistoryMapper:
             user_agent=entity.user_agent,
             login_at=entity.login_at,
             success=entity.success,
-        )
-
-
-class CredentialMapper:
-    """凭据映射器"""
-
-    @staticmethod
-    def to_domain(model: CredentialModel) -> Credential:
-        """ORM 模型转领域实体"""
-        return Credential(
-            id=model.id,
-            application_id=model.application_id,
-            name=model.name,
-            type=model.type,
-            value_encrypted=model.value_encrypted,
-            extra_data=model.extra_data,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
-
-    @staticmethod
-    def to_orm(entity: Credential) -> CredentialModel:
-        """领域实体转 ORM 模型"""
-        return CredentialModel(
-            id=entity.id,
-            application_id=entity.application_id,
-            name=entity.name,
-            type=entity.type,
-            value_encrypted=entity.value_encrypted,
-            extra_data=entity.extra_data,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
         )
 
 
@@ -225,7 +191,6 @@ class ApplicationMapper:
             status=model.status,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            credential=CredentialMapper.to_domain(model.credential) if model.credential else None,
             git_source=GitSourceMapper.to_domain(model.git_source) if model.git_source else None,
             image_source=ImageSourceMapper.to_domain(model.image_source) if model.image_source else None,
             config_files=[ApplicationConfigFileMapper.to_domain(cf) for cf in model.config_files],
@@ -246,8 +211,6 @@ class ApplicationMapper:
         )
 
         # 设置关联实体
-        if entity.credential:
-            model.credential = CredentialMapper.to_orm(entity.credential)
         if entity.git_source:
             model.git_source = GitSourceMapper.to_orm(entity.git_source)
         if entity.image_source:
@@ -397,7 +360,6 @@ class RouteMapper:
 __all__ = [
     "ApplicationConfigFileMapper",
     "ApplicationMapper",
-    "CredentialMapper",
     "DeploymentMapper",
     "GitSourceMapper",
     "ImageSourceMapper",

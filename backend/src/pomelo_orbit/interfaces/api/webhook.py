@@ -6,6 +6,7 @@ import json
 import logging
 from typing import Annotated
 
+from dynaconf import Dynaconf
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from ulid import ULID
@@ -14,7 +15,8 @@ from pomelo_orbit.application.application_service import ApplicationService
 from pomelo_orbit.application.di import get_application_service
 from pomelo_orbit.application.webhook_parser import parse_github_payload
 from pomelo_orbit.domain.value_objects import DeployStatus
-from pomelo_orbit.infrastructure import SecurityService, get_security_service, verify_github_signature
+from pomelo_orbit.infrastructure import verify_github_signature
+from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import ApplicationMapper, DeploymentMapper
 from pomelo_orbit.infrastructure.persistence.models import (
@@ -37,7 +39,7 @@ async def github_webhook(
     x_github_event: Annotated[str, Header(alias="X-Github-Event")],
     db: Annotated[Session, Depends(get_db)],
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    security_service: Annotated[SecurityService, Depends(get_security_service)],
+    settings: Annotated[Dynaconf, Depends(get_settings)],
     x_hub_signature_256: Annotated[str, Header(alias="X-Hub-Signature-256")] = "",
 ):
     """接收 Github Webhook"""
@@ -66,14 +68,10 @@ async def github_webhook(
         .first()
     )
 
-    # 验证签名
-    signature_valid = False
-    if application and application.credential:
-        try:
-            webhook_secret = security_service.decrypt_value(application.credential.value_encrypted)
-            signature_valid = verify_github_signature(payload_bytes, x_hub_signature_256, webhook_secret)
-        except Exception as e:
-            logger.error(f"Webhook secret decryption failed: app={application.id}, error={e}", exc_info=True)
+    # 基于系统配置验证签名
+    webhook_secret: str = settings.webhook.secret
+    assert webhook_secret, "webhook.secret must be configured for webhook endpoint"
+    signature_valid = verify_github_signature(payload_bytes, x_hub_signature_256, webhook_secret)
 
     # 记录事件
     event = WebhookEventModel(
@@ -107,7 +105,7 @@ async def github_webhook(
 
     event.matched_application_id = application.id
 
-    if not signature_valid:
+    if signature_valid is False:
         event.status = "error"
         event.error_message = "Invalid signature"
         event.processed_at = utc_now()

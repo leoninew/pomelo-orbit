@@ -30,6 +30,10 @@ jwt:
   algorithm: "HS256"
   expire_minutes: 10080              # 7 天
 
+# Webhook 配置
+webhook:
+  secret: ""                         # GitHub Webhook Secret，留空则跳过签名验证
+
 # 数据清理
 cleanup:
   deploy_record_retention_days: 30

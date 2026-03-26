@@ -56,20 +56,6 @@ class WebhookEventStatus(StrEnum):
 
 
 @dataclass
-class Credential:
-    """凭据实体（应用的子实体）"""
-
-    id: str
-    application_id: str
-    name: str
-    type: str
-    value_encrypted: str
-    extra_data: str | None = None
-    created_at: datetime = field(default_factory=utc_now)
-    updated_at: datetime = field(default_factory=utc_now)
-
-
-@dataclass
 class GitSource:
     """Git 仓库源"""
 
@@ -120,7 +106,6 @@ class Application:
     updated_at: datetime = field(default_factory=utc_now)
 
     # 关联实体
-    credential: Credential | None = None
     git_source: GitSource | None = None
     image_source: ImageSource | None = None
     config_files: list[ApplicationConfigFile] = field(default_factory=list)
@@ -293,7 +278,6 @@ __all__ = [
     "Application",
     "ApplicationConfigFile",
     "CertType",
-    "Credential",
     "Deployment",
     "GitSource",
     "ImageSource",

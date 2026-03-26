@@ -1,4 +1,5 @@
--- v0.4.2: Traefik 应用和路由配置
+-- v0.5.2: Traefik 应用（含 Let's Encrypt 支持）
+-- 包含 v0.4.2 和 v0.4.5 的内容
 
 -- Traefik 应用（bridge 网络模式，通用）
 INSERT INTO application (id, name, code, image_pull_policy, status, enabled, created_at, updated_at)
@@ -13,7 +14,7 @@ VALUES (
     datetime('now')
 );
 
--- Traefik docker-compose.yml.jinja
+-- Traefik docker-compose.yml.jinja（支持 Let's Encrypt）
 INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
 VALUES (
     '01KKX2YNPF6VJ9N7QYCWG61KVN',
@@ -29,6 +30,7 @@ VALUES (
       - "80:80"
       - "443:443"
       - "8080:8080"
+    # environment:
     networks:
       - traefik
     volumes:
@@ -37,15 +39,23 @@ VALUES (
       - {{ app.physical_app_data_dir }}/certs:/etc/traefik/certs:ro
       - {{ app.physical_app_data_dir }}/acme.json:/etc/traefik/acme.json
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      - TRAEFIK_LOG_LEVEL=${TRAEFIK_LOG_LEVEL}
-      - TRAEFIK_DASHBOARD=${TRAEFIK_DASHBOARD}
-      - TRAEFIK_DASHBOARD_INSECURE=${TRAEFIK_DASHBOARD_INSECURE}
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`{{ traefik.dashboard_domain }}`)"
-      - "traefik.http.routers.traefik-dashboard.service=api@internal"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
+      {% if cert.letsencrypt.enabled %}
+      # 1. HTTPS 主路由（Traefik 面板）
+      - traefik.enable=true
+      - traefik.http.routers.traefik-https.rule=Host(`{{app.code}}.{{ config.domain_suffix }}`)
+      - traefik.http.routers.traefik-https.entrypoints=websecure
+      - traefik.http.routers.traefik-https.tls=true
+      - traefik.http.routers.traefik-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.traefik-https.service=api@internal
+
+      {% else %}
+      # 2. HTTP 路由
+      - traefik.enable=true
+      - traefik.http.routers.traefik-http.rule=Host(`{{app.code}}.{{ config.domain_suffix }}`)
+      - traefik.http.routers.traefik-http.entrypoints=web
+      - traefik.http.routers.traefik-http.service=api@internal
+      {% endif %}
 
 networks:
   traefik:
@@ -142,8 +152,6 @@ VALUES (
     '01KKX2YNPF6VJ9N7QYCWG61KVM',
     '.env',
     'TRAEFIK_LOG_LEVEL=INFO
-TRAEFIK_DASHBOARD=true
-TRAEFIK_DASHBOARD_INSECURE=true
 ',
     datetime('now'),
     datetime('now')

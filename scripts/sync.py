@@ -109,7 +109,7 @@ def rsync(src: str, dst: str, *, delete: bool, excludes: list[str]) -> None:
 
 def cmd_fetch(source_path: Path) -> None:
     """从上游拉取所有变更到当前目录。"""
-    logger.info(f"fetch: {source_path} -> {PROJECT_DIR}")
+    logger.info(f"fetch from '{source_path}'")
     rsync(
         f"{to_unix_path(source_path)}/",
         f"{to_unix_path(PROJECT_DIR)}/",
@@ -125,7 +125,7 @@ def cmd_send(source_path: Path) -> None:
     排除项：.gitignore 规则、.git、scripts、.pomelo-pw.yaml。
     目标多余文件会被删除（--del）。
     """
-    logger.info(f"send: {PROJECT_DIR} -> {source_path}")
+    logger.info(f"send to '{source_path}'")
     rsync(
         f"{to_unix_path(PROJECT_DIR)}/",
         f"{to_unix_path(source_path)}/",

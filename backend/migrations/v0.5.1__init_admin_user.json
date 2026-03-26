@@ -1,4 +1,11 @@
 [
+  {    
+    "type": "delete",
+    "table": "user",
+    "where": {
+      "id": "01KKX2YNPF6VJ9N7QYCWG61KVK"
+    }
+  },
   {
     "type": "insert",
     "table": "user",

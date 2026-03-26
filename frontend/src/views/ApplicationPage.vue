@@ -60,9 +60,6 @@
 								>
 									停止
 								</a-button>
-								<a-button size="small" @click.stop="handleExport(app)">
-									导出
-								</a-button>
 							</a-space>
 						</template>
 						<a-descriptions :column="1" size="small">
@@ -190,6 +187,55 @@
 				<a-button @click="showApplicationCreate = false">取消</a-button>
 			</template>
 		</a-modal>
+
+		<!-- 导入应用弹窗 -->
+		<a-modal v-model:open="showImportPreview" title="导入应用" width="600px">
+			<a-form
+				ref="importFormRef"
+				:model="importForm"
+				:rules="importFormRules"
+				:label-col="{ span: 6 }"
+				:wrapper-col="{ span: 16 }"
+			>
+				<a-form-item label="应用名称" name="name">
+					<a-input v-model:value="importForm.name" />
+				</a-form-item>
+				<a-form-item label="应用编码" name="code">
+					<a-input v-model:value="importForm.code" placeholder="小写字母、数字和连字符" />
+				</a-form-item>
+				<a-form-item label="仓库地址" name="repository_url">
+					<a-input v-model:value="importForm.repository_url" />
+				</a-form-item>
+				<a-form-item label="部署分支" name="deploy_branches">
+					<a-input v-model:value="importForm.deploy_branches" placeholder="master,develop" />
+				</a-form-item>
+				<a-form-item label="自动部署" name="auto_deploy">
+					<a-switch v-model:checked="importForm.auto_deploy" />
+				</a-form-item>
+				<a-form-item label="镜像拉取策略" name="image_pull_policy">
+					<a-select v-model:value="importForm.image_pull_policy">
+						<a-select-option value="always">always</a-select-option>
+						<a-select-option value="missing">missing</a-select-option>
+						<a-select-option value="never">never</a-select-option>
+					</a-select>
+				</a-form-item>
+				<a-form-item label="启用" name="enabled">
+					<a-switch v-model:checked="importForm.enabled" />
+				</a-form-item>
+				<a-form-item label="配置文件">
+					<div v-if="importForm.config_files.length > 0" class="config-files-list">
+						<div v-for="(file, index) in importForm.config_files" :key="index" class="config-file-item">
+							<span>{{ file.path }}</span>
+						</div>
+					</div>
+					<div v-else class="config-files-empty">无配置文件</div>
+				</a-form-item>
+			</a-form>
+			<template #footer>
+				<a-button type="primary" :loading="operating" @click="handleImportOk">导入</a-button>
+				<a-button @click="showImportPreview = false">取消</a-button>
+			</template>
+		</a-modal>
 	</a-space>
 </template>
 
@@ -202,7 +248,7 @@ import { useRouter } from 'vue-router';
 import { applicationApi } from '@/api/application';
 import { deploymentApi } from '@/api/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
-import type { Application } from '@/types/api';
+import type { Application, ApplicationImportReq } from '@/types/api';
 
 const $router = useRouter();
 
@@ -232,7 +278,9 @@ const columns = [
 
 // 弹窗相关
 const showApplicationCreate = ref(false);
+const showImportPreview = ref(false);
 const formRef = ref<FormInstance>();
+const importFormRef = ref<FormInstance>();
 
 const form = reactive({
 	name: '',
@@ -244,7 +292,26 @@ const form = reactive({
 	enabled: true,
 });
 
+const importForm = reactive({
+	name: '',
+	code: '',
+	repository_url: '',
+	deploy_branches: '',
+	auto_deploy: false,
+	image_pull_policy: 'missing',
+	enabled: true,
+	config_files: [] as { path: string; content: string }[],
+});
+
 const formRules = {
+	name: [{ required: true, message: '请输入应用名称' }],
+	code: [
+		{ required: true, message: '请输入应用编码' },
+		{ pattern: /^[a-z][a-z0-9-]*$/, message: '必须以小写字母开头，只能包含小写字母、数字和连字符' },
+	],
+};
+
+const importFormRules = {
 	name: [{ required: true, message: '请输入应用名称' }],
 	code: [
 		{ required: true, message: '请输入应用编码' },
@@ -348,30 +415,59 @@ async function handleFileImport(event: Event) {
 
 	try {
 		const text = await file.text();
-		const data = JSON.parse(text);
-		await applicationApi.importApplication(data);
-		message.success('导入成功');
-		fetchApplications();
+		const data = JSON.parse(text) as ApplicationImportReq;
+
+		// 填充导入表单
+		Object.assign(importForm, {
+			name: data.name || '',
+			code: data.code || '',
+			repository_url: data.git_source?.repository_url || '',
+			deploy_branches: data.git_source?.deploy_branches || 'master',
+			auto_deploy: data.git_source?.auto_deploy ?? false,
+			image_pull_policy: data.image_pull_policy || 'missing',
+			enabled: data.enabled ?? true,
+			config_files: data.config_files || [],
+		});
+
+		showImportPreview.value = true;
 	} catch (error) {
-		message.error(error instanceof Error ? error.message : '导入失败');
+		message.error('解析文件失败：' + (error instanceof Error ? error.message : '未知错误'));
 	} finally {
 		target.value = '';
 	}
 }
 
-async function handleExport(app: Application) {
+async function handleImportOk() {
 	try {
-		const data = await applicationApi.exportApplication(app.id);
-		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${data.code || 'application'}.json`;
-		a.click();
-		URL.revokeObjectURL(url);
-		message.success('导出成功');
+		await importFormRef.value?.validate();
+	} catch {
+		return;
+	}
+
+	try {
+		await executeOp(async () => {
+			const payload = {
+				name: importForm.name,
+				code: importForm.code,
+				image_pull_policy: importForm.image_pull_policy,
+				enabled: importForm.enabled,
+				git_source: importForm.repository_url
+					? {
+							repository_url: importForm.repository_url,
+							deploy_branches: importForm.deploy_branches,
+							auto_deploy: importForm.auto_deploy,
+						}
+					: null,
+				config_files: importForm.config_files,
+			};
+
+			await applicationApi.importApplication(payload);
+			message.success('导入成功');
+			showImportPreview.value = false;
+			fetchApplications();
+		});
 	} catch (error) {
-		message.error(error instanceof Error ? error.message : '导出失败');
+		message.error(error instanceof Error ? error.message : '导入失败');
 	}
 }
 
@@ -440,5 +536,24 @@ a.disabled {
 
 .app-card:has(.ant-btn-loading) .card-actions {
 	opacity: 1;
+}
+
+.config-files-list {
+	max-height: 150px;
+	overflow-y: auto;
+}
+
+.config-file-item {
+	padding: 4px 0;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.config-file-item:last-child {
+	border-bottom: none;
+}
+
+.config-files-empty {
+	color: #999;
+	font-style: italic;
 }
 </style>

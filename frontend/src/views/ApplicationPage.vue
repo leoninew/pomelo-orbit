@@ -390,4 +390,8 @@ a.disabled {
 .app-card:hover .card-actions {
 	opacity: 1;
 }
+
+.app-card:has(.ant-btn-loading) .card-actions {
+	opacity: 1;
+}
 </style>

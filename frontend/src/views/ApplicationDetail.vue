@@ -25,8 +25,8 @@
 					<a-button v-else type="primary" @click="handleDeploy">部署</a-button>
 					<a-button :loading="operating" @click="handleStop">停止</a-button>
 					<a-button :loading="operating" @click="handleRestart">重启</a-button>
-					<a-button @click="showBasicInfoModal = true">编辑</a-button>
-					<a-button danger :disabled="application.status === 'started'" @click="openDeleteModal">
+					<a-button :disabled="operating" @click="showBasicInfoModal = true">编辑</a-button>
+					<a-button danger :disabled="operating || application.status === 'started'" @click="openDeleteModal">
 						删除
 					</a-button>
 				</a-space>

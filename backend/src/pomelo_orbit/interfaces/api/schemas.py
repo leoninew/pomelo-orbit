@@ -4,6 +4,8 @@ API Schema 定义（统一导出）
 
 from pomelo_orbit.interfaces.api.dto import (
     ApplicationCreateReq,
+    ApplicationExportResp,
+    ApplicationImportReq,
     ApplicationResp,
     ApplicationUpdateReq,
     ConfigFileReq,
@@ -33,6 +35,8 @@ from pomelo_orbit.interfaces.api.dto import (
 
 __all__ = [
     "ApplicationCreateReq",
+    "ApplicationExportResp",
+    "ApplicationImportReq",
     "ApplicationResp",
     "ApplicationUpdateReq",
     "ConfigFileReq",

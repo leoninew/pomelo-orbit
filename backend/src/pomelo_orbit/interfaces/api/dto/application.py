@@ -86,6 +86,50 @@ class ConfigFileResp(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ConfigFileExportReq(BaseModel):
+    """配置文件导出/导入请求"""
+
+    path: str
+    content: str = ""
+
+
+class GitSourceExportResp(BaseModel):
+    """Git 源导出响应"""
+
+    repository_url: str
+    deploy_branches: str
+    auto_deploy: bool
+
+
+class ImageSourceExportResp(BaseModel):
+    """镜像源导出响应"""
+
+    image_name: str
+    registry_url: str | None
+
+
+class GitSourceImportReq(BaseModel):
+    """Git 源导入请求"""
+
+    repository_url: str = Field(..., max_length=500)
+    deploy_branches: str = "main,master"
+    auto_deploy: bool = True
+
+
+class ImageSourceImportReq(BaseModel):
+    """镜像源导入请求"""
+
+    image_name: str = Field(..., max_length=500)
+    registry_url: str | None = Field(None, max_length=500)
+
+
+class ConfigFileImportReq(BaseModel):
+    """配置文件导入请求"""
+
+    path: str
+    content: str = ""
+
+
 class ApplicationResp(BaseModel):
     """应用响应"""
 
@@ -102,3 +146,29 @@ class ApplicationResp(BaseModel):
     image_source: ImageSourceResp | None = None
 
     model_config = {"from_attributes": True}
+
+
+class ApplicationExportResp(BaseModel):
+    """应用导出响应"""
+
+    version: str = "1.0"
+    name: str
+    code: str
+    enabled: bool
+    image_pull_policy: str
+    git_source: GitSourceExportResp | None = None
+    image_source: ImageSourceExportResp | None = None
+    config_files: list[ConfigFileExportReq] = []
+
+
+class ApplicationImportReq(BaseModel):
+    """应用导入请求"""
+
+    version: str = "1.0"
+    name: str = Field(..., min_length=1, max_length=100)
+    code: str = Field(..., min_length=1, max_length=100, pattern="^[a-z][a-z0-9-]*$")
+    enabled: bool = True
+    image_pull_policy: ImagePullPolicy = ImagePullPolicy.MISSING
+    git_source: GitSourceImportReq | None = None
+    image_source: ImageSourceImportReq | None = None
+    config_files: list[ConfigFileImportReq] = []

@@ -1,6 +1,8 @@
 import type {
 	Application,
 	ApplicationCreateReq,
+	ApplicationExportResp,
+	ApplicationImportReq,
 	ApplicationUpdateReq,
 	ConfigFile,
 	PaginatedResp,
@@ -86,5 +88,15 @@ export const applicationApi = {
 	// 删除应用文件
 	deleteFile(id: string, fileId: string): Promise<void> {
 		return request.delete(`/api/application/${id}/file/${fileId}`);
+	},
+
+	// 导出应用
+	exportApplication(id: string): Promise<ApplicationExportResp> {
+		return request.get(`/api/application/${id}/export`);
+	},
+
+	// 导入应用
+	importApplication(data: ApplicationImportReq): Promise<Application> {
+		return request.post('/api/application/import', data);
 	},
 };

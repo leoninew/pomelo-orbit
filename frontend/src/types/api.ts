@@ -87,6 +87,28 @@ export interface ApplicationUpdateReq {
 	enabled?: boolean
 }
 
+export interface ApplicationExportResp {
+	version: string
+	name: string
+	code: string
+	image_pull_policy: string
+	enabled: boolean
+	git_source: Pick<GitSource, 'repository_url' | 'deploy_branches' | 'auto_deploy'> | null
+	image_source: Pick<ImageSource, 'image_name' | 'registry_url'> | null
+	config_files: { path: string; content: string }[]
+}
+
+export interface ApplicationImportReq {
+	version?: string
+	name: string
+	code: string
+	enabled?: boolean
+	image_pull_policy?: string
+	git_source?: { repository_url: string; deploy_branches?: string; auto_deploy?: boolean } | null
+	image_source?: { image_name: string; registry_url?: string | null } | null
+	config_files?: { path: string; content?: string }[]
+}
+
 export interface ConfigFile {
 	id: string
 	path: string

@@ -29,6 +29,7 @@
 					<a-button danger :disabled="operating || application.status === 'started'" @click="openDeleteModal">
 						删除
 					</a-button>
+					<a-button @click="handleExport">导出</a-button>
 				</a-space>
 			</template>
 			<a-descriptions v-if="application" :column="2" bordered size="small">
@@ -387,6 +388,22 @@ async function handleRestart() {
 function openDeleteModal() {
 	deleteDir.value = false;
 	showDeleteModal.value = true;
+}
+
+async function handleExport() {
+	try {
+		const data = await applicationApi.exportApplication(applicationId);
+		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${data.code || 'application'}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+		message.success('导出成功');
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '导出失败');
+	}
 }
 
 async function handleDeleteOk() {

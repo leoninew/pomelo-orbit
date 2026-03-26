@@ -14,6 +14,8 @@ from pomelo_orbit.domain.value_objects import OperationType
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.schemas import (
     ApplicationCreateReq,
+    ApplicationExportResp,
+    ApplicationImportReq,
     ApplicationResp,
     ApplicationUpdateReq,
     ConfigFileReq,
@@ -65,6 +67,17 @@ def create_application(
     return ApplicationResp.model_validate(app)
 
 
+@router.post("/import", response_model=ApplicationResp, status_code=status.HTTP_201_CREATED)
+def import_application(
+    data: ApplicationImportReq,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> ApplicationResp:
+    """导入应用"""
+    app = app_service.import_application(data.model_dump())
+    return ApplicationResp.model_validate(app)
+
+
 @router.get("/{app_id}", response_model=ApplicationResp)
 def get_application(
     app_id: str,
@@ -74,6 +87,17 @@ def get_application(
     """获取应用详情"""
     app = app_service.get_application(app_id)
     return ApplicationResp.model_validate(app)
+
+
+@router.get("/{app_id}/export")
+def export_application(
+    app_id: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> ApplicationExportResp:
+    """导出应用"""
+    data = app_service.export_application(app_id)
+    return ApplicationExportResp(**data)
 
 
 @router.put("/{app_id}", response_model=ApplicationResp)

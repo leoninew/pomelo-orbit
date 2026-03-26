@@ -17,6 +17,9 @@ class ApplicationRepository(ABC):
     def find_by_name(self, name: str) -> Application | None: ...
 
     @abstractmethod
+    def find_by_code(self, code: str) -> Application | None: ...
+
+    @abstractmethod
     def save(self, application: Application) -> None: ...
 
     @abstractmethod

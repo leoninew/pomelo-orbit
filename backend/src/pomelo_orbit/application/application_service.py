@@ -500,5 +500,88 @@ class ApplicationService:
         self.deployment_repo.commit()
         return deployment
 
+    # ==================== 导入/导出 ====================
+
+    def export_application(self, application_id: str) -> dict:
+        """导出应用及其关联数据"""
+        app = self.app_repo.find_by_id(application_id)
+        if not app:
+            raise BusinessError(f"Application {application_id} not found", status_code=404)
+
+        config_files = self.config_file_repo.find_by_application(application_id)
+
+        return {
+            "name": app.name,
+            "code": app.code,
+            "enabled": app.enabled,
+            "image_pull_policy": app.image_pull_policy,
+            "git_source": {
+                "repository_url": app.git_source.repository_url,
+                "deploy_branches": app.git_source.deploy_branches,
+                "auto_deploy": app.git_source.auto_deploy,
+            }
+            if app.git_source
+            else None,
+            "image_source": {
+                "image_name": app.image_source.image_name,
+                "registry_url": app.image_source.registry_url,
+            }
+            if app.image_source
+            else None,
+            "config_files": [
+                {"path": cf.path, "content": cf.content} for cf in config_files
+            ],
+        }
+
+    def import_application(self, data: dict) -> Application:
+        """导入应用数据"""
+        # 检查 code 是否已存在
+        existing = self.app_repo.find_by_code(data["code"])
+        if existing:
+            raise BusinessError(f"Application code '{data['code']}' already exists", status_code=400)
+
+        # 创建应用
+        app = Application(
+            id=str(ULID()),
+            name=data["name"],
+            code=data["code"],
+            enabled=data.get("enabled", True),
+            image_pull_policy=data.get("image_pull_policy", "missing"),
+            status="stopped",
+        )
+
+        # 创建 GitSource
+        if data.get("git_source"):
+            app.git_source = GitSource(
+                id=str(ULID()),
+                application_id=app.id,
+                repository_url=data["git_source"]["repository_url"],
+                deploy_branches=data["git_source"].get("deploy_branches", "main,master"),
+                auto_deploy=data["git_source"].get("auto_deploy", True),
+            )
+
+        # 创建 ImageSource
+        if data.get("image_source"):
+            app.image_source = ImageSource(
+                id=str(ULID()),
+                application_id=app.id,
+                image_name=data["image_source"]["image_name"],
+                registry_url=data["image_source"].get("registry_url"),
+            )
+
+        self.app_repo.save(app)
+
+        # 创建配置文件
+        for cf_data in data.get("config_files", []):
+            config_file = ApplicationConfigFile(
+                id=str(ULID()),
+                application_id=app.id,
+                path=cf_data["path"],
+                content=cf_data.get("content", ""),
+            )
+            self.config_file_repo.save(config_file)
+
+        return app
+
 
 __all__ = ["ApplicationService"]

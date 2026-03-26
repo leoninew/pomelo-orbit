@@ -24,6 +24,11 @@
 					<template #icon><PlusOutlined /></template>
 					新建应用
 				</a-button>
+				<a-button @click="triggerImport">
+					<template #icon><UploadOutlined /></template>
+					导入
+				</a-button>
+				<input ref="fileInput" type="file" accept=".json" style="display: none" @change="handleFileImport" />
 			</a-space>
 		</div>
 		<!-- 卡片视图 -->
@@ -54,6 +59,9 @@
 									@click.stop="handleStop(app)"
 								>
 									停止
+								</a-button>
+								<a-button size="small" @click.stop="handleExport(app)">
+									导出
 								</a-button>
 							</a-space>
 						</template>
@@ -186,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons-vue';
+import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined, UploadOutlined } from '@ant-design/icons-vue';
 import type { FormInstance } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';
@@ -203,6 +211,7 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 const applications = ref<Application[]>([]);
 const searchText = ref('');
 const viewMode = ref<'card' | 'table'>('card');
+const fileInput = ref<HTMLInputElement>();
 const pagination = reactive({
 	current: 1,
 	pageSize: 10,
@@ -326,6 +335,44 @@ function showApplicationCreateModal() {
 		enabled: true,
 	});
 	showApplicationCreate.value = true;
+}
+
+function triggerImport() {
+	fileInput.value?.click();
+}
+
+async function handleFileImport(event: Event) {
+	const target = event.target as HTMLInputElement;
+	const file = target.files?.[0];
+	if (!file) return;
+
+	try {
+		const text = await file.text();
+		const data = JSON.parse(text);
+		await applicationApi.importApplication(data);
+		message.success('导入成功');
+		fetchApplications();
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '导入失败');
+	} finally {
+		target.value = '';
+	}
+}
+
+async function handleExport(app: Application) {
+	try {
+		const data = await applicationApi.exportApplication(app.id);
+		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${data.code || 'application'}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+		message.success('导出成功');
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '导出失败');
+	}
 }
 
 async function handleModalOk() {

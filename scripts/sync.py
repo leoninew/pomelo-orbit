@@ -27,6 +27,8 @@ PROJECT_DIR = SCRIPT_DIR.parent
 SEND_EXCLUDES = [
     "--filter=:- .gitignore",
     "--exclude=.git",
+    "--exclude=CLAUDE.md",
+    "--exclude=docs",
     "--exclude=scripts",
     "--exclude=.pomelo-pw.yaml",
 ]
@@ -91,10 +93,13 @@ def to_unix_path(path: Path) -> str:
     不支持 UNC 路径（\\\\server\\share）。
     """
     path_str = str(path.resolve())
-    if len(path_str) >= 2 and path_str[1] == ":":
-        drive = path_str[0].lower()
-        rest = path_str[2:].replace("\\", "/")
-        return f"/{drive}{rest}"
+    # 优先检查原始字符串是否含盘符（兼容 MINGW/Cygwin 下 resolve() 行为异常的情况）
+    raw_str = str(path)
+    for s in (path_str, raw_str):
+        if len(s) >= 2 and s[1] == ":":
+            drive = s[0].lower()
+            rest = s[2:].replace("\\", "/")
+            return f"/{drive}{rest}"
     return path_str.replace("\\", "/")
 
 

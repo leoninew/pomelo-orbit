@@ -25,6 +25,7 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/renew.py tunnel status              - 查看隧道状态
   python scripts/renew.py exec <command>             - 执行远程命令
   python scripts/renew.py docker-compose <args>      - 执行 docker-compose 命令
+  python scripts/renew.py backup                     - 备份远程数据目录
 
 示例:
   python scripts/renew.py install --image ghcr.io/leoninew/pomelo-orbit:latest
@@ -38,12 +39,15 @@ import argparse
 import json
 import logging
 import os
+import platform
+import re
+import socket
 import subprocess
 import sys
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 # 配置日志
 logging.basicConfig(
@@ -76,11 +80,10 @@ class Config:
 
         # 读取 .env 文件
         env_vars = {}
-        with open(ENV_FILE) as f:
+        with ENV_FILE.open() as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith("#"):
-                    if "=" in line:
+                if line and not line.startswith("#") and "=" in line:
                         key, value = line.split("=", 1)
                         env_vars[key.strip()] = value.strip()
 
@@ -144,7 +147,7 @@ class SSHTunnel:
         self.config = config
 
     def start(
-        self, remote_port: Optional[int] = None, local_port: Optional[int] = None
+        self, remote_port: int | None = None, local_port: int | None = None
     ) -> bool:
         """启动 SSH 隧道，支持多次调用添加多个端口转发"""
         actual_remote_port = int(remote_port or self.config.remote_port)
@@ -208,14 +211,12 @@ class SSHTunnel:
         logger.error("SSH 隧道启动失败")
         return False
 
-    def stop(self, local_port: Optional[int] = None) -> bool:
+    def stop(self, local_port: int | None = None) -> bool:
         """停止 SSH 隧道，不指定端口则停止全部"""
         tunnels = self._load_tunnels()
         if not tunnels:
             logger.info("隧道未运行")
             return False
-
-        import platform
 
         targets = (
             [t for t in tunnels if t["local_port"] == local_port]
@@ -232,7 +233,7 @@ class SSHTunnel:
         for t in targets:
             pid = t.get("pid")
             if not pid:
-                logger.warning(f"隧道 localhost:{t['local_port']} 缺少 PID，跳过")
+                logger.warning(f"隧道 localhost:{t['local_port']} 缺少 PID, 跳过")
                 continue
             try:
                 logger.info(
@@ -304,16 +305,12 @@ class SSHTunnel:
 
     def _port_in_use(self, port: int) -> bool:
         """检查本地端口是否被占用"""
-        import socket
-
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             return s.connect_ex(("127.0.0.1", int(port))) == 0
 
-    def _find_pid_by_port(self, port: int) -> Optional[int]:
+    def _find_pid_by_port(self, port: int) -> int | None:
         """通过端口查找进程 PID"""
         try:
-            import platform
-
             if platform.system() == "Windows":
                 ps_cmd = f"Get-NetTCPConnection -LocalPort {port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | Select-Object -First 1"
                 result = subprocess.run(
@@ -323,14 +320,14 @@ class SSHTunnel:
                 )
                 pid_str = result.stdout.strip()
                 return int(pid_str) if pid_str.isdigit() else None
-            else:  # macOS/Linux
-                result = subprocess.run(
-                    ["lsof", "-ti", f":{port}"],
-                    capture_output=True,
-                    text=True,
-                )
-                pid_str = result.stdout.strip().split("\n")[0]
-                return int(pid_str) if pid_str.isdigit() else None
+            # macOS/Linux
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True,
+                text=True,
+            )
+            pid_str = result.stdout.strip().split("\n")[0]
+            return int(pid_str) if pid_str.isdigit() else None
         except Exception:
             return None
 
@@ -388,7 +385,7 @@ class Deployer:
     def __init__(self, config: Config):
         self.config = config
 
-    def install(self, image: Optional[str] = None):
+    def install(self, image: str | None = None):
         """初次部署：从数据库读取配置并部署"""
         logger.info("=== Pomelo Orbit 初次部署 ===\n")
         logger.info(f"目标服务器: {self.config.ssh_target}")
@@ -418,7 +415,7 @@ class Deployer:
         logger.info("\n=== 部署成功! ===\n")
         logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
-    def upgrade(self, image: Optional[str] = None):
+    def upgrade(self, image: str | None = None):
         """更新部署：只更新镜像和 .env"""
         logger.info("=== Pomelo Orbit 更新部署 ===\n")
         logger.info(f"目标服务器: {self.config.ssh_target}")
@@ -431,7 +428,7 @@ class Deployer:
                 "检查部署状态",
             )
         except SystemExit:
-            logger.error("未检测到已有部署，请先执行 install 命令")
+            logger.error("未检测到已有部署, 请先执行 install 命令")
             sys.exit(1)
 
         # 更新镜像
@@ -469,7 +466,7 @@ class Deployer:
         run_ssh_command(f"mkdir -p {self.config.remote_deploy_dir}", "创建目录")
         logger.info("目录创建完成\n")
 
-    def _deploy_config_first(self, image: Optional[str]):
+    def _deploy_config_first(self, image: str | None):
         """初次部署：从数据库读取并渲染配置文件"""
         logger.info("从数据库获取配置文件...")
         os.chdir(PROJECT_ROOT)
@@ -514,8 +511,6 @@ class Deployer:
         config_content = data["data"][0]["content"]
 
         # 渲染 Jinja 变量
-        import re
-
         # 固定路径
         config_content = re.sub(
             r"\{\{\s*app\.physical_data_dir\s*\}\}",
@@ -534,7 +529,7 @@ class Deployer:
 
         # 检查是否有未渲染的 Jinja 变量
         if re.search(r"\{\{.*?\}\}", config_content):
-            logger.warning("模板中仍有未渲染的 Jinja 变量，请检查")
+            logger.warning("模板中仍有未渲染的 Jinja 变量, 请检查")
 
         # 写入临时文件并传输
         with tempfile.NamedTemporaryFile(
@@ -544,7 +539,7 @@ class Deployer:
             temp_file = f.name
 
         copy_to_remote(temp_file, f"{self.config.remote_deploy_dir}/docker-compose.yml")
-        os.unlink(temp_file)
+        Path(temp_file).unlink()
         logger.info("配置文件传输完成\n")
 
     def _update_image(self, image: str):
@@ -628,6 +623,28 @@ class Deployer:
         logger.info("服务重启完成\n")
 
 
+def backup(cfg: "Config", remote_dir: str) -> None:
+    """将远程目录打包压缩后下载到本地 scripts/backup/"""
+    date_str = datetime.now().strftime("%Y%m%d-%H%M%S")
+    remote_archive = f"/tmp/pomelo-orbit-backup-{date_str}.tar.gz"
+    local_backup_dir = SCRIPT_DIR / "backup"
+    local_backup_dir.mkdir(exist_ok=True)
+    local_archive = local_backup_dir / f"data-{date_str}.tar.gz"
+
+    logger.info(f"备份远程目录: {remote_dir}")
+    run_ssh_command(
+        f"tar -czf {remote_archive} -C {remote_dir} .",
+        "压缩远程目录",
+    )
+    logger.info(f"下载备份文件: {local_archive}")
+    subprocess.run(
+        ["scp", f"{cfg.ssh_target}:{remote_archive}", str(local_archive)],
+        check=True,
+    )
+    run_ssh_command(f"rm -f {remote_archive}", "清理远程临时文件")
+    logger.info(f"备份完成: {local_archive}")
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="Pomelo Orbit 远程部署和管理工具")
@@ -647,12 +664,12 @@ def main():
         "action", choices=["start", "stop", "status"], help="操作"
     )
     tunnel_parser.add_argument(
-        "-r", "--remote_port", help="远程端口，多个用逗号分隔（仅 start 使用）"
+        "-r", "--remote_port", help="远程端口, 多个用逗号分隔(仅 start 使用)"
     )
     tunnel_parser.add_argument(
         "-l",
         "--local_port",
-        help="本地端口，多个用逗号分隔（start: 指定本地端口；stop: 只停止该端口）",
+        help="本地端口, 多个用逗号分隔(start: 指定本地端口; stop: 只停止该端口)",
     )
 
     # exec 命令
@@ -669,6 +686,14 @@ def main():
 
     # ssh 命令
     subparsers.add_parser("ssh", help="SSH 连接到远程服务器")
+
+    # backup 命令
+    backup_parser = subparsers.add_parser("backup", help="备份远程数据目录")
+    backup_parser.add_argument(
+        "--remote-dir",
+        default="/opt/pomelo-orbit/data",
+        help="远程备份目录(默认: /opt/pomelo-orbit/data)",
+    )
 
     args = parser.parse_args()
 
@@ -698,7 +723,7 @@ def main():
                 if args.local_port
                 else [None] * len(remote_ports)
             )
-            for r, lp in zip(remote_ports, local_ports):
+            for r, lp in zip(remote_ports, local_ports, strict=False):
                 tunnel.start(remote_port=r, local_port=lp)
         elif args.action == "stop":
             local_port = int(args.local_port) if args.local_port else None
@@ -713,6 +738,8 @@ def main():
         executor.docker_compose(args.dc_args)
     elif args.command == "ssh":
         os.system(f"ssh {config.ssh_target}")
+    elif args.command == "backup":
+        backup(config, args.remote_dir)
 
 
 if __name__ == "__main__":

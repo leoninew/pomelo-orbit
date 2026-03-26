@@ -35,32 +35,26 @@
 		<a-spin v-if="viewMode === 'card'" :spinning="loading">
 			<a-row :gutter="[16, 16]">
 				<a-col v-for="app in applications" :key="app.id" :xs="24" :sm="12" :lg="8" :xl="6">
-					<a-card hoverable class="app-card">
+					<a-card hoverable :class="['app-card', `app-card--${app.status}`]">
 						<template #title>
 							<router-link :to="`/applications/${app.id}`" style="display: block">
 								{{ app.name }}
 							</router-link>
 						</template>
 						<template #extra>
-							<a-space class="card-actions">
+							<a-tooltip :title="app.status === 'started' ? '停止' : '部署'">
 								<a-button
+									type="text"
 									size="small"
-									type="primary"
-									:disabled="app.status === 'started'"
 									:loading="operating"
-									@click.stop="handleDeploy(app)"
+									@click.stop="app.status === 'started' ? handleStop(app) : handleDeploy(app)"
 								>
-									部署
+									<template #icon>
+										<CaretRightOutlined v-if="app.status !== 'started'" style="color: #73d13d" />
+										<CloseOutlined v-else style="color: #ff7875" />
+									</template>
 								</a-button>
-								<a-button
-									size="small"
-									:disabled="app.status !== 'started'"
-									:loading="operating"
-									@click.stop="handleStop(app)"
-								>
-									停止
-								</a-button>
-							</a-space>
+							</a-tooltip>
 						</template>
 						<a-descriptions :column="1" size="small">
 							<a-descriptions-item label="编码">{{ app.code }}</a-descriptions-item>
@@ -68,8 +62,8 @@
 								{{ app.git_source?.repository_url || '-' }}
 							</a-descriptions-item>
 							<a-descriptions-item label="状态">
-								<a-tag :color="app.status === 'started' ? 'success' : 'default'">
-									{{ app.status === 'started' ? '已启动' : '已停止' }}
+								<a-tag :color="appStatusColor(app.status)">
+									{{ appStatusLabel(app.status) }}
 								</a-tag>
 							</a-descriptions-item>
 							<a-descriptions-item label="镜像拉取策略">
@@ -118,8 +112,8 @@
 					{{ record.git_source?.deploy_branches || '-' }}
 				</template>
 				<template v-else-if="column.key === 'status'">
-					<a-tag :color="record.status === 'started' ? 'success' : 'default'">
-						{{ record.status === 'started' ? '已启动' : '已停止' }}
+					<a-tag :color="appStatusColor(record.status)">
+						{{ appStatusLabel(record.status) }}
 					</a-tag>
 				</template>
 				<template v-else-if="column.key === 'auto_deploy'">
@@ -240,7 +234,7 @@
 </template>
 
 <script setup lang="ts">
-import { AppstoreOutlined, PlusOutlined, UnorderedListOutlined, UploadOutlined } from '@ant-design/icons-vue';
+import { AppstoreOutlined, CaretRightOutlined, PlusOutlined, UnorderedListOutlined, UploadOutlined } from '@ant-design/icons-vue';
 import type { FormInstance } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';
@@ -330,6 +324,7 @@ async function pollDeployment(deploymentId: string, app: Application) {
 					if (target) target.status = 'started';
 					message.success(`${app.name} 部署成功`);
 				} else {
+					if (target) target.status = 'failed';
 					message.error(`${app.name} 部署失败`);
 				}
 				break;
@@ -507,6 +502,18 @@ async function handleModalOk() {
 onMounted(() => {
 	fetchApplications();
 });
+
+function appStatusColor(status: string) {
+	if (status === 'started') return 'success';
+	if (status === 'failed') return 'error';
+	return 'default';
+}
+
+function appStatusLabel(status: string) {
+	if (status === 'started') return '运行中';
+	if (status === 'failed') return '部署失败';
+	return '未部署';
+}
 </script>
 
 <style scoped>
@@ -525,17 +532,12 @@ a.disabled {
 	cursor: not-allowed;
 }
 
-.app-card .card-actions {
-	opacity: 0;
-	transition: opacity 0.2s;
+.app-card--started {
+	border-color: #52c41a !important;
 }
 
-.app-card:hover .card-actions {
-	opacity: 1;
-}
-
-.app-card:has(.ant-btn-loading) .card-actions {
-	opacity: 1;
+.app-card--failed {
+	border-color: #ff4d4f !important;
 }
 
 .config-files-list {

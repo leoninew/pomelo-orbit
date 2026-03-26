@@ -24,8 +24,8 @@
 			<template #bodyCell="{ column, record }">
 				<template v-if="column.key === 'rule'">
 					<a
-						v-if="extractDomain(record.rule)"
-						:href="`http://${extractDomain(record.rule)}`"
+						v-if="buildRouteUrl(record.rule, record.tls)"
+						:href="buildRouteUrl(record.rule, record.tls)!"
 						target="_blank"
 					>
 						{{ record.rule }}
@@ -81,9 +81,11 @@ async function fetchRoutes() {
 	}
 }
 
-function extractDomain(rule: string): string | null {
+function buildRouteUrl(rule: string, tls: boolean): string | null {
 	const match = rule.match(/Host\(`([^`]+)`\)/);
-	return match ? match[1] : null;
+	if (!match) return null;
+	const protocol = tls ? 'https' : 'http';
+	return `${protocol}://${match[1]}`;
 }
 
 async function openDashboard() {

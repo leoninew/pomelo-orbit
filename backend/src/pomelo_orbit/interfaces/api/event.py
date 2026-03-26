@@ -13,7 +13,7 @@ from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.models import WebhookEventModel
 from pomelo_orbit.infrastructure.time_utils import from_iso8601
 from pomelo_orbit.interfaces.api.auth import get_current_user
-from pomelo_orbit.interfaces.api.schemas import (
+from pomelo_orbit.interfaces.api.dto import (
     PaginatedResp,
     WebhookEventDetailResp,
     WebhookEventResp,

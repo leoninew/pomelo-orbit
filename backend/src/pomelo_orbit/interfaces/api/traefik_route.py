@@ -1,5 +1,6 @@
 """Traefik 路由 API - 只读展示从 Traefik API 读取的路由"""
 
+import logging
 from typing import Annotated
 
 import httpx
@@ -13,6 +14,7 @@ from pomelo_orbit.infrastructure.traefik.di import get_traefik_api_client
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto.traefik_route import TraefikConfigResp
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/traefik-route", tags=["traefik-route"])
 
 
@@ -39,6 +41,7 @@ def list_traefik_routes(
     _current_user=Depends(get_current_user),
 ):
     """列出所有 Traefik 路由（从 Traefik API 读取）"""
+    logger.info(f"query traefik dashboard api, url={settings.traefik.api_url}")
     try:
         routers = client.get_routers(settings.traefik.api_url)
         return {"items": routers, "total": len(routers)}

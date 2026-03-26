@@ -4,7 +4,7 @@ API Layer
 
 from pomelo_orbit.interfaces.api.application import router as application_router
 from pomelo_orbit.interfaces.api.auth import router as auth_router
-from pomelo_orbit.interfaces.api.schemas import (
+from pomelo_orbit.interfaces.api.dto import (
     ApplicationCreateReq,
     ApplicationResp,
     ApplicationUpdateReq,

@@ -11,8 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from pomelo_orbit.application.deployment_service import DeploymentService
 from pomelo_orbit.application.di import get_deployment_service
 from pomelo_orbit.interfaces.api.auth import get_current_user
-from pomelo_orbit.interfaces.api.dto import DeploymentDetailResp, DeploymentResp
-from pomelo_orbit.interfaces.api.schemas import PaginatedResp
+from pomelo_orbit.interfaces.api.dto import DeploymentDetailResp, DeploymentResp, PaginatedResp
 
 logger = logging.getLogger(__name__)
 

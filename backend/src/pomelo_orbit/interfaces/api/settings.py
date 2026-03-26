@@ -10,7 +10,7 @@ from pomelo_orbit.application.di import get_setting_service
 from pomelo_orbit.application.setting_service import SettingService
 from pomelo_orbit.domain.entities import User
 from pomelo_orbit.interfaces.api.auth import get_current_user
-from pomelo_orbit.interfaces.api.schemas import SystemConfigResetReq, SystemConfigResp, SystemConfigUpdateReq
+from pomelo_orbit.interfaces.api.dto import SystemConfigResetReq, SystemConfigResp, SystemConfigUpdateReq
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

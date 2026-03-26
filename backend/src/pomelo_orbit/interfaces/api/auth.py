@@ -16,7 +16,7 @@ from pomelo_orbit.infrastructure import SecurityService, get_security_service, h
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
 from pomelo_orbit.infrastructure.repositories import get_user_repository
 from pomelo_orbit.infrastructure.time_utils import utc_now
-from pomelo_orbit.interfaces.api.schemas import (
+from pomelo_orbit.interfaces.api.dto import (
     LoginHistoryResp,
     LoginReq,
     PaginatedResp,

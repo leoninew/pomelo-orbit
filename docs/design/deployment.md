@@ -59,10 +59,11 @@ docker compose up -d
 
 ### 3. 部署状态
 
-- `queued` - 排队中
-- `running` - 执行中
-- `success` - 成功
-- `failed` - 失败
+应用和部署记录各有独立的状态机，详见 [应用状态机设计](application-state-machine.md)。
+
+**Application 状态**：`undeployed` → `deploying` → `deployed` / `deploy_failed`
+
+**Deployment 状态**：`waiting_to_run` → `running` → `ran_to_completion` / `faulted` / `canceled`
 
 ## 预置应用
 

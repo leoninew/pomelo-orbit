@@ -27,6 +27,7 @@ help:
 	@echo "构建:"
 	@echo "  make build           - 构建 Docker 镜像 (默认 tag: latest)"
 	@echo "  make build tag=v1.0  - 构建指定 tag 的镜像"
+	@echo "  make build cn=1      - 使用国内镜像源构建"
 	@echo ""
 
 install:
@@ -80,6 +81,6 @@ test-frontend:
 
 build:
 	@echo "构建 Docker 镜像..."
-	docker build -f Dockerfile -t pomelo-orbit:$(or $(tag),latest) .
+	docker build -f $(if $(cn),Dockerfile.cn,Dockerfile) -t pomelo-orbit:$(or $(tag),latest) .
 	@echo "✓ 镜像构建完成: pomelo-orbit:$(or $(tag),latest)"
 

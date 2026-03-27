@@ -132,7 +132,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             # 记录响应
             if response.status_code >= 500:
                 self.logger.error(
-                    f"Response: {method} {path} - {response.status_code} ({duration_ms:.2f}ms)", exc_info=True
+                    f"Response: {method} {path} - {response.status_code} ({duration_ms:.2f}ms)"
                 )
             elif response.status_code >= 400:
                 self.logger.warning(f"Response: {method} {path} - {response.status_code} ({duration_ms:.2f}ms)")

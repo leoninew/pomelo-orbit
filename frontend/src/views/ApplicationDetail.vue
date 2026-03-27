@@ -28,7 +28,9 @@
 					<a-button :disabled="operating" @click="showBasicInfoModal = true">编辑</a-button>
 					<a-button
 						danger
-						:disabled="operating || application.status === 'started'"
+						:disabled="
+							operating || application.status === 'deployed' || application.status === 'deploying'
+						"
 						@click="openDeleteModal"
 					>
 						删除
@@ -49,8 +51,8 @@
 					<span v-else>-</span>
 				</a-descriptions-item>
 				<a-descriptions-item label="状态">
-					<a-tag :color="application.status === 'started' ? 'success' : 'default'">
-						{{ application.status === 'started' ? '已启动' : '已停止' }}
+					<a-tag :color="appStatusColor(application.status)">
+						{{ appStatusLabel(application.status) }}
 					</a-tag>
 				</a-descriptions-item>
 				<a-descriptions-item label="自动部署">
@@ -239,7 +241,7 @@
 <script setup lang="ts">
 import type { FormInstance } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
-import { formatTime } from '@/utils/time';
+import { formatTime, delayAsync } from '@/utils/time';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -320,9 +322,38 @@ async function fetchApplication() {
 				basicInfoForm.auto_deploy = data.git_source.auto_deploy;
 			}
 		});
+		// 如果应用正在部署中，找到对应部署记录并轮询直到结束
+		if (application.value?.status === 'deploying') {
+			pollActiveDeployment();
+		}
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '获取应用信息失败');
 		router.push('/applications');
+	}
+}
+
+async function pollActiveDeployment() {
+	try {
+		const resp = await deploymentApi.list({ application_id: applicationId, per_page: 1 });
+		const latest = resp.items[0];
+		if (!latest) return;
+		while (true) {
+			await delayAsync(3000);
+			try {
+				const detail = await deploymentApi.get(latest.id);
+				if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
+					if (application.value) {
+						application.value.status =
+							detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
+					}
+					break;
+				}
+			} catch {
+				break;
+			}
+		}
+	} catch {
+		// 查不到部署记录时静默退出
 	}
 }
 
@@ -356,21 +387,23 @@ async function handleStop() {
 		await executeOp(async () => {
 			const res = await applicationApi.stop(applicationId);
 			message.success('停止操作已提交');
-			// 轮询部署状态，失败才跳转，成功则更新本地状态
-			const poll = setInterval(async () => {
+			while (true) {
+				await delayAsync(3000);
 				try {
 					const detail = await deploymentApi.get(res.deployment_id);
-					if (detail.status === 'failed') {
-						clearInterval(poll);
-						router.push(`/deployments/${res.deployment_id}`);
-					} else if (detail.status === 'success') {
-						clearInterval(poll);
-						if (application.value) application.value.status = 'stopped';
+					if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
+						if (detail.status === 'ran_to_completion') {
+							if (application.value) application.value.status = 'undeployed';
+						} else {
+							if (application.value) application.value.status = 'deploy_failed';
+							router.push(`/deployments/${res.deployment_id}`);
+						}
+						break;
 					}
 				} catch {
-					clearInterval(poll);
+					break;
 				}
-			}, 3000);
+			}
 		});
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '停止失败');
@@ -550,6 +583,20 @@ onMounted(() => {
 	fetchApplication();
 	loadFiles();
 });
+
+function appStatusColor(status: string) {
+	if (status === 'deployed') return 'success';
+	if (status === 'deploy_failed') return 'error';
+	if (status === 'deploying') return 'processing';
+	return 'default';
+}
+
+function appStatusLabel(status: string) {
+	if (status === 'deployed') return '运行中';
+	if (status === 'deploy_failed') return '部署失败';
+	if (status === 'deploying') return '部署中';
+	return '未部署';
+}
 </script>
 
 <style scoped>

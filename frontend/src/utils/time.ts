@@ -44,3 +44,10 @@ export function nowUTC(): string {
 export function getTodayStart(): Dayjs {
 	return dayjs().startOf('day');
 }
+
+/**
+ * 延迟指定毫秒数
+ */
+export function delayAsync(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}

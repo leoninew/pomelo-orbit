@@ -48,16 +48,26 @@
 							</router-link>
 						</template>
 						<template #extra>
-							<a-tooltip :title="app.status === 'started' ? '停止' : '部署'">
+							<a-tooltip :title="cardActionTooltip(app.status)">
 								<a-button
 									type="text"
 									size="small"
-									:loading="operating"
-									@click.stop="app.status === 'started' ? handleStop(app) : handleDeploy(app)"
+									:disabled="app.status === 'deploying'"
+									@click.stop="handleCardAction(app)"
 								>
 									<template #icon>
-										<CaretRightOutlined v-if="app.status !== 'started'" style="color: #73d13d" />
-										<CloseOutlined v-else style="color: #ff7875" />
+										<LoadingOutlined
+											v-if="app.status === 'deploying'"
+											class="spin"
+										/>
+										<CloseCircleOutlined
+											v-else-if="app.status === 'deployed'"
+										/>
+										<ReloadOutlined
+											v-else-if="app.status === 'deploy_failed'"
+											style="color: #fa8c16"
+										/>
+										<PlayCircleOutlined v-else />
 									</template>
 								</a-button>
 							</a-tooltip>
@@ -76,9 +86,7 @@
 								{{ app.image_pull_policy }}
 							</a-descriptions-item>
 							<a-descriptions-item label="部署记录">
-								<a @click.stop="$router.push(`/deployments?application_id=${app.id}`)">
-									查看部署记录
-								</a>
+								<a @click.stop="viewLastDeployment(app.id)">查看部署记录</a>
 							</a-descriptions-item>
 						</a-descriptions>
 					</a-card>
@@ -131,13 +139,16 @@
 					<a-space>
 						<a @click="$router.push(`/applications/${record.id}`)">查看</a>
 						<a
-							:class="{ disabled: record.status === 'started' || operating }"
+							:class="{
+								disabled:
+									record.status === 'deployed' || record.status === 'deploying' || operating,
+							}"
 							@click="handleDeploy(record)"
 						>
 							部署
 						</a>
 						<a
-							:class="{ disabled: record.status !== 'started' || operating }"
+							:class="{ disabled: record.status !== 'deployed' || operating }"
 							@click="handleStop(record)"
 						>
 							停止
@@ -244,19 +255,13 @@
 </template>
 
 <script setup lang="ts">
-import {
-	AppstoreOutlined,
-	CaretRightOutlined,
-	PlusOutlined,
-	UnorderedListOutlined,
-	UploadOutlined,
-} from '@ant-design/icons-vue';
 import type { FormInstance } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { applicationApi } from '@/api/application';
 import { deploymentApi } from '@/api/deployments';
+import { delayAsync } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import type { Application, ApplicationImportReq } from '@/types/api';
 
@@ -331,16 +336,16 @@ const importFormRules = {
 
 async function pollDeployment(deploymentId: string, app: Application) {
 	while (true) {
-		await new Promise((resolve) => setTimeout(resolve, 3000));
+		await delayAsync(3000);
 		try {
 			const data = await deploymentApi.get(deploymentId);
-			if (['success', 'failed'].includes(data.status)) {
+			if (['ran_to_completion', 'faulted', 'canceled'].includes(data.status)) {
 				const target = applications.value.find((a) => a.id === app.id);
-				if (data.status === 'success') {
-					if (target) target.status = 'started';
+				if (data.status === 'ran_to_completion') {
+					if (target) target.status = 'deployed';
 					message.success(`${app.name} 部署成功`);
 				} else {
-					if (target) target.status = 'failed';
+					if (target) target.status = 'deploy_failed';
 					message.error(`${app.name} 部署失败`);
 				}
 				break;
@@ -355,6 +360,9 @@ async function handleDeploy(app: Application) {
 	try {
 		await executeOp(async () => {
 			const { deployment_id } = await applicationApi.deploy(app.id);
+			// 立即反映部署中状态
+			const target = applications.value.find((a) => a.id === app.id);
+			if (target) target.status = 'deploying';
 			message.success(`${app.name} 部署已触发`);
 			pollDeployment(deployment_id, app);
 		});
@@ -367,10 +375,11 @@ async function handleStop(app: Application) {
 	try {
 		await executeOp(async () => {
 			await applicationApi.stop(app.id);
-			app.status = 'stopped';
+			app.status = 'undeployed';
 			message.success(`${app.name} 已停止`);
 		});
 	} catch (error) {
+		app.status = 'deploy_failed';
 		message.error(error instanceof Error ? error.message : '停止失败');
 	}
 }
@@ -400,6 +409,15 @@ function handleTableChange(pag: { current?: number; pageSize?: number }) {
 	pagination.current = pag.current || 1;
 	pagination.pageSize = pag.pageSize || 10;
 	fetchApplications();
+}
+
+async function viewLastDeployment(appId: string) {
+	const resp = await deploymentApi.list({ application_id: appId, per_page: 1 });
+	if (resp.items.length > 0) {
+		$router.push(`/deployments/${resp.items[0].id}`);
+	} else {
+		$router.push(`/deployments?application_id=${appId}`);
+	}
 }
 
 function showApplicationCreateModal() {
@@ -519,16 +537,30 @@ onMounted(() => {
 	fetchApplications();
 });
 
+function cardActionTooltip(status: string) {
+	if (status === 'deploying') return '部署中...';
+	if (status === 'deployed') return '停止';
+	if (status === 'deploy_failed') return '重新部署';
+	return '部署';
+}
+
+function handleCardAction(app: Application) {
+	if (app.status === 'deployed') handleStop(app);
+	else handleDeploy(app);
+}
+
 function appStatusColor(status: string) {
-	if (status === 'started') return 'success';
-	if (status === 'failed') return 'error';
-	return 'default';
+	if (status === 'deployed') return 'success';
+	if (status === 'deploy_failed') return 'error';
+	if (status === 'deploying') return 'processing';
+	return 'default'; // undeployed
 }
 
 function appStatusLabel(status: string) {
-	if (status === 'started') return '运行中';
-	if (status === 'failed') return '部署失败';
-	return '未部署';
+	if (status === 'deployed') return '运行中';
+	if (status === 'deploy_failed') return '部署失败';
+	if (status === 'deploying') return '部署中';
+	return '未部署'; // undeployed
 }
 </script>
 
@@ -548,11 +580,11 @@ a.disabled {
 	cursor: not-allowed;
 }
 
-.app-card--started {
+.app-card--deployed {
 	border-color: #52c41a !important;
 }
 
-.app-card--failed {
+.app-card--deploy_failed {
 	border-color: #ff4d4f !important;
 }
 
@@ -573,5 +605,18 @@ a.disabled {
 .config-files-empty {
 	color: #999;
 	font-style: italic;
+}
+
+.spin {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 </style>

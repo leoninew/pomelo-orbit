@@ -254,7 +254,7 @@ class TestApplicationAPI:
             application_name=test_app.name,
             operation_type=OperationType.STOP,
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.QUEUED,
+            status=DeployStatus.WAITING_TO_RUN,
             is_rollback=False,
         )
         mock_stop.return_value = mock_deployment
@@ -280,7 +280,7 @@ class TestApplicationAPI:
             application_name=test_app.name,
             operation_type=OperationType.RESTART,
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.QUEUED,
+            status=DeployStatus.WAITING_TO_RUN,
             is_rollback=False,
         )
         mock_restart.return_value = mock_deployment

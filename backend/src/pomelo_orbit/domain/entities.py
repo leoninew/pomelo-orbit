@@ -112,24 +112,34 @@ class Application:
 
     def can_deploy(self) -> bool:
         """检查是否可以部署"""
-        return self.enabled and self.status != ApplicationStatus.STARTED
+        return self.enabled and self.status != ApplicationStatus.DEPLOYING
 
     def can_stop(self) -> bool:
         """检查是否可以停止"""
-        return self.status == ApplicationStatus.STARTED
+        return self.status == ApplicationStatus.DEPLOYED
 
     def can_restart(self) -> bool:
         """检查是否可以重启"""
-        return self.status == ApplicationStatus.STARTED
+        return self.enabled and self.status == ApplicationStatus.DEPLOYED
 
-    def mark_as_started(self) -> None:
-        """标记为已启动"""
-        self.status = ApplicationStatus.STARTED
+    def mark_as_deploying(self) -> None:
+        """标记为部署中"""
+        self.status = ApplicationStatus.DEPLOYING
         self.updated_at = utc_now()
 
-    def mark_as_stopped(self) -> None:
-        """标记为已停止"""
-        self.status = ApplicationStatus.STOPPED
+    def mark_as_deployed(self) -> None:
+        """标记为部署成功"""
+        self.status = ApplicationStatus.DEPLOYED
+        self.updated_at = utc_now()
+
+    def mark_as_deploy_failed(self) -> None:
+        """标记为部署失败"""
+        self.status = ApplicationStatus.DEPLOY_FAILED
+        self.updated_at = utc_now()
+
+    def mark_as_undeployed(self) -> None:
+        """标记为未部署"""
+        self.status = ApplicationStatus.UNDEPLOYED
         self.updated_at = utc_now()
 
 

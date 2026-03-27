@@ -58,7 +58,7 @@ class ApplicationService:
         deployment: Deployment,
     ) -> bool:
         """
-        执行部署
+        执行部署（后台任务）
 
         Args:
             application: 应用配置
@@ -67,14 +67,18 @@ class ApplicationService:
         Returns:
             部署是否成功
         """
-        # 领域验证
         ApplicationLifecycleDomainService.validate_deploy(application)
 
         lock = self.get_lock(application.id)
 
         async with lock:
+            # 标记应用为部署中
+            application.mark_as_deploying()
+            self.app_repo.save(application)
+
             deployment.status = DeployStatus.RUNNING.value
             self.deployment_repo.save(deployment)
+            self.deployment_repo.commit()
 
             try:
                 config_files = self.config_file_repo.find_by_application(application.id)
@@ -86,60 +90,79 @@ class ApplicationService:
                     env_file=deployment.env_file,
                 )
 
-                # 成功 - 使用领域服务更新状态
                 ApplicationLifecycleDomainService.mark_deploy_success(deployment, application)
                 self.deployment_repo.save(deployment)
                 self.app_repo.save(application)
+                self.deployment_repo.commit()
 
                 logger.info(f"Deploy succeeded: app={application.code}, deployment={deployment.id}")
                 return True
 
             except Exception as e:
-                # 获取详细错误信息
                 error_detail = str(e)
                 if isinstance(e, subprocess.CalledProcessError) and e.output:
                     error_detail = f"{e}\nOutput:\n{e.output}"
 
-                # 失败 - 使用领域服务标记
-                ApplicationLifecycleDomainService.mark_deploy_failure(deployment, error_detail)
+                ApplicationLifecycleDomainService.mark_deploy_failure(deployment, application, error_detail)
                 self.deployment_repo.save(deployment)
+                self.app_repo.save(application)
+                self.deployment_repo.commit()
 
                 logger.error(
                     f"Deploy failed: app={application.code}, deployment={deployment.id}, error={e}", exc_info=True
                 )
                 return False
 
-    async def start_application(self, application_id: str) -> bool:
+    async def execute_restart(
+        self,
+        application: Application,
+        deployment: Deployment,
+    ) -> bool:
         """
-        启动应用
+        执行重启（后台任务）
 
         Args:
-            application_id: 应用 ID
+            application: 应用配置
+            deployment: 部署记录
 
         Returns:
-            是否成功
+            重启是否成功
         """
-        app = self.app_repo.find_by_id(application_id)
-        if not app:
-            raise BusinessError(f"Application {application_id} not found", status_code=404)
-
-        # 检查是否有部署记录
-        deployments, _ = self.deployment_repo.find_by_application(application_id, page=1, per_page=1)
-        has_deployment = len(deployments) > 0
-
-        # 领域验证
-        ApplicationLifecycleDomainService.validate_start(app, has_deployment)
-
-        lock = self.get_lock(application_id)
+        lock = self.get_lock(application.id)
 
         async with lock:
+            application.mark_as_deploying()
+            self.app_repo.save(application)
+
+            deployment.status = DeployStatus.RUNNING.value
+            self.deployment_repo.save(deployment)
+            self.deployment_repo.commit()
+
             try:
-                await self.app_manager.start(app.code)
-                logger.info(f"Application started: app={app.code}")
+                await self.app_manager.restart(application.code, deployment.env_file)
+
+                ApplicationLifecycleDomainService.mark_deploy_success(deployment, application)
+                self.deployment_repo.save(deployment)
+                self.app_repo.save(application)
+                self.deployment_repo.commit()
+
+                logger.info(f"Restart succeeded: app={application.code}, deployment={deployment.id}")
                 return True
+
             except Exception as e:
-                logger.error(f"Application start failed: app={app.code}, error={e}", exc_info=True)
-                raise
+                error_detail = str(e)
+                if isinstance(e, subprocess.CalledProcessError) and e.output:
+                    error_detail = f"{e}\nOutput:\n{e.output}"
+
+                ApplicationLifecycleDomainService.mark_deploy_failure(deployment, application, error_detail)
+                self.deployment_repo.save(deployment)
+                self.app_repo.save(application)
+                self.deployment_repo.commit()
+
+                logger.error(
+                    f"Restart failed: app={application.code}, deployment={deployment.id}, error={e}", exc_info=True
+                )
+                return False
 
     def _find_last_successful_deployment(self, application_id: str) -> Deployment | None:
         return self.deployment_repo.find_last_successful_deploy(application_id)
@@ -148,7 +171,7 @@ class ApplicationService:
         self, application_id: str, remove_volumes: bool = False, env_file: str | None = None
     ) -> Deployment:
         """
-        停止应用
+        停止应用（同步）
 
         Args:
             application_id: 应用 ID
@@ -162,16 +185,13 @@ class ApplicationService:
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
-        # 领域验证
-        if not app.can_stop():
-            raise BusinessError("Application is not running", status_code=400)
+        ApplicationLifecycleDomainService.validate_stop(app)
 
         # 如果未指定 env_file，从最近一次成功部署记录获取
         if env_file is None:
             last_deployment = self._find_last_successful_deployment(application_id)
             env_file = last_deployment.env_file if last_deployment else None
 
-        # 创建停止记录（领域服务）
         deployment = ApplicationLifecycleDomainService.create_stop_record(app, env_file)
         self.deployment_repo.save(deployment)
 
@@ -180,24 +200,23 @@ class ApplicationService:
             try:
                 await self.app_manager.stop(app.code, remove_volumes, env_file)
 
-                # 标记操作成功并更新应用状态
-                ApplicationLifecycleDomainService.mark_operation_success(deployment)
-                app.mark_as_stopped()
+                ApplicationLifecycleDomainService.mark_stop_success(deployment, app)
                 self.deployment_repo.save(deployment)
                 self.app_repo.save(app)
 
                 logger.info(f"Application stopped: app={app.code}")
                 return deployment
             except Exception as e:
-                ApplicationLifecycleDomainService.mark_operation_failure(deployment, str(e))
+                ApplicationLifecycleDomainService.mark_stop_failure(deployment, app, str(e))
                 self.deployment_repo.save(deployment)
+                self.app_repo.save(app)
 
                 logger.error(f"Application stop failed: app={app.code}, error={e}", exc_info=True)
                 raise
 
     async def restart_application(self, application_id: str, env_file: str | None = None) -> Deployment:
         """
-        重启应用
+        重启应用（异步，返回部署记录，后台执行）
 
         Args:
             application_id: 应用 ID
@@ -210,37 +229,18 @@ class ApplicationService:
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
-        # 检查是否有部署记录
-        deployments, _ = self.deployment_repo.find_by_application(application_id, page=1, per_page=1)
-        has_deployment = len(deployments) > 0
-
-        # 领域验证
-        ApplicationLifecycleDomainService.validate_restart(app, has_deployment)
+        ApplicationLifecycleDomainService.validate_restart(app)
 
         # 如果未指定 env_file，从最近一次成功部署记录获取
         if env_file is None:
             last_deployment = self._find_last_successful_deployment(application_id)
             env_file = last_deployment.env_file if last_deployment else None
 
-        deployment = ApplicationLifecycleDomainService.create_restart_record(app, env_file)
+        deployment = ApplicationLifecycleDomainService.create_restart_record(app, env_file=env_file)
         self.deployment_repo.save(deployment)
+        self.deployment_repo.commit()
 
-        lock = self.get_lock(application_id)
-        async with lock:
-            try:
-                await self.app_manager.restart(app.code, env_file)
-
-                ApplicationLifecycleDomainService.mark_operation_success(deployment)
-                self.deployment_repo.save(deployment)
-
-                logger.info(f"Application restarted: app={app.code}")
-                return deployment
-            except Exception as e:
-                ApplicationLifecycleDomainService.mark_operation_failure(deployment, str(e))
-                self.deployment_repo.save(deployment)
-
-                logger.error(f"Application restart failed: app={app.code}, error={e}", exc_info=True)
-                raise
+        return deployment
 
     async def delete_application(self, application_id: str, remove_dir: bool = False) -> bool:
         """
@@ -257,7 +257,6 @@ class ApplicationService:
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
-        # 领域验证
         ApplicationLifecycleDomainService.validate_delete(app)
 
         lock = self.get_lock(application_id)
@@ -285,7 +284,7 @@ class ApplicationService:
 
     async def get_application_status(self, application_code: str) -> str:
         """
-        获取应用状态
+        获取应用运行状态
 
         Args:
             application_code: 应用编码
@@ -318,12 +317,10 @@ class ApplicationService:
         image_source_data: dict | None = None,
     ) -> Application:
         """创建应用"""
-        # 检查名称是否已存在
         existing = self.app_repo.find_by_name(name)
         if existing:
             raise BusinessError(f"Application '{name}' already exists", status_code=400)
 
-        # 创建应用实体
         app_id = str(ULID())
         app = Application(
             id=app_id,
@@ -331,10 +328,9 @@ class ApplicationService:
             code=code,
             enabled=enabled,
             image_pull_policy=image_pull_policy,
-            status=ApplicationStatus.STOPPED,
+            status=ApplicationStatus.UNDEPLOYED,
         )
 
-        # 创建源配置
         if git_source_data:
             app.git_source = GitSource(
                 id=str(ULID()),
@@ -366,12 +362,10 @@ class ApplicationService:
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
-        # 更新基本信息
         for key, value in update_data.items():
             if hasattr(app, key):
                 setattr(app, key, value)
 
-        # 更新源配置
         if git_source_data is not None:
             if app.git_source:
                 for key, value in git_source_data.items():
@@ -401,7 +395,6 @@ class ApplicationService:
 
     def get_config_files(self, application_id: str) -> list[ApplicationConfigFile]:
         """获取应用的所有配置文件"""
-        # 验证应用存在
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -410,7 +403,6 @@ class ApplicationService:
 
     def get_config_file(self, application_id: str, config_file_id: str) -> ApplicationConfigFile:
         """获取单个配置文件"""
-        # 验证应用存在
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -423,7 +415,6 @@ class ApplicationService:
 
     def create_config_file(self, application_id: str, path: str, content: str) -> ApplicationConfigFile:
         """创建配置文件"""
-        # 验证应用存在
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -439,7 +430,6 @@ class ApplicationService:
 
     def delete_config_file(self, application_id: str, config_file_id: str) -> None:
         """删除配置文件"""
-        # 验证应用存在
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -454,7 +444,6 @@ class ApplicationService:
         self, application_id: str, config_file_id: str, content: str, path: str | None = None
     ) -> ApplicationConfigFile:
         """写入配置文件内容到数据库和文件系统"""
-        # 验证应用存在
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -491,7 +480,7 @@ class ApplicationService:
             operation_type=operation_type,
             trigger_type=trigger_type,
             trigger_ref=trigger_ref,
-            status=DeployStatus.QUEUED,
+            status=DeployStatus.WAITING_TO_RUN,
             env_file=env_file,
             is_rollback=is_rollback,
         )
@@ -533,27 +522,23 @@ class ApplicationService:
 
     def import_application(self, data: dict) -> Application:
         """导入应用数据"""
-        # 检查 name 是否已存在
         existing_name = self.app_repo.find_by_name(data["name"])
         if existing_name:
             raise BusinessError(f"Application name '{data['name']}' already exists", status_code=400)
 
-        # 检查 code 是否已存在
         existing_code = self.app_repo.find_by_code(data["code"])
         if existing_code:
             raise BusinessError(f"Application code '{data['code']}' already exists", status_code=400)
 
-        # 创建应用
         app = Application(
             id=str(ULID()),
             name=data["name"],
             code=data["code"],
             enabled=data.get("enabled", True),
             image_pull_policy=data.get("image_pull_policy", "missing"),
-            status="stopped",
+            status=ApplicationStatus.UNDEPLOYED,
         )
 
-        # 创建 GitSource
         if data.get("git_source"):
             app.git_source = GitSource(
                 id=str(ULID()),
@@ -563,7 +548,6 @@ class ApplicationService:
                 auto_deploy=data["git_source"].get("auto_deploy", True),
             )
 
-        # 创建 ImageSource
         if data.get("image_source"):
             app.image_source = ImageSource(
                 id=str(ULID()),
@@ -574,7 +558,6 @@ class ApplicationService:
 
         self.app_repo.save(app)
 
-        # 创建配置文件
         for cf_data in data.get("config_files", []):
             config_file = ApplicationConfigFile(
                 id=str(ULID()),

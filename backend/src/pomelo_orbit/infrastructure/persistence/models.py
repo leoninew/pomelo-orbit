@@ -54,7 +54,7 @@ class ApplicationModel(Base):
 
     # 部署配置
     image_pull_policy: Mapped[str] = mapped_column(String(20), default=ImagePullPolicy.MISSING, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default=ApplicationStatus.STOPPED, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default=ApplicationStatus.UNDEPLOYED, nullable=False)
 
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)

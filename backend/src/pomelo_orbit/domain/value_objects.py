@@ -8,8 +8,10 @@ from enum import StrEnum
 class ApplicationStatus(StrEnum):
     """应用状态"""
 
-    STARTED = "started"
-    STOPPED = "stopped"
+    UNDEPLOYED = "undeployed"
+    DEPLOYING = "deploying"
+    DEPLOYED = "deployed"
+    DEPLOY_FAILED = "deploy_failed"
 
 
 class OperationType(StrEnum):
@@ -31,10 +33,11 @@ class ImagePullPolicy(StrEnum):
 class DeployStatus(StrEnum):
     """部署状态"""
 
-    QUEUED = "queued"
+    WAITING_TO_RUN = "waiting_to_run"
     RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
+    RAN_TO_COMPLETION = "ran_to_completion"
+    CANCELED = "canceled"
+    FAULTED = "faulted"
 
 
 __all__ = ["ApplicationStatus", "DeployStatus", "ImagePullPolicy", "OperationType"]

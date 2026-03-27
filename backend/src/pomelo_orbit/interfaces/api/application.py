@@ -234,12 +234,18 @@ async def stop_application(
 @router.post("/{app_id}/restart")
 async def restart_application(
     app_id: str,
+    background_tasks: BackgroundTasks,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     _current_user=Depends(get_current_user),
     env: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
     """重启应用"""
+    app = app_service.get_application(app_id)
+
     deployment = await app_service.restart_application(app_id, env)
+
+    background_tasks.add_task(app_service.execute_restart, app, deployment)
+
     return {"deployment_id": deployment.id}
 
 

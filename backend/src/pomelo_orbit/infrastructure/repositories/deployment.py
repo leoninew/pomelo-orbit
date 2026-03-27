@@ -38,7 +38,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
             .filter(
                 DeploymentModel.application_id == app_id,
                 DeploymentModel.operation_type == OperationType.DEPLOY,
-                DeploymentModel.status == DeployStatus.SUCCESS.value,
+                DeploymentModel.status == DeployStatus.RAN_TO_COMPLETION.value,
             )
             .order_by(DeploymentModel.started_at.desc())
             .first()

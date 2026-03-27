@@ -63,10 +63,10 @@ class DeploymentService:
         if not deployment:
             raise BusinessError(f"Deployment {deployment_id} not found", status_code=404)
 
-        if deployment.status not in (DeployStatus.QUEUED, DeployStatus.RUNNING):
+        if deployment.status not in (DeployStatus.WAITING_TO_RUN, DeployStatus.RUNNING):
             raise BusinessError("Deployment is not in a cancellable state", status_code=400)
 
-        deployment.status = DeployStatus.FAILED
+        deployment.status = DeployStatus.CANCELED
         deployment.error_message = "Cancelled by user"
         deployment.finished_at = utc_now()
 
@@ -101,6 +101,6 @@ class DeploymentService:
         logs, current_offset = self.app_manager.read_deployment_log(app.code, deployment_id, offset)
 
         # 判断是否完成
-        is_complete = deployment.status in (DeployStatus.SUCCESS, DeployStatus.FAILED)
+        is_complete = deployment.status in (DeployStatus.RAN_TO_COMPLETION, DeployStatus.FAULTED, DeployStatus.CANCELED)
 
         return logs, current_offset, is_complete

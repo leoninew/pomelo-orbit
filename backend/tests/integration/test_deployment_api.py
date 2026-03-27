@@ -54,7 +54,7 @@ def test_deployment(db_session, test_app):
         application_name=test_app.name,
         operation_type=OperationType.DEPLOY,
         trigger_type=TriggerType.MANUAL,
-        status=DeployStatus.SUCCESS,
+        status=DeployStatus.RAN_TO_COMPLETION,
     )
     db_session.add(deployment)
     db_session.commit()
@@ -76,7 +76,9 @@ class TestDeploymentAPI:
 
     def test_list_deployments_with_filters(self, auth_client, test_app, test_deployment):
         """测试带过滤条件列出部署"""
-        response = auth_client.get(f"/api/deployment?application_id={test_app.id}&status={DeployStatus.SUCCESS}")
+        response = auth_client.get(
+            f"/api/deployment?application_id={test_app.id}&status={DeployStatus.RAN_TO_COMPLETION}"
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -133,5 +135,5 @@ class TestDeploymentAPI:
         # 验证数据库更新
         db_session.expire_all()
         updated = db_session.query(DeploymentModel).filter_by(id=deployment.id).first()
-        assert updated.status == DeployStatus.FAILED
+        assert updated.status == DeployStatus.CANCELED
         assert "Cancelled" in updated.error_message

@@ -134,7 +134,7 @@ async def github_webhook(
         trigger_ref=parsed.branch,
         webhook_event_id=event.id,
         image_name=image_name,
-        status=DeployStatus.QUEUED.value,
+        status=DeployStatus.WAITING_TO_RUN.value,
         started_at=utc_now(),
     )
     db.add(deployment)

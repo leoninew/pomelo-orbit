@@ -81,19 +81,13 @@ echo "Initializing Traefik..."
 mkdir -p data/dynamic
 mkdir -p data/certs
 
+# 仅在不存在时创建 acme.json（避免覆盖已有证书）
+if [ ! -f data/acme.json ]; then
+  touch data/acme.json
+fi
+
 echo "Traefik initialized"
 ',
-    datetime('now'),
-    datetime('now')
-);
-
--- Traefik acme.json (空文件，用于 Let's Encrypt 证书存储)
-INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
-VALUES (
-    '01KKX2YNPF6VJ9N7QYCWG61KVS',
-    '01KKX2YNPF6VJ9N7QYCWG61KVM',
-    'data/acme.json',
-    '',
     datetime('now'),
     datetime('now')
 );

@@ -13,6 +13,7 @@ Pomelo Orbit Remote Deployment Tool
   SSH_HOST                        - 远程主机地址
   SSH_USER                        - SSH 用户名
   REMOTE_PORT                     - 远程端口
+  REMOTE_DEPLOY_DIR               - 远程部署目录（必填）
   POMELO_ORBIT_JWT__SECRET_KEY    - JWT 密钥（必填）
   POMELO_ORBIT_IMAGE              - Docker 镜像（可选，默认从数据库读取）
   POMELO_ORBIT_TRAEFIK__API_URL   - Traefik API 地址（可选）
@@ -691,8 +692,7 @@ def main():
     backup_parser = subparsers.add_parser("backup", help="备份远程数据目录")
     backup_parser.add_argument(
         "--remote-dir",
-        default="/opt/pomelo-orbit/data",
-        help="远程备份目录(默认: /opt/pomelo-orbit/data)",
+        help="远程备份目录(默认: REMOTE_DEPLOY_DIR)",
     )
 
     args = parser.parse_args()
@@ -739,7 +739,7 @@ def main():
     elif args.command == "ssh":
         os.system(f"ssh {config.ssh_target}")
     elif args.command == "backup":
-        backup(config, args.remote_dir)
+        backup(config, args.remote_dir or config.remote_deploy_dir)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ Pomelo Orbit Remote Deployment Tool
 用法:
   python scripts/renew.py install [--image IMAGE]    - 初次部署（从数据库读取配置）
   python scripts/renew.py upgrade [--image IMAGE]    - 更新部署（只更新镜像和 .env）
-  python scripts/renew.py tunnel start               - 启动 SSH 隧道
+  python scripts/renew.py tunnel start [ports...]    - 启动 SSH 隧道
   python scripts/renew.py tunnel stop                - 停止 SSH 隧道
   python scripts/renew.py tunnel status              - 查看隧道状态
   python scripts/renew.py exec <command>             - 执行远程命令
@@ -31,6 +31,11 @@ Pomelo Orbit Remote Deployment Tool
 示例:
   python scripts/renew.py install --image ghcr.io/leoninew/pomelo-orbit:latest
   python scripts/renew.py upgrade --image ghcr.io/leoninew/pomelo-orbit:v1.0
+  python scripts/renew.py tunnel start               - 使用默认配置启动隧道
+  python scripts/renew.py tunnel start 8080           - 转发 8080->8080
+  python scripts/renew.py tunnel start 8080:8888      - 转发 8080->8888
+  python scripts/renew.py tunnel start 8080 9090      - 转发 8080->8080 和 9090->9090
+  python scripts/renew.py tunnel start 8080:8888 9090:9999
   python scripts/renew.py exec ls -al
   python scripts/renew.py docker-compose up -d
   python scripts/renew.py docker-compose logs -f
@@ -62,7 +67,6 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 ENV_FILE = SCRIPT_DIR / ".env"
-PID_FILE = Path.home() / ".ssh" / "pomelo-orbit-forward.pid"
 
 config: "Config"
 
@@ -212,29 +216,19 @@ class SSHTunnel:
         logger.error("SSH 隧道启动失败")
         return False
 
-    def stop(self, local_port: int | None = None) -> bool:
-        """停止 SSH 隧道，不指定端口则停止全部"""
+    def stop(self) -> bool:
+        """停止所有 SSH 隧道"""
         tunnels = self._load_tunnels()
         if not tunnels:
             logger.info("隧道未运行")
             return False
 
-        targets = (
-            [t for t in tunnels if t["local_port"] == local_port]
-            if local_port
-            else tunnels
-        )
-        if not targets:
-            logger.info(f"未找到本地端口 {local_port} 的隧道")
-            return False
-
-        remaining = [t for t in tunnels if t not in targets]
         success = True
-
-        for t in targets:
+        for t in tunnels:
             pid = t.get("pid")
             if not pid:
                 logger.warning(f"隧道 localhost:{t['local_port']} 缺少 PID, 跳过")
+                success = False
                 continue
             try:
                 logger.info(
@@ -258,11 +252,7 @@ class SSHTunnel:
                 logger.error(f"  停止失败: {e}")
                 success = False
 
-        if remaining:
-            self._save_tunnels(remaining)
-        else:
-            self.STATE_FILE.unlink(missing_ok=True)
-
+        self.STATE_FILE.unlink(missing_ok=True)
         return success
 
     def status(self) -> bool:
@@ -665,12 +655,7 @@ def main():
         "action", choices=["start", "stop", "status"], help="操作"
     )
     tunnel_parser.add_argument(
-        "-r", "--remote_port", help="远程端口, 多个用逗号分隔(仅 start 使用)"
-    )
-    tunnel_parser.add_argument(
-        "-l",
-        "--local_port",
-        help="本地端口, 多个用逗号分隔(start: 指定本地端口; stop: 只停止该端口)",
+        "ports", nargs="*", help="端口映射, 格式: remote_port[:local_port], 如 8080 或 8080:8888"
     )
 
     # exec 命令
@@ -713,21 +698,30 @@ def main():
     elif args.command == "tunnel":
         tunnel = SSHTunnel(config)
         if args.action == "start":
-            remote_ports = (
-                [int(p) for p in args.remote_port.split(",")]
-                if args.remote_port
-                else [None]
-            )
-            local_ports = (
-                [int(p) for p in args.local_port.split(",")]
-                if args.local_port
-                else [None] * len(remote_ports)
-            )
-            for r, lp in zip(remote_ports, local_ports, strict=False):
-                tunnel.start(remote_port=r, local_port=lp)
+            # 解析端口映射: remote_port[:local_port], 如 8080 或 8080:8888
+            port_mappings = []
+            for p in args.ports:
+                if ":" in p:
+                    parts = p.split(":")
+                    if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+                        logger.error(f"无效的端口格式: {p}, 应为 remote_port[:local_port]")
+                        sys.exit(1)
+                    remote, local = int(parts[0]), int(parts[1])
+                else:
+                    if not p.isdigit():
+                        logger.error(f"无效的端口: {p}")
+                        sys.exit(1)
+                    remote = local = int(p)
+                port_mappings.append((remote, local))
+            if not port_mappings:
+                # 无参数时显示帮助
+                tunnel_parser.print_help()
+                sys.exit(0)
+            else:
+                for remote, local in port_mappings:
+                    tunnel.start(remote_port=remote, local_port=local)
         elif args.action == "stop":
-            local_port = int(args.local_port) if args.local_port else None
-            tunnel.stop(local_port=local_port)
+            tunnel.stop()
         else:
             getattr(tunnel, args.action)()
     elif args.command == "exec":

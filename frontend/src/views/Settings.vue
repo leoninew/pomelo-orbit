@@ -77,13 +77,13 @@
 						<template v-else>
 							<a-tag
 								v-if="typeof record.value === 'boolean'"
-								:color="record.value ? 'green' : 'default'"
+								:color="record.is_overridden ? 'warning' : (record.value ? 'green' : 'default')"
 							>
 								{{ record.value ? '已启用' : '未启用' }}
 							</a-tag>
-							<span v-else>
+							<a-typography-text v-else :type="record.is_overridden ? 'warning' : undefined">
 								{{ record.value === '' || record.value == null ? '-' : record.value }}
-							</span>
+							</a-typography-text>
 						</template>
 					</template>
 

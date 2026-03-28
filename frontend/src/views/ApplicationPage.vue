@@ -41,55 +41,48 @@
 		<a-spin v-if="viewMode === 'card'" :spinning="loading">
 			<a-row :gutter="[16, 16]">
 				<a-col v-for="app in applications" :key="app.id" :xs="24" :sm="12" :lg="8" :xl="6">
-					<a-card hoverable :class="['app-card', `app-card--${app.status}`]">
-						<template #title>
-							<router-link :to="`/applications/${app.id}`" style="display: block">
-								{{ app.name }}
-							</router-link>
-						</template>
-						<template #extra>
-							<a-tooltip :title="cardActionTooltip(app.status)">
+					<div :class="['app-card', `app-card--${app.status}`]" @click="$router.push(`/applications/${app.id}`)">
+						<div class="app-card__header">
+							<span class="app-card__name">{{ app.name }}</span>
+							<a-space :size="4" @click.stop>
 								<a-button
+									v-if="app.status === 'deploying'"
 									type="text"
 									size="small"
-									:disabled="app.status === 'deploying'"
-									@click.stop="handleCardAction(app)"
+									disabled
 								>
-									<template #icon>
-										<LoadingOutlined
-											v-if="app.status === 'deploying'"
-											class="spin"
-										/>
-										<CloseCircleOutlined
-											v-else-if="app.status === 'deployed'"
-										/>
-										<ReloadOutlined
-											v-else-if="app.status === 'deploy_failed'"
-											style="color: #fa8c16"
-										/>
-										<PlayCircleOutlined v-else />
-									</template>
+									<template #icon><LoadingOutlined class="spin" /></template>
 								</a-button>
-							</a-tooltip>
-						</template>
-						<a-descriptions :column="1" size="small">
-							<a-descriptions-item label="编码">{{ app.code }}</a-descriptions-item>
-							<a-descriptions-item label="仓库">
-								{{ app.git_source?.repository_url || '-' }}
-							</a-descriptions-item>
-							<a-descriptions-item label="状态">
-								<a-tag :color="appStatusColor(app.status)">
+								<template v-else>
+									<a-button
+										v-if="app.status === 'deployed'"
+										type="text"
+										size="small"
+										danger
+										@click="handleStop(app)"
+									>停止</a-button>
+									<a-button
+										v-else
+										type="text"
+										size="small"
+										@click="handleDeploy(app)"
+									>部署</a-button>
+								</template>
+							</a-space>
+						</div>
+						<div class="app-card__body">
+							<div class="app-card__meta">
+								<span class="app-card__code">{{ app.code }}</span>
+								<a-tag :color="appStatusColor(app.status)" class="app-card__status">
 									{{ appStatusLabel(app.status) }}
 								</a-tag>
-							</a-descriptions-item>
-							<a-descriptions-item label="镜像拉取策略">
-								{{ app.image_pull_policy }}
-							</a-descriptions-item>
-							<a-descriptions-item label="部署记录">
-								<a @click.stop="viewLastDeployment(app.id)">查看部署记录</a>
-							</a-descriptions-item>
-						</a-descriptions>
-					</a-card>
+							</div>
+							<div class="app-card__footer">
+								<span class="app-card__policy">拉取策略：{{ app.image_pull_policy }}</span>
+								<a class="app-card__link" @click.stop="viewLastDeployment(app.id)">最后部署记录</a>
+							</div>
+						</div>
+					</div>
 				</a-col>
 			</a-row>
 			<a-pagination
@@ -357,21 +350,23 @@ async function pollDeployment(deploymentId: string, app: Application) {
 }
 
 async function handleDeploy(app: Application) {
+	const target = applications.value.find((a) => a.id === app.id);
+	if (target) target.status = 'deploying';
 	try {
 		await executeOp(async () => {
 			const { deployment_id } = await applicationApi.deploy(app.id);
-			// 立即反映部署中状态
-			const target = applications.value.find((a) => a.id === app.id);
-			if (target) target.status = 'deploying';
 			message.success(`${app.name} 部署已触发`);
 			pollDeployment(deployment_id, app);
 		});
 	} catch (error) {
+		if (target) target.status = 'deploy_failed';
 		message.error(error instanceof Error ? error.message : '部署失败');
 	}
 }
 
 async function handleStop(app: Application) {
+	const prevStatus = app.status;
+	app.status = 'deploying';
 	try {
 		await executeOp(async () => {
 			await applicationApi.stop(app.id);
@@ -379,7 +374,7 @@ async function handleStop(app: Application) {
 			message.success(`${app.name} 已停止`);
 		});
 	} catch (error) {
-		app.status = 'deploy_failed';
+		app.status = prevStatus;
 		message.error(error instanceof Error ? error.message : '停止失败');
 	}
 }
@@ -537,18 +532,6 @@ onMounted(() => {
 	fetchApplications();
 });
 
-function cardActionTooltip(status: string) {
-	if (status === 'deploying') return '部署中...';
-	if (status === 'deployed') return '停止';
-	if (status === 'deploy_failed') return '重新部署';
-	return '部署';
-}
-
-function handleCardAction(app: Application) {
-	if (app.status === 'deployed') handleStop(app);
-	else handleDeploy(app);
-}
-
 function appStatusColor(status: string) {
 	if (status === 'deployed') return 'success';
 	if (status === 'deploy_failed') return 'error';
@@ -580,12 +563,88 @@ a.disabled {
 	cursor: not-allowed;
 }
 
+.app-card {
+	background: #fff;
+	border-radius: 8px;
+	border: 1px solid #e8e8e8;
+	cursor: pointer;
+	transition: box-shadow 0.2s, border-color 0.2s;
+	overflow: hidden;
+}
+
+.app-card:hover {
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+	border-color: #d0d0d0;
+}
+
 .app-card--deployed {
-	border-color: #52c41a !important;
+	border-top: 3px solid #52c41a;
 }
 
 .app-card--deploy_failed {
-	border-color: #ff4d4f !important;
+	border-top: 3px solid #ff4d4f;
+}
+
+.app-card--deploying {
+	border-top: 3px solid #1677ff;
+}
+
+.app-card--undeployed {
+	border-top: 3px solid #d9d9d9;
+}
+
+.app-card__header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 14px 16px 8px;
+}
+
+.app-card__name {
+	font-size: 15px;
+	font-weight: 600;
+	color: #1677ff;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.app-card__body {
+	padding: 0 16px 14px;
+}
+
+.app-card__meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.app-card__code {
+	font-size: 12px;
+	color: #888;
+	font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.app-card__status {
+	margin: 0;
+}
+
+.app-card__footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding-top: 10px;
+	border-top: 1px solid #f0f0f0;
+}
+
+.app-card__policy {
+	font-size: 12px;
+	color: #aaa;
+}
+
+.app-card__link {
+	font-size: 12px;
 }
 
 .config-files-list {

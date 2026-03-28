@@ -78,7 +78,7 @@
 								</a-dropdown>
 							</div>
 						</a-layout-header>
-						<a-layout-content style="padding: 24px; background: #f0f2f5">
+						<a-layout-content style="padding: 24px; background: #f0f2f5; height: calc(100vh - 64px); overflow-y: auto; display: flex; flex-direction: column">
 							<router-view />
 						</a-layout-content>
 					</a-layout>

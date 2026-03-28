@@ -1,5 +1,5 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
+	<div class="page-wrapper">
 		<div v-if="deployment" class="page-header">
 			<h2>部署记录 #{{ deploymentId }}</h2>
 			<a-space>
@@ -56,22 +56,27 @@
 			<a-alert type="error" :message="deployment.error_message" show-icon />
 		</a-card>
 
-		<a-card title="部署日志" :loading="loading">
+		<a-card title="部署日志" :loading="loading" class="log-card">
 			<template v-if="deployment" #extra>
 				<a-space>
-					<a-button size="small" @click="fetchDeployment">刷新</a-button>
-					<a-button size="small" :disabled="!logText" @click="copyLog">复制日志</a-button>
+					<a-button size="small" @click="refreshDeployment">刷新</a-button>
+					<a-tooltip title="滚动到底部">
+						<a-button size="small" :disabled="!logText" @click="scrollToBottom">
+							<template #icon><VerticalAlignBottomOutlined /></template>
+						</a-button>
+					</a-tooltip>
 				</a-space>
 			</template>
-			<div v-if="deployment" class="log-container">
+			<div v-if="deployment" ref="logContainerRef" class="log-container">
 				<pre class="log-content">{{ logText || '暂无日志' }}</pre>
 			</div>
 		</a-card>
-	</a-space>
+	</div>
 </template>
 
 <script setup lang="ts">
 import { message } from 'ant-design-vue';
+import { VerticalAlignBottomOutlined } from '@ant-design/icons-vue';
 import { formatTime } from '@/utils/time';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -87,6 +92,7 @@ const { loading, execute } = useStatusAsync();
 const deployment = ref<DeploymentDetail>();
 const logText = ref('');
 const logOffset = ref(0);
+const logContainerRef = ref<HTMLElement>();
 
 let pollTimer: number | null = null;
 
@@ -165,10 +171,14 @@ async function handleCancel() {
 	}
 }
 
-function copyLog() {
-	if (logText.value) {
-		navigator.clipboard.writeText(logText.value);
-		message.success('已复制到剪贴板');
+async function refreshDeployment() {
+	await fetchDeployment();
+	scrollToBottom();
+}
+
+function scrollToBottom() {
+	if (logContainerRef.value) {
+		logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
 	}
 }
 
@@ -183,6 +193,13 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.page-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	height: 100%;
+}
+
 .page-header {
 	display: flex;
 	justify-content: space-between;
@@ -193,17 +210,27 @@ onUnmounted(() => {
 	margin: 0;
 }
 
-.sub-title {
-	color: rgba(0, 0, 0, 0.45);
-	font-size: 14px;
-	margin-top: 4px;
+.log-card {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.log-card :deep(.ant-card-body) {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	padding: 12px;
 }
 
 .log-container {
+	flex: 1;
+	min-height: 0;
 	background: #1e1e1e;
 	border-radius: 4px;
 	padding: 12px;
-	max-height: 600px;
 	overflow: auto;
 }
 

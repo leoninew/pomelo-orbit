@@ -70,7 +70,7 @@
 					{{ formatTime(application.created_at) }}
 				</a-descriptions-item>
 				<a-descriptions-item label="部署记录">
-					<a @click="$router.push(`/deployments?application_id=${application.id}`)">查看部署记录</a>
+					<a @click="$router.push(`/deployments?application_id=${application.id}`)">所有部署记录</a>
 				</a-descriptions-item>
 			</a-descriptions>
 		</a-card>
@@ -525,6 +525,12 @@ async function saveCurrentFile() {
 		return;
 	}
 
+	const lowerPath = currentFilePath.value.toLowerCase();
+	const isShellFile = lowerPath.endsWith('.sh') || lowerPath.endsWith('.bash');
+	const content = isShellFile
+		? currentFileContent.value.replace(/\r\n/g, '\n')
+		: currentFileContent.value;
+
 	try {
 		await executeFileContent(async () => {
 			if (currentFileId.value) {
@@ -533,7 +539,7 @@ async function saveCurrentFile() {
 					applicationId,
 					currentFileId.value,
 					currentFilePath.value,
-					currentFileContent.value
+					content
 				);
 				// 更新文件列表中对应记录
 				const index = files.value.findIndex((f) => f.id === currentFileId.value);
@@ -546,7 +552,7 @@ async function saveCurrentFile() {
 				await applicationApi.createFile(
 					applicationId,
 					currentFilePath.value,
-					currentFileContent.value
+					content
 				);
 				message.success('添加成功');
 			}

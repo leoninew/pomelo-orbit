@@ -25,11 +25,11 @@ PROJECT_DIR = SCRIPT_DIR.parent
 
 # send 排除规则（黑名单）：.gitignore 规则 + 固定排除项
 SEND_EXCLUDES = [
-    "--filter=:- .gitignore",
     "--exclude=.git",
-    "--exclude=CLAUDE.md",
-    "--exclude=docs",
+    "--filter=:- .gitignore",
     "--exclude=scripts",
+    "--exclude=docs",
+    "--exclude=CLAUDE.md",
     "--exclude=.pomelo-pw.yaml",
 ]
 

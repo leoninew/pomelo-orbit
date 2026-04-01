@@ -71,6 +71,7 @@ class ProjectResp(BaseModel):
     git_credential_id: str
     variable_overrides: dict[str, Any]
     branch_filter: str | None
+    default_branch: str
     webhook_secret: str | None
     created_at: datetime
     updated_at: datetime
@@ -85,6 +86,7 @@ class ProjectCreateReq(BaseModel):
     git_credential_id: str
     variable_overrides: dict[str, Any] = {}
     branch_filter: str | None = None
+    default_branch: str = "master"
     enable_webhook: bool = True
 
 
@@ -95,6 +97,7 @@ class ProjectUpdateReq(BaseModel):
     git_credential_id: str | None = None
     variable_overrides: dict[str, Any] | None = None
     branch_filter: str | None = None
+    default_branch: str | None = None
 
 
 class WebhookConfigResp(BaseModel):
@@ -120,7 +123,7 @@ class PipelineRunResp(BaseModel):
 
 
 class TriggerPipelineReq(BaseModel):
-    trigger_ref: str = "main"
+    trigger_ref: str = ""
     variables: dict[str, Any] = {}
 
 
@@ -146,8 +149,7 @@ class JobResp(BaseModel):
     parent_job_id: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
-    created_at: datetime
-    updated_at: datetime
+    error_message: str | None = None
 
     model_config = {"from_attributes": True}
 

@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 
 from pomelo_orbit.application.ci_webhook_service import CIWebhookService
 from pomelo_orbit.application.pipeline_service import PipelineService
+from pomelo_orbit.domain.ci.executor import PipelineExecutor
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
+from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 from pomelo_orbit.infrastructure.ci.repositories import (
     ArtifactRepositoryImpl,
     CredentialRepositoryImpl,
@@ -23,12 +25,32 @@ from pomelo_orbit.infrastructure.ci.repositories import (
 from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.persistence.database import get_session_factory
 from pomelo_orbit.infrastructure.persistence.di import get_db
+from pomelo_orbit.infrastructure.security import SecurityService
 
 
 @lru_cache
 def get_container_executor() -> ContainerExecutor:
     """ContainerExecutor 单例（复用 Docker client 连接）"""
     return ContainerExecutor()
+
+
+@lru_cache
+def _get_cached_executor_factory(settings: Dynaconf):
+    """executor_factory 单例，避免每次请求重复创建"""
+    security_service = SecurityService(settings)
+    container_executor = get_container_executor()
+
+    def factory(session: Session) -> PipelineExecutor:
+        return PipelineExecutorImpl(
+            job_repo=JobRepositoryImpl(session),
+            job_log_repo=JobLogRepositoryImpl(session),
+            container_executor=container_executor,
+            artifact_repo=ArtifactRepositoryImpl(session),
+            credential_repo=CredentialRepositoryImpl(session),
+            security_service=security_service,
+        )
+
+    return factory
 
 
 def get_pipeline_service(
@@ -47,8 +69,9 @@ def get_pipeline_service(
         artifact_repo=ArtifactRepositoryImpl(db),
         job_repo=JobRepositoryImpl(db),
         job_log_repo=JobLogRepositoryImpl(db),
-        global_variables=global_vars,
         session_factory=get_session_factory(),
+        executor_factory=_get_cached_executor_factory(settings),
+        global_variables=global_vars,
     )
 
 

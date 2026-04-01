@@ -25,9 +25,10 @@ class Project:
     repository_url: str
     pipeline_template_id: str
     git_credential_id: str
-    variable_overrides: dict[str, Any] = field(default_factory=dict)
+    variable_overrides: dict[str, Any]
     webhook_secret: str | None = None
     branch_filter: str | None = None
+    default_branch: str = "master"
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
 
@@ -40,6 +41,7 @@ class Project:
         variable_overrides: dict[str, Any] | None = None,
         webhook_secret: str | None = None,
         branch_filter: str | None = None,
+        default_branch: str = "master",
     ) -> "Project":
         """创建项目"""
         return Project(
@@ -51,6 +53,7 @@ class Project:
             variable_overrides=variable_overrides or {},
             webhook_secret=webhook_secret,
             branch_filter=branch_filter,
+            default_branch=default_branch,
         )
 
     def update(
@@ -62,6 +65,7 @@ class Project:
         git_credential_id: str | None = None,
         webhook_secret: str | None = None,
         branch_filter: str | None = None,
+        default_branch: str | None = None,
     ) -> None:
         """更新项目"""
         if name is not None:
@@ -78,6 +82,8 @@ class Project:
             self.webhook_secret = webhook_secret
         if branch_filter is not None:
             self.branch_filter = branch_filter
+        if default_branch is not None:
+            self.default_branch = default_branch
         self.updated_at = utc_now()
 
 
@@ -90,6 +96,18 @@ class Credential:
     type: CredentialType
     encrypted_data: str
     created_at: datetime = field(default_factory=utc_now)
+
+    def get_private_key(self) -> str:
+        """获取 SSH 私钥（仅 git_ssh 类型有效，encrypted_data 已解密）"""
+        if self.type != CredentialType.GIT_SSH:
+            raise ValueError(f"Credential type {self.type} has no private key")
+        return self.encrypted_data
+
+    def get_token(self) -> str:
+        """获取 token（仅 git_token 类型有效，encrypted_data 已解密）"""
+        if self.type != CredentialType.GIT_TOKEN:
+            raise ValueError(f"Credential type {self.type} has no token")
+        return self.encrypted_data
 
     @staticmethod
     def create(
@@ -205,6 +223,13 @@ class PipelineRun:
     def complete_failed(self) -> None:
         """执行失败"""
         self.status = PipelineRunStatus.FAILED
+        self.finished_at = utc_now()
+
+    def cancel(self) -> None:
+        """取消执行"""
+        if self.status not in (PipelineRunStatus.WAITING, PipelineRunStatus.RUNNING):
+            raise ValueError(f"Cannot cancel run with status {self.status}")
+        self.status = PipelineRunStatus.CANCELED
         self.finished_at = utc_now()
 
 

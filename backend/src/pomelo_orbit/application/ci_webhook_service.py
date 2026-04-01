@@ -30,7 +30,7 @@ class CIWebhookService:
         self.project_repo = project_repo
         self.pipeline_service = pipeline_service
 
-    async def handle_github_webhook(
+    def handle_github_webhook(
         self,
         payload_bytes: bytes,
         payload: dict,
@@ -54,14 +54,14 @@ class CIWebhookService:
             logger.warning(f"GitHub webhook payload parse failed: {e}")
             return {"status": "ignored", "reason": str(e)}
 
-        return await self._handle_webhook(
+        return self._handle_webhook(
             source="github",
             ci_payload=ci_payload,
             payload_bytes=payload_bytes,
             signature=signature,
         )
 
-    async def handle_gitlab_webhook(
+    def handle_gitlab_webhook(
         self,
         payload: dict,
         token: str,
@@ -82,14 +82,14 @@ class CIWebhookService:
             logger.warning(f"GitLab webhook payload parse failed: {e}")
             return {"status": "ignored", "reason": str(e)}
 
-        return await self._handle_webhook(
+        return self._handle_webhook(
             source="gitlab",
             ci_payload=ci_payload,
             payload_bytes=None,
             signature=token,
         )
 
-    async def _handle_webhook(
+    def _handle_webhook(
         self,
         source: str,
         ci_payload: CIWebhookPayload,
@@ -146,7 +146,7 @@ class CIWebhookService:
                         continue
 
                 # 触发 pipeline
-                run = await self.pipeline_service.trigger_pipeline(
+                run, triggered_project, merged_vars = self.pipeline_service.create_run(
                     project_id=project.id,
                     trigger=PipelineRunTrigger.WEBHOOK,
                     trigger_ref=ci_payload.branch or ci_payload.commit_sha,
@@ -156,7 +156,13 @@ class CIWebhookService:
                         "event_type": ci_payload.event_type,
                     },
                 )
-                triggered_runs.append({"project_id": project.id, "run_id": run.id})
+                triggered_runs.append({
+                    "project_id": project.id,
+                    "run_id": run.id,
+                    "run": run,
+                    "project": triggered_project,
+                    "merged_vars": merged_vars,
+                })
                 logger.info(
                     f"Pipeline triggered via webhook: source={source}, "
                     f"project={project.id}, run={run.id}, ref={ci_payload.branch}"

@@ -1,9 +1,11 @@
 """Pipeline 应用服务 - 处理 pipeline 触发和查询"""
 
-import asyncio
 import logging
 import secrets
+from collections.abc import Callable
 from typing import Any
+
+from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
@@ -14,7 +16,7 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineTemplate,
     Project,
 )
-from pomelo_orbit.domain.ci.executor import ExecutionContext
+from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.repositories import (
     ArtifactRepository,
     CredentialRepository,
@@ -31,19 +33,13 @@ from pomelo_orbit.domain.ci.value_objects import (
     VariableDeclaration,
 )
 from pomelo_orbit.domain.exceptions import BusinessError
-from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
-from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 from pomelo_orbit.infrastructure.ci.parser import PipelineParseError, parse_pipeline_yaml
-from pomelo_orbit.infrastructure.ci.repositories import (
-    ArtifactRepositoryImpl,
-    JobLogRepositoryImpl,
-    JobRepositoryImpl,
-    PipelineRunRepositoryImpl,
-)
+from pomelo_orbit.infrastructure.ci.repositories import PipelineRunRepositoryImpl
 from pomelo_orbit.infrastructure.ci.variables import (
     VariableError,
     mask_secrets,
     merge_variables,
+    render_template,
     validate_variables,
 )
 from pomelo_orbit.infrastructure.ci.workspace import cleanup_workspace, create_workspace
@@ -51,9 +47,6 @@ from pomelo_orbit.infrastructure.persistence.database import get_session_factory
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
-
-# 模块级 task 集合，防止后台 task 被 GC 回收
-_background_tasks: set[asyncio.Task] = set()
 
 
 class PipelineService:
@@ -68,8 +61,9 @@ class PipelineService:
         artifact_repo: ArtifactRepository,
         job_repo: JobRepository,
         job_log_repo: JobLogRepository,
+        session_factory: Any,
+        executor_factory: Callable[[Session], PipelineExecutor],
         global_variables: dict[str, Any] | None = None,
-        session_factory: Any = None,
     ):
         self.project_repo = project_repo
         self.credential_repo = credential_repo
@@ -80,6 +74,7 @@ class PipelineService:
         self.job_log_repo = job_log_repo
         self.global_variables = global_variables or {}
         self._session_factory = session_factory
+        self._executor_factory = executor_factory
 
     # -------------------------------------------------------------------------
     # Project CRUD
@@ -104,6 +99,7 @@ class PipelineService:
         git_credential_id: str,
         variable_overrides: dict[str, Any] | None = None,
         branch_filter: str | None = None,
+        default_branch: str = "master",
         enable_webhook: bool = True,
     ) -> Project:
         """创建项目，自动生成 webhook_secret"""
@@ -123,6 +119,7 @@ class PipelineService:
             variable_overrides=variable_overrides,
             webhook_secret=webhook_secret,
             branch_filter=branch_filter,
+            default_branch=default_branch,
         )
         self.project_repo.save(project)
         return project
@@ -136,6 +133,7 @@ class PipelineService:
         pipeline_template_id: str | None = None,
         git_credential_id: str | None = None,
         branch_filter: str | None = None,
+        default_branch: str | None = None,
     ) -> Project:
         """更新项目"""
         project = self.get_project(project_id)
@@ -148,6 +146,7 @@ class PipelineService:
             pipeline_template_id=pipeline_template_id,
             git_credential_id=git_credential_id,
             branch_filter=branch_filter,
+            default_branch=default_branch,
         )
         self.project_repo.save(project)
         return project
@@ -297,27 +296,75 @@ class PipelineService:
         """获取 job 日志"""
         return self.job_log_repo.find_by_job(job_id)
 
-    async def retry_pipeline(self, run_id: str) -> PipelineRun:
-        """
-        重试失败的 pipeline run
+    def cancel_run(self, run_id: str) -> PipelineRun:
+        """取消 pipeline run（waiting 或 running 状态）"""
+        run = self.get_run(run_id)
+        try:
+            run.cancel()
+        except ValueError as e:
+            raise BusinessError(str(e), status_code=400) from e
+        self.run_repo.save(run)
+        self.run_repo.commit()
+        return run
 
-        Args:
-            run_id: 原 Run ID
-
-        Returns:
-            新创建的 PipelineRun 实例
+    def create_run(
+        self,
+        project_id: str,
+        trigger: PipelineRunTrigger,
+        trigger_ref: str,
+        runtime_variables: dict[str, Any] | None = None,
+    ) -> tuple[PipelineRun, Project, dict[str, Any]]:
         """
-        # 查询原 Run
+        校验、合并变量、创建 PipelineRun 记录并持久化。
+        返回 (run, project, merged_vars) 供后续 execute_run 使用。
+        """
+        project = self.get_project(project_id)
+        template = self.get_template(project.pipeline_template_id)
+
+        merged_vars = merge_variables(
+            global_vars=self.global_variables,
+            project_vars=project.variable_overrides,
+            runtime_vars=runtime_variables or {},
+        )
+        merged_vars.update({
+            "trigger_ref": trigger_ref,
+            "trigger_type": trigger.value,
+            "project_name": project.name,
+        })
+
+        try:
+            validate_variables(merged_vars, template.variable_declarations)
+        except VariableError as e:
+            raise BusinessError(str(e), status_code=400) from e
+
+        variables_snapshot = mask_secrets(merged_vars, template.variable_declarations)
+
+        run = PipelineRun.create(
+            project_id=project_id,
+            trigger=trigger,
+            trigger_ref=trigger_ref,
+            resolved_pipeline=template.content,
+            variables_snapshot=variables_snapshot,
+        )
+        self.run_repo.save(run)
+        self.run_repo.commit()
+
+        logger.info(f"Pipeline triggered: project={project.name}, run={run.id}, trigger={trigger.value}, ref={trigger_ref}")
+        return run, project, merged_vars
+
+    def create_retry_run(self, run_id: str) -> tuple[PipelineRun, Project, dict[str, Any]]:
+        """
+        基于已有 run 创建重试 run 并持久化。
+        返回 (new_run, project, variables) 供后续 execute_run 使用。
+        """
         original_run = self.get_run(run_id)
 
-        # 验证 Run 状态（允许重试失败或成功的 run）
         if original_run.status not in {PipelineRunStatus.FAILED, PipelineRunStatus.SUCCESS}:
             raise BusinessError(
                 f"Cannot retry run with status {original_run.status.value}",
                 status_code=400,
             )
 
-        # 创建新 Run（复用原 Run 的配置）
         new_run = PipelineRun.create(
             project_id=original_run.project_id,
             trigger=original_run.trigger,
@@ -327,103 +374,26 @@ class PipelineService:
             retry_of=original_run.id,
         )
         self.run_repo.save(new_run)
+        self.run_repo.commit()
 
-        logger.info(
-            f"Pipeline retry triggered: original_run={run_id}, new_run={new_run.id}"
-        )
-
-        # 获取 Project 信息
+        logger.info(f"Pipeline retry triggered: original_run={run_id}, new_run={new_run.id}")
         project = self.get_project(original_run.project_id)
+        return new_run, project, original_run.variables_snapshot
 
-        # 异步执行（不等待完成）
-        task = asyncio.create_task(self._execute_run(new_run, project, original_run.variables_snapshot))
-        _background_tasks.add(task)
-        task.add_done_callback(_background_tasks.discard)
-
-        return new_run
-
-    async def trigger_pipeline(
-        self,
-        project_id: str,
-        trigger: PipelineRunTrigger,
-        trigger_ref: str,
-        runtime_variables: dict[str, Any] | None = None,
-    ) -> PipelineRun:
-        """
-        触发 pipeline 执行
-
-        Args:
-            project_id: 项目 ID
-            trigger: 触发方式
-            trigger_ref: 分支/tag/commit sha
-            runtime_variables: 运行时临时变量
-
-        Returns:
-            PipelineRun 实例
-        """
-        project = self.get_project(project_id)
-        template = self.get_template(project.pipeline_template_id)
-
-        # 合并变量
-        merged_vars = merge_variables(
-            global_vars=self.global_variables,
-            project_vars=project.variable_overrides,
-            runtime_vars=runtime_variables or {},
-        )
-
-        # 注入内置变量
-        merged_vars.update(
-            {
-                "trigger_ref": trigger_ref,
-                "trigger_type": trigger.value,
-                "project_name": project.name,
-            }
-        )
-
-        # 校验必填变量
-        try:
-            validate_variables(merged_vars, template.variable_declarations)
-        except VariableError as e:
-            raise BusinessError(str(e), status_code=400) from e
-
-        # 脱敏快照
-        variables_snapshot = mask_secrets(merged_vars, template.variable_declarations)
-
-        # 创建 PipelineRun 记录
-        run = PipelineRun.create(
-            project_id=project_id,
-            trigger=trigger,
-            trigger_ref=trigger_ref,
-            resolved_pipeline=template.content,
-            variables_snapshot=variables_snapshot,
-        )
-        self.run_repo.save(run)
-
-        logger.info(
-            f"Pipeline triggered: project={project.name}, run={run.id}, "
-            f"trigger={trigger.value}, ref={trigger_ref}"
-        )
-
-        # 异步执行（不等待完成），用模块级集合保存 task 引用防止被 GC
-        task = asyncio.create_task(self._execute_run(run, project, merged_vars))
-        _background_tasks.add(task)
-        task.add_done_callback(_background_tasks.discard)
-
-        return run
-
-    async def _execute_run(
+    async def execute_run(
         self,
         run: PipelineRun,
         project: Project,
         variables: dict[str, Any],
     ) -> None:
-        """执行 pipeline run（后台任务，使用独立 session 避免请求 session 关闭问题）"""
+        """执行 pipeline run（由 BackgroundTasks 调用，使用独立 session）"""
         session_factory = self._session_factory or get_session_factory()
 
         try:
-            # 解析 pipeline 定义（不需要 DB）
-            definition = parse_pipeline_yaml(run.resolved_pipeline)
-        except PipelineParseError as e:
+            # 先渲染变量，再解析 YAML
+            rendered = render_template(run.resolved_pipeline, variables)
+            definition = parse_pipeline_yaml(rendered)
+        except (PipelineParseError, VariableError) as e:
             logger.error(f"Pipeline parse failed: run={run.id}, error={e}")
             with session_factory() as session:
                 run_repo = PipelineRunRepositoryImpl(session)
@@ -431,7 +401,6 @@ class PipelineService:
                 run_repo.save(run)
                 session.commit()
             return
-
         # 创建工作目录
         workspace_path, artifacts_path = create_workspace(run.id)
 
@@ -449,14 +418,7 @@ class PipelineService:
 
         with session_factory() as session:
             run_repo = PipelineRunRepositoryImpl(session)
-            job_repo = JobRepositoryImpl(session)
-            job_log_repo = JobLogRepositoryImpl(session)
-            executor = PipelineExecutorImpl(
-                job_repo=job_repo,
-                job_log_repo=job_log_repo,
-                container_executor=ContainerExecutor(),
-                artifact_repo=ArtifactRepositoryImpl(session),
-            )
+            executor = self._executor_factory(session)
 
             run.start()
             run_repo.save(run)

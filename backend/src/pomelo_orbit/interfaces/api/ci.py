@@ -6,7 +6,7 @@ import math
 from typing import Annotated
 
 from dynaconf import Dynaconf
-from fastapi import APIRouter, Depends, Header, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Request, status
 
 from pomelo_orbit.application.ci_di import (
     get_ci_webhook_service,
@@ -17,6 +17,7 @@ from pomelo_orbit.application.pipeline_service import PipelineService
 from pomelo_orbit.domain.ci.entities import PipelineTemplate
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 from pomelo_orbit.infrastructure.config import get_settings
+from pomelo_orbit.infrastructure.di import get_security_service
 from pomelo_orbit.infrastructure.security import SecurityService
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto.ci import (
@@ -96,12 +97,11 @@ def list_credentials(
 def create_credential(
     data: CredentialCreateReq,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
-    settings: Annotated[Dynaconf, Depends(get_settings)],
+    security_service: Annotated[SecurityService, Depends(get_security_service)],
     _current_user=Depends(get_current_user),
 ) -> CredentialResp:
     """创建凭据（data 字段加密存储）"""
-    security = SecurityService(settings)
-    encrypted = security.encrypt_value(data.data)
+    encrypted = security_service.encrypt_value(data.data)
     cred = pipeline_service.create_credential(
         name=data.name,
         credential_type=data.type,
@@ -233,6 +233,7 @@ def create_project(
         git_credential_id=data.git_credential_id,
         variable_overrides=data.variable_overrides,
         branch_filter=data.branch_filter,
+        default_branch=data.default_branch,
         enable_webhook=data.enable_webhook,
     )
     return ProjectResp.model_validate(project.__dict__)
@@ -265,6 +266,7 @@ def update_project(
         pipeline_template_id=data.pipeline_template_id,
         git_credential_id=data.git_credential_id,
         branch_filter=data.branch_filter,
+        default_branch=data.default_branch,
     )
     return ProjectResp.model_validate(project.__dict__)
 
@@ -344,16 +346,18 @@ def list_runs(
 async def trigger_pipeline(
     project_id: str,
     data: TriggerPipelineReq,
+    background_tasks: BackgroundTasks,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineRunResp:
     """手动触发 pipeline"""
-    run = await pipeline_service.trigger_pipeline(
+    run, project, merged_vars = pipeline_service.create_run(
         project_id=project_id,
         trigger=PipelineRunTrigger.MANUAL,
         trigger_ref=data.trigger_ref,
         runtime_variables=data.variables,
     )
+    background_tasks.add_task(pipeline_service.execute_run, run, project, merged_vars)
     return PipelineRunResp.model_validate(run.__dict__)
 
 
@@ -364,18 +368,20 @@ async def trigger_pipeline(
 )
 async def trigger_pipeline_shortcut(
     project_id: str,
+    background_tasks: BackgroundTasks,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
     data: TriggerPipelineReq | None = None,
 ) -> PipelineRunResp:
     """手动触发 pipeline（快捷路由，body 可选）"""
     req = data or TriggerPipelineReq()
-    run = await pipeline_service.trigger_pipeline(
+    run, project, merged_vars = pipeline_service.create_run(
         project_id=project_id,
         trigger=PipelineRunTrigger.MANUAL,
         trigger_ref=req.trigger_ref,
         runtime_variables=req.variables,
     )
+    background_tasks.add_task(pipeline_service.execute_run, run, project, merged_vars)
     return PipelineRunResp.model_validate(run.__dict__)
 
 
@@ -425,14 +431,27 @@ def get_job_logs(
     return JobLogResp.model_validate(job_log.__dict__)
 
 
-@router.post("/runs/{run_id}/retry", response_model=PipelineRunResp, status_code=status.HTTP_201_CREATED)
-async def retry_pipeline(
+@router.post("/runs/{run_id}/cancel", response_model=PipelineRunResp)
+def cancel_pipeline(
     run_id: str,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineRunResp:
+    """取消 pipeline run（waiting 或 running 状态）"""
+    run = pipeline_service.cancel_run(run_id)
+    return PipelineRunResp.model_validate(run.__dict__)
+
+
+@router.post("/runs/{run_id}/retry", response_model=PipelineRunResp, status_code=status.HTTP_201_CREATED)
+async def retry_pipeline(
+    run_id: str,
+    background_tasks: BackgroundTasks,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+) -> PipelineRunResp:
     """重试失败的 pipeline run"""
-    new_run = await pipeline_service.retry_pipeline(run_id)
+    new_run, project, variables = pipeline_service.create_retry_run(run_id)
+    background_tasks.add_task(pipeline_service.execute_run, new_run, project, variables)
     return PipelineRunResp.model_validate(new_run.__dict__)
 
 
@@ -443,6 +462,7 @@ async def retry_pipeline(
 @router.post("/webhooks/git")
 async def receive_git_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     ci_webhook_service: Annotated[CIWebhookService, Depends(get_ci_webhook_service)],
     x_hub_signature_256: Annotated[str, Header(alias="X-Hub-Signature-256")] = "",
     x_gitlab_token: Annotated[str, Header(alias="X-Gitlab-Token")] = "",
@@ -456,25 +476,33 @@ async def receive_git_webhook(
     payload_bytes = await request.body()
     payload = json.loads(payload_bytes)
 
-    # 根据 header 判断来源
     if x_hub_signature_256:
-        result = await ci_webhook_service.handle_github_webhook(
+        result = ci_webhook_service.handle_github_webhook(
             payload_bytes=payload_bytes,
             payload=payload,
             signature=x_hub_signature_256,
         )
     elif x_gitlab_token:
-        result = await ci_webhook_service.handle_gitlab_webhook(
+        result = ci_webhook_service.handle_gitlab_webhook(
             payload=payload,
             token=x_gitlab_token,
         )
     else:
-        # 尝试 GitHub（无签名，可能是测试请求）
-        result = await ci_webhook_service.handle_github_webhook(
+        result = ci_webhook_service.handle_github_webhook(
             payload_bytes=payload_bytes,
             payload=payload,
             signature="",
         )
 
-    logger.info(f"CI webhook processed: result={result}")
-    return result
+    # 调度后台执行
+    pipeline_service = ci_webhook_service.pipeline_service
+    for item in result.get("triggered", []):
+        background_tasks.add_task(pipeline_service.execute_run, item["run"], item["project"], item["merged_vars"])
+
+    # 返回时只保留可序列化的字段
+    return {
+        "status": result["status"],
+        "triggered": [{"project_id": t["project_id"], "run_id": t["run_id"]} for t in result.get("triggered", [])],
+        "errors": result.get("errors", []),
+        "reason": result.get("reason"),
+    }

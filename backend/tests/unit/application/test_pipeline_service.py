@@ -1,6 +1,6 @@
 """Pipeline Service 单元测试"""
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -28,6 +28,8 @@ def make_service(**overrides) -> PipelineService:
         "artifact_repo": Mock(),
         "job_repo": Mock(),
         "job_log_repo": Mock(),
+        "session_factory": Mock(),
+        "executor_factory": Mock(),
     }
     defaults.update(overrides)
     return PipelineService(**defaults)
@@ -291,17 +293,15 @@ class TestPipelineRun:
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
         service = make_service(project_repo=project_repo, run_repo=run_repo)
-        with patch.object(service, "_execute_run", new_callable=AsyncMock):
-            new_run = await service.retry_pipeline(original.id)
+        new_run, _, _ = service.create_retry_run(original.id)
         assert new_run.retry_of == original.id and new_run.status == PipelineRunStatus.WAITING
         run_repo.save.assert_called()
 
-    @pytest.mark.asyncio
-    async def test_retry_pipeline_invalid_status(self):
+    def test_retry_pipeline_invalid_status(self):
         run = PipelineRun.create(project_id="p", trigger=PipelineRunTrigger.MANUAL, trigger_ref="main", resolved_pipeline="v: v1", variables_snapshot={})
         run.start()
         run_repo = Mock()
         run_repo.find_by_id.return_value = run
         with pytest.raises(BusinessError) as exc:
-            await make_service(run_repo=run_repo).retry_pipeline(run.id)
+            make_service(run_repo=run_repo).create_retry_run(run.id)
         assert exc.value.status_code == 400

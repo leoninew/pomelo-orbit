@@ -20,6 +20,7 @@ class PipelineRunStatus(StrEnum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+    CANCELED = "canceled"
 
 
 class PipelineRunTrigger(StrEnum):

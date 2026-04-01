@@ -91,6 +91,9 @@ class PipelineRunRepository(ABC):
     @abstractmethod
     def save(self, run: PipelineRun) -> None: ...
 
+    @abstractmethod
+    def commit(self) -> None: ...
+
 
 class JobRepository(ABC):
     @abstractmethod

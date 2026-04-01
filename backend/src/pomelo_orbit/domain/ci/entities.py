@@ -269,3 +269,34 @@ class JobLog:
             job_id=job_id,
             content=content,
         )
+
+
+@dataclass
+class Artifact:
+    """制品记录"""
+
+    id: str
+    pipeline_run_id: str
+    job_name: str
+    type: str  # docker_image | file
+    name: str
+    path: str | None = None  # file 类型时的宿主机路径
+    created_at: datetime = field(default_factory=utc_now)
+
+    @staticmethod
+    def create(
+        pipeline_run_id: str,
+        job_name: str,
+        artifact_type: str,
+        name: str,
+        path: str | None = None,
+    ) -> "Artifact":
+        """创建制品记录"""
+        return Artifact(
+            id=str(ULID()),
+            pipeline_run_id=pipeline_run_id,
+            job_name=job_name,
+            type=artifact_type,
+            name=name,
+            path=path,
+        )

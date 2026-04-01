@@ -6,6 +6,7 @@ import secrets
 from typing import Any
 
 from pomelo_orbit.domain.ci.entities import (
+    Artifact,
     Credential,
     PipelineRun,
     PipelineTemplate,
@@ -22,6 +23,7 @@ from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 from pomelo_orbit.infrastructure.ci.parser import PipelineParseError, parse_pipeline_yaml
 from pomelo_orbit.infrastructure.ci.repositories import (
+    ArtifactRepository,
     CredentialRepository,
     JobLogRepository,
     JobRepository,
@@ -54,6 +56,7 @@ class PipelineService:
         credential_repo: CredentialRepository,
         template_repo: PipelineTemplateRepository,
         run_repo: PipelineRunRepository,
+        artifact_repo: ArtifactRepository,
         global_variables: dict[str, Any] | None = None,
         session_factory: Any = None,
     ):
@@ -61,6 +64,7 @@ class PipelineService:
         self.credential_repo = credential_repo
         self.template_repo = template_repo
         self.run_repo = run_repo
+        self.artifact_repo = artifact_repo
         self.global_variables = global_variables or {}
         self._session_factory = session_factory
 
@@ -261,6 +265,11 @@ class PipelineService:
             raise BusinessError(f"PipelineRun {run_id} not found", status_code=404)
         return run
 
+    def list_artifacts(self, run_id: str) -> list[Artifact]:
+        """列出 pipeline run 的所有制品"""
+        self.get_run(run_id)
+        return self.artifact_repo.find_by_run(run_id)
+
     async def trigger_pipeline(
         self,
         project_id: str,
@@ -373,6 +382,7 @@ class PipelineService:
                 job_repo=job_repo,
                 job_log_repo=job_log_repo,
                 container_executor=ContainerExecutor(),
+                artifact_repo=ArtifactRepository(session),
             )
 
             run.start()

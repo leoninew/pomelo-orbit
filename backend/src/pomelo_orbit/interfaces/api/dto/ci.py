@@ -117,3 +117,15 @@ class PipelineRunResp(BaseModel):
 class TriggerPipelineReq(BaseModel):
     trigger_ref: str
     variables: dict[str, Any] = {}
+
+
+class ArtifactResp(BaseModel):
+    id: str
+    pipeline_run_id: str
+    job_name: str
+    type: str
+    name: str
+    path: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

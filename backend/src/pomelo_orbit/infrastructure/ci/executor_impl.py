@@ -4,12 +4,12 @@ import asyncio
 import logging
 from pathlib import Path
 
-from pomelo_orbit.domain.ci.entities import Job, JobLog
+from pomelo_orbit.domain.ci.entities import Artifact, Job, JobLog
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, StepDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
-from pomelo_orbit.infrastructure.ci.repositories import JobLogRepository, JobRepository
+from pomelo_orbit.infrastructure.ci.repositories import ArtifactRepository, JobLogRepository, JobRepository
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +22,12 @@ class PipelineExecutorImpl(PipelineExecutor):
         job_repo: JobRepository,
         job_log_repo: JobLogRepository,
         container_executor: ContainerExecutor,
+        artifact_repo: ArtifactRepository | None = None,
     ):
         self.job_repo = job_repo
         self.job_log_repo = job_log_repo
         self.container_executor = container_executor
+        self.artifact_repo = artifact_repo
 
     async def execute(
         self, context: ExecutionContext, definition: PipelineDefinition
@@ -175,6 +177,8 @@ class PipelineExecutorImpl(PipelineExecutor):
             if exit_code == 0:
                 job.complete_success(exit_code)
                 self.job_repo.save(job)
+                # 记录制品
+                self._save_artifacts(context, step, job.name)
                 logger.info(
                     f"Job succeeded: run={context.run_id}, job={step.name}, "
                     f"exit_code={exit_code}"
@@ -222,3 +226,51 @@ class PipelineExecutorImpl(PipelineExecutor):
                 logger.info(
                     f"Job canceled: run={context.run_id}, job={job_name}"
                 )
+
+    def _save_artifacts(
+        self,
+        context: ExecutionContext,
+        step: StepDefinition,
+        job_name: str,
+    ) -> None:
+        """job 成功后保存制品记录"""
+        if not step.artifacts or not self.artifact_repo:
+            return
+
+        for artifact_def in step.artifacts:
+            artifact_type = artifact_def.get("type", "file")
+            artifact_name = artifact_def.get("name", "")
+            artifact_path = artifact_def.get("path")
+
+            if artifact_type not in {"docker_image", "file"}:
+                logger.warning(
+                    f"Unknown artifact type, skipping: run={context.run_id}, "
+                    f"job={job_name}, type={artifact_type}"
+                )
+                continue
+
+            if not artifact_name:
+                logger.warning(
+                    f"Artifact declaration missing name, skipping: "
+                    f"run={context.run_id}, job={job_name}"
+                )
+                continue
+
+            # file 类型：path 相对于 artifacts_path
+            if artifact_type == "file" and artifact_path:
+                full_path: str | None = str(Path(context.artifacts_path) / artifact_path)
+            else:
+                full_path = str(artifact_path) if artifact_path else None
+
+            artifact = Artifact.create(
+                pipeline_run_id=context.run_id,
+                job_name=job_name,
+                artifact_type=artifact_type,
+                name=artifact_name,
+                path=full_path,
+            )
+            self.artifact_repo.save(artifact)
+            logger.info(
+                f"Artifact saved: run={context.run_id}, job={job_name}, "
+                f"type={artifact_type}, name={artifact_name}"
+            )

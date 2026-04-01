@@ -19,6 +19,7 @@ from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.security import SecurityService
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto.ci import (
+    ArtifactResp,
     CredentialCreateReq,
     CredentialResp,
     PipelineRunResp,
@@ -309,6 +310,17 @@ def get_run(
     """获取 pipeline run 详情"""
     run = pipeline_service.get_run(run_id)
     return PipelineRunResp.model_validate(run.__dict__)
+
+
+@router.get("/runs/{run_id}/artifacts", response_model=list[ArtifactResp])
+def list_artifacts(
+    run_id: str,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+) -> list[ArtifactResp]:
+    """列出 pipeline run 的所有制品"""
+    artifacts = pipeline_service.list_artifacts(run_id)
+    return [ArtifactResp.model_validate(a.__dict__) for a in artifacts]
 
 
 # =============================================================================

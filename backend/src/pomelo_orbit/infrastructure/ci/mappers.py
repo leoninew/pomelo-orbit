@@ -3,6 +3,7 @@
 import json
 
 from pomelo_orbit.domain.ci.entities import (
+    Artifact,
     Credential,
     Job,
     JobLog,
@@ -18,6 +19,7 @@ from pomelo_orbit.domain.ci.value_objects import (
     VariableDeclaration,
 )
 from pomelo_orbit.infrastructure.ci.models import (
+    ArtifactModel,
     CredentialModel,
     JobLogModel,
     JobModel,
@@ -208,5 +210,33 @@ class JobLogMapper:
             id=entity.id,
             job_id=entity.job_id,
             content=entity.content,
+            created_at=entity.created_at,
+        )
+
+
+class ArtifactMapper:
+    """制品 Mapper"""
+
+    @staticmethod
+    def to_domain(orm: ArtifactModel) -> Artifact:
+        return Artifact(
+            id=orm.id,
+            pipeline_run_id=orm.pipeline_run_id,
+            job_name=orm.job_name,
+            type=orm.type,
+            name=orm.name,
+            path=orm.path,
+            created_at=orm.created_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: Artifact) -> ArtifactModel:
+        return ArtifactModel(
+            id=entity.id,
+            pipeline_run_id=entity.pipeline_run_id,
+            job_name=entity.job_name,
+            type=entity.type,
+            name=entity.name,
+            path=entity.path,
             created_at=entity.created_at,
         )

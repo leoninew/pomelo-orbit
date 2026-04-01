@@ -3,6 +3,7 @@
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.ci.entities import (
+    Artifact,
     Credential,
     Job,
     JobLog,
@@ -11,6 +12,7 @@ from pomelo_orbit.domain.ci.entities import (
     Project,
 )
 from pomelo_orbit.infrastructure.ci.mappers import (
+    ArtifactMapper,
     CredentialMapper,
     JobLogMapper,
     JobMapper,
@@ -19,6 +21,7 @@ from pomelo_orbit.infrastructure.ci.mappers import (
     ProjectMapper,
 )
 from pomelo_orbit.infrastructure.ci.models import (
+    ArtifactModel,
     CredentialModel,
     JobLogModel,
     JobModel,
@@ -146,3 +149,20 @@ class JobLogRepository(BaseRepository[JobLog, JobLogModel]):
         """查询 job 的日志"""
         orm = self._session.query(JobLogModel).filter(JobLogModel.job_id == job_id).first()
         return self._mapper.to_domain(orm) if orm else None
+
+
+class ArtifactRepository(BaseRepository[Artifact, ArtifactModel]):
+    """制品仓储"""
+
+    def __init__(self, session: Session):
+        super().__init__(session, ArtifactModel, ArtifactMapper())
+
+    def find_by_run(self, pipeline_run_id: str) -> list[Artifact]:
+        """查询 pipeline run 的所有制品"""
+        orms = (
+            self._session.query(ArtifactModel)
+            .filter(ArtifactModel.pipeline_run_id == pipeline_run_id)
+            .order_by(ArtifactModel.created_at)
+            .all()
+        )
+        return [self._mapper.to_domain(orm) for orm in orms]

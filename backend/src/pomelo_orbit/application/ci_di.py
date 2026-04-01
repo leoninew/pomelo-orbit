@@ -12,6 +12,7 @@ from pomelo_orbit.application.ci_webhook_service import CIWebhookService
 from pomelo_orbit.application.pipeline_service import PipelineService
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.repositories import (
+    ArtifactRepository,
     CredentialRepository,
     PipelineRunRepository,
     PipelineTemplateRepository,
@@ -44,11 +45,16 @@ def get_run_repo(db: Annotated[Session, Depends(get_db)]) -> PipelineRunReposito
     return PipelineRunRepository(db)
 
 
+def get_artifact_repo(db: Annotated[Session, Depends(get_db)]) -> ArtifactRepository:
+    return ArtifactRepository(db)
+
+
 def get_pipeline_service(
     project_repo: Annotated[ProjectRepository, Depends(get_project_repo)],
     credential_repo: Annotated[CredentialRepository, Depends(get_credential_repo)],
     template_repo: Annotated[PipelineTemplateRepository, Depends(get_template_repo)],
     run_repo: Annotated[PipelineRunRepository, Depends(get_run_repo)],
+    artifact_repo: Annotated[ArtifactRepository, Depends(get_artifact_repo)],
     settings: Annotated[Dynaconf, Depends(get_settings)],
 ) -> PipelineService:
     global_vars: dict = {}
@@ -60,6 +66,7 @@ def get_pipeline_service(
         credential_repo=credential_repo,
         template_repo=template_repo,
         run_repo=run_repo,
+        artifact_repo=artifact_repo,
         global_variables=global_vars,
         session_factory=get_session_factory(),
     )

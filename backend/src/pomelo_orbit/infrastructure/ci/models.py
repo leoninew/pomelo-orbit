@@ -102,3 +102,19 @@ class JobLogModel(Base):
     job_id: Mapped[str] = mapped_column(String(26), ForeignKey("jobs.id"), nullable=False, index=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+
+
+class ArtifactModel(Base):
+    """制品模型"""
+
+    __tablename__ = "artifacts"
+
+    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    pipeline_run_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True
+    )
+    job_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)

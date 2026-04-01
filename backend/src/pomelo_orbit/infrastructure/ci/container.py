@@ -16,7 +16,6 @@ class ContainerExecutionError(Exception):
     """容器执行错误"""
 
 
-
 class ContainerExecutor:
     """容器执行器"""
 
@@ -84,7 +83,7 @@ class ContainerExecutor:
             # 在线程池中执行 Docker 操作（避免阻塞事件循环）
             cmd_str = command[1] if command else "(none)"
             # 脱敏：隐藏 URL 中的 token（https://token@host -> https://***@host）
-            safe_cmd = re.sub(r'https://[^@]+@', 'https://***@', cmd_str)
+            safe_cmd = re.sub(r"https://[^@]+@", "https://***@", cmd_str)
             logger.info(f"Container run: image={image}, workdir=/workspace, command={safe_cmd}")
             loop = asyncio.get_running_loop()
             exit_code, logs = await loop.run_in_executor(

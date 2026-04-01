@@ -23,7 +23,7 @@ class CredentialModel(Base):
 
 
 class PipelineTemplateModel(Base):
-    """Pipeline 模板模型"""
+    """流水线模板模型"""
 
     __tablename__ = "pipeline_templates"
 
@@ -48,9 +48,7 @@ class ProjectModel(Base):
     pipeline_template_id: Mapped[str] = mapped_column(
         String(26), ForeignKey("pipeline_templates.id"), nullable=False, index=True
     )
-    git_credential_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("credentials.id"), nullable=False, index=True
-    )
+    git_credential_id: Mapped[str] = mapped_column(String(26), ForeignKey("credentials.id"), nullable=False, index=True)
     variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     webhook_secret: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     branch_filter: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -83,9 +81,7 @@ class JobModel(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    pipeline_run_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True
-    )
+    pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     parent_job_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("jobs.id"), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
@@ -112,9 +108,7 @@ class ArtifactModel(Base):
     __tablename__ = "artifacts"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    pipeline_run_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True
-    )
+    pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True)
     job_name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

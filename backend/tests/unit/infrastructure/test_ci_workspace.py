@@ -15,7 +15,6 @@ PATCH_ROOT = "pomelo_orbit.infrastructure.ci.workspace.get_project_root"
 
 
 class TestGetWorkspacePath:
-
     @patch(PATCH_ROOT)
     def test_returns_correct_path(self, mock_root):
         mock_root.return_value = Path("/project")
@@ -32,7 +31,6 @@ class TestGetWorkspacePath:
 
 
 class TestGetArtifactsPath:
-
     @patch(PATCH_ROOT)
     def test_returns_correct_path(self, mock_root):
         mock_root.return_value = Path("/project")
@@ -47,7 +45,6 @@ class TestGetArtifactsPath:
 
 
 class TestCreateWorkspace:
-
     def test_creates_directories(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
             mock_root.return_value = Path(tmpdir)
@@ -79,7 +76,6 @@ class TestCreateWorkspace:
 
 
 class TestCleanupWorkspace:
-
     def test_removes_workspace_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
             mock_root.return_value = Path(tmpdir)

@@ -1,7 +1,7 @@
 <template>
 	<a-space direction="vertical" style="width: 100%">
 		<div class="page-header">
-			<h2>Pipeline 模板</h2>
+			<h2>流水线模板</h2>
 			<a-button type="primary" @click="showCreateModal">
 				<template #icon><PlusOutlined /></template>
 				新建模板
@@ -47,12 +47,7 @@
 		</a-table>
 
 		<!-- 创建模板弹窗 -->
-		<a-modal
-			v-model:open="showModal"
-			title="新建模板"
-			width="800px"
-			@ok="handleModalOk"
-		>
+		<a-modal v-model:open="showModal" title="新建模板" width="800px" @ok="handleModalOk">
 			<a-form
 				ref="formRef"
 				:model="form"

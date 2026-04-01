@@ -57,11 +57,7 @@ def parse_github_webhook(payload: dict) -> CIWebhookPayload:
             branch = ref or None
 
         # 提取 commit sha
-        commit_sha = (
-            payload.get("after")
-            or payload.get("head_commit", {}).get("id")
-            or ""
-        )
+        commit_sha = payload.get("after") or payload.get("head_commit", {}).get("id") or ""
 
         author = payload.get("sender", {}).get("login") or payload.get("pusher", {}).get("name") or ""
 
@@ -94,9 +90,7 @@ def parse_gitlab_webhook(payload: dict) -> CIWebhookPayload:
     try:
         project = payload.get("project", {})
         repository_url = (
-            project.get("http_url")
-            or project.get("git_http_url")
-            or payload.get("repository", {}).get("homepage")
+            project.get("http_url") or project.get("git_http_url") or payload.get("repository", {}).get("homepage")
         )
         if not repository_url:
             raise WebhookPayloadParseError("缺少 repository URL")

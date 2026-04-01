@@ -41,18 +41,6 @@ const router = createRouter({
 			meta: { title: '部署详情', menuKey: 'deployments' },
 		},
 		{
-			path: '/events',
-			name: 'Events',
-			component: () => import('@/views/EventPage.vue'),
-			meta: { title: '回调事件', menuKey: 'events' },
-		},
-		{
-			path: '/events/:id',
-			name: 'EventDetail',
-			component: () => import('@/views/EventDetail.vue'),
-			meta: { title: '事件详情', menuKey: 'events' },
-		},
-		{
 			path: '/ci/credentials',
 			name: 'Credentials',
 			component: () => import('@/views/CredentialPage.vue'),
@@ -62,7 +50,7 @@ const router = createRouter({
 			path: '/ci/templates',
 			name: 'PipelineTemplates',
 			component: () => import('@/views/PipelineTemplatePage.vue'),
-			meta: { title: 'Pipeline 模板', menuKey: 'pipelinetemplates' },
+			meta: { title: '流水线模板', menuKey: 'pipelinetemplates' },
 		},
 		{
 			path: '/ci/templates/:id',
@@ -74,7 +62,7 @@ const router = createRouter({
 			path: '/ci/projects',
 			name: 'Projects',
 			component: () => import('@/views/ProjectPage.vue'),
-			meta: { title: 'CI 项目', menuKey: 'projects' },
+			meta: { title: '项目管理', menuKey: 'projects' },
 		},
 		{
 			path: '/ci/projects/:id',

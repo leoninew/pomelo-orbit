@@ -58,8 +58,8 @@ def test_project(db_session, test_template, test_credential):
 # Templates
 # =============================================================================
 
-class TestTemplateAPI:
 
+class TestTemplateAPI:
     def test_list_templates_returns_paginated(self, auth_client, test_template):
         """GET /templates 返回分页结构"""
         resp = auth_client.get("/api/v1/ci/templates")
@@ -85,13 +85,15 @@ class TestTemplateAPI:
     def test_list_templates_pagination(self, auth_client, db_session):
         """分页参数生效"""
         for i in range(5):
-            db_session.add(PipelineTemplateModel(
-                name=f"tmpl-{i}",
-                description="",
-                content="version: v1\nsteps: []",
-                variable_declarations="[]",
-                is_builtin=0,
-            ))
+            db_session.add(
+                PipelineTemplateModel(
+                    name=f"tmpl-{i}",
+                    description="",
+                    content="version: v1\nsteps: []",
+                    variable_declarations="[]",
+                    is_builtin=0,
+                )
+            )
         db_session.commit()
 
         resp = auth_client.get("/api/v1/ci/templates?page=1&per_page=2")
@@ -102,11 +104,14 @@ class TestTemplateAPI:
 
     def test_create_template(self, auth_client):
         """创建模板"""
-        resp = auth_client.post("/api/v1/ci/templates", json={
-            "name": "new-template",
-            "description": "desc",
-            "content": "version: v1\nsteps: []",
-        })
+        resp = auth_client.post(
+            "/api/v1/ci/templates",
+            json={
+                "name": "new-template",
+                "description": "desc",
+                "content": "version: v1\nsteps: []",
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "new-template"
@@ -126,9 +131,12 @@ class TestTemplateAPI:
 
     def test_update_template(self, auth_client, test_template):
         """更新模板"""
-        resp = auth_client.put(f"/api/v1/ci/templates/{test_template.id}", json={
-            "name": "updated-template",
-        })
+        resp = auth_client.put(
+            f"/api/v1/ci/templates/{test_template.id}",
+            json={
+                "name": "updated-template",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["name"] == "updated-template"
 
@@ -148,8 +156,8 @@ class TestTemplateAPI:
 # Credentials
 # =============================================================================
 
-class TestCredentialAPI:
 
+class TestCredentialAPI:
     def test_list_credentials(self, auth_client, test_credential):
         resp = auth_client.get("/api/v1/ci/credentials")
         assert resp.status_code == 200
@@ -159,11 +167,14 @@ class TestCredentialAPI:
         assert any(c["id"] == test_credential.id for c in data["items"])
 
     def test_create_credential(self, auth_client):
-        resp = auth_client.post("/api/v1/ci/credentials", json={
-            "name": "my-token",
-            "type": "git_token",
-            "data": "plaintext-token",
-        })
+        resp = auth_client.post(
+            "/api/v1/ci/credentials",
+            json={
+                "name": "my-token",
+                "type": "git_token",
+                "data": "plaintext-token",
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "my-token"
@@ -184,8 +195,8 @@ class TestCredentialAPI:
 # Projects
 # =============================================================================
 
-class TestProjectAPI:
 
+class TestProjectAPI:
     def test_list_projects(self, auth_client, test_project):
         resp = auth_client.get("/api/v1/ci/projects")
         assert resp.status_code == 200
@@ -194,12 +205,15 @@ class TestProjectAPI:
         assert data["total"] >= 1
 
     def test_create_project(self, auth_client, test_template, test_credential):
-        resp = auth_client.post("/api/v1/ci/projects", json={
-            "name": "new-project",
-            "repository_url": "https://github.com/test/new.git",
-            "pipeline_template_id": test_template.id,
-            "git_credential_id": test_credential.id,
-        })
+        resp = auth_client.post(
+            "/api/v1/ci/projects",
+            json={
+                "name": "new-project",
+                "repository_url": "https://github.com/test/new.git",
+                "pipeline_template_id": test_template.id,
+                "git_credential_id": test_credential.id,
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "new-project"
@@ -216,9 +230,12 @@ class TestProjectAPI:
         assert resp.status_code == 404
 
     def test_update_project(self, auth_client, test_project):
-        resp = auth_client.put(f"/api/v1/ci/projects/{test_project.id}", json={
-            "name": "updated-project",
-        })
+        resp = auth_client.put(
+            f"/api/v1/ci/projects/{test_project.id}",
+            json={
+                "name": "updated-project",
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["name"] == "updated-project"
 
@@ -232,8 +249,8 @@ class TestProjectAPI:
 # Pipeline Runs
 # =============================================================================
 
-class TestPipelineRunAPI:
 
+class TestPipelineRunAPI:
     def test_list_runs_returns_paginated(self, auth_client):
         """GET /runs 返回分页结构"""
         resp = auth_client.get("/api/v1/ci/runs")
@@ -279,9 +296,7 @@ class TestPipelineRunAPI:
     def test_list_run_jobs(self, auth_client, test_project):
         """GET /runs/{id}/jobs 返回 job 列表"""
         # 先触发一个 run
-        trigger_resp = auth_client.post(
-            f"/api/v1/ci/projects/{test_project.id}/trigger", json={}
-        )
+        trigger_resp = auth_client.post(f"/api/v1/ci/projects/{test_project.id}/trigger", json={})
         assert trigger_resp.status_code == 201
         run_id = trigger_resp.json()["id"]
 

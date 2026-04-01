@@ -108,10 +108,7 @@ class CIWebhookService:
         projects = self.project_repo.find_by_repository_url(repository_url)
 
         if not projects:
-            logger.info(
-                f"No matching project for webhook: source={source}, "
-                f"repo={repository_url}"
-            )
+            logger.info(f"No matching project for webhook: source={source}, repo={repository_url}")
             return {"status": "ignored", "reason": "no matching project"}
 
         triggered_runs = []
@@ -129,10 +126,7 @@ class CIWebhookService:
                         valid = False
 
                     if not valid:
-                        logger.warning(
-                            f"Webhook signature verification failed: "
-                            f"source={source}, project={project.id}"
-                        )
+                        logger.warning(f"Webhook signature verification failed: source={source}, project={project.id}")
                         continue
 
                 # 检查 branch_filter
@@ -140,8 +134,7 @@ class CIWebhookService:
                     allowed = [b.strip() for b in project.branch_filter.split(",")]
                     if ci_payload.branch not in allowed:
                         logger.info(
-                            f"Branch filtered: project={project.id}, "
-                            f"branch={ci_payload.branch}, allowed={allowed}"
+                            f"Branch filtered: project={project.id}, branch={ci_payload.branch}, allowed={allowed}"
                         )
                         continue
 
@@ -156,13 +149,15 @@ class CIWebhookService:
                         "event_type": ci_payload.event_type,
                     },
                 )
-                triggered_runs.append({
-                    "project_id": project.id,
-                    "run_id": run.id,
-                    "run": run,
-                    "project": triggered_project,
-                    "merged_vars": merged_vars,
-                })
+                triggered_runs.append(
+                    {
+                        "project_id": project.id,
+                        "run_id": run.id,
+                        "run": run,
+                        "project": triggered_project,
+                        "merged_vars": merged_vars,
+                    }
+                )
                 logger.info(
                     f"Pipeline triggered via webhook: source={source}, "
                     f"project={project.id}, run={run.id}, ref={ci_payload.branch}"

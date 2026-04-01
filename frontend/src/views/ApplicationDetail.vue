@@ -550,11 +550,7 @@ async function saveCurrentFile() {
 				message.success('保存成功');
 			} else {
 				// 新建模式
-				await applicationApi.createFile(
-					applicationId,
-					currentFilePath.value,
-					content
-				);
+				await applicationApi.createFile(applicationId, currentFilePath.value, content);
 				message.success('添加成功');
 			}
 			fileDrawerVisible.value = false;

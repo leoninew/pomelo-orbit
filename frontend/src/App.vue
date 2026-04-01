@@ -39,7 +39,8 @@
 								<template #overlay>
 									<a-menu>
 										<a-menu-item key="logout" @click="handleLogout">
-											<LogoutOutlined /> 退出登录
+											<LogoutOutlined />
+											退出登录
 										</a-menu-item>
 									</a-menu>
 								</template>
@@ -80,10 +81,6 @@
 									<template #icon><ApiOutlined /></template>
 									Traefik Routers
 								</a-menu-item>
-								<a-menu-item key="events" @click="navigate('/events')">
-									<template #icon><ApiOutlined /></template>
-									回调事件
-								</a-menu-item>
 								<a-menu-item key="loginhistory" @click="navigate('/login-history')">
 									<template #icon><HistoryOutlined /></template>
 									登录历史
@@ -99,7 +96,7 @@
 							>
 								<a-menu-item key="projects" @click="navigate('/ci/projects')">
 									<template #icon><ProjectOutlined /></template>
-									CI 项目
+									项目管理
 								</a-menu-item>
 								<a-menu-item key="pipelineruns" @click="navigate('/ci/runs')">
 									<template #icon><PlayCircleOutlined /></template>
@@ -107,7 +104,7 @@
 								</a-menu-item>
 								<a-menu-item key="pipelinetemplates" @click="navigate('/ci/templates')">
 									<template #icon><FileTextOutlined /></template>
-									Pipeline 模板
+									流水线模板
 								</a-menu-item>
 								<a-menu-item key="credentials" @click="navigate('/ci/credentials')">
 									<template #icon><KeyOutlined /></template>
@@ -121,7 +118,15 @@
 							</div>
 						</a-layout-sider>
 
-						<a-layout-content style="padding: 24px; background: #f5f5f5; overflow-y: auto; display: flex; flex-direction: column">
+						<a-layout-content
+							style="
+								padding: 24px;
+								background: #f5f5f5;
+								overflow-y: auto;
+								display: flex;
+								flex-direction: column;
+							"
+						>
 							<router-view />
 						</a-layout-content>
 					</a-layout>
@@ -221,7 +226,9 @@ async function handleLogout() {
 	font-size: 14px;
 	border-bottom: 2px solid transparent;
 	margin-bottom: -1px;
-	transition: color 0.15s, border-color 0.15s;
+	transition:
+		color 0.15s,
+		border-color 0.15s;
 }
 
 .module-tab:hover {
@@ -278,7 +285,9 @@ async function handleLogout() {
 	border-radius: 4px;
 	cursor: pointer;
 	color: rgba(0, 0, 0, 0.45);
-	transition: background 0.15s, color 0.15s;
+	transition:
+		background 0.15s,
+		color 0.15s;
 }
 
 .header-action:hover {
@@ -297,7 +306,9 @@ async function handleLogout() {
 	cursor: pointer;
 	color: rgba(0, 0, 0, 0.35);
 	border-top: 1px solid #f0f0f0;
-	transition: color 0.15s, background 0.15s;
+	transition:
+		color 0.15s,
+		background 0.15s;
 }
 
 .sider-collapse-btn:hover {

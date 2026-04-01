@@ -41,16 +41,14 @@
 		<a-spin v-if="viewMode === 'card'" :spinning="loading">
 			<a-row :gutter="[16, 16]">
 				<a-col v-for="app in applications" :key="app.id" :xs="24" :sm="12" :lg="8" :xl="6">
-					<div :class="['app-card', `app-card--${app.status}`]" @click="$router.push(`/applications/${app.id}`)">
+					<div
+						:class="['app-card', `app-card--${app.status}`]"
+						@click="$router.push(`/applications/${app.id}`)"
+					>
 						<div class="app-card__header">
 							<span class="app-card__name">{{ app.name }}</span>
 							<a-space :size="4" @click.stop>
-								<a-button
-									v-if="app.status === 'deploying'"
-									type="text"
-									size="small"
-									disabled
-								>
+								<a-button v-if="app.status === 'deploying'" type="text" size="small" disabled>
 									<template #icon><LoadingOutlined class="spin" /></template>
 								</a-button>
 								<template v-else>
@@ -60,13 +58,12 @@
 										size="small"
 										danger
 										@click="handleStop(app)"
-									>停止</a-button>
-									<a-button
-										v-else
-										type="text"
-										size="small"
-										@click="handleDeploy(app)"
-									>部署</a-button>
+									>
+										停止
+									</a-button>
+									<a-button v-else type="text" size="small" @click="handleDeploy(app)">
+										部署
+									</a-button>
 								</template>
 							</a-space>
 						</div>
@@ -556,7 +553,9 @@ a.disabled {
 	border-radius: 8px;
 	border: 1px solid #e8e8e8;
 	cursor: pointer;
-	transition: box-shadow 0.2s, border-color 0.2s;
+	transition:
+		box-shadow 0.2s,
+		border-color 0.2s;
 	overflow: hidden;
 }
 

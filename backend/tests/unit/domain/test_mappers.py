@@ -7,7 +7,6 @@ from pomelo_orbit.infrastructure.persistence.mappers import (
     DeploymentMapper,
     RouteMapper,
     UserMapper,
-    WebhookEventMapper,
 )
 
 
@@ -188,41 +187,3 @@ class TestRouteMapper:
         restored = RouteMapper.to_domain(orm_model)
         assert restored.cert_type == CertType.MKCERT
         assert isinstance(restored.cert_type, CertType)
-
-
-class TestWebhookEventMapper:
-    """WebhookEventMapper 往返测试"""
-
-    def test_webhook_event_round_trip(self, create_test_webhook_event):
-        """验证 WebhookEvent 实体的往返转换一致性"""
-        original = create_test_webhook_event()
-
-        # 往返转换
-        orm_model = WebhookEventMapper.to_orm(original)
-        restored = WebhookEventMapper.to_domain(orm_model)
-
-        # 验证关键字段保持一致
-        assert restored.id == original.id
-        assert restored.source == original.source
-        assert restored.event_type == original.event_type
-        assert restored.status == original.status
-        assert restored.repository_name == original.repository_name
-
-    def test_webhook_event_round_trip_preserves_enum_types(self, create_test_webhook_event):
-        """验证 WebhookEvent 实体往返转换保持枚举类型"""
-        from pomelo_orbit.domain.entities import WebhookEventStatus, WebhookEventType, WebhookSource
-
-        original = create_test_webhook_event(
-            source=WebhookSource.GITHUB, event_type=WebhookEventType.RELEASE, status=WebhookEventStatus.MATCHED
-        )
-
-        orm_model = WebhookEventMapper.to_orm(original)
-        restored = WebhookEventMapper.to_domain(orm_model)
-
-        # 验证枚举类型和值都保持不变
-        assert restored.source == WebhookSource.GITHUB
-        assert restored.event_type == WebhookEventType.RELEASE
-        assert restored.status == WebhookEventStatus.MATCHED
-        assert isinstance(restored.source, WebhookSource)
-        assert isinstance(restored.event_type, WebhookEventType)
-        assert isinstance(restored.status, WebhookEventStatus)

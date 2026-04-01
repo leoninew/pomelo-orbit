@@ -135,37 +135,6 @@ class DeploymentModel(Base):
     # webhook_event_id 为逻辑外键，通过应用层维护一致性
 
 
-class WebhookEventModel(Base):
-    """回调事件记录"""
-
-    __tablename__ = "webhook_event"
-
-    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    source: Mapped[str] = mapped_column(String(20), nullable=False)  # github | gitlab
-    event_type: Mapped[str] = mapped_column(String(20), nullable=False)  # push | release | ping
-    repository_name: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    repository_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    branch: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    sender: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    image_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    payload: Mapped[str | None] = mapped_column(Text, nullable=True)
-    signature_valid: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(20), default="received", nullable=False, index=True
-    )  # received | matched | ignored | error
-    matched_application_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("application.id"), nullable=True)
-    triggered_deployment_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("deployment.id"), nullable=True)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    received_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
-    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-
-    # 关系
-    triggered_deployment: Mapped["DeploymentModel | None"] = relationship(
-        "DeploymentModel",
-        foreign_keys=[triggered_deployment_id],
-    )
-
-
 class ApplicationConfigFileModel(Base):
     """应用配置文件"""
 

@@ -23,9 +23,7 @@ def verify_github_signature(payload: bytes, signature: str, secret: str) -> bool
         logger.warning("GitHub signature verification failed: signature or secret is empty")
         return False
 
-    expected = hmac.new(
-        secret.encode("utf-8"), payload, hashlib.sha256
-    ).hexdigest()
+    expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
 
     expected_signature = f"sha256={expected}"
     is_valid = hmac.compare_digest(expected_signature, signature)

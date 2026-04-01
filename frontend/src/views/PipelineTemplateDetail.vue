@@ -10,9 +10,7 @@
 				<a-button type="primary" @click="$router.push(`/ci/projects?template_id=${templateId}`)">
 					创建项目
 				</a-button>
-				<a-button v-if="!template.is_builtin" @click="showEditModal = true">
-					编辑
-				</a-button>
+				<a-button v-if="!template.is_builtin" @click="showEditModal = true">编辑</a-button>
 			</a-space>
 		</div>
 
@@ -78,12 +76,7 @@
 		</a-card>
 
 		<!-- 编辑模板弹窗 -->
-		<a-modal
-			v-model:open="showEditModal"
-			title="编辑模板"
-			width="800px"
-			@ok="handleEditOk"
-		>
+		<a-modal v-model:open="showEditModal" title="编辑模板" width="800px" @ok="handleEditOk">
 			<a-form
 				ref="formRef"
 				:model="form"

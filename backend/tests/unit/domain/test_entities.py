@@ -2,7 +2,7 @@
 领域实体测试
 """
 
-from pomelo_orbit.domain.entities import TriggerType, WebhookEventStatus, WebhookEventType, WebhookSource
+from pomelo_orbit.domain.entities import TriggerType
 from pomelo_orbit.domain.value_objects import OperationType
 
 
@@ -108,11 +108,10 @@ class TestDeploymentEntity:
     def test_deployment_with_webhook_trigger(self, create_test_deployment):
         """测试 Webhook 触发的部署"""
         deployment = create_test_deployment(
-            trigger_type=TriggerType.WEBHOOK, webhook_event_id="webhook-1", trigger_ref="refs/heads/main"
+            trigger_type=TriggerType.WEBHOOK, trigger_ref="refs/heads/main"
         )
 
         assert deployment.trigger_type == TriggerType.WEBHOOK
-        assert deployment.webhook_event_id == "webhook-1"
         assert deployment.trigger_ref == "refs/heads/main"
 
     def test_deployment_with_rollback_info(self, create_test_deployment):
@@ -239,93 +238,6 @@ class TestRouteEntity:
         assert route.cert_pem is None
         assert route.cert_key is None
         assert route.cert_type == CertType.MANUAL
-
-
-class TestWebhookEventEntity:
-    """WebhookEvent 实体测试"""
-
-    def test_create_webhook_event_with_required_fields(self, create_test_webhook_event):
-        """测试创建 WebhookEvent 实体时所有必需字段已正确设置"""
-        event = create_test_webhook_event()
-
-        assert event.id == "test-webhook-1"
-        assert event.source == WebhookSource.GITHUB
-        assert event.event_type == WebhookEventType.PUSH
-
-    def test_create_webhook_event_with_valid_enums(self, create_test_webhook_event):
-        """测试创建 WebhookEvent 实体时枚举字段为有效值"""
-        event = create_test_webhook_event(
-            source=WebhookSource.GITHUB, event_type=WebhookEventType.RELEASE, status=WebhookEventStatus.MATCHED
-        )
-
-        assert event.source == WebhookSource.GITHUB
-        assert event.event_type == WebhookEventType.RELEASE
-        assert event.status == WebhookEventStatus.MATCHED
-        assert isinstance(event.source, WebhookSource)
-        assert isinstance(event.event_type, WebhookEventType)
-        assert isinstance(event.status, WebhookEventStatus)
-
-    def test_webhook_event_default_status(self, create_test_webhook_event):
-        """测试 WebhookEvent 默认状态为 RECEIVED"""
-        event = create_test_webhook_event()
-        assert event.status == WebhookEventStatus.RECEIVED
-
-    def test_webhook_event_with_repository_info(self, create_test_webhook_event):
-        """测试 WebhookEvent 包含仓库信息"""
-        event = create_test_webhook_event(
-            repository_name="owner/repo",
-            repository_url="https://github.com/owner/repo",
-            branch="develop",
-            sender="developer",
-        )
-
-        assert event.repository_name == "owner/repo"
-        assert event.repository_url == "https://github.com/owner/repo"
-        assert event.branch == "develop"
-        assert event.sender == "developer"
-
-    def test_webhook_event_with_matched_application(self, create_test_webhook_event):
-        """测试 WebhookEvent 匹配到应用"""
-        event = create_test_webhook_event(
-            status=WebhookEventStatus.MATCHED,
-            matched_application_id="app-1",
-            triggered_deployment_id="deploy-1",
-        )
-
-        assert event.status == WebhookEventStatus.MATCHED
-        assert event.matched_application_id == "app-1"
-        assert event.triggered_deployment_id == "deploy-1"
-
-    def test_webhook_event_with_error(self, create_test_webhook_event):
-        """测试 WebhookEvent 处理错误"""
-        event = create_test_webhook_event(status=WebhookEventStatus.ERROR, error_message="Invalid signature")
-
-        assert event.status == WebhookEventStatus.ERROR
-        assert event.error_message == "Invalid signature"
-
-    def test_webhook_event_signature_validation(self, create_test_webhook_event):
-        """测试 WebhookEvent 签名验证"""
-        valid_event = create_test_webhook_event(signature_valid=True)
-        invalid_event = create_test_webhook_event(signature_valid=False)
-
-        assert valid_event.signature_valid is True
-        assert invalid_event.signature_valid is False
-
-    def test_webhook_event_all_sources(self, create_test_webhook_event):
-        """测试所有 Webhook 来源"""
-        github_event = create_test_webhook_event(source=WebhookSource.GITHUB)
-
-        assert github_event.source == WebhookSource.GITHUB
-
-    def test_webhook_event_all_types(self, create_test_webhook_event):
-        """测试所有事件类型"""
-        push_event = create_test_webhook_event(event_type=WebhookEventType.PUSH)
-        release_event = create_test_webhook_event(event_type=WebhookEventType.RELEASE)
-        ping_event = create_test_webhook_event(event_type=WebhookEventType.PING)
-
-        assert push_event.event_type == WebhookEventType.PUSH
-        assert release_event.event_type == WebhookEventType.RELEASE
-        assert ping_event.event_type == WebhookEventType.PING
 
 
 class TestGitSourceEntity:
@@ -496,23 +408,6 @@ class TestEnumValues:
         from pomelo_orbit.domain.entities import WebhookSource
 
         assert WebhookSource.GITHUB.value == "github"
-
-    def test_webhook_event_type_enum(self):
-        """测试 WebhookEventType 枚举"""
-        from pomelo_orbit.domain.entities import WebhookEventType
-
-        assert WebhookEventType.PUSH.value == "push"
-        assert WebhookEventType.RELEASE.value == "release"
-        assert WebhookEventType.PING.value == "ping"
-
-    def test_webhook_event_status_enum(self):
-        """测试 WebhookEventStatus 枚举"""
-        from pomelo_orbit.domain.entities import WebhookEventStatus
-
-        assert WebhookEventStatus.RECEIVED.value == "received"
-        assert WebhookEventStatus.MATCHED.value == "matched"
-        assert WebhookEventStatus.IGNORED.value == "ignored"
-        assert WebhookEventStatus.ERROR.value == "error"
 
     def test_cert_type_enum(self):
         """测试 CertType 枚举"""

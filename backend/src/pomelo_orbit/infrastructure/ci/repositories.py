@@ -50,15 +50,15 @@ class CredentialRepositoryImpl(BaseRepository[Credential, CredentialModel], Cred
     def is_referenced_by_projects(self, credential_id: str) -> bool:
         """检查凭据是否被项目引用"""
         return (
-            self._session.query(ProjectModel)
-            .filter(ProjectModel.git_credential_id == credential_id)
-            .first()
+            self._session.query(ProjectModel).filter(ProjectModel.git_credential_id == credential_id).first()
             is not None
         )
 
 
-class PipelineTemplateRepositoryImpl(BaseRepository[PipelineTemplate, PipelineTemplateModel], PipelineTemplateRepository):
-    """Pipeline 模板仓储"""
+class PipelineTemplateRepositoryImpl(
+    BaseRepository[PipelineTemplate, PipelineTemplateModel], PipelineTemplateRepository
+):
+    """流水线模板仓储"""
 
     def __init__(self, session: Session):
         super().__init__(session, PipelineTemplateModel, PipelineTemplateMapper())
@@ -66,9 +66,7 @@ class PipelineTemplateRepositoryImpl(BaseRepository[PipelineTemplate, PipelineTe
     def is_referenced_by_projects(self, template_id: str) -> bool:
         """检查模板是否被项目引用"""
         return (
-            self._session.query(ProjectModel)
-            .filter(ProjectModel.pipeline_template_id == template_id)
-            .first()
+            self._session.query(ProjectModel).filter(ProjectModel.pipeline_template_id == template_id).first()
             is not None
         )
 

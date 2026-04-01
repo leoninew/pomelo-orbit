@@ -38,9 +38,12 @@ class TestPipelineExecutorImpl:
     def executor(self, job_repo, job_log_repo, container_executor):
         """执行器实例"""
         return PipelineExecutorImpl(
-            cast("JobRepositoryImpl", job_repo),
-            cast("JobLogRepositoryImpl", job_log_repo),
-            cast("ContainerExecutor", container_executor),
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=MagicMock(),
+            credential_repo=MagicMock(),
+            security_service=MagicMock(),
         )
 
     @pytest.fixture
@@ -112,10 +115,12 @@ class TestPipelineExecutorImpl:
     async def test_fail_fast_on_job_failure(self, executor, context, container_executor, job_repo):
         """测试 Job 失败时的 fail-fast"""
         # 第二个 Job 失败
-        container_executor.run = AsyncMock(side_effect=[
-            (0, "success"),  # a
-            (1, "failed"),   # b
-        ])
+        container_executor.run = AsyncMock(
+            side_effect=[
+                (0, "success"),  # a
+                (1, "failed"),  # b
+            ]
+        )
 
         definition = PipelineDefinition(
             version="1.0",
@@ -204,7 +209,14 @@ class TestPipelineExecutorImpl:
         # 创建新的 container_executor 和 executor 实例
         container_executor = MagicMock()
         container_executor.run = AsyncMock(return_value=(0, "success"))
-        executor = PipelineExecutorImpl(job_repo, job_log_repo, container_executor)
+        executor = PipelineExecutorImpl(
+            job_repo=job_repo,
+            job_log_repo=job_log_repo,
+            container_executor=container_executor,
+            artifact_repo=MagicMock(),
+            credential_repo=MagicMock(),
+            security_service=MagicMock(),
+        )
 
         definition = PipelineDefinition(
             version="1.0",

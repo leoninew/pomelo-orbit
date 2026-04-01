@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS credentials (
 
 CREATE INDEX IF NOT EXISTS idx_credentials_name ON credentials(name);
 
--- Pipeline 模板表
+-- 流水线模板表
 CREATE TABLE IF NOT EXISTS pipeline_templates (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

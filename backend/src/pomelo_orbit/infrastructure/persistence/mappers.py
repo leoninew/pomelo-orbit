@@ -13,10 +13,6 @@ from pomelo_orbit.domain.entities import (
     Route,
     TriggerType,
     User,
-    WebhookEvent,
-    WebhookEventStatus,
-    WebhookEventType,
-    WebhookSource,
 )
 from pomelo_orbit.domain.value_objects import OperationType
 from pomelo_orbit.infrastructure.persistence.models import (
@@ -28,7 +24,6 @@ from pomelo_orbit.infrastructure.persistence.models import (
     LoginHistoryModel,
     RouteModel,
     UserModel,
-    WebhookEventModel,
 )
 
 
@@ -235,7 +230,6 @@ class DeploymentMapper:
             status=model.status,
             operation_type=OperationType(model.operation_type),
             trigger_ref=model.trigger_ref,
-            webhook_event_id=model.webhook_event_id,
             image_name=model.image_name,
             env_file=model.env_file,
             started_at=model.started_at,
@@ -258,7 +252,6 @@ class DeploymentMapper:
             operation_type=entity.operation_type.value,
             status=entity.status,
             trigger_ref=entity.trigger_ref,
-            webhook_event_id=entity.webhook_event_id,
             image_name=entity.image_name,
             env_file=entity.env_file,
             started_at=entity.started_at,
@@ -268,54 +261,6 @@ class DeploymentMapper:
             error_message=entity.error_message,
             is_rollback=entity.is_rollback,
             rollback_from_deployment_id=entity.rollback_from_deployment_id,
-        )
-
-
-class WebhookEventMapper:
-    """回调事件映射器"""
-
-    @staticmethod
-    def to_domain(model: WebhookEventModel) -> WebhookEvent:
-        """ORM 模型转领域实体"""
-        return WebhookEvent(
-            id=model.id,
-            source=WebhookSource(model.source),
-            event_type=WebhookEventType(model.event_type),
-            repository_name=model.repository_name,
-            repository_url=model.repository_url,
-            branch=model.branch,
-            sender=model.sender,
-            image_name=model.image_name,
-            payload=model.payload,
-            signature_valid=model.signature_valid,
-            status=WebhookEventStatus(model.status),
-            matched_application_id=model.matched_application_id,
-            triggered_deployment_id=model.triggered_deployment_id,
-            error_message=model.error_message,
-            received_at=model.received_at,
-            processed_at=model.processed_at,
-        )
-
-    @staticmethod
-    def to_orm(entity: WebhookEvent) -> WebhookEventModel:
-        """领域实体转 ORM 模型"""
-        return WebhookEventModel(
-            id=entity.id,
-            source=entity.source.value,
-            event_type=entity.event_type.value,
-            repository_name=entity.repository_name,
-            repository_url=entity.repository_url,
-            branch=entity.branch,
-            sender=entity.sender,
-            image_name=entity.image_name,
-            payload=entity.payload,
-            signature_valid=entity.signature_valid,
-            status=entity.status.value,
-            matched_application_id=entity.matched_application_id,
-            triggered_deployment_id=entity.triggered_deployment_id,
-            error_message=entity.error_message,
-            received_at=entity.received_at,
-            processed_at=entity.processed_at,
         )
 
 
@@ -366,5 +311,4 @@ __all__ = [
     "LoginHistoryMapper",
     "RouteMapper",
     "UserMapper",
-    "WebhookEventMapper",
 ]

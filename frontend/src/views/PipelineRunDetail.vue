@@ -137,7 +137,9 @@
 						{{ currentJob.finished_at ? formatTime(currentJob.finished_at) : '-' }}
 					</a-descriptions-item>
 					<a-descriptions-item v-if="currentJob.error_message" label="错误信息">
-						<pre style="margin: 0; white-space: pre-wrap; color: #ff4d4f">{{ currentJob.error_message }}</pre>
+						<pre style="margin: 0; white-space: pre-wrap; color: #ff4d4f">{{
+							currentJob.error_message
+						}}</pre>
 					</a-descriptions-item>
 				</a-descriptions>
 

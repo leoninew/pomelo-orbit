@@ -12,7 +12,6 @@ from pomelo_orbit.domain.ci.value_objects import (
 
 
 class TestEnums:
-
     def test_credential_type(self):
         assert CredentialType.GIT_SSH.value == "git_ssh"
         assert CredentialType.GIT_TOKEN.value == "git_token"
@@ -38,7 +37,6 @@ class TestEnums:
 
 
 class TestVariableDeclaration:
-
     def test_create_variable_declaration(self):
         var_decl = VariableDeclaration(
             name="IMAGE_NAME",
@@ -62,7 +60,6 @@ class TestVariableDeclaration:
 
 
 class TestStepDefinition:
-
     def test_create_leaf_step(self):
         step = StepDefinition(
             name="build",
@@ -101,7 +98,6 @@ class TestStepDefinition:
 
 
 class TestPipelineDefinition:
-
     def test_create_pipeline_definition(self):
         step = StepDefinition(name="build", image="python:3.12", commands=["python setup.py build"])
         pipeline = PipelineDefinition(version="v1", timeout=3600, steps=[step])

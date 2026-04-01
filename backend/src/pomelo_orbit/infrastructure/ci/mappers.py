@@ -54,7 +54,7 @@ class CredentialMapper:
 
 
 class PipelineTemplateMapper:
-    """Pipeline 模板 Mapper"""
+    """流水线模板 Mapper"""
 
     @staticmethod
     def to_domain(orm: PipelineTemplateModel) -> PipelineTemplate:

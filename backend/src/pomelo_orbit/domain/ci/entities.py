@@ -126,7 +126,7 @@ class Credential:
 
 @dataclass
 class PipelineTemplate:
-    """Pipeline 模板实体"""
+    """流水线模板实体"""
 
     id: str
     name: str

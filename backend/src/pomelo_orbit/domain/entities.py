@@ -38,23 +38,6 @@ class CertType(StrEnum):
     MKCERT = "mkcert"
 
 
-class WebhookEventType(StrEnum):
-    """回调事件类型"""
-
-    PUSH = "push"
-    RELEASE = "release"
-    PING = "ping"
-
-
-class WebhookEventStatus(StrEnum):
-    """回调事件状态"""
-
-    RECEIVED = "received"
-    MATCHED = "matched"
-    IGNORED = "ignored"
-    ERROR = "error"
-
-
 @dataclass
 class GitSource:
     """Git 仓库源"""
@@ -155,7 +138,6 @@ class Deployment:
     operation_type: OperationType
     is_rollback: bool
     trigger_ref: str | None = None
-    webhook_event_id: str | None = None
     image_name: str | None = None
     env_file: str | None = None
     started_at: datetime = field(default_factory=utc_now)
@@ -164,28 +146,6 @@ class Deployment:
     log_text: str | None = None
     error_message: str | None = None
     rollback_from_deployment_id: str | None = None
-
-
-@dataclass
-class WebhookEvent:
-    """回调事件记录"""
-
-    id: str
-    source: WebhookSource
-    event_type: WebhookEventType
-    status: WebhookEventStatus = WebhookEventStatus.RECEIVED
-    repository_name: str | None = None
-    repository_url: str | None = None
-    branch: str | None = None
-    sender: str | None = None
-    image_name: str | None = None
-    payload: str | None = None
-    signature_valid: bool | None = None
-    matched_application_id: str | None = None
-    triggered_deployment_id: str | None = None
-    error_message: str | None = None
-    received_at: datetime = field(default_factory=utc_now)
-    processed_at: datetime | None = None
 
 
 @dataclass
@@ -296,8 +256,5 @@ __all__ = [
     "SourceType",
     "TriggerType",
     "User",
-    "WebhookEvent",
-    "WebhookEventStatus",
-    "WebhookEventType",
     "WebhookSource",
 ]

@@ -20,7 +20,9 @@ if TYPE_CHECKING:
     from pomelo_orbit.infrastructure.ci.repositories import JobLogRepositoryImpl, JobRepositoryImpl
 
 
-def create_test_context(run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None) -> ExecutionContext:
+def create_test_context(
+    run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None
+) -> ExecutionContext:
     """创建测试用的 ExecutionContext"""
     return ExecutionContext(
         run_id=run_id,
@@ -57,12 +59,16 @@ class TestPipelineExecutorImpl:
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
             artifact_repo=artifact_repo,
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="build", image="alpine:latest", commands=["echo 'Building'"]),
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(name="build", image="alpine:latest", commands=["echo 'Building'"]),
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -84,12 +90,17 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="build", image="alpine:latest", commands=["exit 1"]),
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(name="build", image="alpine:latest", commands=["exit 1"]),
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -109,13 +120,18 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="job1", image="alpine:latest", commands=["echo 1"]),
-            StepDefinition(name="job2", image="alpine:latest", commands=["echo 2"]),
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(name="job1", image="alpine:latest", commands=["echo 1"]),
+                StepDefinition(name="job2", image="alpine:latest", commands=["echo 2"]),
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -135,13 +151,18 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="build", image="alpine:latest", commands=["echo build"]),
-            StepDefinition(name="test", image="alpine:latest", commands=["echo test"], depends_on=["build"]),
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(name="build", image="alpine:latest", commands=["echo build"]),
+                StepDefinition(name="test", image="alpine:latest", commands=["echo test"], depends_on=["build"]),
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -161,20 +182,25 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="build", image="alpine:latest", commands=["exit 1"]),
-            StepDefinition(name="test", image="alpine:latest", commands=["echo test"], depends_on=["build"]),
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(name="build", image="alpine:latest", commands=["exit 1"]),
+                StepDefinition(name="test", image="alpine:latest", commands=["echo test"], depends_on=["build"]),
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
         assert result is False
         assert container_executor.run.call_count == 1
         saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
-        canceled_jobs = [job for job in saved_jobs if hasattr(job, 'status') and job.status == JobStatus.CANCELED]
+        canceled_jobs = [job for job in saved_jobs if hasattr(job, "status") and job.status == JobStatus.CANCELED]
         assert len(canceled_jobs) >= 1
 
     @pytest.mark.asyncio
@@ -188,13 +214,18 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="jobA", image="alpine:latest", commands=["echo A"], depends_on=["jobB"]),
-            StepDefinition(name="jobB", image="alpine:latest", commands=["echo B"], depends_on=["jobA"]),
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(name="jobA", image="alpine:latest", commands=["echo A"], depends_on=["jobB"]),
+                StepDefinition(name="jobB", image="alpine:latest", commands=["echo B"], depends_on=["jobA"]),
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -214,18 +245,21 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(name="build", image="alpine:latest", commands=["echo build"])
-        ])
+        definition = create_test_definition(
+            [StepDefinition(name="build", image="alpine:latest", commands=["echo build"])]
+        )
 
         result = await executor.execute(context, definition)
 
         assert result is False
         saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
-        faulted_jobs = [job for job in saved_jobs if hasattr(job, 'status') and job.status == JobStatus.FAULTED]
+        faulted_jobs = [job for job in saved_jobs if hasattr(job, "status") and job.status == JobStatus.FAULTED]
         assert len(faulted_jobs) >= 1
 
     @pytest.mark.asyncio
@@ -243,20 +277,24 @@ class TestPipelineExecutorImpl:
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
             artifact_repo=artifact_repo,
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context()
-        definition = create_test_definition([
-            StepDefinition(
-                name="build",
-                image="alpine:latest",
-                commands=["echo build"],
-                artifacts=[
-                    {"type": "file", "name": "output.txt", "path": "output.txt"},
-                    {"type": "docker_image", "name": "myapp:latest"},
-                ],
-            )
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(
+                    name="build",
+                    image="alpine:latest",
+                    commands=["echo build"],
+                    artifacts=[
+                        {"type": "file", "name": "output.txt", "path": "output.txt"},
+                        {"type": "docker_image", "name": "myapp:latest"},
+                    ],
+                )
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -279,24 +317,29 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context(run_id="run-2", retry_of="run-1")
-        definition = create_test_definition([
-            StepDefinition(
-                name="build",
-                image="alpine:latest",
-                commands=["echo build"],
-                retry_policy=RetryPolicy.SKIP_IF_SUCCESS,
-            )
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(
+                    name="build",
+                    image="alpine:latest",
+                    commands=["echo build"],
+                    retry_policy=RetryPolicy.SKIP_IF_SUCCESS,
+                )
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
         assert result is True
         container_executor.run.assert_not_called()
         saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
-        skipped_jobs = [job for job in saved_jobs if hasattr(job, 'status') and job.status == JobStatus.SKIPPED]
+        skipped_jobs = [job for job in saved_jobs if hasattr(job, "status") and job.status == JobStatus.SKIPPED]
         assert len(skipped_jobs) >= 1
 
     @pytest.mark.asyncio
@@ -317,17 +360,22 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context(run_id="run-2", retry_of="run-1")
-        definition = create_test_definition([
-            StepDefinition(
-                name="build",
-                image="alpine:latest",
-                commands=["echo build"],
-                retry_policy=RetryPolicy.SKIP_IF_SUCCESS,
-            )
-        ])
+        definition = create_test_definition(
+            [
+                StepDefinition(
+                    name="build",
+                    image="alpine:latest",
+                    commands=["echo build"],
+                    retry_policy=RetryPolicy.SKIP_IF_SUCCESS,
+                )
+            ]
+        )
 
         result = await executor.execute(context, definition)
 
@@ -347,12 +395,15 @@ class TestPipelineExecutorImpl:
             job_repo=cast("JobRepositoryImpl", job_repo),
             job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
+            artifact_repo=Mock(),
+            credential_repo=Mock(),
+            security_service=Mock(),
         )
 
         context = create_test_context(variables={"ENV_VAR": "value123", "NUMBER": 42})
-        definition = create_test_definition([
-            StepDefinition(name="build", image="alpine:latest", commands=["echo $ENV_VAR"])
-        ])
+        definition = create_test_definition(
+            [StepDefinition(name="build", image="alpine:latest", commands=["echo $ENV_VAR"])]
+        )
 
         result = await executor.execute(context, definition)
 

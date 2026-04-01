@@ -15,7 +15,6 @@ def make_service(project_repo=None, pipeline_service=None):
 
 
 class TestHandleGithubWebhook:
-
     def test_no_matching_project(self):
         project_repo = Mock()
         project_repo.find_by_repository_url.return_value = []
@@ -23,7 +22,11 @@ class TestHandleGithubWebhook:
 
         result = service.handle_github_webhook(
             payload_bytes=b"{}",
-            payload={"ref": "refs/heads/main", "repository": {"clone_url": "https://github.com/user/repo.git"}, "head_commit": {"id": "abc123", "author": {"name": "user"}}},
+            payload={
+                "ref": "refs/heads/main",
+                "repository": {"clone_url": "https://github.com/user/repo.git"},
+                "head_commit": {"id": "abc123", "author": {"name": "user"}},
+            },
             signature="sha256=test",
         )
 
@@ -45,7 +48,11 @@ class TestHandleGithubWebhook:
 
         result = service.handle_github_webhook(
             payload_bytes=b'{"test": "data"}',
-            payload={"ref": "refs/heads/main", "repository": {"clone_url": "https://github.com/user/repo.git"}, "head_commit": {"id": "abc123", "author": {"name": "user"}}},
+            payload={
+                "ref": "refs/heads/main",
+                "repository": {"clone_url": "https://github.com/user/repo.git"},
+                "head_commit": {"id": "abc123", "author": {"name": "user"}},
+            },
             signature="sha256=invalid_signature",
         )
 
@@ -67,7 +74,11 @@ class TestHandleGithubWebhook:
 
         result = service.handle_github_webhook(
             payload_bytes=b"{}",
-            payload={"ref": "refs/heads/feature", "repository": {"clone_url": "https://github.com/user/repo.git"}, "head_commit": {"id": "abc123", "author": {"name": "user"}}},
+            payload={
+                "ref": "refs/heads/feature",
+                "repository": {"clone_url": "https://github.com/user/repo.git"},
+                "head_commit": {"id": "abc123", "author": {"name": "user"}},
+            },
             signature="sha256=test",
         )
 
@@ -87,14 +98,18 @@ class TestHandleGithubWebhook:
 
 
 class TestHandleGitlabWebhook:
-
     def test_no_matching_project(self):
         project_repo = Mock()
         project_repo.find_by_repository_url.return_value = []
         service = make_service(project_repo=project_repo)
 
         result = service.handle_gitlab_webhook(
-            payload={"ref": "refs/heads/main", "project": {"git_http_url": "https://gitlab.com/user/repo.git"}, "checkout_sha": "abc123", "user_name": "user"},
+            payload={
+                "ref": "refs/heads/main",
+                "project": {"git_http_url": "https://gitlab.com/user/repo.git"},
+                "checkout_sha": "abc123",
+                "user_name": "user",
+            },
             token="test-token",
         )
 
@@ -115,7 +130,12 @@ class TestHandleGitlabWebhook:
         service = make_service(project_repo=project_repo, pipeline_service=pipeline_service)
 
         result = service.handle_gitlab_webhook(
-            payload={"ref": "refs/heads/main", "project": {"git_http_url": "https://gitlab.com/user/repo.git"}, "checkout_sha": "abc123", "user_name": "user"},
+            payload={
+                "ref": "refs/heads/main",
+                "project": {"git_http_url": "https://gitlab.com/user/repo.git"},
+                "checkout_sha": "abc123",
+                "user_name": "user",
+            },
             token="wrong-token",
         )
 
@@ -130,7 +150,6 @@ class TestHandleGitlabWebhook:
 
 
 class TestHandleWebhookCore:
-
     def test_trigger_pipeline_error(self):
         project = Project.create(
             name="test-project",
@@ -146,7 +165,11 @@ class TestHandleWebhookCore:
 
         result = service.handle_github_webhook(
             payload_bytes=b"{}",
-            payload={"ref": "refs/heads/main", "repository": {"clone_url": "https://github.com/user/repo.git"}, "head_commit": {"id": "abc123", "author": {"name": "user"}}},
+            payload={
+                "ref": "refs/heads/main",
+                "repository": {"clone_url": "https://github.com/user/repo.git"},
+                "head_commit": {"id": "abc123", "author": {"name": "user"}},
+            },
             signature="sha256=test",
         )
 
@@ -155,13 +178,36 @@ class TestHandleWebhookCore:
         assert "Database error" in result["errors"][0]["error"]
 
     def test_multiple_projects(self):
-        project1 = Project.create(name="p1", repository_url="https://github.com/user/repo.git", pipeline_template_id="t1", git_credential_id="c1")
-        project2 = Project.create(name="p2", repository_url="https://github.com/user/repo.git", pipeline_template_id="t2", git_credential_id="c2", branch_filter="main")
+        project1 = Project.create(
+            name="p1",
+            repository_url="https://github.com/user/repo.git",
+            pipeline_template_id="t1",
+            git_credential_id="c1",
+        )
+        project2 = Project.create(
+            name="p2",
+            repository_url="https://github.com/user/repo.git",
+            pipeline_template_id="t2",
+            git_credential_id="c2",
+            branch_filter="main",
+        )
         project_repo = Mock()
         project_repo.find_by_repository_url.return_value = [project1, project2]
 
-        run1 = PipelineRun.create(project_id=project1.id, trigger=PipelineRunTrigger.WEBHOOK, trigger_ref="main", resolved_pipeline="v: v1", variables_snapshot={})
-        run2 = PipelineRun.create(project_id=project2.id, trigger=PipelineRunTrigger.WEBHOOK, trigger_ref="main", resolved_pipeline="v: v1", variables_snapshot={})
+        run1 = PipelineRun.create(
+            project_id=project1.id,
+            trigger=PipelineRunTrigger.WEBHOOK,
+            trigger_ref="main",
+            resolved_pipeline="v: v1",
+            variables_snapshot={},
+        )
+        run2 = PipelineRun.create(
+            project_id=project2.id,
+            trigger=PipelineRunTrigger.WEBHOOK,
+            trigger_ref="main",
+            resolved_pipeline="v: v1",
+            variables_snapshot={},
+        )
 
         pipeline_service = Mock()
         pipeline_service.create_run.side_effect = [
@@ -172,7 +218,11 @@ class TestHandleWebhookCore:
 
         result = service.handle_github_webhook(
             payload_bytes=b"{}",
-            payload={"ref": "refs/heads/main", "repository": {"clone_url": "https://github.com/user/repo.git"}, "head_commit": {"id": "abc123", "author": {"name": "user"}}},
+            payload={
+                "ref": "refs/heads/main",
+                "repository": {"clone_url": "https://github.com/user/repo.git"},
+                "head_commit": {"id": "abc123", "author": {"name": "user"}},
+            },
             signature="sha256=test",
         )
 

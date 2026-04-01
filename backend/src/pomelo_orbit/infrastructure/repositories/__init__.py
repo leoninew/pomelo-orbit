@@ -17,7 +17,6 @@ from pomelo_orbit.infrastructure.repositories.deployment import (
 from pomelo_orbit.infrastructure.repositories.di import get_route_repository
 from pomelo_orbit.infrastructure.repositories.route import RouteRepositoryImpl
 from pomelo_orbit.infrastructure.repositories.user import UserRepositoryImpl, get_user_repository
-from pomelo_orbit.infrastructure.repositories.webhook_event import WebhookEventRepositoryImpl
 
 __all__ = [
     "ApplicationRepositoryImpl",
@@ -25,7 +24,6 @@ __all__ = [
     "DeploymentRepositoryImpl",
     "RouteRepositoryImpl",
     "UserRepositoryImpl",
-    "WebhookEventRepositoryImpl",
     "get_application_repository",
     "get_config_file_repository",
     "get_deployment_repository",

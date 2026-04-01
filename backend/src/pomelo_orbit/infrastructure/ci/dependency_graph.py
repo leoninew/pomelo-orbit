@@ -92,9 +92,7 @@ class DependencyGraph:
         # 检查是否所有节点都被处理（检测循环依赖）
         if processed_count != len(self.steps):
             unprocessed = [name for name, degree in in_degree_copy.items() if degree > 0]
-            raise CyclicDependencyError(
-                f"Cyclic dependency detected involving jobs: {', '.join(unprocessed)}"
-            )
+            raise CyclicDependencyError(f"Cyclic dependency detected involving jobs: {', '.join(unprocessed)}")
 
         return layers
 

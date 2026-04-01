@@ -54,94 +54,90 @@ class CheckoutAction:
         environment: dict[str, str] = {}
         extra_binds: dict[str, dict[str, str]] = {}
 
-        try:
-            if credential.type == CredentialType.GIT_SSH:
-                # 写入 run 专用的 secrets 目录，挂载到容器 /run/secrets，不污染 workspace
-                secrets_path = get_secrets_path(run_id)
-                secrets_path.mkdir(parents=True, exist_ok=True)
-                key_path = secrets_path / "id_rsa"
-                key_path.write_text(credential.get_private_key())
-                key_path.chmod(0o600)
-                extra_binds[str(secrets_path)] = {"bind": "/run/secrets", "mode": "rw"}
-                environment["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
+        if credential.type == CredentialType.GIT_SSH:
+            # 写入 run 专用的 secrets 目录，挂载到容器 /run/secrets，不污染 workspace
+            secrets_path = get_secrets_path(run_id)
+            secrets_path.mkdir(parents=True, exist_ok=True)
+            key_path = secrets_path / "id_rsa"
+            key_path.write_text(credential.get_private_key())
+            key_path.chmod(0o600)
+            extra_binds[str(secrets_path)] = {"bind": "/run/secrets", "mode": "rw"}
+            environment["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
 
-            elif credential.type == CredentialType.GIT_TOKEN:
-                token = credential.get_token()
-                # 如果是 SSH 格式（git@host:user/repo.git），转换为 HTTPS 格式
-                if repository_url.startswith("git@"):
-                    # git@github.com:user/repo.git -> https://token@github.com/user/repo.git
-                    without_prefix = repository_url[len("git@"):]
-                    host, path = without_prefix.split(":", 1)
-                    repository_url = f"https://{token}@{host}/{path}"
-                elif repository_url.startswith("https://"):
-                    repository_url = repository_url.replace("https://", f"https://{token}@")
+        elif credential.type == CredentialType.GIT_TOKEN:
+            token = credential.get_token()
+            # 如果是 SSH 格式（git@host:user/repo.git），转换为 HTTPS 格式
+            if repository_url.startswith("git@"):
+                # git@github.com:user/repo.git -> https://token@github.com/user/repo.git
+                without_prefix = repository_url[len("git@") :]
+                host, path = without_prefix.split(":", 1)
+                repository_url = f"https://{token}@{host}/{path}"
+            elif repository_url.startswith("https://"):
+                repository_url = repository_url.replace("https://", f"https://{token}@")
 
-            # 构造 git clone 命令
-            commands = []
+        # 构造 git clone 命令
+        commands = []
 
-            if credential.type == CredentialType.GIT_SSH:
-                # Windows 上 chmod 不生效，在容器内修正私钥权限
-                commands.append("chmod 600 /run/secrets/id_rsa")
+        if credential.type == CredentialType.GIT_SSH:
+            # Windows 上 chmod 不生效，在容器内修正私钥权限
+            commands.append("chmod 600 /run/secrets/id_rsa")
 
-            # 基础 clone 命令
-            clone_cmd = f"git clone --depth={depth}"
-            if ref:
-                clone_cmd += f" --branch={ref}"
-            if sparse_checkout:
-                clone_cmd += " --no-checkout"
-            clone_cmd += f" {repository_url} /workspace"
-            commands.append(clone_cmd)
+        # 基础 clone 命令
+        clone_cmd = f"git clone --depth={depth}"
+        if ref:
+            clone_cmd += f" --branch={ref}"
+        if sparse_checkout:
+            clone_cmd += " --no-checkout"
+        clone_cmd += f" {repository_url} /workspace"
+        commands.append(clone_cmd)
 
-            # Sparse checkout
-            if sparse_checkout:
-                commands.append("cd /workspace")
-                commands.append("git sparse-checkout init --cone")
-                commands.append(f"git sparse-checkout set {sparse_checkout}")
-                commands.append("git checkout")
-
-            # Submodules
-            if submodules:
-                commands.append("cd /workspace && git submodule update --init --recursive")
-
-            # 提取 outputs（写到 /workspace/.git_outputs，随 workspace 挂载同步到宿主机）
+        # Sparse checkout
+        if sparse_checkout:
             commands.append("cd /workspace")
-            commands.append("git log -1 --format='%H' > /workspace/.git_outputs_commit_sha")
-            commands.append("git log -1 --format='%s' > /workspace/.git_outputs_commit_message")
-            commands.append("git log -1 --format='%an' > /workspace/.git_outputs_author")
-            commands.append("git log -1 --format='%aI' > /workspace/.git_outputs_committed_at")
+            commands.append("git sparse-checkout init --cone")
+            commands.append(f"git sparse-checkout set {sparse_checkout}")
+            commands.append("git checkout")
 
-            # 执行容器
-            logger.info(f"run git, extra_binds={extra_binds}")
-            exit_code, logs = await self.container_executor.run(
-                image="alpine/git",
-                commands=commands,
-                volumes=[],
-                environment=environment,
-                workspace_path=workspace_path,
-                artifacts_path=artifacts_path,
-                extra_binds=extra_binds,
-            )
+        # Submodules
+        if submodules:
+            commands.append("cd /workspace && git submodule update --init --recursive")
 
-            if exit_code != 0:
-                raise Exception(f"Checkout 失败: {logs}")
+        # 提取 outputs（写到 /workspace/.git_outputs，随 workspace 挂载同步到宿主机）
+        commands.append("cd /workspace")
+        commands.append("git log -1 --format='%H' > /workspace/.git_outputs_commit_sha")
+        commands.append("git log -1 --format='%s' > /workspace/.git_outputs_commit_message")
+        commands.append("git log -1 --format='%an' > /workspace/.git_outputs_author")
+        commands.append("git log -1 --format='%aI' > /workspace/.git_outputs_committed_at")
 
-            # 读取 outputs
-            outputs = {}
-            try:
-                outputs["commit_sha"] = (workspace_path / ".git_outputs_commit_sha").read_text().strip()
-                outputs["commit_message"] = (workspace_path / ".git_outputs_commit_message").read_text().strip()
-                outputs["author"] = (workspace_path / ".git_outputs_author").read_text().strip()
-                outputs["committed_at"] = (workspace_path / ".git_outputs_committed_at").read_text().strip()
-            except Exception as e:
-                logger.warning(f"读取 checkout outputs 失败: {e}")
-                outputs = {
-                    "commit_sha": ref,
-                    "commit_message": "",
-                    "author": "",
-                    "committed_at": "",
-                }
+        # 执行容器
+        logger.info(f"Checkout: credential_type={credential.type}, ref={ref}")
+        exit_code, logs = await self.container_executor.run(
+            image="alpine/git",
+            commands=commands,
+            volumes=[],
+            environment=environment,
+            workspace_path=workspace_path,
+            artifacts_path=artifacts_path,
+            extra_binds=extra_binds,
+        )
 
-            return outputs
+        if exit_code != 0:
+            raise Exception(f"Checkout 失败: {logs}")
 
-        finally:
-            pass
+        # 读取 outputs
+        outputs = {}
+        try:
+            outputs["commit_sha"] = (workspace_path / ".git_outputs_commit_sha").read_text().strip()
+            outputs["commit_message"] = (workspace_path / ".git_outputs_commit_message").read_text().strip()
+            outputs["author"] = (workspace_path / ".git_outputs_author").read_text().strip()
+            outputs["committed_at"] = (workspace_path / ".git_outputs_committed_at").read_text().strip()
+        except Exception as e:
+            logger.warning(f"读取 checkout outputs 失败: {e}")
+            outputs = {
+                "commit_sha": ref,
+                "commit_message": "",
+                "author": "",
+                "committed_at": "",
+            }
+
+        return outputs

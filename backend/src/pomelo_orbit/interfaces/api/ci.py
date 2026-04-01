@@ -50,18 +50,14 @@ def _template_resp(tmpl: PipelineTemplate) -> PipelineTemplateResp:
         name=tmpl.name,
         description=tmpl.description,
         content=tmpl.content,
-        variable_declarations=[
-            VariableDeclarationResp(**vd.model_dump()) for vd in (tmpl.variable_declarations or [])
-        ],
+        variable_declarations=[VariableDeclarationResp(**vd.model_dump()) for vd in (tmpl.variable_declarations or [])],
         is_builtin=tmpl.is_builtin,
         created_at=tmpl.created_at,
         updated_at=tmpl.updated_at,
     )
 
 
-def _paginated_runs(
-    runs: list, total: int, page: int, per_page: int
-) -> "PaginatedResp[PipelineRunResp]":
+def _paginated_runs(runs: list, total: int, page: int, per_page: int) -> "PaginatedResp[PipelineRunResp]":
     return PaginatedResp(
         items=[PipelineRunResp.model_validate(r.__dict__) for r in runs],
         total=total,
@@ -74,6 +70,7 @@ def _paginated_runs(
 # =============================================================================
 # Credentials
 # =============================================================================
+
 
 @router.get("/credentials", response_model=PaginatedResp[CredentialResp])
 def list_credentials(
@@ -124,6 +121,7 @@ def delete_credential(
 # Pipeline Templates
 # =============================================================================
 
+
 @router.get("/templates", response_model=PaginatedResp[PipelineTemplateResp])
 def list_templates(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
@@ -148,7 +146,7 @@ def create_template(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineTemplateResp:
-    """创建 pipeline 模板"""
+    """创建 流水线模板"""
     tmpl = pipeline_service.create_template(
         name=data.name,
         content=data.content,
@@ -200,6 +198,7 @@ def delete_template(
 # =============================================================================
 # Projects
 # =============================================================================
+
 
 @router.get("/projects", response_model=PaginatedResp[ProjectResp])
 def list_projects(
@@ -311,6 +310,7 @@ def regenerate_webhook_secret(
 # =============================================================================
 # Pipeline Runs
 # =============================================================================
+
 
 @router.get("/runs", response_model=PaginatedResp[PipelineRunResp])
 def list_all_runs(
@@ -458,6 +458,7 @@ async def retry_pipeline(
 # =============================================================================
 # Webhooks（无需认证）
 # =============================================================================
+
 
 @router.post("/webhooks/git")
 async def receive_git_webhook(

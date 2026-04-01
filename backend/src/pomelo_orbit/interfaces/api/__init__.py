@@ -13,9 +13,7 @@ from pomelo_orbit.interfaces.api.dto import (
     PasswordChangeReq,
     TokenResp,
     UserInfo,
-    WebhookEventResp,
 )
-from pomelo_orbit.interfaces.api.webhook import router as webhook_router
 
 __all__ = [
     "ApplicationCreateReq",
@@ -26,8 +24,6 @@ __all__ = [
     "PasswordChangeReq",
     "TokenResp",
     "UserInfo",
-    "WebhookEventResp",
     "application_router",
     "auth_router",
-    "webhook_router",
 ]

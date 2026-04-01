@@ -16,7 +16,6 @@ from pomelo_orbit.infrastructure.persistence.mappers import (
     LoginHistoryMapper,
     RouteMapper,
     UserMapper,
-    WebhookEventMapper,
 )
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
@@ -28,7 +27,6 @@ from pomelo_orbit.infrastructure.persistence.models import (
     LoginHistoryModel,
     RouteModel,
     UserModel,
-    WebhookEventModel,
 )
 
 __all__ = [
@@ -51,8 +49,6 @@ __all__ = [
     "RouteModel",
     "UserMapper",
     "UserModel",
-    "WebhookEventMapper",
-    "WebhookEventModel",
     "get_db",
     "get_session_factory",
 ]

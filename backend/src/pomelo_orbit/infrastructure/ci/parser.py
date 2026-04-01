@@ -10,7 +10,6 @@ class PipelineParseError(Exception):
     """Pipeline 解析错误"""
 
 
-
 def parse_pipeline_yaml(yaml_content: str) -> PipelineDefinition:
     """
     解析 pipeline YAML

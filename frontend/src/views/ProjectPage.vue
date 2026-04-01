@@ -1,7 +1,7 @@
 <template>
 	<a-space direction="vertical" style="width: 100%">
 		<div class="page-header">
-			<h2>CI 项目</h2>
+			<h2>项目管理</h2>
 			<a-button type="primary" @click="showCreateModal">
 				<template #icon><PlusOutlined /></template>
 				新建项目
@@ -23,7 +23,10 @@
 					</router-link>
 				</template>
 				<template v-else-if="column.key === 'repository_url'">
-					<a-typography-text :ellipsis="{ tooltip: record.repository_url }" style="max-width: 300px">
+					<a-typography-text
+						:ellipsis="{ tooltip: record.repository_url }"
+						style="max-width: 300px"
+					>
 						{{ record.repository_url }}
 					</a-typography-text>
 				</template>
@@ -48,12 +51,7 @@
 		</a-table>
 
 		<!-- 创建项目弹窗 -->
-		<a-modal
-			v-model:open="showModal"
-			title="新建项目"
-			width="600px"
-			@ok="handleModalOk"
-		>
+		<a-modal v-model:open="showModal" title="新建项目" width="600px" @ok="handleModalOk">
 			<a-form
 				ref="formRef"
 				:model="form"
@@ -65,12 +63,9 @@
 					<a-input v-model:value="form.name" placeholder="例如: my-backend" />
 				</a-form-item>
 				<a-form-item label="仓库地址" name="repository_url">
-					<a-input
-						v-model:value="form.repository_url"
-						placeholder="git@github.com:user/repo.git"
-					/>
+					<a-input v-model:value="form.repository_url" placeholder="git@github.com:user/repo.git" />
 				</a-form-item>
-				<a-form-item label="Pipeline 模板" name="pipeline_template_id">
+				<a-form-item label="流水线模板" name="pipeline_template_id">
 					<a-select
 						v-model:value="form.pipeline_template_id"
 						placeholder="选择模板"
@@ -162,7 +157,7 @@ const form = reactive({
 const formRules = {
 	name: [{ required: true, message: '请输入项目名称' }],
 	repository_url: [{ required: true, message: '请输入仓库地址' }],
-	pipeline_template_id: [{ required: true, message: '请选择 Pipeline 模板' }],
+	pipeline_template_id: [{ required: true, message: '请选择 流水线模板' }],
 };
 
 async function fetchProjects() {

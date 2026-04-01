@@ -33,10 +33,6 @@ from pomelo_orbit.interfaces.api.dto.deployment import (
     DeploymentDetailResp,
     DeploymentResp,
 )
-from pomelo_orbit.interfaces.api.dto.event import (
-    WebhookEventDetailResp,
-    WebhookEventResp,
-)
 from pomelo_orbit.interfaces.api.dto.route import (
     RouteCreateReq,
     RouteResp,
@@ -84,6 +80,4 @@ __all__ = [
     "SystemConfigUpdateReq",
     "TokenResp",
     "UserInfo",
-    "WebhookEventDetailResp",
-    "WebhookEventResp",
 ]

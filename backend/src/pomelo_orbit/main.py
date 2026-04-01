@@ -31,11 +31,9 @@ from pomelo_orbit.interfaces.api.application import router as application_router
 from pomelo_orbit.interfaces.api.auth import router as auth_router
 from pomelo_orbit.interfaces.api.ci import router as ci_router
 from pomelo_orbit.interfaces.api.deployment import router as deployment_router
-from pomelo_orbit.interfaces.api.event import router as event_router
 from pomelo_orbit.interfaces.api.route import router as route_router
 from pomelo_orbit.interfaces.api.settings import router as settings_router
 from pomelo_orbit.interfaces.api.traefik_route import router as traefik_route_router
-from pomelo_orbit.interfaces.api.webhook import router as webhook_router
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +68,6 @@ app.add_middleware(RequestLoggingMiddleware)
 app.include_router(auth_router, prefix="/api")
 app.include_router(application_router, prefix="/api")
 app.include_router(deployment_router, prefix="/api")
-app.include_router(event_router, prefix="/api")
-app.include_router(webhook_router, prefix="/api")
 app.include_router(route_router, prefix="/api")
 app.include_router(traefik_route_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")

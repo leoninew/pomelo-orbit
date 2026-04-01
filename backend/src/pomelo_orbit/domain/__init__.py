@@ -14,9 +14,6 @@ from pomelo_orbit.domain.entities import (
     SourceType,
     TriggerType,
     User,
-    WebhookEvent,
-    WebhookEventStatus,
-    WebhookEventType,
     WebhookSource,
 )
 from pomelo_orbit.domain.exceptions import (
@@ -41,8 +38,5 @@ __all__ = [
     "SourceType",
     "TriggerType",
     "User",
-    "WebhookEvent",
-    "WebhookEventStatus",
-    "WebhookEventType",
     "WebhookSource",
 ]

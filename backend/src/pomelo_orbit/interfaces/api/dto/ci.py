@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 # ---- Credential ----
 
+
 class CredentialResp(BaseModel):
     id: str
     name: str
@@ -23,6 +24,7 @@ class CredentialCreateReq(BaseModel):
 
 
 # ---- PipelineTemplate ----
+
 
 class VariableDeclarationResp(BaseModel):
     name: str
@@ -62,6 +64,7 @@ class PipelineTemplateUpdateReq(BaseModel):
 
 
 # ---- Project ----
+
 
 class ProjectResp(BaseModel):
     id: str
@@ -108,6 +111,7 @@ class WebhookConfigResp(BaseModel):
 
 # ---- PipelineRun ----
 
+
 class PipelineRunResp(BaseModel):
     id: str
     project_id: str
@@ -140,6 +144,7 @@ class ArtifactResp(BaseModel):
 
 
 # ---- Job ----
+
 
 class JobResp(BaseModel):
     id: str

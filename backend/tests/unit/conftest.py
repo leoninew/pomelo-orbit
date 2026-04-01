@@ -4,7 +4,7 @@
 
 import pytest
 
-from pomelo_orbit.domain.entities import Application, CertType, Deployment, Route, TriggerType, User, WebhookEvent
+from pomelo_orbit.domain.entities import Application, CertType, Deployment, Route, TriggerType, User
 from pomelo_orbit.domain.value_objects import OperationType
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
@@ -105,30 +105,5 @@ def create_test_route():
             cert_type=cert_type,
             **defaults,
         )
-
-    return _create
-
-
-@pytest.fixture
-def create_test_webhook_event():
-    """创建测试用的 WebhookEvent 实体工厂"""
-    from pomelo_orbit.domain.entities import WebhookEventStatus, WebhookEventType, WebhookSource
-
-    def _create(
-        id: str = "test-webhook-1",
-        source: WebhookSource = WebhookSource.GITHUB,
-        event_type: WebhookEventType = WebhookEventType.PUSH,
-        **kwargs,
-    ) -> WebhookEvent:
-        defaults = {
-            "status": WebhookEventStatus.RECEIVED,
-            "repository_name": "test/repo",
-            "repository_url": "https://github.com/test/repo",
-            "branch": "main",
-            "sender": "testuser",
-            "received_at": utc_now(),
-        }
-        defaults.update(kwargs)
-        return WebhookEvent(id=id, source=source, event_type=event_type, **defaults)  # type: ignore[arg-type]
 
     return _create

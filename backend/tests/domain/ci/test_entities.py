@@ -1,6 +1,5 @@
 """测试 CI 实体"""
 
-
 import ulid
 
 from pomelo_orbit.domain.ci.entities import (
@@ -66,6 +65,7 @@ class TestProject:
 
         # 添加微小延迟确保时间戳不同
         import time
+
         time.sleep(0.001)
 
         project.update(name="new-name", variable_overrides={"NEW_KEY": "new_value"})
@@ -137,6 +137,7 @@ class TestPipelineTemplate:
 
         # 添加微小延迟确保时间戳不同
         import time
+
         time.sleep(0.001)
 
         template.update(name="new-template", description="Updated")

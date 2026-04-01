@@ -18,10 +18,8 @@
 				<a-descriptions-item label="仓库地址">
 					{{ project.repository_url }}
 				</a-descriptions-item>
-				<a-descriptions-item label="Pipeline 模板">
-					<router-link :to="`/ci/templates/${project.pipeline_template_id}`">
-						查看模板
-					</router-link>
+				<a-descriptions-item label="流水线模板">
+					<router-link :to="`/ci/templates/${project.pipeline_template_id}`">查看模板</router-link>
 				</a-descriptions-item>
 				<a-descriptions-item label="Git 凭据">
 					{{ project.git_credential_id ? '已配置' : '未配置' }}
@@ -51,9 +49,7 @@
 						<a-typography-text v-if="showSecret" copyable>
 							{{ project.webhook_secret }}
 						</a-typography-text>
-						<a-typography-text v-else>
-							••••••••••••••••
-						</a-typography-text>
+						<a-typography-text v-else>••••••••••••••••</a-typography-text>
 						<a-button size="small" @click="showSecret = !showSecret">
 							{{ showSecret ? '隐藏' : '显示' }}
 						</a-button>
@@ -126,11 +122,7 @@
 		</a-card>
 
 		<!-- 触发构建弹窗 -->
-		<a-modal
-			v-model:open="showTriggerModal"
-			title="触发构建"
-			@ok="handleTriggerOk"
-		>
+		<a-modal v-model:open="showTriggerModal" title="触发构建" @ok="handleTriggerOk">
 			<a-form layout="vertical">
 				<a-form-item label="分支">
 					<a-input v-model:value="triggerRef" placeholder="输入分支名" />
@@ -143,12 +135,7 @@
 		</a-modal>
 
 		<!-- 编辑项目弹窗 -->
-		<a-modal
-			v-model:open="showEditModal"
-			title="编辑项目"
-			width="600px"
-			@ok="handleEditOk"
-		>
+		<a-modal v-model:open="showEditModal" title="编辑项目" width="600px" @ok="handleEditOk">
 			<a-form
 				ref="formRef"
 				:model="form"
@@ -162,11 +149,8 @@
 				<a-form-item label="仓库地址" name="repository_url">
 					<a-input v-model:value="form.repository_url" />
 				</a-form-item>
-				<a-form-item label="Pipeline 模板" name="pipeline_template_id">
-					<a-select
-						v-model:value="form.pipeline_template_id"
-						:loading="templatesLoading"
-					>
+				<a-form-item label="流水线模板" name="pipeline_template_id">
+					<a-select v-model:value="form.pipeline_template_id" :loading="templatesLoading">
 						<a-select-option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
 							{{ tpl.name }}
 						</a-select-option>
@@ -197,11 +181,7 @@
 		</a-modal>
 
 		<!-- 添加变量弹窗 -->
-		<a-modal
-			v-model:open="showAddVariableModal"
-			title="添加变量"
-			@ok="handleAddVariableOk"
-		>
+		<a-modal v-model:open="showAddVariableModal" title="添加变量" @ok="handleAddVariableOk">
 			<a-form layout="vertical">
 				<a-form-item label="变量名">
 					<a-input v-model:value="newVariableKey" placeholder="变量名" />
@@ -217,11 +197,7 @@
 		</a-modal>
 
 		<!-- 编辑变量弹窗 -->
-		<a-modal
-			v-model:open="showEditVariableModal"
-			title="编辑变量"
-			@ok="handleEditVariableOk"
-		>
+		<a-modal v-model:open="showEditVariableModal" title="编辑变量" @ok="handleEditVariableOk">
 			<a-form layout="vertical">
 				<a-form-item label="变量名">
 					<a-input :value="editingVariableKey" disabled />
@@ -316,7 +292,7 @@ const form = reactive({
 const formRules = {
 	name: [{ required: true, message: '请输入项目名称' }],
 	repository_url: [{ required: true, message: '请输入仓库地址' }],
-	pipeline_template_id: [{ required: true, message: '请选择 Pipeline 模板' }],
+	pipeline_template_id: [{ required: true, message: '请选择 流水线模板' }],
 };
 
 const newVariableKey = ref('');
@@ -445,7 +421,10 @@ async function handleAddVariableOk() {
 	}
 	try {
 		await executeOp(async () => {
-			const updated = { ...project.value?.variable_overrides, [newVariableKey.value]: newVariableValue.value };
+			const updated = {
+				...project.value?.variable_overrides,
+				[newVariableKey.value]: newVariableValue.value,
+			};
 			await projectApi.update(projectId, { variable_overrides: updated });
 			message.success('添加成功');
 			showAddVariableModal.value = false;
@@ -459,7 +438,10 @@ async function handleAddVariableOk() {
 async function handleEditVariableOk() {
 	try {
 		await executeOp(async () => {
-			const updated = { ...project.value?.variable_overrides, [editingVariableKey.value]: editingVariableValue.value };
+			const updated = {
+				...project.value?.variable_overrides,
+				[editingVariableKey.value]: editingVariableValue.value,
+			};
 			await projectApi.update(projectId, { variable_overrides: updated });
 			message.success('更新成功');
 			showEditVariableModal.value = false;

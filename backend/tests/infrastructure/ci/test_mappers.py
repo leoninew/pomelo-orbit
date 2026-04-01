@@ -40,7 +40,7 @@ class TestProjectMapper:
             repository_url="https://github.com/test/repo.git",
             pipeline_template_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
-            variable_overrides='{}',
+            variable_overrides="{}",
             webhook_secret=None,
             branch_filter=None,
         )

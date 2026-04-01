@@ -34,9 +34,7 @@ class PipelineExecutor(ABC):
     """Pipeline 执行器抽象接口"""
 
     @abstractmethod
-    async def execute(
-        self, context: ExecutionContext, definition: PipelineDefinition
-    ) -> bool:
+    async def execute(self, context: ExecutionContext, definition: PipelineDefinition) -> bool:
         """
         执行 pipeline
 

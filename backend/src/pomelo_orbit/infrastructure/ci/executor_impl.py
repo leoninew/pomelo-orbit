@@ -30,9 +30,9 @@ class PipelineExecutorImpl(PipelineExecutor):
         job_repo: JobRepository,
         job_log_repo: JobLogRepository,
         container_executor: ContainerExecutor,
-        artifact_repo: ArtifactRepository | None = None,
-        credential_repo: CredentialRepository | None = None,
-        security_service: SecurityService | None = None,
+        artifact_repo: ArtifactRepository,
+        credential_repo: CredentialRepository,
+        security_service: SecurityService,
     ):
         self.job_repo = job_repo
         self.job_log_repo = job_log_repo
@@ -41,9 +41,7 @@ class PipelineExecutorImpl(PipelineExecutor):
         self.credential_repo = credential_repo
         self.security_service = security_service
 
-    async def execute(
-        self, context: ExecutionContext, definition: PipelineDefinition
-    ) -> bool:
+    async def execute(self, context: ExecutionContext, definition: PipelineDefinition) -> bool:
         """
         执行 pipeline
 
@@ -72,10 +70,7 @@ class PipelineExecutorImpl(PipelineExecutor):
 
             # 按层级并行执行
             for layer_idx, layer in enumerate(layers):
-                logger.info(
-                    f"Executing layer {layer_idx + 1}/{len(layers)}: "
-                    f"run={context.run_id}, jobs={layer}"
-                )
+                logger.info(f"Executing layer {layer_idx + 1}/{len(layers)}: run={context.run_id}, jobs={layer}")
 
                 # 并行执行该层所有 Job
                 results = await self._execute_layer(context, definition, layer)
@@ -83,10 +78,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 # 检查是否有失败的 Job（Fail-fast）
                 failed_jobs = [name for name, success in results.items() if not success]
                 if failed_jobs:
-                    logger.warning(
-                        f"Layer execution failed: run={context.run_id}, "
-                        f"failed_jobs={failed_jobs}"
-                    )
+                    logger.warning(f"Layer execution failed: run={context.run_id}, failed_jobs={failed_jobs}")
                     # 取消后续所有 Job
                     await self._cancel_remaining_jobs(context, layers, layer_idx + 1)
                     return False
@@ -135,10 +127,7 @@ class PipelineExecutorImpl(PipelineExecutor):
             current_jobs_map = {job.name: job for job in current_jobs}
 
         # 并行执行
-        tasks = [
-            self._execute_step(context, step, original_jobs_map, current_jobs_map)
-            for step in steps
-        ]
+        tasks = [self._execute_step(context, step, original_jobs_map, current_jobs_map) for step in steps]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # 构建结果映射
@@ -146,8 +135,7 @@ class PipelineExecutorImpl(PipelineExecutor):
         for step, result in zip(steps, results, strict=True):
             if isinstance(result, Exception):
                 logger.error(
-                    f"Job execution raised exception: run={context.run_id}, "
-                    f"job={step.name}, error={result}",
+                    f"Job execution raised exception: run={context.run_id}, job={step.name}, error={result}",
                     exc_info=result,
                 )
                 result_map[step.name] = False
@@ -185,10 +173,7 @@ class PipelineExecutorImpl(PipelineExecutor):
             )
             job.status = JobStatus.SKIPPED
             self.job_repo.save(job)
-            logger.info(
-                f"Job skipped (retry): run={context.run_id}, job={step.name}, "
-                f"original_run={context.retry_of}"
-            )
+            logger.info(f"Job skipped (retry): run={context.run_id}, job={step.name}, original_run={context.retry_of}")
             return True
 
         # 创建 Job 记录
@@ -230,17 +215,11 @@ class PipelineExecutorImpl(PipelineExecutor):
                 self.job_repo.save(job)
                 # 记录制品
                 self._save_artifacts(context, step, job.name)
-                logger.info(
-                    f"Job succeeded: run={context.run_id}, job={step.name}, "
-                    f"exit_code={exit_code}"
-                )
+                logger.info(f"Job succeeded: run={context.run_id}, job={step.name}, exit_code={exit_code}")
                 return True
             job.complete_failed(exit_code, f"Exit code: {exit_code}")
             self.job_repo.save(job)
-            logger.warning(
-                f"Job failed: run={context.run_id}, job={step.name}, "
-                f"exit_code={exit_code}"
-            )
+            logger.warning(f"Job failed: run={context.run_id}, job={step.name}, exit_code={exit_code}")
             logger.warning(f"Job failed, output: {output}")
             return False
 
@@ -263,10 +242,6 @@ class PipelineExecutorImpl(PipelineExecutor):
         action_name = (step.uses or "").split("@")[0].lower()
 
         if action_name == "checkout":
-            if not self.credential_repo:
-                raise RuntimeError("credential_repo is required for checkout action")
-            if not self.security_service:
-                raise RuntimeError("security_service is required for checkout action")
             credential = self.credential_repo.find_by_id(context.credential_id)
             if not credential:
                 raise RuntimeError(f"Credential {context.credential_id} not found")
@@ -290,7 +265,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 return str(e), 1
         else:
             logger.warning(f"Unknown action: {step.uses}, skipping")
-            return f"Unknown action: {step.uses}", 0
+            return f"Unknown action: {step.uses}", 1
 
     async def _cancel_remaining_jobs(
         self,
@@ -314,9 +289,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 )
                 job.status = JobStatus.CANCELED
                 self.job_repo.save(job)
-                logger.info(
-                    f"Job canceled: run={context.run_id}, job={job_name}"
-                )
+                logger.info(f"Job canceled: run={context.run_id}, job={job_name}")
 
     async def _should_skip_job(
         self,
@@ -379,7 +352,6 @@ class PipelineExecutorImpl(PipelineExecutor):
         """job 成功后保存制品记录"""
         if not step.artifacts or not self.artifact_repo:
             return
-
         for artifact_def in step.artifacts:
             artifact_type = artifact_def.get("type", "file")
             artifact_name = artifact_def.get("name", "")
@@ -387,16 +359,12 @@ class PipelineExecutorImpl(PipelineExecutor):
 
             if artifact_type not in {"docker_image", "file"}:
                 logger.warning(
-                    f"Unknown artifact type, skipping: run={context.run_id}, "
-                    f"job={job_name}, type={artifact_type}"
+                    f"Unknown artifact type, skipping: run={context.run_id}, job={job_name}, type={artifact_type}"
                 )
                 continue
 
             if not artifact_name:
-                logger.warning(
-                    f"Artifact declaration missing name, skipping: "
-                    f"run={context.run_id}, job={job_name}"
-                )
+                logger.warning(f"Artifact declaration missing name, skipping: run={context.run_id}, job={job_name}")
                 continue
 
             # file 类型：path 相对于 artifacts_path
@@ -414,6 +382,5 @@ class PipelineExecutorImpl(PipelineExecutor):
             )
             self.artifact_repo.save(artifact)
             logger.info(
-                f"Artifact saved: run={context.run_id}, job={job_name}, "
-                f"type={artifact_type}, name={artifact_name}"
+                f"Artifact saved: run={context.run_id}, job={job_name}, type={artifact_type}, name={artifact_name}"
             )

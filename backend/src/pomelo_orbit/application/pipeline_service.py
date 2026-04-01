@@ -326,11 +326,13 @@ class PipelineService:
             project_vars=project.variable_overrides,
             runtime_vars=runtime_variables or {},
         )
-        merged_vars.update({
-            "trigger_ref": trigger_ref,
-            "trigger_type": trigger.value,
-            "project_name": project.name,
-        })
+        merged_vars.update(
+            {
+                "trigger_ref": trigger_ref,
+                "trigger_type": trigger.value,
+                "project_name": project.name,
+            }
+        )
 
         try:
             validate_variables(merged_vars, template.variable_declarations)
@@ -349,7 +351,9 @@ class PipelineService:
         self.run_repo.save(run)
         self.run_repo.commit()
 
-        logger.info(f"Pipeline triggered: project={project.name}, run={run.id}, trigger={trigger.value}, ref={trigger_ref}")
+        logger.info(
+            f"Pipeline triggered: project={project.name}, run={run.id}, trigger={trigger.value}, ref={trigger_ref}"
+        )
         return run, project, merged_vars
 
     def create_retry_run(self, run_id: str) -> tuple[PipelineRun, Project, dict[str, Any]]:
@@ -437,7 +441,4 @@ class PipelineService:
                 run_repo.save(run)
                 session.commit()
                 cleanup_workspace(run.id)
-                logger.info(
-                    f"Pipeline finished: run={run.id}, status={run.status}, "
-                    f"finished_at={utc_now()}"
-                )
+                logger.info(f"Pipeline finished: run={run.id}, status={run.status}, finished_at={utc_now()}")

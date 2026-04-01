@@ -135,28 +135,6 @@ export interface DeploymentDetail extends Deployment {
 	log_text: string | null
 }
 
-// 回调事件相关
-export interface WebhookEvent {
-	id: string
-	source: string
-	event_type: string
-	repository_name: string | null
-	repository_url: string | null
-	branch: string | null
-	sender: string | null
-	signature_valid: boolean | null
-	status: string
-	matched_application_id: string | null
-	triggered_deployment_id: string | null
-	error_message: string | null
-	received_at: string
-	processed_at: string | null
-}
-
-export interface WebhookEventDetail extends WebhookEvent {
-	payload: string | null
-}
-
 // 路由相关
 export interface Route {
 	id: string
@@ -212,14 +190,6 @@ export const deploymentStatusColors: Record<string, string> = {
 	running: 'processing',
 	success: 'success',
 	failed: 'error',
-};
-
-export const eventStatusColors: Record<string, string> = {
-	received: 'default',
-	matched: 'processing',
-	ignored: 'warning',
-	error: 'error',
-	processed: 'success',
 };
 
 // CI 相关类型定义

@@ -11,7 +11,6 @@ class VariableError(Exception):
     """变量处理错误"""
 
 
-
 def merge_variables(
     global_vars: dict[str, Any],
     project_vars: dict[str, Any],
@@ -35,9 +34,7 @@ def merge_variables(
     return merged
 
 
-def validate_variables(
-    variables: dict[str, Any], declarations: list[VariableDeclaration]
-) -> None:
+def validate_variables(variables: dict[str, Any], declarations: list[VariableDeclaration]) -> None:
     """
     校验变量是否满足声明要求
 
@@ -79,9 +76,7 @@ def render_template(template: str, variables: dict[str, Any]) -> str:
         raise VariableError(f"模板渲染失败: {e}")
 
 
-def mask_secrets(
-    variables: dict[str, Any], declarations: list[VariableDeclaration]
-) -> dict[str, Any]:
+def mask_secrets(variables: dict[str, Any], declarations: list[VariableDeclaration]) -> dict[str, Any]:
     """
     脱敏 secret 变量
 

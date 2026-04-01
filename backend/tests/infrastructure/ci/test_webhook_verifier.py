@@ -18,9 +18,7 @@ class TestGitHubSignatureVerification:
         secret = "my-secret"
 
         # 生成正确的签名
-        expected = hmac.new(
-            secret.encode("utf-8"), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
         signature = f"sha256={expected}"
 
         assert verify_github_signature(payload, signature, secret) is True
@@ -40,9 +38,7 @@ class TestGitHubSignatureVerification:
 
         # 使用不同的 secret 生成签名
         wrong_secret = "wrong-secret"
-        expected = hmac.new(
-            wrong_secret.encode("utf-8"), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(wrong_secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
         signature = f"sha256={expected}"
 
         assert verify_github_signature(payload, signature, secret) is False
@@ -66,9 +62,7 @@ class TestGitHubSignatureVerification:
         payload = b'{"ref":"refs/heads/main"}'
         secret = "my-secret"
 
-        expected = hmac.new(
-            secret.encode("utf-8"), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(secret.encode("utf-8"), payload, hashlib.sha256).hexdigest()
         # 不加前缀
         signature = expected
 

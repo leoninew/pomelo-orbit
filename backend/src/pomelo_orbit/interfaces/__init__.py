@@ -13,7 +13,6 @@ from pomelo_orbit.interfaces.api.dto import (
     PasswordChangeReq,
     TokenResp,
     UserInfo,
-    WebhookEventResp,
 )
 
 __all__ = [
@@ -25,6 +24,5 @@ __all__ = [
     "PasswordChangeReq",
     "TokenResp",
     "UserInfo",
-    "WebhookEventResp",
     "auth_router",
 ]

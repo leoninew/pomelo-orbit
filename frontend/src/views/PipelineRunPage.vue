@@ -49,6 +49,13 @@
 						>
 							重试
 						</a>
+						<a-popconfirm
+							v-if="record.status === 'waiting' || record.status === 'running'"
+							title="确定取消此 Run？"
+							@confirm="handleCancel(record.id)"
+						>
+							<a style="color: #ff4d4f">取消</a>
+						</a-popconfirm>
 					</a-space>
 				</template>
 			</template>
@@ -121,6 +128,16 @@ async function handleRetry(runId: string) {
 		router.push(`/ci/runs/${newRun.id}`);
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '重试失败');
+	}
+}
+
+async function handleCancel(runId: string) {
+	try {
+		await pipelineRunApi.cancel(runId);
+		message.success('已取消');
+		fetchRuns();
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '取消失败');
 	}
 }
 

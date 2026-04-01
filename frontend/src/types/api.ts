@@ -287,6 +287,7 @@ export interface Project {
 	variable_overrides: Record<string, string>
 	webhook_secret?: string
 	branch_filter?: string
+	default_branch: string
 	created_at: string
 	updated_at: string
 }
@@ -298,6 +299,7 @@ export interface ProjectCreateReq {
 	git_credential_id?: string
 	variable_overrides?: Record<string, string>
 	branch_filter?: string
+	default_branch?: string
 }
 
 export interface ProjectUpdateReq {
@@ -307,6 +309,7 @@ export interface ProjectUpdateReq {
 	git_credential_id?: string
 	variable_overrides?: Record<string, string>
 	branch_filter?: string
+	default_branch?: string
 }
 
 // PipelineRun
@@ -335,8 +338,7 @@ export interface Job {
 	status: 'waiting' | 'running' | 'success' | 'failed' | 'faulted' | 'skipped' | 'canceled'
 	started_at?: string
 	finished_at?: string
-	created_at: string
-	updated_at: string
+	error_message?: string
 }
 
 // JobLog

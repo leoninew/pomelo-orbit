@@ -16,6 +16,13 @@
 				>
 					重试
 				</a-button>
+				<a-popconfirm
+					v-if="run.status === 'waiting' || run.status === 'running'"
+					title="确定取消此 Run？"
+					@confirm="handleCancel"
+				>
+					<a-button danger>取消</a-button>
+				</a-popconfirm>
 			</a-space>
 		</div>
 
@@ -129,6 +136,9 @@
 					<a-descriptions-item label="结束时间">
 						{{ currentJob.finished_at ? formatTime(currentJob.finished_at) : '-' }}
 					</a-descriptions-item>
+					<a-descriptions-item v-if="currentJob.error_message" label="错误信息">
+						<pre style="margin: 0; white-space: pre-wrap; color: #ff4d4f">{{ currentJob.error_message }}</pre>
+					</a-descriptions-item>
 				</a-descriptions>
 
 				<div class="log-container">
@@ -238,6 +248,16 @@ async function handleRetry() {
 		router.push(`/ci/runs/${newRun.id}`);
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '重试失败');
+	}
+}
+
+async function handleCancel() {
+	try {
+		await pipelineRunApi.cancel(runId);
+		message.success('已取消');
+		fetchRun();
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '取消失败');
 	}
 }
 

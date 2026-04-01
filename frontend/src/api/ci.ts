@@ -108,6 +108,10 @@ export const pipelineRunApi = {
 		return request.post(`/api/v1/ci/runs/${id}/retry`);
 	},
 
+	cancel(id: string): Promise<PipelineRun> {
+		return request.post(`/api/v1/ci/runs/${id}/cancel`);
+	},
+
 	listJobs(runId: string): Promise<Job[]> {
 		return request.get(`/api/v1/ci/runs/${runId}/jobs`);
 	},

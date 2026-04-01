@@ -4,7 +4,7 @@
 			<h2>{{ project.name }}</h2>
 			<a-space>
 				<a-button @click="$router.push('/ci/projects')">返回</a-button>
-				<a-button type="primary" @click="handleTrigger">手动触发</a-button>
+				<a-button type="primary" @click="openTriggerModal">手动触发</a-button>
 				<a-button @click="showEditModal = true">编辑</a-button>
 			</a-space>
 		</div>
@@ -28,6 +28,9 @@
 				</a-descriptions-item>
 				<a-descriptions-item label="分支过滤">
 					{{ project.branch_filter || '所有分支' }}
+				</a-descriptions-item>
+				<a-descriptions-item label="默认分支">
+					{{ project.default_branch }}
 				</a-descriptions-item>
 				<a-descriptions-item label="创建时间">
 					{{ formatTime(project.created_at) }}
@@ -62,7 +65,7 @@
 		<!-- 变量配置卡片 -->
 		<a-card title="变量配置" :loading="loading">
 			<template #extra>
-				<a-button size="small" @click="showVariableModal = true">编辑变量</a-button>
+				<a-button size="small" type="primary" @click="openAddVariableModal">添加变量</a-button>
 			</template>
 			<a-table
 				v-if="project && Object.keys(project.variable_overrides ?? {}).length > 0"
@@ -74,6 +77,14 @@
 				<template #bodyCell="{ column, record }">
 					<template v-if="column.key === 'value'">
 						<code>{{ record.value }}</code>
+					</template>
+					<template v-if="column.key === 'action'">
+						<a-space>
+							<a @click="openEditVariableModal(record.key, record.value)">编辑</a>
+							<a-popconfirm title="确定删除此变量？" @confirm="deleteVariable(record.key)">
+								<a style="color: #ff4d4f">删除</a>
+							</a-popconfirm>
+						</a-space>
 					</template>
 				</template>
 			</a-table>
@@ -113,6 +124,23 @@
 			</a-table>
 			<a-empty v-else description="暂无运行记录" />
 		</a-card>
+
+		<!-- 触发构建弹窗 -->
+		<a-modal
+			v-model:open="showTriggerModal"
+			title="触发构建"
+			@ok="handleTriggerOk"
+		>
+			<a-form layout="vertical">
+				<a-form-item label="分支">
+					<a-input v-model:value="triggerRef" placeholder="输入分支名" />
+				</a-form-item>
+			</a-form>
+			<template #footer>
+				<a-button @click="showTriggerModal = false">取消</a-button>
+				<a-button type="primary" :loading="operating" @click="handleTriggerOk">触发</a-button>
+			</template>
+		</a-modal>
 
 		<!-- 编辑项目弹窗 -->
 		<a-modal
@@ -158,6 +186,9 @@
 				<a-form-item label="分支过滤">
 					<a-input v-model:value="form.branch_filter" />
 				</a-form-item>
+				<a-form-item label="默认分支">
+					<a-input v-model:value="form.default_branch" placeholder="master" />
+				</a-form-item>
 			</a-form>
 			<template #footer>
 				<a-button @click="showEditModal = false">取消</a-button>
@@ -165,40 +196,43 @@
 			</template>
 		</a-modal>
 
-		<!-- 编辑变量弹窗 -->
+		<!-- 添加变量弹窗 -->
 		<a-modal
-			v-model:open="showVariableModal"
-			title="编辑变量"
-			width="600px"
-			@ok="handleVariableOk"
+			v-model:open="showAddVariableModal"
+			title="添加变量"
+			@ok="handleAddVariableOk"
 		>
 			<a-form layout="vertical">
-				<a-form-item
-					v-for="(value, key) in variableForm"
-					:key="key"
-					:label="key"
-				>
-					<a-input v-model:value="variableForm[key]" />
+				<a-form-item label="变量名">
+					<a-input v-model:value="newVariableKey" placeholder="变量名" />
 				</a-form-item>
-				<a-form-item label="添加新变量">
-					<a-space>
-						<a-input
-							v-model:value="newVariableKey"
-							placeholder="变量名"
-							style="width: 200px"
-						/>
-						<a-input
-							v-model:value="newVariableValue"
-							placeholder="变量值"
-							style="width: 200px"
-						/>
-						<a-button @click="addVariable">添加</a-button>
-					</a-space>
+				<a-form-item label="变量值">
+					<a-input v-model:value="newVariableValue" placeholder="变量值" />
 				</a-form-item>
 			</a-form>
 			<template #footer>
-				<a-button @click="showVariableModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleVariableOk">保存</a-button>
+				<a-button @click="showAddVariableModal = false">取消</a-button>
+				<a-button type="primary" :loading="operating" @click="handleAddVariableOk">保存</a-button>
+			</template>
+		</a-modal>
+
+		<!-- 编辑变量弹窗 -->
+		<a-modal
+			v-model:open="showEditVariableModal"
+			title="编辑变量"
+			@ok="handleEditVariableOk"
+		>
+			<a-form layout="vertical">
+				<a-form-item label="变量名">
+					<a-input :value="editingVariableKey" disabled />
+				</a-form-item>
+				<a-form-item label="变量值">
+					<a-input v-model:value="editingVariableValue" placeholder="变量值" />
+				</a-form-item>
+			</a-form>
+			<template #footer>
+				<a-button @click="showEditVariableModal = false">取消</a-button>
+				<a-button type="primary" :loading="operating" @click="handleEditVariableOk">保存</a-button>
 			</template>
 		</a-modal>
 	</a-space>
@@ -236,8 +270,11 @@ const gitCredentials = computed(() =>
 
 const showSecret = ref(false);
 const showEditModal = ref(false);
-const showVariableModal = ref(false);
+const showTriggerModal = ref(false);
+const showAddVariableModal = ref(false);
+const showEditVariableModal = ref(false);
 const formRef = ref<FormInstance>();
+const triggerRef = ref('');
 
 const webhookUrl = computed(() => {
 	if (!project.value) return '';
@@ -256,6 +293,7 @@ const variableList = computed(() => {
 const variableColumns = [
 	{ title: '变量名', key: 'key', dataIndex: 'key' },
 	{ title: '变量值', key: 'value', dataIndex: 'value' },
+	{ title: '操作', key: 'action', width: 120 },
 ];
 
 const runColumns = [
@@ -272,6 +310,7 @@ const form = reactive({
 	pipeline_template_id: '',
 	git_credential_id: undefined as string | undefined,
 	branch_filter: '',
+	default_branch: 'master',
 });
 
 const formRules = {
@@ -280,9 +319,10 @@ const formRules = {
 	pipeline_template_id: [{ required: true, message: '请选择 Pipeline 模板' }],
 };
 
-const variableForm = reactive<Record<string, string>>({});
 const newVariableKey = ref('');
 const newVariableValue = ref('');
+const editingVariableKey = ref('');
+const editingVariableValue = ref('');
 
 async function fetchProject() {
 	try {
@@ -294,9 +334,7 @@ async function fetchProject() {
 			form.pipeline_template_id = data.pipeline_template_id;
 			form.git_credential_id = data.git_credential_id;
 			form.branch_filter = data.branch_filter || '';
-			// 清空旧 key 再赋值，避免切换项目时残留
-			Object.keys(variableForm).forEach((k) => delete variableForm[k]);
-			Object.assign(variableForm, data.variable_overrides ?? {});
+			form.default_branch = data.default_branch || 'master';
 		});
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '获取项目信息失败');
@@ -340,11 +378,17 @@ async function fetchCredentials() {
 	}
 }
 
-async function handleTrigger() {
+function openTriggerModal() {
+	triggerRef.value = project.value?.default_branch || 'master';
+	showTriggerModal.value = true;
+}
+
+async function handleTriggerOk() {
 	try {
 		await executeOp(async () => {
-			const run = await projectApi.trigger(projectId);
+			const run = await projectApi.trigger(projectId, { trigger_ref: triggerRef.value });
 			message.success(`触发成功，Run ID: ${run.id}`);
+			showTriggerModal.value = false;
 			router.push(`/ci/runs/${run.id}`);
 		});
 	} catch (error) {
@@ -367,6 +411,7 @@ async function handleEditOk() {
 				pipeline_template_id: form.pipeline_template_id,
 				git_credential_id: form.git_credential_id,
 				branch_filter: form.branch_filter || undefined,
+				default_branch: form.default_branch || 'master',
 			});
 			message.success('更新成功');
 			showEditModal.value = false;
@@ -377,31 +422,65 @@ async function handleEditOk() {
 	}
 }
 
-function addVariable() {
+function openAddVariableModal() {
+	newVariableKey.value = '';
+	newVariableValue.value = '';
+	showAddVariableModal.value = true;
+}
+
+function openEditVariableModal(key: string, value: string) {
+	editingVariableKey.value = key;
+	editingVariableValue.value = value;
+	showEditVariableModal.value = true;
+}
+
+async function handleAddVariableOk() {
 	if (!newVariableKey.value.trim()) {
 		message.error('请输入变量名');
 		return;
 	}
-	if (variableForm[newVariableKey.value]) {
-		message.warning('变量名已存在，将覆盖原值');
+	if (project.value?.variable_overrides?.[newVariableKey.value] !== undefined) {
+		message.error('变量名已存在，请使用编辑功能修改');
+		return;
 	}
-	variableForm[newVariableKey.value] = newVariableValue.value;
-	newVariableKey.value = '';
-	newVariableValue.value = '';
-}
-
-async function handleVariableOk() {
 	try {
 		await executeOp(async () => {
-			await projectApi.update(projectId, {
-				variable_overrides: variableForm,
-			});
+			const updated = { ...project.value?.variable_overrides, [newVariableKey.value]: newVariableValue.value };
+			await projectApi.update(projectId, { variable_overrides: updated });
+			message.success('添加成功');
+			showAddVariableModal.value = false;
+			fetchProject();
+		});
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '添加失败');
+	}
+}
+
+async function handleEditVariableOk() {
+	try {
+		await executeOp(async () => {
+			const updated = { ...project.value?.variable_overrides, [editingVariableKey.value]: editingVariableValue.value };
+			await projectApi.update(projectId, { variable_overrides: updated });
 			message.success('更新成功');
-			showVariableModal.value = false;
+			showEditVariableModal.value = false;
 			fetchProject();
 		});
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '更新失败');
+	}
+}
+
+async function deleteVariable(key: string) {
+	try {
+		await executeOp(async () => {
+			const updated = { ...project.value?.variable_overrides };
+			delete updated[key];
+			await projectApi.update(projectId, { variable_overrides: updated });
+			message.success('删除成功');
+			fetchProject();
+		});
+	} catch (error) {
+		message.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 

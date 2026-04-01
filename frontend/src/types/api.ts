@@ -221,3 +221,167 @@ export const eventStatusColors: Record<string, string> = {
 	error: 'error',
 	processed: 'success',
 };
+
+// CI 相关类型定义
+
+// Credential
+export interface Credential {
+	id: string
+	name: string
+	type: 'git_ssh' | 'git_token' | 'registry_token'
+	created_at: string
+	updated_at: string
+}
+
+export interface CredentialCreateReq {
+	name: string
+	type: 'git_ssh' | 'git_token' | 'registry_token'
+	data: string
+}
+
+export interface CredentialUpdateReq {
+	name?: string
+	data?: string
+}
+
+// PipelineTemplate
+export interface VariableDeclaration {
+	name: string
+	description?: string
+	required: boolean
+	default?: string
+}
+
+export interface PipelineTemplate {
+	id: string
+	name: string
+	description?: string
+	content: string
+	variable_declarations: VariableDeclaration[]
+	is_builtin: boolean
+	created_at: string
+	updated_at: string
+}
+
+export interface PipelineTemplateCreateReq {
+	name: string
+	description?: string
+	content: string
+	variable_declarations?: VariableDeclaration[]
+}
+
+export interface PipelineTemplateUpdateReq {
+	name?: string
+	description?: string
+	content?: string
+	variable_declarations?: VariableDeclaration[]
+}
+
+// Project
+export interface Project {
+	id: string
+	name: string
+	repository_url: string
+	pipeline_template_id: string
+	git_credential_id?: string
+	variable_overrides: Record<string, string>
+	webhook_secret: string
+	branch_filter?: string
+	created_at: string
+	updated_at: string
+}
+
+export interface ProjectCreateReq {
+	name: string
+	repository_url: string
+	pipeline_template_id: string
+	git_credential_id?: string
+	variable_overrides?: Record<string, string>
+	branch_filter?: string
+}
+
+export interface ProjectUpdateReq {
+	name?: string
+	repository_url?: string
+	pipeline_template_id?: string
+	git_credential_id?: string
+	variable_overrides?: Record<string, string>
+	branch_filter?: string
+}
+
+// PipelineRun
+export interface PipelineRun {
+	id: string
+	project_id: string
+	trigger: 'webhook' | 'manual'
+	trigger_ref: string
+	resolved_pipeline: string
+	variables_snapshot: Record<string, string>
+	status: 'waiting' | 'running' | 'success' | 'failed' | 'canceled'
+	retry_of?: string
+	started_at?: string
+	finished_at?: string
+	created_at: string
+	updated_at: string
+}
+
+export interface PipelineRunTriggerReq {
+	trigger_ref?: string
+	variables?: Record<string, string>
+}
+
+// Job
+export interface Job {
+	id: string
+	pipeline_run_id: string
+	name: string
+	status: 'waiting' | 'running' | 'success' | 'failed' | 'faulted' | 'skipped' | 'canceled'
+	started_at?: string
+	finished_at?: string
+	created_at: string
+	updated_at: string
+}
+
+// JobLog
+export interface JobLog {
+	id: string
+	job_id: string
+	log_line: string
+	timestamp: string
+}
+
+// Artifact
+export interface Artifact {
+	id: string
+	pipeline_run_id: string
+	job_name: string
+	type: 'docker_image' | 'file'
+	name: string
+	path?: string
+	created_at: string
+}
+
+// CI 状态颜色映射
+export const pipelineRunStatusColors: Record<string, string> = {
+	waiting: 'default',
+	running: 'processing',
+	success: 'success',
+	failed: 'error',
+	canceled: 'warning',
+};
+
+export const jobStatusColors: Record<string, string> = {
+	waiting: 'default',
+	running: 'processing',
+	success: 'success',
+	failed: 'error',
+	faulted: 'error',
+	skipped: 'warning',
+	canceled: 'warning',
+};
+
+export const credentialTypeLabels: Record<string, string> = {
+	git_ssh: 'Git SSH',
+	git_token: 'Git Token',
+	registry_token: 'Registry Token',
+};

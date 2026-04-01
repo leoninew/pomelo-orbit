@@ -256,6 +256,7 @@ import { applicationApi } from '@/api/application';
 import { deploymentApi } from '@/api/deployments';
 import { delayAsync } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { appStatusColor, appStatusLabel } from '@/utils/status';
 import type { Application, ApplicationImportReq } from '@/types/api';
 
 const $router = useRouter();
@@ -531,20 +532,6 @@ async function handleModalOk() {
 onMounted(() => {
 	fetchApplications();
 });
-
-function appStatusColor(status: string) {
-	if (status === 'deployed') return 'success';
-	if (status === 'deploy_failed') return 'error';
-	if (status === 'deploying') return 'processing';
-	return 'default'; // undeployed
-}
-
-function appStatusLabel(status: string) {
-	if (status === 'deployed') return '运行中';
-	if (status === 'deploy_failed') return '部署失败';
-	if (status === 'deploying') return '部署中';
-	return '未部署'; // undeployed
-}
 </script>
 
 <style scoped>
@@ -552,6 +539,7 @@ function appStatusLabel(status: string) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

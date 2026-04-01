@@ -59,12 +59,6 @@ const router = createRouter({
 			meta: { title: '凭据管理' },
 		},
 		{
-			path: '/ci/template-market',
-			name: 'TemplateMarket',
-			component: () => import('@/views/TemplateMarketPage.vue'),
-			meta: { title: '模板市场' },
-		},
-		{
 			path: '/ci/templates',
 			name: 'PipelineTemplates',
 			component: () => import('@/views/PipelineTemplatePage.vue'),

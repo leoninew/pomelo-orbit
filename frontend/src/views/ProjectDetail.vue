@@ -65,7 +65,7 @@
 				<a-button size="small" @click="showVariableModal = true">编辑变量</a-button>
 			</template>
 			<a-table
-				v-if="project && Object.keys(project.variable_overrides).length > 0"
+				v-if="project && Object.keys(project.variable_overrides ?? {}).length > 0"
 				:columns="variableColumns"
 				:data-source="variableList"
 				:pagination="false"
@@ -247,7 +247,7 @@ const webhookUrl = computed(() => {
 
 const variableList = computed(() => {
 	if (!project.value) return [];
-	return Object.entries(project.value.variable_overrides).map(([key, value]) => ({
+	return Object.entries(project.value.variable_overrides ?? {}).map(([key, value]) => ({
 		key,
 		value,
 	}));
@@ -294,7 +294,9 @@ async function fetchProject() {
 			form.pipeline_template_id = data.pipeline_template_id;
 			form.git_credential_id = data.git_credential_id;
 			form.branch_filter = data.branch_filter || '';
-			Object.assign(variableForm, data.variable_overrides);
+			// 清空旧 key 再赋值，避免切换项目时残留
+			Object.keys(variableForm).forEach((k) => delete variableForm[k]);
+			Object.assign(variableForm, data.variable_overrides ?? {});
 		});
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '获取项目信息失败');
@@ -416,6 +418,7 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

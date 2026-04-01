@@ -248,6 +248,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { applicationApi } from '@/api/application';
 import { deploymentApi } from '@/api/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { appStatusColor, appStatusLabel } from '@/utils/status';
 import type { Application, ConfigFile } from '@/types/api';
 
 const route = useRoute();
@@ -589,20 +590,6 @@ onMounted(() => {
 	fetchApplication();
 	loadFiles();
 });
-
-function appStatusColor(status: string) {
-	if (status === 'deployed') return 'success';
-	if (status === 'deploy_failed') return 'error';
-	if (status === 'deploying') return 'processing';
-	return 'default';
-}
-
-function appStatusLabel(status: string) {
-	if (status === 'deployed') return '运行中';
-	if (status === 'deploy_failed') return '部署失败';
-	if (status === 'deploying') return '部署中';
-	return '未部署';
-}
 </script>
 
 <style scoped>
@@ -610,6 +597,7 @@ function appStatusLabel(status: string) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

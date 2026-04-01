@@ -37,10 +37,14 @@
 								<template #icon><ApiOutlined /></template>
 								回调事件
 							</a-menu-item>
-							<!-- <a-menu-item key="credentials" @click="navigate('/credentials')">
-								<template #icon><KeyOutlined /></template>
-								凭据管理
-							</a-menu-item> -->
+							<a-sub-menu key="ci">
+								<template #icon><CodeOutlined /></template>
+								<template #title>持续集成</template>
+								<a-menu-item key="projects" @click="navigate('/ci/projects')">CI 项目</a-menu-item>
+								<a-menu-item key="pipelineruns" @click="navigate('/ci/runs')">流水线记录</a-menu-item>
+								<a-menu-item key="pipelinetemplates" @click="navigate('/ci/templates')">Pipeline 模板</a-menu-item>
+								<a-menu-item key="credentials" @click="navigate('/ci/credentials')">凭据管理</a-menu-item>
+							</a-sub-menu>
 							<a-menu-item key="loginhistory" @click="navigate('/login-history')">
 								<template #icon><HistoryOutlined /></template>
 								登录历史
@@ -106,34 +110,32 @@ const isLoginPage = computed(() => route.name === 'Login');
 
 // 根据路由更新选中菜单
 watch(
-	() => route.name,
-	(name) => {
-		if (name && typeof name === 'string') {
-			const key = name.toLowerCase();
-			if (key === 'home') {
-				selectedKeys.value = [];
-			} else if (
-				[
-					'applications',
-					'deployments',
-					'events',
-					'route',
-					'traefik-http-routers',
-					// 'credentials',
-					'loginhistory',
-					'settings',
-				].includes(key)
-			) {
-				selectedKeys.value = [key];
-			} else if (key === 'applicationdetail') {
-				selectedKeys.value = ['applications'];
-			} else if (key === 'deploymentdetail') {
-				selectedKeys.value = ['deployments'];
-			} else if (key === 'eventdetail') {
-				selectedKeys.value = ['events'];
-			} else if (key === 'routedetail') {
-				selectedKeys.value = ['route'];
-			}
+	() => route.path,
+	(path) => {
+		if (path === '/') {
+			selectedKeys.value = [];
+		} else if (path.startsWith('/applications')) {
+			selectedKeys.value = ['applications'];
+		} else if (path.startsWith('/deployments')) {
+			selectedKeys.value = ['deployments'];
+		} else if (path.startsWith('/routes')) {
+			selectedKeys.value = ['route'];
+		} else if (path.startsWith('/traefik-http-routers')) {
+			selectedKeys.value = ['traefik-http-routers'];
+		} else if (path.startsWith('/events')) {
+			selectedKeys.value = ['events'];
+		} else if (path.startsWith('/ci/projects')) {
+			selectedKeys.value = ['projects'];
+		} else if (path.startsWith('/ci/runs')) {
+			selectedKeys.value = ['pipelineruns'];
+		} else if (path.startsWith('/ci/templates')) {
+			selectedKeys.value = ['pipelinetemplates'];
+		} else if (path.startsWith('/ci/credentials')) {
+			selectedKeys.value = ['credentials'];
+		} else if (path.startsWith('/login-history')) {
+			selectedKeys.value = ['loginhistory'];
+		} else if (path.startsWith('/settings')) {
+			selectedKeys.value = ['settings'];
 		}
 	},
 	{ immediate: true }

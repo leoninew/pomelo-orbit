@@ -78,6 +78,7 @@
 import { message } from 'ant-design-vue';
 import { VerticalAlignBottomOutlined } from '@ant-design/icons-vue';
 import { formatTime } from '@/utils/time';
+import { formatDuration } from '@/utils/status';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { deploymentApi } from '@/api/deployments';
@@ -95,13 +96,6 @@ const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
 
 let pollTimer: number | null = null;
-
-function formatDuration(ms?: number | null) {
-	if (!ms) return '-';
-	if (ms < 1000) return `${ms}ms`;
-	if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-	return `${(ms / 60000).toFixed(1)}min`;
-}
 
 function getStatusColor(status: string) {
 	return deploymentStatusColors[status] || 'default';
@@ -204,6 +198,7 @@ onUnmounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

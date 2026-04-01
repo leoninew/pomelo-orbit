@@ -67,6 +67,7 @@ import { useRoute } from 'vue-router';
 import { deploymentApi } from '@/api/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { formatTime } from '@/utils/time';
+import { formatDuration } from '@/utils/status';
 import { type Deployment, deploymentStatusColors } from '@/types/api';
 
 const route = useRoute();
@@ -94,13 +95,6 @@ const columns = [
 	{ title: '耗时', key: 'duration', width: 80 },
 	{ title: '操作', key: 'actions', width: 100 },
 ];
-
-function formatDuration(ms?: number | null) {
-	if (!ms) return '-';
-	if (ms < 1000) return `${ms}ms`;
-	if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-	return `${(ms / 60000).toFixed(1)}min`;
-}
 
 function getStatusColor(status: string) {
 	return deploymentStatusColors[status] || 'default';
@@ -156,6 +150,7 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

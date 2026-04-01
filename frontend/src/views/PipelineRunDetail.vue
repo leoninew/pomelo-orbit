@@ -132,7 +132,7 @@
 				</a-descriptions>
 
 				<div class="log-container">
-					<pre v-if="logs.length > 0" class="log-content">{{ logsText }}</pre>
+					<pre v-if="logs?.content" class="log-content">{{ logsText }}</pre>
 					<a-empty v-else description="暂无日志" />
 				</div>
 			</div>
@@ -162,11 +162,11 @@ const { loading: logsLoading, execute: executeLogs } = useStatusAsync();
 const run = ref<PipelineRun>();
 const jobs = ref<Job[]>([]);
 const artifacts = ref<Artifact[]>([]);
-const logs = ref<JobLog[]>([]);
+const logs = ref<JobLog | null>(null);
 const currentJob = ref<Job>();
 const showLogsDrawer = ref(false);
 
-const logsText = computed(() => logs.value.map((log) => log.log_line).join('\n'));
+const logsText = computed(() => logs.value?.content ?? '');
 
 const jobColumns = [
 	{ title: 'Job 名称', key: 'name', dataIndex: 'name' },
@@ -220,12 +220,11 @@ async function fetchArtifacts() {
 async function showJobLogs(job: Job) {
 	currentJob.value = job;
 	showLogsDrawer.value = true;
-	logs.value = [];
+	logs.value = null;
 
 	try {
 		await executeLogs(async () => {
-			const data = await jobApi.listLogs(job.id);
-			logs.value = data;
+			logs.value = await jobApi.listLogs(job.id);
 		});
 	} catch (error) {
 		message.error(error instanceof Error ? error.message : '获取日志失败');
@@ -254,6 +253,7 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

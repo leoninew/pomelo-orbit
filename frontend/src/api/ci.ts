@@ -123,7 +123,7 @@ export const jobApi = {
 		return request.get(`/api/v1/ci/jobs/${id}`);
 	},
 
-	listLogs(jobId: string): Promise<JobLog[]> {
+	listLogs(jobId: string): Promise<JobLog | null> {
 		return request.get(`/api/v1/ci/jobs/${jobId}/logs`);
 	},
 };

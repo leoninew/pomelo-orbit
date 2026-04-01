@@ -24,7 +24,7 @@
 					<a-tag v-if="record.is_builtin" color="blue" style="margin-left: 8px">内置</a-tag>
 				</template>
 				<template v-else-if="column.key === 'variables'">
-					{{ record.variable_declarations.length }} 个变量
+					{{ (record.variable_declarations ?? []).length }} 个变量
 				</template>
 				<template v-else-if="column.key === 'created_at'">
 					{{ formatTime(record.created_at) }}
@@ -201,6 +201,7 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

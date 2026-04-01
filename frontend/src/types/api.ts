@@ -285,7 +285,7 @@ export interface Project {
 	pipeline_template_id: string
 	git_credential_id?: string
 	variable_overrides: Record<string, string>
-	webhook_secret: string
+	webhook_secret?: string
 	branch_filter?: string
 	created_at: string
 	updated_at: string
@@ -315,14 +315,11 @@ export interface PipelineRun {
 	project_id: string
 	trigger: 'webhook' | 'manual'
 	trigger_ref: string
-	resolved_pipeline: string
-	variables_snapshot: Record<string, string>
 	status: 'waiting' | 'running' | 'success' | 'failed' | 'canceled'
 	retry_of?: string
 	started_at?: string
 	finished_at?: string
 	created_at: string
-	updated_at: string
 }
 
 export interface PipelineRunTriggerReq {
@@ -346,8 +343,8 @@ export interface Job {
 export interface JobLog {
 	id: string
 	job_id: string
-	log_line: string
-	timestamp: string
+	content: string
+	created_at: string
 }
 
 // Artifact

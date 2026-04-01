@@ -7,7 +7,10 @@
 			</h2>
 			<a-space>
 				<a-button @click="$router.push('/ci/templates')">返回</a-button>
-				<a-button v-if="!template.is_builtin" type="primary" @click="showEditModal = true">
+				<a-button type="primary" @click="$router.push(`/ci/projects?template_id=${templateId}`)">
+					创建项目
+				</a-button>
+				<a-button v-if="!template.is_builtin" @click="showEditModal = true">
 					编辑
 				</a-button>
 			</a-space>
@@ -37,7 +40,7 @@
 
 		<a-card title="变量声明" :loading="loading">
 			<a-table
-				v-if="template && template.variable_declarations.length > 0"
+				v-if="template && (template.variable_declarations ?? []).length > 0"
 				:columns="variableColumns"
 				:data-source="template.variable_declarations"
 				:pagination="false"
@@ -198,6 +201,7 @@ onMounted(() => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	min-height: 32px;
 }
 
 .page-header h2 {

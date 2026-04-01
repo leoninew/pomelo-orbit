@@ -25,6 +25,7 @@ steps:
         assert len(pipeline.steps) == 1
         assert pipeline.steps[0].name == "build"
         assert pipeline.steps[0].image == "python:3.12"
+        assert pipeline.steps[0].commands is not None
         assert len(pipeline.steps[0].commands) == 2
 
     def test_parse_pipeline_with_timeout(self):
@@ -62,6 +63,7 @@ steps:
 
         assert len(pipeline.steps) == 1
         assert pipeline.steps[0].name == "test"
+        assert pipeline.steps[0].steps is not None
         assert len(pipeline.steps[0].steps) == 2
         assert pipeline.steps[0].steps[0].name == "unit-test"
         assert pipeline.steps[0].steps[1].name == "lint"
@@ -85,8 +87,10 @@ steps:
         step = pipeline.steps[0]
         assert step.name == "checkout"
         assert step.uses == "checkout"
-        assert step.with_["depth"] == 1
-        assert step.with_["ref"] == "main"
+        assert step.inputs is not None
+        assert step.inputs["depth"] == 1
+        assert step.inputs["ref"] == "main"
+        assert step.outputs is not None
         assert len(step.outputs) == 2
 
     def test_parse_invalid_yaml(self):

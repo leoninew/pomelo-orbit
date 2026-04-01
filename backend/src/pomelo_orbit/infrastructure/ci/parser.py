@@ -76,7 +76,7 @@ def _parse_step(step_data: dict) -> StepDefinition:
             image=step_data.get("image"),
             commands=step_data.get("commands"),
             uses=step_data.get("uses"),
-            **{"with": step_data.get("with")},  # 使用 ** 解包避免 with_ 关键字问题
+            inputs=step_data.get("with"),
             volumes=step_data.get("volumes"),
             depends_on=step_data.get("depends_on"),
             timeout=step_data.get("timeout"),

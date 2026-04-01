@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class CredentialType(StrEnum):
@@ -61,13 +61,11 @@ class VariableDeclaration(BaseModel):
 class StepDefinition(BaseModel):
     """Step 定义（递归）"""
 
-    model_config = {"populate_by_name": True}
-
     name: str
     image: str | None = None
     commands: list[str] | None = None
     uses: str | None = None  # "checkout"
-    with_: dict[str, Any] | None = Field(None, alias="with")
+    inputs: dict[str, Any] | None = None
     volumes: list[str] | None = None
     depends_on: list[str] | None = None  # Phase 2
     timeout: int | None = None  # Phase 3

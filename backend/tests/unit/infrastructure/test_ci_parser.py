@@ -84,6 +84,7 @@ steps:
 """
         pipeline = parse_pipeline_yaml(yaml_content)
 
+        assert pipeline.steps[0].artifacts is not None
         assert len(pipeline.steps[0].artifacts) == 2
         assert pipeline.steps[0].artifacts[0]["path"] == "dist/**"
 
@@ -157,7 +158,7 @@ steps:
         pipeline = parse_pipeline_yaml(yaml_content)
 
         assert pipeline.steps[0].uses == "actions/checkout@v3"
-        assert pipeline.steps[0].with_ == {
+        assert pipeline.steps[0].inputs == {
             "repository": "myorg/myrepo",
             "ref": "main",
         }

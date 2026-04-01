@@ -45,11 +45,11 @@ class CheckoutAction:
             outputs 字典
         """
         # 解析参数
-        with_ = step.with_ or {}
-        depth = with_.get("depth", 1)
-        ref = with_.get("ref", trigger_ref)
-        sparse_checkout = with_.get("sparse_checkout")
-        submodules = with_.get("submodules", False)
+        inputs = step.inputs or {}
+        depth = inputs.get("depth", 1)
+        ref = inputs.get("ref", trigger_ref)
+        sparse_checkout = inputs.get("sparse_checkout")
+        submodules = inputs.get("submodules", False)
 
         # 解密凭据
         credential_data = json.loads(credential.encrypted_data)

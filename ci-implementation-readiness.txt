@@ -1,0 +1,228 @@
+===========================================
+CI 系统实施就绪度评估
+评估时间：2026-03-31
+===========================================
+
+一、设计完整度总结
+-------------------------------------------
+
+【已完成的设计】
+
+1. 核心实体模型 ✓
+   - Project（项目）
+   - Credential（凭据）
+   - PipelineTemplate（模板）
+   - PipelineRun（执行实例）
+   - Artifact（制品）
+   - ProjectNotification（通知订阅）
+
+2. 业务规则 ✓
+   - Pipeline 配置来源（平台集中管理，不支持 .ci.yaml）
+   - 变量系统（三层：全局 → 项目 → 运行时）
+   - 变量声明与校验
+   - 内置变量注入
+   - Jinja2 占位符语法
+
+3. Job 模型 ✓
+   - 统一 stage/step 为单一 Job 概念
+   - 递归嵌套支持
+   - 串行与并行规则（默认串行，depends_on 实现并行）
+   - 超时继承机制（pipeline → 父 job → 子 job）
+
+4. 制品管理 ✓
+   - 两种类型：docker_image | file
+   - 显式声明，不自动扫描
+   - 工作目录结构（workspace + artifacts）
+
+5. 执行层架构 ✓
+   - PipelineExecutor 接口抽象
+   - 初版 asyncio 实现路径
+   - Temporal 迁移映射方案
+
+6. 重试机制 ✓
+   - 新 PipelineRun + retry_of 引用
+   - 两种策略：always_rerun | skip_if_success
+   - 依赖链传播规则
+
+7. 并发控制 ✓
+   - 全局 max_concurrent_runs
+   - 项目级 concurrency_policy（key + on_conflict）
+
+8. 取消运行 ✓
+   - 状态转换：waiting→canceled, running→canceling→canceled
+   - SIGTERM + 强制 kill
+
+9. 前端可视化 ✓
+   - Job 树渲染流程图
+   - SSE 推送状态和日志
+
+10. 事件通知 ✓
+    - 订阅配置（webhook | email）
+    - 触发事件（run.success | run.failed | run.canceled）
+
+
+二、实施前需要补充的设计
+-------------------------------------------
+
+【缺失 #1：Job 状态机】
+
+当前状态：
+- PipelineRun 有完整状态定义（waiting | running | canceling | success | failed | canceled）
+- Job 的状态在文档中被提及但未完整定义
+
+需要明确：
+1. Job 的完整状态集合
+   建议：waiting | running | success | failed | skipped | canceled | faulted
+
+2. 叶子 Job（有 image/commands 或 uses）的状态转换规则
+   - 何时进入 waiting
+   - 何时进入 running
+   - 何时进入 success / failed / faulted
+   - 何时进入 skipped（重试时 skip_if_success）
+   - 何时进入 canceled（取消运行时）
+
+3. 编排 Job（有 jobs 子列表）的状态聚合规则
+   - 如何从子 jobs 的状态计算自己的状态
+   - 所有子 job success → 自己 success
+   - 任一子 job failed → 自己 failed？还是等所有完成？
+   - 任一子 job canceled → 自己 canceled？
+   - 子 job 全部 skipped → 自己 skipped？
+
+4. Fail-fast 行为
+   - 编排 job 的某个子 job 失败时，是否立即停止其他子 job
+   - 还是等所有子 job 完成再聚合状态
+
+
+【缺失 #2：uses: checkout 接口规范】
+
+当前状态：
+- 示例中使用了 `uses: checkout`
+- 提到了 `with` 参数和 `outputs`
+- 但完整接口未定义
+
+需要明确：
+1. 支持的 with 参数
+   建议：
+   - depth: int（默认 1，0 表示完整历史）
+   - sparse_checkout: str（可选，monorepo 场景）
+   - ref: str（可选，覆盖 trigger_ref）
+   - submodules: bool（默认 false）
+
+2. outputs 格式
+   建议：
+   - commit_sha: str
+   - commit_message: str
+   - author: str
+   - committed_at: str（ISO 8601）
+
+3. 凭据注入方式
+   - SSH 私钥：临时文件挂载 + GIT_SSH_COMMAND
+   - HTTPS token：GIT_ASKPASS 或 URL 内嵌
+
+4. 工作目录约定
+   - checkout 到 /workspace
+   - 后续 job 默认 workdir=/workspace
+
+
+三、实施顺序建议
+-------------------------------------------
+
+【Phase 1：核心可跑】
+目标：能手动触发一个简单的串行 pipeline，看到日志和结果
+
+实体：
+- Project CRUD（repository_url, pipeline_template_id, git_credential_id, variable_overrides）
+- Credential CRUD（name, type, data 加密存储）
+- PipelineTemplate CRUD（name, content, variable_declarations）
+- PipelineRun 创建与查询（手动触发）
+
+执行：
+- PipelineExecutor 接口 + asyncio 实现
+- Job 串行执行（递归处理 jobs 列表）
+- 容器执行（docker run，挂载 workspace 和 artifacts）
+- 日志收集（容器 stdout/stderr 写入数据库或文件）
+
+前端：
+- Project 列表与创建表单
+- PipelineRun 列表
+- 日志查看页面（简单文本展示）
+
+交付物：
+- 能创建 Project，关联 Credential 和 PipelineTemplate
+- 能手动触发 PipelineRun
+- 能看到 Job 执行日志和最终状态
+
+
+【Phase 2：完整 CI】
+目标：支持 Webhook 触发、并行执行、代码拉取、制品记录、重试
+
+新增：
+- Webhook 接收端点（验证 webhook_secret）
+- checkout 内置 action 实现
+- Job 并行执行（depends_on + asyncio.gather）
+- Artifact 记录（docker_image | file）
+- 重试逻辑（retry_of + skip_if_success）
+
+前端：
+- Webhook 配置界面
+- Artifact 列表与下载
+- 重试按钮
+
+交付物：
+- 能接收 Git Webhook 自动触发构建
+- 能拉取代码并执行构建
+- 能记录制品
+- 能重试失败的 Run
+
+
+【Phase 3：生产就绪】
+目标：并发控制、取消、超时、通知、可视化
+
+新增：
+- 全局并发限制（max_concurrent_runs）
+- 项目并发策略（concurrency_policy）
+- 取消运行（canceling 状态 + SIGTERM）
+- 超时机制（pipeline/job 级别）
+- ProjectNotification CRUD + 事件触发
+- SSE 实时推送（状态 + 日志）
+
+前端：
+- 流程图可视化（Job 树渲染）
+- 实时状态更新（SSE）
+- 取消按钮
+- 通知订阅配置
+
+交付物：
+- 生产级并发控制
+- 可取消运行中的 pipeline
+- 实时日志流
+- 流程图可视化
+- 事件通知
+
+
+四、后续增强（TODO）
+-------------------------------------------
+
+- 制品存储后端抽象（本地文件系统 → MinIO）
+- 私有镜像拉取（imagePullSecrets）
+- 精确跳过（job outputs + skip_conditions）
+- 并发 cache 写冲突处理
+- Job outputs 机制（跨 job 传递数据）
+- 更多内置 actions（如 docker-login）
+
+
+五、结论
+-------------------------------------------
+
+设计完整度：90%
+
+实施阻塞项：2 个
+1. Job 状态机定义（必须，影响执行器实现）
+2. checkout action 接口规范（必须，影响 pipeline 解析）
+
+建议：
+- 先补充这两个设计细节
+- 然后直接进入 Phase 1 实施
+- Phase 1 可以在 1-2 周内交付可用原型
+
+评估人：Kiro

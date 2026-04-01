@@ -1,15 +1,23 @@
 """Pipeline 执行器实现"""
 
 import asyncio
+import copy
 import logging
 from pathlib import Path
 
 from pomelo_orbit.domain.ci.entities import Artifact, Job, JobLog
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, RetryPolicy, StepDefinition
+from pomelo_orbit.infrastructure.ci.actions.checkout import CheckoutAction
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
-from pomelo_orbit.infrastructure.ci.repositories import ArtifactRepository, JobLogRepository, JobRepository
+from pomelo_orbit.infrastructure.ci.repositories import (
+    ArtifactRepository,
+    CredentialRepository,
+    JobLogRepository,
+    JobRepository,
+)
+from pomelo_orbit.infrastructure.security import SecurityService
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +31,15 @@ class PipelineExecutorImpl(PipelineExecutor):
         job_log_repo: JobLogRepository,
         container_executor: ContainerExecutor,
         artifact_repo: ArtifactRepository | None = None,
+        credential_repo: CredentialRepository | None = None,
+        security_service: SecurityService | None = None,
     ):
         self.job_repo = job_repo
         self.job_log_repo = job_log_repo
         self.container_executor = container_executor
         self.artifact_repo = artifact_repo
+        self.credential_repo = credential_repo
+        self.security_service = security_service
 
     async def execute(
         self, context: ExecutionContext, definition: PipelineDefinition
@@ -192,20 +204,25 @@ class PipelineExecutorImpl(PipelineExecutor):
 
             logger.info(f"Job started: run={context.run_id}, job={step.name}")
 
-            # 执行容器
-            exit_code, output = await self.container_executor.run(
-                image=step.image or "alpine:latest",
-                commands=step.commands or [],
-                environment={k: str(v) for k, v in context.variables.items()},
-                workspace_path=Path(context.workspace_path),
-                artifacts_path=Path(context.artifacts_path),
-                volumes=step.volumes or [],
-            )
+            # 处理 uses action
+            if step.uses:
+                output, exit_code = await self._execute_action(context, step, job)
+            else:
+                if not step.image:
+                    raise RuntimeError(f"Step '{step.name}' has no image defined")
+                # 执行容器
+                exit_code, output = await self.container_executor.run(
+                    image=step.image,
+                    commands=step.commands or [],
+                    environment={k: str(v) for k, v in context.variables.items()},
+                    workspace_path=Path(context.workspace_path),
+                    artifacts_path=Path(context.artifacts_path),
+                    volumes=step.volumes or [],
+                )
 
-            # 保存日志
-            if output:
-                log = JobLog.create(job_id=job.id, content=output)
-                self.job_log_repo.save(log)
+            # 始终保存容器输出（无论成功失败）
+            log = JobLog.create(job_id=job.id, content=output or "")
+            self.job_log_repo.save(log)
 
             # 更新 Job 状态
             if exit_code == 0:
@@ -224,6 +241,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 f"Job failed: run={context.run_id}, job={step.name}, "
                 f"exit_code={exit_code}"
             )
+            logger.warning(f"Job failed, output: {output}")
             return False
 
         except Exception as e:
@@ -234,6 +252,45 @@ class PipelineExecutorImpl(PipelineExecutor):
                 exc_info=True,
             )
             return False
+
+    async def _execute_action(
+        self,
+        context: ExecutionContext,
+        step: StepDefinition,
+        job: Job,
+    ) -> tuple[str, int]:
+        """处理 uses action，返回 (output, exit_code)"""
+        action_name = (step.uses or "").split("@")[0].lower()
+
+        if action_name == "checkout":
+            if not self.credential_repo:
+                raise RuntimeError("credential_repo is required for checkout action")
+            if not self.security_service:
+                raise RuntimeError("security_service is required for checkout action")
+            credential = self.credential_repo.find_by_id(context.credential_id)
+            if not credential:
+                raise RuntimeError(f"Credential {context.credential_id} not found")
+            # 解密凭据数据后注入到 credential 对象
+            decrypted_credential = copy.copy(credential)
+            decrypted_credential.encrypted_data = self.security_service.decrypt_value(credential.encrypted_data)
+            checkout = CheckoutAction(self.container_executor)
+            try:
+                outputs = await checkout.execute(
+                    step=step,
+                    repository_url=context.repository_url,
+                    credential=decrypted_credential,
+                    trigger_ref=context.variables.get("trigger_ref", "main"),
+                    workspace_path=Path(context.workspace_path),
+                    artifacts_path=Path(context.artifacts_path),
+                    run_id=context.run_id,
+                )
+                output = "\n".join(f"{k}={v}" for k, v in outputs.items())
+                return output, 0
+            except Exception as e:
+                return str(e), 1
+        else:
+            logger.warning(f"Unknown action: {step.uses}, skipping")
+            return f"Unknown action: {step.uses}", 0
 
     async def _cancel_remaining_jobs(
         self,

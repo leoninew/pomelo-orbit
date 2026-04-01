@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,13 @@ class ContainerExecutor:
     """容器执行器"""
 
     def __init__(self):
-        self.client = docker.from_env()
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            self._client = docker.from_env()
+        return self._client
 
     async def run(
         self,
@@ -30,6 +37,8 @@ class ContainerExecutor:
         environment: dict[str, str] | None,
         workspace_path: Path,
         artifacts_path: Path,
+        entrypoint: str = "sh",
+        extra_binds: dict[str, dict[str, str]] | None = None,
     ) -> tuple[int, str]:
         """
         执行容器
@@ -49,7 +58,7 @@ class ContainerExecutor:
             ContainerExecutionError: 执行失败
         """
         try:
-            # 构造卷挂载
+            # 构造卷挂载（使用 dict 格式，Docker SDK 正确处理 Windows 盘符路径）
             volume_binds = {
                 str(workspace_path): {"bind": "/workspace", "mode": "rw"},
                 str(artifacts_path): {"bind": "/artifacts", "mode": "rw"},
@@ -62,18 +71,22 @@ class ContainerExecutor:
                         host_path, container_path = vol.split(":", 1)
                         volume_binds[host_path] = {"bind": container_path, "mode": "rw"}
 
+            # 添加额外的 bind mounts（已是 dict 格式，避免 Windows 路径解析问题）
+            if extra_binds:
+                volume_binds.update(extra_binds)
+
             # 构造命令
             command = None
             if commands:
-                # 如果是多条命令，用 sh -c 包装
-                command = (
-                    ["sh", "-c", " && ".join(commands)]
-                    if len(commands) > 1
-                    else ["sh", "-c", commands[0]]
-                )
+                joined = " && ".join(commands)
+                command = ["-c", joined]
 
             # 在线程池中执行 Docker 操作（避免阻塞事件循环）
-            loop = asyncio.get_event_loop()
+            cmd_str = command[1] if command else "(none)"
+            # 脱敏：隐藏 URL 中的 token（https://token@host -> https://***@host）
+            safe_cmd = re.sub(r'https://[^@]+@', 'https://***@', cmd_str)
+            logger.info(f"Container run: image={image}, workdir=/workspace, command={safe_cmd}")
+            loop = asyncio.get_running_loop()
             exit_code, logs = await loop.run_in_executor(
                 None,
                 self._run_container_sync,
@@ -81,8 +94,8 @@ class ContainerExecutor:
                 command,
                 volume_binds,
                 environment or {},
+                entrypoint,
             )
-
             return exit_code, logs
 
         except ImageNotFound:
@@ -100,6 +113,7 @@ class ContainerExecutor:
         command: list[str] | None,
         volumes: dict[str, Any],
         environment: dict[str, str],
+        entrypoint: str = "sh",
     ) -> tuple[int, str]:
         """同步执行容器（在线程池中调用）"""
         try:
@@ -109,6 +123,7 @@ class ContainerExecutor:
                 volumes=volumes,
                 environment=environment,
                 working_dir="/workspace",
+                entrypoint=entrypoint,
                 remove=True,
                 detach=False,
                 stdout=True,

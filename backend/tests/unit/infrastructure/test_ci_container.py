@@ -65,7 +65,7 @@ class TestContainerExecutor:
         assert exit_code == 0
         # 验证命令被正确组合
         call_args = mock_client.containers.run.call_args
-        assert call_args[1]["command"] == ["sh", "-c", "echo hello && echo world"]
+        assert call_args[1]["command"] == ["-c", "echo hello && echo world"]
 
     @pytest.mark.asyncio
     @patch("pomelo_orbit.infrastructure.ci.container.docker")

@@ -1,14 +1,13 @@
 """Checkout Action 实现"""
 
-import json
 import logging
-import tempfile
 from pathlib import Path
 from typing import Any
 
 from pomelo_orbit.domain.ci.entities import Credential
 from pomelo_orbit.domain.ci.value_objects import CredentialType, StepDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
+from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path
 
 logger = logging.getLogger(__name__)
 
@@ -51,38 +50,38 @@ class CheckoutAction:
         sparse_checkout = inputs.get("sparse_checkout")
         submodules = inputs.get("submodules", False)
 
-        # 解密凭据
-        credential_data = json.loads(credential.encrypted_data)
-
         # 准备环境变量和卷
-        environment = {}
-        volumes = []
-        temp_key_path = None
+        environment: dict[str, str] = {}
+        extra_binds: dict[str, dict[str, str]] = {}
 
         try:
             if credential.type == CredentialType.GIT_SSH:
-                # SSH 私钥注入
-                private_key = credential_data.get("private_key", "")
-                with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".key") as temp_key_file:
-                    temp_key_file.write(private_key)
-                    temp_key_path = temp_key_file.name
-
-                # 设置权限
-                Path(temp_key_path).chmod(0o600)
-
-                # 挂载私钥到容器
-                volumes.append(f"{temp_key_path}:/root/.ssh/id_rsa:ro")
-                environment["GIT_SSH_COMMAND"] = "ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                # 写入 run 专用的 secrets 目录，挂载到容器 /run/secrets，不污染 workspace
+                secrets_path = get_secrets_path(run_id)
+                secrets_path.mkdir(parents=True, exist_ok=True)
+                key_path = secrets_path / "id_rsa"
+                key_path.write_text(credential.get_private_key())
+                key_path.chmod(0o600)
+                extra_binds[str(secrets_path)] = {"bind": "/run/secrets", "mode": "rw"}
+                environment["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
 
             elif credential.type == CredentialType.GIT_TOKEN:
-                # HTTPS token 注入
-                token = credential_data.get("token", "")
-                # 将 token 内嵌到 URL
-                if repository_url.startswith("https://"):
+                token = credential.get_token()
+                # 如果是 SSH 格式（git@host:user/repo.git），转换为 HTTPS 格式
+                if repository_url.startswith("git@"):
+                    # git@github.com:user/repo.git -> https://token@github.com/user/repo.git
+                    without_prefix = repository_url[len("git@"):]
+                    host, path = without_prefix.split(":", 1)
+                    repository_url = f"https://{token}@{host}/{path}"
+                elif repository_url.startswith("https://"):
                     repository_url = repository_url.replace("https://", f"https://{token}@")
 
             # 构造 git clone 命令
             commands = []
+
+            if credential.type == CredentialType.GIT_SSH:
+                # Windows 上 chmod 不生效，在容器内修正私钥权限
+                commands.append("chmod 600 /run/secrets/id_rsa")
 
             # 基础 clone 命令
             clone_cmd = f"git clone --depth={depth}"
@@ -104,21 +103,23 @@ class CheckoutAction:
             if submodules:
                 commands.append("cd /workspace && git submodule update --init --recursive")
 
-            # 提取 outputs
+            # 提取 outputs（写到 /workspace/.git_outputs，随 workspace 挂载同步到宿主机）
             commands.append("cd /workspace")
-            commands.append("git log -1 --format='%H' > /tmp/commit_sha")
-            commands.append("git log -1 --format='%s' > /tmp/commit_message")
-            commands.append("git log -1 --format='%an' > /tmp/author")
-            commands.append("git log -1 --format='%aI' > /tmp/committed_at")
+            commands.append("git log -1 --format='%H' > /workspace/.git_outputs_commit_sha")
+            commands.append("git log -1 --format='%s' > /workspace/.git_outputs_commit_message")
+            commands.append("git log -1 --format='%an' > /workspace/.git_outputs_author")
+            commands.append("git log -1 --format='%aI' > /workspace/.git_outputs_committed_at")
 
             # 执行容器
+            logger.info(f"run git, extra_binds={extra_binds}")
             exit_code, logs = await self.container_executor.run(
                 image="alpine/git",
                 commands=commands,
-                volumes=volumes,
+                volumes=[],
                 environment=environment,
                 workspace_path=workspace_path,
                 artifacts_path=artifacts_path,
+                extra_binds=extra_binds,
             )
 
             if exit_code != 0:
@@ -127,10 +128,10 @@ class CheckoutAction:
             # 读取 outputs
             outputs = {}
             try:
-                outputs["commit_sha"] = (workspace_path.parent / "tmp" / "commit_sha").read_text().strip()
-                outputs["commit_message"] = (workspace_path.parent / "tmp" / "commit_message").read_text().strip()
-                outputs["author"] = (workspace_path.parent / "tmp" / "author").read_text().strip()
-                outputs["committed_at"] = (workspace_path.parent / "tmp" / "committed_at").read_text().strip()
+                outputs["commit_sha"] = (workspace_path / ".git_outputs_commit_sha").read_text().strip()
+                outputs["commit_message"] = (workspace_path / ".git_outputs_commit_message").read_text().strip()
+                outputs["author"] = (workspace_path / ".git_outputs_author").read_text().strip()
+                outputs["committed_at"] = (workspace_path / ".git_outputs_committed_at").read_text().strip()
             except Exception as e:
                 logger.warning(f"读取 checkout outputs 失败: {e}")
                 outputs = {
@@ -143,9 +144,4 @@ class CheckoutAction:
             return outputs
 
         finally:
-            # 清理临时私钥文件
-            if temp_key_path:
-                try:
-                    Path(temp_key_path).unlink(missing_ok=True)
-                except Exception as e:
-                    logger.warning(f"清理临时私钥文件失败: {e}")
+            pass

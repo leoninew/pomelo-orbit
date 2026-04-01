@@ -93,7 +93,7 @@ class TestCleanupWorkspace:
             mock_root.return_value = Path(tmpdir)
             _, artifacts_path = create_workspace("test-run")
             cleanup_workspace("test-run")
-            assert artifacts_path.exists()
+            assert not artifacts_path.exists()
 
     def test_cleanup_nonexistent_workspace(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:

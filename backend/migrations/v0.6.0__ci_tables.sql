@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS credentials (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    type TEXT NOT NULL CHECK(type IN ('git_ssh', 'git_token')),
+    type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS projects (
     pipeline_template_id TEXT NOT NULL,
     git_credential_id TEXT NOT NULL,
     variable_overrides TEXT NOT NULL DEFAULT '{}',  -- JSON object
+    webhook_secret TEXT,
+    branch_filter TEXT,
+    default_branch TEXT NOT NULL DEFAULT 'master',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (pipeline_template_id) REFERENCES pipeline_templates(id),
@@ -48,19 +51,22 @@ CREATE INDEX IF NOT EXISTS idx_projects_credential ON projects(git_credential_id
 CREATE TABLE IF NOT EXISTS pipeline_runs (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,
-    trigger TEXT NOT NULL CHECK(trigger IN ('manual', 'webhook')),
+    trigger TEXT NOT NULL,
     trigger_ref TEXT NOT NULL,
     resolved_pipeline TEXT NOT NULL,
     variables_snapshot TEXT NOT NULL DEFAULT '{}',  -- JSON object
-    status TEXT NOT NULL CHECK(status IN ('waiting', 'running', 'success', 'failed')),
+    status TEXT NOT NULL,
+    retry_of TEXT,
     started_at TEXT,
     finished_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (project_id) REFERENCES projects(id)
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    FOREIGN KEY (retry_of) REFERENCES pipeline_runs(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_project_created ON pipeline_runs(project_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_status ON pipeline_runs(status);
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_retry_of ON pipeline_runs(retry_of);
 
 -- Job 表
 CREATE TABLE IF NOT EXISTS jobs (
@@ -68,7 +74,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     pipeline_run_id TEXT NOT NULL,
     name TEXT NOT NULL,
     parent_job_id TEXT,
-    status TEXT NOT NULL CHECK(status IN ('waiting', 'running', 'success', 'failed', 'faulted', 'skipped', 'canceled')),
+    status TEXT NOT NULL,
     started_at TEXT,
     finished_at TEXT,
     exit_code INTEGER,

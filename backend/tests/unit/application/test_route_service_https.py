@@ -32,8 +32,7 @@ def create_route(name="test-route", domain="test.example.com", enabled=True, **k
 class TestUploadCert:
     """测试 upload_cert"""
 
-    @pytest.mark.asyncio
-    async def test_upload_cert_route_not_found(self):
+    def test_upload_cert_route_not_found(self):
         """测试上传证书时路由不存在"""
         route_repo = Mock()
         route_repo.find_by_id.return_value = None
@@ -41,10 +40,9 @@ class TestUploadCert:
         service = RouteService(route_repo, Mock(), Mock(), Mock())
 
         with pytest.raises(BusinessError, match="not found"):
-            await service.upload_cert("route-1", b"cert_content")
+            service.upload_cert("route-1", b"cert_content")
 
-    @pytest.mark.asyncio
-    async def test_upload_cert_empty_content(self):
+    def test_upload_cert_empty_content(self):
         """测试上传空证书"""
         route_repo = Mock()
         route_repo.find_by_id.return_value = create_route()
@@ -52,14 +50,13 @@ class TestUploadCert:
         service = RouteService(route_repo, Mock(), Mock(), Mock())
 
         with pytest.raises(BusinessError, match="Empty certificate"):
-            await service.upload_cert("route-1", b"")
+            service.upload_cert("route-1", b"")
 
 
 class TestDisableHttps:
     """测试 disable_https"""
 
-    @pytest.mark.asyncio
-    async def test_disable_https_route_not_found(self):
+    def test_disable_https_route_not_found(self):
         """测试禁用 HTTPS 时路由不存在"""
         route_repo = Mock()
         route_repo.find_by_id.return_value = None
@@ -67,14 +64,13 @@ class TestDisableHttps:
         service = RouteService(route_repo, Mock(), Mock(), Mock())
 
         with pytest.raises(BusinessError, match="not found"):
-            await service.disable_https("route-1")
+            service.disable_https("route-1")
 
 
 class TestEnableLetsencrypt:
     """测试 enable_letsencrypt"""
 
-    @pytest.mark.asyncio
-    async def test_enable_letsencrypt_not_enabled_in_config(self):
+    def test_enable_letsencrypt_not_enabled_in_config(self):
         """测试 Let's Encrypt 未在配置中启用"""
         settings = Mock()
         settings.letsencrypt.enabled = False
@@ -82,10 +78,9 @@ class TestEnableLetsencrypt:
         service = RouteService(Mock(), Mock(), Mock(), settings)
 
         with pytest.raises(BusinessError, match="not enabled"):
-            await service.enable_letsencrypt("route-1")
+            service.enable_letsencrypt("route-1")
 
-    @pytest.mark.asyncio
-    async def test_enable_letsencrypt_no_email(self):
+    def test_enable_letsencrypt_no_email(self):
         """测试 Let's Encrypt 未配置邮箱"""
         settings = Mock()
         settings.letsencrypt.enabled = True
@@ -94,10 +89,9 @@ class TestEnableLetsencrypt:
         service = RouteService(Mock(), Mock(), Mock(), settings)
 
         with pytest.raises(BusinessError, match="email"):
-            await service.enable_letsencrypt("route-1")
+            service.enable_letsencrypt("route-1")
 
-    @pytest.mark.asyncio
-    async def test_enable_letsencrypt_route_not_found(self):
+    def test_enable_letsencrypt_route_not_found(self):
         """测试启用 Let's Encrypt 时路由不存在"""
         route_repo = Mock()
         route_repo.find_by_id.return_value = None
@@ -108,14 +102,13 @@ class TestEnableLetsencrypt:
         service = RouteService(route_repo, Mock(), Mock(), settings)
 
         with pytest.raises(BusinessError, match="not found"):
-            await service.enable_letsencrypt("route-1")
+            service.enable_letsencrypt("route-1")
 
 
 class TestEnableMkcert:
     """测试 enable_mkcert"""
 
-    @pytest.mark.asyncio
-    async def test_enable_mkcert_route_not_found(self):
+    def test_enable_mkcert_route_not_found(self):
         """测试启用 mkcert 时路由不存在"""
         route_repo = Mock()
         route_repo.find_by_id.return_value = None
@@ -123,7 +116,7 @@ class TestEnableMkcert:
         service = RouteService(route_repo, Mock(), Mock(), Mock())
 
         with pytest.raises(BusinessError, match="not found"):
-            await service.enable_mkcert("route-1")
+            service.enable_mkcert("route-1")
 
     def test_enable_mkcert_success_enabled_route(self):
         """测试成功启用 mkcert（路由已启用）"""
@@ -485,8 +478,7 @@ class TestEnableLetsencryptSuccess:
         assert result.cert_pem is None
         assert result.cert_key is None
 
-    @pytest.mark.asyncio
-    async def test_enable_letsencrypt_already_enabled(self):
+    def test_enable_letsencrypt_already_enabled(self):
         """测试重复启用 Let's Encrypt"""
         route = create_route(
             enabled=True,
@@ -503,4 +495,4 @@ class TestEnableLetsencryptSuccess:
         service = RouteService(route_repo, Mock(), Mock(), settings)
 
         with pytest.raises(BusinessError, match="已启用"):
-            await service.enable_letsencrypt(route.id)
+            service.enable_letsencrypt(route.id)

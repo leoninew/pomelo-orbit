@@ -1,5 +1,6 @@
 """Pipeline 执行器实现测试"""
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -7,6 +8,10 @@ import pytest
 from pomelo_orbit.domain.ci.executor import ExecutionContext
 from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, StepDefinition
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
+
+if TYPE_CHECKING:
+    from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
+    from pomelo_orbit.infrastructure.ci.repositories import JobLogRepositoryImpl, JobRepositoryImpl
 
 
 class TestPipelineExecutorImpl:
@@ -32,7 +37,11 @@ class TestPipelineExecutorImpl:
     @pytest.fixture
     def executor(self, job_repo, job_log_repo, container_executor):
         """执行器实例"""
-        return PipelineExecutorImpl(job_repo, job_log_repo, container_executor)
+        return PipelineExecutorImpl(
+            cast("JobRepositoryImpl", job_repo),
+            cast("JobLogRepositoryImpl", job_log_repo),
+            cast("ContainerExecutor", container_executor),
+        )
 
     @pytest.fixture
     def context(self):

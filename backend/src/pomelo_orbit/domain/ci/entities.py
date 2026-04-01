@@ -56,18 +56,24 @@ class Project:
     def update(
         self,
         name: str | None = None,
+        repository_url: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         pipeline_template_id: str | None = None,
+        git_credential_id: str | None = None,
         webhook_secret: str | None = None,
         branch_filter: str | None = None,
     ) -> None:
         """更新项目"""
         if name is not None:
             self.name = name
+        if repository_url is not None:
+            self.repository_url = repository_url
         if variable_overrides is not None:
             self.variable_overrides = variable_overrides
         if pipeline_template_id is not None:
             self.pipeline_template_id = pipeline_template_id
+        if git_credential_id is not None:
+            self.git_credential_id = git_credential_id
         if webhook_secret is not None:
             self.webhook_secret = webhook_secret
         if branch_filter is not None:

@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from pomelo_orbit.domain.ci.entities import Project
 from pomelo_orbit.infrastructure.ci.models import Base
-from pomelo_orbit.infrastructure.ci.repositories import ProjectRepository
+from pomelo_orbit.infrastructure.ci.repositories import ProjectRepositoryImpl
 
 
 class TestProjectRepository:
@@ -19,7 +19,7 @@ class TestProjectRepository:
         Base.metadata.create_all(self.engine)
         session_local = sessionmaker(bind=self.engine)
         self.session = session_local()
-        self.repo = ProjectRepository(self.session)
+        self.repo = ProjectRepositoryImpl(self.session)
 
     def teardown_method(self):
         """每个测试后清理"""

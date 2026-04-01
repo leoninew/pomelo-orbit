@@ -18,8 +18,8 @@ class CredentialResp(BaseModel):
 
 class CredentialCreateReq(BaseModel):
     name: str
-    type: Literal["git_ssh", "git_token"]
-    data: str  # 明文，由 API 层加密后存储
+    type: Literal["git_ssh", "git_token", "registry_token"]
+    data: str
 
 
 # ---- PipelineTemplate ----
@@ -30,6 +30,8 @@ class VariableDeclarationResp(BaseModel):
     required: bool
     default: Any
     secret: bool
+
+    model_config = {"from_attributes": True}
 
 
 class PipelineTemplateResp(BaseModel):
@@ -69,7 +71,7 @@ class ProjectResp(BaseModel):
     git_credential_id: str
     variable_overrides: dict[str, Any]
     branch_filter: str | None
-    # webhook_secret 不回显
+    webhook_secret: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -88,8 +90,10 @@ class ProjectCreateReq(BaseModel):
 
 class ProjectUpdateReq(BaseModel):
     name: str | None = None
-    variable_overrides: dict[str, Any] | None = None
+    repository_url: str | None = None
     pipeline_template_id: str | None = None
+    git_credential_id: str | None = None
+    variable_overrides: dict[str, Any] | None = None
     branch_filter: str | None = None
 
 
@@ -107,6 +111,7 @@ class PipelineRunResp(BaseModel):
     trigger: str
     trigger_ref: str
     status: str
+    retry_of: str | None = None
     started_at: datetime | None
     finished_at: datetime | None
     created_at: datetime
@@ -115,7 +120,7 @@ class PipelineRunResp(BaseModel):
 
 
 class TriggerPipelineReq(BaseModel):
-    trigger_ref: str
+    trigger_ref: str = "main"
     variables: dict[str, Any] = {}
 
 
@@ -126,6 +131,31 @@ class ArtifactResp(BaseModel):
     type: str
     name: str
     path: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---- Job ----
+
+class JobResp(BaseModel):
+    id: str
+    pipeline_run_id: str
+    name: str
+    status: str
+    parent_job_id: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class JobLogResp(BaseModel):
+    id: str
+    job_id: str
+    content: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

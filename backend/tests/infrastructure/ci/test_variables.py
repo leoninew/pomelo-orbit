@@ -135,7 +135,7 @@ class TestRenderTemplate:
     def test_render_undefined_variable(self):
         """测试未定义变量"""
         template = "Hello {{ name }}!"
-        variables = {}
+        variables: dict[str, str] = {}
 
         # Jinja2 默认行为是渲染为空字符串，除非设置 undefined=StrictUndefined
         # 我们的实现使用默认行为，所以这个测试应该检查空字符串

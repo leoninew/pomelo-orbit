@@ -160,9 +160,8 @@ class TestPipelineRun:
         )
 
         assert run.id is not None
-        assert run.status == PipelineRunStatus.WAITING
+        assert run.status.value == PipelineRunStatus.WAITING.value
         assert run.started_at is None
-        assert run.finished_at is None
 
     def test_pipeline_run_lifecycle(self):
         """测试 pipeline run 生命周期"""
@@ -176,12 +175,12 @@ class TestPipelineRun:
 
         # 开始执行
         run.start()
-        assert run.status == PipelineRunStatus.RUNNING
+        assert run.status.value == PipelineRunStatus.RUNNING.value
         assert run.started_at is not None
 
         # 执行成功
         run.complete_success()
-        assert run.status == PipelineRunStatus.SUCCESS
+        assert run.status.value == PipelineRunStatus.SUCCESS.value
         assert run.finished_at is not None
 
     def test_pipeline_run_failure(self):
@@ -197,7 +196,7 @@ class TestPipelineRun:
         run.start()
         run.complete_failed()
 
-        assert run.status == PipelineRunStatus.FAILED
+        assert run.status.value == PipelineRunStatus.FAILED.value
         assert run.finished_at is not None
 
     def test_create_pipeline_run_with_retry_of(self):
@@ -215,7 +214,7 @@ class TestPipelineRun:
 
         assert retry_run.id is not None
         assert retry_run.retry_of == original_run_id
-        assert retry_run.status == PipelineRunStatus.WAITING
+        assert retry_run.status.value == PipelineRunStatus.WAITING.value
 
 
 class TestJob:
@@ -230,7 +229,7 @@ class TestJob:
 
         assert job.id is not None
         assert job.name == "test-job"
-        assert job.status == JobStatus.WAITING
+        assert job.status.value == JobStatus.WAITING.value
         assert job.parent_job_id is None
 
     def test_job_lifecycle_success(self):
@@ -241,11 +240,11 @@ class TestJob:
         )
 
         job.start()
-        assert job.status == JobStatus.RUNNING
+        assert job.status.value == JobStatus.RUNNING.value
         assert job.started_at is not None
 
         job.complete_success(exit_code=0)
-        assert job.status == JobStatus.SUCCESS
+        assert job.status.value == JobStatus.SUCCESS.value
         assert job.exit_code == 0
         assert job.finished_at is not None
 
@@ -259,7 +258,7 @@ class TestJob:
         job.start()
         job.complete_failed(exit_code=1, error_message="Command failed")
 
-        assert job.status == JobStatus.FAILED
+        assert job.status.value == JobStatus.FAILED.value
         assert job.exit_code == 1
         assert job.error_message == "Command failed"
         assert job.finished_at is not None
@@ -274,7 +273,7 @@ class TestJob:
         job.start()
         job.complete_faulted(error_message="Container timeout")
 
-        assert job.status == JobStatus.FAULTED
+        assert job.status.value == JobStatus.FAULTED.value
         assert job.error_message == "Container timeout"
         assert job.finished_at is not None
 

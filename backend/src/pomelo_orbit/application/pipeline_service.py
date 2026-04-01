@@ -8,11 +8,22 @@ from typing import Any
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
     Credential,
+    Job,
+    JobLog,
     PipelineRun,
     PipelineTemplate,
     Project,
 )
 from pomelo_orbit.domain.ci.executor import ExecutionContext
+from pomelo_orbit.domain.ci.repositories import (
+    ArtifactRepository,
+    CredentialRepository,
+    JobLogRepository,
+    JobRepository,
+    PipelineRunRepository,
+    PipelineTemplateRepository,
+    ProjectRepository,
+)
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
     PipelineRunStatus,
@@ -24,13 +35,10 @@ from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 from pomelo_orbit.infrastructure.ci.parser import PipelineParseError, parse_pipeline_yaml
 from pomelo_orbit.infrastructure.ci.repositories import (
-    ArtifactRepository,
-    CredentialRepository,
-    JobLogRepository,
-    JobRepository,
-    PipelineRunRepository,
-    PipelineTemplateRepository,
-    ProjectRepository,
+    ArtifactRepositoryImpl,
+    JobLogRepositoryImpl,
+    JobRepositoryImpl,
+    PipelineRunRepositoryImpl,
 )
 from pomelo_orbit.infrastructure.ci.variables import (
     VariableError,
@@ -58,6 +66,8 @@ class PipelineService:
         template_repo: PipelineTemplateRepository,
         run_repo: PipelineRunRepository,
         artifact_repo: ArtifactRepository,
+        job_repo: JobRepository,
+        job_log_repo: JobLogRepository,
         global_variables: dict[str, Any] | None = None,
         session_factory: Any = None,
     ):
@@ -66,6 +76,8 @@ class PipelineService:
         self.template_repo = template_repo
         self.run_repo = run_repo
         self.artifact_repo = artifact_repo
+        self.job_repo = job_repo
+        self.job_log_repo = job_log_repo
         self.global_variables = global_variables or {}
         self._session_factory = session_factory
 
@@ -119,8 +131,10 @@ class PipelineService:
         self,
         project_id: str,
         name: str | None = None,
+        repository_url: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         pipeline_template_id: str | None = None,
+        git_credential_id: str | None = None,
         branch_filter: str | None = None,
     ) -> Project:
         """更新项目"""
@@ -129,8 +143,10 @@ class PipelineService:
             raise BusinessError(f"PipelineTemplate {pipeline_template_id} not found", status_code=404)
         project.update(
             name=name,
+            repository_url=repository_url,
             variable_overrides=variable_overrides,
             pipeline_template_id=pipeline_template_id,
+            git_credential_id=git_credential_id,
             branch_filter=branch_filter,
         )
         self.project_repo.save(project)
@@ -163,9 +179,9 @@ class PipelineService:
     # Credential CRUD
     # -------------------------------------------------------------------------
 
-    def list_credentials(self) -> list[Credential]:
-        """列出所有凭据"""
-        return self.credential_repo.find_all()
+    def list_credentials(self, page: int = 1, per_page: int = 20) -> tuple[list[Credential], int]:
+        """列出凭据（分页）"""
+        return self.credential_repo.find_paginated(page=page, per_page=per_page)
 
     def get_credential(self, credential_id: str) -> Credential:
         """获取凭据"""
@@ -195,9 +211,9 @@ class PipelineService:
     # PipelineTemplate CRUD
     # -------------------------------------------------------------------------
 
-    def list_templates(self) -> list[PipelineTemplate]:
-        """列出所有模板"""
-        return self.template_repo.find_all()
+    def list_templates(self, page: int = 1, per_page: int = 20) -> tuple[list[PipelineTemplate], int]:
+        """列出模板（分页）"""
+        return self.template_repo.find_paginated(page=page, per_page=per_page)
 
     def get_template(self, template_id: str) -> PipelineTemplate:
         """获取模板"""
@@ -253,11 +269,12 @@ class PipelineService:
     # -------------------------------------------------------------------------
 
     def list_runs(
-        self, project_id: str, page: int = 1, per_page: int = 20
+        self, page: int = 1, per_page: int = 20, project_id: str | None = None
     ) -> tuple[list[PipelineRun], int]:
-        """列出项目的 pipeline runs"""
-        self.get_project(project_id)
-        return self.run_repo.find_by_project(project_id, page=page, per_page=per_page)
+        """列出 pipeline runs（可按项目过滤，有 project_id 时校验项目存在）"""
+        if project_id:
+            self.get_project(project_id)
+        return self.run_repo.find_paginated_with_filters(page=page, per_page=per_page, project_id=project_id)
 
     def get_run(self, run_id: str) -> PipelineRun:
         """获取 pipeline run 详情"""
@@ -270,6 +287,15 @@ class PipelineService:
         """列出 pipeline run 的所有制品"""
         self.get_run(run_id)
         return self.artifact_repo.find_by_run(run_id)
+
+    def list_jobs(self, run_id: str) -> list[Job]:
+        """列出 pipeline run 的所有 jobs"""
+        self.get_run(run_id)
+        return self.job_repo.find_by_run(run_id)
+
+    def get_job_log(self, job_id: str) -> JobLog | None:
+        """获取 job 日志"""
+        return self.job_log_repo.find_by_job(job_id)
 
     async def retry_pipeline(self, run_id: str) -> PipelineRun:
         """
@@ -400,7 +426,7 @@ class PipelineService:
         except PipelineParseError as e:
             logger.error(f"Pipeline parse failed: run={run.id}, error={e}")
             with session_factory() as session:
-                run_repo = PipelineRunRepository(session)
+                run_repo = PipelineRunRepositoryImpl(session)
                 run.complete_failed()
                 run_repo.save(run)
                 session.commit()
@@ -422,14 +448,14 @@ class PipelineService:
         )
 
         with session_factory() as session:
-            run_repo = PipelineRunRepository(session)
-            job_repo = JobRepository(session)
-            job_log_repo = JobLogRepository(session)
+            run_repo = PipelineRunRepositoryImpl(session)
+            job_repo = JobRepositoryImpl(session)
+            job_log_repo = JobLogRepositoryImpl(session)
             executor = PipelineExecutorImpl(
                 job_repo=job_repo,
                 job_log_repo=job_log_repo,
                 container_executor=ContainerExecutor(),
-                artifact_repo=ArtifactRepository(session),
+                artifact_repo=ArtifactRepositoryImpl(session),
             )
 
             run.start()

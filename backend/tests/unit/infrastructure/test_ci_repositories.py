@@ -19,13 +19,13 @@ from pomelo_orbit.infrastructure.ci.models import (
     ProjectModel,
 )
 from pomelo_orbit.infrastructure.ci.repositories import (
-    ArtifactRepository,
-    CredentialRepository,
-    JobLogRepository,
-    JobRepository,
-    PipelineRunRepository,
-    PipelineTemplateRepository,
-    ProjectRepository,
+    ArtifactRepositoryImpl,
+    CredentialRepositoryImpl,
+    JobLogRepositoryImpl,
+    JobRepositoryImpl,
+    PipelineRunRepositoryImpl,
+    PipelineTemplateRepositoryImpl,
+    ProjectRepositoryImpl,
 )
 
 
@@ -40,7 +40,7 @@ class TestCredentialRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = ProjectModel()
 
-        repo = CredentialRepository(session)
+        repo = CredentialRepositoryImpl(session)
         result = repo.is_referenced_by_projects("cred-1")
 
         assert result is True
@@ -54,7 +54,7 @@ class TestCredentialRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
 
-        repo = CredentialRepository(session)
+        repo = CredentialRepositoryImpl(session)
         result = repo.is_referenced_by_projects("cred-1")
 
         assert result is False
@@ -71,7 +71,7 @@ class TestPipelineTemplateRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = ProjectModel()
 
-        repo = PipelineTemplateRepository(session)
+        repo = PipelineTemplateRepositoryImpl(session)
         result = repo.is_referenced_by_projects("template-1")
 
         assert result is True
@@ -84,7 +84,7 @@ class TestPipelineTemplateRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
 
-        repo = PipelineTemplateRepository(session)
+        repo = PipelineTemplateRepositoryImpl(session)
         result = repo.is_referenced_by_projects("template-1")
 
         assert result is False
@@ -103,7 +103,7 @@ class TestPipelineTemplateRepository:
         template_orm.is_builtin = 1
         query_mock.all.return_value = [template_orm]
 
-        repo = PipelineTemplateRepository(session)
+        repo = PipelineTemplateRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
@@ -126,7 +126,7 @@ class TestProjectRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = PipelineRunModel()
 
-        repo = ProjectRepository(session)
+        repo = ProjectRepositoryImpl(session)
         result = repo.has_running_pipelines("project-1")
 
         assert result is True
@@ -139,7 +139,7 @@ class TestProjectRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
 
-        repo = ProjectRepository(session)
+        repo = ProjectRepositoryImpl(session)
         result = repo.has_running_pipelines("project-1")
 
         assert result is False
@@ -157,7 +157,7 @@ class TestProjectRepository:
         project_orm.repository_url = "https://github.com/user/repo.git"
         query_mock.all.return_value = [project_orm]
 
-        repo = ProjectRepository(session)
+        repo = ProjectRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
@@ -175,7 +175,7 @@ class TestProjectRepository:
         query_mock.filter.return_value = query_mock
         query_mock.all.return_value = []
 
-        repo = ProjectRepository(session)
+        repo = ProjectRepositoryImpl(session)
         repo._mapper = Mock()
 
         result = repo.find_by_repository_url("https://github.com/user/nonexist.git")
@@ -202,13 +202,13 @@ class TestPipelineRunRepository:
         run_orm.id = "run-1"
         query_mock.all.return_value = [run_orm]
 
-        repo = PipelineRunRepository(session)
+        repo = PipelineRunRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
         repo._mapper.to_domain.return_value = Mock(spec=PipelineRun)
 
-        runs, total = repo.find_by_project("project-1", page=1, per_page=20)
+        runs, total = repo.find_paginated_with_filters(page=1, per_page=20, project_id="project-1")
 
         assert len(runs) == 1
         assert total == 5
@@ -227,10 +227,10 @@ class TestPipelineRunRepository:
         query_mock.limit.return_value = query_mock
         query_mock.all.return_value = []
 
-        repo = PipelineRunRepository(session)
+        repo = PipelineRunRepositoryImpl(session)
         repo._mapper = Mock()
 
-        _, total = repo.find_by_project("project-1", page=3, per_page=10)
+        _, total = repo.find_paginated_with_filters(page=3, per_page=10, project_id="project-1")
 
         assert total == 100
         query_mock.offset.assert_called_once_with(20)  # (3-1) * 10
@@ -252,7 +252,7 @@ class TestJobRepository:
         job_orm.id = "job-1"
         query_mock.all.return_value = [job_orm]
 
-        repo = JobRepository(session)
+        repo = JobRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
@@ -274,7 +274,7 @@ class TestJobRepository:
         job_orm.id = "child-job-1"
         query_mock.all.return_value = [job_orm]
 
-        repo = JobRepository(session)
+        repo = JobRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
@@ -300,7 +300,7 @@ class TestJobLogRepository:
         log_orm.id = "log-1"
         query_mock.first.return_value = log_orm
 
-        repo = JobLogRepository(session)
+        repo = JobLogRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
@@ -318,7 +318,7 @@ class TestJobLogRepository:
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
 
-        repo = JobLogRepository(session)
+        repo = JobLogRepositoryImpl(session)
         repo._mapper = Mock()
 
         result = repo.find_by_job("job-1")
@@ -342,7 +342,7 @@ class TestArtifactRepository:
         artifact_orm.id = "artifact-1"
         query_mock.all.return_value = [artifact_orm]
 
-        repo = ArtifactRepository(session)
+        repo = ArtifactRepositoryImpl(session)
 
         # Mock mapper
         repo._mapper = Mock()
@@ -362,7 +362,7 @@ class TestArtifactRepository:
         query_mock.order_by.return_value = query_mock
         query_mock.all.return_value = []
 
-        repo = ArtifactRepository(session)
+        repo = ArtifactRepositoryImpl(session)
         repo._mapper = Mock()
 
         result = repo.find_by_run("run-1")

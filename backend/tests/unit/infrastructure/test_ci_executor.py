@@ -1,5 +1,6 @@
 """CI Executor 单元测试"""
 
+from typing import TYPE_CHECKING, cast
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -13,6 +14,10 @@ from pomelo_orbit.domain.ci.value_objects import (
     StepDefinition,
 )
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
+
+if TYPE_CHECKING:
+    from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
+    from pomelo_orbit.infrastructure.ci.repositories import JobLogRepositoryImpl, JobRepositoryImpl
 
 
 def create_test_context(run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None) -> ExecutionContext:
@@ -48,9 +53,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success output")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
             artifact_repo=artifact_repo,
         )
 
@@ -76,9 +81,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (1, "Error output")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context()
@@ -101,9 +106,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context()
@@ -127,9 +132,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context()
@@ -153,9 +158,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.side_effect = [(1, "Failed")]
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context()
@@ -180,9 +185,9 @@ class TestPipelineExecutorImpl:
         container_executor = AsyncMock()
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context()
@@ -206,9 +211,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.side_effect = Exception("Container error")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context()
@@ -234,9 +239,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
             artifact_repo=artifact_repo,
         )
 
@@ -271,9 +276,9 @@ class TestPipelineExecutorImpl:
         job_repo.find_by_run.side_effect = [[original_job], []]
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context(run_id="run-2", retry_of="run-1")
@@ -309,9 +314,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context(run_id="run-2", retry_of="run-1")
@@ -339,9 +344,9 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success")
 
         executor = PipelineExecutorImpl(
-            job_repo=job_repo,
-            job_log_repo=job_log_repo,
-            container_executor=container_executor,
+            job_repo=cast("JobRepositoryImpl", job_repo),
+            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
+            container_executor=cast("ContainerExecutor", container_executor),
         )
 
         context = create_test_context(variables={"ENV_VAR": "value123", "NUMBER": 42})

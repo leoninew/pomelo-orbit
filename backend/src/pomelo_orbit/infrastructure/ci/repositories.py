@@ -11,6 +11,15 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineTemplate,
     Project,
 )
+from pomelo_orbit.domain.ci.repositories import (
+    ArtifactRepository,
+    CredentialRepository,
+    JobLogRepository,
+    JobRepository,
+    PipelineRunRepository,
+    PipelineTemplateRepository,
+    ProjectRepository,
+)
 from pomelo_orbit.infrastructure.ci.mappers import (
     ArtifactMapper,
     CredentialMapper,
@@ -32,7 +41,7 @@ from pomelo_orbit.infrastructure.ci.models import (
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
 
 
-class CredentialRepository(BaseRepository[Credential, CredentialModel]):
+class CredentialRepositoryImpl(BaseRepository[Credential, CredentialModel], CredentialRepository):
     """凭据仓储"""
 
     def __init__(self, session: Session):
@@ -48,7 +57,7 @@ class CredentialRepository(BaseRepository[Credential, CredentialModel]):
         )
 
 
-class PipelineTemplateRepository(BaseRepository[PipelineTemplate, PipelineTemplateModel]):
+class PipelineTemplateRepositoryImpl(BaseRepository[PipelineTemplate, PipelineTemplateModel], PipelineTemplateRepository):
     """Pipeline 模板仓储"""
 
     def __init__(self, session: Session):
@@ -69,7 +78,7 @@ class PipelineTemplateRepository(BaseRepository[PipelineTemplate, PipelineTempla
         return [self._mapper.to_domain(orm) for orm in orms]
 
 
-class ProjectRepository(BaseRepository[Project, ProjectModel]):
+class ProjectRepositoryImpl(BaseRepository[Project, ProjectModel], ProjectRepository):
     """项目仓储"""
 
     def __init__(self, session: Session):
@@ -88,41 +97,33 @@ class ProjectRepository(BaseRepository[Project, ProjectModel]):
         )
 
     def find_by_repository_url(self, repository_url: str) -> list[Project]:
-        """
-        根据仓库 URL 查找项目
-
-        Args:
-            repository_url: 仓库 URL（精确匹配）
-
-        Returns:
-            匹配的项目列表，可能为空。多个项目可能使用同一个仓库 URL。
-        """
+        """根据仓库 URL 查找项目（精确匹配，多个项目可能共用同一仓库）"""
         orms = self._session.query(ProjectModel).filter(ProjectModel.repository_url == repository_url).all()
         return [self._mapper.to_domain(orm) for orm in orms]
 
 
-class PipelineRunRepository(BaseRepository[PipelineRun, PipelineRunModel]):
+class PipelineRunRepositoryImpl(BaseRepository[PipelineRun, PipelineRunModel], PipelineRunRepository):
     """Pipeline 运行仓储"""
 
     def __init__(self, session: Session):
         super().__init__(session, PipelineRunModel, PipelineRunMapper())
 
-    def find_by_project(
-        self, project_id: str, page: int = 1, per_page: int = 20
+    def find_paginated_with_filters(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        project_id: str | None = None,
     ) -> tuple[list[PipelineRun], int]:
-        """按项目查询运行列表"""
-        query = (
-            self._session.query(PipelineRunModel)
-            .filter(PipelineRunModel.project_id == project_id)
-            .order_by(PipelineRunModel.created_at.desc())
-        )
-
+        """分页查询运行列表（支持按项目过滤）"""
+        query = self._session.query(PipelineRunModel).order_by(PipelineRunModel.created_at.desc())
+        if project_id:
+            query = query.filter(PipelineRunModel.project_id == project_id)
         total = query.count()
         orms = query.offset((page - 1) * per_page).limit(per_page).all()
         return [self._mapper.to_domain(orm) for orm in orms], total
 
 
-class JobRepository(BaseRepository[Job, JobModel]):
+class JobRepositoryImpl(BaseRepository[Job, JobModel], JobRepository):
     """Job 仓储"""
 
     def __init__(self, session: Session):
@@ -139,7 +140,7 @@ class JobRepository(BaseRepository[Job, JobModel]):
         return [self._mapper.to_domain(orm) for orm in orms]
 
 
-class JobLogRepository(BaseRepository[JobLog, JobLogModel]):
+class JobLogRepositoryImpl(BaseRepository[JobLog, JobLogModel], JobLogRepository):
     """Job 日志仓储"""
 
     def __init__(self, session: Session):
@@ -151,7 +152,7 @@ class JobLogRepository(BaseRepository[JobLog, JobLogModel]):
         return self._mapper.to_domain(orm) if orm else None
 
 
-class ArtifactRepository(BaseRepository[Artifact, ArtifactModel]):
+class ArtifactRepositoryImpl(BaseRepository[Artifact, ArtifactModel], ArtifactRepository):
     """制品仓储"""
 
     def __init__(self, session: Session):

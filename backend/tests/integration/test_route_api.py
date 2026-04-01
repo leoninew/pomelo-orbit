@@ -6,28 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pomelo_orbit.domain.entities import User
 from pomelo_orbit.infrastructure.persistence.models import RouteModel
-
-
-@pytest.fixture
-def mock_user():
-    """Mock 用户"""
-    return User(id="test-user-id", username="testuser", password_hash="")
-
-
-@pytest.fixture
-def auth_client(client, mock_user):
-    """带认证的客户端"""
-    from pomelo_orbit.interfaces.api.auth import get_current_user
-    from pomelo_orbit.main import app
-
-    def override_get_current_user():
-        return mock_user
-
-    app.dependency_overrides[get_current_user] = override_get_current_user
-    yield client
-    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture

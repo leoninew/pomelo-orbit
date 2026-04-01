@@ -3,8 +3,8 @@
 import logging
 
 from pomelo_orbit.application.pipeline_service import PipelineService
+from pomelo_orbit.domain.ci.repositories import ProjectRepository
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
-from pomelo_orbit.infrastructure.ci.repositories import ProjectRepository
 from pomelo_orbit.infrastructure.ci.webhook_payload_parser import (
     CIWebhookPayload,
     WebhookPayloadParseError,

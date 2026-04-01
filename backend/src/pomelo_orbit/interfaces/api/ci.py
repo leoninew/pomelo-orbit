@@ -6,7 +6,7 @@ import math
 from typing import Annotated
 
 from dynaconf import Dynaconf
-from fastapi import APIRouter, Depends, Header, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 
 from pomelo_orbit.application.ci_di import (
     get_ci_webhook_service,
@@ -14,6 +14,7 @@ from pomelo_orbit.application.ci_di import (
 )
 from pomelo_orbit.application.ci_webhook_service import CIWebhookService
 from pomelo_orbit.application.pipeline_service import PipelineService
+from pomelo_orbit.domain.ci.entities import PipelineTemplate
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.security import SecurityService
@@ -22,6 +23,8 @@ from pomelo_orbit.interfaces.api.dto.ci import (
     ArtifactResp,
     CredentialCreateReq,
     CredentialResp,
+    JobLogResp,
+    JobResp,
     PipelineRunResp,
     PipelineTemplateCreateReq,
     PipelineTemplateResp,
@@ -30,6 +33,7 @@ from pomelo_orbit.interfaces.api.dto.ci import (
     ProjectResp,
     ProjectUpdateReq,
     TriggerPipelineReq,
+    VariableDeclarationResp,
     WebhookConfigResp,
 )
 from pomelo_orbit.interfaces.api.dto.common import PaginatedResp
@@ -39,18 +43,53 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1/ci", tags=["ci"])
 
 
+def _template_resp(tmpl: PipelineTemplate) -> PipelineTemplateResp:
+    return PipelineTemplateResp(
+        id=tmpl.id,
+        name=tmpl.name,
+        description=tmpl.description,
+        content=tmpl.content,
+        variable_declarations=[
+            VariableDeclarationResp(**vd.model_dump()) for vd in (tmpl.variable_declarations or [])
+        ],
+        is_builtin=tmpl.is_builtin,
+        created_at=tmpl.created_at,
+        updated_at=tmpl.updated_at,
+    )
+
+
+def _paginated_runs(
+    runs: list, total: int, page: int, per_page: int
+) -> "PaginatedResp[PipelineRunResp]":
+    return PaginatedResp(
+        items=[PipelineRunResp.model_validate(r.__dict__) for r in runs],
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=math.ceil(total / per_page) if total > 0 else 1,
+    )
+
+
 # =============================================================================
 # Credentials
 # =============================================================================
 
-@router.get("/credentials", response_model=list[CredentialResp])
+@router.get("/credentials", response_model=PaginatedResp[CredentialResp])
 def list_credentials(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
-) -> list[CredentialResp]:
-    """列出所有凭据"""
-    creds = pipeline_service.list_credentials()
-    return [CredentialResp.model_validate(c.__dict__) for c in creds]
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> PaginatedResp[CredentialResp]:
+    """列出所有凭据（分页）"""
+    creds, total = pipeline_service.list_credentials(page=page, per_page=per_page)
+    return PaginatedResp(
+        items=[CredentialResp.model_validate(c.__dict__) for c in creds],
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=math.ceil(total / per_page) if total > 0 else 1,
+    )
 
 
 @router.post("/credentials", response_model=CredentialResp, status_code=status.HTTP_201_CREATED)
@@ -85,14 +124,22 @@ def delete_credential(
 # Pipeline Templates
 # =============================================================================
 
-@router.get("/templates", response_model=list[PipelineTemplateResp])
+@router.get("/templates", response_model=PaginatedResp[PipelineTemplateResp])
 def list_templates(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
-) -> list[PipelineTemplateResp]:
-    """列出所有模板"""
-    templates = pipeline_service.list_templates()
-    return [PipelineTemplateResp.model_validate(t.__dict__) for t in templates]
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> PaginatedResp[PipelineTemplateResp]:
+    """列出所有模板（分页）"""
+    templates, total = pipeline_service.list_templates(page=page, per_page=per_page)
+    return PaginatedResp(
+        items=[_template_resp(t) for t in templates],
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=math.ceil(total / per_page) if total > 0 else 1,
+    )
 
 
 @router.post("/templates", response_model=PipelineTemplateResp, status_code=status.HTTP_201_CREATED)
@@ -108,7 +155,7 @@ def create_template(
         description=data.description,
         variable_declarations=data.variable_declarations,
     )
-    return PipelineTemplateResp.model_validate(tmpl.__dict__)
+    return _template_resp(tmpl)
 
 
 @router.get("/templates/{template_id}", response_model=PipelineTemplateResp)
@@ -119,7 +166,7 @@ def get_template(
 ) -> PipelineTemplateResp:
     """获取模板详情"""
     tmpl = pipeline_service.get_template(template_id)
-    return PipelineTemplateResp.model_validate(tmpl.__dict__)
+    return _template_resp(tmpl)
 
 
 @router.put("/templates/{template_id}", response_model=PipelineTemplateResp)
@@ -137,7 +184,7 @@ def update_template(
         content=data.content,
         variable_declarations=data.variable_declarations,
     )
-    return PipelineTemplateResp.model_validate(tmpl.__dict__)
+    return _template_resp(tmpl)
 
 
 @router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -158,8 +205,8 @@ def delete_template(
 def list_projects(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
-    page: int = 1,
-    per_page: int = 20,
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[ProjectResp]:
     """列出项目（分页）"""
     projects, total = pipeline_service.list_projects(page=page, per_page=per_page)
@@ -213,8 +260,10 @@ def update_project(
     project = pipeline_service.update_project(
         project_id=project_id,
         name=data.name,
+        repository_url=data.repository_url,
         variable_overrides=data.variable_overrides,
         pipeline_template_id=data.pipeline_template_id,
+        git_credential_id=data.git_credential_id,
         branch_filter=data.branch_filter,
     )
     return ProjectResp.model_validate(project.__dict__)
@@ -261,23 +310,30 @@ def regenerate_webhook_secret(
 # Pipeline Runs
 # =============================================================================
 
+@router.get("/runs", response_model=PaginatedResp[PipelineRunResp])
+def list_all_runs(
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+    project_id: Annotated[str | None, Query()] = None,
+) -> PaginatedResp[PipelineRunResp]:
+    """列出所有 pipeline runs（可按项目过滤）"""
+    runs, total = pipeline_service.list_runs(project_id=project_id, page=page, per_page=per_page)
+    return _paginated_runs(runs, total, page, per_page)
+
+
 @router.get("/projects/{project_id}/runs", response_model=PaginatedResp[PipelineRunResp])
 def list_runs(
     project_id: str,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
-    page: int = 1,
-    per_page: int = 20,
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[PipelineRunResp]:
     """列出项目的 pipeline runs"""
-    runs, total = pipeline_service.list_runs(project_id, page=page, per_page=per_page)
-    return PaginatedResp(
-        items=[PipelineRunResp.model_validate(r.__dict__) for r in runs],
-        total=total,
-        page=page,
-        per_page=per_page,
-        pages=math.ceil(total / per_page) if total > 0 else 1,
-    )
+    runs, total = pipeline_service.list_runs(project_id=project_id, page=page, per_page=per_page)
+    return _paginated_runs(runs, total, page, per_page)
 
 
 @router.post(
@@ -297,6 +353,28 @@ async def trigger_pipeline(
         trigger=PipelineRunTrigger.MANUAL,
         trigger_ref=data.trigger_ref,
         runtime_variables=data.variables,
+    )
+    return PipelineRunResp.model_validate(run.__dict__)
+
+
+@router.post(
+    "/projects/{project_id}/trigger",
+    response_model=PipelineRunResp,
+    status_code=status.HTTP_201_CREATED,
+)
+async def trigger_pipeline_shortcut(
+    project_id: str,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+    data: TriggerPipelineReq | None = None,
+) -> PipelineRunResp:
+    """手动触发 pipeline（快捷路由，body 可选）"""
+    req = data or TriggerPipelineReq()
+    run = await pipeline_service.trigger_pipeline(
+        project_id=project_id,
+        trigger=PipelineRunTrigger.MANUAL,
+        trigger_ref=req.trigger_ref,
+        runtime_variables=req.variables,
     )
     return PipelineRunResp.model_validate(run.__dict__)
 
@@ -321,6 +399,30 @@ def list_artifacts(
     """列出 pipeline run 的所有制品"""
     artifacts = pipeline_service.list_artifacts(run_id)
     return [ArtifactResp.model_validate(a.__dict__) for a in artifacts]
+
+
+@router.get("/runs/{run_id}/jobs", response_model=list[JobResp])
+def list_jobs(
+    run_id: str,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+) -> list[JobResp]:
+    """列出 pipeline run 的所有 jobs"""
+    jobs = pipeline_service.list_jobs(run_id)
+    return [JobResp.model_validate(j.__dict__) for j in jobs]
+
+
+@router.get("/jobs/{job_id}/logs", response_model=JobLogResp | None)
+def get_job_logs(
+    job_id: str,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+) -> JobLogResp | None:
+    """获取 job 日志"""
+    job_log = pipeline_service.get_job_log(job_id)
+    if not job_log:
+        return None
+    return JobLogResp.model_validate(job_log.__dict__)
 
 
 @router.post("/runs/{run_id}/retry", response_model=PipelineRunResp, status_code=status.HTTP_201_CREATED)

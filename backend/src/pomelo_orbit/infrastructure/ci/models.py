@@ -70,6 +70,7 @@ class PipelineRunModel(Base):
     resolved_pipeline: Mapped[str] = mapped_column(Text, nullable=False)
     variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    retry_of: Mapped[str | None] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=True, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)

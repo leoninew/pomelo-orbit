@@ -323,6 +323,17 @@ def list_artifacts(
     return [ArtifactResp.model_validate(a.__dict__) for a in artifacts]
 
 
+@router.post("/runs/{run_id}/retry", response_model=PipelineRunResp, status_code=status.HTTP_201_CREATED)
+async def retry_pipeline(
+    run_id: str,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+) -> PipelineRunResp:
+    """重试失败的 pipeline run"""
+    new_run = await pipeline_service.retry_pipeline(run_id)
+    return PipelineRunResp.model_validate(new_run.__dict__)
+
+
 # =============================================================================
 # Webhooks（无需认证）
 # =============================================================================

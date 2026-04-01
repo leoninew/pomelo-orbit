@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pomelo_orbit.domain.ci.entities import Artifact, Job, JobLog
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
-from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, StepDefinition
+from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, RetryPolicy, StepDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
 from pomelo_orbit.infrastructure.ci.repositories import ArtifactRepository, JobLogRepository, JobRepository
@@ -113,8 +113,20 @@ class PipelineExecutorImpl(PipelineExecutor):
         steps_map = {step.name: step for step in definition.steps}
         steps = [steps_map[name] for name in job_names]
 
+        # 预加载重试场景所需的数据（避免在每个 job 中重复查询）
+        original_jobs_map: dict[str, Job] = {}
+        current_jobs_map: dict[str, Job] = {}
+        if context.retry_of:
+            original_jobs = self.job_repo.find_by_run(context.retry_of)
+            original_jobs_map = {job.name: job for job in original_jobs}
+            current_jobs = self.job_repo.find_by_run(context.run_id)
+            current_jobs_map = {job.name: job for job in current_jobs}
+
         # 并行执行
-        tasks = [self._execute_step(context, step) for step in steps]
+        tasks = [
+            self._execute_step(context, step, original_jobs_map, current_jobs_map)
+            for step in steps
+        ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # 构建结果映射
@@ -133,7 +145,11 @@ class PipelineExecutorImpl(PipelineExecutor):
         return result_map
 
     async def _execute_step(
-        self, context: ExecutionContext, step: StepDefinition
+        self,
+        context: ExecutionContext,
+        step: StepDefinition,
+        original_jobs_map: dict[str, Job] | None = None,
+        current_jobs_map: dict[str, Job] | None = None,
     ) -> bool:
         """
         执行单个 Step
@@ -141,10 +157,28 @@ class PipelineExecutorImpl(PipelineExecutor):
         Args:
             context: 执行上下文
             step: Step 定义
+            original_jobs_map: 原 Run 的 jobs 映射（重试场景，可选）
+            current_jobs_map: 当前 Run 的 jobs 映射（重试场景，可选）
 
         Returns:
             是否执行成功
         """
+        # 检查是否应该跳过（重试场景）
+        if context.retry_of and await self._should_skip_job(
+            context, step, original_jobs_map or {}, current_jobs_map or {}
+        ):
+            job = Job.create(
+                pipeline_run_id=context.run_id,
+                name=step.name,
+            )
+            job.status = JobStatus.SKIPPED
+            self.job_repo.save(job)
+            logger.info(
+                f"Job skipped (retry): run={context.run_id}, job={step.name}, "
+                f"original_run={context.retry_of}"
+            )
+            return True
+
         # 创建 Job 记录
         job = Job.create(
             pipeline_run_id=context.run_id,
@@ -226,6 +260,58 @@ class PipelineExecutorImpl(PipelineExecutor):
                 logger.info(
                     f"Job canceled: run={context.run_id}, job={job_name}"
                 )
+
+    async def _should_skip_job(
+        self,
+        context: ExecutionContext,
+        step: StepDefinition,
+        original_jobs_map: dict[str, Job],
+        current_jobs_map: dict[str, Job],
+    ) -> bool:
+        """
+        判断 Job 是否应该跳过（重试场景）
+
+        跳过条件：
+        1. retry_policy 为 skip_if_success
+        2. 原 Run 中该 Job 执行成功
+        3. 该 Job 的所有依赖都被跳过（没有重新执行）
+
+        Args:
+            context: 执行上下文
+            step: Step 定义
+            original_jobs_map: 原 Run 的 jobs 映射
+            current_jobs_map: 当前 Run 的 jobs 映射
+
+        Returns:
+            是否应该跳过
+        """
+        # 没有 retry_of，不跳过
+        if not context.retry_of:
+            return False
+
+        # retry_policy 不是 skip_if_success，不跳过
+        if step.retry_policy != RetryPolicy.SKIP_IF_SUCCESS:
+            return False
+
+        # 查询原 Run 中该 Job 的状态
+        original_job = original_jobs_map.get(step.name)
+        if not original_job or original_job.status != JobStatus.SUCCESS:
+            # 原 Job 不存在或未成功，不跳过
+            return False
+
+        # 检查依赖：如果有任何依赖被重新执行，则不能跳过
+        if step.depends_on:
+            for dep_name in step.depends_on:
+                dep_job = current_jobs_map.get(dep_name)
+                # 依赖已执行且不是 SKIPPED 状态，说明依赖被重新执行了
+                if dep_job and dep_job.status != JobStatus.SKIPPED:
+                    logger.info(
+                        f"Job cannot be skipped: run={context.run_id}, job={step.name}, "
+                        f"dependency={dep_name} was re-executed"
+                    )
+                    return False
+
+        return True
 
     def _save_artifacts(
         self,

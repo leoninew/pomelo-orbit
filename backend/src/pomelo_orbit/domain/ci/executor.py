@@ -18,6 +18,7 @@ class ExecutionContext:
         variables: dict[str, Any],
         workspace_path: str,
         artifacts_path: str,
+        retry_of: str | None = None,
     ):
         self.run_id = run_id
         self.project_id = project_id
@@ -26,6 +27,7 @@ class ExecutionContext:
         self.variables = variables
         self.workspace_path = workspace_path
         self.artifacts_path = artifacts_path
+        self.retry_of = retry_of
 
 
 class PipelineExecutor(ABC):

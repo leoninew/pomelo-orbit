@@ -41,6 +41,13 @@ class JobStatus(StrEnum):
     CANCELED = "canceled"  # Phase 3
 
 
+class RetryPolicy(StrEnum):
+    """重试策略"""
+
+    ALWAYS_RERUN = "always_rerun"
+    SKIP_IF_SUCCESS = "skip_if_success"
+
+
 class VariableDeclaration(BaseModel):
     """变量声明"""
 
@@ -64,7 +71,7 @@ class StepDefinition(BaseModel):
     volumes: list[str] | None = None
     depends_on: list[str] | None = None  # Phase 2
     timeout: int | None = None  # Phase 3
-    retry_policy: str | None = None  # Phase 2
+    retry_policy: RetryPolicy | None = None  # Phase 2
     artifacts: list[dict[str, Any]] | None = None  # Phase 2
     outputs: list[str] | None = None
     steps: list["StepDefinition"] | None = None  # 嵌套

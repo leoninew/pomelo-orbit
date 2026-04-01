@@ -200,6 +200,23 @@ class TestPipelineRun:
         assert run.status == PipelineRunStatus.FAILED
         assert run.finished_at is not None
 
+    def test_create_pipeline_run_with_retry_of(self):
+        """测试创建重试的 pipeline run"""
+        original_run_id = str(ulid.ULID())
+        
+        retry_run = PipelineRun.create(
+            project_id=str(ulid.ULID()),
+            trigger=PipelineRunTrigger.MANUAL,
+            trigger_ref="main",
+            resolved_pipeline="version: v1\nsteps: []",
+            variables_snapshot={"KEY": "value"},
+            retry_of=original_run_id,
+        )
+
+        assert retry_run.id is not None
+        assert retry_run.retry_of == original_run_id
+        assert retry_run.status == PipelineRunStatus.WAITING
+
 
 class TestJob:
     """测试 Job 实体"""

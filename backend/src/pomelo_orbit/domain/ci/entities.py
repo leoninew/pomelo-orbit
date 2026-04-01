@@ -161,6 +161,7 @@ class PipelineRun:
     resolved_pipeline: str
     variables_snapshot: dict[str, Any]
     status: PipelineRunStatus = PipelineRunStatus.WAITING
+    retry_of: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime = field(default_factory=utc_now)
@@ -172,6 +173,7 @@ class PipelineRun:
         trigger_ref: str,
         resolved_pipeline: str,
         variables_snapshot: dict[str, Any],
+        retry_of: str | None = None,
     ) -> "PipelineRun":
         """创建 pipeline run"""
         return PipelineRun(
@@ -181,6 +183,7 @@ class PipelineRun:
             trigger_ref=trigger_ref,
             resolved_pipeline=resolved_pipeline,
             variables_snapshot=variables_snapshot,
+            retry_of=retry_of,
         )
 
     def start(self) -> None:

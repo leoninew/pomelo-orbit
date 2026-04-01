@@ -15,6 +15,7 @@ from pomelo_orbit.domain.ci.entities import (
 from pomelo_orbit.domain.ci.executor import ExecutionContext
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
+    PipelineRunStatus,
     PipelineRunTrigger,
     VariableDeclaration,
 )
@@ -270,6 +271,51 @@ class PipelineService:
         self.get_run(run_id)
         return self.artifact_repo.find_by_run(run_id)
 
+    async def retry_pipeline(self, run_id: str) -> PipelineRun:
+        """
+        重试失败的 pipeline run
+
+        Args:
+            run_id: 原 Run ID
+
+        Returns:
+            新创建的 PipelineRun 实例
+        """
+        # 查询原 Run
+        original_run = self.get_run(run_id)
+
+        # 验证 Run 状态（允许重试失败或成功的 run）
+        if original_run.status not in {PipelineRunStatus.FAILED, PipelineRunStatus.SUCCESS}:
+            raise BusinessError(
+                f"Cannot retry run with status {original_run.status.value}",
+                status_code=400,
+            )
+
+        # 创建新 Run（复用原 Run 的配置）
+        new_run = PipelineRun.create(
+            project_id=original_run.project_id,
+            trigger=original_run.trigger,
+            trigger_ref=original_run.trigger_ref,
+            resolved_pipeline=original_run.resolved_pipeline,
+            variables_snapshot=original_run.variables_snapshot,
+            retry_of=original_run.id,
+        )
+        self.run_repo.save(new_run)
+
+        logger.info(
+            f"Pipeline retry triggered: original_run={run_id}, new_run={new_run.id}"
+        )
+
+        # 获取 Project 信息
+        project = self.get_project(original_run.project_id)
+
+        # 异步执行（不等待完成）
+        task = asyncio.create_task(self._execute_run(new_run, project, original_run.variables_snapshot))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+
+        return new_run
+
     async def trigger_pipeline(
         self,
         project_id: str,
@@ -372,6 +418,7 @@ class PipelineService:
             variables=variables,
             workspace_path=str(workspace_path),
             artifacts_path=str(artifacts_path),
+            retry_of=run.retry_of,
         )
 
         with session_factory() as session:

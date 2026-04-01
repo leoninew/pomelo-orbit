@@ -157,10 +157,60 @@ variables:
 
 stage 和 step 本质相同，统一为 **Job**，支持嵌套：
 
-- 有 `jobs` 子列表 = 编排节点，自身不执行容器，等所有子 job 完成才算完成
+- 有 `steps` 子列表 = 编排节点，自身不执行容器，等所有 step 完成才算完成
 - 有 `image` / `commands` 或 `uses` = 叶子节点，实际执行
 - 默认串行，`depends_on` 打破串行实现并行
 - 任意层级规则一致，实现上只需一个递归的 Job 类
+
+### Job 状态机
+
+参考现有 Deployment 任务状态机设计，Job 状态定义如下：
+
+| 状态 | 值 | 含义 |
+|------|-----|------|
+| 待运行 | `waiting` | 已创建，等待依赖完成或调度 |
+| 运行中 | `running` | 正在执行（叶子 job）或子 job 执行中（编排 job） |
+| 成功 | `success` | 执行成功 |
+| 失败 | `failed` | 执行失败（容器非零退出） |
+| 故障 | `faulted` | 执行异常（超时、容器启动失败等） |
+| 跳过 | `skipped` | 重试时因 skip_if_success 策略跳过 |
+| 取消 | `canceled` | 用户取消或 fail-fast 触发 |
+
+#### 叶子 Job 状态转换
+
+```
+waiting ──调度──► running ──┬── 容器退出码 0 ──► success
+                           ├── 容器退出码非 0 ──► failed
+                           ├── 超时/启动失败 ──► faulted
+                           └── 用户取消 ──► canceled
+
+waiting ──重试跳过──► skipped
+waiting ──用户取消──► canceled
+running ──用户取消──► canceled
+```
+
+#### 编排 Job 状态聚合规则
+
+编排 job（有 `steps` 子列表）的状态从 steps 聚合：
+
+1. **初始状态**：`waiting`
+2. **进入 running**：任一 step 进入 `running`
+3. **终态判定**（所有 step 都到达终态后）：
+   - 所有 step 都是 `success` → `success`
+   - 所有 step 都是 `skipped` → `skipped`
+   - 任一 step 是 `failed` 或 `faulted` → `failed`（取最严重的状态）
+   - 任一 step 是 `canceled` 且无 failed/faulted → `canceled`
+   - 混合 `success` 和 `skipped` → `success`
+
+4. **Fail-fast 行为**：
+   - 任一 step 进入 `failed` 或 `faulted` 时，立即停止调度新 step
+   - 已在 `running` 的 step 继续执行完成（不主动中断）
+   - 未开始的 step 标记为 `canceled`
+
+5. **取消传播**：
+   - 编排 job 被取消时，递归取消所有 steps
+   - `waiting` step → `canceled`
+   - `running` step → 发送 SIGTERM，超时后 SIGKILL，最终 `canceled`
 
 ### 串行与并行规则
 
@@ -173,7 +223,7 @@ stage 和 step 本质相同，统一为 **Job**，支持嵌套：
 version: v1
 timeout: 3600
 
-jobs:
+steps:
   - name: checkout
     uses: checkout
     with:
@@ -186,7 +236,7 @@ jobs:
   - name: test
     depends_on: [checkout]
     timeout: 600
-    jobs:
+    steps:
       - name: unit-test
         image: python:{{ PYTHON_VERSION }}
         commands: [uv run pytest tests/unit]
@@ -202,7 +252,7 @@ jobs:
 
   - name: build
     depends_on: [test]
-    jobs:
+    steps:
       - name: registry-login
         image: docker:latest
         volumes:
@@ -227,6 +277,51 @@ jobs:
 ### 超时继承
 
 pipeline → 父 job → 子 job，就近优先，未配置则继承上层。超时触发时容器收到 SIGTERM，超时后强制 kill，job 标记为 faulted，触发 fail-fast。
+
+### 内置 Action：checkout
+
+平台提供 `uses: checkout` 内置 action，负责拉取代码到 `/workspace`。
+
+#### 接口规范
+
+```yaml
+- name: checkout
+  uses: checkout
+  with:
+    depth: 1                          # 可选，默认 1（浅克隆），0 表示完整历史
+    ref: ""                           # 可选，默认使用 trigger_ref
+    sparse_checkout: ""               # 可选，monorepo 场景指定子目录（如 "src/backend"）
+    submodules: false                 # 可选，是否拉取子模块
+  outputs:
+    - commit_sha                      # 实际拉取的 commit SHA
+    - commit_message                  # commit message 首行
+    - author                          # 作者名
+    - committed_at                    # 提交时间（ISO 8601）
+  retry_policy: always_rerun          # checkout 总是重新执行
+```
+
+#### 凭据注入
+
+根据 Project 关联的 Credential 类型：
+
+- **SSH 私钥**：
+  - 写入临时文件 `/tmp/ssh_key_{run_id}`（权限 600）
+  - 挂载到容器 `/root/.ssh/id_rsa`
+  - 设置环境变量 `GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"`
+  - 容器销毁后删除临时文件
+
+- **HTTPS Token**：
+  - 方式 1（推荐）：URL 内嵌 `https://{token}@github.com/user/repo.git`
+  - 方式 2：设置 `GIT_ASKPASS` 脚本返回 token
+  - 环境变量不落盘，仅传递给容器
+
+#### 执行容器
+
+使用 `alpine/git` 镜像，挂载 `/workspace`，执行 git clone/fetch 命令。
+
+#### Outputs 传递
+
+checkout 完成后，平台解析 git log 提取 outputs，存储在 Job 记录中，后续 step 可通过变量引用（如 `{{ steps.checkout.outputs.commit_sha }}`）。
 
 ---
 

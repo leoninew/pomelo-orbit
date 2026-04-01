@@ -203,7 +203,7 @@ class TestPipelineRun:
     def test_create_pipeline_run_with_retry_of(self):
         """测试创建重试的 pipeline run"""
         original_run_id = str(ulid.ULID())
-        
+
         retry_run = PipelineRun.create(
             project_id=str(ulid.ULID()),
             trigger=PipelineRunTrigger.MANUAL,

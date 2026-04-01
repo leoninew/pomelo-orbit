@@ -52,6 +52,8 @@ class ProjectModel(Base):
         String(26), ForeignKey("credentials.id"), nullable=False, index=True
     )
     variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
+    webhook_secret: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    branch_filter: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 

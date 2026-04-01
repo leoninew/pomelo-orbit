@@ -172,14 +172,14 @@ class TestDependencyGraph:
 
         # 移除中间节点 b
         graph.remove_job("b")
-        
+
         # 验证 in_degree 中已移除
         assert "b" not in graph.in_degree
-        
+
         # 验证 graph 中已清理
         assert "b" not in graph.graph
         assert "b" not in graph.graph["a"]
-        
+
         # 验证可执行的 Job
         ready = graph.get_ready_jobs()
         assert ready == ["a"]

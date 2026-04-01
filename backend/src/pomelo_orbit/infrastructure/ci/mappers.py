@@ -100,6 +100,8 @@ class ProjectMapper:
             pipeline_template_id=orm.pipeline_template_id,
             git_credential_id=orm.git_credential_id,
             variable_overrides=variable_overrides,
+            webhook_secret=orm.webhook_secret,
+            branch_filter=orm.branch_filter,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
         )
@@ -113,6 +115,8 @@ class ProjectMapper:
             pipeline_template_id=entity.pipeline_template_id,
             git_credential_id=entity.git_credential_id,
             variable_overrides=json.dumps(entity.variable_overrides),
+            webhook_secret=entity.webhook_secret,
+            branch_filter=entity.branch_filter,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )

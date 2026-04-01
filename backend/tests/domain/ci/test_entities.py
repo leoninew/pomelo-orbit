@@ -1,8 +1,6 @@
 """测试 CI 实体"""
 
-from datetime import datetime
 
-import pytest
 import ulid
 
 from pomelo_orbit.domain.ci.entities import (
@@ -41,6 +39,20 @@ class TestProject:
         assert project.created_at is not None
         assert project.updated_at is not None
 
+    def test_create_project_with_webhook_fields(self):
+        """测试创建带 webhook 字段的项目"""
+        project = Project.create(
+            name="test-project",
+            repository_url="https://github.com/test/repo.git",
+            pipeline_template_id=str(ulid.ULID()),
+            git_credential_id=str(ulid.ULID()),
+            webhook_secret="my-secret-token",
+            branch_filter="main,develop",
+        )
+
+        assert project.webhook_secret == "my-secret-token"
+        assert project.branch_filter == "main,develop"
+
     def test_update_project(self):
         """测试更新项目"""
         project = Project.create(
@@ -51,16 +63,30 @@ class TestProject:
         )
 
         original_updated_at = project.updated_at
-        
+
         # 添加微小延迟确保时间戳不同
         import time
         time.sleep(0.001)
-        
+
         project.update(name="new-name", variable_overrides={"NEW_KEY": "new_value"})
 
         assert project.name == "new-name"
         assert project.variable_overrides == {"NEW_KEY": "new_value"}
         assert project.updated_at >= original_updated_at
+
+    def test_update_project_webhook_fields(self):
+        """测试更新项目 webhook 字段"""
+        project = Project.create(
+            name="test-project",
+            repository_url="https://github.com/test/repo.git",
+            pipeline_template_id=str(ulid.ULID()),
+            git_credential_id=str(ulid.ULID()),
+        )
+
+        project.update(webhook_secret="new-secret", branch_filter="main")
+
+        assert project.webhook_secret == "new-secret"
+        assert project.branch_filter == "main"
 
 
 class TestCredential:
@@ -108,11 +134,11 @@ class TestPipelineTemplate:
         )
 
         original_updated_at = template.updated_at
-        
+
         # 添加微小延迟确保时间戳不同
         import time
         time.sleep(0.001)
-        
+
         template.update(name="new-template", description="Updated")
 
         assert template.name == "new-template"

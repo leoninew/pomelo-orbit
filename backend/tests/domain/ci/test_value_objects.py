@@ -1,7 +1,5 @@
 """测试 CI 值对象"""
 
-import pytest
-from pydantic import ValidationError
 
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,

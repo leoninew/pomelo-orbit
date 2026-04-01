@@ -26,6 +26,8 @@ class Project:
     pipeline_template_id: str
     git_credential_id: str
     variable_overrides: dict[str, Any] = field(default_factory=dict)
+    webhook_secret: str | None = None
+    branch_filter: str | None = None
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
 
@@ -36,6 +38,8 @@ class Project:
         pipeline_template_id: str,
         git_credential_id: str,
         variable_overrides: dict[str, Any] | None = None,
+        webhook_secret: str | None = None,
+        branch_filter: str | None = None,
     ) -> "Project":
         """创建项目"""
         return Project(
@@ -45,6 +49,8 @@ class Project:
             pipeline_template_id=pipeline_template_id,
             git_credential_id=git_credential_id,
             variable_overrides=variable_overrides or {},
+            webhook_secret=webhook_secret,
+            branch_filter=branch_filter,
         )
 
     def update(
@@ -52,6 +58,8 @@ class Project:
         name: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         pipeline_template_id: str | None = None,
+        webhook_secret: str | None = None,
+        branch_filter: str | None = None,
     ) -> None:
         """更新项目"""
         if name is not None:
@@ -60,6 +68,10 @@ class Project:
             self.variable_overrides = variable_overrides
         if pipeline_template_id is not None:
             self.pipeline_template_id = pipeline_template_id
+        if webhook_secret is not None:
+            self.webhook_secret = webhook_secret
+        if branch_filter is not None:
+            self.branch_filter = branch_filter
         self.updated_at = utc_now()
 
 

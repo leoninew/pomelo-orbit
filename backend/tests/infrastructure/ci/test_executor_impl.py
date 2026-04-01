@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pomelo_orbit.domain.ci.entities import Job
 from pomelo_orbit.domain.ci.executor import ExecutionContext
 from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, StepDefinition
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
@@ -123,7 +122,7 @@ class TestPipelineExecutorImpl:
         assert result is False
         # 只执行了 a 和 b，c 被取消
         assert container_executor.run.call_count == 2
-        
+
         # 验证 c 被标记为 CANCELED
         saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
         canceled_jobs = [job for job in saved_jobs if job.status == JobStatus.CANCELED]
@@ -185,14 +184,14 @@ class TestPipelineExecutorImpl:
         """测试 Job 状态转换"""
         # 创建一个列表来捕获每次 save 时的状态
         saved_statuses = []
-        
+
         def capture_status(job):
             saved_statuses.append(job.status)
-        
+
         # 创建新的 job_repo mock
         job_repo = MagicMock()
         job_repo.save.side_effect = capture_status
-        
+
         # 创建新的 container_executor 和 executor 实例
         container_executor = MagicMock()
         container_executor.run = AsyncMock(return_value=(0, "success"))

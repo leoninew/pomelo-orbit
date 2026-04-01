@@ -84,6 +84,19 @@ class ProjectRepository(BaseRepository[Project, ProjectModel]):
             is not None
         )
 
+    def find_by_repository_url(self, repository_url: str) -> list[Project]:
+        """
+        根据仓库 URL 查找项目
+
+        Args:
+            repository_url: 仓库 URL（精确匹配）
+
+        Returns:
+            匹配的项目列表，可能为空。多个项目可能使用同一个仓库 URL。
+        """
+        orms = self._session.query(ProjectModel).filter(ProjectModel.repository_url == repository_url).all()
+        return [self._mapper.to_domain(orm) for orm in orms]
+
 
 class PipelineRunRepository(BaseRepository[PipelineRun, PipelineRunModel]):
     """Pipeline 运行仓储"""

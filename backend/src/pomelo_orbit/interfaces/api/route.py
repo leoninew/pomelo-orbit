@@ -6,8 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, UploadFile, status
 
-from pomelo_orbit.application.di import get_route_service
-from pomelo_orbit.application.route_service import RouteService
+from pomelo_orbit.application.cd.di import get_route_service
+from pomelo_orbit.application.cd.route_service import RouteService
 from pomelo_orbit.infrastructure.persistence.mappers import RouteMapper
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto import (

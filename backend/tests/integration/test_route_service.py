@@ -6,10 +6,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session
 
-from pomelo_orbit.application.route_service import RouteService
-from pomelo_orbit.domain.entities import Route
-from pomelo_orbit.domain.route_service import RouteDomainService
-from pomelo_orbit.infrastructure.repositories.route import RouteRepositoryImpl
+from pomelo_orbit.application.cd.route_service import RouteService
+from pomelo_orbit.domain.cd.entities import Route
+from pomelo_orbit.domain.cd.route_service import RouteDomainService
+from pomelo_orbit.infrastructure.cd.repositories.route import RouteRepositoryImpl
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 
@@ -25,8 +25,8 @@ def route_service(db_session: Session, temp_config_dir: Path):
     """Create a route service instance."""
     from unittest.mock import Mock, patch
 
+    from pomelo_orbit.infrastructure.cd.traefik.manager import TraefikManager
     from pomelo_orbit.infrastructure.config import get_settings
-    from pomelo_orbit.infrastructure.traefik import TraefikManager
 
     route_repo = RouteRepositoryImpl(db_session)
     traefik_manager = TraefikManager()

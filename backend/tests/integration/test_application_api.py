@@ -107,7 +107,7 @@ class TestApplicationAPI:
         assert app is not None
         assert app.name == "updated-app"
 
-    @patch("pomelo_orbit.infrastructure.docker.manager.ApplicationManagerImpl.purge")
+    @patch("pomelo_orbit.infrastructure.cd.docker.manager.ApplicationManagerImpl.purge")
     def test_delete_application(self, mock_purge, auth_client, db_session, test_app):
         """测试删除应用"""
         mock_purge.return_value = None
@@ -160,10 +160,10 @@ class TestApplicationAPI:
         assert data["path"] == ".env"
         assert data["content"] == "KEY=value"
 
-    @patch("pomelo_orbit.application.application_service.ApplicationService.update_config_file")
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.update_config_file")
     def test_write_application_file(self, mock_write, auth_client, test_app, test_config_file):
         """测试更新配置文件"""
-        from pomelo_orbit.domain.entities import ApplicationConfigFile
+        from pomelo_orbit.domain.cd.entities import ApplicationConfigFile
 
         updated_file = ApplicationConfigFile(
             id=test_config_file.id,
@@ -194,7 +194,7 @@ class TestApplicationAPI:
         config_file = db_session.query(ApplicationConfigFileModel).filter_by(id=test_config_file.id).first()
         assert config_file is None
 
-    @patch("pomelo_orbit.application.application_service.ApplicationService.deploy")
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.deploy")
     def test_deploy_application(self, mock_deploy, auth_client, db_session, test_app):
         """测试部署应用"""
         response = auth_client.post(
@@ -206,11 +206,11 @@ class TestApplicationAPI:
         data = response.json()
         assert "deployment_id" in data
 
-    @patch("pomelo_orbit.application.application_service.ApplicationService.stop_application")
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.stop_application")
     def test_stop_application(self, mock_stop, auth_client, test_app):
         """测试停止应用"""
-        from pomelo_orbit.domain.entities import Deployment, TriggerType
-        from pomelo_orbit.domain.value_objects import DeployStatus, OperationType
+        from pomelo_orbit.domain.cd.entities import Deployment, TriggerType
+        from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
 
         mock_deployment = Deployment(
             id="test-deployment-id",
@@ -232,11 +232,11 @@ class TestApplicationAPI:
         data = response.json()
         assert data["deployment_id"] == "test-deployment-id"
 
-    @patch("pomelo_orbit.application.application_service.ApplicationService.restart_application")
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.restart_application")
     def test_restart_application(self, mock_restart, auth_client, test_app):
         """测试重启应用"""
-        from pomelo_orbit.domain.entities import Deployment, TriggerType
-        from pomelo_orbit.domain.value_objects import DeployStatus, OperationType
+        from pomelo_orbit.domain.cd.entities import Deployment, TriggerType
+        from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
 
         mock_deployment = Deployment(
             id="test-deployment-id",
@@ -255,7 +255,7 @@ class TestApplicationAPI:
         data = response.json()
         assert data["deployment_id"] == "test-deployment-id"
 
-    @patch("pomelo_orbit.application.application_service.ApplicationService.get_application_status")
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.get_application_status")
     def test_get_application_status(self, mock_status, auth_client, test_app):
         """测试获取应用状态"""
         mock_status.return_value = {"running": True, "container_id": "abc123"}
@@ -267,7 +267,7 @@ class TestApplicationAPI:
         assert "status" in data
         assert data["status"]["running"] is True
 
-    @patch("pomelo_orbit.application.application_service.ApplicationService.get_application_logs")
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.get_application_logs")
     def test_get_application_logs(self, mock_logs, auth_client, test_app):
         """测试获取应用日志"""
         mock_logs.return_value = "log line 1\nlog line 2"

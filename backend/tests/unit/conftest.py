@@ -4,8 +4,9 @@
 
 import pytest
 
-from pomelo_orbit.domain.entities import Application, CertType, Deployment, Route, TriggerType, User
-from pomelo_orbit.domain.value_objects import OperationType
+from pomelo_orbit.domain.cd.entities import Application, CertType, Deployment, Route, TriggerType
+from pomelo_orbit.domain.cd.value_objects import OperationType
+from pomelo_orbit.domain.shared.entities import User
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 

@@ -7,10 +7,10 @@ import httpx
 from dynaconf import Dynaconf
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from pomelo_orbit.infrastructure.cd.repositories.di import get_route_repository
+from pomelo_orbit.infrastructure.cd.traefik.di import get_traefik_api_client
 from pomelo_orbit.infrastructure.config import get_settings
-from pomelo_orbit.infrastructure.repositories.di import get_route_repository
 from pomelo_orbit.infrastructure.traefik import TraefikAPIClient
-from pomelo_orbit.infrastructure.traefik.di import get_traefik_api_client
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto.traefik_route import TraefikConfigResp
 

@@ -1,7 +1,7 @@
 """ApplicationRepository 单元测试"""
 
-from pomelo_orbit.domain.entities import Application
-from pomelo_orbit.infrastructure.repositories.application import ApplicationRepositoryImpl
+from pomelo_orbit.domain.cd.entities import Application
+from pomelo_orbit.infrastructure.cd.repositories.application import ApplicationRepositoryImpl
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 

@@ -10,8 +10,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from ulid import ULID
 
 from pomelo_orbit.domain import AuthenticationError, AuthorizationError
-from pomelo_orbit.domain.entities import LoginHistory, User
-from pomelo_orbit.domain.repositories import UserRepository
+from pomelo_orbit.domain.cd.repositories import UserRepository
+from pomelo_orbit.domain.shared.entities import LoginHistory, User
 from pomelo_orbit.infrastructure import SecurityService, get_security_service, hash_password, verify_password
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
 from pomelo_orbit.infrastructure.repositories import get_user_repository

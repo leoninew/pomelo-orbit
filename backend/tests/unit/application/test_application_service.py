@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, Mock, create_autospec
 
 import pytest
 
-from pomelo_orbit.application.application_service import ApplicationService
-from pomelo_orbit.domain.application_manager import ApplicationManager
-from pomelo_orbit.domain.entities import Application, ApplicationConfigFile, Deployment, TriggerType
+from pomelo_orbit.application.cd.application_service import ApplicationService
+from pomelo_orbit.domain.cd.application_manager import ApplicationManager
+from pomelo_orbit.domain.cd.entities import Application, ApplicationConfigFile, Deployment, TriggerType
+from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, DeployStatus, OperationType
 from pomelo_orbit.domain.exceptions import BusinessError
-from pomelo_orbit.domain.value_objects import ApplicationStatus, DeployStatus, OperationType
 
 
 @pytest.fixture
@@ -90,8 +90,8 @@ class TestApplicationServiceInit:
 
     def test_creates_service_with_repositories(self, mock_app_repo, mock_deployment_repo, mock_config_file_repo):
         """测试使用仓储创建服务"""
+        from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
         from pomelo_orbit.infrastructure.config import get_settings
-        from pomelo_orbit.infrastructure.docker.manager import ApplicationManagerImpl
 
         service = ApplicationService(
             app_repo=mock_app_repo,
@@ -202,7 +202,7 @@ class TestConfigFileManagement:
 
     def test_get_config_file_wrong_application(self, app_service, mock_config_file_repo, mock_app_repo):
         """测试获取不属于该应用的配置文件"""
-        from pomelo_orbit.domain.value_objects import ApplicationStatus
+        from pomelo_orbit.domain.cd.value_objects import ApplicationStatus
 
         app = Application(
             id="app-1",
@@ -225,7 +225,7 @@ class TestConfigFileManagement:
 
     def test_get_config_file_not_found(self, app_service, mock_config_file_repo, mock_app_repo):
         """测试获取不存在的配置文件"""
-        from pomelo_orbit.domain.value_objects import ApplicationStatus
+        from pomelo_orbit.domain.cd.value_objects import ApplicationStatus
 
         app = Application(
             id="app-1",

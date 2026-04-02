@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pomelo_orbit.infrastructure.docker.manager import ApplicationManagerImpl
+from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
 
 
 @pytest.fixture

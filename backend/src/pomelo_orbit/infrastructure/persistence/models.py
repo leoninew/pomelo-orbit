@@ -8,7 +8,7 @@ import ulid
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from pomelo_orbit.domain.value_objects import ApplicationStatus, ImagePullPolicy, OperationType
+from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, ImagePullPolicy, OperationType
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 

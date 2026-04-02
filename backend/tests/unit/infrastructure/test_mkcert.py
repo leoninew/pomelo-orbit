@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from pomelo_orbit.infrastructure.cert.mkcert import MkcertService
+from pomelo_orbit.infrastructure.cd.cert.mkcert import MkcertService
 
 
 @pytest.fixture

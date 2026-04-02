@@ -6,9 +6,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from pomelo_orbit.application.di import get_setting_service
+from pomelo_orbit.application.cd.di import get_setting_service
 from pomelo_orbit.application.setting_service import SettingService
-from pomelo_orbit.domain.entities import User
+from pomelo_orbit.domain.shared.entities import User
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto import SystemConfigResetReq, SystemConfigResp, SystemConfigUpdateReq
 

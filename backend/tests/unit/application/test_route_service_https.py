@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import pytest
 from ulid import ULID
 
-from pomelo_orbit.application.route_service import RouteService
-from pomelo_orbit.domain.entities import CertType, Route
+from pomelo_orbit.application.cd.route_service import RouteService
+from pomelo_orbit.domain.cd.entities import CertType, Route
 from pomelo_orbit.domain.exceptions import BusinessError
 from pomelo_orbit.infrastructure.time_utils import utc_now
 

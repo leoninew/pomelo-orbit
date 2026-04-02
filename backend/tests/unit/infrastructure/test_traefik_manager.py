@@ -7,8 +7,8 @@ from unittest.mock import Mock, patch
 import pytest
 import yaml
 
-from pomelo_orbit.domain.entities import Route
-from pomelo_orbit.infrastructure.traefik.manager import TraefikManager
+from pomelo_orbit.domain.cd.entities import Route
+from pomelo_orbit.infrastructure.cd.traefik.manager import TraefikManager
 
 
 @pytest.fixture

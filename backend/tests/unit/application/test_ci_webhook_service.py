@@ -2,7 +2,7 @@
 
 from unittest.mock import Mock
 
-from pomelo_orbit.application.ci_webhook_service import CIWebhookService
+from pomelo_orbit.application.ci.webhook_service import CIWebhookService
 from pomelo_orbit.domain.ci.entities import PipelineRun, Project
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 

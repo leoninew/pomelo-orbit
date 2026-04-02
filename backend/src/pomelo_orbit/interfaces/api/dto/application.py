@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from pomelo_orbit.domain.value_objects import ImagePullPolicy
+from pomelo_orbit.domain.cd.value_objects import ImagePullPolicy
 
 
 class GitSourceReq(BaseModel):

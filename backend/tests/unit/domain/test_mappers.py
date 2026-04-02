@@ -70,8 +70,8 @@ class TestDeploymentMapper:
 
     def test_deployment_round_trip_preserves_enum_types(self, create_test_deployment):
         """验证 Deployment 实体往返转换保持枚举类型"""
-        from pomelo_orbit.domain.entities import TriggerType
-        from pomelo_orbit.domain.value_objects import OperationType
+        from pomelo_orbit.domain.cd.entities import TriggerType
+        from pomelo_orbit.domain.cd.value_objects import OperationType
 
         original = create_test_deployment(trigger_type=TriggerType.WEBHOOK, operation_type=OperationType.RESTART)
 
@@ -148,7 +148,7 @@ class TestRouteMapper:
 
     def test_route_round_trip_with_https_enabled(self, create_test_route):
         """验证 HTTPS 启用的 Route 实体往返转换一致性"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         original = create_test_route(
             https_enabled=True, cert_pem="cert_content", cert_key="key_content", cert_type=CertType.MANUAL
@@ -164,7 +164,7 @@ class TestRouteMapper:
 
     def test_route_round_trip_preserves_cert_type(self, create_test_route):
         """验证 Route 实体往返转换保持证书类型"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         manual_route = create_test_route(cert_type=CertType.MANUAL)
         letsencrypt_route = create_test_route(cert_type=CertType.LETSENCRYPT)

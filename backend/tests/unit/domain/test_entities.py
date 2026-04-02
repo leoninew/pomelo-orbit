@@ -2,8 +2,8 @@
 领域实体测试
 """
 
-from pomelo_orbit.domain.entities import TriggerType
-from pomelo_orbit.domain.value_objects import OperationType
+from pomelo_orbit.domain.cd.entities import TriggerType
+from pomelo_orbit.domain.cd.value_objects import OperationType
 
 
 class TestApplicationEntity:
@@ -35,7 +35,7 @@ class TestApplicationEntity:
 
     def test_application_with_git_source(self, create_test_application):
         """测试 Application 实体可以关联 Git 源"""
-        from pomelo_orbit.domain.entities import GitSource
+        from pomelo_orbit.domain.cd.entities import GitSource
 
         git_source = GitSource(
             id="git-1",
@@ -51,7 +51,7 @@ class TestApplicationEntity:
 
     def test_application_with_image_source(self, create_test_application):
         """测试 Application 实体可以关联镜像源"""
-        from pomelo_orbit.domain.entities import ImageSource
+        from pomelo_orbit.domain.cd.entities import ImageSource
 
         image_source = ImageSource(id="img-1", application_id="test-app-1", image_name="nginx:latest")
         app = create_test_application(image_source=image_source)
@@ -61,7 +61,7 @@ class TestApplicationEntity:
 
     def test_application_with_config_files(self, create_test_application):
         """测试 Application 实体可以关联配置文件"""
-        from pomelo_orbit.domain.entities import ApplicationConfigFile
+        from pomelo_orbit.domain.cd.entities import ApplicationConfigFile
 
         config_files = [
             ApplicationConfigFile(id="cfg-1", application_id="test-app-1", path=".env", content="KEY=value"),
@@ -107,9 +107,7 @@ class TestDeploymentEntity:
 
     def test_deployment_with_webhook_trigger(self, create_test_deployment):
         """测试 Webhook 触发的部署"""
-        deployment = create_test_deployment(
-            trigger_type=TriggerType.WEBHOOK, trigger_ref="refs/heads/main"
-        )
+        deployment = create_test_deployment(trigger_type=TriggerType.WEBHOOK, trigger_ref="refs/heads/main")
 
         assert deployment.trigger_type == TriggerType.WEBHOOK
         assert deployment.trigger_ref == "refs/heads/main"
@@ -193,7 +191,7 @@ class TestRouteEntity:
 
     def test_route_enable_https_manual(self, create_test_route):
         """测试启用 HTTPS（手动证书）"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         route = create_test_route(https_enabled=False)
         route.enable_https("cert_pem_content", "cert_key_content")
@@ -205,7 +203,7 @@ class TestRouteEntity:
 
     def test_route_enable_letsencrypt(self, create_test_route):
         """测试启用 Let's Encrypt 自动证书"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         route = create_test_route(https_enabled=False)
         route.enable_letsencrypt()
@@ -217,7 +215,7 @@ class TestRouteEntity:
 
     def test_route_enable_mkcert(self, create_test_route):
         """测试启用 mkcert 本地证书"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         route = create_test_route(https_enabled=False)
         route.enable_mkcert("mkcert_pem", "mkcert_key")
@@ -229,7 +227,7 @@ class TestRouteEntity:
 
     def test_route_disable_https(self, create_test_route):
         """测试禁用 HTTPS"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         route = create_test_route(https_enabled=True, cert_pem="cert", cert_key="key", cert_type=CertType.MANUAL)
         route.disable_https()
@@ -245,7 +243,7 @@ class TestGitSourceEntity:
 
     def test_create_git_source_with_required_fields(self):
         """测试创建 GitSource 实体"""
-        from pomelo_orbit.domain.entities import GitSource
+        from pomelo_orbit.domain.cd.entities import GitSource
 
         git_source = GitSource(
             id="git-1",
@@ -261,7 +259,7 @@ class TestGitSourceEntity:
 
     def test_git_source_with_custom_values(self):
         """测试 GitSource 自定义值"""
-        from pomelo_orbit.domain.entities import GitSource
+        from pomelo_orbit.domain.cd.entities import GitSource
 
         git_source = GitSource(
             id="git-1",
@@ -276,7 +274,7 @@ class TestGitSourceEntity:
 
     def test_git_source_with_custom_branches(self):
         """测试 GitSource 自定义分支"""
-        from pomelo_orbit.domain.entities import GitSource
+        from pomelo_orbit.domain.cd.entities import GitSource
 
         git_source = GitSource(
             id="git-1",
@@ -295,7 +293,7 @@ class TestImageSourceEntity:
 
     def test_create_image_source_with_required_fields(self):
         """测试创建 ImageSource 实体"""
-        from pomelo_orbit.domain.entities import ImageSource
+        from pomelo_orbit.domain.cd.entities import ImageSource
 
         image_source = ImageSource(id="img-1", application_id="app-1", image_name="nginx:latest")
 
@@ -305,7 +303,7 @@ class TestImageSourceEntity:
 
     def test_image_source_with_registry(self):
         """测试 ImageSource 包含镜像仓库"""
-        from pomelo_orbit.domain.entities import ImageSource
+        from pomelo_orbit.domain.cd.entities import ImageSource
 
         image_source = ImageSource(
             id="img-1",
@@ -322,7 +320,7 @@ class TestApplicationConfigFileEntity:
 
     def test_create_config_file_with_required_fields(self):
         """测试创建 ApplicationConfigFile 实体"""
-        from pomelo_orbit.domain.entities import ApplicationConfigFile
+        from pomelo_orbit.domain.cd.entities import ApplicationConfigFile
 
         config_file = ApplicationConfigFile(
             id="cfg-1", application_id="app-1", path=".env", content="DATABASE_URL=postgres://localhost"
@@ -335,7 +333,7 @@ class TestApplicationConfigFileEntity:
 
     def test_config_file_with_yaml_content(self):
         """测试配置文件包含 YAML 内容"""
-        from pomelo_orbit.domain.entities import ApplicationConfigFile
+        from pomelo_orbit.domain.cd.entities import ApplicationConfigFile
 
         yaml_content = """
 server:
@@ -352,7 +350,7 @@ class TestLoginHistoryEntity:
 
     def test_create_login_history_with_required_fields(self):
         """测试创建 LoginHistory 实体"""
-        from pomelo_orbit.domain.entities import LoginHistory
+        from pomelo_orbit.domain.shared.entities import LoginHistory
 
         login = LoginHistory(id="login-1", user_id="user-1", username="testuser", success=True)
 
@@ -363,7 +361,7 @@ class TestLoginHistoryEntity:
 
     def test_login_history_with_client_info(self):
         """测试 LoginHistory 包含客户端信息"""
-        from pomelo_orbit.domain.entities import LoginHistory
+        from pomelo_orbit.domain.shared.entities import LoginHistory
 
         login = LoginHistory(
             id="login-1",
@@ -379,7 +377,7 @@ class TestLoginHistoryEntity:
 
     def test_login_history_failed_login(self):
         """测试失败的登录记录"""
-        from pomelo_orbit.domain.entities import LoginHistory
+        from pomelo_orbit.domain.shared.entities import LoginHistory
 
         login = LoginHistory(id="login-1", user_id="user-1", username="testuser", success=False)
 
@@ -391,27 +389,27 @@ class TestEnumValues:
 
     def test_source_type_enum(self):
         """测试 SourceType 枚举"""
-        from pomelo_orbit.domain.entities import SourceType
+        from pomelo_orbit.domain.cd.entities import SourceType
 
         assert SourceType.GIT.value == "git"
         assert SourceType.IMAGE.value == "image"
 
     def test_trigger_type_enum(self):
         """测试 TriggerType 枚举"""
-        from pomelo_orbit.domain.entities import TriggerType
+        from pomelo_orbit.domain.cd.entities import TriggerType
 
         assert TriggerType.WEBHOOK.value == "webhook"
         assert TriggerType.MANUAL.value == "manual"
 
     def test_webhook_source_enum(self):
         """测试 WebhookSource 枚举"""
-        from pomelo_orbit.domain.entities import WebhookSource
+        from pomelo_orbit.domain.cd.entities import WebhookSource
 
         assert WebhookSource.GITHUB.value == "github"
 
     def test_cert_type_enum(self):
         """测试 CertType 枚举"""
-        from pomelo_orbit.domain.entities import CertType
+        from pomelo_orbit.domain.cd.entities import CertType
 
         assert CertType.MANUAL.value == "manual"
         assert CertType.LETSENCRYPT.value == "letsencrypt"

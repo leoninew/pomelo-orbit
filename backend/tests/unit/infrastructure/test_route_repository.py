@@ -1,7 +1,7 @@
 """RouteRepository 单元测试"""
 
-from pomelo_orbit.domain.entities import Route
-from pomelo_orbit.infrastructure.repositories.route import RouteRepositoryImpl
+from pomelo_orbit.domain.cd.entities import Route
+from pomelo_orbit.infrastructure.cd.repositories.route import RouteRepositoryImpl
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 

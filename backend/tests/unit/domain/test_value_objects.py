@@ -4,7 +4,7 @@
 
 import pytest
 
-from pomelo_orbit.domain.value_objects import (
+from pomelo_orbit.domain.cd.value_objects import (
     ApplicationStatus,
     DeployStatus,
     ImagePullPolicy,

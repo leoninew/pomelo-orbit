@@ -4,8 +4,8 @@
 
 import pytest
 
-from pomelo_orbit.domain.entities import Route
-from pomelo_orbit.domain.route_service import RouteDomainService
+from pomelo_orbit.domain.cd.entities import Route
+from pomelo_orbit.domain.cd.route_service import RouteDomainService
 
 
 @pytest.fixture

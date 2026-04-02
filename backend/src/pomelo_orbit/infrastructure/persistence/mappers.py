@@ -2,19 +2,18 @@
 领域实体与 ORM 模型之间的映射器
 """
 
-from pomelo_orbit.domain.entities import (
+from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     CertType,
     Deployment,
     GitSource,
     ImageSource,
-    LoginHistory,
     Route,
     TriggerType,
-    User,
 )
-from pomelo_orbit.domain.value_objects import OperationType
+from pomelo_orbit.domain.cd.value_objects import OperationType
+from pomelo_orbit.domain.shared.entities import LoginHistory, User
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,

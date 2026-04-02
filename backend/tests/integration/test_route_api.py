@@ -46,7 +46,7 @@ def disabled_route(db_session):
 class TestRouteAPI:
     """路由管理 API 测试"""
 
-    @patch("pomelo_orbit.infrastructure.traefik.manager.TraefikManager.deploy_route")
+    @patch("pomelo_orbit.infrastructure.cd.traefik.manager.TraefikManager.deploy_route")
     def test_create_route(self, mock_deploy, auth_client, db_session, test_route):
         """测试创建路由"""
         response = auth_client.post(
@@ -84,8 +84,8 @@ class TestRouteAPI:
         assert data["id"] == test_route.id
         assert data["name"] == "test-route"
 
-    @patch("pomelo_orbit.infrastructure.traefik.manager.TraefikManager.revoke_cert")
-    @patch("pomelo_orbit.infrastructure.traefik.manager.TraefikManager.deploy_route")
+    @patch("pomelo_orbit.infrastructure.cd.traefik.manager.TraefikManager.revoke_cert")
+    @patch("pomelo_orbit.infrastructure.cd.traefik.manager.TraefikManager.deploy_route")
     def test_update_route(self, mock_deploy, mock_revoke_cert, auth_client, db_session, test_route):
         """测试更新路由"""
         response = auth_client.put(

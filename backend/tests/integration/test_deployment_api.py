@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from pomelo_orbit.domain.entities import TriggerType
-from pomelo_orbit.domain.value_objects import DeployStatus, OperationType
+from pomelo_orbit.domain.cd.entities import TriggerType
+from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
 from pomelo_orbit.infrastructure.persistence.models import DeploymentModel
 
 
@@ -66,7 +66,7 @@ class TestDeploymentAPI:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    @patch("pomelo_orbit.application.deployment_service.DeploymentService.read_deployment_log")
+    @patch("pomelo_orbit.application.cd.deployment_service.DeploymentService.read_deployment_log")
     def test_get_deployment_logs(self, mock_read_log, auth_client, test_deployment, tmp_path):
         """测试获取部署日志"""
         mock_read_log.return_value = ("deployment log content", 100, True)

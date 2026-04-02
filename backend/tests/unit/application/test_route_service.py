@@ -4,8 +4,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from pomelo_orbit.application.route_service import RouteService
-from pomelo_orbit.domain.entities import CertType, Route
+from pomelo_orbit.application.cd.route_service import RouteService
+from pomelo_orbit.domain.cd.entities import CertType, Route
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 
 import pytest
 
-from pomelo_orbit.domain.entities import User
+from pomelo_orbit.domain.shared.entities import User
 from pomelo_orbit.infrastructure.persistence.models import ApplicationModel
 
 

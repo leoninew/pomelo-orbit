@@ -7,10 +7,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, status
 
-from pomelo_orbit.application.application_service import ApplicationService
-from pomelo_orbit.application.di import get_application_service
-from pomelo_orbit.domain.entities import TriggerType
-from pomelo_orbit.domain.value_objects import OperationType
+from pomelo_orbit.application.cd.application_service import ApplicationService
+from pomelo_orbit.application.cd.di import get_application_service
+from pomelo_orbit.domain.cd.entities import TriggerType
+from pomelo_orbit.domain.cd.value_objects import OperationType
 from pomelo_orbit.interfaces.api.auth import get_current_user
 from pomelo_orbit.interfaces.api.dto import (
     ApplicationCreateReq,

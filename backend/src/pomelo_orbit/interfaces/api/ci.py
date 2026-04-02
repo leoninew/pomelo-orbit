@@ -8,12 +8,12 @@ from typing import Annotated
 from dynaconf import Dynaconf
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query, Request, status
 
-from pomelo_orbit.application.ci_di import (
+from pomelo_orbit.application.ci.di import (
     get_ci_webhook_service,
     get_pipeline_service,
 )
-from pomelo_orbit.application.ci_webhook_service import CIWebhookService
-from pomelo_orbit.application.pipeline_service import PipelineService
+from pomelo_orbit.application.ci.pipeline_service import PipelineService
+from pomelo_orbit.application.ci.webhook_service import CIWebhookService
 from pomelo_orbit.domain.ci.entities import PipelineTemplate
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 from pomelo_orbit.infrastructure.config import get_settings

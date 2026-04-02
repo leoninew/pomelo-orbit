@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from pomelo_orbit.application.pipeline_service import PipelineService
+from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.domain.ci.entities import (
     Credential,
     PipelineRun,

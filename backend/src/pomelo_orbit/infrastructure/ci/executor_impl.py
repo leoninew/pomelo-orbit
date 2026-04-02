@@ -7,16 +7,16 @@ from pathlib import Path
 
 from pomelo_orbit.domain.ci.entities import Artifact, Job, JobLog
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
-from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, RetryPolicy, StepDefinition
-from pomelo_orbit.infrastructure.ci.actions.checkout import CheckoutAction
-from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
-from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
-from pomelo_orbit.infrastructure.ci.repositories import (
+from pomelo_orbit.domain.ci.repositories import (
     ArtifactRepository,
     CredentialRepository,
     JobLogRepository,
     JobRepository,
 )
+from pomelo_orbit.domain.ci.value_objects import JobStatus, PipelineDefinition, RetryPolicy, StepDefinition
+from pomelo_orbit.infrastructure.ci.actions.checkout import CheckoutAction
+from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
+from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
 from pomelo_orbit.infrastructure.security import SecurityService
 
 logger = logging.getLogger(__name__)

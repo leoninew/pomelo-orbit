@@ -3,11 +3,22 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold flex items-center gap-2">
 				{{ template?.name ?? '模板详情' }}
-				<span v-if="template?.is_builtin" class="badge badge-sm badge-outline badge-info">内置</span>
+				<span v-if="template?.is_builtin" class="badge badge-sm badge-outline badge-info">
+					内置
+				</span>
 			</h1>
 			<div class="flex items-center gap-2">
-				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')"><ArrowLeft class="size-4" />返回</button>
-				<button v-if="template && !template.is_builtin" class="btn btn-sm btn-ghost" @click="editModalRef?.showModal()">编辑</button>
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
+				<button
+					v-if="template && !template.is_builtin"
+					class="btn btn-sm btn-ghost"
+					@click="editModalRef?.showModal()"
+				>
+					编辑
+				</button>
 			</div>
 		</div>
 
@@ -15,12 +26,33 @@
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
 				<h2 class="font-semibold mb-3">基本信息</h2>
-				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<div v-if="loading" class="flex justify-center py-6">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
 				<dl v-else-if="template" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">模板名称</dt><dd>{{ template.name }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">类型</dt><dd><span class="badge badge-sm" :class="template.is_builtin ? 'badge-outline badge-info' : 'badge-ghost'">{{ template.is_builtin ? '内置模板' : '自定义模板' }}</span></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">描述</dt><dd class="text-base-content/60">{{ template.description || '—' }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">创建时间</dt><dd>{{ formatTime(template.created_at) }}</dd></div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/70 w-24 shrink-0">模板名称</dt>
+						<dd>{{ template.name }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/70 w-24 shrink-0">类型</dt>
+						<dd>
+							<span
+								class="badge badge-sm"
+								:class="template.is_builtin ? 'badge-outline badge-info' : 'badge-ghost'"
+							>
+								{{ template.is_builtin ? '内置模板' : '自定义模板' }}
+							</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/70 w-24 shrink-0">描述</dt>
+						<dd class="text-base-content/60">{{ template.description || '—' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
+						<dd>{{ formatTime(template.created_at) }}</dd>
+					</div>
 				</dl>
 			</div>
 		</div>
@@ -29,15 +61,39 @@
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
 				<h2 class="font-semibold mb-3">变量声明</h2>
-				<div v-if="!template || (template.variable_declarations ?? []).length === 0" class="text-sm text-base-content/60 py-4 text-center">无变量声明</div>
+				<div
+					v-if="!template || (template.variable_declarations ?? []).length === 0"
+					class="text-sm text-base-content/60 py-4 text-center"
+				>
+					无变量声明
+				</div>
 				<table v-else class="table">
-					<thead><tr class="text-base-content/60"><th>变量名</th><th>描述</th><th>必填</th><th>默认值</th></tr></thead>
+					<thead>
+						<tr class="text-base-content/60">
+							<th>变量名</th>
+							<th>描述</th>
+							<th>必填</th>
+							<th>默认值</th>
+						</tr>
+					</thead>
 					<tbody>
 						<tr v-for="v in template.variable_declarations" :key="v.name" class="hover">
-							<td><code class="text-xs">{{ v.name }}</code></td>
+							<td>
+								<code class="text-xs">{{ v.name }}</code>
+							</td>
 							<td class="cell-muted">{{ v.description || '—' }}</td>
-							<td><span class="badge badge-sm" :class="v.required ? 'badge-outline badge-error' : 'badge-ghost'">{{ v.required ? '必填' : '可选' }}</span></td>
-							<td><code v-if="v.default" class="text-xs">{{ v.default }}</code><span v-else class="text-base-content/60">—</span></td>
+							<td>
+								<span
+									class="badge badge-sm"
+									:class="v.required ? 'badge-outline badge-error' : 'badge-ghost'"
+								>
+									{{ v.required ? '必填' : '可选' }}
+								</span>
+							</td>
+							<td>
+								<code v-if="v.default" class="text-xs">{{ v.default }}</code>
+								<span v-else class="text-base-content/60">—</span>
+							</td>
 						</tr>
 					</tbody>
 				</table>
@@ -53,9 +109,14 @@
 						v-if="template"
 						v-model:value="template.content"
 						:style="{ height: '100%' }"
-						theme="vs-dark"
+						theme="vs"
 						language="yaml"
-						:options="{ readOnly: true, minimap: { enabled: false }, fontSize: 14, automaticLayout: true }"
+						:options="{
+							readOnly: true,
+							minimap: { enabled: false },
+							fontSize: 14,
+							automaticLayout: true,
+						}"
 					/>
 				</div>
 			</div>
@@ -72,16 +133,25 @@
 					</label>
 					<label class="form-control w-full">
 						<div class="label pb-1"><span class="label-text">描述</span></div>
-						<textarea v-model="editForm.description" class="textarea textarea-bordered textarea-sm" rows="2" />
+						<textarea
+							v-model="editForm.description"
+							class="textarea textarea-bordered textarea-sm"
+							rows="2"
+						/>
 					</label>
 					<label class="form-control w-full">
 						<div class="label pb-1"><span class="label-text">Pipeline YAML</span></div>
-						<textarea v-model="editForm.content" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="12" />
+						<textarea
+							v-model="editForm.content"
+							class="textarea textarea-bordered textarea-sm font-mono text-xs"
+							rows="12"
+						/>
 					</label>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+						<span v-if="operating" class="loading loading-spinner loading-xs" />
+						保存
 					</button>
 					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
 				</div>
@@ -119,18 +189,33 @@ async function fetchTemplate() {
 		await execute(async () => {
 			const data = await pipelineTemplateApi.get(templateId);
 			template.value = data;
-			Object.assign(editForm, { name: data.name, description: data.description ?? '', content: data.content });
+			Object.assign(editForm, {
+				name: data.name,
+				description: data.description ?? '',
+				content: data.content,
+			});
 		});
-	} catch { toast.error('获取模板信息失败'); router.push('/ci/templates'); }
+	} catch {
+		toast.error('获取模板信息失败');
+		router.push('/ci/templates');
+	}
 }
 
 async function handleEditOk() {
 	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.update(templateId, { name: editForm.name, description: editForm.description || undefined, content: editForm.content });
-			toast.success('更新成功'); editModalRef.value?.close(); fetchTemplate();
+			await pipelineTemplateApi.update(templateId, {
+				name: editForm.name,
+				description: editForm.description || undefined,
+				content: editForm.content,
+			});
+			toast.success('更新成功');
+			editModalRef.value?.close();
+			fetchTemplate();
 		});
-	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '更新失败');
+	}
 }
 
 onMounted(fetchTemplate);

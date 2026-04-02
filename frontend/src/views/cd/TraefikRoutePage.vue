@@ -4,10 +4,12 @@
 			<h1 class="text-xl font-semibold">Traefik HTTP Routers</h1>
 			<div class="flex items-center gap-2">
 				<button class="btn btn-sm btn-primary gap-1.5" @click="openDashboard">
-					<ExternalLink class="size-4" />打开 Dashboard
+					<ExternalLink class="size-4" />
+					打开 Dashboard
 				</button>
 				<button class="btn btn-sm btn-ghost gap-1.5" :disabled="loading" @click="fetchRoutes">
-					<RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />刷新
+					<RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
+					刷新
 				</button>
 			</div>
 		</div>
@@ -27,7 +29,9 @@
 				</thead>
 				<tbody>
 					<tr v-if="loading">
-						<td colspan="7" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td>
+						<td colspan="7" class="text-center py-8">
+							<span class="loading loading-spinner loading-md text-primary" />
+						</td>
 					</tr>
 					<tr v-else-if="routes.length === 0">
 						<td colspan="7" class="text-center py-8 text-base-content/60">暂无路由</td>
@@ -35,20 +39,42 @@
 					<tr v-for="r in routes" :key="r.name" class="hover">
 						<td>{{ r.name }}</td>
 						<td class="cell-muted">{{ r.provider }}</td>
-						<td><span class="badge badge-sm" :class="r.status === 'enabled' ? 'badge-outline badge-success' : 'badge-ghost'">{{ r.status }}</span></td>
 						<td>
-							<a v-if="buildRouteUrl(r.rule, r.tls)" :href="buildRouteUrl(r.rule, r.tls)!" target="_blank" class="link link-primary font-mono text-xs flex items-center gap-1">
-								{{ r.rule }}<ExternalLink class="size-3" />
+							<span
+								class="badge badge-sm"
+								:class="r.status === 'enabled' ? 'badge-outline badge-success' : 'badge-ghost'"
+							>
+								{{ r.status }}
+							</span>
+						</td>
+						<td>
+							<a
+								v-if="buildRouteUrl(r.rule, r.tls)"
+								:href="buildRouteUrl(r.rule, r.tls)!"
+								target="_blank"
+								class="link link-primary font-mono text-xs flex items-center gap-1"
+							>
+								{{ r.rule }}
+								<ExternalLink class="size-3" />
 							</a>
 							<span v-else class="font-mono text-xs">{{ r.rule }}</span>
 						</td>
 						<td class="cell-muted">{{ r.service }}</td>
 						<td>
 							<div class="flex flex-wrap gap-1">
-								<span v-for="ep in r.entrypoints" :key="ep" class="badge badge-sm badge-ghost">{{ ep }}</span>
+								<span v-for="ep in r.entrypoints" :key="ep" class="badge badge-sm badge-ghost">
+									{{ ep }}
+								</span>
 							</div>
 						</td>
-						<td><span class="badge badge-sm" :class="r.tls ? 'badge-outline badge-info' : 'badge-ghost'">{{ r.tls ? 'HTTPS' : 'HTTP' }}</span></td>
+						<td>
+							<span
+								class="badge badge-sm"
+								:class="r.tls ? 'badge-outline badge-info' : 'badge-ghost'"
+							>
+								{{ r.tls ? 'HTTPS' : 'HTTP' }}
+							</span>
+						</td>
 					</tr>
 				</tbody>
 			</table>
@@ -70,8 +96,13 @@ const routes = ref<TraefikRouter[]>([]);
 
 async function fetchRoutes() {
 	try {
-		await execute(async () => { const data = await traefikRouteApi.list(); routes.value = data.items; });
-	} catch { toast.error('获取路由失败'); }
+		await execute(async () => {
+			const data = await traefikRouteApi.list();
+			routes.value = data.items;
+		});
+	} catch {
+		toast.error('获取路由失败');
+	}
 }
 
 function buildRouteUrl(rule: string, tls: boolean): string | null {
@@ -83,8 +114,13 @@ function buildRouteUrl(rule: string, tls: boolean): string | null {
 async function openDashboard() {
 	try {
 		const config = await traefikRouteApi.getConfig();
-		window.open(`${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`, '_blank');
-	} catch { toast.error('打开 Dashboard 失败'); }
+		window.open(
+			`${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
+			'_blank'
+		);
+	} catch {
+		toast.error('打开 Dashboard 失败');
+	}
 }
 
 onMounted(fetchRoutes);

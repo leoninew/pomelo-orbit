@@ -43,7 +43,10 @@
 				<div v-if="loading" class="flex justify-center py-12">
 					<span class="loading loading-spinner loading-md text-primary" />
 				</div>
-				<div v-else-if="recentDeploys.length === 0" class="flex flex-col items-center gap-2 py-12 text-base-content/60">
+				<div
+					v-else-if="recentDeploys.length === 0"
+					class="flex flex-col items-center gap-2 py-12 text-base-content/60"
+				>
 					<Inbox class="size-10" />
 					<span class="text-sm">暂无部署记录</span>
 				</div>
@@ -120,13 +123,19 @@ async function refresh() {
 
 			const [appsRes, todayRes, recentRes] = await Promise.all([
 				applicationApi.list({ per_page: 1 }),
-				deploymentApi.list({ per_page: 100, date_from: todayStart.toISOString(), date_to: todayEnd.toISOString() }),
+				deploymentApi.list({
+					per_page: 100,
+					date_from: todayStart.toISOString(),
+					date_to: todayEnd.toISOString(),
+				}),
 				deploymentApi.list({ per_page: 5 }),
 			]);
 
 			stats.projectCount = appsRes.total;
 			stats.todayDeploys = todayRes.total;
-			stats.runningDeploys = todayRes.items.filter((d) => d.status === 'running' || d.status === 'queued').length;
+			stats.runningDeploys = todayRes.items.filter(
+				(d) => d.status === 'running' || d.status === 'queued'
+			).length;
 			recentDeploys.value = recentRes.items;
 		});
 	} catch {

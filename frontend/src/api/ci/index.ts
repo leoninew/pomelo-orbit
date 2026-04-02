@@ -1,4 +1,4 @@
-export { ciCredentialApi } from './credential';
+export { credentialApi } from './credential';
 export { pipelineTemplateApi } from './template';
 export { projectApi } from './project';
 export { pipelineRunApi } from './run';

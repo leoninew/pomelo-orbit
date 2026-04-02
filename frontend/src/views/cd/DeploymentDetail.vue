@@ -2,15 +2,27 @@
 	<div class="flex flex-col gap-4 h-full">
 		<!-- Header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">部署记录 <span class="text-base-content/60 text-base font-mono">#{{ deploymentId }}</span></h1>
+			<h1 class="text-xl font-semibold">
+				部署记录
+				<span class="text-base-content/60 text-base font-mono">#{{ deploymentId }}</span>
+			</h1>
 			<div class="flex items-center gap-2">
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/deployments')">
-					<ArrowLeft class="size-4" />返回列表
+					<ArrowLeft class="size-4" />
+					返回列表
 				</button>
-				<button v-if="deployment" class="btn btn-sm btn-ghost gap-1" @click="$router.push(`/cd/applications/${deployment.application_id}`)">
+				<button
+					v-if="deployment"
+					class="btn btn-sm btn-ghost gap-1"
+					@click="$router.push(`/cd/applications/${deployment.application_id}`)"
+				>
 					返回应用
 				</button>
-				<button v-if="deployment?.status === 'running' || deployment?.status === 'queued'" class="btn btn-sm btn-error gap-1" @click="handleCancel">
+				<button
+					v-if="deployment?.status === 'running' || deployment?.status === 'queued'"
+					class="btn btn-sm btn-error gap-1"
+					@click="handleCancel"
+				>
 					取消部署
 				</button>
 			</div>
@@ -27,14 +39,21 @@
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">应用</dt>
 						<dd>
-							<router-link :to="`/cd/applications/${deployment.application_id}`" class="link link-primary">
+							<router-link
+								:to="`/cd/applications/${deployment.application_id}`"
+								class="link link-primary"
+							>
 								{{ deployment.application_name || deployment.application_id }}
 							</router-link>
 						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">状态</dt>
-						<dd><span class="badge badge-sm" :class="deployBadgeClass(deployment.status)">{{ deployment.status }}</span></dd>
+						<dd>
+							<span class="badge badge-sm" :class="deployBadgeClass(deployment.status)">
+								{{ deployment.status }}
+							</span>
+						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">触发方式</dt>
@@ -42,7 +61,9 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">分支/Tag</dt>
-						<dd><code class="text-xs">{{ deployment.trigger_ref || '—' }}</code></dd>
+						<dd>
+							<code class="text-xs">{{ deployment.trigger_ref || '—' }}</code>
+						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">环境文件</dt>
@@ -75,15 +96,24 @@
 				<h2 class="font-semibold">部署日志</h2>
 				<div class="flex items-center gap-2">
 					<button class="btn btn-xs btn-ghost gap-1" @click="refreshDeployment">
-						<RefreshCw class="size-3.5" />刷新
+						<RefreshCw class="size-3.5" />
+						刷新
 					</button>
-					<button title="滚动到底部" class="btn btn-xs btn-ghost" :disabled="!logText" @click="scrollToBottom">
+					<button
+						title="滚动到底部"
+						class="btn btn-xs btn-ghost"
+						:disabled="!logText"
+						@click="scrollToBottom"
+					>
 						<ArrowDown class="size-3.5" />
 					</button>
 				</div>
 			</div>
-			<div ref="logContainerRef" class="flex-1 overflow-auto p-4 bg-neutral rounded-b-box min-h-64">
-				<pre class="text-neutral-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">{{ logText || '暂无日志' }}</pre>
+			<div ref="logContainerRef" class="flex-1 overflow-auto p-4 bg-base-200 rounded-b-box min-h-64">
+				<pre
+					class="text-base-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
+					>{{ logText || '暂无日志' }}</pre
+				>
 			</div>
 		</div>
 	</div>
@@ -112,30 +142,61 @@ const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
 let pollTimer: number | null = null;
 
-const badgeMap: Record<string, string> = { ran_to_completion: 'badge-outline badge-success', faulted: 'badge-outline badge-error', running: 'badge-outline badge-info', queued: 'badge-outline badge-warning', canceled: 'badge-ghost' };
-function deployBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
+const badgeMap: Record<string, string> = {
+	ran_to_completion: 'badge-outline badge-success',
+	faulted: 'badge-outline badge-error',
+	running: 'badge-outline badge-info',
+	queued: 'badge-outline badge-warning',
+	canceled: 'badge-ghost',
+};
+function deployBadgeClass(s: string) {
+	return badgeMap[s] ?? 'badge-ghost';
+}
 
 async function fetchDeployment() {
 	try {
-		await execute(async () => { const data = await deploymentApi.get(deploymentId); deployment.value = data; });
-	} catch { toast.error('获取部署详情失败'); router.push('/cd/deployments'); }
+		await execute(async () => {
+			const data = await deploymentApi.get(deploymentId);
+			deployment.value = data;
+		});
+	} catch {
+		toast.error('获取部署详情失败');
+		router.push('/cd/deployments');
+	}
 }
 
 async function fetchLogs() {
 	try {
 		const data = await deploymentApi.getLogs(deploymentId, logOffset.value);
-		if (data.logs) { logText.value += data.logs; logOffset.value = data.offset; }
-		if (data.is_complete) { stopLogPolling(); await fetchDeployment(); }
-	} catch (error) { console.error('获取日志失败:', error); }
+		if (data.logs) {
+			logText.value += data.logs;
+			logOffset.value = data.offset;
+		}
+		if (data.is_complete) {
+			stopLogPolling();
+			await fetchDeployment();
+		}
+	} catch (error) {
+		console.error('获取日志失败:', error);
+	}
 }
 
 function startLogPolling() {
 	fetchLogs();
-	if (deployment.value && ['ran_to_completion', 'faulted', 'canceled'].includes(deployment.value.status)) return;
+	if (
+		deployment.value &&
+		['ran_to_completion', 'faulted', 'canceled'].includes(deployment.value.status)
+	)
+		return;
 	pollTimer = window.setInterval(fetchLogs, 2000);
 }
 
-function stopLogPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+function stopLogPolling() {
+	if (pollTimer) {
+		clearInterval(pollTimer);
+		pollTimer = null;
+	}
+}
 
 async function handleCancel() {
 	try {
@@ -143,15 +204,23 @@ async function handleCancel() {
 		toast.success('已取消部署');
 		stopLogPolling();
 		fetchDeployment();
-	} catch { toast.error('取消失败'); }
+	} catch {
+		toast.error('取消失败');
+	}
 }
 
-async function refreshDeployment() { await fetchDeployment(); scrollToBottom(); }
+async function refreshDeployment() {
+	await fetchDeployment();
+	scrollToBottom();
+}
 
 function scrollToBottom() {
 	if (logContainerRef.value) logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
 }
 
-onMounted(async () => { await fetchDeployment(); startLogPolling(); });
+onMounted(async () => {
+	await fetchDeployment();
+	startLogPolling();
+});
 onUnmounted(stopLogPolling);
 </script>

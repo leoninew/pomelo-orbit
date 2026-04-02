@@ -7,24 +7,46 @@
 				<!-- Search -->
 				<label class="input input-sm input-bordered flex items-center gap-2 w-44">
 					<Search class="size-3.5 text-base-content/60 shrink-0" />
-					<input v-model="searchText" type="text" placeholder="搜索应用名称" class="min-w-0 w-full" @keyup.enter="handleSearch" />
+					<input
+						v-model="searchText"
+						type="text"
+						placeholder="搜索应用名称"
+						class="min-w-0 w-full"
+						@keyup.enter="handleSearch"
+					/>
 				</label>
 				<!-- View toggle -->
 				<div class="join shrink-0">
-					<button class="join-item btn btn-sm" :class="viewMode === 'card' ? 'btn-primary' : 'btn-ghost'" @click="viewMode = 'card'">
+					<button
+						class="join-item btn btn-sm"
+						:class="viewMode === 'card' ? 'btn-primary' : 'btn-ghost'"
+						@click="viewMode = 'card'"
+					>
 						<LayoutGrid class="size-4" />
 					</button>
-					<button class="join-item btn btn-sm" :class="viewMode === 'table' ? 'btn-primary' : 'btn-ghost'" @click="viewMode = 'table'">
+					<button
+						class="join-item btn btn-sm"
+						:class="viewMode === 'table' ? 'btn-primary' : 'btn-ghost'"
+						@click="viewMode = 'table'"
+					>
 						<List class="size-4" />
 					</button>
 				</div>
 				<button class="btn btn-sm btn-primary gap-1.5 shrink-0" @click="openCreateModal">
-					<Plus class="size-4" />新建应用
+					<Plus class="size-4" />
+					新建应用
 				</button>
 				<button class="btn btn-sm btn-ghost gap-1.5 shrink-0" @click="triggerImport">
-					<Upload class="size-4" />导入
+					<Upload class="size-4" />
+					导入
 				</button>
-				<input ref="fileInput" type="file" accept=".json" class="hidden" @change="handleFileImport" />
+				<input
+					ref="fileInput"
+					type="file"
+					accept=".json"
+					class="hidden"
+					@change="handleFileImport"
+				/>
 			</div>
 		</div>
 
@@ -35,7 +57,10 @@
 
 		<!-- Card view -->
 		<template v-else-if="viewMode === 'card'">
-			<div v-if="applications.length === 0" class="flex flex-col items-center gap-2 py-16 text-base-content/60">
+			<div
+				v-if="applications.length === 0"
+				class="flex flex-col items-center gap-2 py-16 text-base-content/60"
+			>
 				<Inbox class="size-12" />
 				<span>暂无应用</span>
 			</div>
@@ -49,20 +74,42 @@
 					<div class="card-body p-4 gap-3">
 						<div class="flex items-start justify-between gap-2">
 							<span class="font-semibold truncate">{{ app.name }}</span>
-							<span class="badge badge-sm" :class="appBadgeClass(app.status)">{{ appStatusLabel(app.status) }}</span>
+							<span class="badge badge-sm" :class="appBadgeClass(app.status)">
+								{{ appStatusLabel(app.status) }}
+							</span>
 						</div>
 						<div class="text-xs text-base-content/70">
-							<span>编码: <code>{{ app.code }}</code></span>
+							<span>
+								编码:
+								<code>{{ app.code }}</code>
+							</span>
 							<span class="mx-2 text-base-content/30">|</span>
 							<span>拉取策略: {{ app.image_pull_policy }}</span>
 						</div>
 						<div class="flex items-end justify-between">
-							<button class="link link-primary text-xs" @click.stop="viewLastDeployment(app.id)">最后部署</button>
+							<button class="link link-primary text-xs" @click.stop="viewLastDeployment(app.id)">
+								最后部署
+							</button>
 							<div class="flex items-center gap-1" @click.stop>
-								<span v-if="app.status === 'deploying'" class="loading loading-spinner loading-xs text-info w-6" />
+								<span
+									v-if="app.status === 'deploying'"
+									class="loading loading-spinner loading-xs text-info w-6"
+								/>
 								<template v-else>
-									<button v-if="app.status === 'deployed'" class="btn btn-xs btn-error btn-ghost invisible group-hover:visible" @click="handleStop(app)">停止</button>
-									<button v-else class="btn btn-xs btn-ghost invisible group-hover:visible" @click="handleDeploy(app)">部署</button>
+									<button
+										v-if="app.status === 'deployed'"
+										class="btn btn-xs btn-error btn-ghost invisible group-hover:visible"
+										@click="handleStop(app)"
+									>
+										停止
+									</button>
+									<button
+										v-else
+										class="btn btn-xs btn-ghost invisible group-hover:visible"
+										@click="handleDeploy(app)"
+									>
+										部署
+									</button>
 								</template>
 							</div>
 						</div>
@@ -79,7 +126,9 @@
 						class="join-item btn btn-sm"
 						:class="p === pagination.current ? 'btn-primary' : 'btn-ghost'"
 						@click="goPage(p)"
-					>{{ p }}</button>
+					>
+						{{ p }}
+					</button>
 				</div>
 			</div>
 		</template>
@@ -104,31 +153,77 @@
 					</tr>
 					<tr v-for="app in applications" :key="app.id" class="hover">
 						<td>
-							<router-link :to="`/cd/applications/${app.id}`" class="link link-primary font-medium">{{ app.name }}</router-link>
+							<router-link :to="`/cd/applications/${app.id}`" class="link link-primary font-medium">
+								{{ app.name }}
+							</router-link>
 						</td>
-						<td><code class="text-xs">{{ app.code }}</code></td>
-						<td class="cell-muted max-w-48 truncate">{{ app.git_source?.repository_url || '—' }}</td>
-						<td>{{ app.git_source?.deploy_branches || '—' }}</td>
-						<td><span class="badge badge-sm" :class="appBadgeClass(app.status)">{{ appStatusLabel(app.status) }}</span></td>
 						<td>
-							<span class="badge badge-sm" :class="app.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'">
+							<code class="text-xs">{{ app.code }}</code>
+						</td>
+						<td class="cell-muted max-w-48 truncate">
+							{{ app.git_source?.repository_url || '—' }}
+						</td>
+						<td>{{ app.git_source?.deploy_branches || '—' }}</td>
+						<td>
+							<span class="badge badge-sm" :class="appBadgeClass(app.status)">
+								{{ appStatusLabel(app.status) }}
+							</span>
+						</td>
+						<td>
+							<span
+								class="badge badge-sm"
+								:class="app.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'"
+							>
 								{{ app.git_source?.auto_deploy ? '自动' : '手动' }}
 							</span>
 						</td>
 						<td>
 							<div class="flex items-center gap-2">
-								<button class="link link-primary" @click="$router.push(`/cd/applications/${app.id}`)">查看</button>
-								<button class="link" :class="{ 'opacity-30 pointer-events-none': app.status === 'deployed' || app.status === 'deploying' || operating }" @click="handleDeploy(app)">部署</button>
-								<button class="link link-error" :class="{ 'opacity-30 pointer-events-none': app.status !== 'deployed' || operating }" @click="handleStop(app)">停止</button>
+								<button
+									class="link link-primary"
+									@click="$router.push(`/cd/applications/${app.id}`)"
+								>
+									查看
+								</button>
+								<button
+									class="link"
+									:class="{
+										'opacity-30 pointer-events-none':
+											app.status === 'deployed' || app.status === 'deploying' || operating,
+									}"
+									@click="handleDeploy(app)"
+								>
+									部署
+								</button>
+								<button
+									class="link link-error"
+									:class="{
+										'opacity-30 pointer-events-none': app.status !== 'deployed' || operating,
+									}"
+									@click="handleStop(app)"
+								>
+									停止
+								</button>
 							</div>
 						</td>
 					</tr>
 				</tbody>
 			</table>
 			<!-- Table pagination -->
-			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end p-3 border-t border-base-200">
+			<div
+				v-if="pagination.total > pagination.pageSize"
+				class="flex justify-end p-3 border-t border-base-200"
+			>
 				<div class="join">
-					<button v-for="p in totalPages" :key="p" class="join-item btn btn-sm" :class="p === pagination.current ? 'btn-primary' : 'btn-ghost'" @click="goPage(p)">{{ p }}</button>
+					<button
+						v-for="p in totalPages"
+						:key="p"
+						class="join-item btn btn-sm"
+						:class="p === pagination.current ? 'btn-primary' : 'btn-ghost'"
+						@click="goPage(p)"
+					>
+						{{ p }}
+					</button>
 				</div>
 			</div>
 		</div>
@@ -137,7 +232,11 @@
 		<dialog ref="createDialogRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">新建应用</h3>
-				<AppFormFields :form="form" :errors="formErrors" @update:form="Object.assign(form, $event)" />
+				<AppFormFields
+					:form="form"
+					:errors="formErrors"
+					@update:form="Object.assign(form, $event)"
+				/>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleCreateOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />
@@ -153,10 +252,14 @@
 		<dialog ref="importDialogRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">导入应用</h3>
-				<AppFormFields :form="importForm" :errors="importErrors" @update:form="Object.assign(importForm, $event)" />
-					<div v-if="importForm.config_files.length > 0" class="text-sm text-base-content/60">
-						包含 {{ importForm.config_files.length }} 个配置文件
-					</div>
+				<AppFormFields
+					:form="importForm"
+					:errors="importErrors"
+					@update:form="Object.assign(importForm, $event)"
+				/>
+				<div v-if="importForm.config_files.length > 0" class="text-sm text-base-content/60">
+					包含 {{ importForm.config_files.length }} 个配置文件
+				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleImportOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />
@@ -207,17 +310,38 @@ const badgeMap: Record<string, string> = {
 	deploying: 'badge-outline badge-info',
 	undeployed: 'badge-ghost',
 };
-function appBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
+function appBadgeClass(s: string) {
+	return badgeMap[s] ?? 'badge-ghost';
+}
 
 // ── Form state ──
-const form = reactive({ name: '', code: '', repository_url: '', deploy_branches: 'master', auto_deploy: false, image_pull_policy: 'missing', enabled: true });
+const form = reactive({
+	name: '',
+	code: '',
+	repository_url: '',
+	deploy_branches: 'master',
+	auto_deploy: false,
+	image_pull_policy: 'missing',
+	enabled: true,
+});
 const formErrors = reactive({ name: '', code: '' });
-const importForm = reactive({ name: '', code: '', repository_url: '', deploy_branches: 'master', auto_deploy: false, image_pull_policy: 'missing', enabled: true, config_files: [] as { path: string; content: string }[] });
+const importForm = reactive({
+	name: '',
+	code: '',
+	repository_url: '',
+	deploy_branches: 'master',
+	auto_deploy: false,
+	image_pull_policy: 'missing',
+	enabled: true,
+	config_files: [] as { path: string; content: string }[],
+});
 const importErrors = reactive({ name: '', code: '' });
 
 function validateForm(f: typeof form, e: typeof formErrors) {
 	e.name = f.name.trim() ? '' : '请输入应用名称';
-	e.code = /^[a-z][a-z0-9-]*$/.test(f.code) ? '' : '必须以小写字母开头，只能包含小写字母、数字和连字符';
+	e.code = /^[a-z][a-z0-9-]*$/.test(f.code)
+		? ''
+		: '必须以小写字母开头，只能包含小写字母、数字和连字符';
 	return !e.name && !e.code;
 }
 
@@ -225,15 +349,27 @@ function validateForm(f: typeof form, e: typeof formErrors) {
 async function fetchApplications() {
 	try {
 		await execute(async () => {
-			const res = await applicationApi.list({ page: pagination.current, per_page: pagination.pageSize, search: searchText.value || undefined });
+			const res = await applicationApi.list({
+				page: pagination.current,
+				per_page: pagination.pageSize,
+				search: searchText.value || undefined,
+			});
 			applications.value = res.items;
 			pagination.total = res.total;
 		});
-	} catch { toast.error('获取应用列表失败'); }
+	} catch {
+		toast.error('获取应用列表失败');
+	}
 }
 
-function handleSearch() { pagination.current = 1; fetchApplications(); }
-function goPage(p: number) { pagination.current = p; fetchApplications(); }
+function handleSearch() {
+	pagination.current = 1;
+	fetchApplications();
+}
+function goPage(p: number) {
+	pagination.current = p;
+	fetchApplications();
+}
 
 // ── Deploy / Stop ──
 async function pollDeployment(deploymentId: string, app: Application) {
@@ -252,7 +388,9 @@ async function pollDeployment(deploymentId: string, app: Application) {
 				}
 				break;
 			}
-		} catch { break; }
+		} catch {
+			break;
+		}
 	}
 }
 
@@ -294,7 +432,15 @@ async function viewLastDeployment(appId: string) {
 
 // ── Create ──
 function openCreateModal() {
-	Object.assign(form, { name: '', code: '', repository_url: '', deploy_branches: 'master', auto_deploy: false, image_pull_policy: 'missing', enabled: true });
+	Object.assign(form, {
+		name: '',
+		code: '',
+		repository_url: '',
+		deploy_branches: 'master',
+		auto_deploy: false,
+		image_pull_policy: 'missing',
+		enabled: true,
+	});
 	Object.assign(formErrors, { name: '', code: '' });
 	createDialogRef.value?.showModal();
 }
@@ -303,16 +449,32 @@ async function handleCreateOk() {
 	if (!validateForm(form, formErrors)) return;
 	try {
 		await executeOp(async () => {
-			await applicationApi.create({ name: form.name, code: form.code, image_pull_policy: form.image_pull_policy, enabled: form.enabled, git_source: form.repository_url ? { repository_url: form.repository_url, deploy_branches: form.deploy_branches, auto_deploy: form.auto_deploy } : null });
+			await applicationApi.create({
+				name: form.name,
+				code: form.code,
+				image_pull_policy: form.image_pull_policy,
+				enabled: form.enabled,
+				git_source: form.repository_url
+					? {
+							repository_url: form.repository_url,
+							deploy_branches: form.deploy_branches,
+							auto_deploy: form.auto_deploy,
+						}
+					: null,
+			});
 			toast.success('创建成功');
 			createDialogRef.value?.close();
 			fetchApplications();
 		});
-	} catch (error) { toast.error(error instanceof Error ? error.message : '创建失败'); }
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '创建失败');
+	}
 }
 
 // ── Import ──
-function triggerImport() { fileInput.value?.click(); }
+function triggerImport() {
+	fileInput.value?.click();
+}
 
 async function handleFileImport(event: Event) {
 	const target = event.target as HTMLInputElement;
@@ -320,23 +482,50 @@ async function handleFileImport(event: Event) {
 	if (!file) return;
 	try {
 		const data = JSON.parse(await file.text()) as ApplicationImportReq;
-		Object.assign(importForm, { name: data.name || '', code: data.code || '', repository_url: data.git_source?.repository_url || '', deploy_branches: data.git_source?.deploy_branches || 'master', auto_deploy: data.git_source?.auto_deploy ?? false, image_pull_policy: data.image_pull_policy || 'missing', enabled: data.enabled ?? true, config_files: data.config_files || [] });
+		Object.assign(importForm, {
+			name: data.name || '',
+			code: data.code || '',
+			repository_url: data.git_source?.repository_url || '',
+			deploy_branches: data.git_source?.deploy_branches || 'master',
+			auto_deploy: data.git_source?.auto_deploy ?? false,
+			image_pull_policy: data.image_pull_policy || 'missing',
+			enabled: data.enabled ?? true,
+			config_files: data.config_files || [],
+		});
 		Object.assign(importErrors, { name: '', code: '' });
 		importDialogRef.value?.showModal();
-	} catch { toast.error('解析文件失败'); }
-	finally { target.value = ''; }
+	} catch {
+		toast.error('解析文件失败');
+	} finally {
+		target.value = '';
+	}
 }
 
 async function handleImportOk() {
 	if (!validateForm(importForm, importErrors)) return;
 	try {
 		await executeOp(async () => {
-			await applicationApi.importApplication({ name: importForm.name, code: importForm.code, image_pull_policy: importForm.image_pull_policy, enabled: importForm.enabled, git_source: importForm.repository_url ? { repository_url: importForm.repository_url, deploy_branches: importForm.deploy_branches, auto_deploy: importForm.auto_deploy } : null, config_files: importForm.config_files });
+			await applicationApi.importApplication({
+				name: importForm.name,
+				code: importForm.code,
+				image_pull_policy: importForm.image_pull_policy,
+				enabled: importForm.enabled,
+				git_source: importForm.repository_url
+					? {
+							repository_url: importForm.repository_url,
+							deploy_branches: importForm.deploy_branches,
+							auto_deploy: importForm.auto_deploy,
+						}
+					: null,
+				config_files: importForm.config_files,
+			});
 			toast.success('导入成功');
 			importDialogRef.value?.close();
 			fetchApplications();
 		});
-	} catch (error) { toast.error(error instanceof Error ? error.message : '导入失败'); }
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '导入失败');
+	}
 }
 
 onMounted(fetchApplications);

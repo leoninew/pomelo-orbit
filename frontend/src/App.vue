@@ -9,7 +9,10 @@
 			<!-- ── Top navbar ── -->
 			<header class="navbar bg-base-100 border-b border-base-200 h-16 min-h-16 shrink-0 px-4 gap-0">
 				<!-- Logo -->
-				<router-link to="/" class="text-lg font-bold text-base-content hover:text-primary transition-colors mr-6 pr-6 border-r border-base-200">
+				<router-link
+					to="/"
+					class="text-lg font-bold text-base-content hover:text-primary transition-colors mr-6 pr-6 border-r border-base-200"
+				>
 					Pomelo Orbit
 				</router-link>
 
@@ -19,9 +22,11 @@
 						v-for="mod in modules"
 						:key="mod.key"
 						class="flex items-center gap-1.5 px-4 text-sm border-b-2 transition-colors cursor-pointer"
-						:class="currentModule === mod.key
-							? 'border-primary text-primary'
-							: 'border-transparent text-base-content/70 hover:text-base-content'"
+						:class="
+							currentModule === mod.key
+								? 'border-primary text-primary'
+								: 'border-transparent text-base-content/70 hover:text-base-content'
+						"
 						@click="navigateToModule(mod.key)"
 					>
 						<component :is="mod.icon" class="size-4" />
@@ -32,12 +37,19 @@
 				<!-- Right: user dropdown -->
 				<div class="ml-auto">
 					<div class="dropdown dropdown-end">
-						<div tabindex="0" role="button" class="flex items-center gap-2 cursor-pointer text-sm text-base-content/70 hover:text-base-content transition-colors px-2 py-1 rounded-btn">
+						<div
+							tabindex="0"
+							role="button"
+							class="flex items-center gap-2 cursor-pointer text-sm text-base-content/70 hover:text-base-content transition-colors px-2 py-1 rounded-btn"
+						>
 							<UserRound class="size-4" />
 							<span>{{ authStore.user?.username || '用户' }}</span>
 							<ChevronDown class="size-3" />
 						</div>
-						<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-lg border border-base-200 w-36 mt-1 p-1 z-50">
+						<ul
+							tabindex="0"
+							class="dropdown-content menu bg-base-100 rounded-box shadow-lg border border-base-200 w-36 mt-1 p-1 z-50"
+						>
 							<li>
 								<button class="flex items-center gap-2 text-error" @click="handleLogout">
 									<LogOut class="size-4" />
@@ -154,7 +166,12 @@ const sidebarMap = {
 		{ key: 'applications', label: '应用管理', path: '/cd/applications', icon: LayoutGrid },
 		{ key: 'deployments', label: '部署记录', path: '/cd/deployments', icon: Rocket },
 		{ key: 'route', label: '路由配置', path: '/cd/routes', icon: Globe },
-		{ key: 'traefik-http-routers', label: 'Traefik Routers', path: '/cd/traefik-http-routers', icon: Network },
+		{
+			key: 'traefik-http-routers',
+			label: 'Traefik Routers',
+			path: '/cd/traefik-http-routers',
+			icon: Network,
+		},
 	],
 	ci: [
 		{ key: 'projects', label: '项目管理', path: '/ci/projects', icon: FolderGit2 },

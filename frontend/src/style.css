@@ -1,20 +1,33 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "daisyui";
 
+/* ── Links ── */
+.link {
+	text-decoration: none;
+}
+.link:hover {
+	text-decoration: underline;
+}
+
+/* ── Description list ── */
+dt {
+	font-size: var(--text-sm); /* 14px */
+}
+dd {
+	font-size: var(--text-xs) !important; /* 12px */
+}
+
 /* ── Global table typography ── */
-/* All table body cells use consistent sm size */
 .table tbody td {
-  font-size: var(--text-sm); /* 0.875rem */
+	font-size: var(--text-xs); /* 0.75rem / 12px */
 }
 
 /* Secondary/muted content within cells */
 .table tbody td.cell-muted {
-  color: oklch(var(--bc) / 0.85);
-  font-size: var(--text-sm);
+	color: oklch(var(--bc) / 0.85);
 }
 
 /* Monospace content (IDs, codes, paths) */
 .table tbody td.cell-mono {
-  font-family: ui-monospace, monospace;
-  font-size: var(--text-xs); /* 0.75rem — intentionally smaller for mono */
+	font-family: ui-monospace, monospace;
 }

@@ -1,5 +1,7 @@
 <template>
-	<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-700">
+	<div
+		class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-700"
+	>
 		<div class="card bg-base-100 w-96 shadow-2xl">
 			<div class="card-body gap-6">
 				<h1 class="text-2xl font-bold text-center">Pomelo Orbit</h1>
@@ -8,7 +10,10 @@
 					<!-- Username -->
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">用户名</legend>
-						<label class="input w-full flex items-center gap-2" :class="{ 'input-error': errors.username }">
+						<label
+							class="input w-full flex items-center gap-2"
+							:class="{ 'input-error': errors.username }"
+						>
 							<UserRound class="size-4 text-base-content/60 shrink-0" />
 							<input
 								v-model="form.username"
@@ -24,7 +29,10 @@
 					<!-- Password -->
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">密码</legend>
-						<label class="input w-full flex items-center gap-2" :class="{ 'input-error': errors.password }">
+						<label
+							class="input w-full flex items-center gap-2"
+							:class="{ 'input-error': errors.password }"
+						>
 							<Lock class="size-4 text-base-content/60 shrink-0" />
 							<input
 								v-model="form.password"
@@ -33,7 +41,11 @@
 								class="grow"
 								autocomplete="current-password"
 							/>
-							<button type="button" class="text-base-content/60 hover:text-base-content transition-colors" @click="showPassword = !showPassword">
+							<button
+								type="button"
+								class="text-base-content/60 hover:text-base-content transition-colors"
+								@click="showPassword = !showPassword"
+							>
 								<Eye v-if="!showPassword" class="size-4" />
 								<EyeOff v-else class="size-4" />
 							</button>

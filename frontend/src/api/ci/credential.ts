@@ -6,8 +6,8 @@ import type {
 } from '@/types/api';
 import request from '@/utils/request';
 
-// Credential API (导出为 ciCredentialApi 避免与 CD 的 credentialApi 冲突)
-export const ciCredentialApi = {
+// Credential API
+export const credentialApi = {
 	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<Credential>> {
 		return request.get('/api/v1/ci/credentials', { params });
 	},

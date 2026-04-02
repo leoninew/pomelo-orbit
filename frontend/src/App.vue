@@ -12,6 +12,14 @@
 						<div class="module-nav">
 							<div
 								class="module-tab"
+								:class="{ active: currentModule === 'ci' }"
+								@click="navigateToModule('ci')"
+							>
+								<CodeOutlined />
+								持续集成
+							</div>
+							<div
+								class="module-tab"
 								:class="{ active: currentModule === 'cd' }"
 								@click="navigateToModule('cd')"
 							>
@@ -20,17 +28,14 @@
 							</div>
 							<div
 								class="module-tab"
-								:class="{ active: currentModule === 'ci' }"
-								@click="navigateToModule('ci')"
+								:class="{ active: currentModule === 'settings' }"
+								@click="navigateToModule('settings')"
 							>
-								<CodeOutlined />
-								持续集成
+								<SettingOutlined />
+								系统设置
 							</div>
 						</div>
 						<div class="header-right">
-							<span class="header-action" @click="navigate('/settings')">
-								<SettingOutlined />
-							</span>
 							<a-dropdown>
 								<a-space style="cursor: pointer">
 									<UserOutlined />
@@ -49,7 +54,7 @@
 					</div>
 
 					<!-- Header 下方：Sider + Content -->
-					<a-layout style="height: calc(100vh - 54px); overflow: hidden">
+					<a-layout style="height: calc(100vh - 64px); overflow: hidden">
 						<a-layout-sider
 							v-model:collapsed="collapsed"
 							:trigger="null"
@@ -65,30 +70,29 @@
 								theme="light"
 								style="height: 100%; border-right: 0"
 							>
-								<a-menu-item key="applications" @click="navigate('/applications')">
+								<a-menu-item key="applications" @click="navigate('/cd/applications')">
 									<template #icon><AppstoreOutlined /></template>
 									应用管理
 								</a-menu-item>
-								<a-menu-item key="deployments" @click="navigate('/deployments')">
+								<a-menu-item key="deployments" @click="navigate('/cd/deployments')">
 									<template #icon><DeploymentUnitOutlined /></template>
 									部署记录
 								</a-menu-item>
-								<a-menu-item key="route" @click="navigate('/routes')">
+								<a-menu-item key="route" @click="navigate('/cd/routes')">
 									<template #icon><GlobalOutlined /></template>
 									路由配置
 								</a-menu-item>
-								<a-menu-item key="traefik-http-routers" @click="navigate('/traefik-http-routers')">
+								<a-menu-item
+									key="traefik-http-routers"
+									@click="navigate('/cd/traefik-http-routers')"
+								>
 									<template #icon><ApiOutlined /></template>
 									Traefik Routers
-								</a-menu-item>
-								<a-menu-item key="loginhistory" @click="navigate('/login-history')">
-									<template #icon><HistoryOutlined /></template>
-									登录历史
 								</a-menu-item>
 							</a-menu>
 
 							<a-menu
-								v-else
+								v-else-if="currentModule === 'ci'"
 								v-model:selected-keys="selectedKeys"
 								mode="inline"
 								theme="light"
@@ -109,6 +113,23 @@
 								<a-menu-item key="credentials" @click="navigate('/ci/credentials')">
 									<template #icon><KeyOutlined /></template>
 									凭据管理
+								</a-menu-item>
+							</a-menu>
+
+							<a-menu
+								v-else-if="currentModule === 'settings'"
+								v-model:selected-keys="selectedKeys"
+								mode="inline"
+								theme="light"
+								style="height: 100%; border-right: 0"
+							>
+								<a-menu-item key="loginhistory" @click="navigate('/login-history')">
+									<template #icon><HistoryOutlined /></template>
+									登录历史
+								</a-menu-item>
+								<a-menu-item key="settings" @click="navigate('/settings')">
+									<template #icon><SettingOutlined /></template>
+									系统设置
 								</a-menu-item>
 							</a-menu>
 
@@ -147,22 +168,33 @@ const authStore = useAuthStore();
 
 const collapsed = ref(false);
 const selectedKeys = ref<string[]>([]);
-const currentModule = ref<'cd' | 'ci'>('cd');
+const currentModule = ref<'cd' | 'ci' | 'settings' | null>(null);
 const projectTitle = 'Pomelo Orbit';
 
 const isLoginPage = computed(() => route.name === 'Login');
 
-watch(
-	() => route.path,
-	() => {
-		currentModule.value = route.path.startsWith('/ci/') ? 'ci' : 'cd';
-		selectedKeys.value = route.meta.menuKey ? [route.meta.menuKey as string] : [];
-	},
-	{ immediate: true }
-);
+function syncModule() {
+	if (route.path.startsWith('/ci/')) {
+		currentModule.value = 'ci';
+	} else if (route.path.startsWith('/cd/')) {
+		currentModule.value = 'cd';
+	} else if (route.path === '/login-history' || route.path === '/settings') {
+		currentModule.value = 'settings';
+	} else {
+		currentModule.value = 'cd';
+	}
+	selectedKeys.value = route.meta.menuKey ? [route.meta.menuKey as string] : [];
+}
 
-function navigateToModule(module: 'cd' | 'ci') {
-	router.push(module === 'ci' ? '/ci/projects' : '/applications');
+// 等路由就绪后初始化，避免刷新时短暂显示错误模块
+router.isReady().then(syncModule);
+
+watch(() => route.path, syncModule);
+
+function navigateToModule(module: 'cd' | 'ci' | 'settings') {
+	if (module === 'ci') router.push('/ci/projects');
+	else if (module === 'cd') router.push('/cd/applications');
+	else router.push('/login-history');
 }
 
 function navigate(path: string) {
@@ -274,25 +306,6 @@ async function handleLogout() {
 	margin-inline: 0 !important;
 	width: 100% !important;
 	background-color: #fafafa !important;
-}
-
-.header-action {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 32px;
-	height: 32px;
-	border-radius: 4px;
-	cursor: pointer;
-	color: rgba(0, 0, 0, 0.45);
-	transition:
-		background 0.15s,
-		color 0.15s;
-}
-
-.header-action:hover {
-	background: #f5f5f5;
-	color: rgba(0, 0, 0, 0.75);
 }
 
 .sider-collapse-btn {

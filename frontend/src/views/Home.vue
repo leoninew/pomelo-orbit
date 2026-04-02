@@ -54,7 +54,7 @@
 						{{ formatTime(record.started_at) }}
 					</template>
 					<template v-else-if="column.key === 'actions'">
-						<router-link :to="`/deployments/${record.id}`">详情</router-link>
+						<router-link :to="`/cd/deployments/${record.id}`">详情</router-link>
 					</template>
 				</template>
 			</a-table>

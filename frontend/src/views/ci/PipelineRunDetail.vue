@@ -141,8 +141,8 @@ const cancelModalRef = ref<HTMLDialogElement>();
 
 const logsText = computed(() => logs.value?.content ?? '');
 
-const runBadgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', waiting: 'badge-warning', canceled: 'badge-ghost' };
-const jobBadgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', pending: 'badge-warning', skipped: 'badge-ghost' };
+const runBadgeMap: Record<string, string> = { success: 'badge-outline badge-success', failed: 'badge-outline badge-error', running: 'badge-outline badge-info', waiting: 'badge-outline badge-warning', canceled: 'badge-ghost' };
+const jobBadgeMap: Record<string, string> = { success: 'badge-outline badge-success', failed: 'badge-outline badge-error', running: 'badge-outline badge-info', pending: 'badge-outline badge-warning', skipped: 'badge-ghost' };
 function runBadgeClass(s: string) { return runBadgeMap[s] ?? 'badge-ghost'; }
 function jobBadgeClass(s: string) { return jobBadgeMap[s] ?? 'badge-ghost'; }
 

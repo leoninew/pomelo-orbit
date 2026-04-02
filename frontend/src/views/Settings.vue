@@ -39,7 +39,7 @@
 								<td><code class="text-xs">{{ item.key }}</code></td>
 								<td class="text-xs text-base-content/60">
 									<span v-if="typeof item.default === 'boolean'">
-										<span class="badge badge-xs" :class="item.default ? 'badge-success' : 'badge-ghost'">{{ item.default ? '已启用' : '未启用' }}</span>
+										<span class="badge badge-xs" :class="item.default ? 'badge-outline badge-success' : 'badge-ghost'">{{ item.default ? '已启用' : '未启用' }}</span>
 									</span>
 									<span v-else>{{ item.default === '' || item.default == null ? '—' : item.default }}</span>
 								</td>
@@ -54,7 +54,7 @@
 									</template>
 									<template v-else>
 										<span v-if="typeof item.value === 'boolean'">
-											<span class="badge badge-xs" :class="item.is_overridden ? 'badge-warning' : item.value ? 'badge-success' : 'badge-ghost'">{{ item.value ? '已启用' : '未启用' }}</span>
+											<span class="badge badge-xs" :class="item.is_overridden ? 'badge-outline badge-warning' : item.value ? 'badge-outline badge-success' : 'badge-ghost'">{{ item.value ? '已启用' : '未启用' }}</span>
 										</span>
 										<span v-else class="text-xs" :class="item.is_overridden ? 'text-warning' : 'text-base-content/70'">
 											{{ item.value === '' || item.value == null ? '—' : item.value }}

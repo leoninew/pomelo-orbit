@@ -33,9 +33,9 @@
 						<td colspan="7" class="text-center py-8 text-base-content/40">暂无路由</td>
 					</tr>
 					<tr v-for="r in routes" :key="r.name" class="hover">
-						<td class="cell-mono">{{ r.name }}</td>
+						<td>{{ r.name }}</td>
 						<td class="cell-muted">{{ r.provider }}</td>
-						<td><span class="badge badge-sm" :class="r.status === 'enabled' ? 'badge-success' : 'badge-ghost'">{{ r.status }}</span></td>
+						<td><span class="badge badge-sm" :class="r.status === 'enabled' ? 'badge-outline badge-success' : 'badge-ghost'">{{ r.status }}</span></td>
 						<td>
 							<a v-if="buildRouteUrl(r.rule, r.tls)" :href="buildRouteUrl(r.rule, r.tls)!" target="_blank" class="link link-primary flex items-center gap-1">
 								{{ r.rule }}<ExternalLink class="size-3" />
@@ -48,7 +48,7 @@
 								<span v-for="ep in r.entrypoints" :key="ep" class="badge badge-xs badge-ghost">{{ ep }}</span>
 							</div>
 						</td>
-						<td><span class="badge badge-sm" :class="r.tls ? 'badge-info' : 'badge-ghost'">{{ r.tls ? 'HTTPS' : 'HTTP' }}</span></td>
+						<td><span class="badge badge-sm" :class="r.tls ? 'badge-outline badge-info' : 'badge-ghost'">{{ r.tls ? 'HTTPS' : 'HTTP' }}</span></td>
 					</tr>
 				</tbody>
 			</table>

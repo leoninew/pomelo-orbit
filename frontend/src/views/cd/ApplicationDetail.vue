@@ -60,7 +60,7 @@
 					<div class="flex gap-2">
 						<dt class="text-base-content/50 w-24 shrink-0">自动部署</dt>
 						<dd>
-							<span class="badge badge-sm" :class="application.git_source?.auto_deploy ? 'badge-info' : 'badge-ghost'">
+							<span class="badge badge-sm" :class="application.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'">
 								{{ application.git_source?.auto_deploy ? '是' : '否' }}
 							</span>
 						</dd>
@@ -306,7 +306,7 @@ const editErrors = reactive({ name: '' });
 
 const envs = computed(() => files.value.filter((f) => f.path.match(/^\.env(\..+)?$/)).map((f) => f.path));
 
-const badgeMap: Record<string, string> = { deployed: 'badge-success', deploy_failed: 'badge-error', deploying: 'badge-info', undeployed: 'badge-ghost' };
+const badgeMap: Record<string, string> = { deployed: 'badge-outline badge-success', deploy_failed: 'badge-outline badge-error', deploying: 'badge-outline badge-info', undeployed: 'badge-ghost' };
 function appBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
 
 const currentFileLanguage = computed(() => {

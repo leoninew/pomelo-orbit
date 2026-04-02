@@ -25,7 +25,7 @@
 						<td>
 							<div class="flex items-center gap-2">
 								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary font-medium">{{ t.name }}</router-link>
-								<span v-if="t.is_builtin" class="badge badge-xs badge-info">内置</span>
+								<span v-if="t.is_builtin" class="badge badge-xs badge-outline badge-info">内置</span>
 							</div>
 						</td>
 						<td class="cell-muted max-w-xs truncate">{{ t.description || '—' }}</td>

@@ -3,7 +3,7 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold flex items-center gap-2">
 				{{ template?.name ?? '模板详情' }}
-				<span v-if="template?.is_builtin" class="badge badge-sm badge-info">内置</span>
+				<span v-if="template?.is_builtin" class="badge badge-sm badge-outline badge-info">内置</span>
 			</h1>
 			<div class="flex items-center gap-2">
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')"><ArrowLeft class="size-4" />返回</button>
@@ -18,7 +18,7 @@
 				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<dl v-else-if="template" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">模板名称</dt><dd>{{ template.name }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">类型</dt><dd><span class="badge badge-sm" :class="template.is_builtin ? 'badge-info' : 'badge-ghost'">{{ template.is_builtin ? '内置模板' : '自定义模板' }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">类型</dt><dd><span class="badge badge-sm" :class="template.is_builtin ? 'badge-outline badge-info' : 'badge-ghost'">{{ template.is_builtin ? '内置模板' : '自定义模板' }}</span></dd></div>
 					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">描述</dt><dd class="text-base-content/60">{{ template.description || '—' }}</dd></div>
 					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(template.created_at) }}</dd></div>
 				</dl>
@@ -36,7 +36,7 @@
 						<tr v-for="v in template.variable_declarations" :key="v.name" class="hover">
 							<td><code class="text-xs">{{ v.name }}</code></td>
 							<td class="cell-muted">{{ v.description || '—' }}</td>
-							<td><span class="badge badge-xs" :class="v.required ? 'badge-error' : 'badge-ghost'">{{ v.required ? '必填' : '可选' }}</span></td>
+							<td><span class="badge badge-xs" :class="v.required ? 'badge-outline badge-error' : 'badge-ghost'">{{ v.required ? '必填' : '可选' }}</span></td>
 							<td><code v-if="v.default" class="text-xs">{{ v.default }}</code><span v-else class="text-base-content/40">—</span></td>
 						</tr>
 					</tbody>

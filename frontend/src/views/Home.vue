@@ -99,12 +99,12 @@ const stats = reactive({ projectCount: 0, todayDeploys: 0, runningDeploys: 0 });
 const recentDeploys = ref<Deployment[]>([]);
 
 const statusBadgeMap: Record<string, string> = {
-	ran_to_completion: 'badge-success',
-	success: 'badge-success',
-	faulted: 'badge-error',
-	failed: 'badge-error',
-	running: 'badge-info',
-	queued: 'badge-warning',
+	ran_to_completion: 'badge-outline badge-success',
+	success: 'badge-outline badge-success',
+	faulted: 'badge-outline badge-error',
+	failed: 'badge-outline badge-error',
+	running: 'badge-outline badge-info',
+	queued: 'badge-outline badge-warning',
 	canceled: 'badge-ghost',
 };
 

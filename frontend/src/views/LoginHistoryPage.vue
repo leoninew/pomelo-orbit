@@ -20,9 +20,9 @@
 					<tr v-else-if="history.length === 0"><td colspan="5" class="text-center py-8 text-base-content/40">暂无记录</td></tr>
 					<tr v-for="h in history" :key="h.id" class="hover">
 						<td class="font-medium">{{ h.username }}</td>
-						<td class="cell-mono">{{ h.ip_address }}</td>
+						<td>{{ h.ip_address }}</td>
 						<td class="cell-muted max-w-xs truncate">{{ h.user_agent }}</td>
-						<td><span class="badge badge-sm" :class="h.success ? 'badge-success' : 'badge-error'">{{ h.success ? '成功' : '失败' }}</span></td>
+						<td><span class="badge badge-sm" :class="h.success ? 'badge-outline badge-success' : 'badge-outline badge-error'">{{ h.success ? '成功' : '失败' }}</span></td>
 						<td class="cell-muted">{{ formatTime(h.login_at) }}</td>
 					</tr>
 				</tbody>

@@ -9,7 +9,8 @@
 
 /* Secondary/muted content within cells */
 .table tbody td.cell-muted {
-  color: oklch(var(--bc) / 0.6);
+  color: oklch(var(--bc) / 0.8);
+  font-size: var(--text-sm);
 }
 
 /* Monospace content (IDs, codes, paths) */

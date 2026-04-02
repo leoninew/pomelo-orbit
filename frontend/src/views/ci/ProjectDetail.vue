@@ -254,7 +254,7 @@ const editingVarValue = ref('');
 const webhookUrl = computed(() => `${window.location.origin}/api/v1/ci/webhooks/git`);
 const variableList = computed(() => Object.entries(project.value?.variable_overrides ?? {}).map(([key, value]) => ({ key, value })));
 
-const runBadgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', waiting: 'badge-warning', canceled: 'badge-ghost' };
+const runBadgeMap: Record<string, string> = { success: 'badge-outline badge-success', failed: 'badge-outline badge-error', running: 'badge-outline badge-info', waiting: 'badge-outline badge-warning', canceled: 'badge-ghost' };
 function runBadgeClass(s: string) { return runBadgeMap[s] ?? 'badge-ghost'; }
 
 async function copyText(text: string) {

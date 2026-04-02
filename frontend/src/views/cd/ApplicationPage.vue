@@ -43,29 +43,28 @@
 				<div
 					v-for="app in applications"
 					:key="app.id"
-					class="card bg-base-100 shadow-sm border border-base-200 cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
-					:class="statusBorderClass(app.status)"
+					class="card bg-base-100 shadow-sm border border-base-200 cursor-pointer hover:shadow-md transition-shadow overflow-hidden group"
 					@click="$router.push(`/cd/applications/${app.id}`)"
 				>
 					<div class="card-body p-4 gap-3">
 						<div class="flex items-start justify-between gap-2">
-							<span class="font-semibold text-primary truncate">{{ app.name }}</span>
-							<!-- Actions (stop click propagation) -->
-							<div class="flex items-center gap-1 shrink-0" @click.stop>
-								<span v-if="app.status === 'deploying'" class="loading loading-spinner loading-xs text-info" />
-								<template v-else>
-									<button v-if="app.status === 'deployed'" class="btn btn-xs btn-error btn-ghost" @click="handleStop(app)">停止</button>
-									<button v-else class="btn btn-xs btn-ghost" @click="handleDeploy(app)">部署</button>
-								</template>
-							</div>
-						</div>
-						<div class="flex items-center gap-2">
-							<code class="text-xs text-base-content/50">{{ app.code }}</code>
+							<span class="font-semibold truncate">{{ app.name }}</span>
 							<span class="badge badge-sm" :class="appBadgeClass(app.status)">{{ appStatusLabel(app.status) }}</span>
 						</div>
-						<div class="flex items-center justify-between pt-2 border-t border-base-200 text-xs text-base-content/40">
-							<span>{{ app.image_pull_policy }}</span>
-							<button class="link link-primary" @click.stop="viewLastDeployment(app.id)">最后部署</button>
+						<div class="text-xs text-base-content/50">
+							<span>编码: <code>{{ app.code }}</code></span>
+							<span class="mx-2 text-base-content/30">|</span>
+							<span>拉取策略: {{ app.image_pull_policy }}</span>
+						</div>
+						<div class="flex items-end justify-between">
+							<button class="link link-primary text-xs" @click.stop="viewLastDeployment(app.id)">最后部署</button>
+							<div class="flex items-center gap-1" @click.stop>
+								<span v-if="app.status === 'deploying'" class="loading loading-spinner loading-xs text-info w-6" />
+								<template v-else>
+									<button v-if="app.status === 'deployed'" class="btn btn-xs btn-error btn-ghost invisible group-hover:visible" @click="handleStop(app)">停止</button>
+									<button v-else class="btn btn-xs btn-ghost invisible group-hover:visible" @click="handleDeploy(app)">部署</button>
+								</template>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -112,7 +111,7 @@
 						<td>{{ app.git_source?.deploy_branches || '—' }}</td>
 						<td><span class="badge badge-sm" :class="appBadgeClass(app.status)">{{ appStatusLabel(app.status) }}</span></td>
 						<td>
-							<span class="badge badge-sm" :class="app.git_source?.auto_deploy ? 'badge-info' : 'badge-ghost'">
+							<span class="badge badge-sm" :class="app.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'">
 								{{ app.git_source?.auto_deploy ? '自动' : '手动' }}
 							</span>
 						</td>
@@ -207,19 +206,12 @@ const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSi
 
 // ── Status helpers ──
 const badgeMap: Record<string, string> = {
-	deployed: 'badge-success',
-	deploy_failed: 'badge-error',
-	deploying: 'badge-info',
+	deployed: 'badge-outline badge-success',
+	deploy_failed: 'badge-outline badge-error',
+	deploying: 'badge-outline badge-info',
 	undeployed: 'badge-ghost',
 };
-const borderMap: Record<string, string> = {
-	deployed: 'border-t-4 border-t-success',
-	deploy_failed: 'border-t-4 border-t-error',
-	deploying: 'border-t-4 border-t-info',
-	undeployed: 'border-t-4 border-t-base-300',
-};
 function appBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
-function statusBorderClass(s: string) { return borderMap[s] ?? 'border-t-4 border-t-base-300'; }
 
 // ── Form state ──
 const form = reactive({ name: '', code: '', repository_url: '', deploy_branches: 'master', auto_deploy: false, image_pull_policy: 'missing', enabled: true });

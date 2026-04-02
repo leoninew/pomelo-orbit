@@ -112,7 +112,7 @@ const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
 let pollTimer: number | null = null;
 
-const badgeMap: Record<string, string> = { ran_to_completion: 'badge-success', faulted: 'badge-error', running: 'badge-info', queued: 'badge-warning', canceled: 'badge-ghost' };
+const badgeMap: Record<string, string> = { ran_to_completion: 'badge-outline badge-success', faulted: 'badge-outline badge-error', running: 'badge-outline badge-info', queued: 'badge-outline badge-warning', canceled: 'badge-ghost' };
 function deployBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
 
 async function fetchDeployment() {

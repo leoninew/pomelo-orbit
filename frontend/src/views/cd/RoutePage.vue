@@ -43,8 +43,8 @@
 						</td>
 						<td class="cell-muted">{{ r.path_prefix }}</td>
 						<td class="cell-muted max-w-48 truncate">{{ r.target_url }}</td>
-						<td><span class="badge badge-sm" :class="r.enabled ? 'badge-success' : 'badge-ghost'">{{ r.enabled ? '启用' : '停用' }}</span></td>
-						<td><span class="badge badge-sm" :class="r.https_enabled ? 'badge-info' : 'badge-ghost'">{{ r.https_enabled ? 'HTTPS' : 'HTTP' }}</span></td>
+						<td><span class="badge badge-sm" :class="r.enabled ? 'badge-outline badge-success' : 'badge-ghost'">{{ r.enabled ? '启用' : '停用' }}</span></td>
+						<td><span class="badge badge-sm" :class="r.https_enabled ? 'badge-outline badge-info' : 'badge-ghost'">{{ r.https_enabled ? 'HTTPS' : 'HTTP' }}</span></td>
 						<td>
 							<div class="flex items-center gap-2">
 								<router-link :to="`/cd/routes/${r.id}`" class="link link-primary">查看</router-link>

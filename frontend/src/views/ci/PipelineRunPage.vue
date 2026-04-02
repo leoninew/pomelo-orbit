@@ -76,7 +76,7 @@ const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSi
 const cancelModalRef = ref<HTMLDialogElement>();
 const pendingCancelId = ref('');
 
-const badgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', waiting: 'badge-warning', canceled: 'badge-ghost' };
+const badgeMap: Record<string, string> = { success: 'badge-outline badge-success', failed: 'badge-outline badge-error', running: 'badge-outline badge-info', waiting: 'badge-outline badge-warning', canceled: 'badge-ghost' };
 function runBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
 
 async function fetchRuns() {

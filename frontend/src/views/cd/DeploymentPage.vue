@@ -84,7 +84,7 @@ const applicationId = ref<string | undefined>(route.query.application_id as stri
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
-const badgeMap: Record<string, string> = { ran_to_completion: 'badge-success', faulted: 'badge-error', running: 'badge-info', queued: 'badge-warning', canceled: 'badge-ghost' };
+const badgeMap: Record<string, string> = { ran_to_completion: 'badge-outline badge-success', faulted: 'badge-outline badge-error', running: 'badge-outline badge-info', queued: 'badge-outline badge-warning', canceled: 'badge-ghost' };
 function deployBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
 
 async function fetchDeployments() {

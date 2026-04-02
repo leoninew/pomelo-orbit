@@ -26,7 +26,6 @@ def test_app(db_session):
     app = ApplicationModel(
         name="test-app",
         code="test-app",
-        enabled=True,
         image_pull_policy="missing",
     )
     db_session.add(app)

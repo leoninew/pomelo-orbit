@@ -30,24 +30,7 @@ class TestApplicationEntity:
         app = create_test_application()
 
         assert app.image_pull_policy == "IfNotPresent"
-        assert app.enabled is True
         assert app.status == "stopped"
-
-    def test_application_with_git_source(self, create_test_application):
-        """测试 Application 实体可以关联 Git 源"""
-        from pomelo_orbit.domain.cd.entities import GitSource
-
-        git_source = GitSource(
-            id="git-1",
-            application_id="test-app-1",
-            repository_url="https://github.com/test/repo",
-            deploy_branches="main,master",
-            auto_deploy=True,
-        )
-        app = create_test_application(git_source=git_source)
-
-        assert app.git_source is not None
-        assert app.git_source.repository_url == "https://github.com/test/repo"
 
     def test_application_with_image_source(self, create_test_application):
         """测试 Application 实体可以关联镜像源"""
@@ -236,56 +219,6 @@ class TestRouteEntity:
         assert route.cert_pem is None
         assert route.cert_key is None
         assert route.cert_type == CertType.MANUAL
-
-
-class TestGitSourceEntity:
-    """GitSource 实体测试"""
-
-    def test_create_git_source_with_required_fields(self):
-        """测试创建 GitSource 实体"""
-        from pomelo_orbit.domain.cd.entities import GitSource
-
-        git_source = GitSource(
-            id="git-1",
-            application_id="app-1",
-            repository_url="https://github.com/test/repo",
-            deploy_branches="main,master",
-            auto_deploy=True,
-        )
-
-        assert git_source.id == "git-1"
-        assert git_source.application_id == "app-1"
-        assert git_source.repository_url == "https://github.com/test/repo"
-
-    def test_git_source_with_custom_values(self):
-        """测试 GitSource 自定义值"""
-        from pomelo_orbit.domain.cd.entities import GitSource
-
-        git_source = GitSource(
-            id="git-1",
-            application_id="app-1",
-            repository_url="https://github.com/test/repo",
-            deploy_branches="develop,staging",
-            auto_deploy=False,
-        )
-
-        assert git_source.deploy_branches == "develop,staging"
-        assert git_source.auto_deploy is False
-
-    def test_git_source_with_custom_branches(self):
-        """测试 GitSource 自定义分支"""
-        from pomelo_orbit.domain.cd.entities import GitSource
-
-        git_source = GitSource(
-            id="git-1",
-            application_id="app-1",
-            repository_url="https://github.com/test/repo",
-            deploy_branches="develop,staging",
-            auto_deploy=False,
-        )
-
-        assert git_source.deploy_branches == "develop,staging"
-        assert git_source.auto_deploy is False
 
 
 class TestImageSourceEntity:

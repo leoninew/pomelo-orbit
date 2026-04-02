@@ -19,7 +19,6 @@ def create_test_application():
     ) -> Application:
         defaults = {
             "image_pull_policy": "IfNotPresent",
-            "enabled": True,
             "status": "stopped",
             "created_at": utc_now(),
             "updated_at": utc_now(),

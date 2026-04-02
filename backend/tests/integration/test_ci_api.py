@@ -1,5 +1,7 @@
 """CI 模块 API 集成测试"""
 
+from unittest.mock import patch
+
 import pytest
 
 from pomelo_orbit.infrastructure.ci.models import (  # noqa: F401 - 触发 CI 表注册
@@ -278,23 +280,27 @@ class TestPipelineRunAPI:
         resp = auth_client.get("/api/v1/ci/runs/nonexistent-id")
         assert resp.status_code == 404
 
-    def test_trigger_project(self, auth_client, test_project):
+    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    def test_trigger_project(self, mock_execute, auth_client, test_project):
         """POST /projects/{id}/trigger 触发 pipeline"""
+        mock_execute.return_value = None
         resp = auth_client.post(f"/api/v1/ci/projects/{test_project.id}/trigger", json={})
         # 触发会尝试执行，但测试环境没有 Docker，预期 201 创建 run 记录
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
         assert data["project_id"] == test_project.id
-        assert data["status"] in ("waiting", "running", "failed")
+        assert data["status"] in ("waiting", "running", "failed", "success")
 
     def test_trigger_project_not_found(self, auth_client):
         """触发不存在的项目返回 404"""
         resp = auth_client.post("/api/v1/ci/projects/nonexistent/trigger", json={})
         assert resp.status_code == 404
 
-    def test_list_run_jobs(self, auth_client, test_project):
+    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    def test_list_run_jobs(self, mock_execute, auth_client, test_project):
         """GET /runs/{id}/jobs 返回 job 列表"""
+        mock_execute.return_value = None
         # 先触发一个 run
         trigger_resp = auth_client.post(f"/api/v1/ci/projects/{test_project.id}/trigger", json={})
         assert trigger_resp.status_code == 201

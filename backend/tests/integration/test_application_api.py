@@ -44,7 +44,6 @@ class TestApplicationAPI:
         app = ApplicationModel(
             name="direct-app",
             code="direct-app",
-            enabled=True,
             image_pull_policy="missing",
         )
         db_session.add(app)
@@ -64,7 +63,6 @@ class TestApplicationAPI:
                 "name": "new-app",
                 "code": "new-app",
                 "image_pull_policy": "always",
-                "enabled": True,
             },
         )
 

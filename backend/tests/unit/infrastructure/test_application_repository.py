@@ -16,7 +16,6 @@ class TestApplicationRepository:
             name="Test App",
             code="test-app",
             image_pull_policy="IfNotPresent",
-            enabled=True,
             status="stopped",
             created_at=utc_now(),
         )
@@ -37,7 +36,6 @@ class TestApplicationRepository:
             name="My App",
             code="my-app",
             image_pull_policy="IfNotPresent",
-            enabled=True,
             status="stopped",
             created_at=utc_now(),
         )
@@ -57,7 +55,6 @@ class TestApplicationRepository:
             name="Code App",
             code="code-app",
             image_pull_policy="IfNotPresent",
-            enabled=True,
             status="stopped",
             created_at=utc_now(),
         )
@@ -77,20 +74,17 @@ class TestApplicationRepository:
             name="Old Name",
             code="old-code",
             image_pull_policy="IfNotPresent",
-            enabled=True,
             status="stopped",
             created_at=utc_now(),
         )
         repo.save(app)
 
         app.name = "New Name"
-        app.enabled = False
         repo.save(app)
 
         found = repo.find_by_id("app-4")
         assert found is not None
         assert found.name == "New Name"
-        assert found.enabled is False
 
     def test_delete_application(self, db_session):
         """测试删除应用"""
@@ -100,7 +94,6 @@ class TestApplicationRepository:
             name="To Delete",
             code="to-delete",
             image_pull_policy="IfNotPresent",
-            enabled=True,
             status="stopped",
             created_at=utc_now(),
         )
@@ -119,7 +112,6 @@ class TestApplicationRepository:
                 name=f"App {i}",
                 code=f"app-{i}",
                 image_pull_policy="IfNotPresent",
-                enabled=True,
                 status="stopped",
                 created_at=utc_now(),
             )
@@ -143,7 +135,6 @@ class TestApplicationRepository:
                 name=name,
                 code=f"app-{i}",
                 image_pull_policy="IfNotPresent",
-                enabled=True,
                 status="stopped",
                 created_at=utc_now(),
             )

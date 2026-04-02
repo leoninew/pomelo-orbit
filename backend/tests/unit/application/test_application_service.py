@@ -67,7 +67,6 @@ def sample_application():
         code="test-app",
         status=ApplicationStatus.UNDEPLOYED,
         image_pull_policy="IfNotPresent",
-        enabled=True,
     )
 
 
@@ -209,7 +208,6 @@ class TestConfigFileManagement:
             name="Test App",
             code="test-app",
             image_pull_policy="Always",
-            enabled=True,
             status=ApplicationStatus.UNDEPLOYED,
         )
         mock_app_repo.find_by_id.return_value = app
@@ -232,7 +230,6 @@ class TestConfigFileManagement:
             name="Test App",
             code="test-app",
             image_pull_policy="Always",
-            enabled=True,
             status=ApplicationStatus.UNDEPLOYED,
         )
         mock_app_repo.find_by_id.return_value = app
@@ -396,7 +393,6 @@ class TestStopApplicationBusinessLogic:
             code="test",
             status=ApplicationStatus.UNDEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
 
@@ -412,7 +408,6 @@ class TestStopApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
@@ -436,7 +431,6 @@ class TestStopApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
@@ -457,7 +451,6 @@ class TestStopApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
 
@@ -492,7 +485,6 @@ class TestRestartApplicationBusinessLogic:
             code="test",
             status=ApplicationStatus.UNDEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
@@ -509,7 +501,6 @@ class TestRestartApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
@@ -532,7 +523,6 @@ class TestRestartApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
@@ -554,7 +544,6 @@ class TestDeleteApplicationBusinessLogic:
             code="test",
             status=ApplicationStatus.DEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
 
@@ -570,7 +559,6 @@ class TestDeleteApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
 
@@ -591,7 +579,6 @@ class TestDeleteApplicationBusinessLogic:
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
             image_pull_policy="IfNotPresent",
-            enabled=True,
         )
         mock_app_repo.find_by_id.return_value = app
 

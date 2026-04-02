@@ -11,6 +11,7 @@ from pomelo_orbit.infrastructure.persistence.models import (
     Base,
     UserModel,
 )
+import pomelo_orbit.infrastructure.ci.models  # noqa: F401 — register CI ORM models with Base.metadata
 from pomelo_orbit.infrastructure.security import hash_password
 
 

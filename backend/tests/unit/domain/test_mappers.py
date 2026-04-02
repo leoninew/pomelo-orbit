@@ -26,7 +26,6 @@ class TestApplicationMapper:
         assert restored.name == original.name
         assert restored.code == original.code
         assert restored.image_pull_policy == original.image_pull_policy
-        assert restored.enabled == original.enabled
         assert restored.status == original.status
 
     def test_application_round_trip_with_custom_values(self, create_test_application):
@@ -35,7 +34,6 @@ class TestApplicationMapper:
             id="custom-app",
             name="Custom Application",
             code="custom-code",
-            enabled=False,
             status="started",
         )
 
@@ -45,7 +43,6 @@ class TestApplicationMapper:
         assert restored.id == original.id
         assert restored.name == original.name
         assert restored.code == original.code
-        assert restored.enabled == original.enabled
         assert restored.status == original.status
 
 

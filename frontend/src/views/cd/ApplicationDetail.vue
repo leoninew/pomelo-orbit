@@ -102,7 +102,7 @@
 					<span class="text-sm">暂无配置文件</span>
 				</div>
 				<div v-else class="overflow-x-auto">
-					<table class="table table-sm">
+					<table class="table">
 						<thead>
 							<tr class="text-base-content/60">
 								<th>文件路径</th>

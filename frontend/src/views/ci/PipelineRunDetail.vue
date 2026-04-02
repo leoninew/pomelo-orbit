@@ -36,7 +36,7 @@
 				<h2 class="font-semibold mb-3">Jobs</h2>
 				<div v-if="jobsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<div v-else-if="jobs.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无 Job 记录</div>
-				<table v-else class="table table-sm">
+				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>Job 名称</th><th>状态</th><th>开始时间</th><th>结束时间</th></tr></thead>
 					<tbody>
 						<tr v-for="j in jobs" :key="j.id" class="hover cursor-pointer" @click="showJobLogs(j)">
@@ -56,7 +56,7 @@
 				<h2 class="font-semibold mb-3">制品</h2>
 				<div v-if="artifactsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<div v-else-if="artifacts.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无制品</div>
-				<table v-else class="table table-sm">
+				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>Job</th><th>类型</th><th>名称</th><th>路径</th><th>创建时间</th></tr></thead>
 					<tbody>
 						<tr v-for="a in artifacts" :key="a.id" class="hover">

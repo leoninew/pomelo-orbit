@@ -30,7 +30,7 @@
 			<div class="card-body p-5">
 				<h2 class="font-semibold mb-3">变量声明</h2>
 				<div v-if="!template || (template.variable_declarations ?? []).length === 0" class="text-sm text-base-content/40 py-4 text-center">无变量声明</div>
-				<table v-else class="table table-sm">
+				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>变量名</th><th>描述</th><th>必填</th><th>默认值</th></tr></thead>
 					<tbody>
 						<tr v-for="v in template.variable_declarations" :key="v.name" class="hover">

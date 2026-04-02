@@ -1,16 +1,16 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<!-- Page header -->
-		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">应用管理</h1>
-			<div class="flex items-center gap-2 flex-wrap">
+		<div class="flex items-center justify-between gap-3">
+			<h1 class="text-xl font-semibold shrink-0">应用管理</h1>
+			<div class="flex items-center gap-2 flex-nowrap ml-auto">
 				<!-- Search -->
-				<label class="input input-sm input-bordered flex items-center gap-2">
-					<Search class="size-3.5 text-base-content/40" />
-					<input v-model="searchText" type="text" placeholder="搜索应用名称" class="w-36" @keyup.enter="handleSearch" />
+				<label class="input input-sm input-bordered flex items-center gap-2 w-44">
+					<Search class="size-3.5 text-base-content/40 shrink-0" />
+					<input v-model="searchText" type="text" placeholder="搜索应用名称" class="min-w-0 w-full" @keyup.enter="handleSearch" />
 				</label>
 				<!-- View toggle -->
-				<div class="join">
+				<div class="join shrink-0">
 					<button class="join-item btn btn-sm" :class="viewMode === 'card' ? 'btn-primary' : 'btn-ghost'" @click="viewMode = 'card'">
 						<LayoutGrid class="size-4" />
 					</button>
@@ -18,10 +18,10 @@
 						<List class="size-4" />
 					</button>
 				</div>
-				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+				<button class="btn btn-sm btn-primary gap-1.5 shrink-0" @click="openCreateModal">
 					<Plus class="size-4" />新建应用
 				</button>
-				<button class="btn btn-sm btn-ghost gap-1.5" @click="triggerImport">
+				<button class="btn btn-sm btn-ghost gap-1.5 shrink-0" @click="triggerImport">
 					<Upload class="size-4" />导入
 				</button>
 				<input ref="fileInput" type="file" accept=".json" class="hidden" @change="handleFileImport" />
@@ -87,7 +87,7 @@
 
 		<!-- Table view -->
 		<div v-else class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table table-sm">
+			<table class="table">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>应用名称</th>

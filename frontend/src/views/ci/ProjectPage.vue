@@ -8,7 +8,7 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table table-sm">
+			<table class="table">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>项目名称</th>

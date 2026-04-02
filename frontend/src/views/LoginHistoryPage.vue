@@ -9,7 +9,7 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table table-sm">
+			<table class="table">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>用户名</th><th>IP 地址</th><th>用户代理</th><th>状态</th><th>登录时间</th>

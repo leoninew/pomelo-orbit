@@ -58,7 +58,7 @@
 					<button class="btn btn-xs btn-primary gap-1" @click="openAddVarModal"><Plus class="size-3" />添加变量</button>
 				</div>
 				<div v-if="variableList.length === 0" class="text-sm text-base-content/40 py-4 text-center">未配置变量</div>
-				<table v-else class="table table-sm">
+				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>变量名</th><th>变量值</th><th>操作</th></tr></thead>
 					<tbody>
 						<tr v-for="v in variableList" :key="v.key" class="hover">
@@ -85,7 +85,7 @@
 				</div>
 				<div v-if="runsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<div v-else-if="runs.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无运行记录</div>
-				<table v-else class="table table-sm">
+				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>Run ID</th><th>触发方式</th><th>Ref</th><th>状态</th><th>创建时间</th></tr></thead>
 					<tbody>
 						<tr v-for="r in runs" :key="r.id" class="hover">

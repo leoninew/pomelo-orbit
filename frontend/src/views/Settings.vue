@@ -28,7 +28,7 @@
 				</div>
 				<div v-if="configLoading" class="flex justify-center py-8"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<div v-else-if="config" class="overflow-x-auto">
-					<table class="table table-sm">
+					<table class="table">
 						<thead>
 							<tr class="text-base-content/60">
 								<th>配置项</th><th>默认值</th><th>当前值</th><th>操作</th>

@@ -5,7 +5,7 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table table-sm">
+			<table class="table">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>Run ID</th><th>Project</th><th>触发方式</th><th>Ref</th><th>状态</th><th>重试自</th><th>创建时间</th><th>操作</th>

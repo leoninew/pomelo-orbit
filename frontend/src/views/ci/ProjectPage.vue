@@ -36,13 +36,7 @@
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
 						<td class="cell-muted">{{ formatTime(p.created_at) }}</td>
 						<td>
-							<div class="flex items-center gap-2">
-								<router-link :to="`/ci/projects/${p.id}`" class="link link-primary">
-									查看
-								</router-link>
-								<button class="link link-info" @click="handleTrigger(p.id)">触发</button>
-								<button class="link link-error" @click="confirmDelete(p.id)">删除</button>
-							</div>
+							<router-link :to="`/ci/projects/${p.id}`" class="link link-primary">查看</router-link>
 						</td>
 					</tr>
 				</tbody>
@@ -138,27 +132,11 @@
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
 
-		<!-- Delete confirm modal -->
-		<dialog ref="deleteModalRef" class="modal">
-			<div class="modal-box">
-				<h3 class="font-bold text-lg">删除项目</h3>
-				<p class="py-4 text-sm">确定删除此项目？此操作不可撤销。</p>
-				<div class="modal-action">
-					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						删除
-					</button>
-					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
-				</div>
-			</div>
-			<form method="dialog" class="modal-backdrop"><button>close</button></form>
-		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { Plus } from 'lucide-vue-next';
 import { credentialApi, pipelineTemplateApi, projectApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -166,7 +144,6 @@ import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';
 import type { Credential, PipelineTemplate, Project } from '@/types/api';
 
-const router = useRouter();
 const toast = useToast();
 const { loading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -182,8 +159,6 @@ const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
 const createModalRef = ref<HTMLDialogElement>();
-const deleteModalRef = ref<HTMLDialogElement>();
-const pendingDeleteId = ref('');
 
 const form = reactive({
 	name: '',
@@ -257,36 +232,6 @@ async function handleCreateOk() {
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');
-	}
-}
-
-async function handleTrigger(id: string) {
-	try {
-		await executeOp(async () => {
-			const run = await projectApi.trigger(id);
-			toast.success(`触发成功`);
-			router.push(`/ci/runs/${run.id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '触发失败');
-	}
-}
-
-function confirmDelete(id: string) {
-	pendingDeleteId.value = id;
-	deleteModalRef.value?.showModal();
-}
-
-async function handleDelete() {
-	try {
-		await executeOp(async () => {
-			await projectApi.delete(pendingDeleteId.value);
-			toast.success('删除成功');
-			deleteModalRef.value?.close();
-			fetchProjects();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 

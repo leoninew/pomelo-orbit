@@ -103,7 +103,18 @@
 		<!-- Pipeline YAML -->
 		<div class="card bg-base-100 shadow-sm flex-1">
 			<div class="card-body p-5 flex flex-col">
-				<h2 class="font-semibold mb-3">Pipeline YAML</h2>
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="font-semibold">Pipeline YAML</h2>
+					<div v-if="template && !template.is_builtin" class="flex items-center gap-2">
+						<template v-if="editingYaml">
+							<button class="btn btn-sm btn-primary" :disabled="operating" @click="handleSaveYaml">
+								<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+							</button>
+							<button class="btn btn-sm btn-ghost" @click="cancelEditYaml">取消</button>
+						</template>
+						<button v-else class="btn btn-sm btn-ghost" @click="editingYaml = true">编辑</button>
+					</div>
+				</div>
 				<div style="height: 500px">
 					<CodeEditor
 						v-if="template"
@@ -112,7 +123,7 @@
 						theme="vs"
 						language="yaml"
 						:options="{
-							readOnly: true,
+							readOnly: !editingYaml,
 							minimap: { enabled: false },
 							fontSize: 14,
 							automaticLayout: true,
@@ -122,36 +133,23 @@
 			</div>
 		</div>
 
-		<!-- Edit modal -->
+		<!-- Edit info modal -->
 		<dialog ref="editModalRef" class="modal">
-			<div class="modal-box w-full max-w-2xl">
+			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑模板</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">模板名称</span></div>
-						<input v-model="editForm.name" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">描述</span></div>
-						<textarea
-							v-model="editForm.description"
-							class="textarea textarea-bordered textarea-sm"
-							rows="2"
-						/>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">Pipeline YAML</span></div>
-						<textarea
-							v-model="editForm.content"
-							class="textarea textarea-bordered textarea-sm font-mono text-xs"
-							rows="12"
-						/>
-					</label>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">模板名称</legend>
+						<input v-model="editForm.name" type="text" class="input w-full" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">描述</legend>
+						<textarea v-model="editForm.description" class="textarea w-full" rows="2" />
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						保存
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
 					</button>
 					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
 				</div>
@@ -182,18 +180,17 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const template = ref<PipelineTemplate>();
 const editModalRef = ref<HTMLDialogElement>();
-const editForm = reactive({ name: '', description: '', content: '' });
+const editingYaml = ref(false);
+const editForm = reactive({ name: '', description: '' });
+const originalContent = ref('');
 
 async function fetchTemplate() {
 	try {
 		await execute(async () => {
 			const data = await pipelineTemplateApi.get(templateId);
 			template.value = data;
-			Object.assign(editForm, {
-				name: data.name,
-				description: data.description ?? '',
-				content: data.content,
-			});
+			Object.assign(editForm, { name: data.name, description: data.description ?? '' });
+			originalContent.value = data.content;
 		});
 	} catch {
 		toast.error('获取模板信息失败');
@@ -204,18 +201,32 @@ async function fetchTemplate() {
 async function handleEditOk() {
 	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.update(templateId, {
+			const data = await pipelineTemplateApi.update(templateId, {
 				name: editForm.name,
 				description: editForm.description || undefined,
-				content: editForm.content,
 			});
+			template.value = data;
 			toast.success('更新成功');
 			editModalRef.value?.close();
-			fetchTemplate();
 		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
+}
+
+function cancelEditYaml() {
+	if (template.value) template.value.content = originalContent.value;
+	editingYaml.value = false;
+}
+
+async function handleSaveYaml() {
+	try {
+		await executeOp(async () => {
+			const data = await pipelineTemplateApi.update(templateId, { content: template.value?.content ?? '' });
+			template.value = data;
+			originalContent.value = data.content;
+			editingYaml.value = false;
+			toast.success('保存成功');
+		});
+	} catch (error) { toast.error(error instanceof Error ? error.message : '保存失败'); }
 }
 
 onMounted(fetchTemplate);

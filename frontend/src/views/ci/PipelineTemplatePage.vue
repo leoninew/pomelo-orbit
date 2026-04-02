@@ -3,8 +3,7 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">流水线模板</h1>
 			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
-				<Plus class="size-4" />
-				新建模板
+				<Plus class="size-4" />新建模板
 			</button>
 		</div>
 
@@ -21,12 +20,12 @@
 				</thead>
 				<tbody>
 					<tr v-if="loading">
-						<td colspan="6" class="text-center py-8">
+						<td colspan="5" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
 					</tr>
 					<tr v-else-if="templates.length === 0">
-						<td colspan="6" class="text-center py-8 text-base-content/60">暂无模板</td>
+						<td colspan="5" class="text-center py-8 text-base-content/60">暂无模板</td>
 					</tr>
 					<tr v-for="t in templates" :key="t.id" class="hover">
 						<td>
@@ -41,79 +40,38 @@
 						<td class="cell-muted">{{ formatTime(t.created_at) }}</td>
 						<td>
 							<div class="flex items-center gap-2">
-								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary">
-									查看
-								</router-link>
-								<button v-if="!t.is_builtin" class="link link-error" @click="confirmDelete(t.id)">
-									删除
-								</button>
+								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary">查看</router-link>
+								<button v-if="!t.is_builtin" class="link link-error" @click="confirmDelete(t.id)">删除</button>
 							</div>
 						</td>
 					</tr>
 				</tbody>
 			</table>
-			<div
-				v-if="pagination.total > pagination.pageSize"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
-					<button
-						v-for="p in totalPages"
-						:key="p"
-						class="join-item btn btn-sm"
-						:class="p === pagination.current ? 'btn-primary' : 'btn-ghost'"
-						@click="goPage(p)"
-					>
-						{{ p }}
-					</button>
+					<button v-for="p in totalPages" :key="p" class="join-item btn btn-sm" :class="p === pagination.current ? 'btn-primary' : 'btn-ghost'" @click="goPage(p)">{{ p }}</button>
 				</div>
 			</div>
 		</div>
 
 		<!-- Create modal -->
 		<dialog ref="createModalRef" class="modal">
-			<div class="modal-box w-full max-w-2xl">
+			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">新建模板</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">模板名称</span></div>
-						<input
-							v-model="form.name"
-							type="text"
-							class="input input-bordered input-sm"
-							:class="{ 'input-error': errors.name }"
-							placeholder="例如: Python FastAPI 构建"
-						/>
-						<div v-if="errors.name" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.name }}</span>
-						</div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">描述（可选）</span></div>
-						<textarea
-							v-model="form.description"
-							class="textarea textarea-bordered textarea-sm"
-							rows="2"
-						/>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">Pipeline YAML</span></div>
-						<textarea
-							v-model="form.content"
-							class="textarea textarea-bordered textarea-sm font-mono text-xs"
-							rows="12"
-							:class="{ 'textarea-error': errors.content }"
-							placeholder="version: v1&#10;steps:&#10;  - name: checkout&#10;    uses: checkout"
-						/>
-						<div v-if="errors.content" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.content }}</span>
-						</div>
-					</label>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">模板名称</legend>
+						<input v-model="form.name" type="text" class="input w-full" :class="{ 'input-error': errors.name }" placeholder="例如: Python FastAPI 构建" />
+						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">描述（可选）</legend>
+						<textarea v-model="form.description" class="textarea w-full" rows="2" />
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleCreateOk">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						创建
+						<span v-if="operating" class="loading loading-spinner loading-xs" />创建
 					</button>
 					<button class="btn btn-ghost" @click="createModalRef?.close()">取消</button>
 				</div>
@@ -128,8 +86,7 @@
 				<p class="py-4 text-sm">确定删除此模板？</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						删除
+						<span v-if="operating" class="loading loading-spinner loading-xs" />删除
 					</button>
 					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
 				</div>
@@ -160,59 +117,41 @@ const createModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const pendingDeleteId = ref('');
 
-const form = reactive({ name: '', description: '', content: '' });
-const errors = reactive({ name: '', content: '' });
+const form = reactive({ name: '', description: '' });
+const errors = reactive({ name: '' });
 
 async function fetchTemplates() {
 	try {
 		await execute(async () => {
-			const res = await pipelineTemplateApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-			});
+			const res = await pipelineTemplateApi.list({ page: pagination.current, per_page: pagination.pageSize });
 			templates.value = res.items;
 			pagination.total = res.total;
 		});
-	} catch {
-		toast.error('获取模板列表失败');
-	}
+	} catch { toast.error('获取模板列表失败'); }
 }
 
-function goPage(p: number) {
-	pagination.current = p;
-	fetchTemplates();
-}
+function goPage(p: number) { pagination.current = p; fetchTemplates(); }
 
 function openCreateModal() {
-	Object.assign(form, { name: '', description: '', content: '' });
-	Object.assign(errors, { name: '', content: '' });
+	Object.assign(form, { name: '', description: '' });
+	Object.assign(errors, { name: '' });
 	createModalRef.value?.showModal();
 }
 
 async function handleCreateOk() {
 	errors.name = form.name.trim() ? '' : '请输入模板名称';
-	errors.content = form.content.trim() ? '' : '请输入 Pipeline YAML';
-	if (errors.name || errors.content) return;
+	if (errors.name) return;
 	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.create({
-				name: form.name,
-				description: form.description || undefined,
-				content: form.content,
-			});
+			await pipelineTemplateApi.create({ name: form.name, description: form.description || undefined, content: '' });
 			toast.success('创建成功');
 			createModalRef.value?.close();
 			fetchTemplates();
 		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '创建失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '创建失败'); }
 }
 
-function confirmDelete(id: string) {
-	pendingDeleteId.value = id;
-	deleteModalRef.value?.showModal();
-}
+function confirmDelete(id: string) { pendingDeleteId.value = id; deleteModalRef.value?.showModal(); }
 
 async function handleDelete() {
 	try {
@@ -222,9 +161,7 @@ async function handleDelete() {
 			deleteModalRef.value?.close();
 			fetchTemplates();
 		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '删除失败'); }
 }
 
 onMounted(fetchTemplates);

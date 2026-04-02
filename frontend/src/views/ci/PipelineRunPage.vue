@@ -13,16 +13,16 @@
 				</thead>
 				<tbody>
 					<tr v-if="loading"><td colspan="8" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
-					<tr v-else-if="runs.length === 0"><td colspan="8" class="text-center py-8 text-base-content/40">暂无记录</td></tr>
+					<tr v-else-if="runs.length === 0"><td colspan="8" class="text-center py-8 text-base-content/60">暂无记录</td></tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
 						<td><router-link :to="`/ci/runs/${r.id}`" class="link link-primary cell-mono">{{ r.id.substring(0, 12) }}</router-link></td>
 						<td><router-link :to="`/ci/projects/${r.project_id}`" class="link link-primary cell-mono">{{ r.project_id.substring(0, 8) }}</router-link></td>
-						<td><span class="badge badge-xs badge-ghost">{{ r.trigger }}</span></td>
+						<td><span class="badge badge-sm badge-ghost">{{ r.trigger }}</span></td>
 						<td class="cell-muted">{{ r.trigger_ref }}</td>
 						<td><span class="badge badge-sm" :class="runBadgeClass(r.status)">{{ r.status }}</span></td>
 						<td>
 							<router-link v-if="r.retry_of" :to="`/ci/runs/${r.retry_of}`" class="link link-primary cell-mono">{{ r.retry_of.substring(0, 8) }}</router-link>
-							<span v-else class="text-base-content/40">—</span>
+							<span v-else class="text-base-content/60">—</span>
 						</td>
 						<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
 						<td>
@@ -45,7 +45,7 @@
 		<dialog ref="cancelModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">取消 Run</h3>
-				<p class="py-4">确定取消此 Run？</p>
+				<p class="py-4 text-sm">确定取消此 Run？</p>
 				<div class="modal-action">
 					<button class="btn btn-error" @click="handleCancel">确定</button>
 					<button class="btn btn-ghost" @click="cancelModalRef?.close()">取消</button>

@@ -43,7 +43,7 @@
 				<div v-if="loading" class="flex justify-center py-12">
 					<span class="loading loading-spinner loading-md text-primary" />
 				</div>
-				<div v-else-if="recentDeploys.length === 0" class="flex flex-col items-center gap-2 py-12 text-base-content/40">
+				<div v-else-if="recentDeploys.length === 0" class="flex flex-col items-center gap-2 py-12 text-base-content/60">
 					<Inbox class="size-10" />
 					<span class="text-sm">暂无部署记录</span>
 				</div>

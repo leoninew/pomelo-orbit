@@ -42,23 +42,23 @@
 				</div>
 				<dl v-else-if="application" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">应用编码</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">应用编码</dt>
 						<dd><code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ application.code }}</code></dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">状态</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">状态</dt>
 						<dd><span class="badge badge-sm" :class="appBadgeClass(application.status)">{{ appStatusLabel(application.status) }}</span></dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">仓库地址</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">仓库地址</dt>
 						<dd class="truncate">{{ application.git_source?.repository_url || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">部署分支</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">部署分支</dt>
 						<dd>{{ application.git_source?.deploy_branches || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">自动部署</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">自动部署</dt>
 						<dd>
 							<span class="badge badge-sm" :class="application.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'">
 								{{ application.git_source?.auto_deploy ? '是' : '否' }}
@@ -66,15 +66,15 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">拉取策略</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">拉取策略</dt>
 						<dd>{{ application.image_pull_policy }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">创建时间</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
 						<dd class="text-base-content/60">{{ formatTime(application.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">部署记录</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">部署记录</dt>
 						<dd>
 							<router-link :to="`/cd/deployments?application_id=${application.id}`" class="link link-primary text-xs">
 								查看所有部署
@@ -97,7 +97,7 @@
 				<div v-if="fileListLoading" class="flex justify-center py-8">
 					<span class="loading loading-spinner loading-md text-primary" />
 				</div>
-				<div v-else-if="files.length === 0" class="flex flex-col items-center gap-2 py-8 text-base-content/40">
+				<div v-else-if="files.length === 0" class="flex flex-col items-center gap-2 py-8 text-base-content/60">
 					<FileX class="size-10" />
 					<span class="text-sm">暂无配置文件</span>
 				</div>
@@ -141,10 +141,12 @@
 						</button>
 					</div>
 					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
-						<label v-if="isEditingInDrawer || !currentFileId" class="form-control w-full">
-							<div class="label pb-1"><span class="label-text">文件路径</span></div>
-							<input v-model="currentFilePath" type="text" class="input input-bordered input-sm" placeholder="例如: nginx.conf" />
-						</label>
+						<div v-if="isEditingInDrawer || !currentFileId" class="form-control w-full">
+							<label class="label">
+								<span class="label-text">文件路径</span>
+							</label>
+							<input v-model="currentFilePath" type="text" class="input input-bordered w-full" placeholder="例如: nginx.conf" />
+						</div>
 						<div class="flex-1 min-h-0" style="height: 500px">
 							<CodeEditor
 								v-if="!fileContentLoading"
@@ -180,40 +182,54 @@
 		<dialog ref="editModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑基本信息</h3>
-				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">应用名称</span></div>
-						<input v-model="editForm.name" type="text" class="input input-bordered input-sm" :class="{ 'input-error': editErrors.name }" />
-						<div v-if="editErrors.name" class="label pt-1"><span class="label-text-alt text-error">{{ editErrors.name }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">应用编码</span></div>
-						<input :value="editForm.code" type="text" class="input input-bordered input-sm opacity-60" disabled />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">仓库地址</span></div>
-						<input v-model="editForm.repository_url" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">部署分支</span></div>
-						<input v-model="editForm.deploy_branches" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">镜像拉取策略</span></div>
-						<select v-model="editForm.image_pull_policy" class="select select-bordered select-sm">
+				<div class="flex flex-col gap-4">
+					<div class="form-control w-full">
+						<label class="label">
+							<span class="label-text">应用名称</span>
+						</label>
+						<input v-model="editForm.name" type="text" class="input input-bordered w-full" :class="{ 'input-error': editErrors.name }" />
+						<label v-if="editErrors.name" class="label">
+							<span class="label-text-alt text-error">{{ editErrors.name }}</span>
+						</label>
+					</div>
+					<div class="form-control w-full">
+						<label class="label">
+							<span class="label-text">应用编码</span>
+						</label>
+						<input :value="editForm.code" type="text" class="input input-bordered w-full opacity-60" disabled />
+					</div>
+					<div class="form-control w-full">
+						<label class="label">
+							<span class="label-text">仓库地址</span>
+						</label>
+						<input v-model="editForm.repository_url" type="text" class="input input-bordered w-full" />
+					</div>
+					<div class="form-control w-full">
+						<label class="label">
+							<span class="label-text">部署分支</span>
+						</label>
+						<input v-model="editForm.deploy_branches" type="text" class="input input-bordered w-full" />
+					</div>
+					<div class="form-control w-full">
+						<label class="label">
+							<span class="label-text">镜像拉取策略</span>
+						</label>
+						<select v-model="editForm.image_pull_policy" class="select select-bordered w-full">
 							<option value="always">always</option>
 							<option value="missing">missing</option>
 							<option value="never">never</option>
 						</select>
-					</label>
-					<div class="flex items-center gap-6">
-						<label class="flex items-center gap-2 cursor-pointer">
-							<span class="label-text text-sm">自动部署</span>
-							<input v-model="editForm.auto_deploy" type="checkbox" class="toggle toggle-sm toggle-primary" />
+					</div>
+					<div class="form-control w-full">
+						<label class="label cursor-pointer justify-start gap-3">
+							<input v-model="editForm.auto_deploy" type="checkbox" class="toggle toggle-primary" />
+							<span class="label-text">自动部署</span>
 						</label>
-						<label class="flex items-center gap-2 cursor-pointer">
-							<span class="label-text text-sm">启用</span>
-							<input v-model="editForm.enabled" type="checkbox" class="toggle toggle-sm toggle-primary" />
+					</div>
+					<div class="form-control w-full">
+						<label class="label cursor-pointer justify-start gap-3">
+							<input v-model="editForm.enabled" type="checkbox" class="toggle toggle-primary" />
+							<span class="label-text">启用</span>
 						</label>
 					</div>
 				</div>
@@ -231,7 +247,7 @@
 		<dialog ref="deleteModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除应用</h3>
-				<p class="py-4">确定要删除应用「<strong>{{ application?.name }}</strong>」吗？此操作不可撤销。</p>
+				<p class="py-4 text-sm">确定要删除应用「<strong>{{ application?.name }}</strong>」吗？此操作不可撤销。</p>
 				<label class="flex items-center gap-2 cursor-pointer mb-2">
 					<input v-model="deleteDir" type="checkbox" class="checkbox checkbox-sm checkbox-error" />
 					<span class="text-sm">同时删除应用工作目录（data/apps/{{ application?.code }}）</span>
@@ -250,7 +266,7 @@
 		<dialog ref="deleteFileModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除文件</h3>
-				<p class="py-4">确定删除此配置文件？</p>
+				<p class="py-4 text-sm">确定删除此配置文件？</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="fileListLoading" @click="executeDeleteFile">
 						<span v-if="fileListLoading" class="loading loading-spinner loading-xs" />删除

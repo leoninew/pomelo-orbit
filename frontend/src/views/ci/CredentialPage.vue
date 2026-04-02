@@ -16,7 +16,7 @@
 				</thead>
 				<tbody>
 					<tr v-if="loading"><td colspan="4" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
-					<tr v-else-if="credentials.length === 0"><td colspan="4" class="text-center py-8 text-base-content/40">暂无凭据</td></tr>
+					<tr v-else-if="credentials.length === 0"><td colspan="4" class="text-center py-8 text-base-content/60">暂无凭据</td></tr>
 					<tr v-for="c in credentials" :key="c.id" class="hover">
 						<td class="font-medium">{{ c.name }}</td>
 						<td><span class="badge badge-sm badge-ghost">{{ credentialTypeLabels[c.type] ?? c.type }}</span></td>
@@ -58,7 +58,7 @@
 					<label class="form-control w-full">
 						<div class="label pb-1">
 							<span class="label-text">凭据内容</span>
-							<span v-if="isEditing" class="label-text-alt text-base-content/40">留空则不修改</span>
+							<span v-if="isEditing" class="label-text-alt text-base-content/60">留空则不修改</span>
 						</div>
 						<textarea v-model="form.data" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="8" :class="{ 'textarea-error': errors.data }" :placeholder="getDataPlaceholder(form.type)" />
 						<div v-if="errors.data" class="label pt-1"><span class="label-text-alt text-error">{{ errors.data }}</span></div>
@@ -78,7 +78,7 @@
 		<dialog ref="deleteModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除凭据</h3>
-				<p class="py-4">确定删除此凭据？</p>
+				<p class="py-4 text-sm">确定删除此凭据？</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />删除

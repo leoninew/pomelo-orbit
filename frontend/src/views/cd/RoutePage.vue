@@ -30,7 +30,7 @@
 						<td colspan="7" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td>
 					</tr>
 					<tr v-else-if="routes.length === 0">
-						<td colspan="7" class="text-center py-8 text-base-content/40">暂无路由</td>
+						<td colspan="7" class="text-center py-8 text-base-content/60">暂无路由</td>
 					</tr>
 					<tr v-for="r in routes" :key="r.id" class="hover">
 						<td>
@@ -67,28 +67,28 @@
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">添加路由</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">路由名称</span></div>
-						<input v-model="form.name" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.name }" placeholder="my-route" />
-						<div v-if="errors.name" class="label pt-1"><span class="label-text-alt text-error">{{ errors.name }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">域名</span></div>
-						<input v-model="form.domain" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.domain }" placeholder="example.com" />
-						<div v-if="errors.domain" class="label pt-1"><span class="label-text-alt text-error">{{ errors.domain }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">路径前缀</span></div>
-						<input v-model="form.path_prefix" type="text" class="input input-bordered input-sm" placeholder="/" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">目标地址</span></div>
-						<input v-model="form.target_url" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.target_url }" placeholder="http://host:port" />
-						<div v-if="errors.target_url" class="label pt-1"><span class="label-text-alt text-error">{{ errors.target_url }}</span></div>
-					</label>
-					<label class="flex items-center gap-2 cursor-pointer">
-						<span class="label-text text-sm">启用</span>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路由名称</legend>
+						<input v-model="form.name" type="text" class="input w-full" :class="{ 'input-error': errors.name }" placeholder="my-route" />
+						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">域名</legend>
+						<input v-model="form.domain" type="text" class="input w-full" :class="{ 'input-error': errors.domain }" placeholder="example.com" />
+						<p v-if="errors.domain" class="fieldset-label text-error">{{ errors.domain }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路径前缀</legend>
+						<input v-model="form.path_prefix" type="text" class="input w-full" placeholder="/" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">目标地址</legend>
+						<input v-model="form.target_url" type="text" class="input w-full" :class="{ 'input-error': errors.target_url }" placeholder="http://host:port" />
+						<p v-if="errors.target_url" class="fieldset-label text-error">{{ errors.target_url }}</p>
+					</fieldset>
+					<label class="flex items-center gap-3 cursor-pointer">
 						<input v-model="form.enabled" type="checkbox" class="toggle toggle-sm toggle-primary" />
+						<span class="text-sm">启用</span>
 					</label>
 				</div>
 				<div class="modal-action">

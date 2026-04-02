@@ -19,7 +19,7 @@
 				</thead>
 				<tbody>
 					<tr v-if="loading"><td colspan="4" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
-					<tr v-else-if="projects.length === 0"><td colspan="4" class="text-center py-8 text-base-content/40">暂无项目</td></tr>
+					<tr v-else-if="projects.length === 0"><td colspan="4" class="text-center py-8 text-base-content/60">暂无项目</td></tr>
 					<tr v-for="p in projects" :key="p.id" class="hover">
 						<td><router-link :to="`/ci/projects/${p.id}`" class="link link-primary font-medium">{{ p.name }}</router-link></td>
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
@@ -46,35 +46,35 @@
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">新建项目</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">项目名称</span></div>
-						<input v-model="form.name" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.name }" placeholder="例如: my-backend" />
-						<div v-if="errors.name" class="label pt-1"><span class="label-text-alt text-error">{{ errors.name }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">仓库地址</span></div>
-						<input v-model="form.repository_url" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.repository_url }" placeholder="git@github.com:user/repo.git" />
-						<div v-if="errors.repository_url" class="label pt-1"><span class="label-text-alt text-error">{{ errors.repository_url }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">流水线模板</span></div>
-						<select v-model="form.pipeline_template_id" class="select select-bordered select-sm" :class="{ 'select-error': errors.pipeline_template_id }">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">项目名称</legend>
+						<input v-model="form.name" type="text" class="input w-full" :class="{ 'input-error': errors.name }" placeholder="例如: my-backend" />
+						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">仓库地址</legend>
+						<input v-model="form.repository_url" type="text" class="input w-full" :class="{ 'input-error': errors.repository_url }" placeholder="git@github.com:user/repo.git" />
+						<p v-if="errors.repository_url" class="fieldset-label text-error">{{ errors.repository_url }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">流水线模板</legend>
+						<select v-model="form.pipeline_template_id" class="select w-full" :class="{ 'select-error': errors.pipeline_template_id }">
 							<option value="" disabled>选择模板</option>
 							<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
 						</select>
-						<div v-if="errors.pipeline_template_id" class="label pt-1"><span class="label-text-alt text-error">{{ errors.pipeline_template_id }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">Git 凭据（可选）</span></div>
-						<select v-model="form.git_credential_id" class="select select-bordered select-sm">
+						<p v-if="errors.pipeline_template_id" class="fieldset-label text-error">{{ errors.pipeline_template_id }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">Git 凭据（可选）</legend>
+						<select v-model="form.git_credential_id" class="select w-full">
 							<option value="">不使用凭据</option>
 							<option v-for="cred in gitCredentials" :key="cred.id" :value="cred.id">{{ cred.name }}</option>
 						</select>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">分支过滤（可选）</span></div>
-						<input v-model="form.branch_filter" type="text" class="input input-bordered input-sm" placeholder="main,develop（留空表示所有分支）" />
-					</label>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">分支过滤（可选）</legend>
+						<input v-model="form.branch_filter" type="text" class="input w-full" placeholder="main,develop（留空表示所有分支）" />
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleCreateOk">
@@ -90,7 +90,7 @@
 		<dialog ref="deleteModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除项目</h3>
-				<p class="py-4">确定删除此项目？此操作不可撤销。</p>
+				<p class="py-4 text-sm">确定删除此项目？此操作不可撤销。</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />删除

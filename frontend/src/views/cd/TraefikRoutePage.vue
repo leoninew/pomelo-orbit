@@ -30,22 +30,22 @@
 						<td colspan="7" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td>
 					</tr>
 					<tr v-else-if="routes.length === 0">
-						<td colspan="7" class="text-center py-8 text-base-content/40">暂无路由</td>
+						<td colspan="7" class="text-center py-8 text-base-content/60">暂无路由</td>
 					</tr>
 					<tr v-for="r in routes" :key="r.name" class="hover">
 						<td>{{ r.name }}</td>
 						<td class="cell-muted">{{ r.provider }}</td>
 						<td><span class="badge badge-sm" :class="r.status === 'enabled' ? 'badge-outline badge-success' : 'badge-ghost'">{{ r.status }}</span></td>
 						<td>
-							<a v-if="buildRouteUrl(r.rule, r.tls)" :href="buildRouteUrl(r.rule, r.tls)!" target="_blank" class="link link-primary flex items-center gap-1">
+							<a v-if="buildRouteUrl(r.rule, r.tls)" :href="buildRouteUrl(r.rule, r.tls)!" target="_blank" class="link link-primary font-mono text-xs flex items-center gap-1">
 								{{ r.rule }}<ExternalLink class="size-3" />
 							</a>
-							<span v-else class="font-mono">{{ r.rule }}</span>
+							<span v-else class="font-mono text-xs">{{ r.rule }}</span>
 						</td>
 						<td class="cell-muted">{{ r.service }}</td>
 						<td>
 							<div class="flex flex-wrap gap-1">
-								<span v-for="ep in r.entrypoints" :key="ep" class="badge badge-xs badge-ghost">{{ ep }}</span>
+								<span v-for="ep in r.entrypoints" :key="ep" class="badge badge-sm badge-ghost">{{ ep }}</span>
 							</div>
 						</td>
 						<td><span class="badge badge-sm" :class="r.tls ? 'badge-outline badge-info' : 'badge-ghost'">{{ r.tls ? 'HTTPS' : 'HTTP' }}</span></td>

@@ -15,13 +15,13 @@
 				<h2 class="font-semibold mb-3">基本信息</h2>
 				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<dl v-else-if="project" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">项目名称</dt><dd>{{ project.name }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">仓库地址</dt><dd class="text-xs truncate">{{ project.repository_url }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">流水线模板</dt><dd><router-link :to="`/ci/templates/${project.pipeline_template_id}`" class="link link-primary text-xs">查看模板</router-link></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Git 凭据</dt><dd class="text-base-content/60">{{ project.git_credential_id ? '已配置' : '未配置' }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">分支过滤</dt><dd class="text-base-content/60">{{ project.branch_filter || '所有分支' }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">默认分支</dt><dd class="text-base-content/60">{{ project.default_branch }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(project.created_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">项目名称</dt><dd>{{ project.name }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">仓库地址</dt><dd class="text-xs truncate">{{ project.repository_url }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">流水线模板</dt><dd><router-link :to="`/ci/templates/${project.pipeline_template_id}`" class="link link-primary text-xs">查看模板</router-link></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">Git 凭据</dt><dd class="text-base-content/60">{{ project.git_credential_id ? '已配置' : '未配置' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">分支过滤</dt><dd class="text-base-content/60">{{ project.branch_filter || '所有分支' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">默认分支</dt><dd class="text-base-content/60">{{ project.default_branch }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">创建时间</dt><dd>{{ formatTime(project.created_at) }}</dd></div>
 				</dl>
 			</div>
 		</div>
@@ -32,14 +32,14 @@
 				<h2 class="font-semibold mb-3">Webhook 配置</h2>
 				<dl v-if="project" class="flex flex-col gap-3 text-sm">
 					<div class="flex gap-2 items-start">
-						<dt class="text-base-content/50 w-32 shrink-0">Webhook URL</dt>
+						<dt class="text-base-content/70 w-32 shrink-0">Webhook URL</dt>
 						<dd class="flex items-center gap-2">
 							<code class="text-xs bg-base-200 px-2 py-1 rounded break-all">{{ webhookUrl }}</code>
 							<button class="btn btn-xs btn-ghost" @click="copyText(webhookUrl)"><Copy class="size-3" /></button>
 						</dd>
 					</div>
 					<div class="flex gap-2 items-center">
-						<dt class="text-base-content/50 w-32 shrink-0">Webhook Secret</dt>
+						<dt class="text-base-content/70 w-32 shrink-0">Webhook Secret</dt>
 						<dd class="flex items-center gap-2">
 							<code class="text-xs bg-base-200 px-2 py-1 rounded">{{ showSecret ? project.webhook_secret : '••••••••••••••••' }}</code>
 							<button class="btn btn-xs btn-ghost" @click="showSecret = !showSecret">{{ showSecret ? '隐藏' : '显示' }}</button>
@@ -57,7 +57,7 @@
 					<h2 class="font-semibold">变量配置</h2>
 					<button class="btn btn-xs btn-primary gap-1" @click="openAddVarModal"><Plus class="size-3" />添加变量</button>
 				</div>
-				<div v-if="variableList.length === 0" class="text-sm text-base-content/40 py-4 text-center">未配置变量</div>
+				<div v-if="variableList.length === 0" class="text-sm text-base-content/60 py-4 text-center">未配置变量</div>
 				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>变量名</th><th>变量值</th><th>操作</th></tr></thead>
 					<tbody>
@@ -84,13 +84,13 @@
 					<router-link :to="`/ci/runs?project_id=${project?.id}`" class="link link-primary text-xs">查看全部</router-link>
 				</div>
 				<div v-if="runsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
-				<div v-else-if="runs.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无运行记录</div>
+				<div v-else-if="runs.length === 0" class="text-sm text-base-content/60 py-4 text-center">暂无运行记录</div>
 				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>Run ID</th><th>触发方式</th><th>Ref</th><th>状态</th><th>创建时间</th></tr></thead>
 					<tbody>
 						<tr v-for="r in runs" :key="r.id" class="hover">
 							<td><router-link :to="`/ci/runs/${r.id}`" class="link link-primary cell-mono">{{ r.id.substring(0, 12) }}</router-link></td>
-							<td><span class="badge badge-xs badge-ghost">{{ r.trigger }}</span></td>
+							<td><span class="badge badge-sm badge-ghost">{{ r.trigger }}</span></td>
 							<td class="cell-muted">{{ r.trigger_ref }}</td>
 							<td><span class="badge badge-sm" :class="runBadgeClass(r.status)">{{ r.status }}</span></td>
 							<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
@@ -104,10 +104,10 @@
 		<dialog ref="triggerModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg mb-4">手动触发</h3>
-				<label class="form-control w-full">
-					<div class="label pb-1"><span class="label-text">分支</span></div>
-					<input v-model="triggerRef" type="text" class="input input-bordered input-sm" placeholder="输入分支名" />
-				</label>
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend">分支</legend>
+					<input v-model="triggerRef" type="text" class="input w-full" placeholder="输入分支名" />
+				</fieldset>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleTriggerOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />触发
@@ -123,35 +123,35 @@
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑项目</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">项目名称</span></div>
-						<input v-model="editForm.name" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">仓库地址</span></div>
-						<input v-model="editForm.repository_url" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">流水线模板</span></div>
-						<select v-model="editForm.pipeline_template_id" class="select select-bordered select-sm">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">项目名称</legend>
+						<input v-model="editForm.name" type="text" class="input w-full" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">仓库地址</legend>
+						<input v-model="editForm.repository_url" type="text" class="input w-full" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">流水线模板</legend>
+						<select v-model="editForm.pipeline_template_id" class="select w-full">
 							<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
 						</select>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">Git 凭据</span></div>
-						<select v-model="editForm.git_credential_id" class="select select-bordered select-sm">
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">Git 凭据</legend>
+						<select v-model="editForm.git_credential_id" class="select w-full">
 							<option value="">不使用凭据</option>
 							<option v-for="cred in gitCredentials" :key="cred.id" :value="cred.id">{{ cred.name }}</option>
 						</select>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">分支过滤</span></div>
-						<input v-model="editForm.branch_filter" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">默认分支</span></div>
-						<input v-model="editForm.default_branch" type="text" class="input input-bordered input-sm" placeholder="master" />
-					</label>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">分支过滤</legend>
+						<input v-model="editForm.branch_filter" type="text" class="input w-full" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">默认分支</legend>
+						<input v-model="editForm.default_branch" type="text" class="input w-full" placeholder="master" />
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
@@ -168,14 +168,14 @@
 			<div class="modal-box">
 				<h3 class="font-bold text-lg mb-4">添加变量</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">变量名</span></div>
-						<input v-model="newVarKey" type="text" class="input input-bordered input-sm" placeholder="变量名" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">变量值</span></div>
-						<input v-model="newVarValue" type="text" class="input input-bordered input-sm" placeholder="变量值" />
-					</label>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量名</legend>
+						<input v-model="newVarKey" type="text" class="input w-full" placeholder="变量名" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量值</legend>
+						<input v-model="newVarValue" type="text" class="input w-full" placeholder="变量值" />
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleAddVarOk">
@@ -192,14 +192,14 @@
 			<div class="modal-box">
 				<h3 class="font-bold text-lg mb-4">编辑变量</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">变量名</span></div>
-						<input :value="editingVarKey" type="text" class="input input-bordered input-sm opacity-60" disabled />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">变量值</span></div>
-						<input v-model="editingVarValue" type="text" class="input input-bordered input-sm" />
-					</label>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量名</legend>
+						<input :value="editingVarKey" type="text" class="input w-full opacity-60" disabled />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量值</legend>
+						<input v-model="editingVarValue" type="text" class="input w-full" />
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditVarOk">

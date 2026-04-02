@@ -9,7 +9,7 @@
 
 /* Secondary/muted content within cells */
 .table tbody td.cell-muted {
-  color: oklch(var(--bc) / 0.8);
+  color: oklch(var(--bc) / 0.85);
   font-size: var(--text-sm);
 }
 

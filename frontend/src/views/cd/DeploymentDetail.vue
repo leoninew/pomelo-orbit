@@ -2,7 +2,7 @@
 	<div class="flex flex-col gap-4 h-full">
 		<!-- Header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">部署记录 <span class="text-base-content/40 text-base font-mono">#{{ deploymentId }}</span></h1>
+			<h1 class="text-xl font-semibold">部署记录 <span class="text-base-content/60 text-base font-mono">#{{ deploymentId }}</span></h1>
 			<div class="flex items-center gap-2">
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/deployments')">
 					<ArrowLeft class="size-4" />返回列表
@@ -25,7 +25,7 @@
 				</div>
 				<dl v-else-if="deployment" class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">应用</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">应用</dt>
 						<dd>
 							<router-link :to="`/cd/applications/${deployment.application_id}`" class="link link-primary">
 								{{ deployment.application_name || deployment.application_id }}
@@ -33,31 +33,31 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">状态</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">状态</dt>
 						<dd><span class="badge badge-sm" :class="deployBadgeClass(deployment.status)">{{ deployment.status }}</span></dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">触发方式</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">触发方式</dt>
 						<dd class="text-base-content/70">{{ deployment.trigger_type }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">分支/Tag</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">分支/Tag</dt>
 						<dd><code class="text-xs">{{ deployment.trigger_ref || '—' }}</code></dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">环境文件</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">环境文件</dt>
 						<dd class="text-base-content/70">{{ deployment.env_file || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">耗时</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">耗时</dt>
 						<dd class="text-base-content/70">{{ formatDuration(deployment.duration_ms) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">开始时间</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">开始时间</dt>
 						<dd class="text-base-content/60 text-xs">{{ formatTime(deployment.started_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-20 shrink-0">结束时间</dt>
+						<dt class="text-base-content/70 w-20 shrink-0">结束时间</dt>
 						<dd class="text-base-content/60 text-xs">{{ formatTime(deployment.finished_at) }}</dd>
 					</div>
 				</dl>

@@ -21,17 +21,17 @@
 				</div>
 				<div v-if="basicInfoLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<dl v-else-if="routeData" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">路由名称</dt><dd>{{ routeData.name }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">路由名称</dt><dd>{{ routeData.name }}</dd></div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/50 w-24 shrink-0">域名</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">域名</dt>
 						<dd><a :href="`${routeData.https_enabled ? 'https' : 'http'}://${routeData.domain}`" target="_blank" class="link link-primary flex items-center gap-1">{{ routeData.domain }}<ExternalLink class="size-3" /></a></dd>
 					</div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">路径前缀</dt><dd>{{ routeData.path_prefix }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">目标地址</dt><dd class="text-xs font-mono">{{ routeData.target_url }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">状态</dt><dd><span class="badge badge-sm" :class="routeData.enabled ? 'badge-outline badge-success' : 'badge-ghost'">{{ routeData.enabled ? '启用' : '停用' }}</span></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">协议</dt><dd><span class="badge badge-sm" :class="routeData.https_enabled ? 'badge-outline badge-info' : 'badge-ghost'">{{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}</span></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(routeData.created_at) }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">更新时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(routeData.updated_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">路径前缀</dt><dd>{{ routeData.path_prefix }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">目标地址</dt><dd class="text-xs font-mono">{{ routeData.target_url }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">状态</dt><dd><span class="badge badge-sm" :class="routeData.enabled ? 'badge-outline badge-success' : 'badge-ghost'">{{ routeData.enabled ? '启用' : '停用' }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">协议</dt><dd><span class="badge badge-sm" :class="routeData.https_enabled ? 'badge-outline badge-info' : 'badge-ghost'">{{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">创建时间</dt><dd>{{ formatTime(routeData.created_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">更新时间</dt><dd>{{ formatTime(routeData.updated_at) }}</dd></div>
 				</dl>
 			</div>
 		</div>
@@ -108,7 +108,7 @@
 		<dialog ref="deleteModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除路由</h3>
-				<p class="py-4">确定删除路由 <strong>{{ routeData?.domain }}</strong> 吗？此操作不可恢复。</p>
+				<p class="py-4 text-sm">确定删除路由 <strong>{{ routeData?.domain }}</strong> 吗？此操作不可恢复。</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />删除

@@ -6,7 +6,7 @@
 			<div class="flex items-center gap-2 flex-nowrap ml-auto">
 				<!-- Search -->
 				<label class="input input-sm input-bordered flex items-center gap-2 w-44">
-					<Search class="size-3.5 text-base-content/40 shrink-0" />
+					<Search class="size-3.5 text-base-content/60 shrink-0" />
 					<input v-model="searchText" type="text" placeholder="搜索应用名称" class="min-w-0 w-full" @keyup.enter="handleSearch" />
 				</label>
 				<!-- View toggle -->
@@ -35,7 +35,7 @@
 
 		<!-- Card view -->
 		<template v-else-if="viewMode === 'card'">
-			<div v-if="applications.length === 0" class="flex flex-col items-center gap-2 py-16 text-base-content/40">
+			<div v-if="applications.length === 0" class="flex flex-col items-center gap-2 py-16 text-base-content/60">
 				<Inbox class="size-12" />
 				<span>暂无应用</span>
 			</div>
@@ -51,7 +51,7 @@
 							<span class="font-semibold truncate">{{ app.name }}</span>
 							<span class="badge badge-sm" :class="appBadgeClass(app.status)">{{ appStatusLabel(app.status) }}</span>
 						</div>
-						<div class="text-xs text-base-content/50">
+						<div class="text-xs text-base-content/70">
 							<span>编码: <code>{{ app.code }}</code></span>
 							<span class="mx-2 text-base-content/30">|</span>
 							<span>拉取策略: {{ app.image_pull_policy }}</span>
@@ -100,7 +100,7 @@
 				</thead>
 				<tbody>
 					<tr v-if="applications.length === 0">
-						<td colspan="7" class="text-center py-8 text-base-content/40">暂无数据</td>
+						<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="app in applications" :key="app.id" class="hover">
 						<td>
@@ -137,9 +137,7 @@
 		<dialog ref="createDialogRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">新建应用</h3>
-				<div class="flex flex-col gap-3">
-					<AppFormFields :form="form" :errors="formErrors" @update:form="Object.assign(form, $event)" />
-				</div>
+				<AppFormFields :form="form" :errors="formErrors" @update:form="Object.assign(form, $event)" />
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleCreateOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />
@@ -155,12 +153,10 @@
 		<dialog ref="importDialogRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">导入应用</h3>
-				<div class="flex flex-col gap-3">
-					<AppFormFields :form="importForm" :errors="importErrors" @update:form="Object.assign(importForm, $event)" />
+				<AppFormFields :form="importForm" :errors="importErrors" @update:form="Object.assign(importForm, $event)" />
 					<div v-if="importForm.config_files.length > 0" class="text-sm text-base-content/60">
 						包含 {{ importForm.config_files.length }} 个配置文件
 					</div>
-				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleImportOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />

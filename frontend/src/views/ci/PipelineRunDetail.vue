@@ -18,14 +18,14 @@
 				<h2 class="font-semibold mb-3">基本信息</h2>
 				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<dl v-else-if="run" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Run ID</dt><dd class="font-mono text-xs">{{ run.id }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Project</dt><dd><router-link :to="`/ci/projects/${run.project_id}`" class="link link-primary text-xs">{{ run.project_id }}</router-link></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">触发方式</dt><dd><span class="badge badge-xs badge-ghost">{{ run.trigger }}</span></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Ref</dt><dd class="text-base-content/60">{{ run.trigger_ref }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">重试自</dt><dd><router-link v-if="run.retry_of" :to="`/ci/runs/${run.retry_of}`" class="link link-primary text-xs">{{ run.retry_of }}</router-link><span v-else class="text-base-content/40">—</span></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">开始时间</dt><dd class="text-xs text-base-content/60">{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">结束时间</dt><dd class="text-xs text-base-content/60">{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(run.created_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">Run ID</dt><dd class="font-mono text-xs">{{ run.id }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">Project</dt><dd><router-link :to="`/ci/projects/${run.project_id}`" class="link link-primary text-xs">{{ run.project_id }}</router-link></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">触发方式</dt><dd><span class="badge badge-sm badge-ghost">{{ run.trigger }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">Ref</dt><dd class="text-base-content/60">{{ run.trigger_ref }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">重试自</dt><dd><router-link v-if="run.retry_of" :to="`/ci/runs/${run.retry_of}`" class="link link-primary text-xs">{{ run.retry_of }}</router-link><span v-else class="text-base-content/60">—</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">开始时间</dt><dd>{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">结束时间</dt><dd>{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">创建时间</dt><dd>{{ formatTime(run.created_at) }}</dd></div>
 				</dl>
 			</div>
 		</div>
@@ -35,7 +35,7 @@
 			<div class="card-body p-5">
 				<h2 class="font-semibold mb-3">Jobs</h2>
 				<div v-if="jobsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
-				<div v-else-if="jobs.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无 Job 记录</div>
+				<div v-else-if="jobs.length === 0" class="text-sm text-base-content/60 py-4 text-center">暂无 Job 记录</div>
 				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>Job 名称</th><th>状态</th><th>开始时间</th><th>结束时间</th></tr></thead>
 					<tbody>
@@ -55,13 +55,13 @@
 			<div class="card-body p-5">
 				<h2 class="font-semibold mb-3">制品</h2>
 				<div v-if="artifactsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
-				<div v-else-if="artifacts.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无制品</div>
+				<div v-else-if="artifacts.length === 0" class="text-sm text-base-content/60 py-4 text-center">暂无制品</div>
 				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>Job</th><th>类型</th><th>名称</th><th>路径</th><th>创建时间</th></tr></thead>
 					<tbody>
 						<tr v-for="a in artifacts" :key="a.id" class="hover">
 							<td>{{ a.job_name }}</td>
-							<td><span class="badge badge-xs badge-ghost">{{ a.type }}</span></td>
+							<td><span class="badge badge-sm badge-ghost">{{ a.type }}</span></td>
 							<td>{{ a.name }}</td>
 							<td class="cell-muted max-w-xs truncate">{{ a.path }}</td>
 							<td class="cell-muted">{{ formatTime(a.created_at) }}</td>
@@ -83,8 +83,8 @@
 					</div>
 					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
 						<dl v-if="currentJob" class="grid grid-cols-1 gap-y-2 text-sm">
-							<div class="flex gap-2"><dt class="text-base-content/50 w-20 shrink-0">状态</dt><dd><span class="badge badge-sm" :class="jobBadgeClass(currentJob.status)">{{ currentJob.status }}</span></dd></div>
-							<div v-if="currentJob.error_message" class="flex gap-2"><dt class="text-base-content/50 w-20 shrink-0">错误</dt><dd class="text-error text-xs">{{ currentJob.error_message }}</dd></div>
+							<div class="flex gap-2"><dt class="text-base-content/70 w-20 shrink-0">状态</dt><dd><span class="badge badge-sm" :class="jobBadgeClass(currentJob.status)">{{ currentJob.status }}</span></dd></div>
+							<div v-if="currentJob.error_message" class="flex gap-2"><dt class="text-base-content/70 w-20 shrink-0">错误</dt><dd class="text-error text-xs">{{ currentJob.error_message }}</dd></div>
 						</dl>
 						<div v-if="logsLoading" class="flex justify-center py-8"><span class="loading loading-spinner loading-md text-primary" /></div>
 						<div v-else class="flex-1 bg-neutral rounded-box p-4 overflow-auto min-h-64">
@@ -100,7 +100,7 @@
 		<dialog ref="cancelModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">取消 Run</h3>
-				<p class="py-4">确定取消此 Run？</p>
+				<p class="py-4 text-sm">确定取消此 Run？</p>
 				<div class="modal-action">
 					<button class="btn btn-error" @click="handleCancel">确定</button>
 					<button class="btn btn-ghost" @click="cancelModalRef?.close()">取消</button>

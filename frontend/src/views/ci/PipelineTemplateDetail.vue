@@ -17,10 +17,10 @@
 				<h2 class="font-semibold mb-3">基本信息</h2>
 				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
 				<dl v-else-if="template" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">模板名称</dt><dd>{{ template.name }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">类型</dt><dd><span class="badge badge-sm" :class="template.is_builtin ? 'badge-outline badge-info' : 'badge-ghost'">{{ template.is_builtin ? '内置模板' : '自定义模板' }}</span></dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">描述</dt><dd class="text-base-content/60">{{ template.description || '—' }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(template.created_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">模板名称</dt><dd>{{ template.name }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">类型</dt><dd><span class="badge badge-sm" :class="template.is_builtin ? 'badge-outline badge-info' : 'badge-ghost'">{{ template.is_builtin ? '内置模板' : '自定义模板' }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">描述</dt><dd class="text-base-content/60">{{ template.description || '—' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">创建时间</dt><dd>{{ formatTime(template.created_at) }}</dd></div>
 				</dl>
 			</div>
 		</div>
@@ -29,15 +29,15 @@
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
 				<h2 class="font-semibold mb-3">变量声明</h2>
-				<div v-if="!template || (template.variable_declarations ?? []).length === 0" class="text-sm text-base-content/40 py-4 text-center">无变量声明</div>
+				<div v-if="!template || (template.variable_declarations ?? []).length === 0" class="text-sm text-base-content/60 py-4 text-center">无变量声明</div>
 				<table v-else class="table">
 					<thead><tr class="text-base-content/60"><th>变量名</th><th>描述</th><th>必填</th><th>默认值</th></tr></thead>
 					<tbody>
 						<tr v-for="v in template.variable_declarations" :key="v.name" class="hover">
 							<td><code class="text-xs">{{ v.name }}</code></td>
 							<td class="cell-muted">{{ v.description || '—' }}</td>
-							<td><span class="badge badge-xs" :class="v.required ? 'badge-outline badge-error' : 'badge-ghost'">{{ v.required ? '必填' : '可选' }}</span></td>
-							<td><code v-if="v.default" class="text-xs">{{ v.default }}</code><span v-else class="text-base-content/40">—</span></td>
+							<td><span class="badge badge-sm" :class="v.required ? 'badge-outline badge-error' : 'badge-ghost'">{{ v.required ? '必填' : '可选' }}</span></td>
+							<td><code v-if="v.default" class="text-xs">{{ v.default }}</code><span v-else class="text-base-content/60">—</span></td>
 						</tr>
 					</tbody>
 				</table>

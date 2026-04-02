@@ -12,9 +12,9 @@
 					<button class="btn btn-sm btn-primary" @click="passwordModalRef?.showModal()">修改密码</button>
 				</div>
 				<dl v-if="authStore.user" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">用户名</dt><dd class="font-medium">{{ authStore.user.username }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(authStore.user.created_at) }}</dd></div>
-					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">上次登录</dt><dd class="text-xs text-base-content/60">{{ formatTime(authStore.user.last_login_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">用户名</dt><dd class="font-medium">{{ authStore.user.username }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">创建时间</dt><dd>{{ formatTime(authStore.user.created_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/70 w-24 shrink-0">上次登录</dt><dd>{{ formatTime(authStore.user.last_login_at) }}</dd></div>
 				</dl>
 			</div>
 		</div>
@@ -37,41 +37,41 @@
 						<tbody>
 							<tr v-for="item in config.items" :key="item.key" class="hover">
 								<td><code class="text-xs">{{ item.key }}</code></td>
-								<td class="text-xs text-base-content/60">
+								<td class="text-sm text-base-content/60">
 									<span v-if="typeof item.default === 'boolean'">
-										<span class="badge badge-xs" :class="item.default ? 'badge-outline badge-success' : 'badge-ghost'">{{ item.default ? '已启用' : '未启用' }}</span>
+										<span class="badge badge-sm" :class="item.default ? 'badge-outline badge-success' : 'badge-ghost'">{{ item.default ? '已启用' : '未启用' }}</span>
 									</span>
 									<span v-else>{{ item.default === '' || item.default == null ? '—' : item.default }}</span>
 								</td>
 								<td>
 									<template v-if="editingKey === item.key">
 										<input v-if="typeof item.default === 'boolean'" type="checkbox" class="toggle toggle-sm toggle-primary" :checked="editingBool" @change="editingBool = ($event.target as HTMLInputElement).checked" />
-										<select v-else-if="selectOptions[item.key]" v-model="editingStr" class="select select-bordered select-xs w-32">
+										<select v-else-if="selectOptions[item.key]" v-model="editingStr" class="select select-sm w-32">
 											<option v-for="opt in selectOptions[item.key]" :key="opt" :value="opt">{{ opt }}</option>
 										</select>
-										<input v-else-if="secretKeys.has(item.key)" v-model="editingStr" type="password" class="input input-bordered input-xs w-64" placeholder="留空则不修改" />
-										<input v-else v-model="editingStr" type="text" class="input input-bordered input-xs w-64" />
+										<input v-else-if="secretKeys.has(item.key)" v-model="editingStr" type="password" class="input input-sm w-64" placeholder="留空则不修改" />
+										<input v-else v-model="editingStr" type="text" class="input input-sm w-64" />
 									</template>
 									<template v-else>
 										<span v-if="typeof item.value === 'boolean'">
-											<span class="badge badge-xs" :class="item.is_overridden ? 'badge-outline badge-warning' : item.value ? 'badge-outline badge-success' : 'badge-ghost'">{{ item.value ? '已启用' : '未启用' }}</span>
+											<span class="badge badge-sm" :class="item.is_overridden ? 'badge-outline badge-warning' : item.value ? 'badge-outline badge-success' : 'badge-ghost'">{{ item.value ? '已启用' : '未启用' }}</span>
 										</span>
-										<span v-else class="text-xs" :class="item.is_overridden ? 'text-warning' : 'text-base-content/70'">
+										<span v-else class="text-sm" :class="item.is_overridden ? 'text-warning' : 'text-base-content/60'">
 											{{ item.value === '' || item.value == null ? '—' : item.value }}
 										</span>
 									</template>
 								</td>
 								<td>
 									<template v-if="editingKey === item.key">
-										<div class="flex items-center gap-2 text-xs">
+										<div class="flex items-center gap-2 text-sm">
 											<button class="link link-primary" :class="{ 'opacity-50': operating }" @click="handleSave(item)">保存</button>
 											<button class="link" @click="cancelEdit">取消</button>
 										</div>
 									</template>
 									<template v-else>
-										<div class="flex items-center gap-2 text-xs">
+										<div class="flex items-center gap-2 text-sm">
 											<button class="link link-primary" @click="startEdit(item)">编辑</button>
-											<button v-if="item.is_overridden" class="link link-error" @click="handleReset(item.key)">重置</button>
+											<button v-if="item.is_overridden" class="link link-error" @click="confirmReset(item.key)">重置</button>
 										</div>
 									</template>
 								</td>
@@ -82,26 +82,41 @@
 			</div>
 		</div>
 
+		<!-- Reset config confirm modal -->
+		<dialog ref="resetModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">重置配置</h3>
+				<p class="py-4 text-sm">确定将 <code class="text-xs">{{ pendingResetKey }}</code> 重置为默认值？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="operating" @click="handleReset">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />重置
+					</button>
+					<button class="btn btn-ghost" @click="resetModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
 		<!-- Change password modal -->
 		<dialog ref="passwordModalRef" class="modal">
 			<div class="modal-box w-full max-w-md">
 				<h3 class="font-bold text-lg mb-4">修改密码</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">当前密码</span></div>
-						<input v-model="passwordForm.old_password" type="password" class="input input-bordered input-sm" :class="{ 'input-error': passwordErrors.old_password }" />
-						<div v-if="passwordErrors.old_password" class="label pt-1"><span class="label-text-alt text-error">{{ passwordErrors.old_password }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">新密码</span></div>
-						<input v-model="passwordForm.new_password" type="password" class="input input-bordered input-sm" :class="{ 'input-error': passwordErrors.new_password }" placeholder="至少 6 位" />
-						<div v-if="passwordErrors.new_password" class="label pt-1"><span class="label-text-alt text-error">{{ passwordErrors.new_password }}</span></div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">确认密码</span></div>
-						<input v-model="passwordForm.confirm_password" type="password" class="input input-bordered input-sm" :class="{ 'input-error': passwordErrors.confirm_password }" />
-						<div v-if="passwordErrors.confirm_password" class="label pt-1"><span class="label-text-alt text-error">{{ passwordErrors.confirm_password }}</span></div>
-					</label>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">当前密码</legend>
+						<input v-model="passwordForm.old_password" type="password" class="input w-full" :class="{ 'input-error': passwordErrors.old_password }" />
+						<p v-if="passwordErrors.old_password" class="fieldset-label text-error">{{ passwordErrors.old_password }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">新密码</legend>
+						<input v-model="passwordForm.new_password" type="password" class="input w-full" :class="{ 'input-error': passwordErrors.new_password }" placeholder="至少 6 位" />
+						<p v-if="passwordErrors.new_password" class="fieldset-label text-error">{{ passwordErrors.new_password }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">确认密码</legend>
+						<input v-model="passwordForm.confirm_password" type="password" class="input w-full" :class="{ 'input-error': passwordErrors.confirm_password }" />
+						<p v-if="passwordErrors.confirm_password" class="fieldset-label text-error">{{ passwordErrors.confirm_password }}</p>
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="passwordLoading" @click="handleChangePassword">
@@ -170,11 +185,17 @@ async function handleSave(record: ConfigItemResp) {
 	} catch { toast.error('保存失败'); }
 }
 
-async function handleReset(key: string) {
+const resetModalRef = ref<HTMLDialogElement>();
+const pendingResetKey = ref('');
+
+function confirmReset(key: string) { pendingResetKey.value = key; resetModalRef.value?.showModal(); }
+
+async function handleReset() {
 	try {
 		await executeOp(async () => {
-			config.value = await settingApi.resetConfig({ keys: [key] });
+			config.value = await settingApi.resetConfig({ keys: [pendingResetKey.value] });
 			needsRestart.value = true;
+			resetModalRef.value?.close();
 			toast.warning('已重置，请重启服务以生效');
 		});
 	} catch { toast.error('重置失败'); }

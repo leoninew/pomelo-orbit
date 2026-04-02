@@ -6,12 +6,10 @@
 
 				<form class="flex flex-col gap-4" @submit.prevent="handleLogin">
 					<!-- Username -->
-					<label class="form-control w-full">
-						<div class="label pb-1">
-							<span class="label-text">用户名</span>
-						</div>
-						<label class="input input-bordered flex items-center gap-2" :class="{ 'input-error': errors.username }">
-							<UserRound class="size-4 text-base-content/40 shrink-0" />
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">用户名</legend>
+						<label class="input w-full flex items-center gap-2" :class="{ 'input-error': errors.username }">
+							<UserRound class="size-4 text-base-content/60 shrink-0" />
 							<input
 								v-model="form.username"
 								type="text"
@@ -20,18 +18,14 @@
 								autocomplete="username"
 							/>
 						</label>
-						<div v-if="errors.username" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.username }}</span>
-						</div>
-					</label>
+						<p v-if="errors.username" class="fieldset-label text-error">{{ errors.username }}</p>
+					</fieldset>
 
 					<!-- Password -->
-					<label class="form-control w-full">
-						<div class="label pb-1">
-							<span class="label-text">密码</span>
-						</div>
-						<label class="input input-bordered flex items-center gap-2" :class="{ 'input-error': errors.password }">
-							<Lock class="size-4 text-base-content/40 shrink-0" />
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">密码</legend>
+						<label class="input w-full flex items-center gap-2" :class="{ 'input-error': errors.password }">
+							<Lock class="size-4 text-base-content/60 shrink-0" />
 							<input
 								v-model="form.password"
 								:type="showPassword ? 'text' : 'password'"
@@ -39,15 +33,13 @@
 								class="grow"
 								autocomplete="current-password"
 							/>
-							<button type="button" class="text-base-content/40 hover:text-base-content transition-colors" @click="showPassword = !showPassword">
+							<button type="button" class="text-base-content/60 hover:text-base-content transition-colors" @click="showPassword = !showPassword">
 								<Eye v-if="!showPassword" class="size-4" />
 								<EyeOff v-else class="size-4" />
 							</button>
 						</label>
-						<div v-if="errors.password" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.password }}</span>
-						</div>
-					</label>
+						<p v-if="errors.password" class="fieldset-label text-error">{{ errors.password }}</p>
+					</fieldset>
 
 					<button type="submit" class="btn btn-primary w-full mt-2" :disabled="loading">
 						<span v-if="loading" class="loading loading-spinner loading-sm" />

@@ -20,12 +20,12 @@
 				</thead>
 				<tbody>
 					<tr v-if="loading"><td colspan="5" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
-					<tr v-else-if="templates.length === 0"><td colspan="5" class="text-center py-8 text-base-content/40">暂无模板</td></tr>
+					<tr v-else-if="templates.length === 0"><td colspan="5" class="text-center py-8 text-base-content/60">暂无模板</td></tr>
 					<tr v-for="t in templates" :key="t.id" class="hover">
 						<td>
 							<div class="flex items-center gap-2">
 								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary font-medium">{{ t.name }}</router-link>
-								<span v-if="t.is_builtin" class="badge badge-xs badge-outline badge-info">内置</span>
+								<span v-if="t.is_builtin" class="badge badge-sm badge-outline badge-info">内置</span>
 							</div>
 						</td>
 						<td class="cell-muted max-w-xs truncate">{{ t.description || '—' }}</td>
@@ -81,7 +81,7 @@
 		<dialog ref="deleteModalRef" class="modal">
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除模板</h3>
-				<p class="py-4">确定删除此模板？</p>
+				<p class="py-4 text-sm">确定删除此模板？</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />删除

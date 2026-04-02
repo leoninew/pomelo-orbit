@@ -3,7 +3,7 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">部署记录</h1>
 			<label class="input input-sm input-bordered flex items-center gap-2">
-				<Search class="size-3.5 text-base-content/40" />
+				<Search class="size-3.5 text-base-content/60" />
 				<input v-model="searchText" type="text" placeholder="搜索应用名称" class="w-36" @keyup.enter="handleSearch" />
 			</label>
 		</div>
@@ -30,7 +30,7 @@
 						</td>
 					</tr>
 					<tr v-else-if="deployments.length === 0">
-						<td colspan="9" class="text-center py-8 text-base-content/40">暂无部署记录</td>
+						<td colspan="9" class="text-center py-8 text-base-content/60">暂无部署记录</td>
 					</tr>
 					<tr v-for="d in deployments" :key="d.id" class="hover">
 						<td>

@@ -1,160 +1,112 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div class="page-header">
-			<h2>Pipeline Runs</h2>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between">
+			<h1 class="text-xl font-semibold">Pipeline Runs</h1>
 		</div>
 
-		<a-table
-			:columns="columns"
-			:data-source="runs"
-			:loading="loading"
-			:pagination="pagination"
-			row-key="id"
-			@change="handleTableChange"
-		>
-			<template #bodyCell="{ column, record }">
-				<template v-if="column.key === 'id'">
-					<router-link :to="`/ci/runs/${record.id}`">
-						{{ record.id.substring(0, 12) }}
-					</router-link>
-				</template>
-				<template v-else-if="column.key === 'project_id'">
-					<router-link :to="`/ci/projects/${record.project_id}`">
-						{{ record.project_id.substring(0, 8) }}
-					</router-link>
-				</template>
-				<template v-else-if="column.key === 'trigger'">
-					<a-tag>{{ record.trigger }}</a-tag>
-				</template>
-				<template v-else-if="column.key === 'status'">
-					<a-tag :color="pipelineRunStatusColors[record.status]">
-						{{ record.status }}
-					</a-tag>
-				</template>
-				<template v-else-if="column.key === 'retry_of'">
-					<router-link v-if="record.retry_of" :to="`/ci/runs/${record.retry_of}`">
-						{{ record.retry_of.substring(0, 8) }}
-					</router-link>
-					<span v-else>-</span>
-				</template>
-				<template v-else-if="column.key === 'created_at'">
-					{{ formatTime(record.created_at) }}
-				</template>
-				<template v-else-if="column.key === 'actions'">
-					<a-space>
-						<a @click="$router.push(`/ci/runs/${record.id}`)">查看</a>
-						<a
-							v-if="record.status === 'failed' || record.status === 'success'"
-							@click="handleRetry(record.id)"
-						>
-							重试
-						</a>
-						<a-popconfirm
-							v-if="record.status === 'waiting' || record.status === 'running'"
-							title="确定取消此 Run？"
-							@confirm="handleCancel(record.id)"
-						>
-							<a style="color: #ff4d4f">取消</a>
-						</a-popconfirm>
-					</a-space>
-				</template>
-			</template>
-		</a-table>
-	</a-space>
+		<div class="card bg-base-100 shadow-sm overflow-x-auto">
+			<table class="table table-sm">
+				<thead>
+					<tr class="text-base-content/60">
+						<th>Run ID</th><th>Project</th><th>触发方式</th><th>Ref</th><th>状态</th><th>重试自</th><th>创建时间</th><th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-if="loading"><td colspan="8" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
+					<tr v-else-if="runs.length === 0"><td colspan="8" class="text-center py-8 text-base-content/40">暂无记录</td></tr>
+					<tr v-for="r in runs" :key="r.id" class="hover">
+						<td><router-link :to="`/ci/runs/${r.id}`" class="link link-primary cell-mono">{{ r.id.substring(0, 12) }}</router-link></td>
+						<td><router-link :to="`/ci/projects/${r.project_id}`" class="link link-primary cell-mono">{{ r.project_id.substring(0, 8) }}</router-link></td>
+						<td><span class="badge badge-xs badge-ghost">{{ r.trigger }}</span></td>
+						<td class="cell-muted">{{ r.trigger_ref }}</td>
+						<td><span class="badge badge-sm" :class="runBadgeClass(r.status)">{{ r.status }}</span></td>
+						<td>
+							<router-link v-if="r.retry_of" :to="`/ci/runs/${r.retry_of}`" class="link link-primary cell-mono">{{ r.retry_of.substring(0, 8) }}</router-link>
+							<span v-else class="text-base-content/40">—</span>
+						</td>
+						<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
+						<td>
+							<div class="flex items-center gap-2">
+								<router-link :to="`/ci/runs/${r.id}`" class="link link-primary">查看</router-link>
+								<button v-if="r.status === 'failed' || r.status === 'success'" class="link link-info" @click="handleRetry(r.id)">重试</button>
+								<button v-if="r.status === 'waiting' || r.status === 'running'" class="link link-error" @click="confirmCancel(r.id)">取消</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end p-3 border-t border-base-200">
+				<div class="join">
+					<button v-for="p in totalPages" :key="p" class="join-item btn btn-sm" :class="p === pagination.current ? 'btn-primary' : 'btn-ghost'" @click="goPage(p)">{{ p }}</button>
+				</div>
+			</div>
+		</div>
+
+		<dialog ref="cancelModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">取消 Run</h3>
+				<p class="py-4">确定取消此 Run？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" @click="handleCancel">确定</button>
+					<button class="btn btn-ghost" @click="cancelModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi } from '@/api/ci';
-import { formatTime } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 import type { PipelineRun } from '@/types/api';
-import { pipelineRunStatusColors } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
-
+const toast = useToast();
 const { loading, execute } = useStatusAsync();
 
 const runs = ref<PipelineRun[]>([]);
-const pagination = reactive({
-	current: 1,
-	pageSize: 20,
-	total: 0,
-	showSizeChanger: true,
-	showTotal: (total: number) => `共 ${total} 条`,
-});
+const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const cancelModalRef = ref<HTMLDialogElement>();
+const pendingCancelId = ref('');
 
-const columns = [
-	{ title: 'Run ID', key: 'id', width: 140 },
-	{ title: 'Project', key: 'project_id', width: 120 },
-	{ title: '触发方式', key: 'trigger', width: 100 },
-	{ title: 'Ref', key: 'trigger_ref', dataIndex: 'trigger_ref', width: 150 },
-	{ title: '状态', key: 'status', width: 100 },
-	{ title: '重试自', key: 'retry_of', width: 120 },
-	{ title: '创建时间', key: 'created_at', width: 180 },
-	{ title: '操作', key: 'actions', width: 150 },
-];
+const badgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', waiting: 'badge-warning', canceled: 'badge-ghost' };
+function runBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
 
 async function fetchRuns() {
 	try {
 		await execute(async () => {
 			const projectId = route.query.project_id as string | undefined;
-			const res = await pipelineRunApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				project_id: projectId,
-			});
-			runs.value = res.items;
-			pagination.total = res.total;
+			const res = await pipelineRunApi.list({ page: pagination.current, per_page: pagination.pageSize, project_id: projectId });
+			runs.value = res.items; pagination.total = res.total;
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取运行记录失败');
-	}
+	} catch { toast.error('获取运行记录失败'); }
 }
 
-function handleTableChange(pag: { current?: number; pageSize?: number }) {
-	pagination.current = pag.current || 1;
-	pagination.pageSize = pag.pageSize || 20;
-	fetchRuns();
-}
+function goPage(p: number) { pagination.current = p; fetchRuns(); }
 
 async function handleRetry(runId: string) {
 	try {
 		const newRun = await pipelineRunApi.retry(runId);
-		message.success(`重试成功，新 Run ID: ${newRun.id}`);
+		toast.success('重试成功');
 		router.push(`/ci/runs/${newRun.id}`);
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '重试失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '重试失败'); }
 }
 
-async function handleCancel(runId: string) {
+function confirmCancel(runId: string) { pendingCancelId.value = runId; cancelModalRef.value?.showModal(); }
+
+async function handleCancel() {
 	try {
-		await pipelineRunApi.cancel(runId);
-		message.success('已取消');
-		fetchRuns();
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '取消失败');
-	}
+		await pipelineRunApi.cancel(pendingCancelId.value);
+		toast.success('已取消'); cancelModalRef.value?.close(); fetchRuns();
+	} catch (error) { toast.error(error instanceof Error ? error.message : '取消失败'); }
 }
 
-onMounted(() => {
-	fetchRuns();
-});
+onMounted(fetchRuns);
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

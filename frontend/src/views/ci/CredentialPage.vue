@@ -1,240 +1,186 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div class="page-header">
-			<h2>凭据管理</h2>
-			<a-button type="primary" @click="showCreateModal">
-				<template #icon><PlusOutlined /></template>
-				新建凭据
-			</a-button>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">凭据管理</h1>
+			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+				<Plus class="size-4" />新建凭据
+			</button>
 		</div>
 
-		<a-table
-			:columns="columns"
-			:data-source="credentials"
-			:loading="loading"
-			:pagination="pagination"
-			row-key="id"
-			@change="handleTableChange"
-		>
-			<template #bodyCell="{ column, record }">
-				<template v-if="column.key === 'type'">
-					<a-tag>{{ credentialTypeLabels[record.type] }}</a-tag>
-				</template>
-				<template v-else-if="column.key === 'created_at'">
-					{{ formatTime(record.created_at) }}
-				</template>
-				<template v-else-if="column.key === 'actions'">
-					<a-space>
-						<a @click="showUpdateModal(record)">编辑</a>
-						<a-popconfirm
-							title="确定删除此凭据？"
-							ok-text="删除"
-							cancel-text="取消"
-							@confirm="handleDelete(record.id)"
-						>
-							<a style="color: #ff4d4f">删除</a>
-						</a-popconfirm>
-					</a-space>
-				</template>
-			</template>
-		</a-table>
+		<div class="card bg-base-100 shadow-sm overflow-x-auto">
+			<table class="table table-sm">
+				<thead>
+					<tr class="text-base-content/60">
+						<th>凭据名称</th><th>类型</th><th>创建时间</th><th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-if="loading"><td colspan="4" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
+					<tr v-else-if="credentials.length === 0"><td colspan="4" class="text-center py-8 text-base-content/40">暂无凭据</td></tr>
+					<tr v-for="c in credentials" :key="c.id" class="hover">
+						<td class="font-medium">{{ c.name }}</td>
+						<td><span class="badge badge-sm badge-ghost">{{ credentialTypeLabels[c.type] ?? c.type }}</span></td>
+						<td class="cell-muted">{{ formatTime(c.created_at) }}</td>
+						<td>
+							<div class="flex items-center gap-2">
+								<button class="link link-primary" @click="openEditModal(c)">编辑</button>
+								<button class="link link-error" @click="confirmDelete(c.id)">删除</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end p-3 border-t border-base-200">
+				<div class="join">
+					<button v-for="p in totalPages" :key="p" class="join-item btn btn-sm" :class="p === pagination.current ? 'btn-primary' : 'btn-ghost'" @click="goPage(p)">{{ p }}</button>
+				</div>
+			</div>
+		</div>
 
-		<!-- 创建/编辑凭据弹窗 -->
-		<a-modal
-			v-model:open="showModal"
-			:title="isEditing ? '编辑凭据' : '新建凭据'"
-			@ok="handleModalOk"
-		>
-			<a-form
-				ref="formRef"
-				:model="form"
-				:rules="formRules"
-				:label-col="{ span: 6 }"
-				:wrapper-col="{ span: 16 }"
-			>
-				<a-form-item label="凭据名称" name="name">
-					<a-input v-model:value="form.name" placeholder="例如: GitHub SSH Key" />
-				</a-form-item>
-				<a-form-item label="凭据类型" name="type">
-					<a-select v-model:value="form.type" :disabled="isEditing">
-						<a-select-option value="git_ssh">Git SSH</a-select-option>
-						<a-select-option value="git_token">Git Token</a-select-option>
-						<a-select-option value="registry_token">Registry Token</a-select-option>
-					</a-select>
-				</a-form-item>
-				<a-form-item label="凭据内容" name="data">
-					<a-textarea
-						v-model:value="form.data"
-						:rows="8"
-						:placeholder="getDataPlaceholder(form.type)"
-					/>
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleModalOk">保存</a-button>
-			</template>
-		</a-modal>
-	</a-space>
+		<!-- Create/Edit modal -->
+		<dialog ref="modalRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">{{ isEditing ? '编辑凭据' : '新建凭据' }}</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">凭据名称</span></div>
+						<input v-model="form.name" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.name }" placeholder="例如: GitHub SSH Key" />
+						<div v-if="errors.name" class="label pt-1"><span class="label-text-alt text-error">{{ errors.name }}</span></div>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">凭据类型</span></div>
+						<select v-model="form.type" class="select select-bordered select-sm" :disabled="isEditing">
+							<option value="git_ssh">Git SSH</option>
+							<option value="git_token">Git Token</option>
+							<option value="registry_token">Registry Token</option>
+						</select>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1">
+							<span class="label-text">凭据内容</span>
+							<span v-if="isEditing" class="label-text-alt text-base-content/40">留空则不修改</span>
+						</div>
+						<textarea v-model="form.data" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="8" :class="{ 'textarea-error': errors.data }" :placeholder="getDataPlaceholder(form.type)" />
+						<div v-if="errors.data" class="label pt-1"><span class="label-text-alt text-error">{{ errors.data }}</span></div>
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleModalOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+					</button>
+					<button class="btn btn-ghost" @click="modalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Delete confirm modal -->
+		<dialog ref="deleteModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除凭据</h3>
+				<p class="py-4">确定删除此凭据？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { Plus } from 'lucide-vue-next';
 import { ciCredentialApi } from '@/api/ci';
-import { formatTime } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 import type { Credential } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
 
+const toast = useToast();
 const { loading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const credentials = ref<Credential[]>([]);
-const pagination = reactive({
-	current: 1,
-	pageSize: 10,
-	total: 0,
-	showSizeChanger: true,
-	showTotal: (total: number) => `共 ${total} 条`,
-});
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
-const columns = [
-	{ title: '凭据名称', key: 'name', dataIndex: 'name' },
-	{ title: '类型', key: 'type', width: 150 },
-	{ title: '创建时间', key: 'created_at', width: 180 },
-	{ title: '操作', key: 'actions', width: 150 },
-];
-
-const showModal = ref(false);
+const modalRef = ref<HTMLDialogElement>();
+const deleteModalRef = ref<HTMLDialogElement>();
 const isEditing = ref(false);
 const currentId = ref('');
-const formRef = ref<FormInstance>();
+const pendingDeleteId = ref('');
 
-const form = reactive({
-	name: '',
-	type: 'git_ssh' as 'git_ssh' | 'git_token' | 'registry_token',
-	data: '',
-});
+const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+const errors = reactive({ name: '', data: '' });
 
-const formRules = {
-	name: [{ required: true, message: '请输入凭据名称' }],
-	type: [{ required: true, message: '请选择凭据类型' }],
-	data: [{ required: true, message: '请输入凭据内容' }],
-};
+function validate() {
+	errors.name = form.name.trim() ? '' : '请输入凭据名称';
+	errors.data = (!isEditing.value && !form.data.trim()) ? '请输入凭据内容' : '';
+	return !errors.name && !errors.data;
+}
 
 async function fetchCredentials() {
 	try {
 		await execute(async () => {
-			const res = await ciCredentialApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-			});
-			credentials.value = res.items;
-			pagination.total = res.total;
+			const res = await ciCredentialApi.list({ page: pagination.current, per_page: pagination.pageSize });
+			credentials.value = res.items; pagination.total = res.total;
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取凭据列表失败');
-	}
+	} catch { toast.error('获取凭据列表失败'); }
 }
 
-function handleTableChange(pag: { current?: number; pageSize?: number }) {
-	pagination.current = pag.current || 1;
-	pagination.pageSize = pag.pageSize || 10;
-	fetchCredentials();
+function goPage(p: number) { pagination.current = p; fetchCredentials(); }
+
+function openCreateModal() {
+	isEditing.value = false; currentId.value = '';
+	Object.assign(form, { name: '', type: 'git_ssh', data: '' });
+	Object.assign(errors, { name: '', data: '' });
+	modalRef.value?.showModal();
 }
 
-function showCreateModal() {
-	isEditing.value = false;
-	currentId.value = '';
-	Object.assign(form, {
-		name: '',
-		type: 'git_ssh',
-		data: '',
-	});
-	showModal.value = true;
-}
-
-function showUpdateModal(record: Credential) {
-	isEditing.value = true;
-	currentId.value = record.id;
-	Object.assign(form, {
-		name: record.name,
-		type: record.type,
-		data: '',
-	});
-	showModal.value = true;
+function openEditModal(record: Credential) {
+	isEditing.value = true; currentId.value = record.id;
+	Object.assign(form, { name: record.name, type: record.type, data: '' });
+	Object.assign(errors, { name: '', data: '' });
+	modalRef.value?.showModal();
 }
 
 async function handleModalOk() {
-	try {
-		await formRef.value?.validate();
-	} catch {
-		return;
-	}
-
+	if (!validate()) return;
 	try {
 		await executeOp(async () => {
 			if (isEditing.value) {
-				const payload: { name?: string; data?: string } = { name: form.name };
-				if (form.data) {
-					payload.data = form.data;
-				}
-				await ciCredentialApi.update(currentId.value, payload);
-				message.success('更新成功');
+				await ciCredentialApi.update(currentId.value, { name: form.name, ...(form.data ? { data: form.data } : {}) });
+				toast.success('更新成功');
 			} else {
-				await ciCredentialApi.create({
-					name: form.name,
-					type: form.type,
-					data: form.data,
-				});
-				message.success('创建成功');
+				await ciCredentialApi.create({ name: form.name, type: form.type, data: form.data });
+				toast.success('创建成功');
 			}
-			showModal.value = false;
-			fetchCredentials();
+			modalRef.value?.close(); fetchCredentials();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '操作失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '操作失败'); }
 }
 
-async function handleDelete(id: string) {
+function confirmDelete(id: string) { pendingDeleteId.value = id; deleteModalRef.value?.showModal(); }
+
+async function handleDelete() {
 	try {
 		await executeOp(async () => {
-			await ciCredentialApi.delete(id);
-			message.success('删除成功');
-			fetchCredentials();
+			await ciCredentialApi.delete(pendingDeleteId.value);
+			toast.success('删除成功'); deleteModalRef.value?.close(); fetchCredentials();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '删除失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '删除失败'); }
 }
 
-function getDataPlaceholder(type: string): string {
-	if (type === 'git_ssh') {
-		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
-	}
-	if (type === 'git_token') {
-		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
-	}
+function getDataPlaceholder(type: string) {
+	if (type === 'git_ssh') return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
+	if (type === 'git_token') return 'ghp_xxxxxxxxxxxxxxxxxxxx';
 	return 'registry_token_here';
 }
 
-onMounted(() => {
-	fetchCredentials();
-});
+onMounted(fetchCredentials);
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

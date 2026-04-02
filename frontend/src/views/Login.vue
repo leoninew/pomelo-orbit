@@ -1,82 +1,97 @@
 <template>
-	<div class="login-container">
-		<a-card class="login-card" title="Pomelo Orbit">
-			<a-form :model="form" :rules="rules" @finish="handleLogin">
-				<a-form-item name="username">
-					<a-input v-model:value="form.username" placeholder="用户名" size="large">
-						<template #prefix>
-							<UserOutlined />
-						</template>
-					</a-input>
-				</a-form-item>
-				<a-form-item name="password">
-					<a-input-password v-model:value="form.password" placeholder="密码" size="large">
-						<template #prefix>
-							<LockOutlined />
-						</template>
-					</a-input-password>
-				</a-form-item>
-				<a-form-item>
-					<a-button type="primary" html-type="submit" size="large" block :loading="loading">
+	<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-700">
+		<div class="card bg-base-100 w-96 shadow-2xl">
+			<div class="card-body gap-6">
+				<h1 class="text-2xl font-bold text-center">Pomelo Orbit</h1>
+
+				<form class="flex flex-col gap-4" @submit.prevent="handleLogin">
+					<!-- Username -->
+					<label class="form-control w-full">
+						<div class="label pb-1">
+							<span class="label-text">用户名</span>
+						</div>
+						<label class="input input-bordered flex items-center gap-2" :class="{ 'input-error': errors.username }">
+							<UserRound class="size-4 text-base-content/40 shrink-0" />
+							<input
+								v-model="form.username"
+								type="text"
+								placeholder="请输入用户名"
+								class="grow"
+								autocomplete="username"
+							/>
+						</label>
+						<div v-if="errors.username" class="label pt-1">
+							<span class="label-text-alt text-error">{{ errors.username }}</span>
+						</div>
+					</label>
+
+					<!-- Password -->
+					<label class="form-control w-full">
+						<div class="label pb-1">
+							<span class="label-text">密码</span>
+						</div>
+						<label class="input input-bordered flex items-center gap-2" :class="{ 'input-error': errors.password }">
+							<Lock class="size-4 text-base-content/40 shrink-0" />
+							<input
+								v-model="form.password"
+								:type="showPassword ? 'text' : 'password'"
+								placeholder="请输入密码"
+								class="grow"
+								autocomplete="current-password"
+							/>
+							<button type="button" class="text-base-content/40 hover:text-base-content transition-colors" @click="showPassword = !showPassword">
+								<Eye v-if="!showPassword" class="size-4" />
+								<EyeOff v-else class="size-4" />
+							</button>
+						</label>
+						<div v-if="errors.password" class="label pt-1">
+							<span class="label-text-alt text-error">{{ errors.password }}</span>
+						</div>
+					</label>
+
+					<button type="submit" class="btn btn-primary w-full mt-2" :disabled="loading">
+						<span v-if="loading" class="loading loading-spinner loading-sm" />
 						登录
-					</a-button>
-				</a-form-item>
-			</a-form>
-		</a-card>
+					</button>
+				</form>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useStatusAsync } from '@/composables/useStatusAsync';
+import { UserRound, Lock, Eye, EyeOff } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
+import { useToast } from '@/composables/useToast';
+import { useStatusAsync } from '@/composables/useStatusAsync';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const toast = useToast();
 const { loading, execute } = useStatusAsync();
 
-const form = reactive({
-	username: '',
-	password: '',
-});
+const showPassword = ref(false);
+const form = reactive({ username: '', password: '' });
+const errors = reactive({ username: '', password: '' });
 
-const rules = {
-	username: [{ required: true, message: '请输入用户名' }],
-	password: [{ required: true, message: '请输入密码' }],
-};
+function validate() {
+	errors.username = form.username.trim() ? '' : '请输入用户名';
+	errors.password = form.password ? '' : '请输入密码';
+	return !errors.username && !errors.password;
+}
 
 async function handleLogin() {
+	if (!validate()) return;
 	try {
 		await execute(async () => {
 			await authStore.login(form.username, form.password);
-			message.success('登录成功');
+			toast.success('登录成功');
 			router.push('/');
 		});
 	} catch (error) {
-		message.error(error instanceof Error ? error.message : '登录失败');
+		toast.error(error instanceof Error ? error.message : '登录失败');
 	}
 }
 </script>
-
-<style scoped>
-.login-container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 100vh;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.login-card {
-	width: 400px;
-	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.login-card :deep(.ant-card-head-title) {
-	text-align: center;
-	font-size: 24px;
-	font-weight: bold;
-}
-</style>

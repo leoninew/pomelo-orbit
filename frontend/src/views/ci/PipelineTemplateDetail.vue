@@ -1,203 +1,137 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div v-if="template" class="page-header">
-			<h2>
-				{{ template.name }}
-				<a-tag v-if="template.is_builtin" color="blue" style="margin-left: 8px">内置</a-tag>
-			</h2>
-			<a-space>
-				<a-button @click="$router.push('/ci/templates')">返回</a-button>
-				<a-button type="primary" @click="$router.push(`/ci/projects?template_id=${templateId}`)">
-					创建项目
-				</a-button>
-				<a-button v-if="!template.is_builtin" @click="showEditModal = true">编辑</a-button>
-			</a-space>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold flex items-center gap-2">
+				{{ template?.name ?? '模板详情' }}
+				<span v-if="template?.is_builtin" class="badge badge-sm badge-info">内置</span>
+			</h1>
+			<div class="flex items-center gap-2">
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')"><ArrowLeft class="size-4" />返回</button>
+				<button v-if="template && !template.is_builtin" class="btn btn-sm btn-ghost" @click="editModalRef?.showModal()">编辑</button>
+			</div>
 		</div>
 
-		<a-card title="基本信息" :loading="loading">
-			<a-descriptions v-if="template" :column="1" bordered size="small">
-				<a-descriptions-item label="模板名称">
-					{{ template.name }}
-				</a-descriptions-item>
-				<a-descriptions-item label="描述">
-					{{ template.description || '-' }}
-				</a-descriptions-item>
-				<a-descriptions-item label="类型">
-					<a-tag :color="template.is_builtin ? 'blue' : 'default'">
-						{{ template.is_builtin ? '内置模板' : '自定义模板' }}
-					</a-tag>
-				</a-descriptions-item>
-				<a-descriptions-item label="创建时间">
-					{{ formatTime(template.created_at) }}
-				</a-descriptions-item>
-				<a-descriptions-item label="更新时间">
-					{{ formatTime(template.updated_at) }}
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
+		<!-- Basic info -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">基本信息</h2>
+				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<dl v-else-if="template" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">模板名称</dt><dd>{{ template.name }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">类型</dt><dd><span class="badge badge-sm" :class="template.is_builtin ? 'badge-info' : 'badge-ghost'">{{ template.is_builtin ? '内置模板' : '自定义模板' }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">描述</dt><dd class="text-base-content/60">{{ template.description || '—' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(template.created_at) }}</dd></div>
+				</dl>
+			</div>
+		</div>
 
-		<a-card title="变量声明" :loading="loading">
-			<a-table
-				v-if="template && (template.variable_declarations ?? []).length > 0"
-				:columns="variableColumns"
-				:data-source="template.variable_declarations"
-				:pagination="false"
-				row-key="name"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'required'">
-						<a-tag :color="record.required ? 'red' : 'default'">
-							{{ record.required ? '必填' : '可选' }}
-						</a-tag>
-					</template>
-					<template v-else-if="column.key === 'default'">
-						<code v-if="record.default">{{ record.default }}</code>
-						<span v-else>-</span>
-					</template>
-				</template>
-			</a-table>
-			<a-empty v-else description="无变量声明" />
-		</a-card>
+		<!-- Variable declarations -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">变量声明</h2>
+				<div v-if="!template || (template.variable_declarations ?? []).length === 0" class="text-sm text-base-content/40 py-4 text-center">无变量声明</div>
+				<table v-else class="table table-sm">
+					<thead><tr class="text-base-content/60"><th>变量名</th><th>描述</th><th>必填</th><th>默认值</th></tr></thead>
+					<tbody>
+						<tr v-for="v in template.variable_declarations" :key="v.name" class="hover">
+							<td><code class="text-xs">{{ v.name }}</code></td>
+							<td class="cell-muted">{{ v.description || '—' }}</td>
+							<td><span class="badge badge-xs" :class="v.required ? 'badge-error' : 'badge-ghost'">{{ v.required ? '必填' : '可选' }}</span></td>
+							<td><code v-if="v.default" class="text-xs">{{ v.default }}</code><span v-else class="text-base-content/40">—</span></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 
-		<a-card title="Pipeline YAML" :loading="loading">
-			<CodeEditor
-				v-if="template"
-				v-model:value="template.content"
-				:style="{ height: '500px', border: '1px solid #d9d9d9', borderRadius: '4px' }"
-				:theme="'vs-dark'"
-				:language="'yaml'"
-				:options="{
-					readOnly: true,
-					minimap: { enabled: false },
-					fontSize: 14,
-					automaticLayout: true,
-				}"
-			/>
-		</a-card>
-
-		<!-- 编辑模板弹窗 -->
-		<a-modal v-model:open="showEditModal" title="编辑模板" width="800px" @ok="handleEditOk">
-			<a-form
-				ref="formRef"
-				:model="form"
-				:rules="formRules"
-				:label-col="{ span: 4 }"
-				:wrapper-col="{ span: 19 }"
-			>
-				<a-form-item label="模板名称" name="name">
-					<a-input v-model:value="form.name" />
-				</a-form-item>
-				<a-form-item label="描述">
-					<a-textarea v-model:value="form.description" :rows="2" />
-				</a-form-item>
-				<a-form-item label="Pipeline YAML" name="content">
-					<a-textarea
-						v-model:value="form.content"
-						:rows="12"
-						style="font-family: 'Consolas', 'Monaco', monospace"
+		<!-- Pipeline YAML -->
+		<div class="card bg-base-100 shadow-sm flex-1">
+			<div class="card-body p-5 flex flex-col">
+				<h2 class="font-semibold mb-3">Pipeline YAML</h2>
+				<div style="height: 500px">
+					<CodeEditor
+						v-if="template"
+						v-model:value="template.content"
+						:style="{ height: '100%' }"
+						theme="vs-dark"
+						language="yaml"
+						:options="{ readOnly: true, minimap: { enabled: false }, fontSize: 14, automaticLayout: true }"
 					/>
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showEditModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleEditOk">保存</a-button>
-			</template>
-		</a-modal>
-	</a-space>
+				</div>
+			</div>
+		</div>
+
+		<!-- Edit modal -->
+		<dialog ref="editModalRef" class="modal">
+			<div class="modal-box w-full max-w-2xl">
+				<h3 class="font-bold text-lg mb-4">编辑模板</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">模板名称</span></div>
+						<input v-model="editForm.name" type="text" class="input input-bordered input-sm" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">描述</span></div>
+						<textarea v-model="editForm.description" class="textarea textarea-bordered textarea-sm" rows="2" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">Pipeline YAML</span></div>
+						<textarea v-model="editForm.content" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="12" />
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+					</button>
+					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
-import { CodeEditor } from 'monaco-editor-vue3';
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft } from 'lucide-vue-next';
+import { CodeEditor } from 'monaco-editor-vue3';
 import { pipelineTemplateApi } from '@/api/ci';
-import { formatTime } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 import type { PipelineTemplate } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
 const templateId = route.params.id as string;
+const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const template = ref<PipelineTemplate>();
-const showEditModal = ref(false);
-const formRef = ref<FormInstance>();
-
-const variableColumns = [
-	{ title: '变量名', key: 'name', dataIndex: 'name', width: 200 },
-	{ title: '描述', key: 'description', dataIndex: 'description', ellipsis: true },
-	{ title: '必填', key: 'required', width: 100 },
-	{ title: '默认值', key: 'default', width: 200 },
-];
-
-const form = reactive({
-	name: '',
-	description: '',
-	content: '',
-});
-
-const formRules = {
-	name: [{ required: true, message: '请输入模板名称' }],
-	content: [{ required: true, message: '请输入 Pipeline YAML' }],
-};
+const editModalRef = ref<HTMLDialogElement>();
+const editForm = reactive({ name: '', description: '', content: '' });
 
 async function fetchTemplate() {
 	try {
 		await execute(async () => {
 			const data = await pipelineTemplateApi.get(templateId);
 			template.value = data;
-			form.name = data.name;
-			form.description = data.description || '';
-			form.content = data.content;
+			Object.assign(editForm, { name: data.name, description: data.description ?? '', content: data.content });
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取模板信息失败');
-		router.push('/ci/templates');
-	}
+	} catch { toast.error('获取模板信息失败'); router.push('/ci/templates'); }
 }
 
 async function handleEditOk() {
 	try {
-		await formRef.value?.validate();
-	} catch {
-		return;
-	}
-
-	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.update(templateId, {
-				name: form.name,
-				description: form.description || undefined,
-				content: form.content,
-			});
-			message.success('更新成功');
-			showEditModal.value = false;
-			fetchTemplate();
+			await pipelineTemplateApi.update(templateId, { name: editForm.name, description: editForm.description || undefined, content: editForm.content });
+			toast.success('更新成功'); editModalRef.value?.close(); fetchTemplate();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '更新失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
 }
 
-onMounted(() => {
-	fetchTemplate();
-});
+onMounted(fetchTemplate);
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

@@ -1,170 +1,130 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div v-if="run" class="page-header">
-			<h2>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold flex items-center gap-2">
 				Pipeline Run
-				<a-tag :color="pipelineRunStatusColors[run.status]" style="margin-left: 8px">
-					{{ run.status }}
-				</a-tag>
-			</h2>
-			<a-space>
-				<a-button @click="$router.push('/ci/runs')">返回</a-button>
-				<a-button
-					v-if="run.status === 'failed' || run.status === 'success'"
-					type="primary"
-					@click="handleRetry"
-				>
-					重试
-				</a-button>
-				<a-popconfirm
-					v-if="run.status === 'waiting' || run.status === 'running'"
-					title="确定取消此 Run？"
-					@confirm="handleCancel"
-				>
-					<a-button danger>取消</a-button>
-				</a-popconfirm>
-			</a-space>
+				<span v-if="run" class="badge badge-sm" :class="runBadgeClass(run.status)">{{ run.status }}</span>
+			</h1>
+			<div class="flex items-center gap-2">
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/runs')"><ArrowLeft class="size-4" />返回</button>
+				<button v-if="run?.status === 'failed' || run?.status === 'success'" class="btn btn-sm btn-primary" @click="handleRetry">重试</button>
+				<button v-if="run?.status === 'waiting' || run?.status === 'running'" class="btn btn-sm btn-error btn-ghost" @click="cancelModalRef?.showModal()">取消</button>
+			</div>
 		</div>
 
-		<!-- 基本信息卡片 -->
-		<a-card title="基本信息" :loading="loading">
-			<a-descriptions v-if="run" :column="2" bordered size="small">
-				<a-descriptions-item label="Run ID">
-					{{ run.id }}
-				</a-descriptions-item>
-				<a-descriptions-item label="Project">
-					<router-link :to="`/ci/projects/${run.project_id}`">
-						{{ run.project_id }}
-					</router-link>
-				</a-descriptions-item>
-				<a-descriptions-item label="触发方式">
-					<a-tag>{{ run.trigger }}</a-tag>
-				</a-descriptions-item>
-				<a-descriptions-item label="Ref">
-					{{ run.trigger_ref }}
-				</a-descriptions-item>
-				<a-descriptions-item label="状态">
-					<a-tag :color="pipelineRunStatusColors[run.status]">
-						{{ run.status }}
-					</a-tag>
-				</a-descriptions-item>
-				<a-descriptions-item label="重试自">
-					<router-link v-if="run.retry_of" :to="`/ci/runs/${run.retry_of}`">
-						{{ run.retry_of }}
-					</router-link>
-					<span v-else>-</span>
-				</a-descriptions-item>
-				<a-descriptions-item label="开始时间">
-					{{ run.started_at ? formatTime(run.started_at) : '-' }}
-				</a-descriptions-item>
-				<a-descriptions-item label="结束时间">
-					{{ run.finished_at ? formatTime(run.finished_at) : '-' }}
-				</a-descriptions-item>
-				<a-descriptions-item label="创建时间" :span="2">
-					{{ formatTime(run.created_at) }}
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
+		<!-- Basic info -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">基本信息</h2>
+				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<dl v-else-if="run" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Run ID</dt><dd class="font-mono text-xs">{{ run.id }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Project</dt><dd><router-link :to="`/ci/projects/${run.project_id}`" class="link link-primary text-xs">{{ run.project_id }}</router-link></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">触发方式</dt><dd><span class="badge badge-xs badge-ghost">{{ run.trigger }}</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Ref</dt><dd class="text-base-content/60">{{ run.trigger_ref }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">重试自</dt><dd><router-link v-if="run.retry_of" :to="`/ci/runs/${run.retry_of}`" class="link link-primary text-xs">{{ run.retry_of }}</router-link><span v-else class="text-base-content/40">—</span></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">开始时间</dt><dd class="text-xs text-base-content/60">{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">结束时间</dt><dd class="text-xs text-base-content/60">{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(run.created_at) }}</dd></div>
+				</dl>
+			</div>
+		</div>
 
-		<!-- Jobs 卡片 -->
-		<a-card title="Jobs" :loading="jobsLoading">
-			<a-table
-				v-if="jobs.length > 0"
-				:columns="jobColumns"
-				:data-source="jobs"
-				:pagination="false"
-				row-key="id"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'name'">
-						<a @click="showJobLogs(record)">{{ record.name }}</a>
-					</template>
-					<template v-else-if="column.key === 'status'">
-						<a-tag :color="jobStatusColors[record.status]">
-							{{ record.status }}
-						</a-tag>
-					</template>
-					<template v-else-if="column.key === 'started_at'">
-						{{ record.started_at ? formatTime(record.started_at) : '-' }}
-					</template>
-					<template v-else-if="column.key === 'finished_at'">
-						{{ record.finished_at ? formatTime(record.finished_at) : '-' }}
-					</template>
-				</template>
-			</a-table>
-			<a-empty v-else description="暂无 Job 记录" />
-		</a-card>
+		<!-- Jobs -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">Jobs</h2>
+				<div v-if="jobsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<div v-else-if="jobs.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无 Job 记录</div>
+				<table v-else class="table table-sm">
+					<thead><tr class="text-base-content/60"><th>Job 名称</th><th>状态</th><th>开始时间</th><th>结束时间</th></tr></thead>
+					<tbody>
+						<tr v-for="j in jobs" :key="j.id" class="hover cursor-pointer" @click="showJobLogs(j)">
+							<td class="link link-primary">{{ j.name }}</td>
+							<td><span class="badge badge-sm" :class="jobBadgeClass(j.status)">{{ j.status }}</span></td>
+							<td class="cell-muted">{{ j.started_at ? formatTime(j.started_at) : '—' }}</td>
+							<td class="cell-muted">{{ j.finished_at ? formatTime(j.finished_at) : '—' }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 
-		<!-- 制品卡片 -->
-		<a-card title="制品" :loading="artifactsLoading">
-			<a-table
-				v-if="artifacts.length > 0"
-				:columns="artifactColumns"
-				:data-source="artifacts"
-				:pagination="false"
-				row-key="id"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'type'">
-						<a-tag>{{ record.type }}</a-tag>
-					</template>
-					<template v-else-if="column.key === 'created_at'">
-						{{ formatTime(record.created_at) }}
-					</template>
-				</template>
-			</a-table>
-			<a-empty v-else description="暂无制品" />
-		</a-card>
+		<!-- Artifacts -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">制品</h2>
+				<div v-if="artifactsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<div v-else-if="artifacts.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无制品</div>
+				<table v-else class="table table-sm">
+					<thead><tr class="text-base-content/60"><th>Job</th><th>类型</th><th>名称</th><th>路径</th><th>创建时间</th></tr></thead>
+					<tbody>
+						<tr v-for="a in artifacts" :key="a.id" class="hover">
+							<td>{{ a.job_name }}</td>
+							<td><span class="badge badge-xs badge-ghost">{{ a.type }}</span></td>
+							<td>{{ a.name }}</td>
+							<td class="cell-muted max-w-xs truncate">{{ a.path }}</td>
+							<td class="cell-muted">{{ formatTime(a.created_at) }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 
-		<!-- Job 日志抽屉 -->
-		<a-drawer
-			v-model:open="showLogsDrawer"
-			:title="`Job: ${currentJob?.name || ''}`"
-			:width="800"
-			:loading="logsLoading"
-		>
-			<div v-if="currentJob">
-				<a-descriptions :column="1" bordered size="small" style="margin-bottom: 16px">
-					<a-descriptions-item label="状态">
-						<a-tag :color="jobStatusColors[currentJob.status]">
-							{{ currentJob.status }}
-						</a-tag>
-					</a-descriptions-item>
-					<a-descriptions-item label="开始时间">
-						{{ currentJob.started_at ? formatTime(currentJob.started_at) : '-' }}
-					</a-descriptions-item>
-					<a-descriptions-item label="结束时间">
-						{{ currentJob.finished_at ? formatTime(currentJob.finished_at) : '-' }}
-					</a-descriptions-item>
-					<a-descriptions-item v-if="currentJob.error_message" label="错误信息">
-						<pre style="margin: 0; white-space: pre-wrap; color: #ff4d4f">{{
-							currentJob.error_message
-						}}</pre>
-					</a-descriptions-item>
-				</a-descriptions>
-
-				<div class="log-container">
-					<pre v-if="logs?.content" class="log-content">{{ logsText }}</pre>
-					<a-empty v-else description="暂无日志" />
+		<!-- Job logs drawer -->
+		<div class="drawer drawer-end" :class="{ 'drawer-open': showLogsDrawer }">
+			<input id="job-logs-drawer" type="checkbox" class="drawer-toggle" :checked="showLogsDrawer" @change="showLogsDrawer = ($event.target as HTMLInputElement).checked" />
+			<div class="drawer-side z-40">
+				<label for="job-logs-drawer" class="drawer-overlay" @click="showLogsDrawer = false" />
+				<div class="w-[800px] max-w-full bg-base-100 h-full flex flex-col">
+					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
+						<h3 class="font-semibold">Job: {{ currentJob?.name }}</h3>
+						<button class="btn btn-sm btn-ghost btn-circle" @click="showLogsDrawer = false"><X class="size-4" /></button>
+					</div>
+					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
+						<dl v-if="currentJob" class="grid grid-cols-1 gap-y-2 text-sm">
+							<div class="flex gap-2"><dt class="text-base-content/50 w-20 shrink-0">状态</dt><dd><span class="badge badge-sm" :class="jobBadgeClass(currentJob.status)">{{ currentJob.status }}</span></dd></div>
+							<div v-if="currentJob.error_message" class="flex gap-2"><dt class="text-base-content/50 w-20 shrink-0">错误</dt><dd class="text-error text-xs">{{ currentJob.error_message }}</dd></div>
+						</dl>
+						<div v-if="logsLoading" class="flex justify-center py-8"><span class="loading loading-spinner loading-md text-primary" /></div>
+						<div v-else class="flex-1 bg-neutral rounded-box p-4 overflow-auto min-h-64">
+							<pre v-if="logsText" class="text-neutral-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">{{ logsText }}</pre>
+							<div v-else class="flex flex-col items-center gap-2 py-8 text-neutral-content/40"><FileX class="size-8" /><span class="text-sm">暂无日志</span></div>
+						</div>
+					</div>
 				</div>
 			</div>
-		</a-drawer>
-	</a-space>
+		</div>
+
+		<!-- Cancel confirm modal -->
+		<dialog ref="cancelModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">取消 Run</h3>
+				<p class="py-4">确定取消此 Run？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" @click="handleCancel">确定</button>
+					<button class="btn btn-ghost" @click="cancelModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft, X, FileX } from 'lucide-vue-next';
 import { jobApi, pipelineRunApi } from '@/api/ci';
-import { formatTime } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 import type { Artifact, Job, JobLog, PipelineRun } from '@/types/api';
-import { jobStatusColors, pipelineRunStatusColors } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
 const runId = route.params.id as string;
+const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
 const { loading: jobsLoading, execute: executeJobs } = useStatusAsync();
@@ -177,128 +137,51 @@ const artifacts = ref<Artifact[]>([]);
 const logs = ref<JobLog | null>(null);
 const currentJob = ref<Job>();
 const showLogsDrawer = ref(false);
+const cancelModalRef = ref<HTMLDialogElement>();
 
 const logsText = computed(() => logs.value?.content ?? '');
 
-const jobColumns = [
-	{ title: 'Job 名称', key: 'name', dataIndex: 'name' },
-	{ title: '状态', key: 'status', width: 120 },
-	{ title: '开始时间', key: 'started_at', width: 180 },
-	{ title: '结束时间', key: 'finished_at', width: 180 },
-];
-
-const artifactColumns = [
-	{ title: 'Job', key: 'job_name', dataIndex: 'job_name', width: 200 },
-	{ title: '类型', key: 'type', width: 150 },
-	{ title: '名称', key: 'name', dataIndex: 'name' },
-	{ title: '路径', key: 'path', dataIndex: 'path', ellipsis: true },
-	{ title: '创建时间', key: 'created_at', width: 180 },
-];
+const runBadgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', waiting: 'badge-warning', canceled: 'badge-ghost' };
+const jobBadgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', pending: 'badge-warning', skipped: 'badge-ghost' };
+function runBadgeClass(s: string) { return runBadgeMap[s] ?? 'badge-ghost'; }
+function jobBadgeClass(s: string) { return jobBadgeMap[s] ?? 'badge-ghost'; }
 
 async function fetchRun() {
 	try {
-		await execute(async () => {
-			const data = await pipelineRunApi.get(runId);
-			run.value = data;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取 Run 信息失败');
-		router.push('/ci/runs');
-	}
+		await execute(async () => { const data = await pipelineRunApi.get(runId); run.value = data; });
+	} catch { toast.error('获取 Run 信息失败'); router.push('/ci/runs'); }
 }
 
 async function fetchJobs() {
-	try {
-		await executeJobs(async () => {
-			const data = await pipelineRunApi.listJobs(runId);
-			jobs.value = data;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取 Jobs 失败');
-	}
+	try { await executeJobs(async () => { jobs.value = await pipelineRunApi.listJobs(runId); }); }
+	catch { /* silent */ }
 }
 
 async function fetchArtifacts() {
-	try {
-		await executeArtifacts(async () => {
-			const data = await pipelineRunApi.listArtifacts(runId);
-			artifacts.value = data;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取制品失败');
-	}
+	try { await executeArtifacts(async () => { artifacts.value = await pipelineRunApi.listArtifacts(runId); }); }
+	catch { /* silent */ }
 }
 
 async function showJobLogs(job: Job) {
-	currentJob.value = job;
-	showLogsDrawer.value = true;
-	logs.value = null;
-
-	try {
-		await executeLogs(async () => {
-			logs.value = await jobApi.listLogs(job.id);
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取日志失败');
-	}
+	currentJob.value = job; showLogsDrawer.value = true; logs.value = null;
+	try { await executeLogs(async () => { logs.value = await jobApi.listLogs(job.id); }); }
+	catch { toast.error('获取日志失败'); }
 }
 
 async function handleRetry() {
 	try {
 		const newRun = await pipelineRunApi.retry(runId);
-		message.success(`重试成功，新 Run ID: ${newRun.id}`);
+		toast.success('重试成功');
 		router.push(`/ci/runs/${newRun.id}`);
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '重试失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '重试失败'); }
 }
 
 async function handleCancel() {
 	try {
 		await pipelineRunApi.cancel(runId);
-		message.success('已取消');
-		fetchRun();
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '取消失败');
-	}
+		toast.success('已取消'); cancelModalRef.value?.close(); fetchRun();
+	} catch (error) { toast.error(error instanceof Error ? error.message : '取消失败'); }
 }
 
-onMounted(() => {
-	fetchRun();
-	fetchJobs();
-	fetchArtifacts();
-});
+onMounted(() => { fetchRun(); fetchJobs(); fetchArtifacts(); });
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-	display: flex;
-	align-items: center;
-}
-
-.log-container {
-	background: #1e1e1e;
-	border-radius: 4px;
-	padding: 16px;
-	max-height: calc(100vh - 400px);
-	overflow-y: auto;
-}
-
-.log-content {
-	color: #d4d4d4;
-	font-family: 'Consolas', 'Monaco', monospace;
-	font-size: 13px;
-	line-height: 1.5;
-	margin: 0;
-	white-space: pre-wrap;
-	word-wrap: break-word;
-}
-</style>

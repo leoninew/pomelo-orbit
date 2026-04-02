@@ -1,455 +1,333 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div v-if="project" class="page-header">
-			<h2>{{ project.name }}</h2>
-			<a-space>
-				<a-button @click="$router.push('/ci/projects')">返回</a-button>
-				<a-button type="primary" @click="openTriggerModal">手动触发</a-button>
-				<a-button @click="showEditModal = true">编辑</a-button>
-			</a-space>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">{{ project?.name ?? '项目详情' }}</h1>
+			<div class="flex items-center gap-2">
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/projects')"><ArrowLeft class="size-4" />返回</button>
+				<button class="btn btn-sm btn-primary gap-1" @click="openTriggerModal"><Play class="size-4" />手动触发</button>
+				<button class="btn btn-sm btn-ghost" @click="openEditModal">编辑</button>
+			</div>
 		</div>
 
-		<!-- 基本信息卡片 -->
-		<a-card title="基本信息" :loading="loading">
-			<a-descriptions v-if="project" :column="2" bordered size="small">
-				<a-descriptions-item label="项目名称">
-					{{ project.name }}
-				</a-descriptions-item>
-				<a-descriptions-item label="仓库地址">
-					{{ project.repository_url }}
-				</a-descriptions-item>
-				<a-descriptions-item label="流水线模板">
-					<router-link :to="`/ci/templates/${project.pipeline_template_id}`">查看模板</router-link>
-				</a-descriptions-item>
-				<a-descriptions-item label="Git 凭据">
-					{{ project.git_credential_id ? '已配置' : '未配置' }}
-				</a-descriptions-item>
-				<a-descriptions-item label="分支过滤">
-					{{ project.branch_filter || '所有分支' }}
-				</a-descriptions-item>
-				<a-descriptions-item label="默认分支">
-					{{ project.default_branch }}
-				</a-descriptions-item>
-				<a-descriptions-item label="创建时间">
-					{{ formatTime(project.created_at) }}
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
+		<!-- Basic info -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">基本信息</h2>
+				<div v-if="loading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<dl v-else-if="project" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">项目名称</dt><dd>{{ project.name }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">仓库地址</dt><dd class="text-xs truncate">{{ project.repository_url }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">流水线模板</dt><dd><router-link :to="`/ci/templates/${project.pipeline_template_id}`" class="link link-primary text-xs">查看模板</router-link></dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">Git 凭据</dt><dd class="text-base-content/60">{{ project.git_credential_id ? '已配置' : '未配置' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">分支过滤</dt><dd class="text-base-content/60">{{ project.branch_filter || '所有分支' }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">默认分支</dt><dd class="text-base-content/60">{{ project.default_branch }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(project.created_at) }}</dd></div>
+				</dl>
+			</div>
+		</div>
 
-		<!-- Webhook 配置卡片 -->
-		<a-card title="Webhook 配置" :loading="loading">
-			<a-descriptions v-if="project" :column="1" bordered size="small">
-				<a-descriptions-item label="Webhook URL">
-					<a-typography-text copyable>
-						{{ webhookUrl }}
-					</a-typography-text>
-				</a-descriptions-item>
-				<a-descriptions-item label="Webhook Secret">
-					<a-space>
-						<a-typography-text v-if="showSecret" copyable>
-							{{ project.webhook_secret }}
-						</a-typography-text>
-						<a-typography-text v-else>••••••••••••••••</a-typography-text>
-						<a-button size="small" @click="showSecret = !showSecret">
-							{{ showSecret ? '隐藏' : '显示' }}
-						</a-button>
-					</a-space>
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
+		<!-- Webhook -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">Webhook 配置</h2>
+				<dl v-if="project" class="flex flex-col gap-3 text-sm">
+					<div class="flex gap-2 items-start">
+						<dt class="text-base-content/50 w-32 shrink-0">Webhook URL</dt>
+						<dd class="flex items-center gap-2">
+							<code class="text-xs bg-base-200 px-2 py-1 rounded break-all">{{ webhookUrl }}</code>
+							<button class="btn btn-xs btn-ghost" @click="copyText(webhookUrl)"><Copy class="size-3" /></button>
+						</dd>
+					</div>
+					<div class="flex gap-2 items-center">
+						<dt class="text-base-content/50 w-32 shrink-0">Webhook Secret</dt>
+						<dd class="flex items-center gap-2">
+							<code class="text-xs bg-base-200 px-2 py-1 rounded">{{ showSecret ? project.webhook_secret : '••••••••••••••••' }}</code>
+							<button class="btn btn-xs btn-ghost" @click="showSecret = !showSecret">{{ showSecret ? '隐藏' : '显示' }}</button>
+							<button v-if="showSecret" class="btn btn-xs btn-ghost" @click="copyText(project.webhook_secret ?? '')"><Copy class="size-3" /></button>
+						</dd>
+					</div>
+				</dl>
+			</div>
+		</div>
 
-		<!-- 变量配置卡片 -->
-		<a-card title="变量配置" :loading="loading">
-			<template #extra>
-				<a-button size="small" type="primary" @click="openAddVariableModal">添加变量</a-button>
-			</template>
-			<a-table
-				v-if="project && Object.keys(project.variable_overrides ?? {}).length > 0"
-				:columns="variableColumns"
-				:data-source="variableList"
-				:pagination="false"
-				row-key="key"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'value'">
-						<code>{{ record.value }}</code>
-					</template>
-					<template v-if="column.key === 'action'">
-						<a-space>
-							<a @click="openEditVariableModal(record.key, record.value)">编辑</a>
-							<a-popconfirm title="确定删除此变量？" @confirm="deleteVariable(record.key)">
-								<a style="color: #ff4d4f">删除</a>
-							</a-popconfirm>
-						</a-space>
-					</template>
-				</template>
-			</a-table>
-			<a-empty v-else description="未配置变量" />
-		</a-card>
+		<!-- Variables -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="font-semibold">变量配置</h2>
+					<button class="btn btn-xs btn-primary gap-1" @click="openAddVarModal"><Plus class="size-3" />添加变量</button>
+				</div>
+				<div v-if="variableList.length === 0" class="text-sm text-base-content/40 py-4 text-center">未配置变量</div>
+				<table v-else class="table table-sm">
+					<thead><tr class="text-base-content/60"><th>变量名</th><th>变量值</th><th>操作</th></tr></thead>
+					<tbody>
+						<tr v-for="v in variableList" :key="v.key" class="hover">
+							<td><code class="text-xs">{{ v.key }}</code></td>
+							<td><code class="text-xs">{{ v.value }}</code></td>
+							<td>
+								<div class="flex items-center gap-2">
+									<button class="link link-primary" @click="openEditVarModal(v.key, v.value)">编辑</button>
+									<button class="link link-error" @click="deleteVariable(v.key)">删除</button>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 
-		<!-- Pipeline Runs 卡片 -->
-		<a-card title="Pipeline Runs" :loading="runsLoading">
-			<template #extra>
-				<a @click="$router.push(`/ci/runs?project_id=${project?.id}`)">查看全部</a>
-			</template>
-			<a-table
-				v-if="runs.length > 0"
-				:columns="runColumns"
-				:data-source="runs"
-				:pagination="false"
-				row-key="id"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'id'">
-						<router-link :to="`/ci/runs/${record.id}`">
-							{{ record.id.substring(0, 8) }}
-						</router-link>
-					</template>
-					<template v-else-if="column.key === 'trigger'">
-						<a-tag>{{ record.trigger }}</a-tag>
-					</template>
-					<template v-else-if="column.key === 'status'">
-						<a-tag :color="pipelineRunStatusColors[record.status]">
-							{{ record.status }}
-						</a-tag>
-					</template>
-					<template v-else-if="column.key === 'created_at'">
-						{{ formatTime(record.created_at) }}
-					</template>
-				</template>
-			</a-table>
-			<a-empty v-else description="暂无运行记录" />
-		</a-card>
+		<!-- Recent runs -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="font-semibold">Pipeline Runs</h2>
+					<router-link :to="`/ci/runs?project_id=${project?.id}`" class="link link-primary text-xs">查看全部</router-link>
+				</div>
+				<div v-if="runsLoading" class="flex justify-center py-6"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<div v-else-if="runs.length === 0" class="text-sm text-base-content/40 py-4 text-center">暂无运行记录</div>
+				<table v-else class="table table-sm">
+					<thead><tr class="text-base-content/60"><th>Run ID</th><th>触发方式</th><th>Ref</th><th>状态</th><th>创建时间</th></tr></thead>
+					<tbody>
+						<tr v-for="r in runs" :key="r.id" class="hover">
+							<td><router-link :to="`/ci/runs/${r.id}`" class="link link-primary cell-mono">{{ r.id.substring(0, 12) }}</router-link></td>
+							<td><span class="badge badge-xs badge-ghost">{{ r.trigger }}</span></td>
+							<td class="cell-muted">{{ r.trigger_ref }}</td>
+							<td><span class="badge badge-sm" :class="runBadgeClass(r.status)">{{ r.status }}</span></td>
+							<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 
-		<!-- 触发构建弹窗 -->
-		<a-modal v-model:open="showTriggerModal" title="触发构建" @ok="handleTriggerOk">
-			<a-form layout="vertical">
-				<a-form-item label="分支">
-					<a-input v-model:value="triggerRef" placeholder="输入分支名" />
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showTriggerModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleTriggerOk">触发</a-button>
-			</template>
-		</a-modal>
+		<!-- Trigger modal -->
+		<dialog ref="triggerModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg mb-4">手动触发</h3>
+				<label class="form-control w-full">
+					<div class="label pb-1"><span class="label-text">分支</span></div>
+					<input v-model="triggerRef" type="text" class="input input-bordered input-sm" placeholder="输入分支名" />
+				</label>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleTriggerOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />触发
+					</button>
+					<button class="btn btn-ghost" @click="triggerModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 
-		<!-- 编辑项目弹窗 -->
-		<a-modal v-model:open="showEditModal" title="编辑项目" width="600px" @ok="handleEditOk">
-			<a-form
-				ref="formRef"
-				:model="form"
-				:rules="formRules"
-				:label-col="{ span: 6 }"
-				:wrapper-col="{ span: 17 }"
-			>
-				<a-form-item label="项目名称" name="name">
-					<a-input v-model:value="form.name" />
-				</a-form-item>
-				<a-form-item label="仓库地址" name="repository_url">
-					<a-input v-model:value="form.repository_url" />
-				</a-form-item>
-				<a-form-item label="流水线模板" name="pipeline_template_id">
-					<a-select v-model:value="form.pipeline_template_id" :loading="templatesLoading">
-						<a-select-option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
-							{{ tpl.name }}
-						</a-select-option>
-					</a-select>
-				</a-form-item>
-				<a-form-item label="Git 凭据">
-					<a-select
-						v-model:value="form.git_credential_id"
-						:loading="credentialsLoading"
-						allow-clear
-					>
-						<a-select-option v-for="cred in gitCredentials" :key="cred.id" :value="cred.id">
-							{{ cred.name }}
-						</a-select-option>
-					</a-select>
-				</a-form-item>
-				<a-form-item label="分支过滤">
-					<a-input v-model:value="form.branch_filter" />
-				</a-form-item>
-				<a-form-item label="默认分支">
-					<a-input v-model:value="form.default_branch" placeholder="master" />
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showEditModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleEditOk">保存</a-button>
-			</template>
-		</a-modal>
+		<!-- Edit modal -->
+		<dialog ref="editModalRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">编辑项目</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">项目名称</span></div>
+						<input v-model="editForm.name" type="text" class="input input-bordered input-sm" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">仓库地址</span></div>
+						<input v-model="editForm.repository_url" type="text" class="input input-bordered input-sm" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">流水线模板</span></div>
+						<select v-model="editForm.pipeline_template_id" class="select select-bordered select-sm">
+							<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
+						</select>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">Git 凭据</span></div>
+						<select v-model="editForm.git_credential_id" class="select select-bordered select-sm">
+							<option value="">不使用凭据</option>
+							<option v-for="cred in gitCredentials" :key="cred.id" :value="cred.id">{{ cred.name }}</option>
+						</select>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">分支过滤</span></div>
+						<input v-model="editForm.branch_filter" type="text" class="input input-bordered input-sm" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">默认分支</span></div>
+						<input v-model="editForm.default_branch" type="text" class="input input-bordered input-sm" placeholder="master" />
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+					</button>
+					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 
-		<!-- 添加变量弹窗 -->
-		<a-modal v-model:open="showAddVariableModal" title="添加变量" @ok="handleAddVariableOk">
-			<a-form layout="vertical">
-				<a-form-item label="变量名">
-					<a-input v-model:value="newVariableKey" placeholder="变量名" />
-				</a-form-item>
-				<a-form-item label="变量值">
-					<a-input v-model:value="newVariableValue" placeholder="变量值" />
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showAddVariableModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleAddVariableOk">保存</a-button>
-			</template>
-		</a-modal>
+		<!-- Add variable modal -->
+		<dialog ref="addVarModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg mb-4">添加变量</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">变量名</span></div>
+						<input v-model="newVarKey" type="text" class="input input-bordered input-sm" placeholder="变量名" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">变量值</span></div>
+						<input v-model="newVarValue" type="text" class="input input-bordered input-sm" placeholder="变量值" />
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleAddVarOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+					</button>
+					<button class="btn btn-ghost" @click="addVarModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 
-		<!-- 编辑变量弹窗 -->
-		<a-modal v-model:open="showEditVariableModal" title="编辑变量" @ok="handleEditVariableOk">
-			<a-form layout="vertical">
-				<a-form-item label="变量名">
-					<a-input :value="editingVariableKey" disabled />
-				</a-form-item>
-				<a-form-item label="变量值">
-					<a-input v-model:value="editingVariableValue" placeholder="变量值" />
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showEditVariableModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleEditVariableOk">保存</a-button>
-			</template>
-		</a-modal>
-	</a-space>
+		<!-- Edit variable modal -->
+		<dialog ref="editVarModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg mb-4">编辑变量</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">变量名</span></div>
+						<input :value="editingVarKey" type="text" class="input input-bordered input-sm opacity-60" disabled />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">变量值</span></div>
+						<input v-model="editingVarValue" type="text" class="input input-bordered input-sm" />
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleEditVarOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+					</button>
+					<button class="btn btn-ghost" @click="editVarModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft, Play, Plus, Copy } from 'lucide-vue-next';
 import { ciCredentialApi, pipelineRunApi, pipelineTemplateApi, projectApi } from '@/api/ci';
-import { formatTime } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 import type { Credential, PipelineRun, PipelineTemplate, Project } from '@/types/api';
-import { pipelineRunStatusColors } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
 const projectId = route.params.id as string;
+const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: runsLoading, execute: executeRuns } = useStatusAsync();
-const { loading: templatesLoading, execute: executeTemplates } = useStatusAsync();
-const { loading: credentialsLoading, execute: executeCredentials } = useStatusAsync();
 
 const project = ref<Project>();
 const runs = ref<PipelineRun[]>([]);
 const templates = ref<PipelineTemplate[]>([]);
 const credentials = ref<Credential[]>([]);
-
-const gitCredentials = computed(() =>
-	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
-);
-
+const gitCredentials = computed(() => credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token'));
 const showSecret = ref(false);
-const showEditModal = ref(false);
-const showTriggerModal = ref(false);
-const showAddVariableModal = ref(false);
-const showEditVariableModal = ref(false);
-const formRef = ref<FormInstance>();
+
+const triggerModalRef = ref<HTMLDialogElement>();
+const editModalRef = ref<HTMLDialogElement>();
+const addVarModalRef = ref<HTMLDialogElement>();
+const editVarModalRef = ref<HTMLDialogElement>();
+
 const triggerRef = ref('');
+const editForm = reactive({ name: '', repository_url: '', pipeline_template_id: '', git_credential_id: '', branch_filter: '', default_branch: 'master' });
+const newVarKey = ref('');
+const newVarValue = ref('');
+const editingVarKey = ref('');
+const editingVarValue = ref('');
 
-const webhookUrl = computed(() => {
-	if (!project.value) return '';
-	const baseUrl = window.location.origin;
-	return `${baseUrl}/api/v1/ci/webhooks/git`;
-});
+const webhookUrl = computed(() => `${window.location.origin}/api/v1/ci/webhooks/git`);
+const variableList = computed(() => Object.entries(project.value?.variable_overrides ?? {}).map(([key, value]) => ({ key, value })));
 
-const variableList = computed(() => {
-	if (!project.value) return [];
-	return Object.entries(project.value.variable_overrides ?? {}).map(([key, value]) => ({
-		key,
-		value,
-	}));
-});
+const runBadgeMap: Record<string, string> = { success: 'badge-success', failed: 'badge-error', running: 'badge-info', waiting: 'badge-warning', canceled: 'badge-ghost' };
+function runBadgeClass(s: string) { return runBadgeMap[s] ?? 'badge-ghost'; }
 
-const variableColumns = [
-	{ title: '变量名', key: 'key', dataIndex: 'key' },
-	{ title: '变量值', key: 'value', dataIndex: 'value' },
-	{ title: '操作', key: 'action', width: 120 },
-];
-
-const runColumns = [
-	{ title: 'Run ID', key: 'id', width: 120 },
-	{ title: '触发方式', key: 'trigger', width: 100 },
-	{ title: 'Ref', key: 'trigger_ref', dataIndex: 'trigger_ref', width: 150 },
-	{ title: '状态', key: 'status', width: 100 },
-	{ title: '创建时间', key: 'created_at', width: 180 },
-];
-
-const form = reactive({
-	name: '',
-	repository_url: '',
-	pipeline_template_id: '',
-	git_credential_id: undefined as string | undefined,
-	branch_filter: '',
-	default_branch: 'master',
-});
-
-const formRules = {
-	name: [{ required: true, message: '请输入项目名称' }],
-	repository_url: [{ required: true, message: '请输入仓库地址' }],
-	pipeline_template_id: [{ required: true, message: '请选择 流水线模板' }],
-};
-
-const newVariableKey = ref('');
-const newVariableValue = ref('');
-const editingVariableKey = ref('');
-const editingVariableValue = ref('');
+async function copyText(text: string) {
+	await navigator.clipboard.writeText(text);
+	toast.success('已复制');
+}
 
 async function fetchProject() {
 	try {
 		await execute(async () => {
 			const data = await projectApi.get(projectId);
 			project.value = data;
-			form.name = data.name;
-			form.repository_url = data.repository_url;
-			form.pipeline_template_id = data.pipeline_template_id;
-			form.git_credential_id = data.git_credential_id;
-			form.branch_filter = data.branch_filter || '';
-			form.default_branch = data.default_branch || 'master';
+			Object.assign(editForm, { name: data.name, repository_url: data.repository_url, pipeline_template_id: data.pipeline_template_id, git_credential_id: data.git_credential_id ?? '', branch_filter: data.branch_filter ?? '', default_branch: data.default_branch ?? 'master' });
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取项目信息失败');
-		router.push('/ci/projects');
-	}
+	} catch { toast.error('获取项目信息失败'); router.push('/ci/projects'); }
 }
 
 async function fetchRuns() {
 	try {
 		await executeRuns(async () => {
-			const res = await pipelineRunApi.list({
-				project_id: projectId,
-				per_page: 10,
-			});
+			const res = await pipelineRunApi.list({ project_id: projectId, per_page: 10 });
 			runs.value = res.items;
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取运行记录失败');
-	}
+	} catch { /* silent */ }
 }
 
-async function fetchTemplates() {
-	try {
-		await executeTemplates(async () => {
-			const res = await pipelineTemplateApi.list({ per_page: 100 });
-			templates.value = res.items;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取模板列表失败');
-	}
-}
-
-async function fetchCredentials() {
-	try {
-		await executeCredentials(async () => {
-			const res = await ciCredentialApi.list({ per_page: 100 });
-			credentials.value = res.items;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取凭据列表失败');
-	}
-}
-
-function openTriggerModal() {
-	triggerRef.value = project.value?.default_branch || 'master';
-	showTriggerModal.value = true;
-}
+function openTriggerModal() { triggerRef.value = project.value?.default_branch || 'master'; triggerModalRef.value?.showModal(); }
 
 async function handleTriggerOk() {
 	try {
 		await executeOp(async () => {
 			const run = await projectApi.trigger(projectId, { trigger_ref: triggerRef.value });
-			message.success(`触发成功，Run ID: ${run.id}`);
-			showTriggerModal.value = false;
+			toast.success('触发成功'); triggerModalRef.value?.close();
 			router.push(`/ci/runs/${run.id}`);
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '触发失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '触发失败'); }
+}
+
+async function openEditModal() {
+	const [tplRes, credRes] = await Promise.all([pipelineTemplateApi.list({ per_page: 100 }), ciCredentialApi.list({ per_page: 100 })]);
+	templates.value = tplRes.items; credentials.value = credRes.items;
+	editModalRef.value?.showModal();
 }
 
 async function handleEditOk() {
 	try {
-		await formRef.value?.validate();
-	} catch {
-		return;
-	}
+		await executeOp(async () => {
+			await projectApi.update(projectId, { name: editForm.name, repository_url: editForm.repository_url, pipeline_template_id: editForm.pipeline_template_id, git_credential_id: editForm.git_credential_id || undefined, branch_filter: editForm.branch_filter || undefined, default_branch: editForm.default_branch || 'master' });
+			toast.success('更新成功'); editModalRef.value?.close(); fetchProject();
+		});
+	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
+}
 
+function openAddVarModal() { newVarKey.value = ''; newVarValue.value = ''; addVarModalRef.value?.showModal(); }
+function openEditVarModal(key: string, value: string) { editingVarKey.value = key; editingVarValue.value = value; editVarModalRef.value?.showModal(); }
+
+async function handleAddVarOk() {
+	if (!newVarKey.value.trim()) { toast.error('请输入变量名'); return; }
 	try {
 		await executeOp(async () => {
-			await projectApi.update(projectId, {
-				name: form.name,
-				repository_url: form.repository_url,
-				pipeline_template_id: form.pipeline_template_id,
-				git_credential_id: form.git_credential_id,
-				branch_filter: form.branch_filter || undefined,
-				default_branch: form.default_branch || 'master',
-			});
-			message.success('更新成功');
-			showEditModal.value = false;
-			fetchProject();
+			await projectApi.update(projectId, { variable_overrides: { ...project.value?.variable_overrides, [newVarKey.value]: newVarValue.value } });
+			toast.success('添加成功'); addVarModalRef.value?.close(); fetchProject();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '更新失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '添加失败'); }
 }
 
-function openAddVariableModal() {
-	newVariableKey.value = '';
-	newVariableValue.value = '';
-	showAddVariableModal.value = true;
-}
-
-function openEditVariableModal(key: string, value: string) {
-	editingVariableKey.value = key;
-	editingVariableValue.value = value;
-	showEditVariableModal.value = true;
-}
-
-async function handleAddVariableOk() {
-	if (!newVariableKey.value.trim()) {
-		message.error('请输入变量名');
-		return;
-	}
-	if (project.value?.variable_overrides?.[newVariableKey.value] !== undefined) {
-		message.error('变量名已存在，请使用编辑功能修改');
-		return;
-	}
+async function handleEditVarOk() {
 	try {
 		await executeOp(async () => {
-			const updated = {
-				...project.value?.variable_overrides,
-				[newVariableKey.value]: newVariableValue.value,
-			};
-			await projectApi.update(projectId, { variable_overrides: updated });
-			message.success('添加成功');
-			showAddVariableModal.value = false;
-			fetchProject();
+			await projectApi.update(projectId, { variable_overrides: { ...project.value?.variable_overrides, [editingVarKey.value]: editingVarValue.value } });
+			toast.success('更新成功'); editVarModalRef.value?.close(); fetchProject();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '添加失败');
-	}
-}
-
-async function handleEditVariableOk() {
-	try {
-		await executeOp(async () => {
-			const updated = {
-				...project.value?.variable_overrides,
-				[editingVariableKey.value]: editingVariableValue.value,
-			};
-			await projectApi.update(projectId, { variable_overrides: updated });
-			message.success('更新成功');
-			showEditVariableModal.value = false;
-			fetchProject();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '更新失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
 }
 
 async function deleteVariable(key: string) {
@@ -458,31 +336,10 @@ async function deleteVariable(key: string) {
 			const updated = { ...project.value?.variable_overrides };
 			delete updated[key];
 			await projectApi.update(projectId, { variable_overrides: updated });
-			message.success('删除成功');
-			fetchProject();
+			toast.success('删除成功'); fetchProject();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '删除失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '删除失败'); }
 }
 
-onMounted(() => {
-	fetchProject();
-	fetchRuns();
-	fetchTemplates();
-	fetchCredentials();
-});
+onMounted(() => { fetchProject(); fetchRuns(); });
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

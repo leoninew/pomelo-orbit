@@ -1,237 +1,173 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div class="page-header">
-			<h2>系统设置</h2>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between">
+			<h1 class="text-xl font-semibold">系统设置</h1>
 		</div>
 
-		<a-card title="用户信息">
-			<template #extra>
-				<a-button type="primary" @click="showChangePasswordModal = true">修改密码</a-button>
-			</template>
-			<a-descriptions v-if="authStore.user" :column="1" bordered size="small">
-				<a-descriptions-item label="用户名">
-					{{ authStore.user.username }}
-				</a-descriptions-item>
-				<a-descriptions-item label="创建时间">
-					{{ formatTime(authStore.user.created_at) }}
-				</a-descriptions-item>
-				<a-descriptions-item label="上次登录">
-					{{ formatTime(authStore.user.last_login_at) }}
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
+		<!-- User info -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="flex items-center justify-between mb-3">
+					<h2 class="font-semibold">用户信息</h2>
+					<button class="btn btn-sm btn-primary" @click="passwordModalRef?.showModal()">修改密码</button>
+				</div>
+				<dl v-if="authStore.user" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">用户名</dt><dd class="font-medium">{{ authStore.user.username }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">创建时间</dt><dd class="text-xs text-base-content/60">{{ formatTime(authStore.user.created_at) }}</dd></div>
+					<div class="flex gap-2"><dt class="text-base-content/50 w-24 shrink-0">上次登录</dt><dd class="text-xs text-base-content/60">{{ formatTime(authStore.user.last_login_at) }}</dd></div>
+				</dl>
+			</div>
+		</div>
 
-		<a-card title="运行时配置" :loading="configLoading">
-			<a-alert
-				v-if="needsRestart"
-				message="配置已变更，请重启服务以生效"
-				type="warning"
-				show-icon
-				style="margin-bottom: 12px"
-			/>
-			<a-table
-				v-if="config"
-				:columns="configColumns"
-				:data-source="config.items"
-				:pagination="false"
-				size="small"
-				row-key="key"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'key'">
-						<span>{{ record.key }}</span>
-					</template>
+		<!-- Runtime config -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">运行时配置</h2>
+				<div v-if="needsRestart" role="alert" class="alert alert-warning text-sm mb-4">
+					<span>配置已变更，请重启服务以生效</span>
+				</div>
+				<div v-if="configLoading" class="flex justify-center py-8"><span class="loading loading-spinner loading-md text-primary" /></div>
+				<div v-else-if="config" class="overflow-x-auto">
+					<table class="table table-sm">
+						<thead>
+							<tr class="text-base-content/60">
+								<th>配置项</th><th>默认值</th><th>当前值</th><th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="item in config.items" :key="item.key" class="hover">
+								<td><code class="text-xs">{{ item.key }}</code></td>
+								<td class="text-xs text-base-content/60">
+									<span v-if="typeof item.default === 'boolean'">
+										<span class="badge badge-xs" :class="item.default ? 'badge-success' : 'badge-ghost'">{{ item.default ? '已启用' : '未启用' }}</span>
+									</span>
+									<span v-else>{{ item.default === '' || item.default == null ? '—' : item.default }}</span>
+								</td>
+								<td>
+									<template v-if="editingKey === item.key">
+										<input v-if="typeof item.default === 'boolean'" type="checkbox" class="toggle toggle-sm toggle-primary" :checked="editingBool" @change="editingBool = ($event.target as HTMLInputElement).checked" />
+										<select v-else-if="selectOptions[item.key]" v-model="editingStr" class="select select-bordered select-xs w-32">
+											<option v-for="opt in selectOptions[item.key]" :key="opt" :value="opt">{{ opt }}</option>
+										</select>
+										<input v-else-if="secretKeys.has(item.key)" v-model="editingStr" type="password" class="input input-bordered input-xs w-64" placeholder="留空则不修改" />
+										<input v-else v-model="editingStr" type="text" class="input input-bordered input-xs w-64" />
+									</template>
+									<template v-else>
+										<span v-if="typeof item.value === 'boolean'">
+											<span class="badge badge-xs" :class="item.is_overridden ? 'badge-warning' : item.value ? 'badge-success' : 'badge-ghost'">{{ item.value ? '已启用' : '未启用' }}</span>
+										</span>
+										<span v-else class="text-xs" :class="item.is_overridden ? 'text-warning' : 'text-base-content/70'">
+											{{ item.value === '' || item.value == null ? '—' : item.value }}
+										</span>
+									</template>
+								</td>
+								<td>
+									<template v-if="editingKey === item.key">
+										<div class="flex items-center gap-2 text-xs">
+											<button class="link link-primary" :class="{ 'opacity-50': operating }" @click="handleSave(item)">保存</button>
+											<button class="link" @click="cancelEdit">取消</button>
+										</div>
+									</template>
+									<template v-else>
+										<div class="flex items-center gap-2 text-xs">
+											<button class="link link-primary" @click="startEdit(item)">编辑</button>
+											<button v-if="item.is_overridden" class="link link-error" @click="handleReset(item.key)">重置</button>
+										</div>
+									</template>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
 
-					<template v-else-if="column.key === 'default'">
-						<a-tag
-							v-if="typeof record.default === 'boolean'"
-							:color="record.default ? 'green' : 'default'"
-						>
-							{{ record.default ? '已启用' : '未启用' }}
-						</a-tag>
-						<span v-else>
-							{{ record.default === '' || record.default == null ? '-' : record.default }}
-						</span>
-					</template>
-
-					<template v-else-if="column.key === 'value'">
-						<template v-if="editingKey === record.key">
-							<a-switch v-if="typeof record.default === 'boolean'" v-model:checked="editingBool" />
-							<a-select
-								v-else-if="selectOptions[record.key]"
-								v-model:value="editingStr"
-								style="width: 120px"
-							>
-								<a-select-option v-for="opt in selectOptions[record.key]" :key="opt" :value="opt">
-									{{ opt }}
-								</a-select-option>
-							</a-select>
-							<a-input-password
-								v-else-if="secretKeys.has(record.key)"
-								v-model:value="editingStr"
-								style="width: 260px"
-								placeholder="留空则不修改"
-							/>
-							<a-input v-else v-model:value="editingStr" style="width: 260px" />
-						</template>
-						<template v-else>
-							<a-tag
-								v-if="typeof record.value === 'boolean'"
-								:color="record.is_overridden ? 'warning' : record.value ? 'green' : 'default'"
-							>
-								{{ record.value ? '已启用' : '未启用' }}
-							</a-tag>
-							<a-typography-text v-else :type="record.is_overridden ? 'warning' : undefined">
-								{{ record.value === '' || record.value == null ? '-' : record.value }}
-							</a-typography-text>
-						</template>
-					</template>
-
-					<template v-else-if="column.key === 'action'">
-						<template v-if="editingKey === record.key">
-							<a-button type="link" size="small" :loading="operating" @click="handleSave(record)">
-								保存
-							</a-button>
-							<a-button type="link" size="small" :disabled="operating" @click="cancelEdit">
-								取消
-							</a-button>
-						</template>
-						<template v-else>
-							<a-button type="link" size="small" @click="startEdit(record)">编辑</a-button>
-							<a-popconfirm
-								v-if="record.is_overridden"
-								:title="`重置「${record.key}」为默认值？`"
-								ok-text="确认"
-								cancel-text="取消"
-								@confirm="handleReset(record.key)"
-							>
-								<a-button type="link" size="small" danger>重置</a-button>
-							</a-popconfirm>
-						</template>
-					</template>
-				</template>
-			</a-table>
-		</a-card>
-
-		<!-- 修改密码 -->
-		<a-modal v-model:open="showChangePasswordModal" title="修改密码">
-			<a-form
-				ref="passwordFormRef"
-				:model="passwordForm"
-				:rules="passwordFormRules"
-				:label-col="{ span: 6 }"
-				:wrapper-col="{ span: 16 }"
-			>
-				<a-form-item label="当前密码" name="old_password">
-					<a-input-password
-						v-model:value="passwordForm.old_password"
-						placeholder="请输入当前密码"
-					/>
-				</a-form-item>
-				<a-form-item label="新密码" name="new_password">
-					<a-input-password
-						v-model:value="passwordForm.new_password"
-						placeholder="请输入新密码（至少6位）"
-					/>
-				</a-form-item>
-				<a-form-item label="确认密码" name="confirm_password">
-					<a-input-password
-						v-model:value="passwordForm.confirm_password"
-						placeholder="请再次输入新密码"
-					/>
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button type="primary" :loading="passwordLoading" @click="handleChangePassword">
-					确定
-				</a-button>
-				<a-button @click="showChangePasswordModal = false">取消</a-button>
-			</template>
-		</a-modal>
-	</a-space>
+		<!-- Change password modal -->
+		<dialog ref="passwordModalRef" class="modal">
+			<div class="modal-box w-full max-w-md">
+				<h3 class="font-bold text-lg mb-4">修改密码</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">当前密码</span></div>
+						<input v-model="passwordForm.old_password" type="password" class="input input-bordered input-sm" :class="{ 'input-error': passwordErrors.old_password }" />
+						<div v-if="passwordErrors.old_password" class="label pt-1"><span class="label-text-alt text-error">{{ passwordErrors.old_password }}</span></div>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">新密码</span></div>
+						<input v-model="passwordForm.new_password" type="password" class="input input-bordered input-sm" :class="{ 'input-error': passwordErrors.new_password }" placeholder="至少 6 位" />
+						<div v-if="passwordErrors.new_password" class="label pt-1"><span class="label-text-alt text-error">{{ passwordErrors.new_password }}</span></div>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">确认密码</span></div>
+						<input v-model="passwordForm.confirm_password" type="password" class="input input-bordered input-sm" :class="{ 'input-error': passwordErrors.confirm_password }" />
+						<div v-if="passwordErrors.confirm_password" class="label pt-1"><span class="label-text-alt text-error">{{ passwordErrors.confirm_password }}</span></div>
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="passwordLoading" @click="handleChangePassword">
+						<span v-if="passwordLoading" class="loading loading-spinner loading-xs" />确定
+					</button>
+					<button class="btn btn-ghost" @click="passwordModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue';
-import type { FormInstance } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';
-import { formatTime } from '@/utils/time';
-import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useAuthStore } from '@/stores/auth';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
 import { settingApi } from '@/api/settings';
+import { formatTime } from '@/utils/time';
 import type { ConfigItemResp, SystemConfigResp } from '@/types/api';
 
 const authStore = useAuthStore();
+const toast = useToast();
 
-const configColumns = [
-	{ title: '配置项', key: 'key', width: 280 },
-	{ title: '默认值', key: 'default', width: 160 },
-	{ title: '当前值', key: 'value', width: 280 },
-	{ title: '操作', key: 'action', width: 120 },
-];
-
-// key -> 可选值列表（前端维护，后端不感知）
-const selectOptions: Record<string, string[]> = {
-	cert__letsencrypt__challenge: ['http', 'dns'],
-};
-
-// 脱敏字段集合（前端维护）
-const secretKeys = new Set(['jwt__secret_key']);
-
-// ── 配置加载 ────────────────────────────────────────────
 const config = ref<SystemConfigResp>();
 const { loading: configLoading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
+const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
 const needsRestart = ref(false);
 
-async function fetchConfig() {
-	try {
-		await execute(async () => {
-			config.value = await settingApi.getConfig();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '加载配置失败');
-	}
-}
+const selectOptions: Record<string, string[]> = { 'cert__letsencrypt__challenge': ['http', 'dns'] };
+const secretKeys = new Set(['jwt__secret_key']);
 
-onMounted(() => {
-	fetchConfig();
-});
-
-// ── 行内编辑 ────────────────────────────────────────────
 const editingKey = ref<string>();
 const editingStr = ref('');
 const editingBool = ref(false);
 
+const passwordModalRef = ref<HTMLDialogElement>();
+const passwordForm = reactive({ old_password: '', new_password: '', confirm_password: '' });
+const passwordErrors = reactive({ old_password: '', new_password: '', confirm_password: '' });
+
+async function fetchConfig() {
+	try {
+		await execute(async () => { config.value = await settingApi.getConfig(); });
+	} catch { toast.error('加载配置失败'); }
+}
+
 function startEdit(record: ConfigItemResp) {
 	editingKey.value = record.key;
-	if (typeof record.default === 'boolean') {
-		editingBool.value = record.value as boolean;
-	} else {
-		editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
-	}
+	if (typeof record.default === 'boolean') editingBool.value = record.value as boolean;
+	else editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
 }
 
-function cancelEdit() {
-	editingKey.value = undefined;
-}
+function cancelEdit() { editingKey.value = undefined; }
 
 async function handleSave(record: ConfigItemResp) {
-	if (secretKeys.has(record.key) && !editingStr.value) {
-		cancelEdit();
-		return;
-	}
+	if (secretKeys.has(record.key) && !editingStr.value) { cancelEdit(); return; }
 	try {
 		await executeOp(async () => {
 			const value = typeof record.default === 'boolean' ? editingBool.value : editingStr.value;
 			config.value = await settingApi.updateConfig({ key: record.key, value });
-			needsRestart.value = true;
-			editingKey.value = undefined;
-			message.warning('已保存，请重启服务以生效');
+			needsRestart.value = true; editingKey.value = undefined;
+			toast.warning('已保存，请重启服务以生效');
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '保存失败');
-	}
+	} catch { toast.error('保存失败'); }
 }
 
 async function handleReset(key: string) {
@@ -239,71 +175,29 @@ async function handleReset(key: string) {
 		await executeOp(async () => {
 			config.value = await settingApi.resetConfig({ keys: [key] });
 			needsRestart.value = true;
-			message.warning('已重置，请重启服务以生效');
+			toast.warning('已重置，请重启服务以生效');
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '重置失败');
-	}
+	} catch { toast.error('重置失败'); }
 }
 
-// ── 修改密码 ────────────────────────────────────────────
-const showChangePasswordModal = ref(false);
-const passwordFormRef = ref<FormInstance>();
-const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
-
-const passwordForm = reactive({
-	old_password: '',
-	new_password: '',
-	confirm_password: '',
-});
-
-const passwordFormRules = {
-	old_password: [{ required: true, message: '请输入当前密码' }],
-	new_password: [
-		{ required: true, message: '请输入新密码' },
-		{ min: 6, message: '密码至少6位' },
-	],
-	confirm_password: [
-		{ required: true, message: '请确认新密码' },
-		{
-			validator: (_rule: unknown, value: string) => {
-				if (value !== passwordForm.new_password) return Promise.reject('两次输入的密码不一致');
-				return Promise.resolve();
-			},
-		},
-	],
-};
+function validatePassword() {
+	passwordErrors.old_password = passwordForm.old_password ? '' : '请输入当前密码';
+	passwordErrors.new_password = passwordForm.new_password.length >= 6 ? '' : '密码至少 6 位';
+	passwordErrors.confirm_password = passwordForm.confirm_password === passwordForm.new_password ? '' : '两次输入的密码不一致';
+	return !passwordErrors.old_password && !passwordErrors.new_password && !passwordErrors.confirm_password;
+}
 
 async function handleChangePassword() {
-	try {
-		await passwordFormRef.value?.validate();
-	} catch {
-		return;
-	}
+	if (!validatePassword()) return;
 	try {
 		await executeChangePassword(async () => {
 			await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
-			message.success('密码修改成功');
-			showChangePasswordModal.value = false;
-			passwordForm.old_password = '';
-			passwordForm.new_password = '';
-			passwordForm.confirm_password = '';
+			toast.success('密码修改成功');
+			passwordModalRef.value?.close();
+			Object.assign(passwordForm, { old_password: '', new_password: '', confirm_password: '' });
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '密码修改失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '密码修改失败'); }
 }
+
+onMounted(fetchConfig);
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

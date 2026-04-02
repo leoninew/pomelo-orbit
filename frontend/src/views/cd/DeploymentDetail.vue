@@ -1,241 +1,157 @@
 <template>
-	<div class="page-wrapper">
-		<div v-if="deployment" class="page-header">
-			<h2>部署记录 #{{ deploymentId }}</h2>
-			<a-space>
-				<a-button @click="() => $router.push('/cd/deployments')">返回列表</a-button>
-				<a-button @click="() => $router.push(`/cd/applications/${deployment.application_id}`)">
+	<div class="flex flex-col gap-4 h-full">
+		<!-- Header -->
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">部署记录 <span class="text-base-content/40 text-base font-mono">#{{ deploymentId }}</span></h1>
+			<div class="flex items-center gap-2">
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/deployments')">
+					<ArrowLeft class="size-4" />返回列表
+				</button>
+				<button v-if="deployment" class="btn btn-sm btn-ghost gap-1" @click="$router.push(`/cd/applications/${deployment.application_id}`)">
 					返回应用
-				</a-button>
-				<a-button
-					v-if="deployment.status === 'running' || deployment.status === 'queued'"
-					danger
-					@click="handleCancel"
-				>
+				</button>
+				<button v-if="deployment?.status === 'running' || deployment?.status === 'queued'" class="btn btn-sm btn-error gap-1" @click="handleCancel">
 					取消部署
-				</a-button>
-			</a-space>
+				</button>
+			</div>
 		</div>
 
-		<a-card title="基本信息" :loading="loading">
-			<a-descriptions v-if="deployment" :column="3" bordered size="small">
-				<a-descriptions-item label="应用">
-					<router-link :to="`/cd/applications/${deployment.application_id}`">
-						{{ deployment.application_name || deployment.application_id }}
-					</router-link>
-				</a-descriptions-item>
-				<a-descriptions-item label="状态">
-					<a-tag :color="getStatusColor(deployment.status)">
-						{{ deployment.status }}
-					</a-tag>
-				</a-descriptions-item>
-				<a-descriptions-item label="触发方式">
-					{{ deployment.trigger_type }}
-				</a-descriptions-item>
-				<a-descriptions-item label="分支/Tag">
-					<span v-if="deployment.trigger_ref">{{ deployment.trigger_ref }}</span>
-					<span v-else>-</span>
-				</a-descriptions-item>
-				<a-descriptions-item label="环境文件">
-					<span v-if="deployment.env_file">{{ deployment.env_file }}</span>
-					<span v-else>-</span>
-				</a-descriptions-item>
-				<a-descriptions-item label="开始时间">
-					{{ formatTime(deployment.started_at) }}
-				</a-descriptions-item>
-				<a-descriptions-item label="结束时间">
-					{{ formatTime(deployment.finished_at) }}
-				</a-descriptions-item>
-				<a-descriptions-item label="耗时">
-					{{ formatDuration(deployment.duration_ms) }}
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
-
-		<a-card v-if="deployment?.error_message" title="部署异常">
-			<a-alert type="error" :message="deployment.error_message" show-icon />
-		</a-card>
-
-		<a-card title="部署日志" :loading="loading" class="log-card">
-			<template v-if="deployment" #extra>
-				<a-space>
-					<a-button size="small" @click="refreshDeployment">刷新</a-button>
-					<a-tooltip title="滚动到底部">
-						<a-button size="small" :disabled="!logText" @click="scrollToBottom">
-							<template #icon><VerticalAlignBottomOutlined /></template>
-						</a-button>
-					</a-tooltip>
-				</a-space>
-			</template>
-			<div v-if="deployment" ref="logContainerRef" class="log-container">
-				<pre class="log-content">{{ logText || '暂无日志' }}</pre>
+		<!-- Basic info -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<h2 class="font-semibold mb-3">基本信息</h2>
+				<div v-if="loading" class="flex justify-center py-6">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<dl v-else-if="deployment" class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-sm">
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">应用</dt>
+						<dd>
+							<router-link :to="`/cd/applications/${deployment.application_id}`" class="link link-primary">
+								{{ deployment.application_name || deployment.application_id }}
+							</router-link>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">状态</dt>
+						<dd><span class="badge badge-sm" :class="deployBadgeClass(deployment.status)">{{ deployment.status }}</span></dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">触发方式</dt>
+						<dd class="text-base-content/70">{{ deployment.trigger_type }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">分支/Tag</dt>
+						<dd><code class="text-xs">{{ deployment.trigger_ref || '—' }}</code></dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">环境文件</dt>
+						<dd class="text-base-content/70">{{ deployment.env_file || '—' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">耗时</dt>
+						<dd class="text-base-content/70">{{ formatDuration(deployment.duration_ms) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">开始时间</dt>
+						<dd class="text-base-content/60 text-xs">{{ formatTime(deployment.started_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-20 shrink-0">结束时间</dt>
+						<dd class="text-base-content/60 text-xs">{{ formatTime(deployment.finished_at) }}</dd>
+					</div>
+				</dl>
 			</div>
-		</a-card>
+		</div>
+
+		<!-- Error message -->
+		<div v-if="deployment?.error_message" role="alert" class="alert alert-error">
+			<span class="text-sm">{{ deployment.error_message }}</span>
+		</div>
+
+		<!-- Log card -->
+		<div class="card bg-base-100 shadow-sm flex-1 flex flex-col min-h-0">
+			<div class="flex items-center justify-between px-5 py-3 border-b border-base-200 shrink-0">
+				<h2 class="font-semibold">部署日志</h2>
+				<div class="flex items-center gap-2">
+					<button class="btn btn-xs btn-ghost gap-1" @click="refreshDeployment">
+						<RefreshCw class="size-3.5" />刷新
+					</button>
+					<button title="滚动到底部" class="btn btn-xs btn-ghost" :disabled="!logText" @click="scrollToBottom">
+						<ArrowDown class="size-3.5" />
+					</button>
+				</div>
+			</div>
+			<div ref="logContainerRef" class="flex-1 overflow-auto p-4 bg-neutral rounded-b-box min-h-64">
+				<pre class="text-neutral-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">{{ logText || '暂无日志' }}</pre>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue';
-import { VerticalAlignBottomOutlined } from '@ant-design/icons-vue';
-import { formatTime } from '@/utils/time';
-import { formatDuration } from '@/utils/status';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft, ArrowDown, RefreshCw } from 'lucide-vue-next';
 import { deploymentApi } from '@/api/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
-import { type DeploymentDetail, deploymentStatusColors } from '@/types/api';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
+import { formatDuration } from '@/utils/status';
+import type { DeploymentDetail } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
 const deploymentId = route.params.id as string;
-
+const toast = useToast();
 const { loading, execute } = useStatusAsync();
+
 const deployment = ref<DeploymentDetail>();
 const logText = ref('');
 const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
-
 let pollTimer: number | null = null;
 
-function getStatusColor(status: string) {
-	return deploymentStatusColors[status] || 'default';
-}
+const badgeMap: Record<string, string> = { ran_to_completion: 'badge-success', faulted: 'badge-error', running: 'badge-info', queued: 'badge-warning', canceled: 'badge-ghost' };
+function deployBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
 
 async function fetchDeployment() {
 	try {
-		await execute(async () => {
-			const data = await deploymentApi.get(deploymentId);
-			deployment.value = data;
-		});
-	} catch (error) {
-		message.error('获取部署记录详情失败\n' + error);
-		router.push('/cd/deployments');
-	}
+		await execute(async () => { const data = await deploymentApi.get(deploymentId); deployment.value = data; });
+	} catch { toast.error('获取部署详情失败'); router.push('/cd/deployments'); }
 }
 
 async function fetchLogs() {
 	try {
 		const data = await deploymentApi.getLogs(deploymentId, logOffset.value);
-		if (data.logs) {
-			logText.value += data.logs;
-			logOffset.value = data.offset;
-		}
-
-		// 如果部署完成，停止轮询
-		if (data.is_complete) {
-			stopLogPolling();
-			// 刷新部署状态
-			await fetchDeployment();
-		}
-	} catch (error) {
-		console.error('获取日志失败:', error);
-	}
+		if (data.logs) { logText.value += data.logs; logOffset.value = data.offset; }
+		if (data.is_complete) { stopLogPolling(); await fetchDeployment(); }
+	} catch (error) { console.error('获取日志失败:', error); }
 }
 
 function startLogPolling() {
-	// 立即获取一次日志
 	fetchLogs();
-
-	// 已完成的部署不需要轮询
-	if (deployment.value && ['success', 'failed'].includes(deployment.value.status)) {
-		return;
-	}
-
-	// 每2秒轮询一次
-	pollTimer = window.setInterval(() => {
-		fetchLogs();
-	}, 2000);
+	if (deployment.value && ['ran_to_completion', 'faulted', 'canceled'].includes(deployment.value.status)) return;
+	pollTimer = window.setInterval(fetchLogs, 2000);
 }
 
-function stopLogPolling() {
-	if (pollTimer) {
-		clearInterval(pollTimer);
-		pollTimer = null;
-	}
-}
+function stopLogPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
 
 async function handleCancel() {
 	try {
 		await deploymentApi.cancel(deploymentId);
-		message.success('已取消部署');
+		toast.success('已取消部署');
 		stopLogPolling();
 		fetchDeployment();
-	} catch (error) {
-		message.error('取消失败\n' + error);
-	}
+	} catch { toast.error('取消失败'); }
 }
 
-async function refreshDeployment() {
-	await fetchDeployment();
-	scrollToBottom();
-}
+async function refreshDeployment() { await fetchDeployment(); scrollToBottom(); }
 
 function scrollToBottom() {
-	if (logContainerRef.value) {
-		logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
-	}
+	if (logContainerRef.value) logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
 }
 
-onMounted(async () => {
-	await fetchDeployment();
-	startLogPolling();
-});
-
-onUnmounted(() => {
-	stopLogPolling();
-});
+onMounted(async () => { await fetchDeployment(); startLogPolling(); });
+onUnmounted(stopLogPolling);
 </script>
-
-<style scoped>
-.page-wrapper {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	height: 100%;
-}
-
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-
-.log-card {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-	flex-direction: column;
-}
-
-.log-card :deep(.ant-card-body) {
-	flex: 1;
-	min-height: 0;
-	display: flex;
-	flex-direction: column;
-	padding: 12px;
-}
-
-.log-container {
-	flex: 1;
-	min-height: 0;
-	background: #1e1e1e;
-	border-radius: 4px;
-	padding: 12px;
-	overflow: auto;
-}
-
-.log-content {
-	color: #d4d4d4;
-	font-family: 'Consolas', 'Monaco', monospace;
-	font-size: 13px;
-	line-height: 1.5;
-	margin: 0;
-	white-space: pre-wrap;
-	word-break: break-all;
-}
-</style>

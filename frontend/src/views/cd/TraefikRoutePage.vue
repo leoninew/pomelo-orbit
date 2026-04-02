@@ -1,113 +1,91 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div class="page-header">
-			<h2>Traefik HTTP Routers</h2>
-			<a-space>
-				<a-button type="primary" @click="openDashboard">
-					<template #icon><LinkOutlined /></template>
-					打开 Dashboard
-				</a-button>
-				<a-button :loading="loading" @click="fetchRoutes">
-					<template #icon><ReloadOutlined /></template>
-					刷新
-				</a-button>
-			</a-space>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">Traefik HTTP Routers</h1>
+			<div class="flex items-center gap-2">
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openDashboard">
+					<ExternalLink class="size-4" />打开 Dashboard
+				</button>
+				<button class="btn btn-sm btn-ghost gap-1.5" :disabled="loading" @click="fetchRoutes">
+					<RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />刷新
+				</button>
+			</div>
 		</div>
 
-		<a-table
-			:columns="columns"
-			:data-source="routes"
-			:loading="loading"
-			:pagination="false"
-			row-key="name"
-		>
-			<template #bodyCell="{ column, record }">
-				<template v-if="column.key === 'rule'">
-					<a
-						v-if="buildRouteUrl(record.rule, record.tls)"
-						:href="buildRouteUrl(record.rule, record.tls)!"
-						target="_blank"
-					>
-						{{ record.rule }}
-						<LinkOutlined />
-					</a>
-					<span v-else>{{ record.rule }}</span>
-				</template>
-				<template v-if="column.key === 'status'">
-					<a-tag :color="record.status === 'enabled' ? 'success' : 'default'">
-						{{ record.status }}
-					</a-tag>
-				</template>
-				<template v-if="column.key === 'entrypoints'">
-					<a-tag v-for="ep in record.entrypoints" :key="ep">{{ ep }}</a-tag>
-				</template>
-				<template v-if="column.key === 'tls'">
-					<a-tag :color="record.tls ? 'blue' : 'default'">
-						{{ record.tls ? 'HTTPS' : 'HTTP' }}
-					</a-tag>
-				</template>
-			</template>
-		</a-table>
-	</a-space>
+		<div class="card bg-base-100 shadow-sm overflow-x-auto">
+			<table class="table table-sm">
+				<thead>
+					<tr class="text-base-content/60">
+						<th>名称</th>
+						<th>提供者</th>
+						<th>状态</th>
+						<th>规则</th>
+						<th>服务</th>
+						<th>入口点</th>
+						<th>协议</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-if="loading">
+						<td colspan="7" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td>
+					</tr>
+					<tr v-else-if="routes.length === 0">
+						<td colspan="7" class="text-center py-8 text-base-content/40">暂无路由</td>
+					</tr>
+					<tr v-for="r in routes" :key="r.name" class="hover">
+						<td class="cell-mono">{{ r.name }}</td>
+						<td class="cell-muted">{{ r.provider }}</td>
+						<td><span class="badge badge-sm" :class="r.status === 'enabled' ? 'badge-success' : 'badge-ghost'">{{ r.status }}</span></td>
+						<td>
+							<a v-if="buildRouteUrl(r.rule, r.tls)" :href="buildRouteUrl(r.rule, r.tls)!" target="_blank" class="link link-primary flex items-center gap-1">
+								{{ r.rule }}<ExternalLink class="size-3" />
+							</a>
+							<span v-else class="font-mono">{{ r.rule }}</span>
+						</td>
+						<td class="cell-muted">{{ r.service }}</td>
+						<td>
+							<div class="flex flex-wrap gap-1">
+								<span v-for="ep in r.entrypoints" :key="ep" class="badge badge-xs badge-ghost">{{ ep }}</span>
+							</div>
+						</td>
+						<td><span class="badge badge-sm" :class="r.tls ? 'badge-info' : 'badge-ghost'">{{ r.tls ? 'HTTPS' : 'HTTP' }}</span></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
-import { traefikRouteApi, type TraefikRouter } from '@/api/traefik-route';
+import { onMounted, ref } from 'vue';
+import { ExternalLink, RefreshCw } from 'lucide-vue-next';
+import { traefikRouteApi } from '@/api/traefik-route';
+import type { TraefikRouter } from '@/api/traefik-route';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
 
-const routes = ref<TraefikRouter[]>([]);
+const toast = useToast();
 const { loading, execute } = useStatusAsync();
-
-const columns = [
-	{ title: '名称', dataIndex: 'name', key: 'name' },
-	{ title: '提供者', dataIndex: 'provider', key: 'provider', width: 100 },
-	{ title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-	{ title: '规则', dataIndex: 'rule', key: 'rule' },
-	{ title: '服务', dataIndex: 'service', key: 'service' },
-	{ title: '入口点', dataIndex: 'entrypoints', key: 'entrypoints', width: 150 },
-	{ title: '协议', dataIndex: 'tls', key: 'tls', width: 80 },
-];
+const routes = ref<TraefikRouter[]>([]);
 
 async function fetchRoutes() {
 	try {
-		await execute(async () => {
-			const data = await traefikRouteApi.list();
-			routes.value = data.items;
-		});
-	} catch (error: unknown) {
-		message.error(error instanceof Error ? error.message : '获取路由失败');
-	}
+		await execute(async () => { const data = await traefikRouteApi.list(); routes.value = data.items; });
+	} catch { toast.error('获取路由失败'); }
 }
 
 function buildRouteUrl(rule: string, tls: boolean): string | null {
 	const match = rule.match(/Host\(`([^`]+)`\)/);
 	if (!match) return null;
-	const protocol = tls ? 'https' : 'http';
-	return `${protocol}://${match[1]}`;
+	return `${tls ? 'https' : 'http'}://${match[1]}`;
 }
 
 async function openDashboard() {
 	try {
 		const config = await traefikRouteApi.getConfig();
-		const protocol = config.https_enabled ? 'https' : 'http';
-		window.open(`${protocol}://${config.dashboard_domain}/dashboard/`, '_blank');
-	} catch (error: unknown) {
-		message.error(error instanceof Error ? error.message : '打开 Dashboard 失败');
-	}
+		window.open(`${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`, '_blank');
+	} catch { toast.error('打开 Dashboard 失败'); }
 }
 
-onMounted(() => {
-	fetchRoutes();
-});
+onMounted(fetchRoutes);
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-</style>

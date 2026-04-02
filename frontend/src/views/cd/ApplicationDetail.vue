@@ -1,261 +1,285 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div v-if="application" class="page-header">
-			<h2>{{ application.name }}</h2>
-			<a-button @click="() => $router.push('/cd/applications')">返回</a-button>
+	<div class="flex flex-col gap-4">
+		<!-- Page header -->
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">{{ application?.name ?? '应用详情' }}</h1>
+			<button class="btn btn-sm btn-ghost gap-1.5" @click="$router.push('/cd/applications')">
+				<ArrowLeft class="size-4" />返回
+			</button>
 		</div>
 
-		<!-- 基本信息卡片 -->
-		<a-card title="基本信息" :loading="basicInfoLoading">
-			<template v-if="application" #extra>
-				<a-space>
-					<a-dropdown v-if="envs.length > 1">
-						<template #overlay>
-							<a-menu @click="handleDeployWithEnv">
-								<a-menu-item v-for="env in envs.filter((e) => e !== '.env')" :key="env">
-									{{ env }}
-								</a-menu-item>
-							</a-menu>
-						</template>
-						<a-button type="primary" @click="handleDeploy">
-							部署
-							<DownOutlined />
-						</a-button>
-					</a-dropdown>
-					<a-button v-else type="primary" @click="handleDeploy">部署</a-button>
-					<a-button :loading="operating" @click="handleStop">停止</a-button>
-					<a-button :loading="operating" @click="handleRestart">重启</a-button>
-					<a-button :disabled="operating" @click="showBasicInfoModal = true">编辑</a-button>
-					<a-button
-						danger
-						:disabled="
-							operating || application.status === 'deployed' || application.status === 'deploying'
-						"
-						@click="openDeleteModal"
-					>
-						删除
-					</a-button>
-					<a-button @click="handleExport">导出</a-button>
-				</a-space>
-			</template>
-			<a-descriptions v-if="application" :column="2" bordered size="small">
-				<a-descriptions-item label="应用编码">
-					{{ application.code }}
-				</a-descriptions-item>
-				<a-descriptions-item label="仓库地址">
-					<span v-if="application.git_source">{{ application.git_source.repository_url }}</span>
-					<span v-else>-</span>
-				</a-descriptions-item>
-				<a-descriptions-item label="部署分支">
-					<span v-if="application.git_source">{{ application.git_source.deploy_branches }}</span>
-					<span v-else>-</span>
-				</a-descriptions-item>
-				<a-descriptions-item label="状态">
-					<a-tag :color="appStatusColor(application.status)">
-						{{ appStatusLabel(application.status) }}
-					</a-tag>
-				</a-descriptions-item>
-				<a-descriptions-item label="自动部署">
-					<span v-if="application.git_source">
-						<a-tag :color="application.git_source.auto_deploy ? 'blue' : 'default'">
-							{{ application.git_source.auto_deploy ? '是' : '否' }}
-						</a-tag>
-					</span>
-					<span v-else>-</span>
-				</a-descriptions-item>
-				<a-descriptions-item label="镜像拉取策略">
-					{{ application.image_pull_policy }}
-				</a-descriptions-item>
-				<a-descriptions-item label="创建时间">
-					{{ formatTime(application.created_at) }}
-				</a-descriptions-item>
-				<a-descriptions-item label="部署记录">
-					<a @click="$router.push(`/cd/deployments?application_id=${application.id}`)">
-						所有部署记录
-					</a>
-				</a-descriptions-item>
-			</a-descriptions>
-		</a-card>
-
-		<!-- 配置文件卡片 -->
-		<a-card title="配置文件" :loading="fileListLoading">
-			<template #extra>
-				<a-button type="primary" @click="openAddFileDrawer">添加文件</a-button>
-			</template>
-			<a-table
-				v-if="files.length > 0"
-				:columns="fileColumns"
-				:data-source="files"
-				:pagination="false"
-				row-key="id"
-			>
-				<template #bodyCell="{ column, record }">
-					<template v-if="column.key === 'path'">
-						{{ record.path }}
-					</template>
-					<template v-if="column.key === 'created_at'">
-						{{ formatTime(record.created_at) }}
-					</template>
-					<template v-if="column.key === 'action'">
-						<a-space>
-							<a @click="openFileDrawer(record.id)">查看</a>
-							<a @click="openFileDrawer(record.id, true)">编辑</a>
-							<a-popconfirm title="确定删除此文件？" @confirm="deleteFile(record.id)">
-								<a style="color: #ff4d4f">删除</a>
-							</a-popconfirm>
-						</a-space>
-					</template>
-				</template>
-			</a-table>
-			<a-empty v-else description="暂无配置文件" />
-		</a-card>
-
-		<!-- 文件查看/编辑/新建抽屉 -->
-		<a-drawer
-			v-model:open="fileDrawerVisible"
-			:title="currentFileId ? '文件: ' + (currentFilePath || '未命名') : '新建文件'"
-			:width="720"
-			:loading="fileContentLoading"
-			:closable="false"
-			@close="handleDrawerClose"
-		>
-			<div v-if="!isEditingInDrawer && currentFileId">
-				<CodeEditor
-					v-if="!fileContentLoading"
-					v-model:value="currentFileContent"
-					:style="{ height: 'calc(100vh - 200px)' }"
-					:theme="'vs-dark'"
-					:language="currentFileLanguage"
-					:options="{ readOnly: true }"
-				/>
-				<a-empty v-else description="加载中..." />
-			</div>
-			<div v-if="isEditingInDrawer || !currentFileId">
-				<a-form layout="vertical">
-					<a-form-item label="文件路径">
-						<a-input v-model:value="currentFilePath" placeholder="例如: nginx.conf" />
-					</a-form-item>
-					<a-form-item v-if="!fileContentLoading" label="文件内容">
-						<CodeEditor
-							v-model:value="currentFileContent"
-							:style="{ height: '450px', border: '1px solid #d9d9d9', borderRadius: '4px' }"
-							:theme="'vs-dark'"
-							:language="currentFileLanguage"
-							:options="{
-								minimap: { enabled: false },
-								fontSize: 14,
-								automaticLayout: true,
-							}"
-						/>
-					</a-form-item>
-				</a-form>
-			</div>
-			<template #footer>
-				<div style="display: flex; justify-content: flex-end">
-					<a-space>
-						<a-button
-							v-if="!isEditingInDrawer && currentFileId"
-							type="primary"
-							@click="isEditingInDrawer = true"
-						>
-							编辑
-						</a-button>
-						<a-button v-if="!isEditingInDrawer && currentFileId" @click="handleDrawerClose">
-							关闭
-						</a-button>
-						<a-button
-							v-if="isEditingInDrawer || !currentFileId"
-							type="primary"
-							:loading="fileContentLoading"
-							@click="saveCurrentFile"
-						>
-							保存
-						</a-button>
-						<a-button v-if="isEditingInDrawer || !currentFileId" @click="handleDrawerClose">
-							取消
-						</a-button>
-					</a-space>
+		<!-- Basic info card -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="font-semibold">基本信息</h2>
+					<div v-if="application" class="flex items-center gap-2 flex-wrap">
+						<!-- Deploy with optional env dropdown -->
+						<div v-if="envs.length > 1" class="dropdown dropdown-end">
+							<button tabindex="0" class="btn btn-sm btn-primary gap-1" :disabled="operating">
+								<Rocket class="size-3.5" />部署
+								<ChevronDown class="size-3" />
+							</button>
+							<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-lg border border-base-200 w-40 mt-1 p-1 z-50">
+								<li v-for="env in envs.filter(e => e !== '.env')" :key="env">
+									<button @click="handleDeployWithEnv(env)">{{ env }}</button>
+								</li>
+							</ul>
+						</div>
+						<button v-else class="btn btn-sm btn-primary gap-1" :disabled="operating" @click="handleDeploy">
+							<Rocket class="size-3.5" />部署
+						</button>
+						<button class="btn btn-sm btn-ghost" :disabled="operating" @click="handleStop">停止</button>
+						<button class="btn btn-sm btn-ghost" :disabled="operating" @click="handleRestart">重启</button>
+						<button class="btn btn-sm btn-ghost" :disabled="operating" @click="openEditModal">编辑</button>
+						<button class="btn btn-sm btn-ghost" @click="handleExport">导出</button>
+						<button class="btn btn-sm btn-error btn-ghost" :disabled="operating || application.status === 'deployed' || application.status === 'deploying'" @click="openDeleteModal">删除</button>
+					</div>
 				</div>
-			</template>
-		</a-drawer>
 
-		<!-- 基本信息编辑弹窗 -->
-		<a-modal v-model:open="showBasicInfoModal" title="编辑基本信息">
-			<a-form
-				ref="basicInfoFormRef"
-				:model="basicInfoForm"
-				:rules="basicInfoFormRules"
-				:label-col="{ span: 6 }"
-				:wrapper-col="{ span: 16 }"
-			>
-				<a-form-item label="应用名称" name="name">
-					<a-input v-model:value="basicInfoForm.name" />
-				</a-form-item>
-				<a-form-item label="应用编码">
-					<a-input :value="basicInfoForm.code" disabled />
-				</a-form-item>
-				<a-form-item label="仓库地址">
-					<a-input v-model:value="basicInfoForm.repository_url" />
-				</a-form-item>
-				<a-form-item label="部署分支">
-					<a-input v-model:value="basicInfoForm.deploy_branches" />
-				</a-form-item>
-				<a-form-item label="自动部署">
-					<a-switch v-model:checked="basicInfoForm.auto_deploy" />
-				</a-form-item>
-				<a-form-item label="镜像拉取策略" name="image_pull_policy">
-					<a-select v-model:value="basicInfoForm.image_pull_policy">
-						<a-select-option value="always">always</a-select-option>
-						<a-select-option value="missing">missing</a-select-option>
-						<a-select-option value="never">never</a-select-option>
-					</a-select>
-				</a-form-item>
-				<a-form-item label="启用">
-					<a-switch v-model:checked="basicInfoForm.enabled" />
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button type="primary" :loading="operating" @click="handleBasicInfoOk">保存</a-button>
-				<a-button @click="showBasicInfoModal = false">取消</a-button>
-			</template>
-		</a-modal>
+				<div v-if="basicInfoLoading" class="flex justify-center py-8">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<dl v-else-if="application" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">应用编码</dt>
+						<dd><code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ application.code }}</code></dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">状态</dt>
+						<dd><span class="badge badge-sm" :class="appBadgeClass(application.status)">{{ appStatusLabel(application.status) }}</span></dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">仓库地址</dt>
+						<dd class="truncate">{{ application.git_source?.repository_url || '—' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">部署分支</dt>
+						<dd>{{ application.git_source?.deploy_branches || '—' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">自动部署</dt>
+						<dd>
+							<span class="badge badge-sm" :class="application.git_source?.auto_deploy ? 'badge-info' : 'badge-ghost'">
+								{{ application.git_source?.auto_deploy ? '是' : '否' }}
+							</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">拉取策略</dt>
+						<dd>{{ application.image_pull_policy }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">创建时间</dt>
+						<dd class="text-base-content/60">{{ formatTime(application.created_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="text-base-content/50 w-24 shrink-0">部署记录</dt>
+						<dd>
+							<router-link :to="`/cd/deployments?application_id=${application.id}`" class="link link-primary text-xs">
+								查看所有部署
+							</router-link>
+						</dd>
+					</div>
+				</dl>
+			</div>
+		</div>
 
-		<!-- 删除应用弹窗 -->
-		<a-modal v-model:open="showDeleteModal" title="删除应用">
-			<a-space direction="vertical" style="width: 100%">
-				<p>
-					确定要删除应用「
-					<strong>{{ application?.name }}</strong>
-					」吗？
-				</p>
-				<a-checkbox v-model:checked="deleteDir">
-					同时删除应用工作目录（data/apps/{{ application?.code }}）
-				</a-checkbox>
-			</a-space>
-			<template #footer>
-				<a-button type="primary" danger :loading="operating" @click="handleDeleteOk">删除</a-button>
-				<a-button @click="showDeleteModal = false">取消</a-button>
-			</template>
-		</a-modal>
-	</a-space>
+		<!-- Config files card -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="font-semibold">配置文件</h2>
+					<button class="btn btn-sm btn-primary gap-1" @click="openAddFileDrawer">
+						<Plus class="size-3.5" />添加文件
+					</button>
+				</div>
+				<div v-if="fileListLoading" class="flex justify-center py-8">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<div v-else-if="files.length === 0" class="flex flex-col items-center gap-2 py-8 text-base-content/40">
+					<FileX class="size-10" />
+					<span class="text-sm">暂无配置文件</span>
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="table table-sm">
+						<thead>
+							<tr class="text-base-content/60">
+								<th>文件路径</th>
+								<th>创建时间</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="file in files" :key="file.id" class="hover">
+								<td><code class="text-xs">{{ file.path }}</code></td>
+								<td class="cell-muted">{{ formatTime(file.created_at) }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="link link-primary" @click="openFileDrawer(file.id)">查看</button>
+										<button class="link link-primary" @click="openFileDrawer(file.id, true)">编辑</button>
+										<button class="link link-error" @click="confirmDeleteFile(file.id)">删除</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<!-- File drawer -->
+		<div class="drawer drawer-end" :class="{ 'drawer-open': fileDrawerVisible }">
+			<input id="file-drawer" type="checkbox" class="drawer-toggle" :checked="fileDrawerVisible" @change="fileDrawerVisible = ($event.target as HTMLInputElement).checked" />
+			<div class="drawer-side z-40">
+				<label for="file-drawer" class="drawer-overlay" @click="handleDrawerClose" />
+				<div class="w-[720px] max-w-full bg-base-100 h-full flex flex-col">
+					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
+						<h3 class="font-semibold">{{ currentFileId ? (isEditingInDrawer ? '编辑文件' : '查看文件') + ': ' + currentFilePath : '新建文件' }}</h3>
+						<button class="btn btn-sm btn-ghost btn-circle" @click="handleDrawerClose">
+							<X class="size-4" />
+						</button>
+					</div>
+					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
+						<label v-if="isEditingInDrawer || !currentFileId" class="form-control w-full">
+							<div class="label pb-1"><span class="label-text">文件路径</span></div>
+							<input v-model="currentFilePath" type="text" class="input input-bordered input-sm" placeholder="例如: nginx.conf" />
+						</label>
+						<div class="flex-1 min-h-0" style="height: 500px">
+							<CodeEditor
+								v-if="!fileContentLoading"
+								v-model:value="currentFileContent"
+								:style="{ height: '100%' }"
+								theme="vs-dark"
+								:language="currentFileLanguage"
+								:options="{ readOnly: !isEditingInDrawer && !!currentFileId, minimap: { enabled: false }, fontSize: 14, automaticLayout: true }"
+							/>
+							<div v-else class="flex justify-center items-center h-full">
+								<span class="loading loading-spinner loading-md text-primary" />
+							</div>
+						</div>
+					</div>
+					<div class="flex items-center justify-end gap-2 px-5 py-4 border-t border-base-200">
+						<template v-if="!isEditingInDrawer && currentFileId">
+							<button class="btn btn-sm btn-primary" @click="isEditingInDrawer = true">编辑</button>
+							<button class="btn btn-sm btn-ghost" @click="handleDrawerClose">关闭</button>
+						</template>
+						<template v-else>
+							<button class="btn btn-sm btn-primary" :disabled="fileContentLoading" @click="saveCurrentFile">
+								<span v-if="fileContentLoading" class="loading loading-spinner loading-xs" />
+								保存
+							</button>
+							<button class="btn btn-sm btn-ghost" @click="handleDrawerClose">取消</button>
+						</template>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Edit basic info modal -->
+		<dialog ref="editModalRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">编辑基本信息</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">应用名称</span></div>
+						<input v-model="editForm.name" type="text" class="input input-bordered input-sm" :class="{ 'input-error': editErrors.name }" />
+						<div v-if="editErrors.name" class="label pt-1"><span class="label-text-alt text-error">{{ editErrors.name }}</span></div>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">应用编码</span></div>
+						<input :value="editForm.code" type="text" class="input input-bordered input-sm opacity-60" disabled />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">仓库地址</span></div>
+						<input v-model="editForm.repository_url" type="text" class="input input-bordered input-sm" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">部署分支</span></div>
+						<input v-model="editForm.deploy_branches" type="text" class="input input-bordered input-sm" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">镜像拉取策略</span></div>
+						<select v-model="editForm.image_pull_policy" class="select select-bordered select-sm">
+							<option value="always">always</option>
+							<option value="missing">missing</option>
+							<option value="never">never</option>
+						</select>
+					</label>
+					<div class="flex items-center gap-6">
+						<label class="flex items-center gap-2 cursor-pointer">
+							<span class="label-text text-sm">自动部署</span>
+							<input v-model="editForm.auto_deploy" type="checkbox" class="toggle toggle-sm toggle-primary" />
+						</label>
+						<label class="flex items-center gap-2 cursor-pointer">
+							<span class="label-text text-sm">启用</span>
+							<input v-model="editForm.enabled" type="checkbox" class="toggle toggle-sm toggle-primary" />
+						</label>
+					</div>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+					</button>
+					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Delete modal -->
+		<dialog ref="deleteModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除应用</h3>
+				<p class="py-4">确定要删除应用「<strong>{{ application?.name }}</strong>」吗？此操作不可撤销。</p>
+				<label class="flex items-center gap-2 cursor-pointer mb-2">
+					<input v-model="deleteDir" type="checkbox" class="checkbox checkbox-sm checkbox-error" />
+					<span class="text-sm">同时删除应用工作目录（data/apps/{{ application?.code }}）</span>
+				</label>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="operating" @click="handleDeleteOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Delete file confirm modal -->
+		<dialog ref="deleteFileModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除文件</h3>
+				<p class="py-4">确定删除此配置文件？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="fileListLoading" @click="executeDeleteFile">
+						<span v-if="fileListLoading" class="loading loading-spinner loading-xs" />删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteFileModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
-import { formatTime, delayAsync } from '@/utils/time';
-import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { ArrowLeft, Rocket, ChevronDown, Plus, FileX, X } from 'lucide-vue-next';
+import { CodeEditor } from 'monaco-editor-vue3';
 import { applicationApi } from '@/api/application';
 import { deploymentApi } from '@/api/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
-import { appStatusColor, appStatusLabel } from '@/utils/status';
+import { useToast } from '@/composables/useToast';
+import { appStatusLabel } from '@/utils/status';
+import { formatTime, delayAsync } from '@/utils/time';
 import type { Application, ConfigFile } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
 const applicationId = route.params.id as string;
+const toast = useToast();
 
 const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -263,18 +287,13 @@ const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
 const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
 
 const application = ref<Application>();
-const envs = computed(() => {
-	const envFiles = files.value.filter((f) => f.path.match(/^\.env(\..+)?$/));
-	return envFiles.map((f) => f.path);
-});
-
 const files = ref<ConfigFile[]>([]);
 
-const fileColumns = [
-	{ title: '文件路径', key: 'path', dataIndex: 'path', width: 400 },
-	{ title: '创建时间', key: 'created_at', width: 180 },
-	{ title: '操作', key: 'action', width: 150 },
-];
+const editModalRef = ref<HTMLDialogElement>();
+const deleteModalRef = ref<HTMLDialogElement>();
+const deleteFileModalRef = ref<HTMLDialogElement>();
+const pendingDeleteFileId = ref('');
+const deleteDir = ref(false);
 
 const fileDrawerVisible = ref(false);
 const currentFileId = ref('');
@@ -282,55 +301,31 @@ const currentFilePath = ref('');
 const currentFileContent = ref('');
 const isEditingInDrawer = ref(false);
 
+const editForm = reactive({ name: '', code: '', repository_url: '', deploy_branches: '', auto_deploy: false, image_pull_policy: 'missing', enabled: true });
+const editErrors = reactive({ name: '' });
+
+const envs = computed(() => files.value.filter((f) => f.path.match(/^\.env(\..+)?$/)).map((f) => f.path));
+
+const badgeMap: Record<string, string> = { deployed: 'badge-success', deploy_failed: 'badge-error', deploying: 'badge-info', undeployed: 'badge-ghost' };
+function appBadgeClass(s: string) { return badgeMap[s] ?? 'badge-ghost'; }
+
 const currentFileLanguage = computed(() => {
-	const path = currentFilePath.value.toLowerCase();
-	if (path.endsWith('.sh') || path.endsWith('.bash')) return 'shell';
-	if (path.startsWith('.env') || path.endsWith('.ini') || path.endsWith('.properties'))
-		return 'ini';
+	const p = currentFilePath.value.toLowerCase();
+	if (p.endsWith('.sh') || p.endsWith('.bash')) return 'shell';
+	if (p.startsWith('.env') || p.endsWith('.ini') || p.endsWith('.properties')) return 'ini';
 	return 'yaml';
 });
-
-const showBasicInfoModal = ref(false);
-const showDeleteModal = ref(false);
-const deleteDir = ref(false);
-
-const basicInfoFormRef = ref<FormInstance>();
-const basicInfoForm = reactive({
-	name: '',
-	code: '',
-	repository_url: '',
-	deploy_branches: '',
-	auto_deploy: false,
-	image_pull_policy: 'missing',
-	enabled: true,
-});
-
-const basicInfoFormRules = {
-	name: [{ required: true, message: '请输入应用名称' }],
-	image_pull_policy: [{ required: true, message: '请选择镜像拉取策略' }],
-};
 
 async function fetchApplication() {
 	try {
 		await executeBasicInfo(async () => {
 			const data = await applicationApi.get(applicationId);
 			application.value = data;
-			basicInfoForm.name = data.name;
-			basicInfoForm.code = data.code;
-			basicInfoForm.image_pull_policy = data.image_pull_policy;
-			basicInfoForm.enabled = data.enabled;
-			if (data.git_source) {
-				basicInfoForm.repository_url = data.git_source.repository_url;
-				basicInfoForm.deploy_branches = data.git_source.deploy_branches;
-				basicInfoForm.auto_deploy = data.git_source.auto_deploy;
-			}
+			Object.assign(editForm, { name: data.name, code: data.code, image_pull_policy: data.image_pull_policy, enabled: data.enabled, repository_url: data.git_source?.repository_url ?? '', deploy_branches: data.git_source?.deploy_branches ?? '', auto_deploy: data.git_source?.auto_deploy ?? false });
 		});
-		// 如果应用正在部署中，找到对应部署记录并轮询直到结束
-		if (application.value?.status === 'deploying') {
-			pollActiveDeployment();
-		}
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取应用信息失败');
+		if (application.value?.status === 'deploying') pollActiveDeployment();
+	} catch {
+		toast.error('获取应用信息失败');
 		router.push('/cd/applications');
 	}
 }
@@ -345,19 +340,12 @@ async function pollActiveDeployment() {
 			try {
 				const detail = await deploymentApi.get(latest.id);
 				if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-					if (application.value) {
-						application.value.status =
-							detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
-					}
+					if (application.value) application.value.status = detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
 					break;
 				}
-			} catch {
-				break;
-			}
+			} catch { break; }
 		}
-	} catch {
-		// 查不到部署记录时静默退出
-	}
+	} catch { /* silent */ }
 }
 
 async function handleDeploy() {
@@ -365,68 +353,49 @@ async function handleDeploy() {
 		await executeOp(async () => {
 			const defaultEnv = envs.value.includes('.env') ? '.env' : undefined;
 			const res = await applicationApi.deploy(applicationId, undefined, defaultEnv);
-			message.success(`部署已触发，ID: ${res.deployment_id}`);
+			toast.success(`部署已触发`);
 			router.push(`/cd/deployments/${res.deployment_id}`);
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '触发部署失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '触发部署失败'); }
 }
 
-async function handleDeployWithEnv({ key }: { key: string }) {
+async function handleDeployWithEnv(env: string) {
 	try {
 		await executeOp(async () => {
-			const res = await applicationApi.deploy(applicationId, undefined, key);
-			message.success(`部署已触发，ID: ${res.deployment_id}`);
+			const res = await applicationApi.deploy(applicationId, undefined, env);
+			toast.success(`部署已触发`);
 			router.push(`/cd/deployments/${res.deployment_id}`);
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '触发部署失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '触发部署失败'); }
 }
 
 async function handleStop() {
 	try {
 		await executeOp(async () => {
 			const res = await applicationApi.stop(applicationId);
-			message.success('停止操作已提交');
+			toast.success('停止操作已提交');
 			while (true) {
 				await delayAsync(3000);
 				try {
 					const detail = await deploymentApi.get(res.deployment_id);
 					if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-						if (detail.status === 'ran_to_completion') {
-							if (application.value) application.value.status = 'undeployed';
-						} else {
-							if (application.value) application.value.status = 'deploy_failed';
-							router.push(`/cd/deployments/${res.deployment_id}`);
-						}
+						if (application.value) application.value.status = detail.status === 'ran_to_completion' ? 'undeployed' : 'deploy_failed';
 						break;
 					}
-				} catch {
-					break;
-				}
+				} catch { break; }
 			}
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '停止失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '停止失败'); }
 }
 
 async function handleRestart() {
 	try {
 		await executeOp(async () => {
 			const res = await applicationApi.restart(applicationId);
-			message.success('重启操作已提交');
+			toast.success('重启操作已提交');
 			router.push(`/cd/deployments/${res.deployment_id}`);
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '重启失败');
-	}
-}
-function openDeleteModal() {
-	deleteDir.value = false;
-	showDeleteModal.value = true;
+	} catch (error) { toast.error(error instanceof Error ? error.message : '重启失败'); }
 }
 
 async function handleExport() {
@@ -435,170 +404,98 @@ async function handleExport() {
 		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${data.code || 'application'}.json`;
-		a.click();
+		a.href = url; a.download = `${data.code || 'application'}.json`; a.click();
 		URL.revokeObjectURL(url);
-		message.success('导出成功');
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '导出失败');
-	}
+		toast.success('导出成功');
+	} catch (error) { toast.error(error instanceof Error ? error.message : '导出失败'); }
 }
+
+function openEditModal() { editErrors.name = ''; editModalRef.value?.showModal(); }
+
+async function handleEditOk() {
+	editErrors.name = editForm.name.trim() ? '' : '请输入应用名称';
+	if (editErrors.name) return;
+	try {
+		await executeOp(async () => {
+			await applicationApi.update(applicationId, { name: editForm.name, image_pull_policy: editForm.image_pull_policy, enabled: editForm.enabled, git_source: editForm.repository_url ? { repository_url: editForm.repository_url, deploy_branches: editForm.deploy_branches, auto_deploy: editForm.auto_deploy } : null });
+			toast.success('更新成功');
+			editModalRef.value?.close();
+			fetchApplication();
+		});
+	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
+}
+
+function openDeleteModal() { deleteDir.value = false; deleteModalRef.value?.showModal(); }
 
 async function handleDeleteOk() {
 	try {
 		await executeOp(async () => {
 			await applicationApi.delete(applicationId, deleteDir.value);
-			message.success('删除成功');
+			toast.success('删除成功');
 			router.push('/cd/applications');
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-async function handleBasicInfoOk() {
-	try {
-		await basicInfoFormRef.value?.validate();
-	} catch {
-		return;
-	}
-
-	try {
-		await executeOp(async () => {
-			const payload = {
-				name: basicInfoForm.name,
-				image_pull_policy: basicInfoForm.image_pull_policy,
-				enabled: basicInfoForm.enabled,
-				git_source: basicInfoForm.repository_url
-					? {
-							repository_url: basicInfoForm.repository_url,
-							deploy_branches: basicInfoForm.deploy_branches,
-							auto_deploy: basicInfoForm.auto_deploy,
-						}
-					: null,
-			};
-			await applicationApi.update(applicationId, payload);
-			message.success('更新成功');
-			showBasicInfoModal.value = false;
-			fetchApplication();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '更新失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '删除失败'); }
 }
 
 async function loadFiles() {
 	try {
-		await executeFileList(async () => {
-			const fileList = await applicationApi.listFiles(applicationId);
-			files.value = fileList;
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '加载配置文件失败');
-	}
+		await executeFileList(async () => { files.value = await applicationApi.listFiles(applicationId); });
+	} catch { toast.error('加载配置文件失败'); }
 }
 
 async function openFileDrawer(fileId: string, isEdit = false) {
-	currentFileId.value = fileId;
-	isEditingInDrawer.value = isEdit;
+	currentFileId.value = fileId; isEditingInDrawer.value = isEdit;
+	currentFileContent.value = ''; currentFilePath.value = '';
 	fileDrawerVisible.value = true;
-	currentFileContent.value = '';
-	currentFilePath.value = '';
-
 	try {
 		await executeFileContent(async () => {
 			const result = await applicationApi.readFile(applicationId, fileId);
 			currentFileContent.value = result.content ?? '';
 			currentFilePath.value = result.path || '';
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '加载文件内容失败');
-	}
-}
-
-function handleDrawerClose() {
-	fileDrawerVisible.value = false;
-	isEditingInDrawer.value = false;
-}
-
-async function saveCurrentFile() {
-	if (!currentFilePath.value.trim()) {
-		message.error('请输入文件路径');
-		return;
-	}
-
-	const lowerPath = currentFilePath.value.toLowerCase();
-	const isShellFile = lowerPath.endsWith('.sh') || lowerPath.endsWith('.bash');
-	const content = isShellFile
-		? currentFileContent.value.replace(/\r\n/g, '\n')
-		: currentFileContent.value;
-
-	try {
-		await executeFileContent(async () => {
-			if (currentFileId.value) {
-				// 编辑模式
-				const updatedFile = await applicationApi.writeFile(
-					applicationId,
-					currentFileId.value,
-					currentFilePath.value,
-					content
-				);
-				// 更新文件列表中对应记录
-				const index = files.value.findIndex((f) => f.id === currentFileId.value);
-				if (index >= 0) {
-					files.value[index] = updatedFile;
-				}
-				message.success('保存成功');
-			} else {
-				// 新建模式
-				await applicationApi.createFile(applicationId, currentFilePath.value, content);
-				message.success('添加成功');
-			}
-			fileDrawerVisible.value = false;
-			isEditingInDrawer.value = false;
-			loadFiles();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '保存失败');
-	}
-}
-
-async function deleteFile(fileId: string) {
-	try {
-		await executeFileList(async () => {
-			await applicationApi.deleteFile(applicationId, fileId);
-			message.success('删除成功');
-			loadFiles();
-		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '删除失败');
-	}
+	} catch { toast.error('加载文件内容失败'); }
 }
 
 function openAddFileDrawer() {
-	currentFileId.value = '';
-	currentFilePath.value = '';
-	currentFileContent.value = '';
-	isEditingInDrawer.value = true;
-	fileDrawerVisible.value = true;
+	currentFileId.value = ''; currentFilePath.value = ''; currentFileContent.value = '';
+	isEditingInDrawer.value = true; fileDrawerVisible.value = true;
 }
 
-onMounted(() => {
-	fetchApplication();
-	loadFiles();
-});
+function handleDrawerClose() { fileDrawerVisible.value = false; isEditingInDrawer.value = false; }
+
+async function saveCurrentFile() {
+	if (!currentFilePath.value.trim()) { toast.error('请输入文件路径'); return; }
+	const lowerPath = currentFilePath.value.toLowerCase();
+	const content = (lowerPath.endsWith('.sh') || lowerPath.endsWith('.bash')) ? currentFileContent.value.replace(/\r\n/g, '\n') : currentFileContent.value;
+	try {
+		await executeFileContent(async () => {
+			if (currentFileId.value) {
+				const updated = await applicationApi.writeFile(applicationId, currentFileId.value, currentFilePath.value, content);
+				const idx = files.value.findIndex((f) => f.id === currentFileId.value);
+				if (idx >= 0) files.value[idx] = updated;
+				toast.success('保存成功');
+			} else {
+				await applicationApi.createFile(applicationId, currentFilePath.value, content);
+				toast.success('添加成功');
+			}
+			fileDrawerVisible.value = false; isEditingInDrawer.value = false;
+			loadFiles();
+		});
+	} catch (error) { toast.error(error instanceof Error ? error.message : '保存失败'); }
+}
+
+function confirmDeleteFile(fileId: string) { pendingDeleteFileId.value = fileId; deleteFileModalRef.value?.showModal(); }
+
+async function executeDeleteFile() {
+	try {
+		await executeFileList(async () => {
+			await applicationApi.deleteFile(applicationId, pendingDeleteFileId.value);
+			toast.success('删除成功');
+			deleteFileModalRef.value?.close();
+			loadFiles();
+		});
+	} catch { toast.error('删除失败'); }
+}
+
+onMounted(() => { fetchApplication(); loadFiles(); });
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

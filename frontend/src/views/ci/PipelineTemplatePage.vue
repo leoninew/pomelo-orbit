@@ -1,205 +1,162 @@
 <template>
-	<a-space direction="vertical" style="width: 100%">
-		<div class="page-header">
-			<h2>流水线模板</h2>
-			<a-button type="primary" @click="showCreateModal">
-				<template #icon><PlusOutlined /></template>
-				新建模板
-			</a-button>
+	<div class="flex flex-col gap-4">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">流水线模板</h1>
+			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+				<Plus class="size-4" />新建模板
+			</button>
 		</div>
 
-		<a-table
-			:columns="columns"
-			:data-source="templates"
-			:loading="loading"
-			:pagination="pagination"
-			row-key="id"
-			@change="handleTableChange"
-		>
-			<template #bodyCell="{ column, record }">
-				<template v-if="column.key === 'name'">
-					<router-link :to="`/ci/templates/${record.id}`">
-						{{ record.name }}
-					</router-link>
-					<a-tag v-if="record.is_builtin" color="blue" style="margin-left: 8px">内置</a-tag>
-				</template>
-				<template v-else-if="column.key === 'variables'">
-					{{ (record.variable_declarations ?? []).length }} 个变量
-				</template>
-				<template v-else-if="column.key === 'created_at'">
-					{{ formatTime(record.created_at) }}
-				</template>
-				<template v-else-if="column.key === 'actions'">
-					<a-space>
-						<a @click="$router.push(`/ci/templates/${record.id}`)">查看</a>
-						<a-popconfirm
-							v-if="!record.is_builtin"
-							title="确定删除此模板？"
-							ok-text="删除"
-							cancel-text="取消"
-							@confirm="handleDelete(record.id)"
-						>
-							<a style="color: #ff4d4f">删除</a>
-						</a-popconfirm>
-					</a-space>
-				</template>
-			</template>
-		</a-table>
+		<div class="card bg-base-100 shadow-sm overflow-x-auto">
+			<table class="table table-sm">
+				<thead>
+					<tr class="text-base-content/60">
+						<th>模板名称</th>
+						<th>描述</th>
+						<th>变量</th>
+						<th>创建时间</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-if="loading"><td colspan="5" class="text-center py-8"><span class="loading loading-spinner loading-md text-primary" /></td></tr>
+					<tr v-else-if="templates.length === 0"><td colspan="5" class="text-center py-8 text-base-content/40">暂无模板</td></tr>
+					<tr v-for="t in templates" :key="t.id" class="hover">
+						<td>
+							<div class="flex items-center gap-2">
+								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary font-medium">{{ t.name }}</router-link>
+								<span v-if="t.is_builtin" class="badge badge-xs badge-info">内置</span>
+							</div>
+						</td>
+						<td class="cell-muted max-w-xs truncate">{{ t.description || '—' }}</td>
+						<td class="cell-muted">{{ (t.variable_declarations ?? []).length }} 个</td>
+						<td class="cell-muted">{{ formatTime(t.created_at) }}</td>
+						<td>
+							<div class="flex items-center gap-2">
+								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary">查看</router-link>
+								<button v-if="!t.is_builtin" class="link link-error" @click="confirmDelete(t.id)">删除</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end p-3 border-t border-base-200">
+				<div class="join">
+					<button v-for="p in totalPages" :key="p" class="join-item btn btn-sm" :class="p === pagination.current ? 'btn-primary' : 'btn-ghost'" @click="goPage(p)">{{ p }}</button>
+				</div>
+			</div>
+		</div>
 
-		<!-- 创建模板弹窗 -->
-		<a-modal v-model:open="showModal" title="新建模板" width="800px" @ok="handleModalOk">
-			<a-form
-				ref="formRef"
-				:model="form"
-				:rules="formRules"
-				:label-col="{ span: 4 }"
-				:wrapper-col="{ span: 19 }"
-			>
-				<a-form-item label="模板名称" name="name">
-					<a-input v-model:value="form.name" placeholder="例如: Python FastAPI 构建" />
-				</a-form-item>
-				<a-form-item label="描述">
-					<a-textarea v-model:value="form.description" :rows="2" />
-				</a-form-item>
-				<a-form-item label="Pipeline YAML" name="content">
-					<a-textarea
-						v-model:value="form.content"
-						:rows="12"
-						placeholder="version: v1&#10;steps:&#10;  - name: checkout&#10;    uses: checkout"
-						style="font-family: 'Consolas', 'Monaco', monospace"
-					/>
-				</a-form-item>
-			</a-form>
-			<template #footer>
-				<a-button @click="showModal = false">取消</a-button>
-				<a-button type="primary" :loading="operating" @click="handleModalOk">创建</a-button>
-			</template>
-		</a-modal>
-	</a-space>
+		<!-- Create modal -->
+		<dialog ref="createModalRef" class="modal">
+			<div class="modal-box w-full max-w-2xl">
+				<h3 class="font-bold text-lg mb-4">新建模板</h3>
+				<div class="flex flex-col gap-3">
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">模板名称</span></div>
+						<input v-model="form.name" type="text" class="input input-bordered input-sm" :class="{ 'input-error': errors.name }" placeholder="例如: Python FastAPI 构建" />
+						<div v-if="errors.name" class="label pt-1"><span class="label-text-alt text-error">{{ errors.name }}</span></div>
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">描述（可选）</span></div>
+						<textarea v-model="form.description" class="textarea textarea-bordered textarea-sm" rows="2" />
+					</label>
+					<label class="form-control w-full">
+						<div class="label pb-1"><span class="label-text">Pipeline YAML</span></div>
+						<textarea v-model="form.content" class="textarea textarea-bordered textarea-sm font-mono text-xs" rows="12" :class="{ 'textarea-error': errors.content }" placeholder="version: v1&#10;steps:&#10;  - name: checkout&#10;    uses: checkout" />
+						<div v-if="errors.content" class="label pt-1"><span class="label-text-alt text-error">{{ errors.content }}</span></div>
+					</label>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleCreateOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />创建
+					</button>
+					<button class="btn btn-ghost" @click="createModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Delete confirm modal -->
+		<dialog ref="deleteModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除模板</h3>
+				<p class="py-4">确定删除此模板？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+	</div>
 </template>
 
 <script setup lang="ts">
-import type { FormInstance } from 'ant-design-vue';
-import { message } from 'ant-design-vue';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { Plus } from 'lucide-vue-next';
 import { pipelineTemplateApi } from '@/api/ci';
-import { formatTime } from '@/utils/time';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 import type { PipelineTemplate } from '@/types/api';
 
+const toast = useToast();
 const { loading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const templates = ref<PipelineTemplate[]>([]);
-const pagination = reactive({
-	current: 1,
-	pageSize: 10,
-	total: 0,
-	showSizeChanger: true,
-	showTotal: (total: number) => `共 ${total} 条`,
-});
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
-const columns = [
-	{ title: '模板名称', key: 'name', dataIndex: 'name' },
-	{ title: '描述', key: 'description', dataIndex: 'description', ellipsis: true },
-	{ title: '变量', key: 'variables', width: 120 },
-	{ title: '创建时间', key: 'created_at', width: 180 },
-	{ title: '操作', key: 'actions', width: 150 },
-];
+const createModalRef = ref<HTMLDialogElement>();
+const deleteModalRef = ref<HTMLDialogElement>();
+const pendingDeleteId = ref('');
 
-const showModal = ref(false);
-const formRef = ref<FormInstance>();
-
-const form = reactive({
-	name: '',
-	description: '',
-	content: '',
-});
-
-const formRules = {
-	name: [{ required: true, message: '请输入模板名称' }],
-	content: [{ required: true, message: '请输入 Pipeline YAML' }],
-};
+const form = reactive({ name: '', description: '', content: '' });
+const errors = reactive({ name: '', content: '' });
 
 async function fetchTemplates() {
 	try {
 		await execute(async () => {
-			const res = await pipelineTemplateApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-			});
-			templates.value = res.items;
-			pagination.total = res.total;
+			const res = await pipelineTemplateApi.list({ page: pagination.current, per_page: pagination.pageSize });
+			templates.value = res.items; pagination.total = res.total;
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '获取模板列表失败');
-	}
+	} catch { toast.error('获取模板列表失败'); }
 }
 
-function handleTableChange(pag: { current?: number; pageSize?: number }) {
-	pagination.current = pag.current || 1;
-	pagination.pageSize = pag.pageSize || 10;
-	fetchTemplates();
+function goPage(p: number) { pagination.current = p; fetchTemplates(); }
+
+function openCreateModal() {
+	Object.assign(form, { name: '', description: '', content: '' });
+	Object.assign(errors, { name: '', content: '' });
+	createModalRef.value?.showModal();
 }
 
-function showCreateModal() {
-	Object.assign(form, {
-		name: '',
-		description: '',
-		content: '',
-	});
-	showModal.value = true;
-}
-
-async function handleModalOk() {
-	try {
-		await formRef.value?.validate();
-	} catch {
-		return;
-	}
-
+async function handleCreateOk() {
+	errors.name = form.name.trim() ? '' : '请输入模板名称';
+	errors.content = form.content.trim() ? '' : '请输入 Pipeline YAML';
+	if (errors.name || errors.content) return;
 	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.create({
-				name: form.name,
-				description: form.description || undefined,
-				content: form.content,
-			});
-			message.success('创建成功');
-			showModal.value = false;
-			fetchTemplates();
+			await pipelineTemplateApi.create({ name: form.name, description: form.description || undefined, content: form.content });
+			toast.success('创建成功'); createModalRef.value?.close(); fetchTemplates();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '创建失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '创建失败'); }
 }
 
-async function handleDelete(id: string) {
+function confirmDelete(id: string) { pendingDeleteId.value = id; deleteModalRef.value?.showModal(); }
+
+async function handleDelete() {
 	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.delete(id);
-			message.success('删除成功');
-			fetchTemplates();
+			await pipelineTemplateApi.delete(pendingDeleteId.value);
+			toast.success('删除成功'); deleteModalRef.value?.close(); fetchTemplates();
 		});
-	} catch (error) {
-		message.error(error instanceof Error ? error.message : '删除失败');
-	}
+	} catch (error) { toast.error(error instanceof Error ? error.message : '删除失败'); }
 }
 
-onMounted(() => {
-	fetchTemplates();
-});
+onMounted(fetchTemplates);
 </script>
-
-<style scoped>
-.page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	min-height: 32px;
-}
-
-.page-header h2 {
-	margin: 0;
-}
-</style>

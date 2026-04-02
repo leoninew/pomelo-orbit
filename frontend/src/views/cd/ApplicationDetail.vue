@@ -128,12 +128,17 @@
 			</div>
 		</div>
 
-		<!-- File drawer -->
-		<div class="drawer drawer-end" :class="{ 'drawer-open': fileDrawerVisible }">
-			<input id="file-drawer" type="checkbox" class="drawer-toggle" :checked="fileDrawerVisible" @change="fileDrawerVisible = ($event.target as HTMLInputElement).checked" />
-			<div class="drawer-side z-40">
-				<label for="file-drawer" class="drawer-overlay" @click="handleDrawerClose" />
-				<div class="w-[720px] max-w-full bg-base-100 h-full flex flex-col">
+		<!-- File panel -->
+		<Teleport to="body">
+			<Transition
+				enter-active-class="transition-transform duration-300 ease-out"
+				enter-from-class="translate-x-full"
+				enter-to-class="translate-x-0"
+				leave-active-class="transition-transform duration-300 ease-in"
+				leave-from-class="translate-x-0"
+				leave-to-class="translate-x-full"
+			>
+				<div v-if="fileDrawerVisible" class="fixed inset-y-0 right-0 z-50 w-[720px] max-w-full bg-base-100 shadow-2xl flex flex-col border-l border-base-200">
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
 						<h3 class="font-semibold">{{ currentFileId ? (isEditingInDrawer ? '编辑文件' : '查看文件') + ': ' + currentFilePath : '新建文件' }}</h3>
 						<button class="btn btn-sm btn-ghost btn-circle" @click="handleDrawerClose">
@@ -141,18 +146,18 @@
 						</button>
 					</div>
 					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
-						<div v-if="isEditingInDrawer || !currentFileId" class="form-control w-full">
-							<label class="label">
-								<span class="label-text">文件路径</span>
-							</label>
-							<input v-model="currentFilePath" type="text" class="input input-bordered w-full" placeholder="例如: nginx.conf" />
+						<div v-if="isEditingInDrawer || !currentFileId">
+							<fieldset class="fieldset">
+								<legend class="fieldset-legend">文件路径</legend>
+								<input v-model="currentFilePath" type="text" class="input w-full" placeholder="例如: nginx.conf" />
+							</fieldset>
 						</div>
-						<div class="flex-1 min-h-0" style="height: 500px">
+						<div style="height: calc(100vh - 180px)">
 							<CodeEditor
 								v-if="!fileContentLoading"
 								v-model:value="currentFileContent"
 								:style="{ height: '100%' }"
-								theme="vs-dark"
+								theme="vs"
 								:language="currentFileLanguage"
 								:options="{ readOnly: !isEditingInDrawer && !!currentFileId, minimap: { enabled: false }, fontSize: 14, automaticLayout: true }"
 							/>
@@ -175,8 +180,12 @@
 						</template>
 					</div>
 				</div>
-			</div>
-		</div>
+			</Transition>
+			<!-- Overlay -->
+			<Transition enter-active-class="transition-opacity duration-300" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition-opacity duration-300" leave-from-class="opacity-100" leave-to-class="opacity-0">
+				<div v-if="fileDrawerVisible" class="fixed inset-0 z-40 bg-black/30" @click="handleDrawerClose" />
+			</Transition>
+		</Teleport>
 
 		<!-- Edit basic info modal -->
 		<dialog ref="editModalRef" class="modal">

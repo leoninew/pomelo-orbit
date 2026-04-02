@@ -72,11 +72,16 @@
 		</div>
 
 		<!-- Job logs drawer -->
-		<div class="drawer drawer-end" :class="{ 'drawer-open': showLogsDrawer }">
-			<input id="job-logs-drawer" type="checkbox" class="drawer-toggle" :checked="showLogsDrawer" @change="showLogsDrawer = ($event.target as HTMLInputElement).checked" />
-			<div class="drawer-side z-40">
-				<label for="job-logs-drawer" class="drawer-overlay" @click="showLogsDrawer = false" />
-				<div class="w-[800px] max-w-full bg-base-100 h-full flex flex-col">
+		<Teleport to="body">
+			<Transition
+				enter-active-class="transition-transform duration-300 ease-out"
+				enter-from-class="translate-x-full"
+				enter-to-class="translate-x-0"
+				leave-active-class="transition-transform duration-300 ease-in"
+				leave-from-class="translate-x-0"
+				leave-to-class="translate-x-full"
+			>
+				<div v-if="showLogsDrawer" class="fixed inset-y-0 right-0 z-50 w-[800px] max-w-full bg-base-100 shadow-2xl flex flex-col border-l border-base-200">
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
 						<h3 class="font-semibold">Job: {{ currentJob?.name }}</h3>
 						<button class="btn btn-sm btn-ghost btn-circle" @click="showLogsDrawer = false"><X class="size-4" /></button>
@@ -89,12 +94,15 @@
 						<div v-if="logsLoading" class="flex justify-center py-8"><span class="loading loading-spinner loading-md text-primary" /></div>
 						<div v-else class="flex-1 bg-neutral rounded-box p-4 overflow-auto min-h-64">
 							<pre v-if="logsText" class="text-neutral-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all">{{ logsText }}</pre>
-							<div v-else class="flex flex-col items-center gap-2 py-8 text-neutral-content/40"><FileX class="size-8" /><span class="text-sm">暂无日志</span></div>
+							<div v-else class="flex flex-col items-center gap-2 py-8 text-neutral-content/60"><FileX class="size-8" /><span class="text-sm">暂无日志</span></div>
 						</div>
 					</div>
 				</div>
-			</div>
-		</div>
+			</Transition>
+			<Transition enter-active-class="transition-opacity duration-300" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition-opacity duration-300" leave-from-class="opacity-100" leave-to-class="opacity-0">
+				<div v-if="showLogsDrawer" class="fixed inset-0 z-40 bg-black/30" @click="showLogsDrawer = false" />
+			</Transition>
+		</Teleport>
 
 		<!-- Cancel confirm modal -->
 		<dialog ref="cancelModalRef" class="modal">

@@ -1,5 +1,5 @@
 <template>
-	<div data-theme="light" class="h-screen flex flex-col font-sans">
+	<div class="h-screen flex flex-col font-sans">
 		<!-- Login page: no layout chrome -->
 		<template v-if="isLoginPage">
 			<router-view />

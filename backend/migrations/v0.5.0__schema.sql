@@ -32,25 +32,9 @@ CREATE TABLE IF NOT EXISTS application (
     code TEXT NOT NULL,
     image_pull_policy TEXT NOT NULL,
     status TEXT NOT NULL,
-    enabled INTEGER NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
-
--- Git 源
-CREATE TABLE IF NOT EXISTS git_source (
-    id TEXT PRIMARY KEY,
-    application_id TEXT NOT NULL UNIQUE,
-    repository_name TEXT,
-    repository_url TEXT NOT NULL,
-    deploy_branches TEXT NOT NULL,
-    auto_deploy INTEGER NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_git_source_repo_url ON git_source(repository_url);
 
 -- 镜像源
 CREATE TABLE IF NOT EXISTS image_source (

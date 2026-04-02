@@ -3,7 +3,6 @@ export type { PaginatedResp } from './common';
 export type { LoginReq, TokenResp, UserInfo, PasswordChangeReq, LoginHistory } from './auth';
 export type {
 	Application,
-	GitSource,
 	ImageSource,
 	ApplicationCreateReq,
 	ApplicationUpdateReq,

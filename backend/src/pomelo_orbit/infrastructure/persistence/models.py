@@ -56,37 +56,16 @@ class ApplicationModel(Base):
     image_pull_policy: Mapped[str] = mapped_column(String(20), default=ImagePullPolicy.MISSING, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default=ApplicationStatus.UNDEPLOYED, nullable=False)
 
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # 关系
-    git_source: Mapped["GitSourceModel | None"] = relationship(
-        "GitSourceModel", back_populates="application", uselist=False, cascade="all, delete-orphan"
-    )
     image_source: Mapped["ImageSourceModel | None"] = relationship(
         "ImageSourceModel", back_populates="application", uselist=False, cascade="all, delete-orphan"
     )
     config_files: Mapped[list["ApplicationConfigFileModel"]] = relationship(
         "ApplicationConfigFileModel", back_populates="application", cascade="all, delete-orphan"
     )
-
-
-class GitSourceModel(Base):
-    """Git 仓库源"""
-
-    __tablename__ = "git_source"
-
-    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    application_id: Mapped[str] = mapped_column(String(26), ForeignKey("application.id"), nullable=False, unique=True)
-    repository_url: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
-    deploy_branches: Mapped[str] = mapped_column(String(255), default="main,master", nullable=False)
-    auto_deploy: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
-
-    # 关系
-    application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="git_source")
 
 
 class ImageSourceModel(Base):

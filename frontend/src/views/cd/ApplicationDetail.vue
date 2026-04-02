@@ -81,27 +81,6 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">仓库地址</dt>
-						<dd class="truncate">{{ application.git_source?.repository_url || '—' }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">部署分支</dt>
-						<dd>{{ application.git_source?.deploy_branches || '—' }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">自动部署</dt>
-						<dd>
-							<span
-								class="badge badge-sm"
-								:class="
-									application.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'
-								"
-							>
-								{{ application.git_source?.auto_deploy ? '是' : '否' }}
-							</span>
-						</dd>
-					</div>
-					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">拉取策略</dt>
 						<dd>{{ application.image_pull_policy }}</dd>
 					</div>
@@ -302,26 +281,6 @@
 					</div>
 					<div class="form-control w-full">
 						<label class="label">
-							<span class="label-text">仓库地址</span>
-						</label>
-						<input
-							v-model="editForm.repository_url"
-							type="text"
-							class="input input-bordered w-full"
-						/>
-					</div>
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">部署分支</span>
-						</label>
-						<input
-							v-model="editForm.deploy_branches"
-							type="text"
-							class="input input-bordered w-full"
-						/>
-					</div>
-					<div class="form-control w-full">
-						<label class="label">
 							<span class="label-text">镜像拉取策略</span>
 						</label>
 						<select v-model="editForm.image_pull_policy" class="select select-bordered w-full">
@@ -330,19 +289,7 @@
 							<option value="never">never</option>
 						</select>
 					</div>
-					<div class="form-control w-full">
-						<label class="label cursor-pointer justify-start gap-3">
-							<input v-model="editForm.auto_deploy" type="checkbox" class="toggle toggle-primary" />
-							<span class="label-text">自动部署</span>
-						</label>
 					</div>
-					<div class="form-control w-full">
-						<label class="label cursor-pointer justify-start gap-3">
-							<input v-model="editForm.enabled" type="checkbox" class="toggle toggle-primary" />
-							<span class="label-text">启用</span>
-						</label>
-					</div>
-				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />
@@ -437,11 +384,7 @@ const isEditingInDrawer = ref(false);
 const editForm = reactive({
 	name: '',
 	code: '',
-	repository_url: '',
-	deploy_branches: '',
-	auto_deploy: false,
 	image_pull_policy: 'missing',
-	enabled: true,
 });
 const editErrors = reactive({ name: '' });
 
@@ -475,10 +418,6 @@ async function fetchApplication() {
 				name: data.name,
 				code: data.code,
 				image_pull_policy: data.image_pull_policy,
-				enabled: data.enabled,
-				repository_url: data.git_source?.repository_url ?? '',
-				deploy_branches: data.git_source?.deploy_branches ?? '',
-				auto_deploy: data.git_source?.auto_deploy ?? false,
 			});
 		});
 		if (application.value?.status === 'deploying') pollActiveDeployment();
@@ -603,14 +542,6 @@ async function handleEditOk() {
 			await applicationApi.update(applicationId, {
 				name: editForm.name,
 				image_pull_policy: editForm.image_pull_policy,
-				enabled: editForm.enabled,
-				git_source: editForm.repository_url
-					? {
-							repository_url: editForm.repository_url,
-							deploy_branches: editForm.deploy_branches,
-							auto_deploy: editForm.auto_deploy,
-						}
-					: null,
 			});
 			toast.success('更新成功');
 			editModalRef.value?.close();

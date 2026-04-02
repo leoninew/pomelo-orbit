@@ -140,16 +140,13 @@
 					<tr class="text-base-content/60">
 						<th>应用名称</th>
 						<th>编码</th>
-						<th>仓库</th>
-						<th>部署分支</th>
 						<th>状态</th>
-						<th>自动部署</th>
 						<th>操作</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr v-if="applications.length === 0">
-						<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
+						<td colspan="4" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="app in applications" :key="app.id" class="hover">
 						<td>
@@ -160,21 +157,9 @@
 						<td>
 							<code class="text-xs">{{ app.code }}</code>
 						</td>
-						<td class="cell-muted max-w-48 truncate">
-							{{ app.git_source?.repository_url || '—' }}
-						</td>
-						<td>{{ app.git_source?.deploy_branches || '—' }}</td>
 						<td>
 							<span class="badge badge-sm" :class="appBadgeClass(app.status)">
 								{{ appStatusLabel(app.status) }}
-							</span>
-						</td>
-						<td>
-							<span
-								class="badge badge-sm"
-								:class="app.git_source?.auto_deploy ? 'badge-outline badge-info' : 'badge-ghost'"
-							>
-								{{ app.git_source?.auto_deploy ? '自动' : '手动' }}
 							</span>
 						</td>
 						<td>
@@ -318,21 +303,13 @@ function appBadgeClass(s: string) {
 const form = reactive({
 	name: '',
 	code: '',
-	repository_url: '',
-	deploy_branches: 'master',
-	auto_deploy: false,
 	image_pull_policy: 'missing',
-	enabled: true,
 });
 const formErrors = reactive({ name: '', code: '' });
 const importForm = reactive({
 	name: '',
 	code: '',
-	repository_url: '',
-	deploy_branches: 'master',
-	auto_deploy: false,
 	image_pull_policy: 'missing',
-	enabled: true,
 	config_files: [] as { path: string; content: string }[],
 });
 const importErrors = reactive({ name: '', code: '' });
@@ -435,11 +412,7 @@ function openCreateModal() {
 	Object.assign(form, {
 		name: '',
 		code: '',
-		repository_url: '',
-		deploy_branches: 'master',
-		auto_deploy: false,
 		image_pull_policy: 'missing',
-		enabled: true,
 	});
 	Object.assign(formErrors, { name: '', code: '' });
 	createDialogRef.value?.showModal();
@@ -453,14 +426,6 @@ async function handleCreateOk() {
 				name: form.name,
 				code: form.code,
 				image_pull_policy: form.image_pull_policy,
-				enabled: form.enabled,
-				git_source: form.repository_url
-					? {
-							repository_url: form.repository_url,
-							deploy_branches: form.deploy_branches,
-							auto_deploy: form.auto_deploy,
-						}
-					: null,
 			});
 			toast.success('创建成功');
 			createDialogRef.value?.close();
@@ -485,11 +450,7 @@ async function handleFileImport(event: Event) {
 		Object.assign(importForm, {
 			name: data.name || '',
 			code: data.code || '',
-			repository_url: data.git_source?.repository_url || '',
-			deploy_branches: data.git_source?.deploy_branches || 'master',
-			auto_deploy: data.git_source?.auto_deploy ?? false,
 			image_pull_policy: data.image_pull_policy || 'missing',
-			enabled: data.enabled ?? true,
 			config_files: data.config_files || [],
 		});
 		Object.assign(importErrors, { name: '', code: '' });
@@ -509,14 +470,6 @@ async function handleImportOk() {
 				name: importForm.name,
 				code: importForm.code,
 				image_pull_policy: importForm.image_pull_policy,
-				enabled: importForm.enabled,
-				git_source: importForm.repository_url
-					? {
-							repository_url: importForm.repository_url,
-							deploy_branches: importForm.deploy_branches,
-							auto_deploy: importForm.auto_deploy,
-						}
-					: null,
 				config_files: importForm.config_files,
 			});
 			toast.success('导入成功');

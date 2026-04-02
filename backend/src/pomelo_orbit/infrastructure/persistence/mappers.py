@@ -7,7 +7,6 @@ from pomelo_orbit.domain.cd.entities import (
     ApplicationConfigFile,
     CertType,
     Deployment,
-    GitSource,
     ImageSource,
     Route,
     TriggerType,
@@ -18,7 +17,6 @@ from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
     DeploymentModel,
-    GitSourceModel,
     ImageSourceModel,
     LoginHistoryModel,
     RouteModel,
@@ -81,36 +79,6 @@ class LoginHistoryMapper:
             user_agent=entity.user_agent,
             login_at=entity.login_at,
             success=entity.success,
-        )
-
-
-class GitSourceMapper:
-    """Git 源映射器"""
-
-    @staticmethod
-    def to_domain(model: GitSourceModel) -> GitSource:
-        """ORM 模型转领域实体"""
-        return GitSource(
-            id=model.id,
-            application_id=model.application_id,
-            repository_url=model.repository_url,
-            deploy_branches=model.deploy_branches,
-            auto_deploy=model.auto_deploy,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
-
-    @staticmethod
-    def to_orm(entity: GitSource) -> GitSourceModel:
-        """领域实体转 ORM 模型"""
-        return GitSourceModel(
-            id=entity.id,
-            application_id=entity.application_id,
-            repository_url=entity.repository_url,
-            deploy_branches=entity.deploy_branches,
-            auto_deploy=entity.auto_deploy,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
         )
 
 
@@ -181,11 +149,9 @@ class ApplicationMapper:
             name=model.name,
             code=model.code,
             image_pull_policy=model.image_pull_policy,
-            enabled=model.enabled,
             status=model.status,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            git_source=GitSourceMapper.to_domain(model.git_source) if model.git_source else None,
             image_source=ImageSourceMapper.to_domain(model.image_source) if model.image_source else None,
             config_files=[ApplicationConfigFileMapper.to_domain(cf) for cf in model.config_files],
         )
@@ -197,7 +163,6 @@ class ApplicationMapper:
             id=entity.id,
             name=entity.name,
             code=entity.code,
-            enabled=entity.enabled,
             image_pull_policy=entity.image_pull_policy,
             status=entity.status,
             created_at=entity.created_at,
@@ -205,8 +170,6 @@ class ApplicationMapper:
         )
 
         # 设置关联实体
-        if entity.git_source:
-            model.git_source = GitSourceMapper.to_orm(entity.git_source)
         if entity.image_source:
             model.image_source = ImageSourceMapper.to_orm(entity.image_source)
         if entity.config_files:
@@ -305,7 +268,6 @@ __all__ = [
     "ApplicationConfigFileMapper",
     "ApplicationMapper",
     "DeploymentMapper",
-    "GitSourceMapper",
     "ImageSourceMapper",
     "LoginHistoryMapper",
     "RouteMapper",

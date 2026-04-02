@@ -15,7 +15,6 @@ from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     Deployment,
-    GitSource,
     ImageSource,
     TriggerType,
 )
@@ -311,9 +310,7 @@ class ApplicationService:
         self,
         name: str,
         code: str,
-        enabled: bool,
         image_pull_policy: str,
-        git_source_data: dict | None = None,
         image_source_data: dict | None = None,
     ) -> Application:
         """创建应用"""
@@ -326,19 +323,10 @@ class ApplicationService:
             id=app_id,
             name=name,
             code=code,
-            enabled=enabled,
             image_pull_policy=image_pull_policy,
             status=ApplicationStatus.UNDEPLOYED,
         )
 
-        if git_source_data:
-            app.git_source = GitSource(
-                id=str(ULID()),
-                application_id=app_id,
-                repository_url=git_source_data["repository_url"],
-                deploy_branches=git_source_data["deploy_branches"],
-                auto_deploy=git_source_data["auto_deploy"],
-            )
         if image_source_data:
             app.image_source = ImageSource(
                 id=str(ULID()),
@@ -354,7 +342,6 @@ class ApplicationService:
         self,
         application_id: str,
         update_data: dict,
-        git_source_data: dict | None = None,
         image_source_data: dict | None = None,
     ) -> Application:
         """更新应用"""
@@ -365,17 +352,6 @@ class ApplicationService:
         for key, value in update_data.items():
             if hasattr(app, key):
                 setattr(app, key, value)
-
-        if git_source_data is not None:
-            if app.git_source:
-                for key, value in git_source_data.items():
-                    setattr(app.git_source, key, value)
-            else:
-                app.git_source = GitSource(
-                    id=str(ULID()),
-                    application_id=app.id,
-                    **git_source_data,
-                )
 
         if image_source_data is not None:
             if app.image_source:
@@ -502,15 +478,7 @@ class ApplicationService:
         return {
             "name": app.name,
             "code": app.code,
-            "enabled": app.enabled,
             "image_pull_policy": app.image_pull_policy,
-            "git_source": {
-                "repository_url": app.git_source.repository_url,
-                "deploy_branches": app.git_source.deploy_branches,
-                "auto_deploy": app.git_source.auto_deploy,
-            }
-            if app.git_source
-            else None,
             "image_source": {
                 "image_name": app.image_source.image_name,
                 "registry_url": app.image_source.registry_url,
@@ -534,19 +502,9 @@ class ApplicationService:
             id=str(ULID()),
             name=data["name"],
             code=data["code"],
-            enabled=data.get("enabled", True),
             image_pull_policy=data.get("image_pull_policy", "missing"),
             status=ApplicationStatus.UNDEPLOYED,
         )
-
-        if data.get("git_source"):
-            app.git_source = GitSource(
-                id=str(ULID()),
-                application_id=app.id,
-                repository_url=data["git_source"]["repository_url"],
-                deploy_branches=data["git_source"].get("deploy_branches", "main,master"),
-                auto_deploy=data["git_source"].get("auto_deploy", True),
-            )
 
         if data.get("image_source"):
             app.image_source = ImageSource(

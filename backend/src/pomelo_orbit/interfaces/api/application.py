@@ -52,15 +52,12 @@ def create_application(
     _current_user=Depends(get_current_user),
 ) -> ApplicationResp:
     """创建应用"""
-    git_source_data = data.git_source.model_dump() if data.git_source else None
     image_source_data = data.image_source.model_dump() if data.image_source else None
 
     app = app_service.create_application(
         name=data.name,
         code=data.code,
-        enabled=data.enabled,
         image_pull_policy=data.image_pull_policy,
-        git_source_data=git_source_data,
         image_source_data=image_source_data,
     )
 
@@ -108,14 +105,12 @@ def update_application(
     _current_user=Depends(get_current_user),
 ) -> ApplicationResp:
     """更新应用基本信息"""
-    update_data = data.model_dump(exclude_unset=True, exclude={"git_source", "image_source"})
-    git_source_data = data.git_source.model_dump() if data.git_source is not None else None
+    update_data = data.model_dump(exclude_unset=True, exclude={"image_source"})
     image_source_data = data.image_source.model_dump() if data.image_source is not None else None
 
     app = app_service.update_application(
         application_id=app_id,
         update_data=update_data,
-        git_source_data=git_source_data,
         image_source_data=image_source_data,
     )
 

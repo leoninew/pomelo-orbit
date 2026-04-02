@@ -39,19 +39,6 @@ class CertType(StrEnum):
 
 
 @dataclass
-class GitSource:
-    """Git 仓库源"""
-
-    id: str
-    application_id: str
-    repository_url: str
-    deploy_branches: str
-    auto_deploy: bool
-    created_at: datetime = field(default_factory=utc_now)
-    updated_at: datetime = field(default_factory=utc_now)
-
-
-@dataclass
 class ImageSource:
     """镜像源"""
 
@@ -83,19 +70,17 @@ class Application:
     name: str
     code: str
     image_pull_policy: str
-    enabled: bool
     status: str
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
 
     # 关联实体
-    git_source: GitSource | None = None
     image_source: ImageSource | None = None
     config_files: list[ApplicationConfigFile] = field(default_factory=list)
 
     def can_deploy(self) -> bool:
         """检查是否可以部署"""
-        return self.enabled and self.status != ApplicationStatus.DEPLOYING
+        return self.status != ApplicationStatus.DEPLOYING
 
     def can_stop(self) -> bool:
         """检查是否可以停止"""
@@ -103,7 +88,7 @@ class Application:
 
     def can_restart(self) -> bool:
         """检查是否可以重启"""
-        return self.enabled and self.status == ApplicationStatus.DEPLOYED
+        return self.status == ApplicationStatus.DEPLOYED
 
     def mark_as_deploying(self) -> None:
         """标记为部署中"""
@@ -224,7 +209,6 @@ __all__ = [
     "ApplicationConfigFile",
     "CertType",
     "Deployment",
-    "GitSource",
     "ImageSource",
     "Route",
     "SourceType",

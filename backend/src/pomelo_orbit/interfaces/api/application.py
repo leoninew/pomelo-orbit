@@ -52,13 +52,10 @@ def create_application(
     _current_user=Depends(get_current_user),
 ) -> ApplicationResp:
     """创建应用"""
-    image_source_data = data.image_source.model_dump() if data.image_source else None
-
     app = app_service.create_application(
         name=data.name,
         code=data.code,
         image_pull_policy=data.image_pull_policy,
-        image_source_data=image_source_data,
     )
 
     return ApplicationResp.model_validate(app)
@@ -105,13 +102,11 @@ def update_application(
     _current_user=Depends(get_current_user),
 ) -> ApplicationResp:
     """更新应用基本信息"""
-    update_data = data.model_dump(exclude_unset=True, exclude={"image_source"})
-    image_source_data = data.image_source.model_dump() if data.image_source is not None else None
+    update_data = data.model_dump(exclude_unset=True)
 
     app = app_service.update_application(
         application_id=app_id,
         update_data=update_data,
-        image_source_data=image_source_data,
     )
 
     return ApplicationResp.model_validate(app)
@@ -203,7 +198,6 @@ async def deploy_application(
         application_id=app.id,
         operation_type=OperationType.DEPLOY,
         trigger_type=TriggerType.MANUAL,
-        trigger_ref=branch,
         env_file=env,
         is_rollback=False,
     )

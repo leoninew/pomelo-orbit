@@ -5,7 +5,6 @@ export interface Deployment {
 	application_name: string | null
 	operation_type: string
 	trigger_type: string
-	trigger_ref: string | null
 	env_file: string | null
 	status: string
 	started_at: string

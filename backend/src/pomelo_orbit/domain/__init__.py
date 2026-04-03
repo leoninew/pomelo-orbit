@@ -7,11 +7,8 @@ from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     Deployment,
-    ImageSource,
     Route,
-    SourceType,
     TriggerType,
-    WebhookSource,
 )
 from pomelo_orbit.domain.cd.value_objects import DeployStatus
 from pomelo_orbit.domain.exceptions import (
@@ -29,11 +26,8 @@ __all__ = [
     "BusinessError",
     "DeployStatus",
     "Deployment",
-    "ImageSource",
     "LoginHistory",
     "Route",
-    "SourceType",
     "TriggerType",
     "User",
-    "WebhookSource",
 ]

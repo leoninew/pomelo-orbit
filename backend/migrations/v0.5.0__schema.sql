@@ -79,9 +79,6 @@ CREATE TABLE IF NOT EXISTS deployment (
     application_name TEXT NOT NULL,
     operation_type TEXT NOT NULL,
     trigger_type TEXT NOT NULL,
-    trigger_ref TEXT,
-    webhook_event_id TEXT,
-    image_name TEXT,
     env_file TEXT,
     status TEXT NOT NULL,
     started_at DATETIME NOT NULL DEFAULT (datetime('now')),
@@ -91,7 +88,6 @@ CREATE TABLE IF NOT EXISTS deployment (
     error_message TEXT,
     is_rollback INTEGER NOT NULL,
     rollback_from_deployment_id TEXT,
-    FOREIGN KEY (webhook_event_id) REFERENCES webhook_event(id),
     FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment(id)
 );
 

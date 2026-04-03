@@ -16,11 +16,11 @@ help:
 	@echo "  make lint fix=1      - 检查并自动修复"
 	@echo ""
 	@echo "测试:"
-	@echo "  make test            - 运行所有测试（后端+前端）"
-	@echo "  make test-backend    - 运行后端单元测试"
-	@echo "  make test-backend integration=1 - 运行后端所有测试（单元+集成）"
-	@echo "  make test-backend cov=1 - 运行后端单元测试并生成覆盖率报告"
-	@echo "  make test-backend integration=1 cov=1 - 运行所有测试并生成覆盖率报告"
+	@echo "  make test            - 运行所有测试（后端+前端，含集成测试）"
+	@echo "  make test-backend    - 运行后端所有测试（默认含集成测试）"
+	@echo "  make test-backend integration=0 - 仅运行后端单元测试（跳过集成测试）"
+	@echo "  make test-backend cov=1 - 运行后端所有测试并生成覆盖率报告"
+	@echo "  make test-backend integration=0 cov=1 - 仅运行单元测试并生成覆盖率报告"
 	@echo "  make test-frontend   - 运行前端测试"
 	@echo "  make test-frontend cov=1 - 运行前端测试并生成覆盖率报告"
 	@echo ""
@@ -66,12 +66,12 @@ test: test-backend test-frontend
 test-backend:
 	@echo "运行后端测试..."
 	$(if $(cov), \
-		$(if $(integration), \
-			cd backend && PYTHONUTF8=1 uv run pytest --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html", \
-			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/ --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html"), \
-		$(if $(integration), \
-			cd backend && PYTHONUTF8=1 uv run pytest, \
-			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/))
+		$(if $(filter 0,$(integration)), \
+			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/ --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html", \
+			cd backend && PYTHONUTF8=1 uv run pytest --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html"), \
+		$(if $(filter 0,$(integration)), \
+			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/, \
+			cd backend && PYTHONUTF8=1 uv run pytest))
 
 test-frontend:
 	@echo "运行前端测试..."

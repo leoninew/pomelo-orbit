@@ -12,10 +12,6 @@ from pomelo_orbit.interfaces.api.dto.application import (
     ConfigFileImportReq,
     ConfigFileReq,
     ConfigFileResp,
-    ImageSourceExportResp,
-    ImageSourceImportReq,
-    ImageSourceReq,
-    ImageSourceResp,
 )
 from pomelo_orbit.interfaces.api.dto.auth import (
     LoginHistoryResp,
@@ -55,10 +51,6 @@ __all__ = [
     "ConfigFileResp",
     "DeploymentDetailResp",
     "DeploymentResp",
-    "ImageSourceExportResp",
-    "ImageSourceImportReq",
-    "ImageSourceReq",
-    "ImageSourceResp",
     "LoginHistoryResp",
     "LoginReq",
     "MessageResp",

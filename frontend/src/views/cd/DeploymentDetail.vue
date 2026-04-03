@@ -60,12 +60,6 @@
 						<dd class="text-base-content/70">{{ deployment.trigger_type }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-20 shrink-0">分支/Tag</dt>
-						<dd>
-							<code class="text-xs">{{ deployment.trigger_ref || '—' }}</code>
-						</dd>
-					</div>
-					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">环境文件</dt>
 						<dd class="text-base-content/70">{{ deployment.env_file || '—' }}</dd>
 					</div>

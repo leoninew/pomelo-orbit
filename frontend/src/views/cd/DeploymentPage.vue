@@ -21,7 +21,6 @@
 						<th>应用</th>
 						<th>操作类型</th>
 						<th>触发方式</th>
-						<th>分支/Tag</th>
 						<th>环境文件</th>
 						<th>状态</th>
 						<th>开始时间</th>
@@ -46,9 +45,6 @@
 						</td>
 						<td class="cell-muted">{{ d.operation_type }}</td>
 						<td class="cell-muted">{{ d.trigger_type }}</td>
-						<td>
-							<code class="text-xs">{{ d.trigger_ref || '—' }}</code>
-						</td>
 						<td class="cell-muted">{{ d.env_file || '—' }}</td>
 						<td>
 							<span class="badge badge-sm" :class="deployBadgeClass(d.status)">{{ d.status }}</span>

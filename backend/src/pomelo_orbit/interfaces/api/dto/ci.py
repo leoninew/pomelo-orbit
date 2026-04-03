@@ -71,7 +71,7 @@ class ProjectResp(BaseModel):
     name: str
     repository_url: str
     pipeline_template_id: str
-    git_credential_id: str
+    git_credential_id: str | None
     variable_overrides: dict[str, Any]
     branch_filter: str | None
     default_branch: str
@@ -86,7 +86,7 @@ class ProjectCreateReq(BaseModel):
     name: str
     repository_url: str
     pipeline_template_id: str
-    git_credential_id: str
+    git_credential_id: str | None = None
     variable_overrides: dict[str, Any] = {}
     branch_filter: str | None = None
     default_branch: str = "master"

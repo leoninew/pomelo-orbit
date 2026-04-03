@@ -14,7 +14,7 @@ class ExecutionContext:
         run_id: str,
         project_id: str,
         repository_url: str,
-        credential_id: str,
+        credential_id: str | None,
         variables: dict[str, Any],
         workspace_path: str,
         artifacts_path: str,

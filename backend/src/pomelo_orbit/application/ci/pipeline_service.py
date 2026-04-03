@@ -96,7 +96,7 @@ class PipelineService:
         name: str,
         repository_url: str,
         pipeline_template_id: str,
-        git_credential_id: str,
+        git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         branch_filter: str | None = None,
         default_branch: str = "master",
@@ -106,7 +106,7 @@ class PipelineService:
         # 验证模板和凭据存在
         if not self.template_repo.find_by_id(pipeline_template_id):
             raise BusinessError(f"PipelineTemplate {pipeline_template_id} not found", status_code=404)
-        if not self.credential_repo.find_by_id(git_credential_id):
+        if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
 
         webhook_secret = secrets.token_urlsafe(32) if enable_webhook else None

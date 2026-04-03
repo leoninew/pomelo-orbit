@@ -48,7 +48,7 @@ class ProjectModel(Base):
     pipeline_template_id: Mapped[str] = mapped_column(
         String(26), ForeignKey("pipeline_templates.id"), nullable=False, index=True
     )
-    git_credential_id: Mapped[str] = mapped_column(String(26), ForeignKey("credentials.id"), nullable=False, index=True)
+    git_credential_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("credentials.id"), nullable=True, index=True)
     variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     webhook_secret: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     branch_filter: Mapped[str | None] = mapped_column(String(255), nullable=True)

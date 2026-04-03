@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS projects (
     name TEXT NOT NULL,
     repository_url TEXT NOT NULL,
     pipeline_template_id TEXT NOT NULL,
-    git_credential_id TEXT NOT NULL,
+    git_credential_id TEXT,
     variable_overrides TEXT NOT NULL DEFAULT '{}',  -- JSON object
     webhook_secret TEXT,
     branch_filter TEXT,

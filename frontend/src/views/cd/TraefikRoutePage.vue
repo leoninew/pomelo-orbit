@@ -85,8 +85,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ExternalLink, RefreshCw } from 'lucide-vue-next';
-import { traefikRouteApi } from '@/api/traefik-route';
-import type { TraefikRouter } from '@/api/traefik-route';
+import { traefikRouteApi } from '@/api/cd/traefik-route';
+import type { TraefikRouter } from '@/api/cd/traefik-route';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 

@@ -120,7 +120,7 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowLeft, ArrowDown, RefreshCw } from 'lucide-vue-next';
-import { deploymentApi } from '@/api/deployments';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';

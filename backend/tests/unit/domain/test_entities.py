@@ -239,7 +239,7 @@ class TestLoginHistoryEntity:
 
     def test_create_login_history_with_required_fields(self):
         """测试创建 LoginHistory 实体"""
-        from pomelo_orbit.domain.shared.entities import LoginHistory
+        from pomelo_orbit.domain.auth.entities import LoginHistory
 
         login = LoginHistory(id="login-1", user_id="user-1", username="testuser", success=True)
 
@@ -250,7 +250,7 @@ class TestLoginHistoryEntity:
 
     def test_login_history_with_client_info(self):
         """测试 LoginHistory 包含客户端信息"""
-        from pomelo_orbit.domain.shared.entities import LoginHistory
+        from pomelo_orbit.domain.auth.entities import LoginHistory
 
         login = LoginHistory(
             id="login-1",
@@ -266,7 +266,7 @@ class TestLoginHistoryEntity:
 
     def test_login_history_failed_login(self):
         """测试失败的登录记录"""
-        from pomelo_orbit.domain.shared.entities import LoginHistory
+        from pomelo_orbit.domain.auth.entities import LoginHistory
 
         login = LoginHistory(id="login-1", user_id="user-1", username="testuser", success=False)
 

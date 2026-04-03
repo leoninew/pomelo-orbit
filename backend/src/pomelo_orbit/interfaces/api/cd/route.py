@@ -8,18 +8,13 @@ from fastapi import APIRouter, Depends, Query, UploadFile, status
 
 from pomelo_orbit.application.cd.di import get_route_service
 from pomelo_orbit.application.cd.route_service import RouteService
-from pomelo_orbit.infrastructure.persistence.mappers import RouteMapper
-from pomelo_orbit.interfaces.api.auth import get_current_user
-from pomelo_orbit.interfaces.api.dto import (
-    PaginatedResp,
-    RouteCreateReq,
-    RouteResp,
-    RouteUpdateReq,
-)
+from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.cd.dto.route import RouteCreateReq, RouteResp, RouteUpdateReq
+from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/route", tags=["route"])
+router = APIRouter(prefix="/routes", tags=["route"])
 
 
 @router.get("", response_model=PaginatedResp[RouteResp])
@@ -32,7 +27,7 @@ def list_routes(
     """列出所有路由"""
     routes, total = route_service.list_routes(page, per_page)
     return PaginatedResp(
-        items=[RouteResp.model_validate(RouteMapper.to_orm(r)) for r in routes],
+        items=[RouteResp.model_validate(r) for r in routes],
         total=total,
         page=page,
         per_page=per_page,
@@ -54,7 +49,7 @@ def create_route(
         target_url=data.target_url,
         enabled=data.enabled,
     )
-    return RouteResp.model_validate(RouteMapper.to_orm(route))
+    return RouteResp.model_validate(route)
 
 
 @router.get("/{route_id}", response_model=RouteResp)
@@ -65,7 +60,7 @@ def get_route(
 ) -> RouteResp:
     """获取路由详情"""
     route = route_service.get_route(route_id)
-    return RouteResp.model_validate(RouteMapper.to_orm(route))
+    return RouteResp.model_validate(route)
 
 
 @router.put("/{route_id}", response_model=RouteResp)
@@ -78,7 +73,7 @@ def update_route(
     """更新路由"""
     update_data = data.model_dump(exclude_unset=True)
     updated_route = route_service.update_route(route_id, **update_data)
-    return RouteResp.model_validate(RouteMapper.to_orm(updated_route))
+    return RouteResp.model_validate(updated_route)
 
 
 @router.delete("/{route_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -133,7 +128,7 @@ async def upload_cert(
     """上传 SSL 证书 (PEM 格式)"""
     cert_content = await pem.read()
     route = route_service.upload_cert(route_id, cert_content)
-    return RouteResp.model_validate(RouteMapper.to_orm(route))
+    return RouteResp.model_validate(route)
 
 
 @router.delete("/{route_id}/https")
@@ -144,7 +139,7 @@ def disable_https(
 ) -> RouteResp:
     """禁用 HTTPS"""
     route = route_service.disable_https(route_id)
-    return RouteResp.model_validate(RouteMapper.to_orm(route))
+    return RouteResp.model_validate(route)
 
 
 @router.post("/{route_id}/letsencrypt")
@@ -155,7 +150,7 @@ def enable_letsencrypt(
 ) -> RouteResp:
     """启用 Let's Encrypt 自动证书"""
     route = route_service.enable_letsencrypt(route_id)
-    return RouteResp.model_validate(RouteMapper.to_orm(route))
+    return RouteResp.model_validate(route)
 
 
 @router.post("/{route_id}/mkcert")
@@ -166,4 +161,4 @@ def enable_mkcert(
 ) -> RouteResp:
     """启用 mkcert 本地证书"""
     route = route_service.enable_mkcert(route_id)
-    return RouteResp.model_validate(RouteMapper.to_orm(route))
+    return RouteResp.model_validate(route)

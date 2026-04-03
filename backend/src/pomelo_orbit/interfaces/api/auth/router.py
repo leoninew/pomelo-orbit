@@ -10,20 +10,20 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from ulid import ULID
 
 from pomelo_orbit.domain import AuthenticationError, AuthorizationError
+from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.repositories import UserRepository
-from pomelo_orbit.domain.shared.entities import LoginHistory, User
 from pomelo_orbit.infrastructure import SecurityService, get_security_service, hash_password, verify_password
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
 from pomelo_orbit.infrastructure.repositories import get_user_repository
 from pomelo_orbit.infrastructure.time_utils import utc_now
-from pomelo_orbit.interfaces.api.dto import (
+from pomelo_orbit.interfaces.api.auth.dto import (
     LoginHistoryResp,
     LoginReq,
-    PaginatedResp,
     PasswordChangeReq,
     TokenResp,
     UserInfo,
 )
+from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()

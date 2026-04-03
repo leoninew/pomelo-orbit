@@ -13,17 +13,17 @@ export const deploymentApi = {
 		date_from?: string
 		date_to?: string
 	}): Promise<PaginatedResp<Deployment>> {
-		return request.get('/api/deployment', { params });
+		return request.get('/api/cd/deployments', { params });
 	},
 
 	// 获取部署记录详情
 	get(id: string): Promise<DeploymentDetail> {
-		return request.get(`/api/deployment/${id}`);
+		return request.get(`/api/cd/deployments/${id}`);
 	},
 
 	// 取消部署
 	cancel(id: string): Promise<void> {
-		return request.post(`/api/deployment/${id}/cancel`);
+		return request.post(`/api/cd/deployments/${id}/cancel`);
 	},
 
 	// 获取部署日志（增量读取）
@@ -31,6 +31,6 @@ export const deploymentApi = {
 		id: string,
 		offset: number = 0
 	): Promise<{ logs: string; offset: number; is_complete: boolean; status: string }> {
-		return request.get(`/api/deployment/${id}/logs`, { params: { offset } });
+		return request.get(`/api/cd/deployments/${id}/logs`, { params: { offset } });
 	},
 };

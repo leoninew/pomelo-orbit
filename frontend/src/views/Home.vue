@@ -101,8 +101,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { RefreshCw, LayoutGrid, Rocket, Activity, Inbox } from 'lucide-vue-next';
-import { applicationApi } from '@/api/application';
-import { deploymentApi } from '@/api/deployments';
+import { applicationApi } from '@/api/cd/application';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime, getTodayStart } from '@/utils/time';

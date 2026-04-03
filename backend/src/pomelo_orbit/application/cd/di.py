@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.cd.deployment_service import DeploymentService
 from pomelo_orbit.application.cd.route_service import RouteService
-from pomelo_orbit.application.setting_service import SettingService
+from pomelo_orbit.application.settings.setting_service import SettingService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.repositories import (
     RouteRepository,

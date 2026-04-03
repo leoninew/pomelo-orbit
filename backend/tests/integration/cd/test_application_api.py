@@ -4,26 +4,7 @@
 
 from unittest.mock import patch
 
-import pytest
-
-from pomelo_orbit.infrastructure.persistence.models import (
-    ApplicationConfigFileModel,
-    ApplicationModel,
-)
-
-
-@pytest.fixture
-def test_config_file(db_session, test_app):
-    """创建测试配置文件"""
-    config_file = ApplicationConfigFileModel(
-        application_id=test_app.id,
-        path=".env",
-        content="KEY=value",
-    )
-    db_session.add(config_file)
-    db_session.commit()
-    db_session.refresh(config_file)
-    return config_file
+from pomelo_orbit.infrastructure.persistence.models import ApplicationConfigFileModel, ApplicationModel
 
 
 class TestApplicationAPI:
@@ -58,7 +39,7 @@ class TestApplicationAPI:
         """测试创建应用"""
         # test_app 确保数据库已初始化并有数据
         response = auth_client.post(
-            "/api/application",
+            "/api/cd/applications",
             json={
                 "name": "new-app",
                 "code": "new-app",
@@ -73,7 +54,7 @@ class TestApplicationAPI:
 
     def test_list_applications(self, auth_client, test_app):
         """测试列出应用"""
-        response = auth_client.get("/api/application")
+        response = auth_client.get("/api/cd/applications")
 
         assert response.status_code == 200
         data = response.json()
@@ -82,7 +63,7 @@ class TestApplicationAPI:
 
     def test_get_application(self, auth_client, test_app):
         """测试获取应用详情"""
-        response = auth_client.get(f"/api/application/{test_app.id}")
+        response = auth_client.get(f"/api/cd/applications/{test_app.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -92,7 +73,7 @@ class TestApplicationAPI:
     def test_update_application(self, auth_client, db_session, test_app):
         """测试更新应用（验证持久化）"""
         response = auth_client.put(
-            f"/api/application/{test_app.id}",
+            f"/api/cd/applications/{test_app.id}",
             json={"name": "updated-app"},
         )
 
@@ -110,7 +91,7 @@ class TestApplicationAPI:
         """测试删除应用"""
         mock_purge.return_value = None
 
-        response = auth_client.delete(f"/api/application/{test_app.id}")
+        response = auth_client.delete(f"/api/cd/applications/{test_app.id}")
 
         assert response.status_code == 204
 
@@ -121,7 +102,7 @@ class TestApplicationAPI:
 
     def test_list_application_files(self, auth_client, test_app, test_config_file):
         """测试列出配置文件"""
-        response = auth_client.get(f"/api/application/{test_app.id}/files")
+        response = auth_client.get(f"/api/cd/applications/{test_app.id}/files")
 
         assert response.status_code == 200
         data = response.json()
@@ -131,7 +112,7 @@ class TestApplicationAPI:
     def test_create_application_file(self, auth_client, db_session, test_app):
         """测试创建配置文件"""
         response = auth_client.post(
-            f"/api/application/{test_app.id}/file",
+            f"/api/cd/applications/{test_app.id}/file",
             json={"path": "config.yaml", "content": "key: value"},
         )
 
@@ -151,7 +132,7 @@ class TestApplicationAPI:
 
     def test_read_application_file(self, auth_client, test_app, test_config_file):
         """测试读取配置文件"""
-        response = auth_client.get(f"/api/application/{test_app.id}/file/{test_config_file.id}")
+        response = auth_client.get(f"/api/cd/applications/{test_app.id}/file/{test_config_file.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -172,7 +153,7 @@ class TestApplicationAPI:
         mock_write.return_value = updated_file
 
         response = auth_client.put(
-            f"/api/application/{test_app.id}/file/{test_config_file.id}",
+            f"/api/cd/applications/{test_app.id}/file/{test_config_file.id}",
             json={"path": ".env", "content": "KEY=new_value"},
         )
 
@@ -183,7 +164,7 @@ class TestApplicationAPI:
 
     def test_delete_application_file(self, auth_client, db_session, test_app, test_config_file):
         """测试删除配置文件"""
-        response = auth_client.delete(f"/api/application/{test_app.id}/file/{test_config_file.id}")
+        response = auth_client.delete(f"/api/cd/applications/{test_app.id}/file/{test_config_file.id}")
 
         assert response.status_code == 204
 
@@ -196,7 +177,7 @@ class TestApplicationAPI:
     def test_deploy_application(self, mock_deploy, auth_client, db_session, test_app):
         """测试部署应用"""
         response = auth_client.post(
-            f"/api/application/{test_app.id}/deploy",
+            f"/api/cd/applications/{test_app.id}/deploy",
             json={"branch": "main", "env": "production"},
         )
 
@@ -222,7 +203,7 @@ class TestApplicationAPI:
         mock_stop.return_value = mock_deployment
 
         response = auth_client.post(
-            f"/api/application/{test_app.id}/stop",
+            f"/api/cd/applications/{test_app.id}/stop",
             json={"remove_volumes": False},
         )
 
@@ -247,7 +228,7 @@ class TestApplicationAPI:
         )
         mock_restart.return_value = mock_deployment
 
-        response = auth_client.post(f"/api/application/{test_app.id}/restart")
+        response = auth_client.post(f"/api/cd/applications/{test_app.id}/restart")
 
         assert response.status_code == 200
         data = response.json()
@@ -258,7 +239,7 @@ class TestApplicationAPI:
         """测试获取应用状态"""
         mock_status.return_value = {"running": True, "container_id": "abc123"}
 
-        response = auth_client.get(f"/api/application/{test_app.id}/status")
+        response = auth_client.get(f"/api/cd/applications/{test_app.id}/status")
 
         assert response.status_code == 200
         data = response.json()
@@ -270,7 +251,7 @@ class TestApplicationAPI:
         """测试获取应用日志"""
         mock_logs.return_value = "log line 1\nlog line 2"
 
-        response = auth_client.get(f"/api/application/{test_app.id}/logs?tail=50")
+        response = auth_client.get(f"/api/cd/applications/{test_app.id}/logs?tail=50")
 
         assert response.status_code == 200
         data = response.json()

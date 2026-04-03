@@ -3,6 +3,7 @@ Domain Layer - 领域层
 包含实体、值对象、领域服务、仓储接口
 """
 
+from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
@@ -16,7 +17,6 @@ from pomelo_orbit.domain.exceptions import (
     AuthorizationError,
     BusinessError,
 )
-from pomelo_orbit.domain.shared.entities import LoginHistory, User
 
 __all__ = [
     "Application",

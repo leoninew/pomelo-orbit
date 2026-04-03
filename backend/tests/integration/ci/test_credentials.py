@@ -5,7 +5,7 @@ from pomelo_orbit.infrastructure.ci.models import CredentialModel
 
 class TestCredentialList:
     def test_returns_paginated_structure(self, auth_client, test_credential):
-        resp = auth_client.get("/api/v1/ci/credentials")
+        resp = auth_client.get("/api/ci/credentials")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -16,7 +16,7 @@ class TestCredentialList:
 class TestCredentialCreate:
     def test_creates_credential(self, auth_client):
         resp = auth_client.post(
-            "/api/v1/ci/credentials",
+            "/api/ci/credentials",
             json={
                 "name": "my-token",
                 "type": "git_token",
@@ -31,10 +31,10 @@ class TestCredentialCreate:
 
 class TestCredentialDelete:
     def test_deletes_unreferenced_credential(self, auth_client, db_session, test_credential):
-        resp = auth_client.delete(f"/api/v1/ci/credentials/{test_credential.id}")
+        resp = auth_client.delete(f"/api/ci/credentials/{test_credential.id}")
         assert resp.status_code == 204
         assert db_session.query(CredentialModel).filter_by(id=test_credential.id).first() is None
 
     def test_cannot_delete_referenced_credential(self, auth_client, test_credential, test_project):
-        resp = auth_client.delete(f"/api/v1/ci/credentials/{test_credential.id}")
+        resp = auth_client.delete(f"/api/ci/credentials/{test_credential.id}")
         assert resp.status_code == 409

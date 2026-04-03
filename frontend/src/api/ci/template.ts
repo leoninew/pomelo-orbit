@@ -10,30 +10,30 @@ import request from '@/utils/request';
 
 export const pipelineTemplateApi = {
 	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<PipelineTemplate>> {
-		return request.get('/api/v1/ci/templates', { params });
+		return request.get('/api/ci/templates', { params });
 	},
 
 	get(id: string): Promise<PipelineTemplate> {
-		return request.get(`/api/v1/ci/templates/${id}`);
+		return request.get(`/api/ci/templates/${id}`);
 	},
 
 	create(data: PipelineTemplateCreateReq): Promise<PipelineTemplate> {
-		return request.post('/api/v1/ci/templates', data);
+		return request.post('/api/ci/templates', data);
 	},
 
 	update(id: string, data: PipelineTemplateUpdateReq): Promise<PipelineTemplate> {
-		return request.put(`/api/v1/ci/templates/${id}`, data);
+		return request.put(`/api/ci/templates/${id}`, data);
 	},
 
 	delete(id: string): Promise<void> {
-		return request.delete(`/api/v1/ci/templates/${id}`);
+		return request.delete(`/api/ci/templates/${id}`);
 	},
 
 	listSnapshots(templateId: string): Promise<PipelineSnapshotListItem[]> {
-		return request.get(`/api/v1/ci/templates/${templateId}/snapshots`);
+		return request.get(`/api/ci/templates/${templateId}/snapshots`);
 	},
 
 	getSnapshot(snapshotId: string): Promise<PipelineSnapshot> {
-		return request.get(`/api/v1/ci/snapshots/${snapshotId}`);
+		return request.get(`/api/ci/snapshots/${snapshotId}`);
 	},
 };

@@ -1,4 +1,4 @@
-.PHONY: help install dev-backend dev-frontend lint test test-backend test-frontend build
+.PHONY: help install dev-backend dev-frontend lint test test-backend test-frontend build clean
 
 help:
 	@echo "Pomelo Orbit - 开发命令"
@@ -28,6 +28,9 @@ help:
 	@echo "  make build           - 构建 Docker 镜像 (默认 tag: latest)"
 	@echo "  make build tag=v1.0  - 构建指定 tag 的镜像"
 	@echo "  make build cn=1      - 使用国内镜像源构建"
+	@echo ""
+	@echo "清理:"
+	@echo "  make clean           - 删除编译缓存目录（__pycache__、.mypy_cache、.ruff_cache、.pytest_cache、htmlcov）"
 	@echo ""
 
 install:
@@ -83,4 +86,14 @@ build:
 	@echo "构建 Docker 镜像..."
 	docker build -f $(if $(cn),Dockerfile.cn,Dockerfile) -t pomelo-orbit:$(or $(tag),latest) .
 	@echo "✓ 镜像构建完成: pomelo-orbit:$(or $(tag),latest)"
+
+clean:
+	@echo "清理编译缓存..."
+	find . -type d -name "__pycache__" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name ".mypy_cache" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name ".ruff_cache" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name ".pytest_cache" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name "htmlcov" -not -path "./.git/*" | xargs rm -rf
+	find . -type f -name "*.pyc" -not -path "./.git/*" | xargs rm -f
+	@echo "✓ 清理完成"
 

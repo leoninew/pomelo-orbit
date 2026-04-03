@@ -32,54 +32,54 @@ export interface RouteUpdateReq {
 
 export const routeApi = {
 	list(page = 1, per_page = 100): Promise<PaginatedResp<Route>> {
-		return request.get('/api/route', { params: { page, per_page } });
+		return request.get('/api/cd/routes', { params: { page, per_page } });
 	},
 
 	get(id: string): Promise<Route> {
-		return request.get(`/api/route/${id}`);
+		return request.get(`/api/cd/routes/${id}`);
 	},
 
 	create(data: RouteCreateReq): Promise<Route> {
-		return request.post('/api/route', data);
+		return request.post('/api/cd/routes', data);
 	},
 
 	update(id: string, data: RouteUpdateReq): Promise<Route> {
-		return request.put(`/api/route/${id}`, data);
+		return request.put(`/api/cd/routes/${id}`, data);
 	},
 
 	delete(id: string): Promise<void> {
-		return request.delete(`/api/route/${id}`);
+		return request.delete(`/api/cd/routes/${id}`);
 	},
 
 	enable(id: string): Promise<void> {
-		return request.put(`/api/route/${id}/enable`);
+		return request.put(`/api/cd/routes/${id}/enable`);
 	},
 
 	disable(id: string): Promise<void> {
-		return request.put(`/api/route/${id}/disable`);
+		return request.put(`/api/cd/routes/${id}/disable`);
 	},
 
 	sync(): Promise<void> {
-		return request.post('/api/route/sync');
+		return request.post('/api/cd/routes/sync');
 	},
 
 	uploadCert(id: string, certFile: File): Promise<Route> {
 		const formData = new FormData();
 		formData.append('pem', certFile);
-		return request.post(`/api/route/${id}/cert`, formData, {
+		return request.post(`/api/cd/routes/${id}/cert`, formData, {
 			headers: { 'Content-Type': 'multipart/form-data' },
 		});
 	},
 
 	disableHttps(id: string): Promise<Route> {
-		return request.delete(`/api/route/${id}/https`);
+		return request.delete(`/api/cd/routes/${id}/https`);
 	},
 
 	enableLetsencrypt(id: string): Promise<Route> {
-		return request.post(`/api/route/${id}/letsencrypt`);
+		return request.post(`/api/cd/routes/${id}/letsencrypt`);
 	},
 
 	enableMkcert(id: string): Promise<Route> {
-		return request.post(`/api/route/${id}/mkcert`);
+		return request.post(`/api/cd/routes/${id}/mkcert`);
 	},
 };

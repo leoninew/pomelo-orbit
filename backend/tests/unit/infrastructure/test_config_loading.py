@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from dynaconf import Dynaconf
 
-from pomelo_orbit.application.setting_service import SettingService
+from pomelo_orbit.application.settings.setting_service import SettingService
 from pomelo_orbit.infrastructure.config import get_default_settings
 
 
@@ -204,7 +204,7 @@ def _make_setting_service(base_dir: Path):
     )
     svc = SettingService(settings)
     # write_env / delete_env_keys 定义在 config 模块，需同时 mock 那边的 get_project_root
-    p1 = patch("pomelo_orbit.application.setting_service.get_project_root", return_value=base_dir)
+    p1 = patch("pomelo_orbit.application.settings.setting_service.get_project_root", return_value=base_dir)
     p2 = patch("pomelo_orbit.infrastructure.config.get_project_root", return_value=base_dir)
     p1.start()
     p2.start()

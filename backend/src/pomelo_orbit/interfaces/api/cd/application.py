@@ -11,8 +11,8 @@ from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.cd.di import get_application_service
 from pomelo_orbit.domain.cd.entities import TriggerType
 from pomelo_orbit.domain.cd.value_objects import OperationType
-from pomelo_orbit.interfaces.api.auth import get_current_user
-from pomelo_orbit.interfaces.api.dto import (
+from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.cd.dto.application import (
     ApplicationCreateReq,
     ApplicationExportResp,
     ApplicationImportReq,
@@ -20,10 +20,10 @@ from pomelo_orbit.interfaces.api.dto import (
     ApplicationUpdateReq,
     ConfigFileReq,
     ConfigFileResp,
-    PaginatedResp,
 )
+from pomelo_orbit.interfaces.api.common import PaginatedResp
 
-router = APIRouter(prefix="/application", tags=["application"])
+router = APIRouter(prefix="/applications", tags=["application"])
 
 
 @router.get("", response_model=PaginatedResp[ApplicationResp])

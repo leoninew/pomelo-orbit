@@ -8,26 +8,26 @@ export const pipelineRunApi = {
 		per_page?: number
 		project_id?: string
 	}): Promise<PaginatedResp<PipelineRun>> {
-		return request.get('/api/v1/ci/runs', { params });
+		return request.get('/api/ci/runs', { params });
 	},
 
 	get(id: string): Promise<PipelineRun> {
-		return request.get(`/api/v1/ci/runs/${id}`);
+		return request.get(`/api/ci/runs/${id}`);
 	},
 
 	retry(id: string): Promise<PipelineRun> {
-		return request.post(`/api/v1/ci/runs/${id}/retry`);
+		return request.post(`/api/ci/runs/${id}/retry`);
 	},
 
 	cancel(id: string): Promise<PipelineRun> {
-		return request.post(`/api/v1/ci/runs/${id}/cancel`);
+		return request.post(`/api/ci/runs/${id}/cancel`);
 	},
 
 	listJobs(runId: string): Promise<Job[]> {
-		return request.get(`/api/v1/ci/runs/${runId}/jobs`);
+		return request.get(`/api/ci/runs/${runId}/jobs`);
 	},
 
 	listArtifacts(runId: string): Promise<Artifact[]> {
-		return request.get(`/api/v1/ci/runs/${runId}/artifacts`);
+		return request.get(`/api/ci/runs/${runId}/artifacts`);
 	},
 };

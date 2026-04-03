@@ -262,8 +262,8 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search, LayoutGrid, List, Plus, Upload, Inbox } from 'lucide-vue-next';
-import { applicationApi } from '@/api/application';
-import { deploymentApi } from '@/api/deployments';
+import { applicationApi } from '@/api/cd/application';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { appStatusLabel } from '@/utils/status';

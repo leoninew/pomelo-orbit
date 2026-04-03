@@ -92,7 +92,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Search } from 'lucide-vue-next';
-import { deploymentApi } from '@/api/deployments';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';

@@ -11,11 +11,11 @@ from pomelo_orbit.infrastructure.cd.repositories.di import get_route_repository
 from pomelo_orbit.infrastructure.cd.traefik.di import get_traefik_api_client
 from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.traefik import TraefikAPIClient
-from pomelo_orbit.interfaces.api.auth import get_current_user
-from pomelo_orbit.interfaces.api.dto.traefik_route import TraefikConfigResp
+from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.cd.dto.traefik_route import TraefikConfigResp
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/traefik-route", tags=["traefik-route"])
+router = APIRouter(prefix="/traefik-routes", tags=["traefik-route"])
 
 
 @router.get("/config", response_model=TraefikConfigResp)

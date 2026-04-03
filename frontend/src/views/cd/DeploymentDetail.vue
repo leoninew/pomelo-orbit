@@ -109,7 +109,10 @@
 					</button>
 				</div>
 			</div>
-			<div ref="logContainerRef" class="flex-1 overflow-auto p-4 bg-base-200 rounded-b-box min-h-64">
+			<div
+				ref="logContainerRef"
+				class="flex-1 overflow-auto p-4 bg-base-200 rounded-b-box min-h-64"
+			>
 				<pre
 					class="text-base-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
 					>{{ logText || '暂无日志' }}</pre

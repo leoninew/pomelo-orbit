@@ -108,7 +108,8 @@
 					<div v-if="template && !template.is_builtin" class="flex items-center gap-2">
 						<template v-if="editingYaml">
 							<button class="btn btn-sm btn-primary" :disabled="operating" @click="handleSaveYaml">
-								<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+								<span v-if="operating" class="loading loading-spinner loading-xs" />
+								保存
 							</button>
 							<button class="btn btn-sm btn-ghost" @click="cancelEditYaml">取消</button>
 						</template>
@@ -149,7 +150,8 @@
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />保存
+						<span v-if="operating" class="loading loading-spinner loading-xs" />
+						保存
 					</button>
 					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
 				</div>
@@ -209,7 +211,9 @@ async function handleEditOk() {
 			toast.success('更新成功');
 			editModalRef.value?.close();
 		});
-	} catch (error) { toast.error(error instanceof Error ? error.message : '更新失败'); }
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '更新失败');
+	}
 }
 
 function cancelEditYaml() {
@@ -220,13 +224,17 @@ function cancelEditYaml() {
 async function handleSaveYaml() {
 	try {
 		await executeOp(async () => {
-			const data = await pipelineTemplateApi.update(templateId, { content: template.value?.content ?? '' });
+			const data = await pipelineTemplateApi.update(templateId, {
+				content: template.value?.content ?? '',
+			});
 			template.value = data;
 			originalContent.value = data.content;
 			editingYaml.value = false;
 			toast.success('保存成功');
 		});
-	} catch (error) { toast.error(error instanceof Error ? error.message : '保存失败'); }
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '保存失败');
+	}
 }
 
 onMounted(fetchTemplate);

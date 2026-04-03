@@ -89,7 +89,9 @@
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">
 							凭据内容
-							<span v-if="isEditing" class="text-base-content/60 font-normal">（留空则不修改）</span>
+							<span v-if="isEditing" class="text-base-content/60 font-normal">
+								（留空则不修改）
+							</span>
 						</legend>
 						<textarea
 							v-model="form.data"

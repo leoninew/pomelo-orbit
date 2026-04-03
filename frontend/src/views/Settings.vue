@@ -53,7 +53,7 @@
 						<tbody>
 							<tr v-for="item in config.items" :key="item.key" class="hover">
 								<td>
-									<code class="text-xs">{{ item.key }}</code>
+									{{ item.key }}
 								</td>
 								<td class="text-base-content/60">
 									<span v-if="typeof item.default === 'boolean'">

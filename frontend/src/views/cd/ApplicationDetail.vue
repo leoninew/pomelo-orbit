@@ -289,7 +289,7 @@
 							<option value="never">never</option>
 						</select>
 					</div>
-					</div>
+				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />

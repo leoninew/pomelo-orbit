@@ -52,12 +52,12 @@
 								v-if="buildRouteUrl(r.rule, r.tls)"
 								:href="buildRouteUrl(r.rule, r.tls)!"
 								target="_blank"
-								class="link link-primary font-mono text-xs flex items-center gap-1"
+								class="link link-primary text-xs flex items-center gap-1"
 							>
 								{{ r.rule }}
 								<ExternalLink class="size-3" />
 							</a>
-							<span v-else class="font-mono text-xs">{{ r.rule }}</span>
+							<span v-else class="text-xs">{{ r.rule }}</span>
 						</td>
 						<td class="cell-muted">{{ r.service }}</td>
 						<td>

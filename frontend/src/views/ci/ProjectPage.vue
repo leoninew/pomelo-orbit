@@ -39,7 +39,11 @@
 						</td>
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
 						<td class="cell-muted">
-							<router-link v-if="p.git_credential_id" :to="`/ci/credentials/${p.git_credential_id}`" class="link link-primary">
+							<router-link
+								v-if="p.git_credential_id"
+								:to="`/ci/credentials/${p.git_credential_id}`"
+								class="link link-primary"
+							>
 								{{ p.git_credential_id }}
 							</router-link>
 							<span v-else class="text-base-content/40">-</span>
@@ -51,10 +55,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<div
-				v-if="totalPages > 0"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -102,17 +103,32 @@
 						</p>
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">流水线模板</legend>
-						<select
-							v-model="form.pipeline_template_id"
-							class="select w-full"
-							:class="{ 'select-error': errors.pipeline_template_id }"
-						>
-							<option value="" disabled>选择模板</option>
-							<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
-						</select>
-						<p v-if="errors.pipeline_template_id" class="fieldset-label text-error">
-							{{ errors.pipeline_template_id }}
+						<legend class="fieldset-legend">流水线快照</legend>
+						<div class="flex gap-2">
+							<select
+								v-model="form.selectedTemplateId"
+								class="select w-full"
+								@change="onTemplateChange"
+							>
+								<option value="" disabled>选择模板</option>
+								<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
+									{{ tpl.name }}
+								</option>
+							</select>
+							<select
+								v-model="form.pipeline_snapshot_id"
+								class="select w-full"
+								:class="{ 'select-error': errors.pipeline_snapshot_id }"
+								:disabled="!form.selectedTemplateId"
+							>
+								<option value="" disabled>选择版本</option>
+								<option v-for="snap in snapshots" :key="snap.id" :value="snap.id">
+									v{{ snap.version }}
+								</option>
+							</select>
+						</div>
+						<p v-if="errors.pipeline_snapshot_id" class="fieldset-label text-error">
+							{{ errors.pipeline_snapshot_id }}
 						</p>
 					</fieldset>
 					<fieldset class="fieldset">
@@ -135,7 +151,11 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="operating || modalStatus === 'loading'" @click="handleCreateOk">
+					<button
+						class="btn btn-primary"
+						:disabled="operating || modalStatus === 'loading'"
+						@click="handleCreateOk"
+					>
 						<span v-if="operating" class="loading loading-spinner loading-xs" />
 						创建
 					</button>
@@ -154,7 +174,7 @@ import { credentialApi, pipelineTemplateApi, projectApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';
-import type { Credential, PipelineTemplate, Project } from '@/types/api';
+import type { Credential, PipelineSnapshotListItem, PipelineTemplate, Project } from '@/types/api';
 
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
@@ -164,6 +184,7 @@ const { status: modalStatus, execute: executeModal } = useStatusAsync();
 const projects = ref<Project[]>([]);
 const templates = ref<PipelineTemplate[]>([]);
 const credentials = ref<Credential[]>([]);
+const snapshots = ref<PipelineSnapshotListItem[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
 );
@@ -176,17 +197,18 @@ const createModalRef = ref<HTMLDialogElement>();
 const form = reactive({
 	name: '',
 	repository_url: '',
-	pipeline_template_id: '',
+	pipeline_snapshot_id: '',
+	selectedTemplateId: '',
 	git_credential_id: '',
 	branch_filter: '',
 });
-const errors = reactive({ name: '', repository_url: '', pipeline_template_id: '' });
+const errors = reactive({ name: '', repository_url: '', pipeline_snapshot_id: '' });
 
 function validate() {
 	errors.name = form.name.trim() ? '' : '请输入项目名称';
 	errors.repository_url = form.repository_url.trim() ? '' : '请输入仓库地址';
-	errors.pipeline_template_id = form.pipeline_template_id ? '' : '请选择流水线模板';
-	return !errors.name && !errors.repository_url && !errors.pipeline_template_id;
+	errors.pipeline_snapshot_id = form.pipeline_snapshot_id ? '' : '请选择流水线快照';
+	return !errors.name && !errors.repository_url && !errors.pipeline_snapshot_id;
 }
 
 async function fetchProjects() {
@@ -213,11 +235,12 @@ async function openCreateModal() {
 	Object.assign(form, {
 		name: '',
 		repository_url: '',
-		pipeline_template_id: '',
+		pipeline_snapshot_id: '',
+		selectedTemplateId: '',
 		git_credential_id: '',
 		branch_filter: '',
 	});
-	Object.assign(errors, { name: '', repository_url: '', pipeline_template_id: '' });
+	Object.assign(errors, { name: '', repository_url: '', pipeline_snapshot_id: '' });
 	createModalRef.value?.showModal();
 	try {
 		await executeModal(async () => {
@@ -227,9 +250,18 @@ async function openCreateModal() {
 			]);
 			templates.value = tplRes.items;
 			credentials.value = credRes.items;
+			snapshots.value = [];
 		});
 	} catch {
 		toast.error('加载表单数据失败');
+	}
+}
+
+async function onTemplateChange() {
+	snapshots.value = [];
+	form.pipeline_snapshot_id = '';
+	if (form.selectedTemplateId) {
+		snapshots.value = await pipelineTemplateApi.listSnapshots(form.selectedTemplateId);
 	}
 }
 
@@ -240,9 +272,8 @@ async function handleCreateOk() {
 			await projectApi.create({
 				name: form.name,
 				repository_url: form.repository_url,
-				pipeline_template_id: form.pipeline_template_id,
+				pipeline_snapshot_id: form.pipeline_snapshot_id,
 				git_credential_id: form.git_credential_id || undefined,
-				branch_filter: form.branch_filter || undefined,
 			});
 			toast.success('创建成功');
 			createModalRef.value?.close();

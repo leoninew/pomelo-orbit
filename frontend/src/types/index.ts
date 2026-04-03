@@ -23,9 +23,15 @@ export { credentialTypeLabels } from './ci/credential';
 export type {
 	PipelineTemplate,
 	VariableDeclaration,
+	StageDefinition,
+	StageType,
+	CheckoutConfig,
+	DockerBuildConfig,
+	UnitTestConfig,
 	PipelineTemplateCreateReq,
 	PipelineTemplateUpdateReq,
 } from './ci/template';
+export type { PipelineSnapshotListItem, PipelineSnapshot } from './ci/snapshot';
 export type { Project, ProjectCreateReq, ProjectUpdateReq } from './ci/project';
 export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
 export { pipelineRunStatusColors } from './ci/run';

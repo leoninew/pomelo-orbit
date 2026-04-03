@@ -3,7 +3,11 @@
 		<!-- Page header -->
 		<div class="flex items-center justify-between">
 			<h1 class="text-xl font-semibold">仪表盘</h1>
-			<button class="btn btn-sm btn-ghost gap-1.5" :disabled="status === 'loading'" @click="refresh">
+			<button
+				class="btn btn-sm btn-ghost gap-1.5"
+				:disabled="status === 'loading'"
+				@click="refresh"
+			>
 				<RefreshCw class="size-4" :class="{ 'animate-spin': status === 'loading' }" />
 				刷新
 			</button>
@@ -16,21 +20,27 @@
 					<LayoutGrid class="size-8" />
 				</div>
 				<div class="stat-title">应用总数</div>
-				<div class="stat-value text-primary">{{ status === 'loading' ? '—' : stats.projectCount }}</div>
+				<div class="stat-value text-primary">
+					{{ status === 'loading' ? '—' : stats.projectCount }}
+				</div>
 			</div>
 			<div class="stat">
 				<div class="stat-figure text-secondary">
 					<Rocket class="size-8" />
 				</div>
 				<div class="stat-title">今日部署</div>
-				<div class="stat-value text-secondary">{{ status === 'loading' ? '—' : stats.todayDeploys }}</div>
+				<div class="stat-value text-secondary">
+					{{ status === 'loading' ? '—' : stats.todayDeploys }}
+				</div>
 			</div>
 			<div class="stat">
 				<div class="stat-figure text-accent">
 					<Activity class="size-8" />
 				</div>
 				<div class="stat-title">运行中</div>
-				<div class="stat-value text-accent">{{ status === 'loading' ? '—' : stats.runningDeploys }}</div>
+				<div class="stat-value text-accent">
+					{{ status === 'loading' ? '—' : stats.runningDeploys }}
+				</div>
 			</div>
 		</div>
 

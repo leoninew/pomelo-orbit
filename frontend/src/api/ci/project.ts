@@ -8,7 +8,6 @@ import type {
 } from '@/types/api';
 import request from '@/utils/request';
 
-// Project API
 export const projectApi = {
 	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<Project>> {
 		return request.get('/api/v1/ci/projects', { params });

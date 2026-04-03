@@ -1,12 +1,13 @@
 import type {
 	PaginatedResp,
+	PipelineSnapshot,
+	PipelineSnapshotListItem,
 	PipelineTemplate,
 	PipelineTemplateCreateReq,
 	PipelineTemplateUpdateReq,
 } from '@/types/api';
 import request from '@/utils/request';
 
-// PipelineTemplate API
 export const pipelineTemplateApi = {
 	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<PipelineTemplate>> {
 		return request.get('/api/v1/ci/templates', { params });
@@ -26,5 +27,13 @@ export const pipelineTemplateApi = {
 
 	delete(id: string): Promise<void> {
 		return request.delete(`/api/v1/ci/templates/${id}`);
+	},
+
+	listSnapshots(templateId: string): Promise<PipelineSnapshotListItem[]> {
+		return request.get(`/api/v1/ci/templates/${templateId}/snapshots`);
+	},
+
+	getSnapshot(snapshotId: string): Promise<PipelineSnapshot> {
+		return request.get(`/api/v1/ci/snapshots/${snapshotId}`);
 	},
 };

@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-# ---- Credential ----
+# ── Credential ────────────────────────────────────────────────────────────────
 
 
 class CredentialResp(BaseModel):
@@ -23,26 +23,61 @@ class CredentialCreateReq(BaseModel):
     data: str
 
 
-# ---- PipelineTemplate ----
+class CredentialUpdateReq(BaseModel):
+    name: str | None = None
+    data: str | None = None
 
 
-class VariableDeclarationResp(BaseModel):
+# ── Stage ─────────────────────────────────────────────────────────────────────
+
+
+class CheckoutConfigDto(BaseModel):
+    ref: str = "{{ DEFAULT_BRANCH }}"
+
+
+class DockerBuildConfigDto(BaseModel):
+    context: str = "."
+    dockerfile: str = "Dockerfile"
+    image_name: str
+
+
+class UnitTestConfigDto(BaseModel):
+    image: str
+    commands: list[str]
+    artifact_paths: list[str] = []
+
+
+class StageDefinitionDto(BaseModel):
     name: str
-    description: str
-    required: bool
-    default: Any
-    secret: bool
+    type: Literal["checkout", "docker_build", "unit_test", "custom"]
+    depends_on: list[str] = []
+    config: CheckoutConfigDto | DockerBuildConfigDto | UnitTestConfigDto | None = None
+    steps: list[dict[str, Any]] | None = None  # custom 类型的 StepDefinition
 
-    model_config = {"from_attributes": True}
+
+# ── VariableDeclaration ───────────────────────────────────────────────────────
+
+
+class VariableDeclarationDto(BaseModel):
+    name: str
+    description: str = ""
+    required: bool = False
+    default: Any = None
+    secret: bool = False
+    locked: bool = False
+
+
+# ── PipelineTemplate ──────────────────────────────────────────────────────────
 
 
 class PipelineTemplateResp(BaseModel):
     id: str
     name: str
     description: str
-    content: str
-    variable_declarations: list[VariableDeclarationResp]
+    stages: list[StageDefinitionDto]
+    variable_declarations: list[VariableDeclarationDto]
     is_builtin: bool
+    latest_snapshot_version: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -51,31 +86,52 @@ class PipelineTemplateResp(BaseModel):
 
 class PipelineTemplateCreateReq(BaseModel):
     name: str
-    content: str
     description: str = ""
-    variable_declarations: list[dict] = []
+    stages: list[StageDefinitionDto] = []
+    variable_declarations: list[VariableDeclarationDto] = []
 
 
 class PipelineTemplateUpdateReq(BaseModel):
     name: str | None = None
     description: str | None = None
-    content: str | None = None
-    variable_declarations: list[dict] | None = None
+    stages: list[StageDefinitionDto] | None = None
+    variable_declarations: list[VariableDeclarationDto] | None = None
 
 
-# ---- Project ----
+# ── PipelineSnapshot ──────────────────────────────────────────────────────────
+
+
+class PipelineSnapshotListItemResp(BaseModel):
+    id: str
+    template_id: str
+    version: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PipelineSnapshotResp(BaseModel):
+    id: str
+    template_id: str
+    version: int
+    stages_snapshot: list[StageDefinitionDto]
+    variable_declarations_snapshot: list[VariableDeclarationDto]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Project ───────────────────────────────────────────────────────────────────
 
 
 class ProjectResp(BaseModel):
     id: str
     name: str
     repository_url: str
-    pipeline_template_id: str
+    pipeline_snapshot_id: str
     git_credential_id: str | None
     variable_overrides: dict[str, Any]
-    branch_filter: str | None
     default_branch: str
-    webhook_secret: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -85,36 +141,28 @@ class ProjectResp(BaseModel):
 class ProjectCreateReq(BaseModel):
     name: str
     repository_url: str
-    pipeline_template_id: str
+    pipeline_snapshot_id: str
     git_credential_id: str | None = None
     variable_overrides: dict[str, Any] = {}
-    branch_filter: str | None = None
     default_branch: str = "master"
-    enable_webhook: bool = True
 
 
 class ProjectUpdateReq(BaseModel):
     name: str | None = None
     repository_url: str | None = None
-    pipeline_template_id: str | None = None
+    pipeline_snapshot_id: str | None = None
     git_credential_id: str | None = None
     variable_overrides: dict[str, Any] | None = None
-    branch_filter: str | None = None
     default_branch: str | None = None
 
 
-class WebhookConfigResp(BaseModel):
-    url: str
-    secret: str | None
-    events: list[str]
-
-
-# ---- PipelineRun ----
+# ── PipelineRun ───────────────────────────────────────────────────────────────
 
 
 class PipelineRunResp(BaseModel):
     id: str
     project_id: str
+    pipeline_snapshot_id: str
     trigger: str
     trigger_ref: str
     status: str
@@ -131,19 +179,7 @@ class TriggerPipelineReq(BaseModel):
     variables: dict[str, Any] = {}
 
 
-class ArtifactResp(BaseModel):
-    id: str
-    pipeline_run_id: str
-    job_name: str
-    type: str
-    name: str
-    path: str | None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
-# ---- Job ----
+# ── Job ───────────────────────────────────────────────────────────────────────
 
 
 class JobResp(BaseModel):
@@ -163,6 +199,21 @@ class JobLogResp(BaseModel):
     id: str
     job_id: str
     content: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Artifact ──────────────────────────────────────────────────────────────────
+
+
+class ArtifactResp(BaseModel):
+    id: str
+    pipeline_run_id: str
+    job_name: str
+    type: str
+    name: str
+    path: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

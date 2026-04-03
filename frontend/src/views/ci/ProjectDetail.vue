@@ -32,13 +32,13 @@
 						<dd class="text-xs truncate">{{ project.repository_url }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">流水线模板</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">流水线快照</dt>
 						<dd>
 							<router-link
-								:to="`/ci/templates/${project.pipeline_template_id}`"
+								:to="`/ci/snapshots/${project.pipeline_snapshot_id}`"
 								class="link link-primary text-xs"
 							>
-								查看模板
+								查看快照
 							</router-link>
 						</dd>
 					</div>
@@ -69,42 +69,6 @@
 							>
 								查看所有记录
 							</router-link>
-						</dd>
-					</div>
-				</dl>
-			</div>
-		</div>
-
-		<!-- Webhook -->
-		<div class="card bg-base-100 shadow-sm">
-			<div class="card-body p-5">
-				<h2 class="font-semibold mb-3">Webhook 配置</h2>
-				<dl v-if="project" class="flex flex-col gap-3 text-sm">
-					<div class="flex gap-2 items-start">
-						<dt class="text-base-content/70 w-32 shrink-0">Webhook URL</dt>
-						<dd class="flex items-center gap-2">
-							<code class="text-xs bg-base-200 px-2 py-1 rounded break-all">{{ webhookUrl }}</code>
-							<button class="btn btn-xs btn-ghost" @click="copyText(webhookUrl)">
-								<Copy class="size-3" />
-							</button>
-						</dd>
-					</div>
-					<div class="flex gap-2 items-center">
-						<dt class="text-base-content/70 w-32 shrink-0">Webhook Secret</dt>
-						<dd class="flex items-center gap-2">
-							<code class="text-xs bg-base-200 px-2 py-1 rounded">
-								{{ showSecret ? project.webhook_secret : '••••••••••••••••' }}
-							</code>
-							<button class="btn btn-xs btn-ghost" @click="showSecret = !showSecret">
-								{{ showSecret ? '隐藏' : '显示' }}
-							</button>
-							<button
-								v-if="showSecret"
-								class="btn btn-xs btn-ghost"
-								@click="copyText(project.webhook_secret ?? '')"
-							>
-								<Copy class="size-3" />
-							</button>
 						</dd>
 					</div>
 				</dl>
@@ -187,10 +151,29 @@
 						<input v-model="editForm.repository_url" type="text" class="input w-full" />
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">流水线模板</legend>
-						<select v-model="editForm.pipeline_template_id" class="select w-full">
-							<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">{{ tpl.name }}</option>
-						</select>
+						<legend class="fieldset-legend">流水线快照</legend>
+						<div class="flex gap-2">
+							<select
+								v-model="editForm.selectedTemplateId"
+								class="select w-full"
+								@change="onTemplateChange"
+							>
+								<option value="">选择模板</option>
+								<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
+									{{ tpl.name }}
+								</option>
+							</select>
+							<select
+								v-model="editForm.pipeline_snapshot_id"
+								class="select w-full"
+								:disabled="!editForm.selectedTemplateId"
+							>
+								<option value="">选择版本</option>
+								<option v-for="snap in snapshots" :key="snap.id" :value="snap.id">
+									v{{ snap.version }}
+								</option>
+							</select>
+						</div>
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">Git 凭据</legend>
@@ -281,12 +264,12 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Play, Plus, Copy } from 'lucide-vue-next';
+import { ArrowLeft, Play, Plus } from 'lucide-vue-next';
 import { credentialApi, pipelineTemplateApi, projectApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';
-import type { Credential, PipelineTemplate, Project } from '@/types/api';
+import type { Credential, PipelineSnapshotListItem, PipelineTemplate, Project } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -299,10 +282,10 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 const project = ref<Project>();
 const templates = ref<PipelineTemplate[]>([]);
 const credentials = ref<Credential[]>([]);
+const snapshots = ref<PipelineSnapshotListItem[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
 );
-const showSecret = ref(false);
 
 const triggerModalRef = ref<HTMLDialogElement>();
 const editModalRef = ref<HTMLDialogElement>();
@@ -313,7 +296,8 @@ const triggerRef = ref('');
 const editForm = reactive({
 	name: '',
 	repository_url: '',
-	pipeline_template_id: '',
+	pipeline_snapshot_id: '',
+	selectedTemplateId: '',
 	git_credential_id: '',
 	branch_filter: '',
 	default_branch: 'master',
@@ -323,15 +307,9 @@ const newVarValue = ref('');
 const editingVarKey = ref('');
 const editingVarValue = ref('');
 
-const webhookUrl = computed(() => `${window.location.origin}/api/v1/ci/webhooks/git`);
 const variableList = computed(() =>
 	Object.entries(project.value?.variable_overrides ?? {}).map(([key, value]) => ({ key, value }))
 );
-
-async function copyText(text: string) {
-	await navigator.clipboard.writeText(text);
-	toast.success('已复制');
-}
 
 async function fetchProject() {
 	try {
@@ -341,9 +319,9 @@ async function fetchProject() {
 			Object.assign(editForm, {
 				name: data.name,
 				repository_url: data.repository_url,
-				pipeline_template_id: data.pipeline_template_id,
+				pipeline_snapshot_id: data.pipeline_snapshot_id,
+				selectedTemplateId: '',
 				git_credential_id: data.git_credential_id ?? '',
-				branch_filter: data.branch_filter ?? '',
 				default_branch: data.default_branch ?? 'master',
 			});
 		});
@@ -378,7 +356,16 @@ async function openEditModal() {
 	]);
 	templates.value = tplRes.items;
 	credentials.value = credRes.items;
+	snapshots.value = [];
 	editModalRef.value?.showModal();
+}
+
+async function onTemplateChange() {
+	snapshots.value = [];
+	editForm.pipeline_snapshot_id = '';
+	if (editForm.selectedTemplateId) {
+		snapshots.value = await pipelineTemplateApi.listSnapshots(editForm.selectedTemplateId);
+	}
 }
 
 async function handleEditOk() {
@@ -387,9 +374,8 @@ async function handleEditOk() {
 			await projectApi.update(projectId, {
 				name: editForm.name,
 				repository_url: editForm.repository_url,
-				pipeline_template_id: editForm.pipeline_template_id,
+				pipeline_snapshot_id: editForm.pipeline_snapshot_id || undefined,
 				git_credential_id: editForm.git_credential_id || undefined,
-				branch_filter: editForm.branch_filter || undefined,
 				default_branch: editForm.default_branch || 'master',
 			});
 			toast.success('更新成功');

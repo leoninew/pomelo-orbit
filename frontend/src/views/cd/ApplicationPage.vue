@@ -198,10 +198,7 @@
 				</tbody>
 			</table>
 			<!-- Table pagination -->
-			<div
-				v-if="totalPages > 0"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"

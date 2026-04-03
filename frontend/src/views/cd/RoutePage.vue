@@ -15,7 +15,7 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>路由名称</th>
@@ -28,10 +28,13 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="loading">
+					<tr v-if="status === 'loading'">
 						<td colspan="7" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
+					</tr>
+					<tr v-else-if="status === 'error'">
+						<td colspan="7" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="routes.length === 0">
 						<td colspan="7" class="text-center py-8 text-base-content/60">暂无路由</td>
@@ -83,7 +86,7 @@
 				</tbody>
 			</table>
 			<div
-				v-if="pagination.total > pagination.pageSize"
+				v-if="totalPages > 0"
 				class="flex justify-end p-3 border-t border-base-200"
 			>
 				<div class="join">
@@ -171,7 +174,7 @@ import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const routes = ref<Route[]>([]);

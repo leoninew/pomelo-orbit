@@ -3,8 +3,8 @@
 		<!-- Page header -->
 		<div class="flex items-center justify-between">
 			<h1 class="text-xl font-semibold">仪表盘</h1>
-			<button class="btn btn-sm btn-ghost gap-1.5" :disabled="loading" @click="refresh">
-				<RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
+			<button class="btn btn-sm btn-ghost gap-1.5" :disabled="status === 'loading'" @click="refresh">
+				<RefreshCw class="size-4" :class="{ 'animate-spin': status === 'loading' }" />
 				刷新
 			</button>
 		</div>
@@ -16,21 +16,21 @@
 					<LayoutGrid class="size-8" />
 				</div>
 				<div class="stat-title">应用总数</div>
-				<div class="stat-value text-primary">{{ loading ? '—' : stats.projectCount }}</div>
+				<div class="stat-value text-primary">{{ status === 'loading' ? '—' : stats.projectCount }}</div>
 			</div>
 			<div class="stat">
 				<div class="stat-figure text-secondary">
 					<Rocket class="size-8" />
 				</div>
 				<div class="stat-title">今日部署</div>
-				<div class="stat-value text-secondary">{{ loading ? '—' : stats.todayDeploys }}</div>
+				<div class="stat-value text-secondary">{{ status === 'loading' ? '—' : stats.todayDeploys }}</div>
 			</div>
 			<div class="stat">
 				<div class="stat-figure text-accent">
 					<Activity class="size-8" />
 				</div>
 				<div class="stat-title">运行中</div>
-				<div class="stat-value text-accent">{{ loading ? '—' : stats.runningDeploys }}</div>
+				<div class="stat-value text-accent">{{ status === 'loading' ? '—' : stats.runningDeploys }}</div>
 			</div>
 		</div>
 
@@ -40,8 +40,11 @@
 				<div class="flex items-center justify-between px-5 pt-4 pb-3 border-b border-base-200">
 					<h2 class="font-semibold">最近部署</h2>
 				</div>
-				<div v-if="loading" class="flex justify-center py-12">
+				<div v-if="status === 'loading'" class="flex justify-center py-12">
 					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<div v-else-if="status === 'error'" class="flex justify-center py-12 text-error text-sm">
+					{{ error }}
 				</div>
 				<div
 					v-else-if="recentDeploys.length === 0"
@@ -96,7 +99,7 @@ import { formatTime, getTodayStart } from '@/utils/time';
 import type { Deployment } from '@/types/api';
 
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 
 const stats = reactive({ projectCount: 0, todayDeploys: 0, runningDeploys: 0 });
 const recentDeploys = ref<Deployment[]>([]);
@@ -121,15 +124,13 @@ async function refresh() {
 			const todayStart = getTodayStart();
 			const todayEnd = todayStart.add(1, 'day');
 
-			const [appsRes, todayRes, recentRes] = await Promise.all([
-				applicationApi.list({ per_page: 1 }),
-				deploymentApi.list({
-					per_page: 100,
-					date_from: todayStart.toISOString(),
-					date_to: todayEnd.toISOString(),
-				}),
-				deploymentApi.list({ per_page: 5 }),
-			]);
+			const appsRes = await applicationApi.list({ per_page: 1 });
+			const todayRes = await deploymentApi.list({
+				per_page: 100,
+				date_from: todayStart.toISOString(),
+				date_to: todayEnd.toISOString(),
+			});
+			const recentRes = await deploymentApi.list({ per_page: 5 });
 
 			stats.projectCount = appsRes.total;
 			stats.todayDeploys = todayRes.total;

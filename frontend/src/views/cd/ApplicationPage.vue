@@ -51,8 +51,11 @@
 		</div>
 
 		<!-- Loading -->
-		<div v-if="loading" class="flex justify-center py-16">
+		<div v-if="status === 'loading'" class="flex justify-center py-16">
 			<span class="loading loading-spinner loading-lg text-primary" />
+		</div>
+		<div v-else-if="status === 'error'" class="flex justify-center py-16 text-error text-sm">
+			{{ error }}
 		</div>
 
 		<!-- Card view -->
@@ -118,7 +121,7 @@
 			</div>
 
 			<!-- Pagination -->
-			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end mt-2">
+			<div v-if="totalPages > 0" class="flex justify-end mt-2">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -135,7 +138,7 @@
 
 		<!-- Table view -->
 		<div v-else class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>应用名称</th>
@@ -196,7 +199,7 @@
 			</table>
 			<!-- Table pagination -->
 			<div
-				v-if="pagination.total > pagination.pageSize"
+				v-if="totalPages > 0"
 				class="flex justify-end p-3 border-t border-base-200"
 			>
 				<div class="join">
@@ -275,7 +278,7 @@ import AppFormFields from './ApplicationFormFields.vue';
 
 const $router = useRouter();
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const applications = ref<Application[]>([]);

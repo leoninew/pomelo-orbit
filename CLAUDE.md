@@ -1,4 +1,4 @@
-# Typing Island V2 编码指南
+# Pomelo Orbit V2 编码指南
 
 ## 核心原则
 
@@ -359,6 +359,19 @@ class TypingContentResp(BaseModel):
 ```
 
 ### 前端 (Vue 3/TypeScript)
+
+#### 请求规范
+
+少量请求顺序 await 即可，无须 `Promise.all`；仅在请求数量较多或有明显延迟差异时才使用并发。
+
+```typescript
+// ✅ 少量请求 - 顺序执行，简洁清晰
+const tplRes = await pipelineTemplateApi.list();
+const credRes = await credentialApi.list();
+
+// ✅ 大量无依赖请求 - 并发减少等待
+const results = await Promise.all(ids.map(id => itemApi.get(id)));
+```
 
 #### 时间处理规范
 

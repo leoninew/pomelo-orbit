@@ -9,23 +9,27 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>项目名称</th>
 						<th>仓库地址</th>
+						<th>Git 凭据</th>
 						<th>创建时间</th>
 						<th>操作</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="loading">
-						<td colspan="4" class="text-center py-8">
+					<tr v-if="status === 'loading'">
+						<td colspan="5" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
 					</tr>
+					<tr v-else-if="status === 'error'">
+						<td colspan="5" class="text-center py-8 text-error">{{ error }}</td>
+					</tr>
 					<tr v-else-if="projects.length === 0">
-						<td colspan="4" class="text-center py-8 text-base-content/60">暂无项目</td>
+						<td colspan="5" class="text-center py-8 text-base-content/60">暂无项目</td>
 					</tr>
 					<tr v-for="p in projects" :key="p.id" class="hover">
 						<td>
@@ -34,6 +38,12 @@
 							</router-link>
 						</td>
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
+						<td class="cell-muted">
+							<router-link v-if="p.git_credential_id" :to="`/ci/credentials/${p.git_credential_id}`" class="link link-primary">
+								{{ p.git_credential_id }}
+							</router-link>
+							<span v-else class="text-base-content/40">-</span>
+						</td>
 						<td class="cell-muted">{{ formatTime(p.created_at) }}</td>
 						<td>
 							<router-link :to="`/ci/projects/${p.id}`" class="link link-primary">查看</router-link>
@@ -42,7 +52,7 @@
 				</tbody>
 			</table>
 			<div
-				v-if="pagination.total > pagination.pageSize"
+				v-if="totalPages > 0"
 				class="flex justify-end p-3 border-t border-base-200"
 			>
 				<div class="join">
@@ -63,7 +73,10 @@
 		<dialog ref="createModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">新建项目</h3>
-				<div class="flex flex-col gap-3">
+				<div v-if="modalStatus === 'loading'" class="flex justify-center py-8">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<div v-else class="flex flex-col gap-3">
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">项目名称</legend>
 						<input
@@ -122,7 +135,7 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="operating" @click="handleCreateOk">
+					<button class="btn btn-primary" :disabled="operating || modalStatus === 'loading'" @click="handleCreateOk">
 						<span v-if="operating" class="loading loading-spinner loading-xs" />
 						创建
 					</button>
@@ -144,8 +157,9 @@ import { formatTime } from '@/utils/time';
 import type { Credential, PipelineTemplate, Project } from '@/types/api';
 
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
+const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
 const projects = ref<Project[]>([]);
 const templates = ref<PipelineTemplate[]>([]);
@@ -204,14 +218,19 @@ async function openCreateModal() {
 		branch_filter: '',
 	});
 	Object.assign(errors, { name: '', repository_url: '', pipeline_template_id: '' });
-	// Load templates and credentials
-	const [tplRes, credRes] = await Promise.all([
-		pipelineTemplateApi.list({ per_page: 100 }),
-		credentialApi.list({ per_page: 100 }),
-	]);
-	templates.value = tplRes.items;
-	credentials.value = credRes.items;
 	createModalRef.value?.showModal();
+	try {
+		await executeModal(async () => {
+			const [tplRes, credRes] = await Promise.all([
+				pipelineTemplateApi.list({ per_page: 100 }),
+				credentialApi.list({ per_page: 100 }),
+			]);
+			templates.value = tplRes.items;
+			credentials.value = credRes.items;
+		});
+	} catch {
+		toast.error('加载表单数据失败');
+	}
 }
 
 async function handleCreateOk() {

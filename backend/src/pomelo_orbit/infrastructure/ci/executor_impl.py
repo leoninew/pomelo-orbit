@@ -242,10 +242,11 @@ class PipelineExecutorImpl(PipelineExecutor):
         action_name = (step.uses or "").split("@")[0].lower()
 
         if action_name == "checkout":
+            if not context.credential_id:
+                raise RuntimeError("checkout action requires a credential")
             credential = self.credential_repo.find_by_id(context.credential_id)
             if not credential:
                 raise RuntimeError(f"Credential {context.credential_id} not found")
-            # 解密凭据数据后注入到 credential 对象
             decrypted_credential = copy.copy(credential)
             decrypted_credential.encrypted_data = self.security_service.decrypt_value(credential.encrypted_data)
             checkout = CheckoutAction(self.container_executor)

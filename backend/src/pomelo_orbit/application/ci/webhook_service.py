@@ -11,10 +11,6 @@ from pomelo_orbit.infrastructure.ci.webhook_payload_parser import (
     parse_github_webhook,
     parse_gitlab_webhook,
 )
-from pomelo_orbit.infrastructure.ci.webhook_verifier import (
-    verify_github_signature,
-    verify_gitlab_signature,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -116,28 +112,6 @@ class CIWebhookService:
 
         for project in projects:
             try:
-                # 验证签名
-                if project.webhook_secret:
-                    if source == "github" and payload_bytes is not None:
-                        valid = verify_github_signature(payload_bytes, signature, project.webhook_secret)
-                    elif source == "gitlab":
-                        valid = verify_gitlab_signature(signature, project.webhook_secret)
-                    else:
-                        valid = False
-
-                    if not valid:
-                        logger.warning(f"Webhook signature verification failed: source={source}, project={project.id}")
-                        continue
-
-                # 检查 branch_filter
-                if project.branch_filter and ci_payload.branch:
-                    allowed = [b.strip() for b in project.branch_filter.split(",")]
-                    if ci_payload.branch not in allowed:
-                        logger.info(
-                            f"Branch filtered: project={project.id}, branch={ci_payload.branch}, allowed={allowed}"
-                        )
-                        continue
-
                 # 触发 pipeline
                 run, triggered_project, merged_vars = self.pipeline_service.create_run(
                     project_id=project.id,

@@ -1,7 +1,6 @@
-"""Pipeline 应用服务 - 处理 pipeline 触发和查询"""
+"""Pipeline 应用服务"""
 
 import logging
-import secrets
 from collections.abc import Callable
 from typing import Any
 
@@ -13,6 +12,7 @@ from pomelo_orbit.domain.ci.entities import (
     Job,
     JobLog,
     PipelineRun,
+    PipelineSnapshot,
     PipelineTemplate,
     Project,
 )
@@ -23,6 +23,7 @@ from pomelo_orbit.domain.ci.repositories import (
     JobLogRepository,
     JobRepository,
     PipelineRunRepository,
+    PipelineSnapshotRepository,
     PipelineTemplateRepository,
     ProjectRepository,
 )
@@ -33,13 +34,13 @@ from pomelo_orbit.domain.ci.value_objects import (
     VariableDeclaration,
 )
 from pomelo_orbit.domain.exceptions import BusinessError
-from pomelo_orbit.infrastructure.ci.parser import PipelineParseError, parse_pipeline_yaml
 from pomelo_orbit.infrastructure.ci.repositories import PipelineRunRepositoryImpl
 from pomelo_orbit.infrastructure.ci.variables import (
     VariableError,
-    mask_secrets,
+    extract_variables,
+    merge_declarations,
     merge_variables,
-    render_template,
+    resolve_stage,
     validate_variables,
 )
 from pomelo_orbit.infrastructure.ci.workspace import cleanup_workspace, create_workspace
@@ -50,13 +51,12 @@ logger = logging.getLogger(__name__)
 
 
 class PipelineService:
-    """Pipeline 应用服务"""
-
     def __init__(
         self,
         project_repo: ProjectRepository,
         credential_repo: CredentialRepository,
         template_repo: PipelineTemplateRepository,
+        snapshot_repo: PipelineSnapshotRepository,
         run_repo: PipelineRunRepository,
         artifact_repo: ArtifactRepository,
         job_repo: JobRepository,
@@ -68,6 +68,7 @@ class PipelineService:
         self.project_repo = project_repo
         self.credential_repo = credential_repo
         self.template_repo = template_repo
+        self.snapshot_repo = snapshot_repo
         self.run_repo = run_repo
         self.artifact_repo = artifact_repo
         self.job_repo = job_repo
@@ -76,16 +77,12 @@ class PipelineService:
         self._session_factory = session_factory
         self._executor_factory = executor_factory
 
-    # -------------------------------------------------------------------------
-    # Project CRUD
-    # -------------------------------------------------------------------------
+    # ── Project CRUD ──────────────────────────────────────────────────────────
 
     def list_projects(self, page: int = 1, per_page: int = 20) -> tuple[list[Project], int]:
-        """列出项目（分页）"""
         return self.project_repo.find_paginated(page=page, per_page=per_page)
 
     def get_project(self, project_id: str) -> Project:
-        """获取项目详情"""
         project = self.project_repo.find_by_id(project_id)
         if not project:
             raise BusinessError(f"Project {project_id} not found", status_code=404)
@@ -95,30 +92,21 @@ class PipelineService:
         self,
         name: str,
         repository_url: str,
-        pipeline_template_id: str,
+        pipeline_snapshot_id: str,
         git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
-        branch_filter: str | None = None,
         default_branch: str = "master",
-        enable_webhook: bool = True,
     ) -> Project:
-        """创建项目，自动生成 webhook_secret"""
-        # 验证模板和凭据存在
-        if not self.template_repo.find_by_id(pipeline_template_id):
-            raise BusinessError(f"PipelineTemplate {pipeline_template_id} not found", status_code=404)
+        if not self.snapshot_repo.find_by_id(pipeline_snapshot_id):
+            raise BusinessError(f"PipelineSnapshot {pipeline_snapshot_id} not found", status_code=404)
         if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
-
-        webhook_secret = secrets.token_urlsafe(32) if enable_webhook else None
-
         project = Project.create(
             name=name,
             repository_url=repository_url,
-            pipeline_template_id=pipeline_template_id,
+            pipeline_snapshot_id=pipeline_snapshot_id,
             git_credential_id=git_credential_id,
             variable_overrides=variable_overrides,
-            webhook_secret=webhook_secret,
-            branch_filter=branch_filter,
             default_branch=default_branch,
         )
         self.project_repo.save(project)
@@ -130,113 +118,107 @@ class PipelineService:
         name: str | None = None,
         repository_url: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
-        pipeline_template_id: str | None = None,
+        pipeline_snapshot_id: str | None = None,
         git_credential_id: str | None = None,
-        branch_filter: str | None = None,
         default_branch: str | None = None,
     ) -> Project:
-        """更新项目"""
         project = self.get_project(project_id)
-        if pipeline_template_id and not self.template_repo.find_by_id(pipeline_template_id):
-            raise BusinessError(f"PipelineTemplate {pipeline_template_id} not found", status_code=404)
+        if pipeline_snapshot_id and not self.snapshot_repo.find_by_id(pipeline_snapshot_id):
+            raise BusinessError(f"PipelineSnapshot {pipeline_snapshot_id} not found", status_code=404)
         project.update(
             name=name,
             repository_url=repository_url,
             variable_overrides=variable_overrides,
-            pipeline_template_id=pipeline_template_id,
+            pipeline_snapshot_id=pipeline_snapshot_id,
             git_credential_id=git_credential_id,
-            branch_filter=branch_filter,
             default_branch=default_branch,
         )
         self.project_repo.save(project)
         return project
 
     def delete_project(self, project_id: str) -> None:
-        """删除项目"""
         project = self.get_project(project_id)
         if self.project_repo.has_running_pipelines(project_id):
             raise BusinessError("Project has running pipelines, cannot delete", status_code=409)
         self.project_repo.delete(project)
 
-    def get_webhook_config(self, project_id: str, api_base_url: str) -> dict:
-        """获取项目 webhook 配置"""
-        project = self.get_project(project_id)
-        return {
-            "url": f"{api_base_url}/api/v1/ci/webhooks/git",
-            "secret": project.webhook_secret,
-            "events": ["push", "release"],
-        }
-
-    def regenerate_webhook_secret(self, project_id: str) -> Project:
-        """重新生成 webhook secret"""
-        project = self.get_project(project_id)
-        project.update(webhook_secret=secrets.token_urlsafe(32))
-        self.project_repo.save(project)
-        return project
-
-    # -------------------------------------------------------------------------
-    # Credential CRUD
-    # -------------------------------------------------------------------------
+    # ── Credential CRUD ───────────────────────────────────────────────────────
 
     def list_credentials(self, page: int = 1, per_page: int = 20) -> tuple[list[Credential], int]:
-        """列出凭据（分页）"""
         return self.credential_repo.find_paginated(page=page, per_page=per_page)
 
     def get_credential(self, credential_id: str) -> Credential:
-        """获取凭据"""
         cred = self.credential_repo.find_by_id(credential_id)
         if not cred:
             raise BusinessError(f"Credential {credential_id} not found", status_code=404)
         return cred
 
     def create_credential(self, name: str, credential_type: str, encrypted_data: str) -> Credential:
-        """创建凭据"""
-        cred = Credential.create(
-            name=name,
-            type=CredentialType(credential_type),
-            encrypted_data=encrypted_data,
-        )
+        cred = Credential.create(name=name, type=CredentialType(credential_type), encrypted_data=encrypted_data)
+        self.credential_repo.save(cred)
+        return cred
+
+    def update_credential(
+        self, credential_id: str, name: str | None = None, encrypted_data: str | None = None
+    ) -> Credential:
+        cred = self.get_credential(credential_id)
+        if name is not None:
+            cred.name = name
+        if encrypted_data is not None:
+            cred.encrypted_data = encrypted_data
         self.credential_repo.save(cred)
         return cred
 
     def delete_credential(self, credential_id: str) -> None:
-        """删除凭据"""
         cred = self.get_credential(credential_id)
         if self.credential_repo.is_referenced_by_projects(credential_id):
             raise BusinessError("Credential is referenced by projects, cannot delete", status_code=409)
         self.credential_repo.delete(cred)
 
-    # -------------------------------------------------------------------------
-    # PipelineTemplate CRUD
-    # -------------------------------------------------------------------------
+    # ── PipelineTemplate CRUD ─────────────────────────────────────────────────
 
     def list_templates(self, page: int = 1, per_page: int = 20) -> tuple[list[PipelineTemplate], int]:
-        """列出模板（分页）"""
         return self.template_repo.find_paginated(page=page, per_page=per_page)
 
+    def list_templates_with_latest_version(
+        self, page: int = 1, per_page: int = 20
+    ) -> tuple[list[tuple[PipelineTemplate, int | None]], int]:
+        """列出模板，同时附带每个模板的最新快照版本号（单次批量查询）"""
+        templates, total = self.template_repo.find_paginated(page=page, per_page=per_page)
+        if not templates:
+            return [], total
+        latest_versions = self.snapshot_repo.find_latest_versions([t.id for t in templates])
+        return [(t, latest_versions.get(t.id)) for t in templates], total
+
     def get_template(self, template_id: str) -> PipelineTemplate:
-        """获取模板"""
         tmpl = self.template_repo.find_by_id(template_id)
         if not tmpl:
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
         return tmpl
 
+    def get_template_latest_version(self, template_id: str) -> int | None:
+        """获取模板最新快照版本号"""
+        versions = self.snapshot_repo.find_latest_versions([template_id])
+        return versions.get(template_id)
+
     def create_template(
         self,
         name: str,
-        content: str,
+        stages: list,
         description: str = "",
         variable_declarations: list | None = None,
     ) -> PipelineTemplate:
-        """创建模板"""
-        decls = [VariableDeclaration(**d) for d in (variable_declarations or [])]
+        decls = [VariableDeclaration(**d) if isinstance(d, dict) else d for d in (variable_declarations or [])]
         tmpl = PipelineTemplate.create(
             name=name,
-            content=content,
-            variable_declarations=decls,
+            stages=stages,
+            variable_declarations=self._sync_declarations(stages, decls),
             description=description,
         )
         self.template_repo.save(tmpl)
+        # 同时创建 version=1 快照
+        snapshot = PipelineSnapshot.create(tmpl, version=1)
+        self.snapshot_repo.save(snapshot)
         return tmpl
 
     def update_template(
@@ -244,60 +226,74 @@ class PipelineService:
         template_id: str,
         name: str | None = None,
         description: str | None = None,
-        content: str | None = None,
+        stages: list | None = None,
         variable_declarations: list | None = None,
     ) -> PipelineTemplate:
-        """更新模板"""
         tmpl = self.get_template(template_id)
         decls = None
         if variable_declarations is not None:
-            decls = [VariableDeclaration(**d) for d in variable_declarations]
-        tmpl.update(name=name, description=description, content=content, variable_declarations=decls)
+            decls = [VariableDeclaration(**d) if isinstance(d, dict) else d for d in variable_declarations]
+        tmpl.update(name=name, description=description, stages=stages, variable_declarations=decls)
+        # 如果 stages 有更新，重新同步变量声明
+        if stages is not None:
+            tmpl.variable_declarations = self._sync_declarations(tmpl.stages, tmpl.variable_declarations)
         self.template_repo.save(tmpl)
+        # 创建新版本快照
+        next_version = self.snapshot_repo.get_next_version(template_id)
+        snapshot = PipelineSnapshot.create(tmpl, version=next_version)
+        self.snapshot_repo.save(snapshot)
         return tmpl
 
     def delete_template(self, template_id: str) -> None:
-        """删除模板"""
         tmpl = self.get_template(template_id)
         if self.template_repo.is_referenced_by_projects(template_id):
             raise BusinessError("Template is referenced by projects, cannot delete", status_code=409)
         self.template_repo.delete(tmpl)
 
-    # -------------------------------------------------------------------------
-    # PipelineRun
-    # -------------------------------------------------------------------------
+    def _sync_declarations(self, stages: list, existing: list[VariableDeclaration]) -> list[VariableDeclaration]:
+        """从 stages 提取变量占位符，与现有声明合并"""
+        extracted = extract_variables(stages)
+        return merge_declarations(extracted, existing)
+
+    # ── PipelineSnapshot ──────────────────────────────────────────────────────
+
+    def list_template_snapshots(self, template_id: str) -> list[PipelineSnapshot]:
+        self.get_template(template_id)  # 验证模板存在
+        return self.snapshot_repo.find_by_template(template_id)
+
+    def get_snapshot(self, snapshot_id: str) -> PipelineSnapshot:
+        snapshot = self.snapshot_repo.find_by_id(snapshot_id)
+        if not snapshot:
+            raise BusinessError(f"PipelineSnapshot {snapshot_id} not found", status_code=404)
+        return snapshot
+
+    # ── PipelineRun ───────────────────────────────────────────────────────────
 
     def list_runs(
         self, page: int = 1, per_page: int = 20, project_id: str | None = None
     ) -> tuple[list[PipelineRun], int]:
-        """列出 pipeline runs（可按项目过滤，有 project_id 时校验项目存在）"""
         if project_id:
             self.get_project(project_id)
         return self.run_repo.find_paginated_with_filters(page=page, per_page=per_page, project_id=project_id)
 
     def get_run(self, run_id: str) -> PipelineRun:
-        """获取 pipeline run 详情"""
         run = self.run_repo.find_by_id(run_id)
         if not run:
             raise BusinessError(f"PipelineRun {run_id} not found", status_code=404)
         return run
 
     def list_artifacts(self, run_id: str) -> list[Artifact]:
-        """列出 pipeline run 的所有制品"""
         self.get_run(run_id)
         return self.artifact_repo.find_by_run(run_id)
 
     def list_jobs(self, run_id: str) -> list[Job]:
-        """列出 pipeline run 的所有 jobs"""
         self.get_run(run_id)
         return self.job_repo.find_by_run(run_id)
 
     def get_job_log(self, job_id: str) -> JobLog | None:
-        """获取 job 日志"""
         return self.job_log_repo.find_by_job(job_id)
 
     def cancel_run(self, run_id: str) -> PipelineRun:
-        """取消 pipeline run（waiting 或 running 状态）"""
         run = self.get_run(run_id)
         try:
             run.cancel()
@@ -314,39 +310,38 @@ class PipelineService:
         trigger_ref: str,
         runtime_variables: dict[str, Any] | None = None,
     ) -> tuple[PipelineRun, Project, dict[str, Any]]:
-        """
-        校验、合并变量、创建 PipelineRun 记录并持久化。
-        返回 (run, project, merged_vars) 供后续 execute_run 使用。
-        """
         project = self.get_project(project_id)
-        template = self.get_template(project.pipeline_template_id)
+        snapshot = self.get_snapshot(project.pipeline_snapshot_id)
+        declarations = snapshot.variable_declarations_snapshot
 
-        merged_vars = merge_variables(
+        builtin = {
+            "REPOSITORY_URL": project.repository_url,
+            "DEFAULT_BRANCH": project.default_branch,
+            "GIT_CREDENTIAL_ID": project.git_credential_id or "",
+            "trigger_ref": trigger_ref,
+            "trigger_type": trigger.value,
+            "project_name": project.name,
+        }
+
+        merged = merge_variables(
             global_vars=self.global_variables,
             project_vars=project.variable_overrides,
             runtime_vars=runtime_variables or {},
-        )
-        merged_vars.update(
-            {
-                "trigger_ref": trigger_ref,
-                "trigger_type": trigger.value,
-                "project_name": project.name,
-            }
+            declarations=declarations,
+            builtin_vars=builtin,
         )
 
         try:
-            validate_variables(merged_vars, template.variable_declarations)
+            validate_variables(merged, declarations)
         except VariableError as e:
             raise BusinessError(str(e), status_code=400) from e
 
-        variables_snapshot = mask_secrets(merged_vars, template.variable_declarations)
-
         run = PipelineRun.create(
             project_id=project_id,
+            pipeline_snapshot_id=snapshot.id,
             trigger=trigger,
             trigger_ref=trigger_ref,
-            resolved_pipeline=template.content,
-            variables_snapshot=variables_snapshot,
+            variables_snapshot=merged,  # 存明文，脱敏是展示层的事
         )
         self.run_repo.save(run)
         self.run_repo.commit()
@@ -354,61 +349,56 @@ class PipelineService:
         logger.info(
             f"Pipeline triggered: project={project.name}, run={run.id}, trigger={trigger.value}, ref={trigger_ref}"
         )
-        return run, project, merged_vars
+        return run, project, merged
 
     def create_retry_run(self, run_id: str) -> tuple[PipelineRun, Project, dict[str, Any]]:
-        """
-        基于已有 run 创建重试 run 并持久化。
-        返回 (new_run, project, variables) 供后续 execute_run 使用。
-        """
-        original_run = self.get_run(run_id)
+        original = self.get_run(run_id)
+        if original.status not in {PipelineRunStatus.FAILED, PipelineRunStatus.SUCCESS}:
+            raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
-        if original_run.status not in {PipelineRunStatus.FAILED, PipelineRunStatus.SUCCESS}:
-            raise BusinessError(
-                f"Cannot retry run with status {original_run.status.value}",
-                status_code=400,
-            )
-
+        # variables_snapshot 存的是明文，可以直接复用
         new_run = PipelineRun.create(
-            project_id=original_run.project_id,
-            trigger=original_run.trigger,
-            trigger_ref=original_run.trigger_ref,
-            resolved_pipeline=original_run.resolved_pipeline,
-            variables_snapshot=original_run.variables_snapshot,
-            retry_of=original_run.id,
+            project_id=original.project_id,
+            pipeline_snapshot_id=original.pipeline_snapshot_id,
+            trigger=original.trigger,
+            trigger_ref=original.trigger_ref,
+            variables_snapshot=original.variables_snapshot,
+            retry_of=original.id,
         )
         self.run_repo.save(new_run)
         self.run_repo.commit()
 
         logger.info(f"Pipeline retry triggered: original_run={run_id}, new_run={new_run.id}")
-        project = self.get_project(original_run.project_id)
-        return new_run, project, original_run.variables_snapshot
+        project = self.get_project(original.project_id)
+        return new_run, project, original.variables_snapshot
 
-    async def execute_run(
-        self,
-        run: PipelineRun,
-        project: Project,
-        variables: dict[str, Any],
-    ) -> None:
+    async def execute_run(self, run: PipelineRun, project: Project, variables: dict[str, Any]) -> None:
         """执行 pipeline run（由 BackgroundTasks 调用，使用独立 session）"""
         session_factory = self._session_factory or get_session_factory()
 
-        try:
-            # 先渲染变量，再解析 YAML
-            rendered = render_template(run.resolved_pipeline, variables)
-            definition = parse_pipeline_yaml(rendered)
-        except (PipelineParseError, VariableError) as e:
-            logger.error(f"Pipeline parse failed: run={run.id}, error={e}")
+        # 加载快照并解析变量
+        snapshot = self.snapshot_repo.find_by_id(run.pipeline_snapshot_id)
+        if not snapshot:
+            logger.error(f"Snapshot not found: run={run.id}, snapshot_id={run.pipeline_snapshot_id}")
             with session_factory() as session:
                 run_repo = PipelineRunRepositoryImpl(session)
                 run.complete_failed()
                 run_repo.save(run)
                 session.commit()
             return
-        # 创建工作目录
-        workspace_path, artifacts_path = create_workspace(run.id)
 
-        # 构建执行上下文
+        try:
+            resolved_stages = [resolve_stage(s, variables) for s in snapshot.stages_snapshot]
+        except Exception as e:
+            logger.error(f"Stage resolution failed: run={run.id}, error={e}")
+            with session_factory() as session:
+                run_repo = PipelineRunRepositoryImpl(session)
+                run.complete_failed()
+                run_repo.save(run)
+                session.commit()
+            return
+
+        workspace_path, artifacts_path = create_workspace(run.id)
         context = ExecutionContext(
             run_id=run.id,
             project_id=project.id,
@@ -429,7 +419,7 @@ class PipelineService:
             session.commit()
 
             try:
-                success = await executor.execute(context, definition)
+                success = await executor.execute(context, resolved_stages)
                 if success:
                     run.complete_success()
                 else:

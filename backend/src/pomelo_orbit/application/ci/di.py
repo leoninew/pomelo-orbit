@@ -19,6 +19,7 @@ from pomelo_orbit.infrastructure.ci.repositories import (
     JobLogRepositoryImpl,
     JobRepositoryImpl,
     PipelineRunRepositoryImpl,
+    PipelineSnapshotRepositoryImpl,
     PipelineTemplateRepositoryImpl,
     ProjectRepositoryImpl,
 )
@@ -65,6 +66,7 @@ def get_pipeline_service(
         project_repo=ProjectRepositoryImpl(db),
         credential_repo=CredentialRepositoryImpl(db),
         template_repo=PipelineTemplateRepositoryImpl(db),
+        snapshot_repo=PipelineSnapshotRepositoryImpl(db),
         run_repo=PipelineRunRepositoryImpl(db),
         artifact_repo=ArtifactRepositoryImpl(db),
         job_repo=JobRepositoryImpl(db),

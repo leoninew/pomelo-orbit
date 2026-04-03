@@ -17,12 +17,12 @@ class TestMergeVariables:
 
     def test_merge_empty_variables(self):
         """测试合并空变量"""
-        result = merge_variables({}, {}, {})
+        result = merge_variables({}, {}, {}, [], {})
         assert result == {}
 
     def test_merge_global_only(self):
         """测试仅全局变量"""
-        result = merge_variables({"KEY": "global"}, {}, {})
+        result = merge_variables({"KEY": "global"}, {}, {}, [], {})
         assert result == {"KEY": "global"}
 
     def test_merge_project_overrides_global(self):
@@ -30,6 +30,8 @@ class TestMergeVariables:
         result = merge_variables(
             {"KEY": "global", "GLOBAL_ONLY": "value"},
             {"KEY": "project"},
+            {},
+            [],
             {},
         )
         assert result == {"KEY": "project", "GLOBAL_ONLY": "value"}
@@ -40,6 +42,8 @@ class TestMergeVariables:
             {"KEY": "global"},
             {"KEY": "project"},
             {"KEY": "runtime"},
+            [],
+            {},
         )
         assert result == {"KEY": "runtime"}
 
@@ -49,6 +53,8 @@ class TestMergeVariables:
             {"GLOBAL": "g", "KEY": "global"},
             {"PROJECT": "p", "KEY": "project"},
             {"RUNTIME": "r", "KEY": "runtime"},
+            [],
+            {},
         )
         assert result == {
             "GLOBAL": "g",
@@ -56,6 +62,35 @@ class TestMergeVariables:
             "RUNTIME": "r",
             "KEY": "runtime",
         }
+
+    def test_builtin_overrides_all(self):
+        """测试内置变量优先级最高"""
+        result = merge_variables(
+            {"REPOSITORY_URL": "global"},
+            {"REPOSITORY_URL": "project"},
+            {"REPOSITORY_URL": "runtime"},
+            [],
+            {"REPOSITORY_URL": "builtin"},
+        )
+        assert result["REPOSITORY_URL"] == "builtin"
+
+    def test_locked_variable_not_overridden_by_runtime(self):
+        """测试 locked 变量不被运行时变量覆盖"""
+        declarations = [VariableDeclaration(name="SECRET", locked=True)]
+        result = merge_variables(
+            {},
+            {"SECRET": "project-value"},
+            {"SECRET": "runtime-attempt"},
+            declarations,
+            {},
+        )
+        assert result["SECRET"] == "project-value"
+
+    def test_default_value_used_when_no_override(self):
+        """测试无覆盖时使用声明默认值"""
+        declarations = [VariableDeclaration(name="KEY", default="default-val")]
+        result = merge_variables({}, {}, {}, declarations, {})
+        assert result["KEY"] == "default-val"
 
 
 class TestValidateVariables:

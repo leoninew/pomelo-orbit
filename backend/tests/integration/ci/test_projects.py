@@ -13,20 +13,20 @@ class TestProjectList:
 
 
 class TestProjectCreate:
-    def test_creates_project(self, auth_client, test_template, test_credential):
+    def test_creates_project(self, auth_client, test_snapshot, test_credential):
         resp = auth_client.post(
             "/api/v1/ci/projects",
             json={
                 "name": "new-project",
                 "repository_url": "https://github.com/test/new.git",
-                "pipeline_template_id": test_template.id,
+                "pipeline_snapshot_id": test_snapshot.id,
                 "git_credential_id": test_credential.id,
             },
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "new-project"
-        assert "webhook_secret" in data
+        assert data["pipeline_snapshot_id"] == test_snapshot.id
 
 
 class TestProjectGet:

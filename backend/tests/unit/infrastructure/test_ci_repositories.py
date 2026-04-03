@@ -67,9 +67,11 @@ class TestPipelineTemplateRepository:
         """测试模板被项目引用"""
         session = Mock()
         query_mock = Mock()
+        join_mock = Mock()
         session.query.return_value = query_mock
-        query_mock.filter.return_value = query_mock
-        query_mock.first.return_value = ProjectModel()
+        query_mock.join.return_value = join_mock
+        join_mock.filter.return_value = join_mock
+        join_mock.first.return_value = ProjectModel()
 
         repo = PipelineTemplateRepositoryImpl(session)
         result = repo.is_referenced_by_projects("template-1")
@@ -80,9 +82,11 @@ class TestPipelineTemplateRepository:
         """测试模板未被项目引用"""
         session = Mock()
         query_mock = Mock()
+        join_mock = Mock()
         session.query.return_value = query_mock
-        query_mock.filter.return_value = query_mock
-        query_mock.first.return_value = None
+        query_mock.join.return_value = join_mock
+        join_mock.filter.return_value = join_mock
+        join_mock.first.return_value = None
 
         repo = PipelineTemplateRepositoryImpl(session)
         result = repo.is_referenced_by_projects("template-1")

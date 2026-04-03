@@ -26,7 +26,7 @@ class TestPipelineTemplateList:
                 PipelineTemplateModel(
                     name=f"tmpl-{i}",
                     description="",
-                    content="version: v1\nsteps: []",
+                    stages='[{"name": "build", "type": "checkout", "config": {"ref": "master"}}]',
                     variable_declarations="[]",
                     is_builtin=0,
                 )
@@ -47,7 +47,7 @@ class TestPipelineTemplateCreate:
             json={
                 "name": "new-template",
                 "description": "desc",
-                "content": "version: v1\nsteps: []",
+                "stages": [{"name": "build", "type": "checkout", "config": {"ref": "master"}}],
             },
         )
         assert resp.status_code == 201

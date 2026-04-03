@@ -9,8 +9,9 @@ from pomelo_orbit.domain.ci.entities import Job
 from pomelo_orbit.domain.ci.executor import ExecutionContext
 from pomelo_orbit.domain.ci.value_objects import (
     JobStatus,
-    PipelineDefinition,
     RetryPolicy,
+    StageDefinition,
+    StageType,
     StepDefinition,
 )
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
@@ -36,9 +37,15 @@ def create_test_context(
     )
 
 
-def create_test_definition(steps: list[StepDefinition]) -> PipelineDefinition:
-    """创建测试用的 PipelineDefinition"""
-    return PipelineDefinition(version="1.0", steps=steps)
+def create_test_definition(steps: list[StepDefinition]) -> list[StageDefinition]:
+    """创建测试用的 StageDefinition 列表"""
+    result = []
+    for s in steps:
+        depends_on = s.depends_on or []
+        # depends_on 应该在 StageDefinition 层面
+        stage = StageDefinition(name=s.name, type=StageType.CUSTOM, depends_on=depends_on, steps=[s])
+        result.append(stage)
+    return result
 
 
 class TestPipelineExecutorImpl:

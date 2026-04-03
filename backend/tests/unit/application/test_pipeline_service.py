@@ -24,6 +24,7 @@ def make_service(**overrides) -> PipelineService:
         "project_repo": Mock(),
         "credential_repo": Mock(),
         "template_repo": Mock(),
+        "snapshot_repo": Mock(),
         "run_repo": Mock(),
         "artifact_repo": Mock(),
         "job_repo": Mock(),
@@ -46,7 +47,7 @@ class TestProjectCRUD:
 
     def test_get_project_success(self):
         project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            name="p", repository_url="https://x.git", pipeline_snapshot_id="t", git_credential_id="c"
         )
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
@@ -60,81 +61,72 @@ class TestProjectCRUD:
         assert exc.value.status_code == 404
 
     def test_create_project_success(self):
-        template_repo = Mock()
-        template_repo.find_by_id.return_value = PipelineTemplate.create(
-            name="t", content="v: v1", variable_declarations=[]
-        )
+        snapshot_id = "snap-1"
         credential_repo = Mock()
         credential_repo.find_by_id.return_value = Credential.create(
             name="c", type=CredentialType.GIT_SSH, encrypted_data="x"
         )
         project_repo = Mock()
-        service = make_service(project_repo=project_repo, credential_repo=credential_repo, template_repo=template_repo)
+        service = make_service(project_repo=project_repo, credential_repo=credential_repo)
         project = service.create_project(
             name="p",
             repository_url="https://x.git",
-            pipeline_template_id="t",
+            pipeline_snapshot_id=snapshot_id,
             git_credential_id="c",
-            branch_filter="main",
-            enable_webhook=True,
         )
-        assert project.name == "p" and project.webhook_secret is not None
+        assert project.name == "p"
         project_repo.save.assert_called_once_with(project)
 
     def test_create_project_template_not_found(self):
-        template_repo = Mock()
-        template_repo.find_by_id.return_value = None
+        snapshot_repo = Mock()
+        snapshot_repo.find_by_id.return_value = None
         with pytest.raises(BusinessError) as exc:
-            make_service(template_repo=template_repo).create_project(
-                name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            make_service(snapshot_repo=snapshot_repo).create_project(
+                name="p", repository_url="https://x.git", pipeline_snapshot_id="t", git_credential_id="c"
             )
-        assert exc.value.status_code == 404 and "PipelineTemplate" in str(exc.value)
+        assert exc.value.status_code == 404
 
     def test_create_project_credential_not_found(self):
-        template_repo = Mock()
-        template_repo.find_by_id.return_value = PipelineTemplate.create(
-            name="t", content="v: v1", variable_declarations=[]
-        )
+        snapshot_repo = Mock()
+        snapshot_repo.find_by_id.return_value = Mock()  # snapshot exists
         credential_repo = Mock()
         credential_repo.find_by_id.return_value = None
         with pytest.raises(BusinessError) as exc:
-            make_service(template_repo=template_repo, credential_repo=credential_repo).create_project(
-                name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            make_service(snapshot_repo=snapshot_repo, credential_repo=credential_repo).create_project(
+                name="p", repository_url="https://x.git", pipeline_snapshot_id="t", git_credential_id="c"
             )
-        assert exc.value.status_code == 404 and "Credential" in str(exc.value)
+        assert exc.value.status_code == 404
 
     def test_update_project_success(self):
         project = Project.create(
-            name="old", repository_url="https://x.git", pipeline_template_id="t1", git_credential_id="c"
+            name="old", repository_url="https://x.git", pipeline_snapshot_id="t1", git_credential_id="c"
         )
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
-        template_repo = Mock()
-        template_repo.find_by_id.return_value = Mock()
-        service = make_service(project_repo=project_repo, template_repo=template_repo)
+        service = make_service(project_repo=project_repo)
         updated = service.update_project(
-            project.id, name="new", variable_overrides={"K": "V"}, pipeline_template_id="t2", branch_filter="main"
+            project.id, name="new", variable_overrides={"K": "V"}, pipeline_snapshot_id="t2"
         )
-        assert updated.name == "new" and updated.branch_filter == "main"
+        assert updated.name == "new"
         project_repo.save.assert_called_once()
 
     def test_update_project_template_not_found(self):
         project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t1", git_credential_id="c"
+            name="p", repository_url="https://x.git", pipeline_snapshot_id="t1", git_credential_id="c"
         )
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
-        template_repo = Mock()
-        template_repo.find_by_id.return_value = None
+        snapshot_repo = Mock()
+        snapshot_repo.find_by_id.return_value = None  # nonexistent snapshot
         with pytest.raises(BusinessError) as exc:
-            make_service(project_repo=project_repo, template_repo=template_repo).update_project(
-                project.id, pipeline_template_id="nonexistent"
+            make_service(project_repo=project_repo, snapshot_repo=snapshot_repo).update_project(
+                project.id, pipeline_snapshot_id="nonexistent"
             )
         assert exc.value.status_code == 404
 
     def test_delete_project_success(self):
         project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            name="p", repository_url="https://x.git", pipeline_snapshot_id="t", git_credential_id="c"
         )
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
@@ -145,7 +137,7 @@ class TestProjectCRUD:
 
     def test_delete_project_with_running_pipelines(self):
         project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            name="p", repository_url="https://x.git", pipeline_snapshot_id="t", git_credential_id="c"
         )
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
@@ -153,28 +145,6 @@ class TestProjectCRUD:
         with pytest.raises(BusinessError) as exc:
             make_service(project_repo=project_repo).delete_project(project.id)
         assert exc.value.status_code == 409
-
-    def test_get_webhook_config(self):
-        project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
-        )
-        project.webhook_secret = "secret123"
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
-        config = make_service(project_repo=project_repo).get_webhook_config(project.id, "https://api.example.com")
-        assert config["url"] == "https://api.example.com/api/v1/ci/webhooks/git"
-        assert config["secret"] == "secret123"
-
-    def test_regenerate_webhook_secret(self):
-        project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
-        )
-        old_secret = project.webhook_secret
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
-        updated = make_service(project_repo=project_repo).regenerate_webhook_secret(project.id)
-        assert updated.webhook_secret != old_secret
-        project_repo.save.assert_called_once()
 
 
 class TestCredentialCRUD:
@@ -230,8 +200,8 @@ class TestCredentialCRUD:
 class TestTemplateCRUD:
     def test_list_templates(self):
         templates = [
-            PipelineTemplate.create(name="t1", content="c1", variable_declarations=[]),
-            PipelineTemplate.create(name="t2", content="c2", variable_declarations=[]),
+            PipelineTemplate.create(name="t1", stages=[], variable_declarations=[]),
+            PipelineTemplate.create(name="t2", stages=[], variable_declarations=[]),
         ]
         template_repo = Mock()
         template_repo.find_paginated.return_value = (templates, 2)
@@ -239,7 +209,7 @@ class TestTemplateCRUD:
         assert len(result) == 2 and total == 2
 
     def test_get_template_success(self):
-        tmpl = PipelineTemplate.create(name="t", content="c", variable_declarations=[])
+        tmpl = PipelineTemplate.create(name="t", stages=[], variable_declarations=[])
         template_repo = Mock()
         template_repo.find_by_id.return_value = tmpl
         assert make_service(template_repo=template_repo).get_template(tmpl.id) == tmpl
@@ -253,37 +223,46 @@ class TestTemplateCRUD:
 
     def test_create_template_with_variables(self):
         template_repo = Mock()
+        snapshot_repo = Mock()
         var_decls = [
             {"name": "V1", "required": True, "secret": False},
             {"name": "S1", "required": True, "secret": True},
         ]
-        tmpl = make_service(template_repo=template_repo).create_template(
-            name="t", content="c", description="d", variable_declarations=var_decls
+        from pomelo_orbit.domain.ci.value_objects import CheckoutStageConfig, StageDefinition, StageType
+
+        stages = [
+            StageDefinition(name="build", type=StageType.CHECKOUT, config=CheckoutStageConfig(ref="{{ V1 }}")),
+        ]
+        tmpl = make_service(template_repo=template_repo, snapshot_repo=snapshot_repo).create_template(
+            name="t", stages=stages, description="d", variable_declarations=var_decls
         )
-        assert len(tmpl.variable_declarations) == 2 and tmpl.variable_declarations[1].secret is True
+        # Only V1 is extracted because S1 is not referenced in any stage
+        assert len(tmpl.variable_declarations) == 1 and tmpl.variable_declarations[0].name == "V1"
         template_repo.save.assert_called_once()
 
     def test_create_template_without_variables(self):
         template_repo = Mock()
-        tmpl = make_service(template_repo=template_repo).create_template(name="t", content="c")
+        snapshot_repo = Mock()
+        tmpl = make_service(template_repo=template_repo, snapshot_repo=snapshot_repo).create_template(
+            name="t", stages=[]
+        )
         assert len(tmpl.variable_declarations) == 0
         template_repo.save.assert_called_once()
 
     def test_update_template(self):
-        tmpl = PipelineTemplate.create(name="old", content="old", variable_declarations=[])
+        tmpl = PipelineTemplate.create(name="old", stages=[], variable_declarations=[])
         template_repo = Mock()
         template_repo.find_by_id.return_value = tmpl
         updated = make_service(template_repo=template_repo).update_template(
             tmpl.id,
             name="new",
-            content="new content",
             variable_declarations=[{"name": "V", "required": True, "secret": False}],
         )
-        assert updated.name == "new" and updated.content == "new content" and len(updated.variable_declarations) == 1
+        assert updated.name == "new" and len(updated.variable_declarations) == 1
         template_repo.save.assert_called_once()
 
     def test_delete_template_referenced(self):
-        tmpl = PipelineTemplate.create(name="t", content="c", variable_declarations=[])
+        tmpl = PipelineTemplate.create(name="t", stages=[], variable_declarations=[])
         template_repo = Mock()
         template_repo.find_by_id.return_value = tmpl
         template_repo.is_referenced_by_projects.return_value = True
@@ -295,7 +274,7 @@ class TestTemplateCRUD:
 class TestPipelineRun:
     def test_list_runs(self):
         project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            name="p", repository_url="https://x.git", pipeline_snapshot_id="t", git_credential_id="c"
         )
         project_repo = Mock()
         project_repo.find_by_id.return_value = project
@@ -310,9 +289,9 @@ class TestPipelineRun:
     def test_get_run_success(self):
         run = PipelineRun.create(
             project_id="p",
+            pipeline_snapshot_id="snap-1",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="v: v1",
             variables_snapshot={},
         )
         run_repo = Mock()
@@ -329,9 +308,9 @@ class TestPipelineRun:
     def test_list_artifacts(self):
         run = PipelineRun.create(
             project_id="p",
+            pipeline_snapshot_id="snap-1",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="v: v1",
             variables_snapshot={},
         )
         run_repo = Mock()
@@ -346,14 +325,14 @@ class TestPipelineRun:
     async def test_retry_pipeline_success(self):
         original = PipelineRun.create(
             project_id="p",
+            pipeline_snapshot_id="snap-1",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="v: v1",
             variables_snapshot={"K": "V"},
         )
         original.complete_failed()
         project = Project.create(
-            name="p", repository_url="https://x.git", pipeline_template_id="t", git_credential_id="c"
+            name="p", repository_url="https://x.git", pipeline_snapshot_id="snap-1", git_credential_id="c"
         )
         run_repo = Mock()
         run_repo.find_by_id.return_value = original
@@ -367,9 +346,9 @@ class TestPipelineRun:
     def test_retry_pipeline_invalid_status(self):
         run = PipelineRun.create(
             project_id="p",
+            pipeline_snapshot_id="snap-1",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="v: v1",
             variables_snapshot={},
         )
         run.start()

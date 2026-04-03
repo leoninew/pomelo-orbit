@@ -86,7 +86,7 @@ class TestPipelineTemplateMapper:
             id=str(ULID()),
             name="test-template",
             description="Test template",
-            content="version: 1\nsteps: []",
+            stages='[{"name": "build", "type": "checkout", "config": {"ref": "master"}}]',
             variable_declarations='[{"name": "VAR1", "default": "value1"}]',
             is_builtin=1,
             created_at=utc_now(),
@@ -98,7 +98,9 @@ class TestPipelineTemplateMapper:
         assert entity.id == orm.id
         assert entity.name == orm.name
         assert entity.description == orm.description
-        assert entity.content == orm.content
+        assert len(entity.stages) == 1
+        assert entity.stages[0].name == "build"
+        assert entity.stages[0].type.value == "checkout"
         assert len(entity.variable_declarations) == 1
         assert entity.variable_declarations[0].name == "VAR1"
         assert entity.variable_declarations[0].default == "value1"
@@ -106,10 +108,18 @@ class TestPipelineTemplateMapper:
 
     def test_to_orm(self):
         """测试领域实体转 ORM"""
+        from pomelo_orbit.domain.ci.value_objects import CheckoutStageConfig, StageDefinition, StageType
+
         entity = PipelineTemplate.create(
             name="test-template",
             description="Test template",
-            content="version: 1\nsteps: []",
+            stages=[
+                StageDefinition(
+                    name="build",
+                    type=StageType.CHECKOUT,
+                    config=CheckoutStageConfig(ref="master"),
+                )
+            ],
             variable_declarations=[
                 VariableDeclaration(name="VAR1", default="value1"),
                 VariableDeclaration(name="VAR2", default="value2"),
@@ -122,7 +132,6 @@ class TestPipelineTemplateMapper:
         assert orm.id == entity.id
         assert orm.name == entity.name
         assert orm.description == entity.description
-        assert orm.content == entity.content
         assert orm.is_builtin == 0
         assert '"name": "VAR1"' in orm.variable_declarations
         assert '"name": "VAR2"' in orm.variable_declarations
@@ -137,11 +146,10 @@ class TestProjectMapper:
             id=str(ULID()),
             name="test-project",
             repository_url="https://github.com/test/repo",
-            pipeline_template_id=str(ULID()),
+            pipeline_snapshot_id=str(ULID()),
             git_credential_id=str(ULID()),
             variable_overrides='{"VAR1": "override1"}',
-            webhook_secret="secret",
-            branch_filter="main",
+            default_branch="main",
             created_at=utc_now(),
             updated_at=utc_now(),
         )
@@ -151,21 +159,20 @@ class TestProjectMapper:
         assert entity.id == orm.id
         assert entity.name == orm.name
         assert entity.repository_url == orm.repository_url
-        assert entity.pipeline_template_id == orm.pipeline_template_id
+        assert entity.pipeline_snapshot_id == orm.pipeline_snapshot_id
         assert entity.git_credential_id == orm.git_credential_id
         assert entity.variable_overrides == {"VAR1": "override1"}
-        assert entity.webhook_secret == orm.webhook_secret
-        assert entity.branch_filter == orm.branch_filter
+        assert entity.default_branch == "main"
 
     def test_to_orm(self):
         """测试领域实体转 ORM"""
         entity = Project.create(
             name="test-project",
             repository_url="https://github.com/test/repo",
-            pipeline_template_id=str(ULID()),
+            pipeline_snapshot_id=str(ULID()),
             git_credential_id=str(ULID()),
             variable_overrides={"VAR1": "override1", "VAR2": "override2"},
-            branch_filter="main",
+            default_branch="main",
         )
 
         orm = ProjectMapper.to_orm(entity)
@@ -185,9 +192,9 @@ class TestPipelineRunMapper:
         orm = PipelineRunModel(
             id=str(ULID()),
             project_id=str(ULID()),
+            pipeline_snapshot_id=str(ULID()),
             trigger="manual",
             trigger_ref="main",
-            resolved_pipeline="version: 1\nsteps: []",
             variables_snapshot='{"VAR1": "value1"}',
             status="running",
             retry_of=None,
@@ -200,9 +207,9 @@ class TestPipelineRunMapper:
 
         assert entity.id == orm.id
         assert entity.project_id == orm.project_id
+        assert entity.pipeline_snapshot_id == orm.pipeline_snapshot_id
         assert entity.trigger == PipelineRunTrigger.MANUAL
         assert entity.trigger_ref == orm.trigger_ref
-        assert entity.resolved_pipeline == orm.resolved_pipeline
         assert entity.variables_snapshot == {"VAR1": "value1"}
         assert entity.status == PipelineRunStatus.RUNNING
 
@@ -210,9 +217,9 @@ class TestPipelineRunMapper:
         """测试领域实体转 ORM"""
         entity = PipelineRun.create(
             project_id=str(ULID()),
+            pipeline_snapshot_id=str(ULID()),
             trigger=PipelineRunTrigger.WEBHOOK,
             trigger_ref="feature/test",
-            resolved_pipeline="version: 1\nsteps: []",
             variables_snapshot={"VAR1": "value1", "VAR2": "value2"},
         )
 
@@ -220,6 +227,7 @@ class TestPipelineRunMapper:
 
         assert orm.id == entity.id
         assert orm.project_id == entity.project_id
+        assert orm.pipeline_snapshot_id == entity.pipeline_snapshot_id
         assert orm.trigger == "webhook"
         assert orm.trigger_ref == entity.trigger_ref
         assert '"VAR1": "value1"' in orm.variables_snapshot

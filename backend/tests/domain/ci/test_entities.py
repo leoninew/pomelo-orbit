@@ -27,7 +27,7 @@ class TestProject:
         project = Project.create(
             name="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
+            pipeline_snapshot_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
             variable_overrides={"KEY": "value"},
         )
@@ -38,26 +38,12 @@ class TestProject:
         assert project.created_at is not None
         assert project.updated_at is not None
 
-    def test_create_project_with_webhook_fields(self):
-        """测试创建带 webhook 字段的项目"""
-        project = Project.create(
-            name="test-project",
-            repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
-            git_credential_id=str(ulid.ULID()),
-            webhook_secret="my-secret-token",
-            branch_filter="main,develop",
-        )
-
-        assert project.webhook_secret == "my-secret-token"
-        assert project.branch_filter == "main,develop"
-
     def test_update_project(self):
         """测试更新项目"""
         project = Project.create(
             name="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
+            pipeline_snapshot_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
         )
 
@@ -73,20 +59,6 @@ class TestProject:
         assert project.name == "new-name"
         assert project.variable_overrides == {"NEW_KEY": "new_value"}
         assert project.updated_at >= original_updated_at
-
-    def test_update_project_webhook_fields(self):
-        """测试更新项目 webhook 字段"""
-        project = Project.create(
-            name="test-project",
-            repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
-            git_credential_id=str(ulid.ULID()),
-        )
-
-        project.update(webhook_secret="new-secret", branch_filter="main")
-
-        assert project.webhook_secret == "new-secret"
-        assert project.branch_filter == "main"
 
 
 class TestCredential:
@@ -115,7 +87,7 @@ class TestPipelineTemplate:
         var_decl = VariableDeclaration(name="IMAGE_NAME", required=True)
         template = PipelineTemplate.create(
             name="test-template",
-            content="version: v1\nsteps: []",
+            stages=[],
             variable_declarations=[var_decl],
             description="Test template",
         )
@@ -129,7 +101,7 @@ class TestPipelineTemplate:
         """测试更新模板"""
         template = PipelineTemplate.create(
             name="test-template",
-            content="version: v1\nsteps: []",
+            stages=[],
             variable_declarations=[],
         )
 
@@ -154,9 +126,9 @@ class TestPipelineRun:
         """测试创建 pipeline run"""
         run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            pipeline_snapshot_id=str(ulid.ULID()),
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
             variables_snapshot={"KEY": "value"},
         )
 
@@ -168,9 +140,9 @@ class TestPipelineRun:
         """测试 pipeline run 生命周期"""
         run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            pipeline_snapshot_id=str(ulid.ULID()),
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
             variables_snapshot={},
         )
 
@@ -188,9 +160,9 @@ class TestPipelineRun:
         """测试 pipeline run 失败"""
         run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            pipeline_snapshot_id=str(ulid.ULID()),
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
             variables_snapshot={},
         )
 
@@ -206,9 +178,9 @@ class TestPipelineRun:
 
         retry_run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            pipeline_snapshot_id=str(ulid.ULID()),
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
             variables_snapshot={"KEY": "value"},
             retry_of=original_run_id,
         )

@@ -5,7 +5,7 @@ from pomelo_orbit.domain.ci.repositories.credential import CredentialRepository
 from pomelo_orbit.domain.ci.repositories.job import JobLogRepository, JobRepository
 from pomelo_orbit.domain.ci.repositories.pipeline_run import PipelineRunRepository
 from pomelo_orbit.domain.ci.repositories.project import ProjectRepository
-from pomelo_orbit.domain.ci.repositories.template import PipelineTemplateRepository
+from pomelo_orbit.domain.ci.repositories.template import PipelineSnapshotRepository, PipelineTemplateRepository
 
 __all__ = [
     "ArtifactRepository",
@@ -13,6 +13,7 @@ __all__ = [
     "JobLogRepository",
     "JobRepository",
     "PipelineRunRepository",
+    "PipelineSnapshotRepository",
     "PipelineTemplateRepository",
     "ProjectRepository",
 ]

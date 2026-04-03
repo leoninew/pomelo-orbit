@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pomelo_orbit.domain.ci.value_objects import PipelineDefinition
+from pomelo_orbit.domain.ci.value_objects import StageDefinition
 
 
 class ExecutionContext:
@@ -34,13 +34,13 @@ class PipelineExecutor(ABC):
     """Pipeline 执行器抽象接口"""
 
     @abstractmethod
-    async def execute(self, context: ExecutionContext, definition: PipelineDefinition) -> bool:
+    async def execute(self, context: ExecutionContext, stages: list[StageDefinition]) -> bool:
         """
         执行 pipeline
 
         Args:
             context: 执行上下文
-            definition: Pipeline 定义
+            stages: 已解析变量的 Stage 列表
 
         Returns:
             是否执行成功

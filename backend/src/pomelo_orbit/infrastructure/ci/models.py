@@ -3,7 +3,7 @@
 from datetime import datetime
 
 import ulid
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pomelo_orbit.infrastructure.persistence.models import Base
@@ -30,11 +30,27 @@ class PipelineTemplateModel(Base):
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    content: Mapped[str] = mapped_column(Text, nullable=False)
+    stages: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
     variable_declarations: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
     is_builtin: Mapped[bool] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class PipelineSnapshotModel(Base):
+    """流水线快照模型（模板的不可变版本副本）"""
+
+    __tablename__ = "pipeline_snapshots"
+    __table_args__ = (UniqueConstraint("template_id", "version", name="uq_snapshot_template_version"),)
+
+    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    template_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("pipeline_templates.id"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    stages_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
+    variable_declarations_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
 
 class ProjectModel(Base):
@@ -45,13 +61,13 @@ class ProjectModel(Base):
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     repository_url: Mapped[str] = mapped_column(Text, nullable=False)
-    pipeline_template_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_templates.id"), nullable=False, index=True
+    pipeline_snapshot_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("pipeline_snapshots.id"), nullable=False, index=True
     )
-    git_credential_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("credentials.id"), nullable=True, index=True)
+    git_credential_id: Mapped[str | None] = mapped_column(
+        String(26), ForeignKey("credentials.id"), nullable=True, index=True
+    )
     variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
-    webhook_secret: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    branch_filter: Mapped[str | None] = mapped_column(String(255), nullable=True)
     default_branch: Mapped[str] = mapped_column(String(255), nullable=False, default="master")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
@@ -64,9 +80,11 @@ class PipelineRunModel(Base):
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     project_id: Mapped[str] = mapped_column(String(26), ForeignKey("projects.id"), nullable=False, index=True)
+    pipeline_snapshot_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("pipeline_snapshots.id"), nullable=False, index=True
+    )
     trigger: Mapped[str] = mapped_column(String(50), nullable=False)
     trigger_ref: Mapped[str] = mapped_column(String(255), nullable=False)
-    resolved_pipeline: Mapped[str] = mapped_column(Text, nullable=False)
     variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     retry_of: Mapped[str | None] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=True, index=True)

@@ -101,7 +101,7 @@
 												class="badge badge-sm"
 												:class="
 													item.is_overridden
-														? 'badge-outline badge-warning'
+														? 'badge-outline badge-primary'
 														: item.value
 															? 'badge-outline badge-success'
 															: 'badge-ghost'
@@ -112,7 +112,7 @@
 										</span>
 										<span
 											v-else
-											:class="item.is_overridden ? 'text-warning' : 'text-base-content/60'"
+											:class="item.is_overridden ? 'text-primary' : 'text-base-content/60'"
 										>
 											{{ item.value === '' || item.value == null ? '—' : item.value }}
 										</span>

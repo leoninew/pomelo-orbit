@@ -2,14 +2,13 @@
 -- 包含 v0.4.2 和 v0.4.5 的内容
 
 -- Traefik 应用（bridge 网络模式，通用）
-INSERT INTO application (id, name, code, image_pull_policy, status, enabled, created_at, updated_at)
+INSERT INTO application (id, name, code, image_pull_policy, status, created_at, updated_at)
 VALUES (
     '01KKX2YNPF6VJ9N7QYCWG61KVM',
     'Traefik',
     'traefik',
     'missing',
     'stopped',
-    1,
     datetime('now'),
     datetime('now')
 );

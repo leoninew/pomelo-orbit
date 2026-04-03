@@ -36,42 +36,6 @@ CREATE TABLE IF NOT EXISTS application (
     updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
 
--- 镜像源
-CREATE TABLE IF NOT EXISTS image_source (
-    id TEXT PRIMARY KEY,
-    application_id TEXT NOT NULL UNIQUE,
-    image_name TEXT NOT NULL,
-    registry_url TEXT,
-    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE
-);
-
--- 回调事件
-CREATE TABLE IF NOT EXISTS webhook_event (
-    id TEXT PRIMARY KEY,
-    source TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    repository_name TEXT,
-    repository_url TEXT,
-    branch TEXT,
-    sender TEXT,
-    image_name TEXT,
-    payload TEXT,
-    signature_valid INTEGER,
-    status TEXT NOT NULL,
-    matched_application_id TEXT,
-    triggered_deployment_id TEXT,
-    error_message TEXT,
-    received_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    processed_at DATETIME,
-    FOREIGN KEY (matched_application_id) REFERENCES application(id),
-    FOREIGN KEY (triggered_deployment_id) REFERENCES deployment(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_webhook_event_repo ON webhook_event(repository_name);
-CREATE INDEX IF NOT EXISTS idx_webhook_event_status ON webhook_event(status);
-
 -- 部署记录
 CREATE TABLE IF NOT EXISTS deployment (
     id TEXT PRIMARY KEY,

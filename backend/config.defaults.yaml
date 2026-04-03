@@ -37,7 +37,6 @@ webhook:
 # 数据清理
 cleanup:
   deploy_record_retention_days: 30
-  webhook_event_retention_days: 90
   max_deploy_record_size: 1048576       # 1MB
   max_payload_size: 102400           # 100KB
 

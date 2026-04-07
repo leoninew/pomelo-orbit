@@ -37,9 +37,10 @@
 				</td>
 				<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 				<td>
-					<router-link :to="`/ci/stages/${row.stage.id}`" class="link link-primary text-xs">
+					<router-link v-if="linkable" :to="`/ci/stages/${row.stage.id}`" class="link link-primary text-xs">
 						{{ row.stage.name }}
 					</router-link>
+					<span v-else class="text-xs">{{ row.stage.name }}</span>
 				</td>
 				<td class="text-xs text-base-content/70">{{ row.orch.stage_key }}</td>
 				<td>
@@ -72,9 +73,10 @@
 			<tr v-for="(row, idx) in rows" :key="row.orch.stage_key" class="hover">
 				<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 				<td>
-					<router-link :to="`/ci/stages/${row.stage.id}`" class="link link-primary text-xs">
+					<router-link v-if="linkable" :to="`/ci/stages/${row.stage.id}`" class="link link-primary text-xs">
 						{{ row.stage.name }}
 					</router-link>
+					<span v-else class="text-xs">{{ row.stage.name }}</span>
 				</td>
 				<td class="text-xs text-base-content/70">{{ row.orch.stage_key }}</td>
 				<td>

@@ -75,7 +75,7 @@ const router = createRouter({
 		{
 			path: '/ci/stages/:id',
 			name: 'PipelineStageDetail',
-			component: () => import('@/views/ci/PipelineStageDetail.vue'),
+			component: () => import('@/views/ci/PipelineStage.vue'),
 			meta: { title: 'Stage 详情', menuKey: 'pipelinestages' },
 		},
 		{

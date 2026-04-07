@@ -212,7 +212,7 @@
 				<h3 class="font-bold text-lg">删除 Stage</h3>
 				<p class="py-4 text-sm">
 					确定要删除 Stage「
-					<strong>{{ stage?.name }}</strong>
+					<strong>{{ stage?.name ?? '' }}</strong>
 					」吗？此操作不可撤销。
 				</p>
 				<div class="modal-action">

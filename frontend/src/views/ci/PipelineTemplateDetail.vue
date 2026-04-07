@@ -351,8 +351,7 @@ async function handleSaveOrchestration() {
 	}));
 	const cycle = detectCircularDependencies(orchForCheck);
 	if (cycle) {
-		const names = cycle.map((key) => key);
-		toast.error(`检测到循环依赖: ${names.join(' → ')}`);
+		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
 		return;
 	}
 
@@ -473,6 +472,9 @@ function confirmEditOrch() {
 			o.depends_on = o.depends_on.map((k) => (k === oldKey ? newKey : k));
 		}
 	}
+	editOrchForm.originalKey = '';
+	editOrchForm.stageKey = '';
+	editOrchForm.dependsOn = [];
 	editOrchModalRef.value?.close();
 }
 

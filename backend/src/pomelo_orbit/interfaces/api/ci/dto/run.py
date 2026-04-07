@@ -22,6 +22,7 @@ class PipelineRunResp(BaseModel):
 
 
 class TriggerPipelineReq(BaseModel):
+    template_id: str
     trigger_ref: str = ""
     variables: dict[str, Any] = {}
 
@@ -29,7 +30,7 @@ class TriggerPipelineReq(BaseModel):
 class ArtifactResp(BaseModel):
     id: str
     pipeline_run_id: str
-    job_name: str
+    stage_name: str
     type: str
     name: str
     path: str | None

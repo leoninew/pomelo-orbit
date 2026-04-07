@@ -9,8 +9,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.job import JobResp
 from pomelo_orbit.interfaces.api.ci.dto.run import ArtifactResp, PipelineRunResp
+from pomelo_orbit.interfaces.api.ci.dto.stage_run import StageRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
@@ -54,13 +54,13 @@ def list_artifacts(
     return [ArtifactResp.model_validate(a) for a in pipeline_service.list_artifacts(run_id)]
 
 
-@router.get("/{run_id}/jobs", response_model=list[JobResp])
-def list_jobs(
+@router.get("/{run_id}/stages", response_model=list[StageRunResp])
+def list_stage_runs(
     run_id: str,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
-) -> list[JobResp]:
-    return [JobResp.model_validate(j) for j in pipeline_service.list_jobs(run_id)]
+) -> list[StageRunResp]:
+    return [StageRunResp.model_validate(s) for s in pipeline_service.list_stage_runs(run_id)]
 
 
 @router.post("/{run_id}/cancel", response_model=PipelineRunResp)
@@ -79,6 +79,6 @@ async def retry_pipeline(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineRunResp:
-    new_run, project, variables = pipeline_service.create_retry_run(run_id)
-    background_tasks.add_task(pipeline_service.execute_run, new_run, project, variables)
+    new_run, project, variables, snapshot = pipeline_service.create_retry_run(run_id)
+    background_tasks.add_task(pipeline_service.execute_run, new_run, project, variables, snapshot)
     return PipelineRunResp.model_validate(new_run)

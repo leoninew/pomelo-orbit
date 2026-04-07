@@ -117,7 +117,7 @@ async def delete_application(
     app_id: str,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     _current_user=Depends(get_current_user),
-    remove_dir: Annotated[bool, Body(embed=True)] = False,
+    remove_dir: Annotated[bool, Query()] = False,
 ):
     """删除应用"""
     await app_service.delete_application(app_id, remove_dir)

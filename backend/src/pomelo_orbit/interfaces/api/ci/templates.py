@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
-from pomelo_orbit.domain.ci.value_objects import StageDefinition, VariableDeclaration
+from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.template import (
     PipelineSnapshotListItemResp,
@@ -51,13 +51,11 @@ def create_template(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineTemplateResp:
-    stages = [StageDefinition(**s.model_dump()) for s in data.stages]
     decls = [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
-    tmpl = pipeline_service.create_template(
-        name=data.name, stages=stages, description=data.description, variable_declarations=decls
-    )
+    tmpl = pipeline_service.create_template(name=data.name, description=data.description, variable_declarations=decls)
     resp = PipelineTemplateResp.model_validate(tmpl)
-    return resp.model_copy(update={"latest_snapshot_version": 1})
+    latest = pipeline_service.get_template_latest_version(tmpl.id)
+    return resp.model_copy(update={"latest_snapshot_version": latest})
 
 
 @router.get("/{template_id}", response_model=PipelineTemplateResp)
@@ -79,17 +77,17 @@ def update_template(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineTemplateResp:
-    stages = [StageDefinition(**s.model_dump()) for s in data.stages] if data.stages is not None else None
     decls = (
         [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
         if data.variable_declarations is not None
         else None
     )
+    orch = [o.model_dump() for o in data.orchestration] if data.orchestration is not None else None
     tmpl = pipeline_service.update_template(
         template_id=template_id,
         name=data.name,
         description=data.description,
-        stages=stages,
+        orchestration=orch,
         variable_declarations=decls,
     )
     latest = pipeline_service.get_template_latest_version(template_id)
@@ -112,6 +110,5 @@ def list_template_snapshots(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> list[PipelineSnapshotListItemResp]:
-    """列出指定模板的所有快照"""
     snapshots = pipeline_service.list_template_snapshots(template_id)
     return [PipelineSnapshotListItemResp.model_validate(s) for s in snapshots]

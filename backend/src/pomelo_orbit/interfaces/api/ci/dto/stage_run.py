@@ -1,26 +1,26 @@
-"""作业相关 DTO"""
+"""Stage 执行记录相关 DTO"""
 
 from datetime import datetime
 
 from pydantic import BaseModel
 
 
-class JobResp(BaseModel):
+class StageRunResp(BaseModel):
     id: str
     pipeline_run_id: str
     name: str
     status: str
-    parent_job_id: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    exit_code: int | None = None
     error_message: str | None = None
 
     model_config = {"from_attributes": True}
 
 
-class JobLogResp(BaseModel):
+class StageLogResp(BaseModel):
     id: str
-    job_id: str
+    stage_run_id: str
     content: str
     created_at: datetime
 

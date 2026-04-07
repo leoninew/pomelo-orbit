@@ -5,15 +5,8 @@ FastAPI Application Entry Point
 import argparse
 import logging
 import sys
-from pathlib import Path
-
-# Windows 上需要使用 ProactorEventLoop 支持子进程
-if sys.platform == "win32":
-    import asyncio
-
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request, status

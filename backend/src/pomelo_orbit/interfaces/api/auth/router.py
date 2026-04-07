@@ -69,7 +69,9 @@ def login(
         id=str(ULID()),
         user_id=user.id,
         username=user.username,
-        ip_address=request.client.host if request.client else None,
+        ip_address=request.headers.get(
+            "X-Forwarded-For", request.headers.get("X-Real-IP", request.client.host if request.client else None)
+        ),
         user_agent=request.headers.get("user-agent"),
         login_at=utc_now(),
         success=True,

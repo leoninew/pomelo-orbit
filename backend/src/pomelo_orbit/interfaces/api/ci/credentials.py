@@ -28,7 +28,7 @@ def list_credentials(
 ) -> PaginatedResp[CredentialResp]:
     creds, total = pipeline_service.list_credentials(page=page, per_page=per_page)
     return PaginatedResp(
-        items=[CredentialResp.model_validate(c.__dict__) for c in creds],
+        items=[CredentialResp.model_validate(c) for c in creds],
         total=total,
         page=page,
         per_page=per_page,
@@ -45,7 +45,7 @@ def create_credential(
 ) -> CredentialResp:
     encrypted = security_service.encrypt_value(data.data)
     cred = pipeline_service.create_credential(name=data.name, credential_type=data.type, encrypted_data=encrypted)
-    return CredentialResp.model_validate(cred.__dict__)
+    return CredentialResp.model_validate(cred)
 
 
 @router.put("/{credential_id}", response_model=CredentialResp)
@@ -58,7 +58,7 @@ def update_credential(
 ) -> CredentialResp:
     encrypted = security_service.encrypt_value(data.data) if data.data else None
     cred = pipeline_service.update_credential(credential_id, name=data.name, encrypted_data=encrypted)
-    return CredentialResp.model_validate(cred.__dict__)
+    return CredentialResp.model_validate(cred)
 
 
 @router.delete("/{credential_id}", status_code=204)

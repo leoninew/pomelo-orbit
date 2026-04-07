@@ -86,7 +86,7 @@ def delete_route(
     route_service.delete_route(route_id)
 
 
-@router.put("/{route_id}/enable")
+@router.post("/{route_id}/enable")
 def enable_route(
     route_id: str,
     route_service: Annotated[RouteService, Depends(get_route_service)],
@@ -97,7 +97,7 @@ def enable_route(
     return {"message": "Route enabled successfully"}
 
 
-@router.put("/{route_id}/disable")
+@router.post("/{route_id}/disable")
 def disable_route(
     route_id: str,
     route_service: Annotated[RouteService, Depends(get_route_service)],

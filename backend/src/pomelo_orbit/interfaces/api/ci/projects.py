@@ -44,8 +44,8 @@ def create_project(
 ) -> ProjectResp:
     project = pipeline_service.create_project(
         name=data.name,
+        code=data.code,
         repository_url=data.repository_url,
-        pipeline_snapshot_id=data.pipeline_snapshot_id,
         git_credential_id=data.git_credential_id,
         variable_overrides=data.variable_overrides,
         default_branch=data.default_branch,
@@ -74,7 +74,6 @@ def update_project(
         name=data.name,
         repository_url=data.repository_url,
         variable_overrides=data.variable_overrides,
-        pipeline_snapshot_id=data.pipeline_snapshot_id,
         git_credential_id=data.git_credential_id,
         default_branch=data.default_branch,
     )
@@ -111,17 +110,17 @@ def list_project_runs(
 @router.post("/{project_id}/trigger", response_model=PipelineRunResp, status_code=201)
 async def trigger_pipeline(
     project_id: str,
+    data: TriggerPipelineReq,
     background_tasks: BackgroundTasks,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
-    data: TriggerPipelineReq | None = None,
 ) -> PipelineRunResp:
-    req = data or TriggerPipelineReq()
-    run, project, merged_vars = pipeline_service.create_run(
+    run, project, merged_vars, snapshot = pipeline_service.create_run(
         project_id=project_id,
+        template_id=data.template_id,
         trigger=PipelineRunTrigger.MANUAL,
-        trigger_ref=req.trigger_ref,
-        runtime_variables=req.variables,
+        trigger_ref=data.trigger_ref,
+        runtime_variables=data.variables,
     )
-    background_tasks.add_task(pipeline_service.execute_run, run, project, merged_vars)
+    background_tasks.add_task(pipeline_service.execute_run, run, project, merged_vars, snapshot)
     return PipelineRunResp.model_validate(run)

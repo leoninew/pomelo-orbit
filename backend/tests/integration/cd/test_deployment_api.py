@@ -5,7 +5,7 @@
 from unittest.mock import patch
 
 from pomelo_orbit.domain.cd.entities import TriggerType
-from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
+from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 from pomelo_orbit.infrastructure.persistence.models import DeploymentModel
 
 
@@ -24,7 +24,7 @@ class TestDeploymentAPI:
     def test_list_deployments_with_filters(self, auth_client, test_app, test_deployment):
         """测试带过滤条件列出部署"""
         response = auth_client.get(
-            f"/api/cd/deployments?application_id={test_app.id}&status={DeployStatus.RAN_TO_COMPLETION}"
+            f"/api/cd/deployments?application_id={test_app.id}&status={TaskStatus.RAN_TO_COMPLETION}"
         )
 
         assert response.status_code == 200
@@ -67,7 +67,7 @@ class TestDeploymentAPI:
             application_name=test_app.name,
             operation_type=OperationType.DEPLOY,
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.RUNNING,
+            status=TaskStatus.RUNNING,
         )
         db_session.add(deployment)
         db_session.commit()
@@ -82,5 +82,5 @@ class TestDeploymentAPI:
         # 验证数据库更新
         db_session.expire_all()
         updated = db_session.query(DeploymentModel).filter_by(id=deployment.id).first()
-        assert updated.status == DeployStatus.CANCELED
+        assert updated.status == TaskStatus.CANCELED
         assert "Cancelled" in updated.error_message

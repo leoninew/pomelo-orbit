@@ -22,7 +22,7 @@ from pomelo_orbit.domain.cd.repositories import (
     ConfigFileRepository,
     DeploymentRepository,
 )
-from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, DeployStatus, OperationType
+from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, OperationType, TaskStatus
 from pomelo_orbit.domain.exceptions import BusinessError
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class ApplicationService:
             application.mark_as_deploying()
             self.app_repo.save(application)
 
-            deployment.status = DeployStatus.RUNNING.value
+            deployment.status = TaskStatus.RUNNING.value
             self.deployment_repo.save(deployment)
             self.deployment_repo.commit()
 
@@ -132,7 +132,7 @@ class ApplicationService:
             application.mark_as_deploying()
             self.app_repo.save(application)
 
-            deployment.status = DeployStatus.RUNNING.value
+            deployment.status = TaskStatus.RUNNING.value
             self.deployment_repo.save(deployment)
             self.deployment_repo.commit()
 
@@ -431,7 +431,7 @@ class ApplicationService:
             application_name=app.name,
             operation_type=operation_type,
             trigger_type=trigger_type,
-            status=DeployStatus.WAITING_TO_RUN,
+            status=TaskStatus.WAITING_TO_RUN,
             env_file=env_file,
             is_rollback=is_rollback,
         )

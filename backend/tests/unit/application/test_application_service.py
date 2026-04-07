@@ -10,7 +10,7 @@ import pytest
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.entities import Application, ApplicationConfigFile, Deployment, TriggerType
-from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, DeployStatus, OperationType
+from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, OperationType, TaskStatus
 from pomelo_orbit.domain.exceptions import BusinessError
 
 
@@ -78,7 +78,7 @@ def sample_deployment():
         application_id="app-1",
         application_name="Test App",
         trigger_type=TriggerType.MANUAL,
-        status=DeployStatus.WAITING_TO_RUN.value,
+        status=TaskStatus.WAITING_TO_RUN.value,
         operation_type=OperationType.DEPLOY,
         is_rollback=False,
     )
@@ -140,7 +140,7 @@ class TestFindLastSuccessfulDeployment:
             application_id="app-1",
             application_name="Test",
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.RAN_TO_COMPLETION.value,
+            status=TaskStatus.RAN_TO_COMPLETION.value,
             operation_type=OperationType.DEPLOY,
             is_rollback=False,
         )
@@ -285,7 +285,7 @@ class TestDeployBusinessLogic:
         await app_service.deploy(sample_application, sample_deployment)
 
         # 验证第一次保存时状态为 RUNNING
-        assert DeployStatus.RUNNING.value in saved_statuses
+        assert TaskStatus.RUNNING.value in saved_statuses
 
     @pytest.mark.asyncio
     async def test_deploy_success_updates_application_status(
@@ -321,7 +321,7 @@ class TestDeployBusinessLogic:
 
         await app_service.deploy(sample_application, sample_deployment)
 
-        assert sample_deployment.status == DeployStatus.RAN_TO_COMPLETION.value
+        assert sample_deployment.status == TaskStatus.RAN_TO_COMPLETION.value
         assert sample_deployment.finished_at is not None
         assert sample_deployment.duration_ms is not None
 
@@ -347,7 +347,7 @@ class TestDeployBusinessLogic:
         assert result is False
         calls = mock_deployment_repo.save.call_args_list
         final_deployment = calls[-1][0][0]
-        assert final_deployment.status == DeployStatus.FAULTED.value
+        assert final_deployment.status == TaskStatus.FAULTED.value
         assert "Docker error" in final_deployment.error_message
         assert final_deployment.finished_at is not None
 
@@ -459,7 +459,7 @@ class TestStopApplicationBusinessLogic:
             application_id="app-1",
             application_name="Test",
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.RAN_TO_COMPLETION.value,
+            status=TaskStatus.RAN_TO_COMPLETION.value,
             operation_type=OperationType.DEPLOY,
             is_rollback=False,
             env_file=".env.production",
@@ -529,7 +529,7 @@ class TestRestartApplicationBusinessLogic:
 
         result = await app_service.restart_application("app-1")
 
-        assert result.status == DeployStatus.WAITING_TO_RUN.value
+        assert result.status == TaskStatus.WAITING_TO_RUN.value
 
 
 class TestDeleteApplicationBusinessLogic:

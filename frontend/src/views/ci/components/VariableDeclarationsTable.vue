@@ -2,7 +2,9 @@
 	<div>
 		<h2 class="font-semibold mb-3">变量声明</h2>
 		<div v-if="declarations.length === 0" class="text-base-content/60 py-4 text-center">
-			暂无变量，Stage 脚本中使用 <code class="text-xs bg-base-200 px-1 rounded">&#123;&#123; VAR_NAME &#125;&#125;</code> 占位符后自动提取
+			暂无变量，Stage 脚本中使用
+			<code class="text-xs bg-base-200 px-1 rounded">&#123;&#123; VAR_NAME &#125;&#125;</code>
+			占位符后自动提取
 		</div>
 		<table v-else class="table table-sm w-full">
 			<thead>
@@ -16,14 +18,18 @@
 			</thead>
 			<tbody>
 				<tr v-for="decl in declarations" :key="decl.name" class="hover">
-					<td><code>{{ decl.name }}</code></td>
+					<td>{{ decl.name }}</td>
 					<td>
 						<span v-if="decl.builtin" class="badge badge-xs badge-ghost">内置</span>
 					</td>
 					<td>
 						<template v-if="editingName === decl.name">
 							<input
-								:ref="(el) => { if (el) editInputRef = el as HTMLInputElement }"
+								:ref="
+									(el) => {
+										if (el) editInputRef = el as HTMLInputElement;
+									}
+								"
 								v-model="editValue"
 								type="text"
 								class="input input-xs w-full"
@@ -32,7 +38,7 @@
 								@keyup.esc="cancelEdit"
 							/>
 						</template>
-						<span v-else-if="decl.default" class="font-mono">
+						<span v-else-if="decl.default">
 							{{ decl.secret ? '••••••' : decl.default }}
 						</span>
 						<span v-else class="text-base-content/30">未设置</span>
@@ -79,9 +85,10 @@ const editValue = ref('');
 const editInputRef = ref<HTMLInputElement | null>(null);
 
 function update(name: string, field: keyof VariableDeclaration, value: unknown) {
-	emit('update:declarations', props.declarations.map((d) =>
-		d.name === name ? { ...d, [field]: value } : d
-	));
+	emit(
+		'update:declarations',
+		props.declarations.map((d) => (d.name === name ? { ...d, [field]: value } : d))
+	);
 }
 
 function startEdit(decl: VariableDeclaration) {

@@ -46,7 +46,9 @@
 						</td>
 						<td class="cell-muted">{{ r.trigger_ref }}</td>
 						<td>
-							<span class="badge badge-sm" :class="runBadgeClass(r.status)">{{ r.status }}</span>
+							<span class="badge badge-sm" :class="statusBadgeClass(r.status)">
+								{{ statusLabel(r.status) }}
+							</span>
 						</td>
 						<td>
 							<router-link
@@ -63,7 +65,7 @@
 							<div class="flex items-center gap-2">
 								<router-link :to="`/ci/runs/${r.id}`" class="link link-primary">查看</router-link>
 								<button
-									v-if="r.status === 'failed' || r.status === 'success'"
+									v-if="r.status === 'faulted'"
 									class="link link-info"
 									:disabled="operating"
 									@click="handleRetry(r.id)"
@@ -71,7 +73,7 @@
 									重试
 								</button>
 								<button
-									v-if="r.status === 'waiting' || r.status === 'running'"
+									v-if="r.status === 'waiting_to_run' || r.status === 'running'"
 									class="link link-error"
 									:disabled="operating"
 									@click="confirmCancel(r.id)"
@@ -122,7 +124,7 @@ import { pipelineRunApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { PipelineRun } from '@/types/api';
-import { runBadgeClass } from '@/utils/status';
+import { statusBadgeClass, statusLabel } from '@/utils/status';
 import { formatTime } from '@/utils/time';
 
 const route = useRoute();

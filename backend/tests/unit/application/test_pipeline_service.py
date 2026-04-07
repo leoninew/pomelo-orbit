@@ -5,6 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Credential,
     PipelineRun,
@@ -13,7 +14,6 @@ from pomelo_orbit.domain.ci.entities import (
 )
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
 )
 from pomelo_orbit.domain.exceptions import BusinessError
@@ -51,7 +51,7 @@ class TestProjectCRUD:
         project_repo = Mock()
         project_repo.find_paginated.return_value = ([], 0)
         service = make_service(project_repo=project_repo)
-        projects, total = service.list_projects(page=1, per_page=10)
+        projects, _, total = service.list_projects(page=1, per_page=10)
         assert projects == [] and total == 0
         project_repo.find_paginated.assert_called_once_with(page=1, per_page=10)
 
@@ -323,7 +323,7 @@ class TestPipelineRun:
 
         service = make_service(project_repo=project_repo, run_repo=run_repo, snapshot_repo=snapshot_repo)
         new_run, _, _, snap = service.create_retry_run(original.id)
-        assert new_run.retry_of == original.id and new_run.status == PipelineRunStatus.WAITING
+        assert new_run.retry_of == original.id and new_run.status == TaskStatus.WAITING_TO_RUN
         assert snap is snapshot
         run_repo.save.assert_called()
 

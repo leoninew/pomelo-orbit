@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
     Credential,
@@ -33,7 +34,6 @@ from pomelo_orbit.domain.ci.repositories import (
 )
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
     StageOrchestration,
     VariableDeclaration,
@@ -93,14 +93,42 @@ class PipelineService:
 
     # ── Project CRUD ──────────────────────────────────────────────────────────
 
-    def list_projects(self, page: int = 1, per_page: int = 20) -> tuple[list[Project], int]:
-        return self.project_repo.find_paginated(page=page, per_page=per_page)
+    def list_projects(
+        self, page: int = 1, per_page: int = 20
+    ) -> tuple[list[Project], list[str | None], int]:
+        """List projects with credential names aligned to the project list."""
+        projects, total = self.project_repo.find_paginated(page=page, per_page=per_page)
+        credential_names = self._get_credential_names_for_projects(projects)
+        return projects, credential_names, total
+
+    def _get_credential_names_for_projects(self, projects: list[Project]) -> list[str | None]:
+        """Get credential names for a list of projects, preserving order."""
+        credential_ids = [p.git_credential_id for p in projects]
+        unique_ids = {cid for cid in credential_ids if cid is not None}
+        if not unique_ids:
+            return [None] * len(projects)
+        credentials = {c.id: c.name for c in self.credential_repo.find_all() if c.id in unique_ids}
+        return [credentials.get(cid) if cid is not None else None for cid in credential_ids]
+
+    def _get_credential_name(self, credential_id: str | None) -> str | None:
+        """Get credential name by ID."""
+        if not credential_id:
+            return None
+        cred = self.credential_repo.find_by_id(credential_id)
+        return cred.name if cred else None
 
     def get_project(self, project_id: str) -> Project:
+        """Get project entity (internal use)."""
         project = self.project_repo.find_by_id(project_id)
         if not project:
             raise BusinessError(f"Project {project_id} not found", status_code=404)
         return project
+
+    def get_project_with_credential_name(self, project_id: str) -> tuple[Project, str | None]:
+        """Get project with its credential name (for API responses)."""
+        project = self.get_project(project_id)
+        credential_name = self._get_credential_name(project.git_credential_id)
+        return project, credential_name
 
     def create_project(
         self,
@@ -131,6 +159,59 @@ class PipelineService:
         )
         self.project_repo.save(project)
         return project
+
+    def create_project_with_credential_name(
+        self,
+        name: str,
+        code: str,
+        repository_url: str,
+        git_credential_id: str | None = None,
+        variable_overrides: dict[str, Any] | None = None,
+        default_branch: str = "master",
+    ) -> tuple[Project, str | None]:
+        """Create project and return with its credential name (for API responses)."""
+        project, _ = self._create_project_internal(
+            name=name,
+            code=code,
+            repository_url=repository_url,
+            git_credential_id=git_credential_id,
+            variable_overrides=variable_overrides,
+            default_branch=default_branch,
+        )
+        credential_name = self._get_credential_name(project.git_credential_id)
+        return project, credential_name
+
+    def _create_project_internal(
+        self,
+        name: str,
+        code: str,
+        repository_url: str,
+        git_credential_id: str | None = None,
+        variable_overrides: dict[str, Any] | None = None,
+        default_branch: str = "master",
+    ) -> tuple[Project, str | None]:
+        """Internal implementation of create_project (returns credential name for convenience)."""
+        if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
+            raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
+        if self.project_repo.find_by_code(code):
+            raise BusinessError(f"Project code '{code}' already exists", status_code=409)
+
+        # 初始化变量覆盖，自动添加内置变量
+        overrides = dict(variable_overrides or {})
+        overrides["project_repository_url"] = repository_url
+        overrides["project_trigger_ref"] = default_branch
+
+        project = Project.create(
+            name=name,
+            code=code,
+            repository_url=repository_url,
+            git_credential_id=git_credential_id,
+            variable_overrides=overrides,
+            default_branch=default_branch,
+        )
+        self.project_repo.save(project)
+        credential_name = self._get_credential_name(git_credential_id)
+        return project, credential_name
 
     def update_project(
         self,
@@ -538,7 +619,7 @@ class PipelineService:
 
     def create_retry_run(self, run_id: str) -> tuple[PipelineRun, Project, dict[str, Any], PipelineSnapshot]:
         original = self.get_run(run_id)
-        if original.status not in {PipelineRunStatus.FAILED, PipelineRunStatus.SUCCESS}:
+        if original.status not in {TaskStatus.FAULTED, TaskStatus.RAN_TO_COMPLETION}:
             raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
         snapshot = self.get_snapshot(original.pipeline_snapshot_id)

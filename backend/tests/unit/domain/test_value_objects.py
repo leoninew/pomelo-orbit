@@ -6,9 +6,9 @@ import pytest
 
 from pomelo_orbit.domain.cd.value_objects import (
     ApplicationStatus,
-    DeployStatus,
     ImagePullPolicy,
     OperationType,
+    TaskStatus,
 )
 
 
@@ -49,23 +49,23 @@ class TestOperationType:
             OperationType("invalid_type")
 
 
-class TestDeployStatus:
-    """DeployStatus 枚举测试"""
+class TestTaskStatus:
+    """TaskStatus 枚举测试"""
 
     def test_has_waiting_to_run_status(self):
-        assert DeployStatus.WAITING_TO_RUN.value == "waiting_to_run"
+        assert TaskStatus.WAITING_TO_RUN.value == "waiting_to_run"
 
     def test_has_running_status(self):
-        assert DeployStatus.RUNNING.value == "running"
+        assert TaskStatus.RUNNING.value == "running"
 
     def test_has_ran_to_completion_status(self):
-        assert DeployStatus.RAN_TO_COMPLETION.value == "ran_to_completion"
+        assert TaskStatus.RAN_TO_COMPLETION.value == "ran_to_completion"
 
     def test_has_faulted_status(self):
-        assert DeployStatus.FAULTED.value == "faulted"
+        assert TaskStatus.FAULTED.value == "faulted"
 
     def test_has_canceled_status(self):
-        assert DeployStatus.CANCELED.value == "canceled"
+        assert TaskStatus.CANCELED.value == "canceled"
 
 
 class TestImagePullPolicy:

@@ -4,6 +4,7 @@ export interface Project {
 	code: string
 	repository_url: string
 	git_credential_id?: string | null
+	git_credential_name?: string | null
 	variable_overrides: Record<string, string>
 	default_branch: string
 	created_at: string

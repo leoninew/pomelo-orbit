@@ -10,7 +10,7 @@ from pomelo_orbit.infrastructure.ci.dependency_graph import (
 
 
 def stage(name: str, depends_on: list[str] | None = None) -> StageDefinition:
-    return StageDefinition(name=name, image="alpine", script="echo", depends_on=depends_on or [])
+    return StageDefinition(name=name, id=name, image="alpine", script="echo", depends_on=depends_on or [])
 
 
 class TestDependencyGraph:

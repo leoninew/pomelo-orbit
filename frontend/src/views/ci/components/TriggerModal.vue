@@ -32,7 +32,7 @@
 					<div v-else class="flex flex-col gap-2">
 						<div v-for="v in variableList" :key="v.name" class="flex flex-col gap-1">
 							<label class="text-sm flex items-center gap-1">
-								<code>{{ v.name }}</code>
+								{{ v.name }}
 								<span v-if="v.required" class="text-error">*</span>
 							</label>
 							<input

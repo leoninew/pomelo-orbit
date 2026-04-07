@@ -21,10 +21,10 @@
 				{{ (stage.script || '').split('\n').filter((l) => l.trim()).length }} 行
 			</span>
 			<div v-if="status" class="status-icon">
-				<CheckCircle v-if="status === 'success'" class="size-3 text-success" />
-				<XCircle v-else-if="status === 'failed'" class="size-3 text-error" />
+				<CheckCircle v-if="status === 'ran_to_completion'" class="size-3 text-success" />
+				<XCircle v-else-if="status === 'faulted'" class="size-3 text-error" />
 				<Loader2 v-else-if="status === 'running'" class="size-3 text-info animate-spin" />
-				<Clock v-else-if="status === 'waiting'" class="size-3 text-warning" />
+				<Clock v-else-if="status === 'waiting_to_run'" class="size-3 text-warning" />
 			</div>
 		</div>
 	</div>
@@ -34,11 +34,12 @@
 import { CheckCircle, Clock, Cog, Loader2, XCircle } from 'lucide-vue-next';
 import { computed } from 'vue';
 import type { SnapshotStage } from '@/types/ci/snapshot';
+import type { TaskStatus } from '@/types/api';
 
 interface Props {
 	data: {
 		stage: SnapshotStage
-		status?: 'success' | 'failed' | 'running' | 'waiting' | 'mixed' | 'skipped'
+		status?: TaskStatus
 		readonly?: boolean
 		selected?: boolean
 	}
@@ -60,12 +61,11 @@ const statusClass = computed(() => {
 	if (selected.value) return 'selected';
 	if (!status.value) return '';
 	const statusBorderMap: Record<string, string> = {
-		success: 'border-success',
-		failed: 'border-error',
+		ran_to_completion: 'border-success',
+		faulted: 'border-error',
 		running: 'border-info',
-		waiting: 'border-warning',
-		mixed: 'border-base-300',
-		skipped: 'border-base-200',
+		waiting_to_run: 'border-warning',
+		canceled: 'border-base-300',
 	};
 	return statusBorderMap[status.value] ?? '';
 });

@@ -1,11 +1,10 @@
 """测试 CI 值对象"""
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
     StageDefinition,
-    StageStatus,
     VariableDeclaration,
 )
 
@@ -15,24 +14,16 @@ class TestEnums:
         assert CredentialType.GIT_SSH.value == "git_ssh"
         assert CredentialType.GIT_TOKEN.value == "git_token"
 
-    def test_pipeline_run_status(self):
-        assert PipelineRunStatus.WAITING.value == "waiting"
-        assert PipelineRunStatus.RUNNING.value == "running"
-        assert PipelineRunStatus.SUCCESS.value == "success"
-        assert PipelineRunStatus.FAILED.value == "failed"
+    def test_task_status(self):
+        assert TaskStatus.WAITING_TO_RUN.value == "waiting_to_run"
+        assert TaskStatus.RUNNING.value == "running"
+        assert TaskStatus.RAN_TO_COMPLETION.value == "ran_to_completion"
+        assert TaskStatus.FAULTED.value == "faulted"
+        assert TaskStatus.CANCELED.value == "canceled"
 
     def test_pipeline_run_trigger(self):
         assert PipelineRunTrigger.MANUAL.value == "manual"
         assert PipelineRunTrigger.WEBHOOK.value == "webhook"
-
-    def test_stage_status(self):
-        assert StageStatus.WAITING.value == "waiting"
-        assert StageStatus.RUNNING.value == "running"
-        assert StageStatus.SUCCESS.value == "success"
-        assert StageStatus.FAILED.value == "failed"
-        assert StageStatus.FAULTED.value == "faulted"
-        assert StageStatus.SKIPPED.value == "skipped"
-        assert StageStatus.CANCELED.value == "canceled"
 
 
 class TestVariableDeclaration:
@@ -61,6 +52,7 @@ class TestVariableDeclaration:
 class TestStageDefinition:
     def test_create_stage(self):
         stage = StageDefinition(
+            id="build",
             name="build",
             image="python:3.12-slim",
             script="pip install -r requirements.txt\npytest tests/",
@@ -76,6 +68,7 @@ class TestStageDefinition:
         from pomelo_orbit.domain.ci.value_objects import ArtifactConfig
 
         stage = StageDefinition(
+            id="test",
             name="test",
             image="golang:1.22-alpine",
             script="go test ./...",
@@ -90,6 +83,7 @@ class TestStageDefinition:
 
     def test_builtin_stage_flags(self):
         stage = StageDefinition(
+            id="clone",
             name="clone",
             image="alpine/git",
             script="git clone .",

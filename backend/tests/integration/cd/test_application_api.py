@@ -189,7 +189,7 @@ class TestApplicationAPI:
     def test_stop_application(self, mock_stop, auth_client, test_app):
         """测试停止应用"""
         from pomelo_orbit.domain.cd.entities import Deployment, TriggerType
-        from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
+        from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 
         mock_deployment = Deployment(
             id="test-deployment-id",
@@ -197,7 +197,7 @@ class TestApplicationAPI:
             application_name=test_app.name,
             operation_type=OperationType.STOP,
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.WAITING_TO_RUN,
+            status=TaskStatus.WAITING_TO_RUN,
             is_rollback=False,
         )
         mock_stop.return_value = mock_deployment
@@ -215,7 +215,7 @@ class TestApplicationAPI:
     def test_restart_application(self, mock_restart, auth_client, test_app):
         """测试重启应用"""
         from pomelo_orbit.domain.cd.entities import Deployment, TriggerType
-        from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
+        from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 
         mock_deployment = Deployment(
             id="test-deployment-id",
@@ -223,7 +223,7 @@ class TestApplicationAPI:
             application_name=test_app.name,
             operation_type=OperationType.RESTART,
             trigger_type=TriggerType.MANUAL,
-            status=DeployStatus.WAITING_TO_RUN,
+            status=TaskStatus.WAITING_TO_RUN,
             is_rollback=False,
         )
         mock_restart.return_value = mock_deployment

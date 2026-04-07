@@ -1,6 +1,5 @@
 """
-Domain Layer - 领域层
-包含实体、值对象、领域服务、仓储接口
+Domain Layer
 """
 
 from pomelo_orbit.domain.auth.entities import LoginHistory, User
@@ -11,7 +10,7 @@ from pomelo_orbit.domain.cd.entities import (
     Route,
     TriggerType,
 )
-from pomelo_orbit.domain.cd.value_objects import DeployStatus
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -24,10 +23,10 @@ __all__ = [
     "AuthenticationError",
     "AuthorizationError",
     "BusinessError",
-    "DeployStatus",
     "Deployment",
     "LoginHistory",
     "Route",
+    "TaskStatus",
     "TriggerType",
     "User",
 ]

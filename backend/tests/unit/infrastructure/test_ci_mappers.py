@@ -2,6 +2,7 @@
 
 from ulid import ULID
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
     Credential,
@@ -13,9 +14,7 @@ from pomelo_orbit.domain.ci.entities import (
 )
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
-    StageStatus,
     VariableDeclaration,
 )
 from pomelo_orbit.infrastructure.ci.mappers import (
@@ -129,7 +128,7 @@ class TestPipelineRunMapper:
         )
         entity = PipelineRunMapper.to_domain(orm)
         assert entity.trigger == PipelineRunTrigger.MANUAL
-        assert entity.status == PipelineRunStatus.RUNNING
+        assert entity.status == TaskStatus.RUNNING
         assert entity.variables_snapshot == {"VAR1": "value1"}
 
     def test_to_orm(self):
@@ -151,7 +150,7 @@ class TestStageRunMapper:
             id=str(ULID()),
             pipeline_run_id=str(ULID()),
             name="build",
-            status="success",
+            status="ran_to_completion",
             started_at=utc_now(),
             finished_at=utc_now(),
             exit_code=0,
@@ -160,7 +159,7 @@ class TestStageRunMapper:
         entity = StageRunMapper.to_domain(orm)
         assert entity.id == orm.id
         assert entity.name == "build"
-        assert entity.status == StageStatus.SUCCESS
+        assert entity.status == TaskStatus.RAN_TO_COMPLETION
         assert entity.exit_code == 0
 
     def test_to_orm(self):
@@ -168,7 +167,7 @@ class TestStageRunMapper:
         orm = StageRunMapper.to_orm(entity)
         assert orm.id == entity.id
         assert orm.name == entity.name
-        assert orm.status == "waiting"
+        assert orm.status == "waiting_to_run"
 
 
 class TestStageLogMapper:

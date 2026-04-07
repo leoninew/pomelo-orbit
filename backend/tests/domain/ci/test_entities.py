@@ -4,6 +4,7 @@ import time
 
 import ulid
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Credential,
     PipelineRun,
@@ -14,9 +15,7 @@ from pomelo_orbit.domain.ci.entities import (
 )
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
-    StageStatus,
     VariableDeclaration,
 )
 
@@ -97,7 +96,7 @@ class TestPipelineRun:
             variables_snapshot={"KEY": "value"},
         )
         assert run.id is not None
-        assert run.status.value == PipelineRunStatus.WAITING.value
+        assert run.status == TaskStatus.WAITING_TO_RUN
         assert run.started_at is None
 
     def test_pipeline_run_lifecycle(self):
@@ -109,11 +108,11 @@ class TestPipelineRun:
             variables_snapshot={},
         )
         run.start()
-        assert run.status.value == PipelineRunStatus.RUNNING.value
+        assert run.status == TaskStatus.RUNNING
         assert run.started_at is not None
         run.complete_success()
-        assert run.status.value == PipelineRunStatus.SUCCESS.value
-        assert run.finished_at is not None
+        assert run.status == TaskStatus.RAN_TO_COMPLETION  # type: ignore[comparison-overlap]
+        assert run.finished_at is not None  # type: ignore[unreachable]
 
     def test_pipeline_run_failure(self):
         run = PipelineRun.create(
@@ -125,7 +124,7 @@ class TestPipelineRun:
         )
         run.start()
         run.complete_failed()
-        assert run.status.value == PipelineRunStatus.FAILED.value
+        assert run.status == TaskStatus.FAULTED
         assert run.finished_at is not None
 
     def test_create_pipeline_run_with_retry_of(self):
@@ -140,7 +139,7 @@ class TestPipelineRun:
         )
         assert retry_run.id is not None
         assert retry_run.retry_of == original_run_id
-        assert retry_run.status.value == PipelineRunStatus.WAITING.value
+        assert retry_run.status == TaskStatus.WAITING_TO_RUN
 
 
 class TestStageRun:
@@ -148,15 +147,15 @@ class TestStageRun:
         sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
         assert sr.id is not None
         assert sr.name == "build"
-        assert sr.status == StageStatus.WAITING
+        assert sr.status == TaskStatus.WAITING_TO_RUN
 
     def test_stage_run_lifecycle_success(self):
         sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
         sr.start()
-        assert sr.status == StageStatus.RUNNING
+        assert sr.status == TaskStatus.RUNNING
         assert sr.started_at is not None
         sr.complete_success(exit_code=0)
-        assert sr.status == StageStatus.SUCCESS  # type: ignore[comparison-overlap]
+        assert sr.status == TaskStatus.RAN_TO_COMPLETION  # type: ignore[comparison-overlap]
         assert sr.exit_code == 0  # type: ignore[unreachable]
         assert sr.finished_at is not None
 
@@ -164,7 +163,7 @@ class TestStageRun:
         sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
         sr.start()
         sr.complete_failed(exit_code=1, error_message="Command failed")
-        assert sr.status == StageStatus.FAILED
+        assert sr.status == TaskStatus.FAULTED
         assert sr.exit_code == 1
         assert sr.error_message == "Command failed"
         assert sr.finished_at is not None
@@ -173,7 +172,7 @@ class TestStageRun:
         sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
         sr.start()
         sr.complete_faulted(error_message="Container timeout")
-        assert sr.status == StageStatus.FAULTED
+        assert sr.status == TaskStatus.FAULTED
         assert sr.error_message == "Container timeout"
         assert sr.finished_at is not None
 

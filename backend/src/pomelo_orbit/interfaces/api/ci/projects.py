@@ -26,9 +26,11 @@ def list_projects(
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[ProjectResp]:
-    projects, total = pipeline_service.list_projects(page=page, per_page=per_page)
+    projects, credential_names, total = pipeline_service.list_projects(page=page, per_page=per_page)
     return PaginatedResp(
-        items=[ProjectResp.model_validate(p) for p in projects],
+        items=[
+            ProjectResp.from_domain(p, cred_name) for p, cred_name in zip(projects, credential_names, strict=True)
+        ],
         total=total,
         page=page,
         per_page=per_page,
@@ -50,7 +52,8 @@ def create_project(
         variable_overrides=data.variable_overrides,
         default_branch=data.default_branch,
     )
-    return ProjectResp.model_validate(project)
+    project, credential_name = pipeline_service.get_project_with_credential_name(project.id)
+    return ProjectResp.from_domain(project, credential_name)
 
 
 @router.get("/{project_id}", response_model=ProjectResp)
@@ -59,7 +62,8 @@ def get_project(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> ProjectResp:
-    return ProjectResp.model_validate(pipeline_service.get_project(project_id))
+    project, credential_name = pipeline_service.get_project_with_credential_name(project_id)
+    return ProjectResp.from_domain(project, credential_name)
 
 
 @router.put("/{project_id}", response_model=ProjectResp)
@@ -69,7 +73,7 @@ def update_project(
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> ProjectResp:
-    project = pipeline_service.update_project(
+    pipeline_service.update_project(
         project_id=project_id,
         name=data.name,
         repository_url=data.repository_url,
@@ -77,7 +81,8 @@ def update_project(
         git_credential_id=data.git_credential_id,
         default_branch=data.default_branch,
     )
-    return ProjectResp.model_validate(project)
+    project, credential_name = pipeline_service.get_project_with_credential_name(project_id)
+    return ProjectResp.from_domain(project, credential_name)
 
 
 @router.delete("/{project_id}", status_code=204)

@@ -31,7 +31,9 @@
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/60 w-20 shrink-0">镜像</dt>
-							<dd><code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ stage.image }}</code></dd>
+							<dd>
+								<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ stage.image }}</code>
+							</dd>
 						</div>
 						<div v-if="stage.description" class="flex gap-2 sm:col-span-2">
 							<dt class="text-base-content/60 w-20 shrink-0">描述</dt>
@@ -80,8 +82,12 @@
 						</thead>
 						<tbody>
 							<tr v-for="[k, v] in envEntries" :key="k">
-								<td><code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ k }}</code></td>
-								<td><code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ v }}</code></td>
+								<td>
+									<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ k }}</code>
+								</td>
+								<td>
+									<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ v }}</code>
+								</td>
 							</tr>
 						</tbody>
 					</table>
@@ -102,7 +108,9 @@
 						<tbody>
 							<tr v-for="a in stage.artifacts" :key="a.name">
 								<td>{{ a.name }}</td>
-								<td><code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ a.path }}</code></td>
+								<td>
+									<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ a.path }}</code>
+								</td>
 							</tr>
 						</tbody>
 					</table>
@@ -114,7 +122,7 @@
 		<dialog ref="editModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑基本信息</h3>
-					<div class="flex flex-col gap-3">
+				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">名称</legend>
 						<input v-model="form.name" type="text" class="input w-full" />
@@ -150,10 +158,12 @@
 				leave-to-class="translate-x-full"
 			>
 				<div
-					v-if="scriptDrawerVisible"
+					v-if="showScriptDrawer"
 					class="fixed inset-y-0 right-0 z-50 w-[720px] max-w-full bg-base-100 shadow-2xl flex flex-col border-l border-base-200"
 				>
-					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200 shrink-0">
+					<div
+						class="flex items-center justify-between px-5 py-4 border-b border-base-200 shrink-0"
+					>
 						<h3 class="font-semibold">编辑脚本</h3>
 						<button class="btn btn-sm btn-ghost btn-circle" @click="closeScriptDrawer">
 							<X class="size-4" />
@@ -189,7 +199,7 @@
 				leave-to-class="opacity-0"
 			>
 				<div
-					v-if="scriptDrawerVisible"
+					v-if="showScriptDrawer"
 					class="fixed inset-0 z-40 bg-black/30"
 					@click="closeScriptDrawer"
 				/>
@@ -201,7 +211,9 @@
 			<div class="modal-box">
 				<h3 class="font-bold text-lg">删除 Stage</h3>
 				<p class="py-4 text-sm">
-					确定要删除 Stage「<strong>{{ stage?.name }}</strong>」吗？此操作不可撤销。
+					确定要删除 Stage「
+					<strong>{{ stage?.name }}</strong>
+					」吗？此操作不可撤销。
 				</p>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="deleting" @click="handleDelete">
@@ -239,9 +251,9 @@ const { loading: deleting, execute: executeDelete } = useStatusAsync();
 const stage = ref<PipelineStage>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const editModalRef = ref<HTMLDialogElement>();
-const scriptDrawerVisible = ref(false);
+const showScriptDrawer = ref(false);
 const scriptTemp = ref('');
-const form = reactive({ name: '', image: '', script: '', description: '' });
+const form = reactive({ name: '', image: '', description: '' });
 
 const envEntries = computed(() => Object.entries(stage.value?.env ?? {}));
 
@@ -261,19 +273,18 @@ function openEditModal() {
 	Object.assign(form, {
 		name: stage.value.name,
 		image: stage.value.image,
-		script: stage.value.script,
 		description: stage.value.description,
 	});
 	editModalRef.value?.showModal();
 }
 
 function openScriptDrawer() {
-	scriptTemp.value = form.script || stage.value?.script || '';
-	scriptDrawerVisible.value = true;
+	scriptTemp.value = stage.value?.script ?? '';
+	showScriptDrawer.value = true;
 }
 
 function closeScriptDrawer() {
-	scriptDrawerVisible.value = false;
+	showScriptDrawer.value = false;
 }
 
 async function confirmScript() {
@@ -281,8 +292,7 @@ async function confirmScript() {
 		await executeSave(async () => {
 			const updated = await pipelineStageApi.update(stageId, { script: scriptTemp.value });
 			stage.value = updated;
-			form.script = updated.script;
-			scriptDrawerVisible.value = false;
+			showScriptDrawer.value = false;
 			toast.success('脚本已保存');
 		});
 	} catch (e) {

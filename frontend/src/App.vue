@@ -199,7 +199,7 @@ function syncFromRoute() {
 	if (path.startsWith('/ci/')) currentModule.value = 'ci';
 	else if (path.startsWith('/cd/')) currentModule.value = 'cd';
 	else if (path === '/login-history' || path === '/settings') currentModule.value = 'settings';
-	else currentModule.value = 'cd';
+	else currentModule.value = null;
 
 	selectedKey.value = (route.meta.menuKey as string) ?? '';
 }

@@ -7,14 +7,13 @@ from typing import Any
 
 from ulid import ULID
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.value_objects import (
     ArtifactConfig,
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
     StageDefinition,
     StageOrchestration,
-    StageStatus,
     VariableDeclaration,
 )
 from pomelo_orbit.infrastructure.time_utils import utc_now
@@ -85,7 +84,9 @@ class ProjectWebhook:
     project_id: str
     name: str
     template_id: str
-    branch_filter: str | None  # None 或空字符串表示拒绝所有分支；"*" 表示接受所有分支；其他值用 glob 匹配（如 "main", "release/*"）
+    branch_filter: (
+        str | None
+    )  # None 或空字符串表示拒绝所有分支；"*" 表示接受所有分支；其他值用 glob 匹配（如 "main", "release/*"）
     encrypted_secret: str  # 加密存储的 HMAC 密钥
     enabled: bool
     created_at: datetime = field(default_factory=utc_now)
@@ -219,10 +220,11 @@ class PipelineStage:
             self.description = description
         self.updated_at = utc_now()
 
-    def to_stage_definition(self, depends_on: list[str] | None = None) -> "StageDefinition":
-        """转换为值对象，用于快照和执行。depends_on 由编排层传入。"""
+    def to_stage_definition(self, name: str | None = None, depends_on: list[str] | None = None) -> "StageDefinition":
+        """转换为值对象，用于快照和执行。name 和 depends_on 由编排层传入。"""
         return StageDefinition(
-            name=self.name,
+            name=name or self.name,
+            id=self.id,
             image=self.image,
             depends_on=depends_on or [],
             script=self.script,
@@ -287,7 +289,8 @@ class PipelineTemplate:
         for orch in sorted_orch:
             stage = stage_map.get(orch.stage_id)
             if stage:
-                result.append(stage.to_stage_definition(depends_on=orch.depends_on))
+                # StageDefinition.name 使用 stage_key，执行器用它做依赖解析
+                result.append(stage.to_stage_definition(name=orch.stage_key, depends_on=orch.depends_on))
         return result
 
 
@@ -323,7 +326,7 @@ class PipelineRun:
     trigger: PipelineRunTrigger
     trigger_ref: str
     variables_snapshot: dict[str, Any]
-    status: PipelineRunStatus = PipelineRunStatus.WAITING
+    status: TaskStatus = TaskStatus.WAITING_TO_RUN
     retry_of: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -349,21 +352,21 @@ class PipelineRun:
         )
 
     def start(self) -> None:
-        self.status = PipelineRunStatus.RUNNING
+        self.status = TaskStatus.RUNNING
         self.started_at = utc_now()
 
     def complete_success(self) -> None:
-        self.status = PipelineRunStatus.SUCCESS
+        self.status = TaskStatus.RAN_TO_COMPLETION
         self.finished_at = utc_now()
 
     def complete_failed(self) -> None:
-        self.status = PipelineRunStatus.FAILED
+        self.status = TaskStatus.FAULTED
         self.finished_at = utc_now()
 
     def cancel(self) -> None:
-        if self.status not in (PipelineRunStatus.WAITING, PipelineRunStatus.RUNNING):
+        if self.status not in (TaskStatus.WAITING_TO_RUN, TaskStatus.RUNNING):
             raise ValueError(f"Cannot cancel run with status {self.status}")
-        self.status = PipelineRunStatus.CANCELED
+        self.status = TaskStatus.CANCELED
         self.finished_at = utc_now()
 
 
@@ -374,7 +377,7 @@ class StageRun:
     id: str
     pipeline_run_id: str
     name: str  # 对应 StageDefinition.name
-    status: StageStatus = StageStatus.WAITING
+    status: TaskStatus = TaskStatus.WAITING_TO_RUN
     started_at: datetime | None = None
     finished_at: datetime | None = None
     exit_code: int | None = None
@@ -385,22 +388,22 @@ class StageRun:
         return StageRun(id=str(ULID()), pipeline_run_id=pipeline_run_id, name=name)
 
     def start(self) -> None:
-        self.status = StageStatus.RUNNING
+        self.status = TaskStatus.RUNNING
         self.started_at = utc_now()
 
     def complete_success(self, exit_code: int = 0) -> None:
-        self.status = StageStatus.SUCCESS
+        self.status = TaskStatus.RAN_TO_COMPLETION
         self.exit_code = exit_code
         self.finished_at = utc_now()
 
     def complete_failed(self, exit_code: int, error_message: str | None = None) -> None:
-        self.status = StageStatus.FAILED
+        self.status = TaskStatus.FAULTED
         self.exit_code = exit_code
         self.error_message = error_message
         self.finished_at = utc_now()
 
     def complete_faulted(self, error_message: str) -> None:
-        self.status = StageStatus.FAULTED
+        self.status = TaskStatus.FAULTED
         self.error_message = error_message
         self.finished_at = utc_now()
 

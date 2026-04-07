@@ -103,9 +103,7 @@
 					</thead>
 					<tbody>
 						<tr v-for="v in variableList" :key="v.key" class="hover">
-							<td>
-								<code class="text-xs">{{ v.key }}</code>
-							</td>
+							<td>{{ v.key }}</td>
 							<td>
 								<code class="text-xs">{{ v.value }}</code>
 							</td>
@@ -169,7 +167,7 @@
 						<select v-model="editForm.git_credential_id" class="select w-full">
 							<option value="">不使用凭据</option>
 							<option v-for="cred in gitCredentials" :key="cred.id" :value="cred.id">
-								{{ cred.name }}
+								{{ cred.name }} ({{ credentialTypeLabels[cred.type] }})
 							</option>
 						</select>
 					</fieldset>
@@ -283,6 +281,7 @@ import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import WebhookList from './components/WebhookList.vue';
 import TriggerModal from './components/TriggerModal.vue';
+import { credentialTypeLabels } from '@/types/api';
 import type { Credential, PipelineTemplate, Project, ProjectWebhook } from '@/types/api';
 
 const route = useRoute();

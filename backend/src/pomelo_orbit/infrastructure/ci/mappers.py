@@ -2,6 +2,7 @@
 
 import json
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
     Credential,
@@ -17,11 +18,9 @@ from pomelo_orbit.domain.ci.entities import (
 from pomelo_orbit.domain.ci.value_objects import (
     ArtifactConfig,
     CredentialType,
-    PipelineRunStatus,
     PipelineRunTrigger,
     StageDefinition,
     StageOrchestration,
-    StageStatus,
     VariableDeclaration,
 )
 from pomelo_orbit.infrastructure.ci.models import (
@@ -103,6 +102,7 @@ class PipelineTemplateStageMapper:
     def to_domain(orm: PipelineTemplateStageModel) -> StageOrchestration:
         return StageOrchestration(
             stage_id=orm.stage_id,
+            stage_key=orm.stage_key,
             depends_on=json.loads(orm.depends_on),
             sort_order=orm.sort_order,
         )
@@ -112,6 +112,7 @@ class PipelineTemplateStageMapper:
         return PipelineTemplateStageModel(
             template_id=template_id,
             stage_id=orch.stage_id,
+            stage_key=orch.stage_key,
             depends_on=json.dumps(orch.depends_on),
             sort_order=orch.sort_order,
         )
@@ -120,9 +121,6 @@ class PipelineTemplateStageMapper:
 class PipelineTemplateMapper:
     @staticmethod
     def _normalize_snapshot_stage(s: dict) -> dict:
-        # 兼容旧快照数据 commands（list）→ script（str）
-        if "commands" in s and "script" not in s:
-            s["script"] = "\n".join(s.pop("commands"))
         s.pop("builtin", None)
         s.pop("readonly", None)
         return s
@@ -226,7 +224,7 @@ class PipelineRunMapper:
             trigger=PipelineRunTrigger(orm.trigger),
             trigger_ref=orm.trigger_ref,
             variables_snapshot=json.loads(orm.variables_snapshot),
-            status=PipelineRunStatus(orm.status),
+            status=TaskStatus(orm.status),
             retry_of=orm.retry_of,
             started_at=orm.started_at,
             finished_at=orm.finished_at,
@@ -257,7 +255,7 @@ class StageRunMapper:
             id=orm.id,
             pipeline_run_id=orm.pipeline_run_id,
             name=orm.name,
-            status=StageStatus(orm.status),
+            status=TaskStatus(orm.status),
             started_at=orm.started_at,
             finished_at=orm.finished_at,
             exit_code=orm.exit_code,

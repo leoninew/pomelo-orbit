@@ -5,6 +5,7 @@ import logging
 from copy import copy
 from pathlib import Path
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import Artifact, StageLog, StageRun
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.repositories import (
@@ -13,7 +14,7 @@ from pomelo_orbit.domain.ci.repositories import (
     StageLogRepository,
     StageRunRepository,
 )
-from pomelo_orbit.domain.ci.value_objects import CredentialType, StageDefinition, StageStatus
+from pomelo_orbit.domain.ci.value_objects import CredentialType, StageDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
 from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path
@@ -83,7 +84,9 @@ class PipelineExecutorImpl(PipelineExecutor):
             stages_map = {s.name: s for s in stages}
 
             for layer_idx, layer in enumerate(layers):
-                logger.info(f"Executing layer: index={layer_idx + 1}, total={len(layers)}, run={context.run_id}, stages={layer}")
+                logger.info(
+                    f"Executing layer: index={layer_idx + 1}, total={len(layers)}, run={context.run_id}, stages={layer}"
+                )
                 layer_stages = [stages_map[name] for name in layer]
                 results = await self._execute_layer(context, layer_stages)
 
@@ -123,7 +126,7 @@ class PipelineExecutorImpl(PipelineExecutor):
             self.stage_run_repo.save(stage_run)
             logger.info(f"Stage started: run={context.run_id}, stage={stage.name}, image={stage.image}")
 
-            if stage.name == "clone":
+            if context.credential_id:
                 exit_code, output = await self._execute_clone(context, stage)
             else:
                 exit_code, output = await self._execute_container(context, stage)
@@ -203,13 +206,14 @@ class PipelineExecutorImpl(PipelineExecutor):
             token = decrypted.get_token()
             repo_url = context.repository_url
             if repo_url.startswith("git@"):
-                without_prefix = repo_url[len("git@") :]
+                without_prefix = repo_url[len("git@"):]
                 host, path = without_prefix.split(":", 1)
                 repo_url = f"https://{token}@{host}/{path}"
             elif repo_url.startswith("https://"):
                 repo_url = repo_url.replace("https://", f"https://{token}@")
-            # 替换命令中的 project_repository_url
-            env["project_repository_url"] = repo_url
+            # 直接替换脚本中已渲染的 SSH URL 为带 token 的 HTTPS URL
+            stage = copy(stage)
+            stage.script = stage.script.replace(context.repository_url, repo_url)
 
         # 在容器内修正 SSH key 权限（Windows 宿主机 chmod 不生效）
         script_lines = [line for line in stage.script.splitlines() if line.strip()]
@@ -245,7 +249,7 @@ class PipelineExecutorImpl(PipelineExecutor):
         for layer_idx in range(start_layer_idx, len(layers)):
             for stage_name in layers[layer_idx]:
                 stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage_name)
-                stage_run.status = StageStatus.CANCELED
+                stage_run.status = TaskStatus.CANCELED
                 self.stage_run_repo.save(stage_run)
             logger.info(f"Layer canceled: run={context.run_id}, layer={layer_idx}")
 

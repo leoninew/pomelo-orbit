@@ -1,9 +1,11 @@
+import type { TaskStatus } from '../common';
+
 // StageRun — Stage 执行记录
 export interface StageRun {
 	id: string
 	pipeline_run_id: string
 	name: string
-	status: 'waiting' | 'running' | 'success' | 'failed' | 'faulted' | 'skipped' | 'canceled'
+	status: TaskStatus
 	started_at?: string
 	finished_at?: string
 	exit_code?: number

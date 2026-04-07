@@ -3,7 +3,7 @@
 import pytest
 
 from pomelo_orbit.domain.cd.entities import TriggerType
-from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
+from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
@@ -45,7 +45,7 @@ def test_deployment(db_session, test_app):
         application_name=test_app.name,
         operation_type=OperationType.DEPLOY,
         trigger_type=TriggerType.MANUAL,
-        status=DeployStatus.RAN_TO_COMPLETION,
+        status=TaskStatus.RAN_TO_COMPLETION,
     )
     db_session.add(deployment)
     db_session.commit()

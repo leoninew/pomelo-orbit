@@ -42,7 +42,7 @@ class TestProjectTrigger:
         data = resp.json()
         assert "id" in data
         assert data["project_id"] == test_project.id
-        assert data["status"] in ("waiting", "running", "failed", "success")
+        assert data["status"] in ("waiting_to_run", "running", "faulted", "ran_to_completion")
 
     def test_trigger_not_found(self, auth_client):
         resp = auth_client.post("/api/ci/projects/nonexistent/trigger", json={"template_id": "xxx"})

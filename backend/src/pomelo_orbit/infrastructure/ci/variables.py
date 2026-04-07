@@ -99,6 +99,7 @@ def render_template(template: str, variables: dict[str, Any]) -> str:
 
 def resolve_stage(stage: StageDefinition, variables: dict[str, Any]) -> StageDefinition:
     """将 Stage 中所有占位符替换为变量值"""
+
     def r(text: str) -> str:
         return render_template(text, variables)
 

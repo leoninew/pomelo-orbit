@@ -20,33 +20,32 @@ export function formatDuration(ms?: number | null): string {
 	return `${(ms / 60000).toFixed(1)}min`;
 }
 
-const RUN_BADGE_MAP: Record<string, string> = {
-	success: 'badge-outline badge-success',
-	failed: 'badge-outline badge-error',
+// 异步任务状态标签（适用于 CI PipelineRun、CD Deployment、StageRun 等）
+const STATUS_LABEL: Record<string, string> = {
+	waiting_to_run: '待运行',
+	running: '运行中',
+	ran_to_completion: '成功',
+	faulted: '异常',
+	canceled: '已取消',
+};
+
+export function statusLabel(status: string): string {
+	return STATUS_LABEL[status] ?? status;
+}
+
+// 异步任务状态 badge 样式
+const STATUS_BADGE_MAP: Record<string, string> = {
+	waiting_to_run: 'badge-outline badge-warning',
 	running: 'badge-outline badge-info',
-	waiting: 'badge-outline badge-warning',
+	ran_to_completion: 'badge-outline badge-success',
+	faulted: 'badge-outline badge-error',
 	canceled: 'badge-ghost',
 };
 
-export function runBadgeClass(status: string): string {
-	return RUN_BADGE_MAP[status] ?? 'badge-ghost';
+export function statusBadgeClass(status: string): string {
+	return STATUS_BADGE_MAP[status] ?? 'badge-ghost';
 }
 
-const STAGE_RUN_BADGE_MAP: Record<string, string> = {
-	success: 'badge-success',
-	failed: 'badge-error',
-	faulted: 'badge-error',
-	running: 'badge-info',
-	waiting: 'badge-warning',
-	pending: 'badge-warning',
-	skipped: 'badge-ghost',
-	canceled: 'badge-ghost',
-	mixed: 'badge-ghost',
-};
-
-export function stageRunBadgeClass(status: string): string {
-	return STAGE_RUN_BADGE_MAP[status] ?? 'badge-ghost';
+export function isTerminalStatus(status: string): boolean {
+	return status === 'ran_to_completion' || status === 'faulted' || status === 'canceled';
 }
-
-/** @deprecated use stageRunBadgeClass */
-export const stageBadgeClass = stageRunBadgeClass;

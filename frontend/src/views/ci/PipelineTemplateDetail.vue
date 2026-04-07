@@ -68,7 +68,7 @@
 						:orchestration="orchestration"
 						@reorder="orchestration = $event"
 						@remove-stage="removeOrch"
-						@remove-dependency="removeDependency"
+						@edit-stage="openEditOrchModal"
 					/>
 
 					<div v-else class="min-h-[300px]">
@@ -92,10 +92,7 @@
 			<!-- 变量声明 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<VariableDeclarationsTable
-						v-model:declarations="declarations"
-						:readonly="false"
-					/>
+					<VariableDeclarationsTable v-model:declarations="declarations" :readonly="false" />
 				</div>
 			</div>
 		</template>
@@ -132,7 +129,7 @@
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">选择 Stage</legend>
-						<select v-model="addOrchForm.stageId" class="select w-full">
+						<select v-model="addOrchForm.stageId" class="select w-full" @change="onStageSelect">
 							<option value="">— 选择 —</option>
 							<option v-for="s in availableStages" :key="s.id" :value="s.id">
 								{{ s.name }} ({{ s.image }})
@@ -140,20 +137,31 @@
 						</select>
 					</fieldset>
 					<fieldset class="fieldset">
+						<legend class="fieldset-legend">Stage Key</legend>
+						<input
+							v-model="addOrchForm.stageKey"
+							type="text"
+							class="input w-full"
+							:class="{ 'input-error': stageKeyError }"
+							placeholder="模板内唯一标识"
+						/>
+						<p v-if="stageKeyError" class="fieldset-label text-error">{{ stageKeyError }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
 						<legend class="fieldset-legend">依赖（depends_on）</legend>
 						<div class="flex flex-wrap gap-2 pt-1">
 							<label
 								v-for="orch in orchestration"
-								:key="orch.stage_id"
+								:key="orch.stage_key"
 								class="flex items-center gap-2 cursor-pointer"
 							>
 								<input
 									v-model="addOrchForm.dependsOn"
 									type="checkbox"
-									:value="orch.stage_id"
+									:value="orch.stage_key"
 									class="checkbox checkbox-sm"
 								/>
-								{{ stageMap[orch.stage_id]?.name ?? orch.stage_id }}
+								{{ orch.stage_key }}
 							</label>
 							<span v-if="orchestration.length === 0" class="text-base-content/60">
 								无其他 Stage
@@ -162,10 +170,54 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="!addOrchForm.stageId" @click="confirmAddOrch">
+					<button class="btn btn-primary" :disabled="!addOrchForm.stageId || !!stageKeyError" @click="confirmAddOrch">
 						确定
 					</button>
 					<button class="btn btn-ghost" @click="addOrchModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+		<!-- 编辑 Stage 编排 modal -->
+		<dialog ref="editOrchModalRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">编辑 Stage</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">Stage Key</legend>
+						<input
+							v-model="editOrchForm.stageKey"
+							type="text"
+							class="input w-full"
+							:class="{ 'input-error': editStageKeyError }"
+						/>
+						<p v-if="editStageKeyError" class="fieldset-label text-error">{{ editStageKeyError }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">依赖（depends_on）</legend>
+						<div class="flex flex-wrap gap-2 pt-1">
+							<label
+								v-for="orch in editableOrchOptions"
+								:key="orch.stage_key"
+								class="flex items-center gap-2 cursor-pointer"
+							>
+								<input
+									v-model="editOrchForm.dependsOn"
+									type="checkbox"
+									:value="orch.stage_key"
+									class="checkbox checkbox-sm"
+								/>
+								{{ orch.stage_key }}
+							</label>
+							<span v-if="editableOrchOptions.length === 0" class="text-base-content/60">
+								无其他 Stage
+							</span>
+						</div>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="!!editStageKeyError" @click="confirmEditOrch">确定</button>
+					<button class="btn btn-ghost" @click="editOrchModalRef?.close()">取消</button>
 				</div>
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -207,8 +259,29 @@ const viewMode = ref<'list' | 'dag'>('list');
 
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();
+const editOrchModalRef = ref<HTMLDialogElement>();
 const editForm = reactive({ name: '', description: '' });
-const addOrchForm = reactive({ stageId: '', dependsOn: [] as string[] });
+const addOrchForm = reactive({ stageId: '', stageKey: '', dependsOn: [] as string[] });
+const editOrchForm = reactive({ originalKey: '', stageKey: '', dependsOn: [] as string[] });
+
+const stageKeyError = computed(() => {
+	const key = addOrchForm.stageKey.trim();
+	if (!key) return 'Stage Key 不能为空';
+	if (orchestration.value.some((o) => o.stage_key === key)) return 'Stage Key 已存在';
+	return '';
+});
+
+const editStageKeyError = computed(() => {
+	const key = editOrchForm.stageKey.trim();
+	if (!key) return 'Stage Key 不能为空';
+	if (key !== editOrchForm.originalKey && orchestration.value.some((o) => o.stage_key === key))
+		return 'Stage Key 已存在';
+	return '';
+});
+
+const editableOrchOptions = computed(() =>
+	orchestration.value.filter((o) => o.stage_key !== editOrchForm.originalKey)
+);
 
 const stageMap = computed(() =>
 	Object.fromEntries((template.value?.stages ?? []).map((s) => [s.id, s]))
@@ -223,11 +296,11 @@ const dagStages = computed(() =>
 	orchestration.value.map((orch) => {
 		const stage = stageMap.value[orch.stage_id];
 		return {
-			name: stage?.name ?? orch.stage_id,
+			name: orch.stage_key,
 			image: stage?.image ?? '',
 			script: stage?.script ?? '',
 			env: stage?.env ?? {},
-			depends_on: orch.depends_on.map((id) => stageMap.value[id]?.name ?? id),
+			depends_on: orch.depends_on,
 		};
 	})
 );
@@ -273,12 +346,12 @@ async function handleEditInfoOk() {
 
 async function handleSaveOrchestration() {
 	const orchForCheck = orchestration.value.map((o) => ({
-		name: o.stage_id,
+		name: o.stage_key,
 		depends_on: o.depends_on,
 	}));
 	const cycle = detectCircularDependencies(orchForCheck);
 	if (cycle) {
-		const names = cycle.map((id) => stageMap.value[id]?.name ?? id);
+		const names = cycle.map((key) => key);
 		toast.error(`检测到循环依赖: ${names.join(' → ')}`);
 		return;
 	}
@@ -324,21 +397,36 @@ function extractVarNames(stages: PipelineStage[]): Set<string> {
 function syncDeclarations(stages: PipelineStage[]) {
 	const extracted = extractVarNames(stages);
 	const existingMap = new Map(declarations.value.map((d) => [d.name, d]));
-	const blank = (name: string) => ({ name, description: '', required: false, default: null, secret: false, locked: false, builtin: false });
+	const blank = (name: string) => ({
+		name,
+		description: '',
+		required: false,
+		default: null,
+		secret: false,
+		locked: false,
+		builtin: false,
+	});
 	declarations.value = [...extracted].sort().map((name) => existingMap.get(name) ?? blank(name));
 }
 
 function openAddOrchModal() {
 	addOrchForm.stageId = '';
+	addOrchForm.stageKey = '';
 	addOrchForm.dependsOn = [];
 	addOrchModalRef.value?.showModal();
 }
 
+function onStageSelect() {
+	const stage = allStages.value.find((s) => s.id === addOrchForm.stageId);
+	if (stage) addOrchForm.stageKey = stage.name;
+}
+
 function confirmAddOrch() {
-	if (!addOrchForm.stageId) return;
+	if (!addOrchForm.stageId || stageKeyError.value) return;
 	const maxOrder = orchestration.value.reduce((m, o) => Math.max(m, o.sort_order), 0);
 	orchestration.value.push({
 		stage_id: addOrchForm.stageId,
+		stage_key: addOrchForm.stageKey.trim(),
 		depends_on: [...addOrchForm.dependsOn],
 		sort_order: maxOrder + 1,
 	});
@@ -354,32 +442,48 @@ function removeOrch(idx: number) {
 	const removed = orchestration.value[idx];
 	orchestration.value.splice(idx, 1);
 	for (const o of orchestration.value) {
-		o.depends_on = o.depends_on.filter((id) => id !== removed.stage_id);
+		o.depends_on = o.depends_on.filter((key) => key !== removed.stage_key);
 	}
-	// 从 template.stages 移除（不再被编排引用）
 	if (template.value) {
 		template.value.stages = template.value.stages.filter((s) => s.id !== removed.stage_id);
 		syncDeclarations(template.value.stages);
 	}
 }
 
-function removeDependency(_orchIdx: number, stageId: string, depStageId: string) {
-	const orch = orchestration.value.find((o) => o.stage_id === stageId);
-	if (orch) orch.depends_on = orch.depends_on.filter((id) => id !== depStageId);
+function openEditOrchModal(idx: number) {
+	const orch = orchestration.value[idx];
+	if (!orch) return;
+	editOrchForm.originalKey = orch.stage_key;
+	editOrchForm.stageKey = orch.stage_key;
+	editOrchForm.dependsOn = [...orch.depends_on];
+	editOrchModalRef.value?.showModal();
 }
 
-function handleUpdateDependencies(stageName: string, dependsOnNames: string[]) {
-	const nameToId = Object.fromEntries((template.value?.stages ?? []).map((s) => [s.name, s.id]));
-	const orch = orchestration.value.find((o) => stageMap.value[o.stage_id]?.name === stageName);
-	if (orch) orch.depends_on = dependsOnNames.map((n) => nameToId[n] ?? n);
+function confirmEditOrch() {
+	if (editStageKeyError.value) return;
+	const newKey = editOrchForm.stageKey.trim();
+	const oldKey = editOrchForm.originalKey;
+	// 更新 stage_key 和 depends_on
+	for (const o of orchestration.value) {
+		if (o.stage_key === oldKey) {
+			o.stage_key = newKey;
+			o.depends_on = [...editOrchForm.dependsOn];
+		} else {
+			// 其他 stage 的依赖里如果引用了旧 key，同步更新
+			o.depends_on = o.depends_on.map((k) => (k === oldKey ? newKey : k));
+		}
+	}
+	editOrchModalRef.value?.close();
 }
 
-function handleDeleteDependency(sourceName: string, targetName: string) {
-	const nameToId = Object.fromEntries((template.value?.stages ?? []).map((s) => [s.name, s.id]));
-	const targetId = nameToId[targetName];
-	const sourceId = nameToId[sourceName];
-	const orch = orchestration.value.find((o) => o.stage_id === targetId);
-	if (orch) orch.depends_on = orch.depends_on.filter((id) => id !== sourceId);
+function handleUpdateDependencies(stageKey: string, dependsOnKeys: string[]) {
+	const orch = orchestration.value.find((o) => o.stage_key === stageKey);
+	if (orch) orch.depends_on = dependsOnKeys;
+}
+
+function handleDeleteDependency(sourceKey: string, targetKey: string) {
+	const orch = orchestration.value.find((o) => o.stage_key === targetKey);
+	if (orch) orch.depends_on = orch.depends_on.filter((k) => k !== sourceKey);
 }
 
 onMounted(fetchTemplate);

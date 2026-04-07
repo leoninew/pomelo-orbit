@@ -2,6 +2,7 @@ import type { VariableDeclaration } from './template';
 
 // 快照中的 Stage 定义（执行时展开，含编排属性）
 export interface SnapshotStage {
+	id: string
 	name: string
 	image: string
 	depends_on: string[]

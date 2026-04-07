@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.cd.entities import Deployment
 from pomelo_orbit.domain.cd.repositories import DeploymentRepository
-from pomelo_orbit.domain.cd.value_objects import DeployStatus, OperationType
+from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
 from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import DeploymentMapper
@@ -38,7 +38,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
             .filter(
                 DeploymentModel.application_id == app_id,
                 DeploymentModel.operation_type == OperationType.DEPLOY,
-                DeploymentModel.status == DeployStatus.RAN_TO_COMPLETION.value,
+                DeploymentModel.status == TaskStatus.RAN_TO_COMPLETION.value,
             )
             .order_by(DeploymentModel.started_at.desc())
             .first()

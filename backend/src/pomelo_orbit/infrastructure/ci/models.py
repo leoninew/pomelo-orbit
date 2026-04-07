@@ -62,7 +62,8 @@ class PipelineTemplateStageModel(Base):
         String(26), ForeignKey("pipeline_templates.id", ondelete="CASCADE"), nullable=False, index=True
     )
     stage_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_stages.id"), nullable=False)
-    depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array of stage_id
+    stage_key: Mapped[str] = mapped_column(String(255), nullable=False)  # 模板内唯一标识
+    depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array of stage_key
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 

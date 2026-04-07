@@ -10,7 +10,6 @@ export type {
 	ConfigFile,
 } from './cd/application';
 export type { Deployment, DeploymentDetail } from './cd/deployment';
-export { deploymentStatusColors } from './cd/deployment';
 export type { Route, RouteCreateReq, RouteUpdateReq } from './cd/route';
 export type {
 	ConfigItemResp,
@@ -40,5 +39,4 @@ export type {
 	ProjectWebhookUpdateReq,
 } from './ci/webhook';
 export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
-export { pipelineRunStatusColors } from './ci/run';
 export type { StageRun, StageLog, Artifact } from './ci/stage_run';

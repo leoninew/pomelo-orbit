@@ -15,6 +15,7 @@ class ArtifactConfigDto(BaseModel):
 class StageDefinitionDto(BaseModel):
     """Stage 定义 DTO：用于快照，包含编排信息"""
 
+    id: str
     name: str
     image: str
     depends_on: list[str] = []
@@ -67,6 +68,7 @@ class StageOrchestrationDto(BaseModel):
     """模板对 Stage 的编排：引用 + 依赖 + 顺序"""
 
     stage_id: str
+    stage_key: str
     depends_on: list[str] = []
     sort_order: int = 0
 

@@ -46,7 +46,7 @@
 								:to="`/ci/credentials/${p.git_credential_id}`"
 								class="link link-primary"
 							>
-								{{ p.git_credential_id }}
+								{{ p.git_credential_name ?? p.git_credential_id }}
 							</router-link>
 							<span v-else class="text-base-content/40">-</span>
 						</td>
@@ -120,7 +120,7 @@
 						<select v-model="form.git_credential_id" class="select w-full">
 							<option value="">不使用凭据</option>
 							<option v-for="cred in gitCredentials" :key="cred.id" :value="cred.id">
-								{{ cred.name }}
+								{{ cred.name }} ({{ credentialTypeLabels[cred.type] }})
 							</option>
 						</select>
 					</fieldset>
@@ -149,6 +149,7 @@ import { useRouter } from 'vue-router';
 import { credentialApi, projectApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import { credentialTypeLabels } from '@/types/api';
 import type { Credential, Project } from '@/types/api';
 import { formatTime } from '@/utils/time';
 

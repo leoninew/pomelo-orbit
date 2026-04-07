@@ -2,32 +2,24 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold flex items-center gap-2">
-				Pipeline Run
-				<span v-if="run" class="badge badge-sm" :class="runBadgeClass(run.status)">
-					{{ run.status }}
+				流水线记录详情
+				<span v-if="run" class="badge badge-sm" :class="statusBadgeClass(run.status)">
+					{{ statusLabel(run.status) }}
 				</span>
 			</h1>
 			<div class="flex items-center gap-2">
+				<button
+					v-if="run && !isTerminalStatus(run.status)"
+					class="btn btn-sm btn-ghost gap-1"
+					:class="{ 'text-primary': isPolling }"
+					@click="togglePolling"
+				>
+					<Loader2 class="size-4" :class="{ 'animate-spin': isPolling }" />
+					{{ isPolling ? '自动刷新中' : '自动刷新' }}
+				</button>
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/runs')">
 					<ArrowLeft class="size-4" />
 					返回
-				</button>
-				<button
-					v-if="run?.status === 'failed' || run?.status === 'success'"
-					class="btn btn-sm btn-primary"
-					:disabled="retrying"
-					@click="handleRetry"
-				>
-					<span v-if="retrying" class="loading loading-spinner loading-xs" />
-					重试
-				</button>
-				<button
-					v-if="run?.status === 'waiting' || run?.status === 'running'"
-					class="btn btn-sm btn-error btn-ghost"
-					:disabled="canceling"
-					@click="cancelModalRef?.showModal()"
-				>
-					取消
 				</button>
 			</div>
 		</div>
@@ -41,7 +33,28 @@
 			<!-- Basic info -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<h2 class="font-semibold mb-3">基本信息</h2>
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="font-semibold">基本信息</h2>
+						<div class="flex items-center gap-2">
+							<button
+								v-if="run.status === 'faulted'"
+								class="btn btn-sm btn-primary"
+								:disabled="retrying"
+								@click="handleRetry"
+							>
+								<span v-if="retrying" class="loading loading-spinner loading-xs" />
+								重试
+							</button>
+							<button
+								v-if="run.status === 'waiting_to_run' || run.status === 'running'"
+								class="btn btn-sm btn-error btn-ghost"
+								:disabled="canceling"
+								@click="cancelModalRef?.showModal()"
+							>
+								取消
+							</button>
+						</div>
+					</div>
 					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">Run ID</dt>
@@ -110,21 +123,45 @@
 				</div>
 			</div>
 
-			<!-- Stages DAG -->
+			<!-- Stages -->
 			<div
 				v-if="snapshot && snapshot.stages_snapshot.length > 0"
 				class="card bg-base-100 shadow-sm"
 			>
 				<div class="card-body p-5">
-					<h2 class="font-semibold mb-3">Stages</h2>
-					<StageDAGView
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="font-semibold">Stages</h2>
+						<div class="join">
+							<button
+								class="btn btn-xs join-item"
+								:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
+								@click="stagesView = 'list'"
+							>列表</button>
+							<button
+								class="btn btn-xs join-item"
+								:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
+								@click="stagesView = 'dag'"
+							>DAG</button>
+						</div>
+					</div>
+					<StageListView
+						v-if="stagesView === 'list'"
 						:stages="snapshot.stages_snapshot"
+						:orchestration="snapshotStagesAsOrch"
 						:stage-statuses="stageStatuses"
-						:show-minimap="true"
 						:readonly="true"
-						@view-stage="onViewStage"
+						@view-log="onViewLog"
 					/>
-					<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
+					<template v-else>
+						<StageDAGView
+							:stages="snapshot.stages_snapshot"
+							:stage-statuses="stageStatuses"
+							:show-minimap="true"
+							:readonly="true"
+							@view-stage="onViewStage"
+						/>
+						<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
+					</template>
 				</div>
 			</div>
 
@@ -187,9 +224,9 @@
 							<span
 								v-if="currentStageRun"
 								class="badge badge-sm"
-								:class="stageRunBadgeClass(currentStageRun.status)"
+								:class="statusBadgeClass(currentStageRun.status)"
 							>
-								{{ currentStageRun.status }}
+								{{ statusLabel(currentStageRun.status) }}
 							</span>
 						</h3>
 						<button class="btn btn-sm btn-ghost btn-circle" @click="showLogsDrawer = false">
@@ -252,17 +289,25 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, FileX, X } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
+import { ArrowLeft, FileX, Loader2, X } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { stageApi, pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Artifact, StageLog, StageRun, PipelineRun, PipelineSnapshot } from '@/types/api';
+import type {
+	Artifact,
+	StageLog,
+	StageRun,
+	PipelineRun,
+	PipelineSnapshot,
+	TaskStatus,
+} from '@/types/api';
 import type { SnapshotStage } from '@/types/ci/snapshot';
-import { runBadgeClass, stageRunBadgeClass } from '@/utils/status';
-import { formatTime } from '@/utils/time';
+import { statusBadgeClass, statusLabel, isTerminalStatus } from '@/utils/status';
+import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
+import StageListView from './components/StageListView.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -285,27 +330,38 @@ const currentLog = ref<StageLog | null>(null);
 const currentStageRun = ref<StageRun>();
 const showLogsDrawer = ref(false);
 const cancelModalRef = ref<HTMLDialogElement>();
+const stagesView = ref<'list' | 'dag'>('list');
+
+let pollAbort: AbortController | null = null;
+const isPolling = ref(false);
 
 const logsText = computed(() => currentLog.value?.content ?? '');
 
+const snapshotStagesAsOrch = computed(() =>
+	(snapshot.value?.stages_snapshot ?? []).map((s, i) => ({
+		stage_id: s.id,
+		stage_key: s.name,
+		depends_on: s.depends_on,
+		sort_order: i,
+	}))
+);
+
 // Stage 状态从 stageRuns 计算
-const stageStatuses = computed<
-	Map<string, 'success' | 'failed' | 'running' | 'waiting' | 'mixed' | 'skipped'>
->(() => {
-	const map = new Map<string, 'success' | 'failed' | 'running' | 'waiting' | 'mixed' | 'skipped'>();
+const stageStatuses = computed<Map<string, TaskStatus>>(() => {
+	const map = new Map<string, TaskStatus>();
 	if (!snapshot.value) return map;
 
 	for (const stage of snapshot.value.stages_snapshot) {
 		const sr = stageRuns.value.find((r) => r.name === stage.name);
 		if (!sr) {
-			map.set(stage.name, 'waiting');
+			map.set(stage.name, 'waiting_to_run');
 			continue;
 		}
-		if (sr.status === 'success') map.set(stage.name, 'success');
-		else if (sr.status === 'failed' || sr.status === 'faulted') map.set(stage.name, 'failed');
+		if (sr.status === 'ran_to_completion') map.set(stage.name, 'ran_to_completion');
+		else if (sr.status === 'faulted') map.set(stage.name, 'faulted');
 		else if (sr.status === 'running') map.set(stage.name, 'running');
-		else if (sr.status === 'skipped') map.set(stage.name, 'skipped');
-		else map.set(stage.name, 'waiting');
+		else if (sr.status === 'canceled') map.set(stage.name, 'canceled');
+		else map.set(stage.name, 'waiting_to_run');
 	}
 	return map;
 });
@@ -319,12 +375,20 @@ async function onViewStage(stage: SnapshotStage) {
 	await showStageLog(sr);
 }
 
+async function onViewLog(stageKey: string) {
+	const sr = stageRuns.value.find((r) => r.name === stageKey);
+	if (!sr) {
+		toast.error('该 Stage 尚未执行');
+		return;
+	}
+	await showStageLog(sr);
+}
+
 async function fetchRun() {
 	try {
 		await execute(async () => {
 			const data = await pipelineRunApi.get(runId);
 			run.value = data;
-			// Fetch snapshot after getting run
 			if (data.pipeline_snapshot_id) {
 				await fetchSnapshot(data.pipeline_snapshot_id);
 			}
@@ -403,9 +467,39 @@ async function handleCancel() {
 	}
 }
 
+async function startPolling() {
+	if (isPolling.value) return;
+	isPolling.value = true;
+	pollAbort = new AbortController();
+	const signal = pollAbort.signal;
+	while (!signal.aborted) {
+		await delayAsync(2000);
+		if (signal.aborted) break;
+		await Promise.all([fetchRun(), fetchStageRuns()]);
+		if (!run.value || isTerminalStatus(run.value.status)) {
+			fetchArtifacts();
+			break;
+		}
+	}
+	isPolling.value = false;
+}
+
+function stopPolling() {
+	pollAbort?.abort();
+	pollAbort = null;
+	isPolling.value = false;
+}
+
+function togglePolling() {
+	if (isPolling.value) stopPolling();
+	else startPolling();
+}
+
 onMounted(async () => {
 	await fetchRun();
-	fetchStageRuns();
+	await fetchStageRuns();
 	fetchArtifacts();
 });
+
+onUnmounted(stopPolling);
 </script>

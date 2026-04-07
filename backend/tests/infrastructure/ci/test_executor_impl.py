@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.executor import ExecutionContext
-from pomelo_orbit.domain.ci.value_objects import StageDefinition, StageStatus
+from pomelo_orbit.domain.ci.value_objects import StageDefinition
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 
 def make_stage(name: str, commands: list[str], depends_on: list[str] | None = None) -> StageDefinition:
-    return StageDefinition(name=name, image="alpine:latest", script="\n".join(commands), depends_on=depends_on or [])
+    return StageDefinition(name=name, id=name, image="alpine:latest", script="\n".join(commands), depends_on=depends_on or [])
 
 
 class TestPipelineExecutorImpl:
@@ -103,7 +104,7 @@ class TestPipelineExecutorImpl:
         assert result is False
         assert container_executor.run.call_count == 2
         saved = [call[0][0] for call in stage_run_repo.save.call_args_list]
-        canceled = [s for s in saved if s.status == StageStatus.CANCELED]
+        canceled = [s for s in saved if s.status == TaskStatus.CANCELED]
         assert len(canceled) == 1
         assert canceled[0].name == "c"
 
@@ -147,9 +148,9 @@ class TestPipelineExecutorImpl:
         )
         await executor.execute(context, [make_stage("a", ["echo a"])])
         assert len(saved_statuses) == 3
-        assert saved_statuses[0] == StageStatus.WAITING
-        assert saved_statuses[1] == StageStatus.RUNNING
-        assert saved_statuses[2] == StageStatus.SUCCESS
+        assert saved_statuses[0] == TaskStatus.WAITING_TO_RUN
+        assert saved_statuses[1] == TaskStatus.RUNNING
+        assert saved_statuses[2] == TaskStatus.RAN_TO_COMPLETION
 
     @pytest.mark.asyncio
     async def test_complex_parallel_execution(self, executor, context, container_executor):

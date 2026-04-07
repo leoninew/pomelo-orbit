@@ -21,7 +21,7 @@ class ProjectRepositoryImpl(BaseRepository[Project, ProjectModel], ProjectReposi
             self._session.query(PipelineRunModel)
             .filter(
                 PipelineRunModel.project_id == project_id,
-                PipelineRunModel.status.in_(["waiting", "running"]),
+                PipelineRunModel.status.in_(["waiting_to_run", "running"]),
             )
             .first()
             is not None

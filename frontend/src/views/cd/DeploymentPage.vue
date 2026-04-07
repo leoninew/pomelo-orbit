@@ -50,7 +50,9 @@
 						<td class="cell-muted">{{ d.trigger_type }}</td>
 						<td class="cell-muted">{{ d.env_file || '—' }}</td>
 						<td>
-							<span class="badge badge-sm" :class="deployBadgeClass(d.status)">{{ d.status }}</span>
+							<span class="badge badge-sm" :class="statusBadgeClass(d.status)">
+								{{ statusLabel(d.status) }}
+							</span>
 						</td>
 						<td class="cell-muted">{{ formatTime(d.started_at) }}</td>
 						<td class="cell-muted">{{ formatDuration(d.duration_ms) }}</td>
@@ -60,7 +62,7 @@
 									查看
 								</router-link>
 								<button
-									v-if="d.status === 'running' || d.status === 'queued'"
+									v-if="d.status === 'running' || d.status === 'waiting_to_run'"
 									class="link link-error"
 									@click="handleCancel(d.id)"
 								>
@@ -96,7 +98,7 @@ import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';
-import { formatDuration } from '@/utils/status';
+import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
 import type { Deployment } from '@/types/api';
 
 const route = useRoute();
@@ -108,17 +110,6 @@ const searchText = ref('');
 const applicationId = ref<string | undefined>(route.query.application_id as string | undefined);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-
-const badgeMap: Record<string, string> = {
-	ran_to_completion: 'badge-outline badge-success',
-	faulted: 'badge-outline badge-error',
-	running: 'badge-outline badge-info',
-	queued: 'badge-outline badge-warning',
-	canceled: 'badge-ghost',
-};
-function deployBadgeClass(s: string) {
-	return badgeMap[s] ?? 'badge-ghost';
-}
 
 async function fetchDeployments() {
 	try {

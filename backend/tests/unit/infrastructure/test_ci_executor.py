@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.executor import ExecutionContext
-from pomelo_orbit.domain.ci.value_objects import ArtifactConfig, StageDefinition, StageStatus
+from pomelo_orbit.domain.ci.value_objects import ArtifactConfig, StageDefinition
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 
 if TYPE_CHECKING:
@@ -43,7 +44,7 @@ def stage(
     name: str, image: str = "alpine:latest", commands: list[str] | None = None, depends_on: list[str] | None = None
 ) -> StageDefinition:
     return StageDefinition(
-        name=name, image=image, script="\n".join(commands or ["echo ok"]), depends_on=depends_on or []
+        name=name, id=name, image=image, script="\n".join(commands or ["echo ok"]), depends_on=depends_on or []
     )
 
 
@@ -101,7 +102,7 @@ class TestPipelineExecutorImpl:
         assert result is False
         assert container_executor.run.call_count == 1
         saved = [call[0][0] for call in stage_run_repo.save.call_args_list]
-        canceled = [s for s in saved if hasattr(s, "status") and s.status == StageStatus.CANCELED]
+        canceled = [s for s in saved if hasattr(s, "status") and s.status == TaskStatus.CANCELED]
         assert len(canceled) >= 1
 
     @pytest.mark.asyncio
@@ -122,7 +123,7 @@ class TestPipelineExecutorImpl:
         result = await executor.execute(make_context(), [stage("build")])
         assert result is False
         saved = [call[0][0] for call in stage_run_repo.save.call_args_list]
-        faulted = [s for s in saved if hasattr(s, "status") and s.status == StageStatus.FAULTED]
+        faulted = [s for s in saved if hasattr(s, "status") and s.status == TaskStatus.FAULTED]
         assert len(faulted) >= 1
 
     @pytest.mark.asyncio
@@ -132,6 +133,7 @@ class TestPipelineExecutorImpl:
         container_executor.run.return_value = (0, "Success")
         s = StageDefinition(
             name="build",
+            id="build",
             image="alpine:latest",
             script="echo build",
             artifacts=[ArtifactConfig(name="output.txt", path="output.txt")],

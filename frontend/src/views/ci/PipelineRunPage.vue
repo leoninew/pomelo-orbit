@@ -1,7 +1,7 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between">
-			<h1 class="text-xl font-semibold">Pipeline Runs</h1>
+			<h1 class="text-xl font-semibold">流水线记录</h1>
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">

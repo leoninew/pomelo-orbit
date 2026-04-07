@@ -1,7 +1,7 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">Stage 管理</h1>
+			<h1 class="text-xl font-semibold">流水线阶段</h1>
 			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
 				<Plus class="size-4" />
 				新建 Stage

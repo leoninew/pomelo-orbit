@@ -178,7 +178,7 @@ const sidebarMap = {
 		{ key: 'projects', label: '项目管理', path: '/ci/projects', icon: FolderGit2 },
 		{ key: 'pipelineruns', label: '流水线记录', path: '/ci/runs', icon: Play },
 		{ key: 'pipelinetemplates', label: '流水线模板', path: '/ci/templates', icon: FileCode2 },
-		{ key: 'pipelinestages', label: 'Stage 管理', path: '/ci/stages', icon: Layers },
+		{ key: 'pipelinestages', label: '流水线阶段', path: '/ci/stages', icon: Layers },
 		{ key: 'credentials', label: '凭据管理', path: '/ci/credentials', icon: KeyRound },
 	],
 	settings: [

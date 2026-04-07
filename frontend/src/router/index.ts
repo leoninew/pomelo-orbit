@@ -70,7 +70,7 @@ const router = createRouter({
 			path: '/ci/stages',
 			name: 'PipelineStages',
 			component: () => import('@/views/ci/PipelineStages.vue'),
-			meta: { title: 'Stage 管理', menuKey: 'pipelinestages' },
+			meta: { title: '流水线阶段', menuKey: 'pipelinestages' },
 		},
 		{
 			path: '/ci/stages/:id',
@@ -112,7 +112,7 @@ const router = createRouter({
 			path: '/ci/runs',
 			name: 'PipelineRuns',
 			component: () => import('@/views/ci/PipelineRunPage.vue'),
-			meta: { title: 'Pipeline Runs', menuKey: 'pipelineruns' },
+			meta: { title: '流水线记录', menuKey: 'pipelineruns' },
 		},
 		{
 			path: '/ci/runs/:id',

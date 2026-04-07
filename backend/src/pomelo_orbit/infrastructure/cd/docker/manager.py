@@ -74,12 +74,12 @@ class ApplicationManagerImpl(ApplicationManager):
 
     def get_app_working_dir(self, application_code: str) -> Path:
         """获取运行时目录"""
-        return get_project_root() / "data" / application_code
+        return get_project_root() / "data" / "cd" / application_code
 
     # ==================== 模板渲染 ====================
     def _render_template(self, application_code: str, content: str) -> str:
         # physical_dir: {root} 的宿主机路径（data 目录的上级）
-        # physical_app_dir: {root}/data/{app_code} 的宿主机路径（应用 data 目录的上级）
+        # physical_app_dir: {root}/data/cd/{app_code} 的宿主机路径
         container_id = self._detect_container_id()
         logger.debug(f"Rendering template, app={application_code}, container_id={container_id}")
 
@@ -88,11 +88,11 @@ class ApplicationManagerImpl(ApplicationManager):
             mount = Path(self._get_container_mount(container_id))
             # pomelo-orbit 自举部署需要完整的宿主机路径配置
             physical_dir = str(mount.parent).replace("\\", "/")
-            physical_app_dir = str(mount / application_code).replace("\\", "/")
+            physical_app_dir = str(mount / "cd" / application_code).replace("\\", "/")
         else:
             # pomelo-orbit 自举部署需要完整的宿主机路径配置
             physical_dir = str(get_project_root()).replace("\\", "/")
-            # 其他应用在 data/{app_code}/ 下执行，./data 即为应用数据目录
+            # 其他应用在 data/cd/{app_code}/ 下执行，./data 即为应用数据目录
             physical_app_dir = "."
 
         domain_suffix = self.settings.traefik.domain_suffix

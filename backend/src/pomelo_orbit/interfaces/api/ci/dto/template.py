@@ -12,6 +12,19 @@ class ArtifactConfigDto(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class StageDefinitionDto(BaseModel):
+    """Stage 定义 DTO：用于快照，包含编排信息"""
+
+    name: str
+    image: str
+    depends_on: list[str] = []
+    script: str
+    env: dict[str, str] = {}
+    artifacts: list[ArtifactConfigDto] | None = None
+
+    model_config = {"from_attributes": True}
+
+
 # ── PipelineStage DTO ─────────────────────────────────────────────────────────
 
 
@@ -95,7 +108,7 @@ class PipelineSnapshotResp(BaseModel):
     id: str
     template_id: str
     version: int
-    stages_snapshot: list[dict]
+    stages_snapshot: list[StageDefinitionDto]
     variable_declarations_snapshot: list[VariableDeclarationDto]
     created_at: datetime
 

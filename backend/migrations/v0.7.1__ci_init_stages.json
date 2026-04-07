@@ -7,7 +7,7 @@
         "id": "01STAGE000000000000000CLONE",
         "name": "Git Clone",
         "image": "alpine/git",
-        "script": "cd {{ working_dir }}\n git clone --depth=1 --branch={{ project_trigger_ref }} {{ project_repository_url }} .",
+        "script": "cd {{ working_dir }}\ngit clone --depth=1 --branch={{ project_trigger_ref }} {{ project_repository_url }} .",
         "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
         "artifacts": null,
         "description": "克隆代码仓库",

@@ -5,7 +5,7 @@
 import math
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query
 
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.cd.di import get_application_service
@@ -45,7 +45,7 @@ def list_applications(
     )
 
 
-@router.post("", response_model=ApplicationResp, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ApplicationResp, status_code=201)
 def create_application(
     data: ApplicationCreateReq,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
@@ -61,7 +61,7 @@ def create_application(
     return ApplicationResp.model_validate(app)
 
 
-@router.post("/import", response_model=ApplicationResp, status_code=status.HTTP_201_CREATED)
+@router.post("/import", response_model=ApplicationResp, status_code=201)
 def import_application(
     data: ApplicationImportReq,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
@@ -101,7 +101,7 @@ def update_application(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     _current_user=Depends(get_current_user),
 ) -> ApplicationResp:
-    """更新应用基本信息"""
+    """更新应用"""
     update_data = data.model_dump(exclude_unset=True)
 
     app = app_service.update_application(
@@ -112,7 +112,7 @@ def update_application(
     return ApplicationResp.model_validate(app)
 
 
-@router.delete("/{app_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{app_id}", status_code=204)
 async def delete_application(
     app_id: str,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
@@ -171,7 +171,7 @@ async def write_application_file(
     return ConfigFileResp.model_validate(config_file)
 
 
-@router.delete("/{app_id}/file/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{app_id}/file/{file_id}", status_code=204)
 def delete_application_file(
     app_id: str,
     file_id: str,

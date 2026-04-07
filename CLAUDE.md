@@ -347,6 +347,28 @@ def list_contents(...): ...
 def get_content(id: str, ...): ...
 ```
 
+#### 路由文档注释规范
+
+路由函数可以添加简单的单行文档注释说明功能，不强制要求：
+
+```python
+# ✅ 允许 - 简单单行说明
+@router.post("", status_code=201)
+def create_application(...) -> ApplicationResp:
+    """创建应用"""
+    ...
+
+# ✅ 允许 - 无文档注释（函数名已自解释）
+@router.get("/{id}")
+def get_application(id: str, ...) -> ApplicationResp:
+    ...
+```
+
+**原则**：
+- 文档注释应为简单的单行中文说明
+- 如果函数名已清晰表达功能，可以省略文档注释
+- 不需要详细说明参数和返回值（已有类型注解）
+
 #### Schema 定义
 
 ```python

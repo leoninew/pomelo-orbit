@@ -1,11 +1,9 @@
 <template>
 	<div class="flex flex-col gap-4">
-		<!-- Page header -->
-		<div class="flex items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold shrink-0">应用管理</h1>
-			<div class="flex items-center gap-2 flex-nowrap ml-auto">
-				<!-- Search -->
-				<label class="input input-sm input-bordered flex items-center gap-2 w-44">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">应用管理</h1>
+			<div class="flex items-center gap-2 flex-wrap">
+				<label class="input input-sm input-bordered flex items-center gap-2">
 					<Search class="size-3.5 text-base-content/60 shrink-0" />
 					<input
 						v-model="searchText"
@@ -15,8 +13,7 @@
 						@keyup.enter="handleSearch"
 					/>
 				</label>
-				<!-- View toggle -->
-				<div class="join shrink-0">
+				<div class="join">
 					<button
 						class="join-item btn btn-sm"
 						:class="viewMode === 'card' ? 'btn-primary' : 'btn-ghost'"
@@ -32,11 +29,11 @@
 						<List class="size-4" />
 					</button>
 				</div>
-				<button class="btn btn-sm btn-primary gap-1.5 shrink-0" @click="openCreateModal">
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
 					<Plus class="size-4" />
 					新建应用
 				</button>
-				<button class="btn btn-sm btn-ghost gap-1.5 shrink-0" @click="triggerImport">
+				<button class="btn btn-sm btn-ghost gap-1.5" @click="triggerImport">
 					<Upload class="size-4" />
 					导入
 				</button>
@@ -50,7 +47,6 @@
 			</div>
 		</div>
 
-		<!-- Loading -->
 		<div v-if="status === 'loading'" class="flex justify-center py-16">
 			<span class="loading loading-spinner loading-lg text-primary" />
 		</div>
@@ -58,7 +54,6 @@
 			{{ error }}
 		</div>
 
-		<!-- Card view -->
 		<template v-else-if="viewMode === 'card'">
 			<div
 				v-if="applications.length === 0"
@@ -120,8 +115,7 @@
 				</div>
 			</div>
 
-			<!-- Pagination -->
-			<div v-if="totalPages > 0" class="flex justify-end mt-2">
+			<div v-if="totalPages > 0" class="flex justify-end mt-4">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -136,7 +130,6 @@
 			</div>
 		</template>
 
-		<!-- Table view -->
 		<div v-else class="card bg-base-100 shadow-sm overflow-x-auto">
 			<table class="table min-h-48">
 				<thead>
@@ -197,7 +190,6 @@
 					</tr>
 				</tbody>
 			</table>
-			<!-- Table pagination -->
 			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button

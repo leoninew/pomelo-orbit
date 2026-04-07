@@ -5,7 +5,7 @@
     "data": [
       {
         "id": "01STAGE000000000000000CLONE",
-        "name": "Git Clone",
+        "name": "git clone",
         "image": "alpine/git",
         "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ project_repository_url }}\ngit fetch --depth=1 origin {{ project_trigger_ref }}\ngit checkout -B {{ project_trigger_ref }} FETCH_HEAD",
         "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
@@ -16,7 +16,7 @@
       },
       {
         "id": "01STAGE000000000000001BUILD",
-        "name": "Go Build",
+        "name": "golang:1.22 build",
         "image": "golang:1.22-alpine",
         "script": "cd {{ working_dir }}\ndocker build -t {{ IMAGE }} .",
         "env": "{}",
@@ -27,7 +27,7 @@
       },
       {
         "id": "01STAGE000000000000003TESTGO",
-        "name": "Go Test",
+        "name": "golang:1.22 test",
         "image": "golang:1.22-alpine",
         "script": "cd {{ working_dir }}\ngo test ./...",
         "env": "{}",

@@ -26,9 +26,9 @@
 				class="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-base-100 shadow-xl flex flex-col"
 			>
 				<div class="flex items-center justify-between px-5 py-4 border-b border-base-200 shrink-0">
-					<h2 class="font-semibold text-base">
+					<h3 class="font-bold text-lg">
 						{{ editingStage ? '编辑 Stage' : '新建 Stage' }}
-					</h2>
+					</h3>
 					<div class="flex items-center gap-2">
 						<button class="btn btn-sm btn-ghost" @click="handleClose">取消</button>
 						<button class="btn btn-sm btn-primary" :disabled="saving" @click="handleSave">

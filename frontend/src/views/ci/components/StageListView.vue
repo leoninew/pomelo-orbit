@@ -37,7 +37,11 @@
 				</td>
 				<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 				<td>
-					<router-link v-if="linkable" :to="`/ci/stages/${row.stage.id}`" class="link link-primary text-xs">
+					<router-link
+						v-if="linkable"
+						:to="`/ci/stages/${row.stage.id}`"
+						class="link link-primary text-xs"
+					>
 						{{ row.stage.name }}
 					</router-link>
 					<span v-else class="text-xs">{{ row.stage.name }}</span>
@@ -60,20 +64,30 @@
 				</td>
 				<td>
 					<div class="flex items-center gap-3">
-						<button class="link link-primary text-xs" @click="$emit('edit-stage', idx)">编辑</button>
-						<button class="link link-error text-xs" @click="$emit('remove-stage', idx)">移除</button>
+						<button class="link link-primary text-xs" @click="$emit('edit-stage', idx)">
+							编辑
+						</button>
+						<button class="link link-error text-xs" @click="$emit('remove-stage', idx)">
+							移除
+						</button>
 					</div>
 				</td>
 			</tr>
 		</VueDraggable>
 		<tbody v-else>
 			<tr v-if="rows.length === 0">
-				<td :colspan="stageStatuses ? 7 : 5" class="text-center py-8 text-base-content/60">暂无 Stage</td>
+				<td :colspan="stageStatuses ? 7 : 5" class="text-center py-8 text-base-content/60">
+					暂无 Stage
+				</td>
 			</tr>
 			<tr v-for="(row, idx) in rows" :key="row.orch.stage_key" class="hover">
 				<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 				<td>
-					<router-link v-if="linkable" :to="`/ci/stages/${row.stage.id}`" class="link link-primary text-xs">
+					<router-link
+						v-if="linkable"
+						:to="`/ci/stages/${row.stage.id}`"
+						class="link link-primary text-xs"
+					>
 						{{ row.stage.name }}
 					</router-link>
 					<span v-else class="text-xs">{{ row.stage.name }}</span>
@@ -105,10 +119,7 @@
 					<span v-else class="text-base-content/40 text-xs">—</span>
 				</td>
 				<td v-if="stageStatuses">
-					<button
-						class="link link-primary text-xs"
-						@click="emit('view-log', row.orch.stage_key)"
-					>
+					<button class="link link-primary text-xs" @click="emit('view-log', row.orch.stage_key)">
 						日志
 					</button>
 				</td>

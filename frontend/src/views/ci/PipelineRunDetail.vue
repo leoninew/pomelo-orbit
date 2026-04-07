@@ -136,12 +136,16 @@
 								class="btn btn-xs join-item"
 								:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
 								@click="stagesView = 'list'"
-							>列表</button>
+							>
+								列表
+							</button>
 							<button
 								class="btn btn-xs join-item"
 								:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
 								@click="stagesView = 'dag'"
-							>DAG</button>
+							>
+								DAG
+							</button>
 						</div>
 					</div>
 					<StageListView

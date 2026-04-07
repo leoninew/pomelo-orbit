@@ -8,3 +8,10 @@ class TraefikConfigResp(BaseModel):
 
     dashboard_domain: str
     https_enabled: bool
+
+
+class TraefikRouteListResp(BaseModel):
+    """Traefik 路由列表响应"""
+
+    items: list
+    total: int

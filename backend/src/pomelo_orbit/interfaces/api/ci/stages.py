@@ -1,6 +1,5 @@
 """Stage 执行记录 API"""
 
-import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -9,8 +8,6 @@ from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.stage_run import StageLogResp
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/stages", tags=["stages"])
 

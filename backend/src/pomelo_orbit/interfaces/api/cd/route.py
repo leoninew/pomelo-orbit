@@ -1,10 +1,10 @@
-"""Route management API endpoints."""
+"""路由管理 API"""
 
 import logging
 import math
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, UploadFile, status
+from fastapi import APIRouter, Depends, Query, UploadFile
 
 from pomelo_orbit.application.cd.di import get_route_service
 from pomelo_orbit.application.cd.route_service import RouteService
@@ -35,7 +35,7 @@ def list_routes(
     )
 
 
-@router.post("", response_model=RouteResp, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=RouteResp, status_code=201)
 def create_route(
     data: RouteCreateReq,
     route_service: Annotated[RouteService, Depends(get_route_service)],
@@ -76,13 +76,13 @@ def update_route(
     return RouteResp.model_validate(updated_route)
 
 
-@router.delete("/{route_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{route_id}", status_code=204)
 def delete_route(
     route_id: str,
     route_service: Annotated[RouteService, Depends(get_route_service)],
     _current_user=Depends(get_current_user),
 ):
-    """删除路由（要求路由已停用）"""
+    """删除路由"""
     route_service.delete_route(route_id)
 
 
@@ -125,7 +125,7 @@ async def upload_cert(
     route_service: Annotated[RouteService, Depends(get_route_service)],
     _current_user=Depends(get_current_user),
 ) -> RouteResp:
-    """上传 SSL 证书 (PEM 格式)"""
+    """上传 SSL 证书"""
     cert_content = await pem.read()
     route = route_service.upload_cert(route_id, cert_content)
     return RouteResp.model_validate(route)

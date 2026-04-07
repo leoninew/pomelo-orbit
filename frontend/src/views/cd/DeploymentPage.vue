@@ -3,12 +3,12 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">部署记录</h1>
 			<label class="input input-sm input-bordered flex items-center gap-2">
-				<Search class="size-3.5 text-base-content/60" />
+				<Search class="size-3.5 text-base-content/60 shrink-0" />
 				<input
 					v-model="searchText"
 					type="text"
 					placeholder="搜索应用名称"
-					class="w-36"
+					class="min-w-0 w-full"
 					@keyup.enter="handleSearch"
 				/>
 			</label>

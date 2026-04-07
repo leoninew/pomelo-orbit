@@ -1,6 +1,5 @@
 """流水线 Stage 管理 API"""
 
-import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -13,8 +12,6 @@ from pomelo_orbit.interfaces.api.ci.dto.template import (
     PipelineStageResp,
     PipelineStageUpdateReq,
 )
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/pipeline-stages", tags=["pipeline-stages"])
 

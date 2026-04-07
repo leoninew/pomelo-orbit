@@ -64,7 +64,8 @@
 					<pre
 						v-if="stage.script"
 						class="bg-base-200 rounded p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all overflow-x-auto max-h-64"
-					>{{ stage.script }}</pre>
+						>{{ stage.script }}</pre
+					>
 					<p v-else class="text-base-content/40 py-4 text-center">暂无脚本</p>
 				</div>
 			</div>

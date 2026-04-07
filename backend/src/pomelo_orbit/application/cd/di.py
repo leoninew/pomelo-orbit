@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.cd.deployment_service import DeploymentService
 from pomelo_orbit.application.cd.route_service import RouteService
+from pomelo_orbit.application.cd.traefik_service import TraefikService
 from pomelo_orbit.application.settings.setting_service import SettingService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.repositories import (
@@ -18,7 +19,7 @@ from pomelo_orbit.infrastructure.cd.cert.di import get_mkcert_service
 from pomelo_orbit.infrastructure.cd.cert.mkcert import MkcertService
 from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
 from pomelo_orbit.infrastructure.cd.repositories.di import get_route_repository
-from pomelo_orbit.infrastructure.cd.traefik.di import get_traefik_manager
+from pomelo_orbit.infrastructure.cd.traefik.di import get_traefik_api_client, get_traefik_manager
 from pomelo_orbit.infrastructure.cd.traefik.manager import TraefikManager
 from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.persistence.di import get_db
@@ -27,6 +28,7 @@ from pomelo_orbit.infrastructure.repositories import (
     ConfigFileRepositoryImpl,
     DeploymentRepositoryImpl,
 )
+from pomelo_orbit.infrastructure.traefik import TraefikAPIClient
 
 
 def get_app_manager(
@@ -81,3 +83,16 @@ def get_setting_service(
 ) -> SettingService:
     """获取配置服务实例"""
     return SettingService(settings=settings)
+
+
+def get_traefik_service(
+    route_repo: Annotated[RouteRepository, Depends(get_route_repository)],
+    traefik_client: Annotated[TraefikAPIClient, Depends(get_traefik_api_client)],
+    settings: Annotated[Dynaconf, Depends(get_settings)],
+) -> TraefikService:
+    """获取 Traefik 服务实例"""
+    return TraefikService(
+        route_repo=route_repo,
+        traefik_client=traefik_client,
+        settings=settings,
+    )

@@ -50,6 +50,10 @@ from pomelo_orbit.infrastructure.ci.variables import (
     resolve_stage,
     validate_variables,
 )
+from pomelo_orbit.infrastructure.ci.webhook_verifier import (
+    verify_github_signature,
+    verify_gitlab_signature,
+)
 from pomelo_orbit.infrastructure.ci.workspace import cleanup_project, cleanup_run, create_workspace
 from pomelo_orbit.infrastructure.persistence.database import get_session_factory
 from pomelo_orbit.infrastructure.security import SecurityService
@@ -708,3 +712,27 @@ class PipelineService:
                 session.commit()
                 cleanup_run(project.code, run.id)
                 logger.info(f"Pipeline finished: run={run.id}, status={run.status}")
+
+    def verify_webhook_signature(
+        self,
+        source: str,
+        payload: bytes,
+        signature: str,
+        secret: str,
+    ) -> bool:
+        """验证 webhook 签名
+
+        Args:
+            source: "github" 或 "gitlab"
+            payload: 原始请求体 bytes
+            signature: 签名（GitHub 的 X-Hub-Signature-256 或 GitLab 的 X-Gitlab-Token）
+            secret: 解密后的 webhook secret
+
+        Returns:
+            验证是否通过
+        """
+        if source == "github":
+            return verify_github_signature(payload, signature, secret)
+        if source == "gitlab":
+            return verify_gitlab_signature(signature, secret)
+        return False

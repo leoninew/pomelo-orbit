@@ -10,7 +10,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
-from pomelo_orbit.infrastructure.ci.webhook_verifier import verify_github_signature, verify_gitlab_signature
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.webhook import (
     ProjectWebhookCreateReq,
@@ -119,7 +118,9 @@ async def receive_webhook(
     decrypted_secret = pipeline_service.decrypt_webhook_secret(wh)
 
     if x_hub_signature_256:
-        if not verify_github_signature(payload_bytes, x_hub_signature_256, decrypted_secret):
+        if not pipeline_service.verify_webhook_signature(
+            "github", payload_bytes, x_hub_signature_256, decrypted_secret
+        ):
             logger.warning("Webhook signature verification failed")
             return {"status": "ignored", "reason": "signature verification failed"}
         source = "github"
@@ -127,7 +128,7 @@ async def receive_webhook(
         commit_sha = payload.get("after", "")
         author = payload.get("pusher", {}).get("name", "")
     elif x_gitlab_token:
-        if not verify_gitlab_signature(x_gitlab_token, decrypted_secret):
+        if not pipeline_service.verify_webhook_signature("gitlab", b"", x_gitlab_token, decrypted_secret):
             logger.warning("Webhook token verification failed")
             return {"status": "ignored", "reason": "signature verification failed"}
         source = "gitlab"

@@ -170,7 +170,11 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="!addOrchForm.stageId || !!stageKeyError" @click="confirmAddOrch">
+					<button
+						class="btn btn-primary"
+						:disabled="!addOrchForm.stageId || !!stageKeyError"
+						@click="confirmAddOrch"
+					>
 						确定
 					</button>
 					<button class="btn btn-ghost" @click="addOrchModalRef?.close()">取消</button>
@@ -191,7 +195,9 @@
 							class="input w-full"
 							:class="{ 'input-error': editStageKeyError }"
 						/>
-						<p v-if="editStageKeyError" class="fieldset-label text-error">{{ editStageKeyError }}</p>
+						<p v-if="editStageKeyError" class="fieldset-label text-error">
+							{{ editStageKeyError }}
+						</p>
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">依赖（depends_on）</legend>
@@ -216,7 +222,9 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="!!editStageKeyError" @click="confirmEditOrch">确定</button>
+					<button class="btn btn-primary" :disabled="!!editStageKeyError" @click="confirmEditOrch">
+						确定
+					</button>
 					<button class="btn btn-ghost" @click="editOrchModalRef?.close()">取消</button>
 				</div>
 			</div>

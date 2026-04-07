@@ -13,6 +13,7 @@
 				<thead>
 					<tr class="text-base-content/60">
 						<th>项目名称</th>
+						<th>编码</th>
 						<th>仓库地址</th>
 						<th>Git 凭据</th>
 						<th>创建时间</th>
@@ -21,15 +22,15 @@
 				</thead>
 				<tbody>
 					<tr v-if="status === 'loading'">
-						<td colspan="5" class="text-center py-8">
+						<td colspan="6" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
 					</tr>
 					<tr v-else-if="status === 'error'">
-						<td colspan="5" class="text-center py-8 text-error">{{ error }}</td>
+						<td colspan="6" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="projects.length === 0">
-						<td colspan="5" class="text-center py-8 text-base-content/60">暂无项目</td>
+						<td colspan="6" class="text-center py-8 text-base-content/60">暂无项目</td>
 					</tr>
 					<tr v-for="p in projects" :key="p.id" class="hover">
 						<td>
@@ -37,6 +38,7 @@
 								{{ p.name }}
 							</router-link>
 						</td>
+						<td class="text-base-content/70">{{ p.code }}</td>
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
 						<td class="cell-muted">
 							<router-link
@@ -90,6 +92,17 @@
 						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
 					</fieldset>
 					<fieldset class="fieldset">
+						<legend class="fieldset-legend">项目编码</legend>
+						<input
+							v-model="form.code"
+							type="text"
+							class="input w-full"
+							:class="{ 'input-error': errors.code }"
+							placeholder="例如: my-backend（固化工作目录，创建后不可修改）"
+						/>
+						<p v-if="errors.code" class="fieldset-label text-error">{{ errors.code }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
 						<legend class="fieldset-legend">仓库地址</legend>
 						<input
 							v-model="form.repository_url"
@@ -103,35 +116,6 @@
 						</p>
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">流水线快照</legend>
-						<div class="flex gap-2">
-							<select
-								v-model="form.selectedTemplateId"
-								class="select w-full"
-								@change="onTemplateChange"
-							>
-								<option value="" disabled>选择模板</option>
-								<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
-									{{ tpl.name }}
-								</option>
-							</select>
-							<select
-								v-model="form.pipeline_snapshot_id"
-								class="select w-full"
-								:class="{ 'select-error': errors.pipeline_snapshot_id }"
-								:disabled="!form.selectedTemplateId"
-							>
-								<option value="" disabled>选择版本</option>
-								<option v-for="snap in snapshots" :key="snap.id" :value="snap.id">
-									v{{ snap.version }}
-								</option>
-							</select>
-						</div>
-						<p v-if="errors.pipeline_snapshot_id" class="fieldset-label text-error">
-							{{ errors.pipeline_snapshot_id }}
-						</p>
-					</fieldset>
-					<fieldset class="fieldset">
 						<legend class="fieldset-legend">Git 凭据（可选）</legend>
 						<select v-model="form.git_credential_id" class="select w-full">
 							<option value="">不使用凭据</option>
@@ -139,15 +123,6 @@
 								{{ cred.name }}
 							</option>
 						</select>
-					</fieldset>
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend">分支过滤（可选）</legend>
-						<input
-							v-model="form.branch_filter"
-							type="text"
-							class="input w-full"
-							placeholder="main,develop（留空表示所有分支）"
-						/>
 					</fieldset>
 				</div>
 				<div class="modal-action">
@@ -168,23 +143,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
 import { Plus } from 'lucide-vue-next';
-import { credentialApi, pipelineTemplateApi, projectApi } from '@/api/ci';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { credentialApi, projectApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import type { Credential, Project } from '@/types/api';
 import { formatTime } from '@/utils/time';
-import type { Credential, PipelineSnapshotListItem, PipelineTemplate, Project } from '@/types/api';
 
+const router = useRouter();
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
 const projects = ref<Project[]>([]);
-const templates = ref<PipelineTemplate[]>([]);
 const credentials = ref<Credential[]>([]);
-const snapshots = ref<PipelineSnapshotListItem[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
 );
@@ -196,19 +171,21 @@ const createModalRef = ref<HTMLDialogElement>();
 
 const form = reactive({
 	name: '',
+	code: '',
 	repository_url: '',
-	pipeline_snapshot_id: '',
-	selectedTemplateId: '',
 	git_credential_id: '',
-	branch_filter: '',
 });
-const errors = reactive({ name: '', repository_url: '', pipeline_snapshot_id: '' });
+const errors = reactive({
+	name: '',
+	code: '',
+	repository_url: '',
+});
 
 function validate() {
 	errors.name = form.name.trim() ? '' : '请输入项目名称';
+	errors.code = /^[a-z0-9-]+$/.test(form.code.trim()) ? '' : '编码只能包含小写字母、数字和连字符';
 	errors.repository_url = form.repository_url.trim() ? '' : '请输入仓库地址';
-	errors.pipeline_snapshot_id = form.pipeline_snapshot_id ? '' : '请选择流水线快照';
-	return !errors.name && !errors.repository_url && !errors.pipeline_snapshot_id;
+	return !errors.name && !errors.code && !errors.repository_url;
 }
 
 async function fetchProjects() {
@@ -234,34 +211,19 @@ function goPage(p: number) {
 async function openCreateModal() {
 	Object.assign(form, {
 		name: '',
+		code: '',
 		repository_url: '',
-		pipeline_snapshot_id: '',
-		selectedTemplateId: '',
 		git_credential_id: '',
-		branch_filter: '',
 	});
-	Object.assign(errors, { name: '', repository_url: '', pipeline_snapshot_id: '' });
+	Object.assign(errors, { name: '', code: '', repository_url: '' });
 	createModalRef.value?.showModal();
 	try {
 		await executeModal(async () => {
-			const [tplRes, credRes] = await Promise.all([
-				pipelineTemplateApi.list({ per_page: 100 }),
-				credentialApi.list({ per_page: 100 }),
-			]);
-			templates.value = tplRes.items;
+			const credRes = await credentialApi.list({ per_page: 100 });
 			credentials.value = credRes.items;
-			snapshots.value = [];
 		});
 	} catch {
 		toast.error('加载表单数据失败');
-	}
-}
-
-async function onTemplateChange() {
-	snapshots.value = [];
-	form.pipeline_snapshot_id = '';
-	if (form.selectedTemplateId) {
-		snapshots.value = await pipelineTemplateApi.listSnapshots(form.selectedTemplateId);
 	}
 }
 
@@ -269,15 +231,15 @@ async function handleCreateOk() {
 	if (!validate()) return;
 	try {
 		await executeOp(async () => {
-			await projectApi.create({
+			const project = await projectApi.create({
 				name: form.name,
+				code: form.code,
 				repository_url: form.repository_url,
-				pipeline_snapshot_id: form.pipeline_snapshot_id,
 				git_credential_id: form.git_credential_id || undefined,
 			});
 			toast.success('创建成功');
 			createModalRef.value?.close();
-			fetchProjects();
+			router.push(`/ci/projects/${project.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');

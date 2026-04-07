@@ -133,14 +133,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
 import { Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { credentialApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
 import type { Credential } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
+import { formatTime } from '@/utils/time';
 
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
@@ -212,7 +212,11 @@ async function handleModalOk() {
 				});
 				toast.success('更新成功');
 			} else {
-				await credentialApi.create({ name: form.name, type: form.type, data: form.data });
+				await credentialApi.create({
+					name: form.name,
+					type: form.type,
+					data: form.data,
+				});
 				toast.success('创建成功');
 			}
 			modalRef.value?.close();

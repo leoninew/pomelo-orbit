@@ -65,6 +65,7 @@
 								<button
 									v-if="r.status === 'failed' || r.status === 'success'"
 									class="link link-info"
+									:disabled="operating"
 									@click="handleRetry(r.id)"
 								>
 									重试
@@ -72,6 +73,7 @@
 								<button
 									v-if="r.status === 'waiting' || r.status === 'running'"
 									class="link link-error"
+									:disabled="operating"
 									@click="confirmCancel(r.id)"
 								>
 									取消
@@ -101,7 +103,10 @@
 				<h3 class="font-bold text-lg">取消 Run</h3>
 				<p class="py-4 text-sm">确定取消此 Run？</p>
 				<div class="modal-action">
-					<button class="btn btn-error" @click="handleCancel">确定</button>
+					<button class="btn btn-error" :disabled="operating" @click="handleCancel">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />
+						确定
+					</button>
 					<button class="btn btn-ghost" @click="cancelModalRef?.close()">取消</button>
 				</div>
 			</div>
@@ -116,30 +121,21 @@ import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
 import type { PipelineRun } from '@/types/api';
+import { runBadgeClass } from '@/utils/status';
+import { formatTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const runs = ref<PipelineRun[]>([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 const cancelModalRef = ref<HTMLDialogElement>();
 const pendingCancelId = ref('');
-
-const badgeMap: Record<string, string> = {
-	success: 'badge-outline badge-success',
-	failed: 'badge-outline badge-error',
-	running: 'badge-outline badge-info',
-	waiting: 'badge-outline badge-warning',
-	canceled: 'badge-ghost',
-};
-function runBadgeClass(s: string) {
-	return badgeMap[s] ?? 'badge-ghost';
-}
 
 async function fetchRuns() {
 	try {
@@ -165,9 +161,11 @@ function goPage(p: number) {
 
 async function handleRetry(runId: string) {
 	try {
-		const newRun = await pipelineRunApi.retry(runId);
-		toast.success('重试成功');
-		router.push(`/ci/runs/${newRun.id}`);
+		await executeOp(async () => {
+			const newRun = await pipelineRunApi.retry(runId);
+			toast.success('重试成功');
+			router.push(`/ci/runs/${newRun.id}`);
+		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '重试失败');
 	}
@@ -180,10 +178,12 @@ function confirmCancel(runId: string) {
 
 async function handleCancel() {
 	try {
-		await pipelineRunApi.cancel(pendingCancelId.value);
-		toast.success('已取消');
-		cancelModalRef.value?.close();
-		fetchRuns();
+		await executeOp(async () => {
+			await pipelineRunApi.cancel(pendingCancelId.value);
+			toast.success('已取消');
+			cancelModalRef.value?.close();
+			fetchRuns();
+		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '取消失败');
 	}

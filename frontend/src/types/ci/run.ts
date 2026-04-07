@@ -2,10 +2,11 @@
 export interface PipelineRun {
 	id: string
 	project_id: string
-	trigger: 'webhook' | 'manual'
+	trigger: string
 	trigger_ref: string
 	status: 'waiting' | 'running' | 'success' | 'failed' | 'canceled'
 	retry_of?: string
+	pipeline_snapshot_id: string
 	started_at?: string
 	finished_at?: string
 	created_at: string

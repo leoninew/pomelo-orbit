@@ -1,4 +1,4 @@
-import type { Artifact, Job, PaginatedResp, PipelineRun } from '@/types/api';
+import type { Artifact, PaginatedResp, PipelineRun, StageRun } from '@/types/api';
 import request from '@/utils/request';
 
 // PipelineRun API
@@ -23,8 +23,8 @@ export const pipelineRunApi = {
 		return request.post(`/api/ci/runs/${id}/cancel`);
 	},
 
-	listJobs(runId: string): Promise<Job[]> {
-		return request.get(`/api/ci/runs/${runId}/jobs`);
+	listStageRuns(runId: string): Promise<StageRun[]> {
+		return request.get(`/api/ci/runs/${runId}/stages`);
 	},
 
 	listArtifacts(runId: string): Promise<Artifact[]> {

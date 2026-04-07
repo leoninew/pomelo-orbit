@@ -1,26 +1,46 @@
 <template>
 	<div class="flex flex-col gap-4">
+		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ project?.name ?? '项目详情' }}</h1>
-			<div class="flex items-center gap-2">
-				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/projects')">
-					<ArrowLeft class="size-4" />
-					返回
-				</button>
-				<button class="btn btn-sm btn-primary gap-1" @click="openTriggerModal">
-					<Play class="size-4" />
-					手动触发
-				</button>
-				<button class="btn btn-sm btn-ghost" @click="openEditModal">编辑</button>
-			</div>
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/projects')">
+				<ArrowLeft class="size-4" />
+				返回
+			</button>
 		</div>
 
-		<!-- Basic info -->
+		<!-- Basic info card -->
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
-				<h2 class="font-semibold mb-3">基本信息</h2>
-				<div v-if="loading" class="flex justify-center py-6">
-					<span class="loading loading-spinner loading-md text-primary" />
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="font-semibold">基本信息</h2>
+					<div v-if="project" class="flex items-center gap-2 flex-wrap">
+						<button
+							class="btn btn-sm btn-primary gap-1"
+							:disabled="operating"
+							@click="openTriggerModal"
+						>
+							<Play class="size-3.5" />
+							触发
+						</button>
+						<button class="btn btn-sm btn-ghost" :disabled="operating" @click="openEditModal">
+							编辑
+						</button>
+						<button
+							class="btn btn-sm btn-error btn-ghost"
+							:disabled="operating"
+							@click="openDeleteModal"
+						>
+							删除
+						</button>
+					</div>
+				</div>
+
+				<div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+					<div v-for="i in 6" :key="i" class="flex gap-2">
+						<div class="skeleton h-4 w-24 shrink-0"></div>
+						<div class="skeleton h-4 w-32"></div>
+					</div>
 				</div>
 				<dl v-else-if="project" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
@@ -28,37 +48,22 @@
 						<dd>{{ project.name }}</dd>
 					</div>
 					<div class="flex gap-2">
+						<dt class="text-base-content/70 w-24 shrink-0">项目编码</dt>
+						<dd>{{ project.code }}</dd>
+					</div>
+					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">仓库地址</dt>
 						<dd class="text-xs truncate">{{ project.repository_url }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">流水线快照</dt>
-						<dd>
-							<router-link
-								:to="`/ci/snapshots/${project.pipeline_snapshot_id}`"
-								class="link link-primary text-xs"
-							>
-								查看快照
-							</router-link>
-						</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">Git 凭据</dt>
-						<dd class="text-base-content/60">
-							{{ project.git_credential_id ? '已配置' : '未配置' }}
-						</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">分支过滤</dt>
-						<dd class="text-base-content/60">{{ project.branch_filter || '所有分支' }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">默认分支</dt>
 						<dd class="text-base-content/60">{{ project.default_branch }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
-						<dd>{{ formatTime(project.created_at) }}</dd>
+						<dt class="text-base-content/70 w-24 shrink-0">Git 凭据</dt>
+						<dd class="text-base-content/60">
+							{{ project.git_credential_id ? '已配置' : '未配置' }}
+						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">流水线记录</dt>
@@ -75,13 +80,13 @@
 			</div>
 		</div>
 
-		<!-- Variables -->
+		<!-- Variables card -->
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
-				<div class="flex items-center justify-between mb-3">
+				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">变量配置</h2>
-					<button class="btn btn-xs btn-primary gap-1" @click="openAddVarModal">
-						<Plus class="size-3" />
+					<button class="btn btn-sm btn-primary gap-1" @click="openAddVarModal">
+						<Plus class="size-3.5" />
 						添加变量
 					</button>
 				</div>
@@ -105,7 +110,7 @@
 								<code class="text-xs">{{ v.value }}</code>
 							</td>
 							<td>
-								<div class="flex items-center gap-2">
+								<div class="flex items-center gap-3">
 									<button class="link link-primary" @click="openEditVarModal(v.key, v.value)">
 										编辑
 									</button>
@@ -118,24 +123,28 @@
 			</div>
 		</div>
 
-		<!-- Trigger modal -->
-		<dialog ref="triggerModalRef" class="modal">
-			<div class="modal-box">
-				<h3 class="font-bold text-lg mb-4">手动触发</h3>
-				<fieldset class="fieldset">
-					<legend class="fieldset-legend">分支</legend>
-					<input v-model="triggerRef" type="text" class="input w-full" placeholder="输入分支名" />
-				</fieldset>
-				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="operating" @click="handleTriggerOk">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						触发
-					</button>
-					<button class="btn btn-ghost" @click="triggerModalRef?.close()">取消</button>
-				</div>
+		<!-- Webhooks card -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<WebhookList
+					v-if="!loading"
+					:project-id="projectId"
+					:webhooks="webhooks"
+					:templates="templates"
+					@refresh="fetchWebhooks"
+				/>
 			</div>
-			<form method="dialog" class="modal-backdrop"><button>close</button></form>
-		</dialog>
+		</div>
+
+		<!-- Trigger modal -->
+		<TriggerModal
+			ref="triggerModalRef"
+			:project-id="projectId"
+			:templates="templates"
+			:default-branch="project?.default_branch"
+			:project-variables="project?.variable_overrides"
+			@trigger="handleTrigger"
+		/>
 
 		<!-- Edit modal -->
 		<dialog ref="editModalRef" class="modal">
@@ -147,33 +156,13 @@
 						<input v-model="editForm.name" type="text" class="input w-full" />
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">仓库地址</legend>
-						<input v-model="editForm.repository_url" type="text" class="input w-full" />
+						<legend class="fieldset-legend">项目编码</legend>
+						<input :value="project?.code" type="text" class="input w-full opacity-60" disabled />
+						<p class="fieldset-label text-base-content/50">创建后不可修改</p>
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">流水线快照</legend>
-						<div class="flex gap-2">
-							<select
-								v-model="editForm.selectedTemplateId"
-								class="select w-full"
-								@change="onTemplateChange"
-							>
-								<option value="">选择模板</option>
-								<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
-									{{ tpl.name }}
-								</option>
-							</select>
-							<select
-								v-model="editForm.pipeline_snapshot_id"
-								class="select w-full"
-								:disabled="!editForm.selectedTemplateId"
-							>
-								<option value="">选择版本</option>
-								<option v-for="snap in snapshots" :key="snap.id" :value="snap.id">
-									v{{ snap.version }}
-								</option>
-							</select>
-						</div>
+						<legend class="fieldset-legend">仓库地址</legend>
+						<input v-model="editForm.repository_url" type="text" class="input w-full" />
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">Git 凭据</legend>
@@ -183,10 +172,6 @@
 								{{ cred.name }}
 							</option>
 						</select>
-					</fieldset>
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend">分支过滤</legend>
-						<input v-model="editForm.branch_filter" type="text" class="input w-full" />
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">默认分支</legend>
@@ -204,6 +189,34 @@
 						保存
 					</button>
 					<button class="btn btn-ghost" @click="editModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Delete modal -->
+		<dialog ref="deleteModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除项目</h3>
+				<p class="py-4 text-sm">
+					确定要删除项目「
+					<strong>{{ project?.name }}</strong>
+					」吗？此操作不可撤销。
+				</p>
+				<label class="flex items-center gap-2 cursor-pointer mb-2">
+					<input
+						v-model="deleteWorkspace"
+						type="checkbox"
+						class="checkbox checkbox-sm checkbox-error"
+					/>
+					<span class="text-sm">同时删除工作目录（data/ci/{{ project?.code }}）</span>
+				</label>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="operating" @click="handleDeleteOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />
+						删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
 				</div>
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -262,14 +275,15 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowLeft, Play, Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Play, Plus } from 'lucide-vue-next';
-import { credentialApi, pipelineTemplateApi, projectApi } from '@/api/ci';
+import { credentialApi, pipelineTemplateApi, projectApi, webhookApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
-import type { Credential, PipelineSnapshotListItem, PipelineTemplate, Project } from '@/types/api';
+import WebhookList from './components/WebhookList.vue';
+import TriggerModal from './components/TriggerModal.vue';
+import type { Credential, PipelineTemplate, Project, ProjectWebhook } from '@/types/api';
 
 const route = useRoute();
 const router = useRouter();
@@ -281,25 +295,23 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const project = ref<Project>();
 const templates = ref<PipelineTemplate[]>([]);
+const webhooks = ref<ProjectWebhook[]>([]);
 const credentials = ref<Credential[]>([]);
-const snapshots = ref<PipelineSnapshotListItem[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
 );
 
-const triggerModalRef = ref<HTMLDialogElement>();
+const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
 const editModalRef = ref<HTMLDialogElement>();
+const deleteModalRef = ref<HTMLDialogElement>();
 const addVarModalRef = ref<HTMLDialogElement>();
 const editVarModalRef = ref<HTMLDialogElement>();
 
-const triggerRef = ref('');
+const deleteWorkspace = ref(false);
 const editForm = reactive({
 	name: '',
 	repository_url: '',
-	pipeline_snapshot_id: '',
-	selectedTemplateId: '',
 	git_credential_id: '',
-	branch_filter: '',
 	default_branch: 'master',
 });
 const newVarKey = ref('');
@@ -319,8 +331,6 @@ async function fetchProject() {
 			Object.assign(editForm, {
 				name: data.name,
 				repository_url: data.repository_url,
-				pipeline_snapshot_id: data.pipeline_snapshot_id,
-				selectedTemplateId: '',
 				git_credential_id: data.git_credential_id ?? '',
 				default_branch: data.default_branch ?? 'master',
 			});
@@ -331,17 +341,45 @@ async function fetchProject() {
 	}
 }
 
-function openTriggerModal() {
-	triggerRef.value = project.value?.default_branch || 'master';
-	triggerModalRef.value?.showModal();
+async function fetchTemplates() {
+	try {
+		const res = await pipelineTemplateApi.list({ per_page: 100 });
+		templates.value = res.items;
+	} catch {
+		toast.error('获取模板列表失败');
+	}
 }
 
-async function handleTriggerOk() {
+async function fetchWebhooks() {
+	try {
+		webhooks.value = await webhookApi.list(projectId);
+	} catch {
+		toast.error('获取 Webhook 列表失败');
+	}
+}
+
+async function fetchCredentials() {
+	try {
+		const res = await credentialApi.list({ per_page: 100 });
+		credentials.value = res.items;
+	} catch {
+		toast.error('获取凭据列表失败');
+	}
+}
+
+function openTriggerModal() {
+	triggerModalRef.value?.open();
+}
+
+async function handleTrigger(data: {
+	template_id: string
+	trigger_ref: string
+	variables: Record<string, string>
+}) {
 	try {
 		await executeOp(async () => {
-			const run = await projectApi.trigger(projectId, { trigger_ref: triggerRef.value });
+			const run = await projectApi.trigger(projectId, data);
 			toast.success('触发成功');
-			triggerModalRef.value?.close();
 			router.push(`/ci/runs/${run.id}`);
 		});
 	} catch (error) {
@@ -350,22 +388,9 @@ async function handleTriggerOk() {
 }
 
 async function openEditModal() {
-	const [tplRes, credRes] = await Promise.all([
-		pipelineTemplateApi.list({ per_page: 100 }),
-		credentialApi.list({ per_page: 100 }),
-	]);
-	templates.value = tplRes.items;
-	credentials.value = credRes.items;
-	snapshots.value = [];
+	await fetchTemplates();
+	await fetchCredentials();
 	editModalRef.value?.showModal();
-}
-
-async function onTemplateChange() {
-	snapshots.value = [];
-	editForm.pipeline_snapshot_id = '';
-	if (editForm.selectedTemplateId) {
-		snapshots.value = await pipelineTemplateApi.listSnapshots(editForm.selectedTemplateId);
-	}
 }
 
 async function handleEditOk() {
@@ -374,16 +399,32 @@ async function handleEditOk() {
 			await projectApi.update(projectId, {
 				name: editForm.name,
 				repository_url: editForm.repository_url,
-				pipeline_snapshot_id: editForm.pipeline_snapshot_id || undefined,
 				git_credential_id: editForm.git_credential_id || undefined,
 				default_branch: editForm.default_branch || 'master',
 			});
 			toast.success('更新成功');
 			editModalRef.value?.close();
-			fetchProject();
+			await fetchProject();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '更新失败');
+	}
+}
+
+function openDeleteModal() {
+	deleteWorkspace.value = false;
+	deleteModalRef.value?.showModal();
+}
+
+async function handleDeleteOk() {
+	try {
+		await executeOp(async () => {
+			await projectApi.delete(projectId);
+			toast.success('删除成功');
+			router.push('/ci/projects');
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 
@@ -392,6 +433,7 @@ function openAddVarModal() {
 	newVarValue.value = '';
 	addVarModalRef.value?.showModal();
 }
+
 function openEditVarModal(key: string, value: string) {
 	editingVarKey.value = key;
 	editingVarValue.value = value;
@@ -452,5 +494,7 @@ async function deleteVariable(key: string) {
 	}
 }
 
-onMounted(fetchProject);
+onMounted(async () => {
+	await Promise.all([fetchProject(), fetchTemplates(), fetchWebhooks(), fetchCredentials()]);
+});
 </script>

@@ -1,48 +1,73 @@
-// Stage 配置类型
-export interface CheckoutConfig {
-	ref: string
-}
-
-export interface DockerBuildConfig {
-	context: string
-	dockerfile: string
-	image_name: string
-}
-
-export interface UnitTestConfig {
-	image: string
-	commands: string[]
-	artifact_paths: string[]
-}
-
-export type StageType = 'checkout' | 'docker_build' | 'unit_test' | 'custom';
-
-export interface StageDefinition {
+export interface ArtifactConfig {
+	path: string
 	name: string
-	type: StageType
-	depends_on: string[]
-	config?: CheckoutConfig | DockerBuildConfig | UnitTestConfig
-	steps?: Record<string, unknown>[] // custom 类型的 StepDefinition
 }
 
-// 变量声明
+// ── PipelineStage ─────────────────────────────────────────────────────────────
+
+export interface PipelineStage {
+	id: string
+	name: string
+	image: string
+	script: string
+	env: Record<string, string>
+	artifacts?: ArtifactConfig[]
+	description: string
+	created_at: string
+	updated_at: string
+}
+
+export interface PipelineStageCreateReq {
+	name: string
+	image: string
+	script: string
+	env?: Record<string, string>
+	artifacts?: ArtifactConfig[]
+	description?: string
+}
+
+export interface PipelineStageUpdateReq {
+	name?: string
+	image?: string
+	script?: string
+	env?: Record<string, string>
+	artifacts?: ArtifactConfig[]
+	description?: string
+}
+
+// ── 编排 ──────────────────────────────────────────────────────────────────────
+
+export interface StageOrchestration {
+	stage_id: string
+	depends_on: string[] // 依赖的 stage_id 列表
+	sort_order: number
+}
+
+export interface OrchestrationUpdateReq {
+	orchestration: StageOrchestration[]
+	variable_declarations?: VariableDeclaration[]
+}
+
+// ── 变量声明 ──────────────────────────────────────────────────────────────────
+
 export interface VariableDeclaration {
 	name: string
 	description?: string
 	required: boolean
-	default?: string
+	default?: string | null
 	secret: boolean
 	locked: boolean
 }
 
-// 流水线模板
+// ── 模板 ──────────────────────────────────────────────────────────────────────
+
 export interface PipelineTemplate {
 	id: string
 	name: string
-	description?: string
-	stages: StageDefinition[]
+	description: string
+	orchestration: StageOrchestration[]
+	stages: PipelineStage[] // 编排引用的 Stage 详情
 	variable_declarations: VariableDeclaration[]
-	is_builtin: boolean
 	latest_snapshot_version?: number
 	created_at: string
 	updated_at: string
@@ -51,13 +76,11 @@ export interface PipelineTemplate {
 export interface PipelineTemplateCreateReq {
 	name: string
 	description?: string
-	stages?: StageDefinition[]
 	variable_declarations?: VariableDeclaration[]
 }
 
 export interface PipelineTemplateUpdateReq {
 	name?: string
 	description?: string
-	stages?: StageDefinition[]
 	variable_declarations?: VariableDeclaration[]
 }

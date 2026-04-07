@@ -1,18 +1,19 @@
-// Job
-export interface Job {
+// StageRun — Stage 执行记录
+export interface StageRun {
 	id: string
 	pipeline_run_id: string
 	name: string
 	status: 'waiting' | 'running' | 'success' | 'failed' | 'faulted' | 'skipped' | 'canceled'
 	started_at?: string
 	finished_at?: string
+	exit_code?: number
 	error_message?: string
 }
 
-// JobLog
-export interface JobLog {
+// StageLog — Stage 执行日志
+export interface StageLog {
 	id: string
-	job_id: string
+	stage_run_id: string
 	content: string
 	created_at: string
 }
@@ -21,19 +22,9 @@ export interface JobLog {
 export interface Artifact {
 	id: string
 	pipeline_run_id: string
-	job_name: string
+	stage_name: string
 	type: 'docker_image' | 'file'
 	name: string
 	path?: string
 	created_at: string
 }
-
-export const jobStatusColors: Record<string, string> = {
-	waiting: 'default',
-	running: 'processing',
-	success: 'success',
-	failed: 'error',
-	faulted: 'error',
-	skipped: 'warning',
-	canceled: 'warning',
-};

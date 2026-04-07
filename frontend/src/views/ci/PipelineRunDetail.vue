@@ -15,13 +15,16 @@
 				<button
 					v-if="run?.status === 'failed' || run?.status === 'success'"
 					class="btn btn-sm btn-primary"
+					:disabled="retrying"
 					@click="handleRetry"
 				>
+					<span v-if="retrying" class="loading loading-spinner loading-xs" />
 					重试
 				</button>
 				<button
 					v-if="run?.status === 'waiting' || run?.status === 'running'"
 					class="btn btn-sm btn-error btn-ghost"
+					:disabled="canceling"
 					@click="cancelModalRef?.showModal()"
 				>
 					取消
@@ -29,135 +32,140 @@
 			</div>
 		</div>
 
-		<!-- Basic info -->
-		<div class="card bg-base-100 shadow-sm">
-			<div class="card-body p-5">
-				<h2 class="font-semibold mb-3">基本信息</h2>
-				<div v-if="loading" class="flex justify-center py-6">
-					<span class="loading loading-spinner loading-md text-primary" />
-				</div>
-				<dl v-else-if="run" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">Run ID</dt>
-						<dd class="font-mono text-xs">{{ run.id }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">Project</dt>
-						<dd>
-							<router-link :to="`/ci/projects/${run.project_id}`" class="link link-primary text-xs">
-								{{ run.project_id }}
-							</router-link>
-						</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">触发方式</dt>
-						<dd>
-							<span class="badge badge-sm badge-ghost">{{ run.trigger }}</span>
-						</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">Ref</dt>
-						<dd class="text-base-content/60">{{ run.trigger_ref }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">重试自</dt>
-						<dd>
-							<router-link
-								v-if="run.retry_of"
-								:to="`/ci/runs/${run.retry_of}`"
-								class="link link-primary text-xs"
-							>
-								{{ run.retry_of }}
-							</router-link>
-							<span v-else class="text-base-content/60">—</span>
-						</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">开始时间</dt>
-						<dd>{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">结束时间</dt>
-						<dd>{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
-						<dd>{{ formatTime(run.created_at) }}</dd>
-					</div>
-				</dl>
-			</div>
+		<!-- Loading -->
+		<div v-if="loading" class="flex justify-center py-16">
+			<span class="loading loading-spinner loading-lg text-primary" />
 		</div>
 
-		<!-- Jobs -->
-		<div class="card bg-base-100 shadow-sm">
-			<div class="card-body p-5">
-				<h2 class="font-semibold mb-3">Jobs</h2>
-				<div v-if="jobsLoading" class="flex justify-center py-6">
-					<span class="loading loading-spinner loading-md text-primary" />
+		<template v-else-if="run">
+			<!-- Basic info -->
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body p-5">
+					<h2 class="font-semibold mb-3">基本信息</h2>
+					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">Run ID</dt>
+							<dd class="font-mono text-xs">{{ run.id }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">Project</dt>
+							<dd>
+								<router-link
+									:to="`/ci/projects/${run.project_id}`"
+									class="link link-primary text-xs"
+								>
+									{{ run.project_id }}
+								</router-link>
+							</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">触发方式</dt>
+							<dd>
+								<span class="badge badge-sm badge-ghost">{{ run.trigger }}</span>
+							</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">Ref</dt>
+							<dd class="text-base-content/60">{{ run.trigger_ref }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">快照</dt>
+							<dd>
+								<router-link
+									v-if="snapshot"
+									:to="`/ci/snapshots/${run.pipeline_snapshot_id}`"
+									class="link link-primary text-xs"
+								>
+									{{ snapshot.template_id }} v{{ snapshot.version }}
+								</router-link>
+								<span v-else class="text-base-content/60">—</span>
+							</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">重试自</dt>
+							<dd>
+								<router-link
+									v-if="run.retry_of"
+									:to="`/ci/runs/${run.retry_of}`"
+									class="link link-primary text-xs"
+								>
+									{{ run.retry_of }}
+								</router-link>
+								<span v-else class="text-base-content/60">—</span>
+							</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">开始时间</dt>
+							<dd>{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">结束时间</dt>
+							<dd>{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
+							<dd>{{ formatTime(run.created_at) }}</dd>
+						</div>
+					</dl>
 				</div>
-				<div v-else-if="jobs.length === 0" class="text-sm text-base-content/60 py-4 text-center">
-					暂无 Job 记录
-				</div>
-				<table v-else class="table">
-					<thead>
-						<tr class="text-base-content/60">
-							<th>Job 名称</th>
-							<th>状态</th>
-							<th>开始时间</th>
-							<th>结束时间</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="j in jobs" :key="j.id" class="hover cursor-pointer" @click="showJobLogs(j)">
-							<td class="link link-primary">{{ j.name }}</td>
-							<td>
-								<span class="badge badge-sm" :class="jobBadgeClass(j.status)">{{ j.status }}</span>
-							</td>
-							<td class="cell-muted">{{ j.started_at ? formatTime(j.started_at) : '—' }}</td>
-							<td class="cell-muted">{{ j.finished_at ? formatTime(j.finished_at) : '—' }}</td>
-						</tr>
-					</tbody>
-				</table>
 			</div>
-		</div>
 
-		<!-- Artifacts -->
-		<div class="card bg-base-100 shadow-sm">
-			<div class="card-body p-5">
-				<h2 class="font-semibold mb-3">制品</h2>
-				<div v-if="artifactsLoading" class="flex justify-center py-6">
-					<span class="loading loading-spinner loading-md text-primary" />
+			<!-- Stages DAG -->
+			<div
+				v-if="snapshot && snapshot.stages_snapshot.length > 0"
+				class="card bg-base-100 shadow-sm"
+			>
+				<div class="card-body p-5">
+					<h2 class="font-semibold mb-3">Stages</h2>
+					<StageDAGView
+						:stages="snapshot.stages_snapshot"
+						:stage-statuses="stageStatuses"
+						:show-minimap="true"
+						:readonly="true"
+						@view-stage="onViewStage"
+					/>
+					<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
 				</div>
-				<div
-					v-else-if="artifacts.length === 0"
-					class="text-sm text-base-content/60 py-4 text-center"
-				>
-					暂无制品
-				</div>
-				<table v-else class="table">
-					<thead>
-						<tr class="text-base-content/60">
-							<th>Job</th>
-							<th>类型</th>
-							<th>名称</th>
-							<th>路径</th>
-							<th>创建时间</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="a in artifacts" :key="a.id" class="hover">
-							<td>{{ a.job_name }}</td>
-							<td>
-								<span class="badge badge-sm badge-ghost">{{ a.type }}</span>
-							</td>
-							<td>{{ a.name }}</td>
-							<td class="cell-muted max-w-xs truncate">{{ a.path }}</td>
-							<td class="cell-muted">{{ formatTime(a.created_at) }}</td>
-						</tr>
-					</tbody>
-				</table>
 			</div>
-		</div>
+
+			<!-- Artifacts -->
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body p-5">
+					<h2 class="font-semibold mb-3">制品</h2>
+					<div v-if="artifactsLoading" class="flex justify-center py-6">
+						<span class="loading loading-spinner loading-md text-primary" />
+					</div>
+					<div
+						v-else-if="artifacts.length === 0"
+						class="text-sm text-base-content/60 py-4 text-center"
+					>
+						暂无制品
+					</div>
+					<table v-else class="table">
+						<thead>
+							<tr class="text-base-content/60">
+								<th>Stage</th>
+								<th>类型</th>
+								<th>名称</th>
+								<th>路径</th>
+								<th>创建时间</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="a in artifacts" :key="a.id" class="hover">
+								<td>{{ a.stage_name }}</td>
+								<td>
+									<span class="badge badge-sm badge-ghost">{{ a.type }}</span>
+								</td>
+								<td>{{ a.name }}</td>
+								<td class="cell-muted max-w-xs truncate">{{ a.path }}</td>
+								<td class="cell-muted">{{ formatTime(a.created_at) }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</template>
 
 		<!-- Job logs drawer -->
 		<Teleport to="body">
@@ -174,26 +182,24 @@
 					class="fixed inset-y-0 right-0 z-50 w-[800px] max-w-full bg-base-100 shadow-2xl flex flex-col border-l border-base-200"
 				>
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
-						<h3 class="font-semibold">Job: {{ currentJob?.name }}</h3>
+						<h3 class="font-semibold flex items-center gap-2">
+							Stage: {{ currentStageRun?.name }}
+							<span
+								v-if="currentStageRun"
+								class="badge badge-sm"
+								:class="stageRunBadgeClass(currentStageRun.status)"
+							>
+								{{ currentStageRun.status }}
+							</span>
+						</h3>
 						<button class="btn btn-sm btn-ghost btn-circle" @click="showLogsDrawer = false">
 							<X class="size-4" />
 						</button>
 					</div>
 					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
-						<dl v-if="currentJob" class="grid grid-cols-1 gap-y-2 text-sm">
-							<div class="flex gap-2">
-								<dt class="text-base-content/70 w-20 shrink-0">状态</dt>
-								<dd>
-									<span class="badge badge-sm" :class="jobBadgeClass(currentJob.status)">
-										{{ currentJob.status }}
-									</span>
-								</dd>
-							</div>
-							<div v-if="currentJob.error_message" class="flex gap-2">
-								<dt class="text-base-content/70 w-20 shrink-0">错误</dt>
-								<dd class="text-error text-xs">{{ currentJob.error_message }}</dd>
-							</div>
-						</dl>
+						<div v-if="currentStageRun?.error_message" class="alert alert-error py-2 text-xs">
+							{{ currentStageRun.error_message }}
+						</div>
 						<div v-if="logsLoading" class="flex justify-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</div>
@@ -233,7 +239,10 @@
 				<h3 class="font-bold text-lg">取消 Run</h3>
 				<p class="py-4 text-sm">确定取消此 Run？</p>
 				<div class="modal-action">
-					<button class="btn btn-error" @click="handleCancel">确定</button>
+					<button class="btn btn-error" :disabled="canceling" @click="handleCancel">
+						<span v-if="canceling" class="loading loading-spinner loading-xs" />
+						确定
+					</button>
 					<button class="btn btn-ghost" @click="cancelModalRef?.close()">取消</button>
 				</div>
 			</div>
@@ -243,14 +252,17 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowLeft, FileX, X } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, X, FileX } from 'lucide-vue-next';
-import { jobApi, pipelineRunApi } from '@/api/ci';
+import { stageApi, pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import type { Artifact, StageLog, StageRun, PipelineRun, PipelineSnapshot } from '@/types/api';
+import type { SnapshotStage } from '@/types/ci/snapshot';
+import { runBadgeClass, stageRunBadgeClass } from '@/utils/status';
 import { formatTime } from '@/utils/time';
-import type { Artifact, Job, JobLog, PipelineRun } from '@/types/api';
+import StageDAGView from './components/StageDAGView.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -258,39 +270,53 @@ const runId = route.params.id as string;
 const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
-const { loading: jobsLoading, execute: executeJobs } = useStatusAsync();
+const { execute: executeJobs } = useStatusAsync();
 const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
 const { loading: logsLoading, execute: executeLogs } = useStatusAsync();
+const { execute: executeSnapshot } = useStatusAsync();
+const { loading: retrying, execute: executeRetry } = useStatusAsync();
+const { loading: canceling, execute: executeCancel } = useStatusAsync();
 
 const run = ref<PipelineRun>();
-const jobs = ref<Job[]>([]);
+const snapshot = ref<PipelineSnapshot>();
+const stageRuns = ref<StageRun[]>([]);
 const artifacts = ref<Artifact[]>([]);
-const logs = ref<JobLog | null>(null);
-const currentJob = ref<Job>();
+const currentLog = ref<StageLog | null>(null);
+const currentStageRun = ref<StageRun>();
 const showLogsDrawer = ref(false);
 const cancelModalRef = ref<HTMLDialogElement>();
 
-const logsText = computed(() => logs.value?.content ?? '');
+const logsText = computed(() => currentLog.value?.content ?? '');
 
-const runBadgeMap: Record<string, string> = {
-	success: 'badge-outline badge-success',
-	failed: 'badge-outline badge-error',
-	running: 'badge-outline badge-info',
-	waiting: 'badge-outline badge-warning',
-	canceled: 'badge-ghost',
-};
-const jobBadgeMap: Record<string, string> = {
-	success: 'badge-outline badge-success',
-	failed: 'badge-outline badge-error',
-	running: 'badge-outline badge-info',
-	pending: 'badge-outline badge-warning',
-	skipped: 'badge-ghost',
-};
-function runBadgeClass(s: string) {
-	return runBadgeMap[s] ?? 'badge-ghost';
-}
-function jobBadgeClass(s: string) {
-	return jobBadgeMap[s] ?? 'badge-ghost';
+// Stage 状态从 stageRuns 计算
+const stageStatuses = computed<
+	Map<string, 'success' | 'failed' | 'running' | 'waiting' | 'mixed' | 'skipped'>
+>(() => {
+	const map = new Map<string, 'success' | 'failed' | 'running' | 'waiting' | 'mixed' | 'skipped'>();
+	if (!snapshot.value) return map;
+
+	for (const stage of snapshot.value.stages_snapshot) {
+		const sr = stageRuns.value.find((r) => r.name === stage.name);
+		if (!sr) {
+			map.set(stage.name, 'waiting');
+			continue;
+		}
+		if (sr.status === 'success') map.set(stage.name, 'success');
+		else if (sr.status === 'failed' || sr.status === 'faulted') map.set(stage.name, 'failed');
+		else if (sr.status === 'running') map.set(stage.name, 'running');
+		else if (sr.status === 'skipped') map.set(stage.name, 'skipped');
+		else map.set(stage.name, 'waiting');
+	}
+	return map;
+});
+
+async function onViewStage(stage: SnapshotStage) {
+	const sr = stageRuns.value.find((r) => r.name === stage.name);
+	if (!sr) {
+		toast.error('该 Stage 尚未执行');
+		return;
+	}
+	await showStageLog(sr);
 }
 
 async function fetchRun() {
@@ -298,6 +324,10 @@ async function fetchRun() {
 		await execute(async () => {
 			const data = await pipelineRunApi.get(runId);
 			run.value = data;
+			// Fetch snapshot after getting run
+			if (data.pipeline_snapshot_id) {
+				await fetchSnapshot(data.pipeline_snapshot_id);
+			}
 		});
 	} catch {
 		toast.error('获取 Run 信息失败');
@@ -305,10 +335,20 @@ async function fetchRun() {
 	}
 }
 
-async function fetchJobs() {
+async function fetchSnapshot(snapshotId: string) {
+	try {
+		await executeSnapshot(async () => {
+			snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
+		});
+	} catch {
+		// Silently fail - snapshot might not be critical
+	}
+}
+
+async function fetchStageRuns() {
 	try {
 		await executeJobs(async () => {
-			jobs.value = await pipelineRunApi.listJobs(runId);
+			stageRuns.value = await pipelineRunApi.listStageRuns(runId);
 		});
 	} catch {
 		/* silent */
@@ -325,13 +365,13 @@ async function fetchArtifacts() {
 	}
 }
 
-async function showJobLogs(job: Job) {
-	currentJob.value = job;
+async function showStageLog(sr: StageRun) {
+	currentStageRun.value = sr;
 	showLogsDrawer.value = true;
-	logs.value = null;
+	currentLog.value = null;
 	try {
 		await executeLogs(async () => {
-			logs.value = await jobApi.listLogs(job.id);
+			currentLog.value = await stageApi.getLog(sr.id);
 		});
 	} catch {
 		toast.error('获取日志失败');
@@ -340,9 +380,11 @@ async function showJobLogs(job: Job) {
 
 async function handleRetry() {
 	try {
-		const newRun = await pipelineRunApi.retry(runId);
-		toast.success('重试成功');
-		router.push(`/ci/runs/${newRun.id}`);
+		await executeRetry(async () => {
+			const newRun = await pipelineRunApi.retry(runId);
+			toast.success('重试成功');
+			router.push(`/ci/runs/${newRun.id}`);
+		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '重试失败');
 	}
@@ -350,18 +392,20 @@ async function handleRetry() {
 
 async function handleCancel() {
 	try {
-		await pipelineRunApi.cancel(runId);
-		toast.success('已取消');
-		cancelModalRef.value?.close();
-		fetchRun();
+		await executeCancel(async () => {
+			await pipelineRunApi.cancel(runId);
+			toast.success('已取消');
+			cancelModalRef.value?.close();
+			fetchRun();
+		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '取消失败');
 	}
 }
 
-onMounted(() => {
-	fetchRun();
-	fetchJobs();
+onMounted(async () => {
+	await fetchRun();
+	fetchStageRuns();
 	fetchArtifacts();
 });
 </script>

@@ -22,12 +22,13 @@ export type { Credential, CredentialCreateReq, CredentialUpdateReq } from './ci/
 export { credentialTypeLabels } from './ci/credential';
 export type {
 	PipelineTemplate,
+	PipelineStage,
+	PipelineStageCreateReq,
+	PipelineStageUpdateReq,
+	StageOrchestration,
+	OrchestrationUpdateReq,
 	VariableDeclaration,
-	StageDefinition,
-	StageType,
-	CheckoutConfig,
-	DockerBuildConfig,
-	UnitTestConfig,
+	ArtifactConfig,
 	PipelineTemplateCreateReq,
 	PipelineTemplateUpdateReq,
 } from './ci/template';
@@ -35,5 +36,4 @@ export type { PipelineSnapshotListItem, PipelineSnapshot } from './ci/snapshot';
 export type { Project, ProjectCreateReq, ProjectUpdateReq } from './ci/project';
 export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
 export { pipelineRunStatusColors } from './ci/run';
-export type { Job, JobLog, Artifact } from './ci/job';
-export { jobStatusColors } from './ci/job';
+export type { StageRun, StageLog, Artifact } from './ci/stage_run';

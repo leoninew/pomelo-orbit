@@ -1,9 +1,8 @@
-// Project
 export interface Project {
 	id: string
 	name: string
+	code: string
 	repository_url: string
-	pipeline_snapshot_id: string
 	git_credential_id?: string | null
 	variable_overrides: Record<string, string>
 	default_branch: string
@@ -13,8 +12,8 @@ export interface Project {
 
 export interface ProjectCreateReq {
 	name: string
+	code: string
 	repository_url: string
-	pipeline_snapshot_id: string
 	git_credential_id?: string | null
 	variable_overrides?: Record<string, string>
 	default_branch?: string
@@ -23,7 +22,6 @@ export interface ProjectCreateReq {
 export interface ProjectUpdateReq {
 	name?: string
 	repository_url?: string
-	pipeline_snapshot_id?: string
 	git_credential_id?: string | null
 	variable_overrides?: Record<string, string>
 	default_branch?: string

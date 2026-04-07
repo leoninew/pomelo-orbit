@@ -67,6 +67,18 @@ const router = createRouter({
 			meta: { title: '凭据管理', menuKey: 'credentials' },
 		},
 		{
+			path: '/ci/stages',
+			name: 'PipelineStages',
+			component: () => import('@/views/ci/PipelineStages.vue'),
+			meta: { title: 'Stage 管理', menuKey: 'pipelinestages' },
+		},
+		{
+			path: '/ci/stages/:id',
+			name: 'PipelineStageDetail',
+			component: () => import('@/views/ci/PipelineStageDetail.vue'),
+			meta: { title: 'Stage 详情', menuKey: 'pipelinestages' },
+		},
+		{
 			path: '/ci/templates',
 			name: 'PipelineTemplates',
 			component: () => import('@/views/ci/PipelineTemplatePage.vue'),
@@ -77,6 +89,12 @@ const router = createRouter({
 			name: 'PipelineTemplateDetail',
 			component: () => import('@/views/ci/PipelineTemplateDetail.vue'),
 			meta: { title: '模板详情', menuKey: 'pipelinetemplates' },
+		},
+		{
+			path: '/ci/snapshots/:id',
+			name: 'PipelineSnapshotDetail',
+			component: () => import('@/views/ci/PipelineSnapshotDetail.vue'),
+			meta: { title: '快照详情', menuKey: 'pipelinetemplates' },
 		},
 		{
 			path: '/ci/projects',
@@ -136,8 +154,7 @@ router.beforeEach(async (to, _from, next) => {
 	if (!authStore.user) {
 		try {
 			await authStore.fetchUser();
-		} catch (error) {
-			console.error('Failed to fetch user in router guard:', error);
+		} catch {
 			authStore.clearToken();
 			next({ name: 'Login', query: { redirect: to.fullPath } });
 			return;

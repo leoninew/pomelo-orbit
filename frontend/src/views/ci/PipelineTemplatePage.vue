@@ -38,12 +38,7 @@
 							</router-link>
 						</td>
 						<td>
-							<span
-								class="badge badge-sm"
-								:class="t.is_builtin ? 'badge-outline badge-info' : 'badge-ghost'"
-							>
-								{{ t.is_builtin ? '内置' : '自定义' }}
-							</span>
+							<span class="badge badge-sm badge-ghost">自定义</span>
 						</td>
 						<td class="cell-muted max-w-xs truncate">{{ t.description || '—' }}</td>
 						<td class="cell-muted">{{ formatTime(t.created_at) }}</td>
@@ -52,9 +47,7 @@
 								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary">
 									查看
 								</router-link>
-								<button v-if="!t.is_builtin" class="link link-error" @click="confirmDelete(t.id)">
-									删除
-								</button>
+								<button class="link link-error" @click="confirmDelete(t.id)">删除</button>
 							</div>
 						</td>
 					</tr>
@@ -126,14 +119,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
 import { Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
 import type { PipelineTemplate } from '@/types/api';
+import { formatTime } from '@/utils/time';
 
+const router = useRouter();
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -180,14 +175,15 @@ async function handleCreateOk() {
 	if (errors.name) return;
 	try {
 		await executeOp(async () => {
-			await pipelineTemplateApi.create({
+			const tpl = await pipelineTemplateApi.create({
 				name: form.name,
 				description: form.description || undefined,
-				content: '',
+				stages: [],
+				variable_declarations: [],
 			});
 			toast.success('创建成功');
 			createModalRef.value?.close();
-			fetchTemplates();
+			router.push(`/ci/templates/${tpl.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');

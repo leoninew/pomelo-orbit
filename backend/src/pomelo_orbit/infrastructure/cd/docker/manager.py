@@ -244,6 +244,7 @@ class ApplicationManagerImpl(ApplicationManager):
         if sys.platform != "win32":
             return await self._run_command(["bash", "init.sh"], cwd=app_dir, log_file=log_file)
 
+        # sys.platform == "win32" (mypy has trouble narrowing sys.platform, use type: ignore)
         bash_path = shutil.which("bash")
         if not bash_path:
             raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")

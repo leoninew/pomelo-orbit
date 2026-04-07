@@ -1,276 +1,239 @@
 """Pipeline 执行器实现"""
 
 import asyncio
-import copy
 import logging
+from copy import copy
 from pathlib import Path
 
-from pomelo_orbit.domain.ci.entities import Artifact, Job, JobLog
+from pomelo_orbit.domain.ci.entities import Artifact, StageLog, StageRun
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.repositories import (
     ArtifactRepository,
     CredentialRepository,
-    JobLogRepository,
-    JobRepository,
+    StageLogRepository,
+    StageRunRepository,
 )
-from pomelo_orbit.domain.ci.value_objects import (
-    CheckoutStageConfig,
-    DockerBuildStageConfig,
-    JobStatus,
-    RetryPolicy,
-    StageDefinition,
-    StageType,
-    StepDefinition,
-    UnitTestStageConfig,
-)
-from pomelo_orbit.infrastructure.ci.actions.checkout import CheckoutAction
+from pomelo_orbit.domain.ci.value_objects import CredentialType, StageDefinition, StageStatus
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
+from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path
 from pomelo_orbit.infrastructure.security import SecurityService
 
 logger = logging.getLogger(__name__)
 
+# 全局 task 注册表，用于支持真实取消。
+# 注意：此为进程级变量，仅在单进程/单 worker 部署下有效。
+# 多 worker 部署时 cancel_task 无法跨进程取消，cancel_run 会静默失败（run 状态
+# 仍会被标记为 canceled，但实际执行不会中断）。
+_running_tasks: dict[str, asyncio.Task] = {}
 
-def _stage_to_steps(stage: StageDefinition) -> list[StepDefinition]:
-    """将 Stage 转换为可执行的 StepDefinition 列表（内部用）"""
-    if stage.type == StageType.CHECKOUT:
-        assert isinstance(stage.config, CheckoutStageConfig), f"Stage '{stage.name}' of type checkout is missing config"
-        return [
-            StepDefinition(
-                name=stage.name,
-                uses="checkout",
-                inputs={"ref": stage.config.ref},
-                retry_policy=RetryPolicy.ALWAYS_RERUN,
-            )
-        ]
 
-    if stage.type == StageType.DOCKER_BUILD:
-        assert isinstance(stage.config, DockerBuildStageConfig)
-        build_config = stage.config
-        return [
-            StepDefinition(
-                name=stage.name,
-                image="docker:latest",
-                commands=[
-                    f"docker build -t {build_config.image_name} -f {build_config.dockerfile} {build_config.context}",
-                    f"docker push {build_config.image_name}",
-                ],
-                volumes=["/var/run/docker.sock:/var/run/docker.sock"],
-                artifacts=[{"type": "docker_image", "name": build_config.image_name}],
-            )
-        ]
+def register_task(run_id: str, task: asyncio.Task) -> None:
+    _running_tasks[run_id] = task
 
-    if stage.type == StageType.UNIT_TEST:
-        assert isinstance(stage.config, UnitTestStageConfig)
-        test_config = stage.config
-        artifacts = [{"type": "file", "path": p, "name": p} for p in test_config.artifact_paths]
-        return [
-            StepDefinition(
-                name=stage.name,
-                image=test_config.image,
-                commands=test_config.commands,
-                artifacts=artifacts if artifacts else None,
-            )
-        ]
 
-    if stage.type == StageType.CUSTOM:
-        return stage.steps or []
+def cancel_task(run_id: str) -> bool:
+    task = _running_tasks.get(run_id)
+    if task and not task.done():
+        task.cancel()
+        return True
+    return False
 
-    return []  # type: ignore[unreachable]
+
+def unregister_task(run_id: str) -> None:
+    _running_tasks.pop(run_id, None)
 
 
 class PipelineExecutorImpl(PipelineExecutor):
-    """Pipeline 执行器实现"""
-
     def __init__(
         self,
-        job_repo: JobRepository,
-        job_log_repo: JobLogRepository,
+        stage_run_repo: StageRunRepository,
+        stage_log_repo: StageLogRepository,
         container_executor: ContainerExecutor,
         artifact_repo: ArtifactRepository,
         credential_repo: CredentialRepository,
         security_service: SecurityService,
     ):
-        self.job_repo = job_repo
-        self.job_log_repo = job_log_repo
+        self.stage_run_repo = stage_run_repo
+        self.stage_log_repo = stage_log_repo
         self.container_executor = container_executor
         self.artifact_repo = artifact_repo
         self.credential_repo = credential_repo
         self.security_service = security_service
 
     async def execute(self, context: ExecutionContext, stages: list[StageDefinition]) -> bool:
-        """按 Stage 依赖关系拓扑排序后并行执行"""
+        """按 Stage 依赖关系拓扑排序后分层并行执行，1 Stage = 1 Job"""
+        task = asyncio.current_task()
+        if task:
+            register_task(context.run_id, task)
         try:
-            # 以 stage.name 为节点，stage.depends_on 为边构建依赖图
-            # 将 stages 转换为 DependencyGraph 期望的 StepDefinition 格式
-            pseudo_steps = [StepDefinition(name=s.name, depends_on=s.depends_on or []) for s in stages]
-            graph = DependencyGraph(pseudo_steps)
+            return await self._execute_internal(context, stages)
+        finally:
+            unregister_task(context.run_id)
 
-            if graph.has_cycle():
-                logger.error(f"Cyclic dependency detected: run={context.run_id}")
+    async def _execute_internal(self, context: ExecutionContext, stages: list[StageDefinition]) -> bool:
+        try:
+            graph = DependencyGraph(stages)
+            try:
+                layers = graph.topological_sort()
+            except CyclicDependencyError:
+                logger.error(f"Cyclic dependency: run={context.run_id}")
                 return False
 
-            layers = graph.topological_sort()
             stages_map = {s.name: s for s in stages}
 
-            logger.info(
-                f"Pipeline execution plan: run={context.run_id}, layers={len(layers)}, total_stages={len(stages)}"
-            )
-
             for layer_idx, layer in enumerate(layers):
-                logger.info(f"Executing layer {layer_idx + 1}/{len(layers)}: run={context.run_id}, stages={layer}")
+                logger.info(f"Executing layer: index={layer_idx + 1}, total={len(layers)}, run={context.run_id}, stages={layer}")
                 layer_stages = [stages_map[name] for name in layer]
                 results = await self._execute_layer(context, layer_stages)
 
                 failed = [name for name, ok in results.items() if not ok]
                 if failed:
-                    logger.warning(f"Layer failed: run={context.run_id}, failed_stages={failed}")
+                    logger.warning(f"Layer failed: run={context.run_id}, failed={failed}")
                     await self._cancel_remaining(context, layers, layer_idx + 1, stages_map)
                     return False
 
-            logger.info(f"Pipeline execution succeeded: run={context.run_id}")
             return True
 
-        except CyclicDependencyError as e:
-            logger.error(f"Cyclic dependency error: run={context.run_id}, error={e}")
-            return False
+        except asyncio.CancelledError:
+            logger.info(f"Pipeline cancelled: run={context.run_id}")
+            raise
         except Exception as e:
             logger.error(f"Pipeline execution failed: run={context.run_id}, error={e}", exc_info=True)
             return False
 
-    async def _execute_layer(
-        self,
-        context: ExecutionContext,
-        stages: list[StageDefinition],
-    ) -> dict[str, bool]:
+    async def _execute_layer(self, context: ExecutionContext, stages: list[StageDefinition]) -> dict[str, bool]:
         """并行执行同一层的所有 Stage"""
-        original_jobs_map: dict[str, Job] = {}
-        current_jobs_map: dict[str, Job] = {}
-        if context.retry_of:
-            original_jobs_map = {j.name: j for j in self.job_repo.find_by_run(context.retry_of)}
-            current_jobs_map = {j.name: j for j in self.job_repo.find_by_run(context.run_id)}
-
-        tasks = [self._execute_stage(context, stage, original_jobs_map, current_jobs_map) for stage in stages]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        tasks = [self._execute_stage(context, stage) for stage in stages]
+        # 不用 return_exceptions=True，让 CancelledError 正常向上传播
+        results = await asyncio.gather(*tasks, return_exceptions=False)
 
         result_map: dict[str, bool] = {}
         for stage, result in zip(stages, results, strict=True):
-            if isinstance(result, Exception):
-                logger.error(
-                    f"Stage raised exception: run={context.run_id}, stage={stage.name}, error={result}", exc_info=result
-                )
-                result_map[stage.name] = False
-            else:
-                result_map[stage.name] = bool(result)
+            result_map[stage.name] = bool(result)
         return result_map
 
-    async def _execute_stage(
-        self,
-        context: ExecutionContext,
-        stage: StageDefinition,
-        original_jobs_map: dict[str, Job],
-        current_jobs_map: dict[str, Job],
-    ) -> bool:
-        """执行单个 Stage（转换为 Steps 后逐步执行）"""
-        steps = _stage_to_steps(stage)
-        if not steps:
-            logger.warning(f"Stage has no steps: run={context.run_id}, stage={stage.name}")
-            return True
-
-        for step in steps:
-            # 重试场景：检查是否应跳过
-            if context.retry_of and self._should_skip(step, original_jobs_map, current_jobs_map):
-                job = Job.create(pipeline_run_id=context.run_id, name=step.name)
-                job.status = JobStatus.SKIPPED
-                self.job_repo.save(job)
-                logger.info(f"Step skipped (retry): run={context.run_id}, step={step.name}")
-                continue
-
-            success = await self._execute_step(context, step)
-            if not success:
-                return False
-
-        return True
-
-    async def _execute_step(self, context: ExecutionContext, step: StepDefinition) -> bool:
-        """执行单个 Step"""
-        job = Job.create(pipeline_run_id=context.run_id, name=step.name)
-        self.job_repo.save(job)
+    async def _execute_stage(self, context: ExecutionContext, stage: StageDefinition) -> bool:
+        """执行单个 Stage，创建 StageRun 记录"""
+        stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage.name)
+        self.stage_run_repo.save(stage_run)
 
         try:
-            job.start()
-            self.job_repo.save(job)
-            logger.info(f"Step started: run={context.run_id}, step={step.name}")
+            stage_run.start()
+            self.stage_run_repo.save(stage_run)
+            logger.info(f"Stage started: run={context.run_id}, stage={stage.name}, image={stage.image}")
 
-            if step.uses:
-                output, exit_code = await self._execute_action(context, step, job)
+            if stage.name == "clone":
+                exit_code, output = await self._execute_clone(context, stage)
             else:
-                if not step.image:
-                    raise RuntimeError(f"Step '{step.name}' has no image defined")
-                exit_code, output = await self.container_executor.run(
-                    image=step.image,
-                    commands=step.commands or [],
-                    environment={k: str(v) for k, v in context.variables.items()},
-                    workspace_path=Path(context.workspace_path),
-                    artifacts_path=Path(context.artifacts_path),
-                    volumes=step.volumes or [],
-                )
+                exit_code, output = await self._execute_container(context, stage)
 
-            log = JobLog.create(job_id=job.id, content=output or "")
-            self.job_log_repo.save(log)
+            log = StageLog.create(stage_run_id=stage_run.id, content=output or "")
+            self.stage_log_repo.save(log)
 
             if exit_code == 0:
-                job.complete_success(exit_code)
-                self.job_repo.save(job)
-                self._save_artifacts(context, step, job.name)
-                logger.info(f"Step succeeded: run={context.run_id}, step={step.name}")
+                stage_run.complete_success(exit_code)
+                self.stage_run_repo.save(stage_run)
+                self._save_artifacts(context, stage, stage_run.name)
+                logger.info(f"Stage succeeded: run={context.run_id}, stage={stage.name}")
                 return True
 
-            job.complete_failed(exit_code, f"Exit code: {exit_code}")
-            self.job_repo.save(job)
-            logger.warning(f"Step failed: run={context.run_id}, step={step.name}, exit_code={exit_code}")
+            stage_run.complete_failed(exit_code, f"Exit code: {exit_code}")
+            self.stage_run_repo.save(stage_run)
+            logger.warning(f"Stage failed: run={context.run_id}, stage={stage.name}, exit_code={exit_code}")
             return False
 
+        except asyncio.CancelledError:
+            stage_run.complete_faulted("Cancelled")
+            self.stage_run_repo.save(stage_run)
+            raise
         except Exception as e:
-            job.complete_faulted(str(e))
-            self.job_repo.save(job)
-            logger.error(f"Step faulted: run={context.run_id}, step={step.name}, error={e}", exc_info=True)
+            stage_run.complete_faulted(str(e))
+            self.stage_run_repo.save(stage_run)
+            logger.error(f"Stage faulted: run={context.run_id}, stage={stage.name}, error={e}", exc_info=True)
             return False
 
-    async def _execute_action(
-        self,
-        context: ExecutionContext,
-        step: StepDefinition,
-        job: Job,
-    ) -> tuple[str, int]:
-        """处理 uses action"""
-        action_name = (step.uses or "").split("@")[0].lower()
+    async def _execute_container(self, context: ExecutionContext, stage: StageDefinition) -> tuple[int, str]:
+        """普通容器执行：合并 stage.env 和 context.variables 作为环境变量"""
+        env = {k: str(v) for k, v in context.variables.items()}
+        env.update(stage.env)  # stage 级 env 优先
 
-        if action_name == "checkout":
-            if not context.credential_id:
-                raise RuntimeError("checkout action requires a credential (set git_credential_id on the project)")
-            credential = self.credential_repo.find_by_id(context.credential_id)
-            if not credential:
-                raise RuntimeError(f"Credential {context.credential_id} not found")
-            decrypted = copy.copy(credential)
-            decrypted.encrypted_data = self.security_service.decrypt_value(credential.encrypted_data)
-            checkout = CheckoutAction(self.container_executor)
+        commands = [line for line in stage.script.splitlines() if line.strip()]
+        exit_code, output = await self.container_executor.run(
+            image=stage.image,
+            commands=commands,
+            environment=env,
+            workspace_path=Path(context.workspace_path),
+            artifacts_path=Path(context.artifacts_path),
+            volumes=[],
+        )
+        return exit_code, output
+
+    async def _execute_clone(self, context: ExecutionContext, stage: StageDefinition) -> tuple[int, str]:
+        """clone stage：处理 SSH key / token 挂载"""
+        if not context.credential_id:
+            raise RuntimeError("clone stage requires git_credential_id on the project")
+
+        credential = self.credential_repo.find_by_id(context.credential_id)
+        if not credential:
+            raise RuntimeError(f"Credential {context.credential_id} not found")
+
+        decrypted = copy(credential)
+        decrypted.encrypted_data = self.security_service.decrypt_value(credential.encrypted_data)
+
+        env = {k: str(v) for k, v in context.variables.items()}
+        env.update(stage.env)
+        extra_binds: dict[str, dict[str, str]] = {}
+        key_path: Path | None = None
+
+        if decrypted.type == CredentialType.GIT_SSH:
+            secrets_path = get_secrets_path(context.project_code, context.run_id)
+            secrets_path.mkdir(parents=True, exist_ok=True)
+            key_path = secrets_path / "id_rsa"
+            key_path.write_text(decrypted.get_private_key())
             try:
-                outputs = await checkout.execute(
-                    step=step,
-                    repository_url=context.repository_url,
-                    credential=decrypted,
-                    trigger_ref=context.variables.get("trigger_ref", "master"),
-                    workspace_path=Path(context.workspace_path),
-                    artifacts_path=Path(context.artifacts_path),
-                    run_id=context.run_id,
-                )
-                return "\n".join(f"{k}={v}" for k, v in outputs.items()), 0
-            except Exception as e:
-                return str(e), 1
-        else:
-            logger.warning(f"Unknown action: {step.uses}, skipping")
-            return f"Unknown action: {step.uses}", 1
+                key_path.chmod(0o600)
+            except Exception:
+                # chmod 失败时立即删除文件，避免以不安全权限留在磁盘
+                key_path.unlink(missing_ok=True)
+                raise
+            extra_binds[str(secrets_path)] = {"bind": "/run/secrets", "mode": "ro"}
+
+        elif decrypted.type == CredentialType.GIT_TOKEN:
+            token = decrypted.get_token()
+            repo_url = context.repository_url
+            if repo_url.startswith("git@"):
+                without_prefix = repo_url[len("git@") :]
+                host, path = without_prefix.split(":", 1)
+                repo_url = f"https://{token}@{host}/{path}"
+            elif repo_url.startswith("https://"):
+                repo_url = repo_url.replace("https://", f"https://{token}@")
+            # 替换命令中的 project_repository_url
+            env["project_repository_url"] = repo_url
+
+        # 在容器内修正 SSH key 权限（Windows 宿主机 chmod 不生效）
+        script_lines = [line for line in stage.script.splitlines() if line.strip()]
+        commands = []
+        if decrypted.type == CredentialType.GIT_SSH:
+            commands.append("chmod 600 /run/secrets/id_rsa")
+        commands.extend(script_lines)
+
+        try:
+            exit_code, output = await self.container_executor.run(
+                image=stage.image,
+                commands=commands,
+                environment=env,
+                workspace_path=Path(context.workspace_path),
+                artifacts_path=Path(context.artifacts_path),
+                volumes=[],
+                extra_binds=extra_binds,
+            )
+        finally:
+            # 容器执行完成后立即删除 SSH 私钥文件
+            if key_path and key_path.exists():
+                key_path.unlink()
+
+        return exit_code, output
 
     async def _cancel_remaining(
         self,
@@ -281,61 +244,22 @@ class PipelineExecutorImpl(PipelineExecutor):
     ) -> None:
         for layer_idx in range(start_layer_idx, len(layers)):
             for stage_name in layers[layer_idx]:
-                stage = stages_map.get(stage_name)
-                steps = _stage_to_steps(stage) if stage else []
-                for step in steps:
-                    job = Job.create(pipeline_run_id=context.run_id, name=step.name)
-                    job.status = JobStatus.CANCELED
-                    self.job_repo.save(job)
-                logger.info(f"Stage canceled: run={context.run_id}, stage={stage_name}")
+                stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage_name)
+                stage_run.status = StageStatus.CANCELED
+                self.stage_run_repo.save(stage_run)
+            logger.info(f"Layer canceled: run={context.run_id}, layer={layer_idx}")
 
-    def _should_skip(
-        self,
-        step: StepDefinition,
-        original_jobs_map: dict[str, Job],
-        current_jobs_map: dict[str, Job],
-    ) -> bool:
-        if step.retry_policy != RetryPolicy.SKIP_IF_SUCCESS:
-            return False
-        original_job = original_jobs_map.get(step.name)
-        if not original_job or original_job.status != JobStatus.SUCCESS:
-            return False
-        if step.depends_on:
-            for dep_name in step.depends_on:
-                dep_job = current_jobs_map.get(dep_name)
-                if dep_job and dep_job.status != JobStatus.SKIPPED:
-                    return False
-        return True
-
-    def _save_artifacts(self, context: ExecutionContext, step: StepDefinition, job_name: str) -> None:
-        if not step.artifacts:
+    def _save_artifacts(self, context: ExecutionContext, stage: StageDefinition, stage_name: str) -> None:
+        if not stage.artifacts:
             return
-        for artifact_def in step.artifacts:
-            artifact_type = artifact_def.get("type", "file")
-            artifact_name = artifact_def.get("name", "")
-            artifact_path = artifact_def.get("path")
-
-            if artifact_type not in {"docker_image", "file"}:
-                logger.warning(f"Unknown artifact type: run={context.run_id}, job={job_name}, type={artifact_type}")
-                continue
-            if not artifact_name:
-                logger.warning(f"Artifact missing name: run={context.run_id}, job={job_name}")
-                continue
-
-            full_path = (
-                str(Path(context.artifacts_path) / artifact_path)
-                if artifact_type == "file" and artifact_path
-                else artifact_path
-            )
-
+        for a in stage.artifacts:
+            full_path = str(Path(context.artifacts_path) / a.path)
             artifact = Artifact.create(
                 pipeline_run_id=context.run_id,
-                job_name=job_name,
-                artifact_type=artifact_type,
-                name=artifact_name,
-                path=str(full_path) if full_path else None,
+                stage_name=stage_name,
+                artifact_type="file",
+                name=a.name,
+                path=full_path,
             )
             self.artifact_repo.save(artifact)
-            logger.info(
-                f"Artifact saved: run={context.run_id}, job={job_name}, type={artifact_type}, name={artifact_name}"
-            )
+            logger.info(f"Artifact saved: run={context.run_id}, stage={stage_name}, name={a.name}")

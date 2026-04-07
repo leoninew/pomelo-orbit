@@ -31,3 +31,8 @@ class ProjectRepositoryImpl(BaseRepository[Project, ProjectModel], ProjectReposi
         """根据仓库 URL 查找项目（精确匹配，多个项目可能共用同一仓库）"""
         orms = self._session.query(ProjectModel).filter(ProjectModel.repository_url == repository_url).all()
         return [self._mapper.to_domain(orm) for orm in orms]
+
+    def find_by_code(self, code: str) -> Project | None:
+        """根据项目编码查找项目"""
+        orm = self._session.query(ProjectModel).filter(ProjectModel.code == code).first()
+        return self._mapper.to_domain(orm) if orm else None

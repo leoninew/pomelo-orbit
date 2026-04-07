@@ -5,30 +5,37 @@ import json
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
     Credential,
-    Job,
-    JobLog,
     PipelineRun,
     PipelineSnapshot,
+    PipelineStage,
     PipelineTemplate,
     Project,
+    ProjectWebhook,
+    StageLog,
+    StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
+    ArtifactConfig,
     CredentialType,
-    JobStatus,
     PipelineRunStatus,
     PipelineRunTrigger,
     StageDefinition,
+    StageOrchestration,
+    StageStatus,
     VariableDeclaration,
 )
 from pomelo_orbit.infrastructure.ci.models import (
     ArtifactModel,
     CredentialModel,
-    JobLogModel,
-    JobModel,
     PipelineRunModel,
     PipelineSnapshotModel,
+    PipelineStageModel,
     PipelineTemplateModel,
+    PipelineTemplateStageModel,
     ProjectModel,
+    ProjectWebhookModel,
+    StageLogModel,
+    StageRunModel,
 )
 
 
@@ -54,18 +61,84 @@ class CredentialMapper:
         )
 
 
+class PipelineStageMapper:
+    @staticmethod
+    def to_domain(orm: PipelineStageModel) -> PipelineStage:
+        artifacts_raw = json.loads(orm.artifacts) if orm.artifacts else None
+        artifacts = [ArtifactConfig(**a) for a in artifacts_raw] if artifacts_raw else None
+        return PipelineStage(
+            id=orm.id,
+            name=orm.name,
+            image=orm.image,
+            script=orm.script,
+            env=json.loads(orm.env),
+            artifacts=artifacts,
+            description=orm.description,
+            created_at=orm.created_at,
+            updated_at=orm.updated_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: PipelineStage) -> PipelineStageModel:
+        artifacts_json = (
+            json.dumps([a.model_dump() if hasattr(a, "model_dump") else a for a in entity.artifacts])
+            if entity.artifacts
+            else None
+        )
+        return PipelineStageModel(
+            id=entity.id,
+            name=entity.name,
+            image=entity.image,
+            script=entity.script,
+            env=json.dumps(entity.env),
+            artifacts=artifacts_json,
+            description=entity.description,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+        )
+
+
+class PipelineTemplateStageMapper:
+    @staticmethod
+    def to_domain(orm: PipelineTemplateStageModel) -> StageOrchestration:
+        return StageOrchestration(
+            stage_id=orm.stage_id,
+            depends_on=json.loads(orm.depends_on),
+            sort_order=orm.sort_order,
+        )
+
+    @staticmethod
+    def to_orm(template_id: str, orch: StageOrchestration) -> PipelineTemplateStageModel:
+        return PipelineTemplateStageModel(
+            template_id=template_id,
+            stage_id=orch.stage_id,
+            depends_on=json.dumps(orch.depends_on),
+            sort_order=orch.sort_order,
+        )
+
+
 class PipelineTemplateMapper:
     @staticmethod
-    def to_domain(orm: PipelineTemplateModel) -> PipelineTemplate:
-        stages = [StageDefinition(**s) for s in json.loads(orm.stages)]
+    def _normalize_snapshot_stage(s: dict) -> dict:
+        # 兼容旧快照数据 commands（list）→ script（str）
+        if "commands" in s and "script" not in s:
+            s["script"] = "\n".join(s.pop("commands"))
+        s.pop("builtin", None)
+        s.pop("readonly", None)
+        return s
+
+    @staticmethod
+    def to_domain(
+        orm: PipelineTemplateModel, orchestration: list[StageOrchestration], stages: list[PipelineStage]
+    ) -> PipelineTemplate:
         variable_declarations = [VariableDeclaration(**vd) for vd in json.loads(orm.variable_declarations)]
         return PipelineTemplate(
             id=orm.id,
             name=orm.name,
             description=orm.description,
+            orchestration=orchestration,
             stages=stages,
             variable_declarations=variable_declarations,
-            is_builtin=bool(orm.is_builtin),
             created_at=orm.created_at,
             updated_at=orm.updated_at,
         )
@@ -76,9 +149,7 @@ class PipelineTemplateMapper:
             id=entity.id,
             name=entity.name,
             description=entity.description,
-            stages=json.dumps([s.model_dump() for s in entity.stages]),
             variable_declarations=json.dumps([vd.model_dump() for vd in entity.variable_declarations]),
-            is_builtin=1 if entity.is_builtin else 0,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -87,7 +158,8 @@ class PipelineTemplateMapper:
 class PipelineSnapshotMapper:
     @staticmethod
     def to_domain(orm: PipelineSnapshotModel) -> PipelineSnapshot:
-        stages_snapshot = [StageDefinition(**s) for s in json.loads(orm.stages_snapshot)]
+        raw_stages = json.loads(orm.stages_snapshot)
+        stages_snapshot = [StageDefinition(**PipelineTemplateMapper._normalize_snapshot_stage(s)) for s in raw_stages]
         variable_declarations_snapshot = [
             VariableDeclaration(**vd) for vd in json.loads(orm.variable_declarations_snapshot)
         ]
@@ -120,8 +192,8 @@ class ProjectMapper:
         return Project(
             id=orm.id,
             name=orm.name,
+            code=orm.code,
             repository_url=orm.repository_url,
-            pipeline_snapshot_id=orm.pipeline_snapshot_id,
             git_credential_id=orm.git_credential_id,
             variable_overrides=json.loads(orm.variable_overrides),
             default_branch=orm.default_branch,
@@ -134,8 +206,8 @@ class ProjectMapper:
         return ProjectModel(
             id=entity.id,
             name=entity.name,
+            code=entity.code,
             repository_url=entity.repository_url,
-            pipeline_snapshot_id=entity.pipeline_snapshot_id,
             git_credential_id=entity.git_credential_id,
             variable_overrides=json.dumps(entity.variable_overrides),
             default_branch=entity.default_branch,
@@ -178,15 +250,14 @@ class PipelineRunMapper:
         )
 
 
-class JobMapper:
+class StageRunMapper:
     @staticmethod
-    def to_domain(orm: JobModel) -> Job:
-        return Job(
+    def to_domain(orm: StageRunModel) -> StageRun:
+        return StageRun(
             id=orm.id,
             pipeline_run_id=orm.pipeline_run_id,
             name=orm.name,
-            parent_job_id=orm.parent_job_id,
-            status=JobStatus(orm.status),
+            status=StageStatus(orm.status),
             started_at=orm.started_at,
             finished_at=orm.finished_at,
             exit_code=orm.exit_code,
@@ -194,12 +265,11 @@ class JobMapper:
         )
 
     @staticmethod
-    def to_orm(entity: Job) -> JobModel:
-        return JobModel(
+    def to_orm(entity: StageRun) -> StageRunModel:
+        return StageRunModel(
             id=entity.id,
             pipeline_run_id=entity.pipeline_run_id,
             name=entity.name,
-            parent_job_id=entity.parent_job_id,
             status=entity.status.value,
             started_at=entity.started_at,
             finished_at=entity.finished_at,
@@ -208,14 +278,24 @@ class JobMapper:
         )
 
 
-class JobLogMapper:
+class StageLogMapper:
     @staticmethod
-    def to_domain(orm: JobLogModel) -> JobLog:
-        return JobLog(id=orm.id, job_id=orm.job_id, content=orm.content, created_at=orm.created_at)
+    def to_domain(orm: StageLogModel) -> StageLog:
+        return StageLog(
+            id=orm.id,
+            stage_run_id=orm.stage_run_id,
+            content=orm.content,
+            created_at=orm.created_at,
+        )
 
     @staticmethod
-    def to_orm(entity: JobLog) -> JobLogModel:
-        return JobLogModel(id=entity.id, job_id=entity.job_id, content=entity.content, created_at=entity.created_at)
+    def to_orm(entity: StageLog) -> StageLogModel:
+        return StageLogModel(
+            id=entity.id,
+            stage_run_id=entity.stage_run_id,
+            content=entity.content,
+            created_at=entity.created_at,
+        )
 
 
 class ArtifactMapper:
@@ -224,7 +304,7 @@ class ArtifactMapper:
         return Artifact(
             id=orm.id,
             pipeline_run_id=orm.pipeline_run_id,
-            job_name=orm.job_name,
+            stage_name=orm.stage_name,
             type=orm.type,
             name=orm.name,
             path=orm.path,
@@ -236,9 +316,39 @@ class ArtifactMapper:
         return ArtifactModel(
             id=entity.id,
             pipeline_run_id=entity.pipeline_run_id,
-            job_name=entity.job_name,
+            stage_name=entity.stage_name,
             type=entity.type,
             name=entity.name,
             path=entity.path,
             created_at=entity.created_at,
+        )
+
+
+class ProjectWebhookMapper:
+    @staticmethod
+    def to_domain(orm: ProjectWebhookModel) -> ProjectWebhook:
+        return ProjectWebhook(
+            id=orm.id,
+            project_id=orm.project_id,
+            name=orm.name,
+            template_id=orm.template_id,
+            branch_filter=orm.branch_filter,
+            encrypted_secret=orm.encrypted_secret,
+            enabled=bool(orm.enabled),
+            created_at=orm.created_at,
+            updated_at=orm.updated_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: ProjectWebhook) -> ProjectWebhookModel:
+        return ProjectWebhookModel(
+            id=entity.id,
+            project_id=entity.project_id,
+            name=entity.name,
+            template_id=entity.template_id,
+            branch_filter=entity.branch_filter,
+            encrypted_secret=entity.encrypted_secret,
+            enabled=1 if entity.enabled else 0,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
         )

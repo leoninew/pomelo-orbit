@@ -9,19 +9,20 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
-from pomelo_orbit.application.ci.webhook_service import CIWebhookService
 from pomelo_orbit.domain.ci.executor import PipelineExecutor
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 from pomelo_orbit.infrastructure.ci.repositories import (
     ArtifactRepositoryImpl,
     CredentialRepositoryImpl,
-    JobLogRepositoryImpl,
-    JobRepositoryImpl,
     PipelineRunRepositoryImpl,
     PipelineSnapshotRepositoryImpl,
+    PipelineStageRepositoryImpl,
     PipelineTemplateRepositoryImpl,
     ProjectRepositoryImpl,
+    ProjectWebhookRepositoryImpl,
+    StageLogRepositoryImpl,
+    StageRunRepositoryImpl,
 )
 from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.persistence.database import get_session_factory
@@ -43,8 +44,8 @@ def _get_cached_executor_factory(settings: Dynaconf):
 
     def factory(session: Session) -> PipelineExecutor:
         return PipelineExecutorImpl(
-            job_repo=JobRepositoryImpl(session),
-            job_log_repo=JobLogRepositoryImpl(session),
+            stage_run_repo=StageRunRepositoryImpl(session),
+            stage_log_repo=StageLogRepositoryImpl(session),
             container_executor=container_executor,
             artifact_repo=ArtifactRepositoryImpl(session),
             credential_repo=CredentialRepositoryImpl(session),
@@ -66,22 +67,15 @@ def get_pipeline_service(
         project_repo=ProjectRepositoryImpl(db),
         credential_repo=CredentialRepositoryImpl(db),
         template_repo=PipelineTemplateRepositoryImpl(db),
+        stage_repo=PipelineStageRepositoryImpl(db),
         snapshot_repo=PipelineSnapshotRepositoryImpl(db),
         run_repo=PipelineRunRepositoryImpl(db),
         artifact_repo=ArtifactRepositoryImpl(db),
-        job_repo=JobRepositoryImpl(db),
-        job_log_repo=JobLogRepositoryImpl(db),
+        stage_run_repo=StageRunRepositoryImpl(db),
+        stage_log_repo=StageLogRepositoryImpl(db),
+        webhook_repo=ProjectWebhookRepositoryImpl(db),
         session_factory=get_session_factory(),
         executor_factory=_get_cached_executor_factory(settings),
+        security_service=SecurityService(settings),
         global_variables=global_vars,
-    )
-
-
-def get_ci_webhook_service(
-    db: Annotated[Session, Depends(get_db)],
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
-) -> CIWebhookService:
-    return CIWebhookService(
-        project_repo=ProjectRepositoryImpl(db),
-        pipeline_service=pipeline_service,
     )

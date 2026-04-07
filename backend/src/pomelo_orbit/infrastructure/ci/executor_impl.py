@@ -206,7 +206,7 @@ class PipelineExecutorImpl(PipelineExecutor):
             token = decrypted.get_token()
             repo_url = context.repository_url
             if repo_url.startswith("git@"):
-                without_prefix = repo_url[len("git@"):]
+                without_prefix = repo_url[len("git@") :]
                 host, path = without_prefix.split(":", 1)
                 repo_url = f"https://{token}@{host}/{path}"
             elif repo_url.startswith("https://"):

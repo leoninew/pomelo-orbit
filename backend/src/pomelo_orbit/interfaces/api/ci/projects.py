@@ -28,9 +28,7 @@ def list_projects(
 ) -> PaginatedResp[ProjectResp]:
     projects, credential_names, total = pipeline_service.list_projects(page=page, per_page=per_page)
     return PaginatedResp(
-        items=[
-            ProjectResp.from_domain(p, cred_name) for p, cred_name in zip(projects, credential_names, strict=True)
-        ],
+        items=[ProjectResp.from_domain(p, cred_name) for p, cred_name in zip(projects, credential_names, strict=True)],
         total=total,
         page=page,
         per_page=per_page,

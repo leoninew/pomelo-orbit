@@ -93,9 +93,7 @@ class PipelineService:
 
     # ── Project CRUD ──────────────────────────────────────────────────────────
 
-    def list_projects(
-        self, page: int = 1, per_page: int = 20
-    ) -> tuple[list[Project], list[str | None], int]:
+    def list_projects(self, page: int = 1, per_page: int = 20) -> tuple[list[Project], list[str | None], int]:
         """List projects with credential names aligned to the project list."""
         projects, total = self.project_repo.find_paginated(page=page, per_page=per_page)
         credential_names = self._get_credential_names_for_projects(projects)

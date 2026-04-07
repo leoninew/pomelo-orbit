@@ -183,7 +183,7 @@ class ApplicationManagerImpl(ApplicationManager):
             self._write_log(log_file, cmd_str)
         if sys.platform == "win32":
             return await self._run_command_win32(cmd, cwd)
-        return await self._run_command_unix(cmd, cwd)  # type: ignore[unreachable]
+        return await self._run_command_unix(cmd, cwd)
 
     async def _compose_pull(self, app_dir: Path, log_file: TextIO | None = None) -> str:
         return await self._run_command(
@@ -243,34 +243,34 @@ class ApplicationManagerImpl(ApplicationManager):
 
         if sys.platform != "win32":
             return await self._run_command(["bash", "init.sh"], cwd=app_dir, log_file=log_file)
+        else:  # noqa: RET505
+            # sys.platform == "win32"
+            bash_path = shutil.which("bash")
+            if not bash_path:
+                raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")
 
-        # sys.platform == "win32" (mypy has trouble narrowing sys.platform, use type: ignore)
-        bash_path = shutil.which("bash")
-        if not bash_path:
-            raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")
+            cmd_str = f"$ {bash_path} init.sh"
+            logger.info(f"{cmd_str}  (cwd={app_dir})")
+            if log_file:
+                self._write_log(log_file, cmd_str)
 
-        cmd_str = f"$ {bash_path} init.sh"
-        logger.info(f"{cmd_str}  (cwd={app_dir})")
-        if log_file:
-            self._write_log(log_file, cmd_str)
-
-        def _run_sync() -> str:
-            result = subprocess.run(
-                [bash_path, "init.sh"],
-                cwd=str(app_dir),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if result.returncode != 0:
-                error_msg = result.stdout + result.stderr
-                raise subprocess.CalledProcessError(
-                    result.returncode, [bash_path, "init.sh"], error_msg or "(no output)"
+            def _run_sync() -> str:
+                result = subprocess.run(
+                    [bash_path, "init.sh"],
+                    cwd=str(app_dir),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
                 )
-            return result.stdout + result.stderr
+                if result.returncode != 0:
+                    error_msg = result.stdout + result.stderr
+                    raise subprocess.CalledProcessError(
+                        result.returncode, [bash_path, "init.sh"], error_msg or "(no output)"
+                    )
+                return result.stdout + result.stderr
 
-        return await asyncio.to_thread(_run_sync)
+            return await asyncio.to_thread(_run_sync)
 
     async def _compose_ps(self, app_dir: Path) -> str:
         return await self._run_command(

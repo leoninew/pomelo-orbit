@@ -10,6 +10,9 @@ class ProjectRepository(ABC):
     def find_by_id(self, project_id: str) -> Project | None: ...
 
     @abstractmethod
+    def find_by_code(self, code: str) -> Project | None: ...
+
+    @abstractmethod
     def find_paginated(self, page: int, per_page: int) -> tuple[list[Project], int]: ...
 
     @abstractmethod

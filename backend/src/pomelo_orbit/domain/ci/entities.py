@@ -8,11 +8,13 @@ from typing import Any
 from ulid import ULID
 
 from pomelo_orbit.domain.ci.value_objects import (
+    ArtifactConfig,
     CredentialType,
-    JobStatus,
     PipelineRunStatus,
     PipelineRunTrigger,
     StageDefinition,
+    StageOrchestration,
+    StageStatus,
     VariableDeclaration,
 )
 from pomelo_orbit.infrastructure.time_utils import utc_now
@@ -24,8 +26,8 @@ class Project:
 
     id: str
     name: str
+    code: str  # 短标识符，固化工作目录路径，创建后不可修改
     repository_url: str
-    pipeline_snapshot_id: str
     variable_overrides: dict[str, Any]
     git_credential_id: str | None = None
     default_branch: str = "master"
@@ -35,20 +37,23 @@ class Project:
     @staticmethod
     def create(
         name: str,
+        code: str,
         repository_url: str,
-        pipeline_snapshot_id: str,
         git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         default_branch: str = "master",
     ) -> "Project":
+        now = utc_now()
         return Project(
             id=str(ULID()),
             name=name,
+            code=code,
             repository_url=repository_url,
-            pipeline_snapshot_id=pipeline_snapshot_id,
             git_credential_id=git_credential_id,
             variable_overrides=variable_overrides or {},
             default_branch=default_branch,
+            created_at=now,
+            updated_at=now,
         )
 
     def update(
@@ -56,7 +61,6 @@ class Project:
         name: str | None = None,
         repository_url: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
-        pipeline_snapshot_id: str | None = None,
         git_credential_id: str | None = None,
         default_branch: str | None = None,
     ) -> None:
@@ -66,12 +70,65 @@ class Project:
             self.repository_url = repository_url
         if variable_overrides is not None:
             self.variable_overrides = variable_overrides
-        if pipeline_snapshot_id is not None:
-            self.pipeline_snapshot_id = pipeline_snapshot_id
         if git_credential_id is not None:
             self.git_credential_id = git_credential_id
         if default_branch is not None:
             self.default_branch = default_branch
+        self.updated_at = utc_now()
+
+
+@dataclass
+class ProjectWebhook:
+    """项目 Webhook 配置：每个 Webhook 绑定一个模板，有独立的签名密钥"""
+
+    id: str
+    project_id: str
+    name: str
+    template_id: str
+    branch_filter: str | None  # None 或空字符串表示拒绝所有分支；"*" 表示接受所有分支；其他值用 glob 匹配（如 "main", "release/*"）
+    encrypted_secret: str  # 加密存储的 HMAC 密钥
+    enabled: bool
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+
+    @staticmethod
+    def create(
+        project_id: str,
+        name: str,
+        template_id: str,
+        encrypted_secret: str,
+        branch_filter: str | None = None,
+    ) -> "ProjectWebhook":
+        now = utc_now()
+        return ProjectWebhook(
+            id=str(ULID()),
+            project_id=project_id,
+            name=name,
+            template_id=template_id,
+            branch_filter=branch_filter,
+            encrypted_secret=encrypted_secret,
+            enabled=True,
+            created_at=now,
+            updated_at=now,
+        )
+
+    def update(
+        self,
+        name: str | None = None,
+        template_id: str | None = None,
+        branch_filter: str | None = None,
+        encrypted_secret: str | None = None,
+        enabled: bool | None = None,
+    ) -> None:
+        if name is not None:
+            self.name = name
+        if template_id is not None:
+            self.template_id = template_id
+        self.branch_filter = branch_filter or None  # 空字符串统一转 None，表示拒绝所有分支
+        if encrypted_secret is not None:
+            self.encrypted_secret = encrypted_secret
+        if enabled is not None:
+            self.enabled = enabled
         self.updated_at = utc_now()
 
 
@@ -101,42 +158,115 @@ class Credential:
 
 
 @dataclass
-class PipelineTemplate:
-    """流水线模板实体"""
+class PipelineStage:
+    """流水线 Stage 实体：执行的最小单元，描述"做什么"。
+
+    不含任何编排信息（depends_on、sort_order 属于 PipelineTemplate 的编排，不属于 Stage）。
+    """
 
     id: str
     name: str
-    stages: list[StageDefinition]
-    variable_declarations: list[VariableDeclaration]
+    image: str
+    script: str
+    env: dict[str, str]
+    artifacts: list | None = None  # list[ArtifactConfig]
     description: str = ""
-    is_builtin: bool = False
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
 
     @staticmethod
     def create(
         name: str,
-        stages: list[StageDefinition],
+        image: str,
+        script: str,
+        env: dict[str, str] | None = None,
+        artifacts: list | None = None,
+        description: str = "",
+    ) -> "PipelineStage":
+        now = utc_now()
+        return PipelineStage(
+            id=str(ULID()),
+            name=name,
+            image=image,
+            script=script,
+            env=env or {},
+            artifacts=artifacts,
+            description=description,
+            created_at=now,
+            updated_at=now,
+        )
+
+    def update(
+        self,
+        name: str | None = None,
+        image: str | None = None,
+        script: str | None = None,
+        env: dict[str, str] | None = None,
+        artifacts: list | None = None,
+        description: str | None = None,
+    ) -> None:
+        if name is not None:
+            self.name = name
+        if image is not None:
+            self.image = image
+        if script is not None:
+            self.script = script
+        if env is not None:
+            self.env = env
+        if artifacts is not None:
+            self.artifacts = artifacts
+        if description is not None:
+            self.description = description
+        self.updated_at = utc_now()
+
+    def to_stage_definition(self, depends_on: list[str] | None = None) -> "StageDefinition":
+        """转换为值对象，用于快照和执行。depends_on 由编排层传入。"""
+        return StageDefinition(
+            name=self.name,
+            image=self.image,
+            depends_on=depends_on or [],
+            script=self.script,
+            env=self.env,
+            artifacts=[ArtifactConfig(**a) if isinstance(a, dict) else a for a in self.artifacts]
+            if self.artifacts
+            else None,
+        )
+
+
+@dataclass
+class PipelineTemplate:
+    """流水线模板实体：将一组 Stage 编排起来，定义依赖关系和执行顺序，配合变量声明可以运行。"""
+
+    id: str
+    name: str
+    orchestration: list["StageOrchestration"]  # 编排：stage_id + depends_on + sort_order
+    stages: list["PipelineStage"]  # 编排引用的 Stage 实体（加载时填充）
+    variable_declarations: list[VariableDeclaration]
+    description: str = ""
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+
+    @staticmethod
+    def create(
+        name: str,
         variable_declarations: list[VariableDeclaration],
         description: str = "",
-        is_builtin: bool = False,
     ) -> "PipelineTemplate":
         if not name:
             raise ValueError("Template name cannot be empty")
         return PipelineTemplate(
             id=str(ULID()),
             name=name,
-            stages=stages,
+            orchestration=[],
+            stages=[],
             variable_declarations=variable_declarations,
             description=description,
-            is_builtin=is_builtin,
         )
 
     def update(
         self,
         name: str | None = None,
         description: str | None = None,
-        stages: list[StageDefinition] | None = None,
         variable_declarations: list[VariableDeclaration] | None = None,
     ) -> None:
         if name is not None:
@@ -145,11 +275,20 @@ class PipelineTemplate:
             self.name = name
         if description is not None:
             self.description = description
-        if stages is not None:
-            self.stages = stages
         if variable_declarations is not None:
             self.variable_declarations = variable_declarations
         self.updated_at = utc_now()
+
+    def get_stage_definitions(self) -> list[StageDefinition]:
+        """按 sort_order 排序，将编排 + Stage 内容合并为 StageDefinition 列表，用于快照和执行。"""
+        stage_map = {s.id: s for s in self.stages}
+        sorted_orch = sorted(self.orchestration, key=lambda o: o.sort_order)
+        result = []
+        for orch in sorted_orch:
+            stage = stage_map.get(orch.stage_id)
+            if stage:
+                result.append(stage.to_stage_definition(depends_on=orch.depends_on))
+        return result
 
 
 @dataclass
@@ -164,12 +303,12 @@ class PipelineSnapshot:
     created_at: datetime = field(default_factory=utc_now)
 
     @staticmethod
-    def create(template: PipelineTemplate, version: int) -> "PipelineSnapshot":
+    def create(template: "PipelineTemplate", version: int) -> "PipelineSnapshot":
         return PipelineSnapshot(
             id=str(ULID()),
             template_id=template.id,
             version=version,
-            stages_snapshot=deepcopy(template.stages),
+            stages_snapshot=deepcopy(template.get_stage_definitions()),
             variable_declarations_snapshot=deepcopy(template.variable_declarations),
         )
 
@@ -229,56 +368,55 @@ class PipelineRun:
 
 
 @dataclass
-class Job:
-    """Job 执行单元"""
+class StageRun:
+    """Stage 执行记录（1 Stage = 1 StageRun per PipelineRun）"""
 
     id: str
     pipeline_run_id: str
-    name: str
-    status: JobStatus = JobStatus.WAITING
-    parent_job_id: str | None = None
+    name: str  # 对应 StageDefinition.name
+    status: StageStatus = StageStatus.WAITING
     started_at: datetime | None = None
     finished_at: datetime | None = None
     exit_code: int | None = None
     error_message: str | None = None
 
     @staticmethod
-    def create(pipeline_run_id: str, name: str, parent_job_id: str | None = None) -> "Job":
-        return Job(id=str(ULID()), pipeline_run_id=pipeline_run_id, name=name, parent_job_id=parent_job_id)
+    def create(pipeline_run_id: str, name: str) -> "StageRun":
+        return StageRun(id=str(ULID()), pipeline_run_id=pipeline_run_id, name=name)
 
     def start(self) -> None:
-        self.status = JobStatus.RUNNING
+        self.status = StageStatus.RUNNING
         self.started_at = utc_now()
 
     def complete_success(self, exit_code: int = 0) -> None:
-        self.status = JobStatus.SUCCESS
+        self.status = StageStatus.SUCCESS
         self.exit_code = exit_code
         self.finished_at = utc_now()
 
     def complete_failed(self, exit_code: int, error_message: str | None = None) -> None:
-        self.status = JobStatus.FAILED
+        self.status = StageStatus.FAILED
         self.exit_code = exit_code
         self.error_message = error_message
         self.finished_at = utc_now()
 
     def complete_faulted(self, error_message: str) -> None:
-        self.status = JobStatus.FAULTED
+        self.status = StageStatus.FAULTED
         self.error_message = error_message
         self.finished_at = utc_now()
 
 
 @dataclass
-class JobLog:
-    """Job 日志"""
+class StageLog:
+    """Stage 执行日志"""
 
     id: str
-    job_id: str
+    stage_run_id: str
     content: str
     created_at: datetime = field(default_factory=utc_now)
 
     @staticmethod
-    def create(job_id: str, content: str) -> "JobLog":
-        return JobLog(id=str(ULID()), job_id=job_id, content=content)
+    def create(stage_run_id: str, content: str) -> "StageLog":
+        return StageLog(id=str(ULID()), stage_run_id=stage_run_id, content=content)
 
 
 @dataclass
@@ -287,7 +425,7 @@ class Artifact:
 
     id: str
     pipeline_run_id: str
-    job_name: str
+    stage_name: str
     type: str  # docker_image | file
     name: str
     path: str | None = None
@@ -296,7 +434,7 @@ class Artifact:
     @staticmethod
     def create(
         pipeline_run_id: str,
-        job_name: str,
+        stage_name: str,
         artifact_type: str,
         name: str,
         path: str | None = None,
@@ -304,7 +442,7 @@ class Artifact:
         return Artifact(
             id=str(ULID()),
             pipeline_run_id=pipeline_run_id,
-            job_name=job_name,
+            stage_name=stage_name,
             type=artifact_type,
             name=name,
             path=path,

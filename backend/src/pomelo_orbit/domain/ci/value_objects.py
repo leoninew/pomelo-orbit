@@ -7,15 +7,11 @@ from pydantic import BaseModel
 
 
 class CredentialType(StrEnum):
-    """凭据类型"""
-
     GIT_SSH = "git_ssh"
     GIT_TOKEN = "git_token"
 
 
 class PipelineRunStatus(StrEnum):
-    """Pipeline 运行状态"""
-
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
@@ -24,15 +20,11 @@ class PipelineRunStatus(StrEnum):
 
 
 class PipelineRunTrigger(StrEnum):
-    """Pipeline 触发方式"""
-
     MANUAL = "manual"
     WEBHOOK = "webhook"
 
 
-class JobStatus(StrEnum):
-    """Job 状态"""
-
+class StageStatus(StrEnum):
     WAITING = "waiting"
     RUNNING = "running"
     SUCCESS = "success"
@@ -42,89 +34,34 @@ class JobStatus(StrEnum):
     CANCELED = "canceled"
 
 
-class RetryPolicy(StrEnum):
-    """重试策略"""
-
-    ALWAYS_RERUN = "always_rerun"
-    SKIP_IF_SUCCESS = "skip_if_success"
-
-
-class StageType(StrEnum):
-    """Stage 类型"""
-
-    CHECKOUT = "checkout"
-    DOCKER_BUILD = "docker_build"
-    UNIT_TEST = "unit_test"
-    CUSTOM = "custom"
-
-
 class VariableDeclaration(BaseModel):
-    """变量声明"""
-
     name: str
     description: str = ""
     required: bool = False
     default: Any = None
     secret: bool = False
-    locked: bool = False  # True 时运行时临时变量不可覆盖
+    locked: bool = False
 
 
-class StepDefinition(BaseModel):
-    """Step 定义（用于 custom stage 内部）"""
-
+class ArtifactConfig(BaseModel):
+    path: str
     name: str
-    image: str | None = None
-    commands: list[str] | None = None
-    uses: str | None = None
-    inputs: dict[str, Any] | None = None
-    volumes: list[str] | None = None
-    depends_on: list[str] | None = None
-    timeout: int | None = None
-    retry_policy: RetryPolicy | None = None
-    artifacts: list[dict[str, Any]] | None = None
-    outputs: list[str] | None = None
-    steps: list["StepDefinition"] | None = None  # 嵌套
-
-
-# ── Stage 配置类型 ──────────────────────────────────────────────────────────
-
-
-class CheckoutStageConfig(BaseModel):
-    """checkout stage 配置：仓库地址和凭据由项目属性自动注入"""
-
-    ref: str = "{{ DEFAULT_BRANCH }}"
-
-
-class DockerBuildStageConfig(BaseModel):
-    """docker_build stage 配置：执行成功后产出 docker_image Artifact"""
-
-    context: str = "."
-    dockerfile: str = "Dockerfile"
-    image_name: str  # 必填，支持变量占位符
-
-
-class UnitTestStageConfig(BaseModel):
-    """unit_test stage 配置：artifact_paths 非空时产出 file Artifact"""
-
-    image: str  # 必填，支持变量占位符
-    commands: list[str]
-    artifact_paths: list[str] = []
 
 
 class StageDefinition(BaseModel):
-    """Stage 定义"""
+    """Stage 定义值对象：用于快照和执行，包含编排信息（已展开）"""
 
     name: str
-    type: StageType
-    depends_on: list[str] = []
-    # checkout / docker_build / unit_test 使用 config；custom 使用 steps
-    config: CheckoutStageConfig | DockerBuildStageConfig | UnitTestStageConfig | None = None
-    steps: list[StepDefinition] | None = None  # 仅 custom 类型
+    image: str
+    depends_on: list[str] = []  # 编排属性，来自 StageOrchestration
+    script: str
+    env: dict[str, str] = {}
+    artifacts: list[ArtifactConfig] | None = None
 
 
-class PipelineDefinition(BaseModel):
-    """Pipeline 定义（保留用于兼容现有执行器接口过渡期）"""
+class StageOrchestration(BaseModel):
+    """模板对 Stage 的编排：引用 + 依赖 + 顺序。依赖和顺序属于编排，不属于 Stage 本身。"""
 
-    version: str
-    timeout: int | None = None
-    steps: list[StepDefinition]
+    stage_id: str
+    depends_on: list[str] = []  # 依赖的 stage_id 列表，决定串并行
+    sort_order: int = 0  # 列表视图显示顺序

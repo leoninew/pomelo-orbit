@@ -34,6 +34,10 @@ jwt:
 webhook:
   secret: ""                         # GitHub Webhook Secret，留空则跳过签名验证
 
+# CI 配置
+ci:
+  global_variables: {}               # 全局变量，注入所有 pipeline run
+
 # 数据清理
 cleanup:
   deploy_record_retention_days: 30

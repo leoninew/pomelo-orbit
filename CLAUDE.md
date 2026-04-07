@@ -38,14 +38,14 @@
 
 #### 前端 API 文件命名与导出
 
-文件名单数 camelCase，导出对象单数 + `API` 后缀
+文件名单数 camelCase，导出对象单数 + `Api` 后缀
 
 ```typescript
 // 文件: typingContent.ts
-✅ export const typingContentAPI = { ... }
+✅ export const typingContentApi = { ... }
 
 // 文件: user.ts
-✅ export const userAPI = { ... }
+✅ export const userApi = { ... }
 ```
 
 #### DTO 文件命名

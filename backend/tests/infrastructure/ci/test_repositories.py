@@ -10,10 +10,7 @@ from pomelo_orbit.infrastructure.ci.repositories import ProjectRepositoryImpl
 
 
 class TestProjectRepository:
-    """测试 ProjectRepository"""
-
     def setup_method(self):
-        """每个测试前设置"""
         self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(self.engine)
         session_local = sessionmaker(bind=self.engine)
@@ -21,16 +18,14 @@ class TestProjectRepository:
         self.repo = ProjectRepositoryImpl(self.session)
 
     def teardown_method(self):
-        """每个测试后清理"""
         self.session.close()
         Base.metadata.drop_all(self.engine)
 
     def test_save_and_find_by_id(self):
-        """测试保存和按 ID 查找"""
         project = Project.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_snapshot_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
             default_branch="main",
         )
@@ -46,23 +41,14 @@ class TestProjectRepository:
         assert found.default_branch == "main"
 
     def test_find_by_repository_url(self):
-        """测试按仓库 URL 查找"""
         repo_url = "https://github.com/test/repo.git"
 
-        project1 = Project.create(
-            name="project1",
-            repository_url=repo_url,
-            pipeline_snapshot_id=str(ulid.ULID()),
-        )
-        project2 = Project.create(
-            name="project2",
-            repository_url=repo_url,
-            pipeline_snapshot_id=str(ulid.ULID()),
-        )
+        project1 = Project.create(name="project1", code="project1", repository_url=repo_url)
+        project2 = Project.create(name="project2", code="project2", repository_url=repo_url)
         project3 = Project.create(
             name="project3",
+            code="project3",
             repository_url="https://github.com/other/repo.git",
-            pipeline_snapshot_id=str(ulid.ULID()),
         )
 
         self.repo.save(project1)
@@ -76,23 +62,20 @@ class TestProjectRepository:
         assert {p.name for p in found} == {"project1", "project2"}
 
     def test_find_by_repository_url_not_found(self):
-        """测试按仓库 URL 查找（未找到）"""
         found = self.repo.find_by_repository_url("https://github.com/nonexistent/repo.git")
         assert len(found) == 0
 
     def test_update_project(self):
-        """测试更新项目字段"""
         project = Project.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_snapshot_id=str(ulid.ULID()),
         )
 
         self.repo.save(project)
         self.session.commit()
 
-        new_snapshot_id = str(ulid.ULID())
-        project.update(name="updated-project", pipeline_snapshot_id=new_snapshot_id)
+        project.update(name="updated-project")
         self.repo.save(project)
         self.session.commit()
 
@@ -100,4 +83,3 @@ class TestProjectRepository:
 
         assert found is not None
         assert found.name == "updated-project"
-        assert found.pipeline_snapshot_id == new_snapshot_id

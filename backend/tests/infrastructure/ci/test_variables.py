@@ -66,13 +66,13 @@ class TestMergeVariables:
     def test_builtin_overrides_all(self):
         """测试内置变量优先级最高"""
         result = merge_variables(
-            {"REPOSITORY_URL": "global"},
-            {"REPOSITORY_URL": "project"},
-            {"REPOSITORY_URL": "runtime"},
+            {"project_repository_url": "global"},
+            {"project_repository_url": "project"},
+            {"project_repository_url": "runtime"},
             [],
-            {"REPOSITORY_URL": "builtin"},
+            {"project_repository_url": "builtin"},
         )
-        assert result["REPOSITORY_URL"] == "builtin"
+        assert result["project_repository_url"] == "builtin"
 
     def test_locked_variable_not_overridden_by_runtime(self):
         """测试 locked 变量不被运行时变量覆盖"""

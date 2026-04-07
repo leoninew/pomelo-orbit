@@ -13,20 +13,21 @@ class TestProjectList:
 
 
 class TestProjectCreate:
-    def test_creates_project(self, auth_client, test_snapshot, test_credential):
+    def test_creates_project(self, auth_client, test_credential):
         resp = auth_client.post(
             "/api/ci/projects",
             json={
                 "name": "new-project",
+                "code": "new-project",
                 "repository_url": "https://github.com/test/new.git",
-                "pipeline_snapshot_id": test_snapshot.id,
                 "git_credential_id": test_credential.id,
             },
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "new-project"
-        assert data["pipeline_snapshot_id"] == test_snapshot.id
+        assert data["code"] == "new-project"
+        assert data["repository_url"] == "https://github.com/test/new.git"
 
 
 class TestProjectGet:

@@ -2,6 +2,9 @@
 
 from pomelo_orbit.infrastructure.ci.models import PipelineTemplateModel
 
+STAGE_JSON = '[{"name": "build", "image": "alpine:latest", "script": "echo build"}]'
+STAGE_PAYLOAD = [{"name": "build", "image": "alpine:latest", "script": "echo build"}]
+
 
 class TestPipelineTemplateList:
     def test_returns_paginated_structure(self, auth_client, test_template):
@@ -26,9 +29,7 @@ class TestPipelineTemplateList:
                 PipelineTemplateModel(
                     name=f"tmpl-{i}",
                     description="",
-                    stages='[{"name": "build", "type": "checkout", "config": {"ref": "master"}}]',
                     variable_declarations="[]",
-                    is_builtin=0,
                 )
             )
         db_session.commit()
@@ -47,7 +48,6 @@ class TestPipelineTemplateCreate:
             json={
                 "name": "new-template",
                 "description": "desc",
-                "stages": [{"name": "build", "type": "checkout", "config": {"ref": "master"}}],
             },
         )
         assert resp.status_code == 201
@@ -83,5 +83,17 @@ class TestPipelineTemplateDelete:
         assert db_session.query(PipelineTemplateModel).filter_by(id=test_template.id).first() is None
 
     def test_cannot_delete_referenced_template(self, auth_client, test_template, test_project):
+        # 创建一个 webhook 引用该模板
+        webhook_resp = auth_client.post(
+            f"/api/ci/projects/{test_project.id}/webhooks",
+            json={
+                "name": "test-webhook",
+                "template_id": test_template.id,
+                "secret": "test-secret",
+            },
+        )
+        assert webhook_resp.status_code == 201
+
+        # 现在模板被 webhook 引用，不能删除
         resp = auth_client.delete(f"/api/ci/templates/{test_template.id}")
         assert resp.status_code == 409

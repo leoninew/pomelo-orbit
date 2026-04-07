@@ -5,29 +5,31 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from pomelo_orbit.domain.ci.entities import Job
 from pomelo_orbit.domain.ci.executor import ExecutionContext
-from pomelo_orbit.domain.ci.value_objects import (
-    JobStatus,
-    RetryPolicy,
-    StageDefinition,
-    StageType,
-    StepDefinition,
-)
+from pomelo_orbit.domain.ci.value_objects import ArtifactConfig, StageDefinition, StageStatus
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 
 if TYPE_CHECKING:
     from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
-    from pomelo_orbit.infrastructure.ci.repositories import JobLogRepositoryImpl, JobRepositoryImpl
+    from pomelo_orbit.infrastructure.ci.repositories import StageLogRepositoryImpl, StageRunRepositoryImpl
 
 
-def create_test_context(
-    run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None
-) -> ExecutionContext:
-    """创建测试用的 ExecutionContext"""
+def make_executor(container_executor=None, stage_run_repo=None, stage_log_repo=None, artifact_repo=None):
+    return PipelineExecutorImpl(
+        stage_run_repo=cast("StageRunRepositoryImpl", stage_run_repo or Mock()),
+        stage_log_repo=cast("StageLogRepositoryImpl", stage_log_repo or Mock()),
+        container_executor=cast("ContainerExecutor", container_executor or AsyncMock()),
+        artifact_repo=artifact_repo or Mock(),
+        credential_repo=Mock(),
+        security_service=Mock(),
+    )
+
+
+def make_context(run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None) -> ExecutionContext:
     return ExecutionContext(
         run_id=run_id,
         project_id="project-1",
+        project_code="project-1",
         repository_url="https://github.com/user/repo.git",
         credential_id="cred-1",
         workspace_path="/workspace",
@@ -37,383 +39,114 @@ def create_test_context(
     )
 
 
-def create_test_definition(steps: list[StepDefinition]) -> list[StageDefinition]:
-    """创建测试用的 StageDefinition 列表"""
-    result = []
-    for s in steps:
-        depends_on = s.depends_on or []
-        # depends_on 应该在 StageDefinition 层面
-        stage = StageDefinition(name=s.name, type=StageType.CUSTOM, depends_on=depends_on, steps=[s])
-        result.append(stage)
-    return result
+def stage(
+    name: str, image: str = "alpine:latest", commands: list[str] | None = None, depends_on: list[str] | None = None
+) -> StageDefinition:
+    return StageDefinition(
+        name=name, image=image, script="\n".join(commands or ["echo ok"]), depends_on=depends_on or []
+    )
 
 
 class TestPipelineExecutorImpl:
-    """测试 PipelineExecutorImpl"""
-
     @pytest.mark.asyncio
     async def test_execute_simple_pipeline_success(self):
-        """测试执行简单 pipeline 成功"""
-        job_repo = Mock()
-        job_log_repo = Mock()
+        stage_run_repo = Mock()
+        stage_log_repo = Mock()
         container_executor = AsyncMock()
-        artifact_repo = Mock()
-
         container_executor.run.return_value = (0, "Success output")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=artifact_repo,
-            credential_repo=Mock(),
-            security_service=Mock(),
+        executor = make_executor(
+            container_executor=container_executor, stage_run_repo=stage_run_repo, stage_log_repo=stage_log_repo
         )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(name="build", image="alpine:latest", commands=["echo 'Building'"]),
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        result = await executor.execute(make_context(), [stage("build")])
         assert result is True
-        assert job_repo.save.call_count >= 2
-        assert job_log_repo.save.call_count == 1
+        assert stage_run_repo.save.call_count >= 2
+        assert stage_log_repo.save.call_count == 1
         container_executor.run.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_pipeline_with_failure(self):
-        """测试执行 pipeline 失败"""
-        job_repo = Mock()
-        job_log_repo = Mock()
+        stage_run_repo = Mock()
         container_executor = AsyncMock()
-
         container_executor.run.return_value = (1, "Error output")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(name="build", image="alpine:latest", commands=["exit 1"]),
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor, stage_run_repo=stage_run_repo)
+        result = await executor.execute(make_context(), [stage("build")])
         assert result is False
-        assert job_repo.save.call_count >= 2
+        assert stage_run_repo.save.call_count >= 2
 
     @pytest.mark.asyncio
     async def test_execute_parallel_jobs(self):
-        """测试并行执行多个 jobs"""
-        job_repo = Mock()
-        job_log_repo = Mock()
         container_executor = AsyncMock()
-
         container_executor.run.return_value = (0, "Success")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(name="job1", image="alpine:latest", commands=["echo 1"]),
-                StepDefinition(name="job2", image="alpine:latest", commands=["echo 2"]),
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor)
+        result = await executor.execute(make_context(), [stage("job1"), stage("job2")])
         assert result is True
         assert container_executor.run.call_count == 2
 
     @pytest.mark.asyncio
     async def test_execute_with_dependencies(self):
-        """测试执行有依赖关系的 jobs"""
-        job_repo = Mock()
-        job_log_repo = Mock()
         container_executor = AsyncMock()
-
         container_executor.run.return_value = (0, "Success")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(name="build", image="alpine:latest", commands=["echo build"]),
-                StepDefinition(name="test", image="alpine:latest", commands=["echo test"], depends_on=["build"]),
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor)
+        result = await executor.execute(make_context(), [stage("build"), stage("test", depends_on=["build"])])
         assert result is True
         assert container_executor.run.call_count == 2
 
     @pytest.mark.asyncio
     async def test_execute_fail_fast(self):
-        """测试 fail-fast 机制"""
-        job_repo = Mock()
-        job_log_repo = Mock()
+        stage_run_repo = Mock()
         container_executor = AsyncMock()
-
         container_executor.run.side_effect = [(1, "Failed")]
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(name="build", image="alpine:latest", commands=["exit 1"]),
-                StepDefinition(name="test", image="alpine:latest", commands=["echo test"], depends_on=["build"]),
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor, stage_run_repo=stage_run_repo)
+        result = await executor.execute(make_context(), [stage("build"), stage("test", depends_on=["build"])])
         assert result is False
         assert container_executor.run.call_count == 1
-        saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
-        canceled_jobs = [job for job in saved_jobs if hasattr(job, "status") and job.status == JobStatus.CANCELED]
-        assert len(canceled_jobs) >= 1
+        saved = [call[0][0] for call in stage_run_repo.save.call_args_list]
+        canceled = [s for s in saved if hasattr(s, "status") and s.status == StageStatus.CANCELED]
+        assert len(canceled) >= 1
 
     @pytest.mark.asyncio
     async def test_execute_with_cyclic_dependency(self):
-        """测试检测循环依赖"""
-        job_repo = Mock()
-        job_log_repo = Mock()
         container_executor = AsyncMock()
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(name="jobA", image="alpine:latest", commands=["echo A"], depends_on=["jobB"]),
-                StepDefinition(name="jobB", image="alpine:latest", commands=["echo B"], depends_on=["jobA"]),
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor)
+        stages = [stage("jobA", depends_on=["jobB"]), stage("jobB", depends_on=["jobA"])]
+        result = await executor.execute(make_context(), stages)
         assert result is False
         container_executor.run.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_execute_with_exception(self):
-        """测试执行过程中抛出异常"""
-        job_repo = Mock()
-        job_log_repo = Mock()
+        stage_run_repo = Mock()
         container_executor = AsyncMock()
-
         container_executor.run.side_effect = Exception("Container error")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [StepDefinition(name="build", image="alpine:latest", commands=["echo build"])]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor, stage_run_repo=stage_run_repo)
+        result = await executor.execute(make_context(), [stage("build")])
         assert result is False
-        saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
-        faulted_jobs = [job for job in saved_jobs if hasattr(job, "status") and job.status == JobStatus.FAULTED]
-        assert len(faulted_jobs) >= 1
+        saved = [call[0][0] for call in stage_run_repo.save.call_args_list]
+        faulted = [s for s in saved if hasattr(s, "status") and s.status == StageStatus.FAULTED]
+        assert len(faulted) >= 1
 
     @pytest.mark.asyncio
     async def test_save_artifacts(self):
-        """测试保存制品"""
-        job_repo = Mock()
-        job_log_repo = Mock()
-        container_executor = AsyncMock()
         artifact_repo = Mock()
-
-        container_executor.run.return_value = (0, "Success")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=artifact_repo,
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context()
-        definition = create_test_definition(
-            [
-                StepDefinition(
-                    name="build",
-                    image="alpine:latest",
-                    commands=["echo build"],
-                    artifacts=[
-                        {"type": "file", "name": "output.txt", "path": "output.txt"},
-                        {"type": "docker_image", "name": "myapp:latest"},
-                    ],
-                )
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
-        assert result is True
-        assert artifact_repo.save.call_count == 2
-
-    @pytest.mark.asyncio
-    async def test_retry_skip_if_success(self):
-        """测试重试时跳过成功的 job"""
-        job_repo = Mock()
-        job_log_repo = Mock()
         container_executor = AsyncMock()
-
-        original_job = Mock(spec=Job)
-        original_job.name = "build"
-        original_job.status = JobStatus.SUCCESS
-        job_repo.find_by_run.side_effect = [[original_job], []]
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context(run_id="run-2", retry_of="run-1")
-        definition = create_test_definition(
-            [
-                StepDefinition(
-                    name="build",
-                    image="alpine:latest",
-                    commands=["echo build"],
-                    retry_policy=RetryPolicy.SKIP_IF_SUCCESS,
-                )
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
-        assert result is True
-        container_executor.run.assert_not_called()
-        saved_jobs = [call[0][0] for call in job_repo.save.call_args_list]
-        skipped_jobs = [job for job in saved_jobs if hasattr(job, "status") and job.status == JobStatus.SKIPPED]
-        assert len(skipped_jobs) >= 1
-
-    @pytest.mark.asyncio
-    async def test_retry_rerun_failed_job(self):
-        """测试重试时重新运行失败的 job"""
-        job_repo = Mock()
-        job_log_repo = Mock()
-        container_executor = AsyncMock()
-
-        original_job = Mock(spec=Job)
-        original_job.name = "build"
-        original_job.status = JobStatus.FAILED
-        job_repo.find_by_run.side_effect = [[original_job], []]
-
         container_executor.run.return_value = (0, "Success")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
+        s = StageDefinition(
+            name="build",
+            image="alpine:latest",
+            script="echo build",
+            artifacts=[ArtifactConfig(name="output.txt", path="output.txt")],
         )
-
-        context = create_test_context(run_id="run-2", retry_of="run-1")
-        definition = create_test_definition(
-            [
-                StepDefinition(
-                    name="build",
-                    image="alpine:latest",
-                    commands=["echo build"],
-                    retry_policy=RetryPolicy.SKIP_IF_SUCCESS,
-                )
-            ]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor, artifact_repo=artifact_repo)
+        result = await executor.execute(make_context(), [s])
         assert result is True
-        container_executor.run.assert_called_once()
+        assert artifact_repo.save.call_count == 1
 
     @pytest.mark.asyncio
     async def test_environment_variables_passed_to_container(self):
-        """测试环境变量传递给容器"""
-        job_repo = Mock()
-        job_log_repo = Mock()
         container_executor = AsyncMock()
-
         container_executor.run.return_value = (0, "Success")
-
-        executor = PipelineExecutorImpl(
-            job_repo=cast("JobRepositoryImpl", job_repo),
-            job_log_repo=cast("JobLogRepositoryImpl", job_log_repo),
-            container_executor=cast("ContainerExecutor", container_executor),
-            artifact_repo=Mock(),
-            credential_repo=Mock(),
-            security_service=Mock(),
-        )
-
-        context = create_test_context(variables={"ENV_VAR": "value123", "NUMBER": 42})
-        definition = create_test_definition(
-            [StepDefinition(name="build", image="alpine:latest", commands=["echo $ENV_VAR"])]
-        )
-
-        result = await executor.execute(context, definition)
-
+        executor = make_executor(container_executor=container_executor)
+        result = await executor.execute(make_context(variables={"ENV_VAR": "value123", "NUMBER": 42}), [stage("build")])
         assert result is True
         call_args = container_executor.run.call_args
         assert call_args[1]["environment"] == {"ENV_VAR": "value123", "NUMBER": "42"}

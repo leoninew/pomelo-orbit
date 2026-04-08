@@ -21,14 +21,18 @@ export function detectCircularDependencies(stages: NodeWithDeps[]): string[] | n
 			const cycleStart = path.indexOf(node);
 			return [...path.slice(cycleStart), node];
 		}
-		if (visited.has(node)) return null;
+		if (visited.has(node)) {
+			return null;
+		}
 
 		visited.add(node);
 		recStack.add(node);
 
 		for (const dep of graph.get(node) || []) {
 			const cycle = dfs(dep, [...path, node]);
-			if (cycle) return cycle;
+			if (cycle) {
+				return cycle;
+			}
 		}
 
 		recStack.delete(node);
@@ -37,7 +41,9 @@ export function detectCircularDependencies(stages: NodeWithDeps[]): string[] | n
 
 	for (const stage of stages) {
 		const cycle = dfs(stage.name, []);
-		if (cycle) return cycle;
+		if (cycle) {
+			return cycle;
+		}
 	}
 
 	return null;

@@ -55,6 +55,7 @@ export default [
 			'no-debugger': 'warn',
 			'prefer-const': 'warn',
 			'no-var': 'error',
+			'curly': ['error', 'all'],
 		},
 	},
 ]

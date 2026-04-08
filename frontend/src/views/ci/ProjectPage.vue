@@ -229,7 +229,9 @@ async function openCreateModal() {
 }
 
 async function handleCreateOk() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			const project = await projectApi.create({

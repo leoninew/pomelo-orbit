@@ -391,8 +391,12 @@ function appBadgeClass(s: string) {
 
 const currentFileLanguage = computed(() => {
 	const p = currentFilePath.value.toLowerCase();
-	if (p.endsWith('.sh') || p.endsWith('.bash')) return 'shell';
-	if (p.startsWith('.env') || p.endsWith('.ini') || p.endsWith('.properties')) return 'ini';
+	if (p.endsWith('.sh') || p.endsWith('.bash')) {
+		return 'shell';
+	}
+	if (p.startsWith('.env') || p.endsWith('.ini') || p.endsWith('.properties')) {
+		return 'ini';
+	}
 	return 'yaml';
 });
 
@@ -407,7 +411,9 @@ async function fetchApplication() {
 				image_pull_policy: data.image_pull_policy,
 			});
 		});
-		if (application.value?.status === 'deploying') pollActiveDeployment();
+		if (application.value?.status === 'deploying') {
+			pollActiveDeployment();
+		}
 	} catch {
 		toast.error('获取应用信息失败');
 		router.push('/cd/applications');
@@ -418,15 +424,18 @@ async function pollActiveDeployment() {
 	try {
 		const resp = await deploymentApi.list({ application_id: applicationId, per_page: 1 });
 		const latest = resp.items[0];
-		if (!latest) return;
+		if (!latest) {
+			return;
+		}
 		while (true) {
 			await delayAsync(3000);
 			try {
 				const detail = await deploymentApi.get(latest.id);
 				if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-					if (application.value)
+					if (application.value) {
 						application.value.status =
 							detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
+					}
 					break;
 				}
 			} catch {
@@ -473,9 +482,10 @@ async function handleStop() {
 				try {
 					const detail = await deploymentApi.get(res.deployment_id);
 					if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-						if (application.value)
+						if (application.value) {
 							application.value.status =
 								detail.status === 'ran_to_completion' ? 'undeployed' : 'deploy_failed';
+						}
 						break;
 					}
 				} catch {
@@ -523,7 +533,9 @@ function openEditModal() {
 
 async function handleEditOk() {
 	editErrors.name = editForm.name.trim() ? '' : '请输入应用名称';
-	if (editErrors.name) return;
+	if (editErrors.name) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await applicationApi.update(applicationId, {
@@ -616,7 +628,9 @@ async function saveCurrentFile() {
 					content
 				);
 				const idx = files.value.findIndex((f) => f.id === currentFileId.value);
-				if (idx >= 0) files.value[idx] = updated;
+				if (idx >= 0) {
+					files.value[idx] = updated;
+				}
 				toast.success('保存成功');
 			} else {
 				await applicationApi.createFile(applicationId, currentFilePath.value, content);

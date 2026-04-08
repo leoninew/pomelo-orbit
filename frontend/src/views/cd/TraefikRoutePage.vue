@@ -107,7 +107,9 @@ async function fetchRoutes() {
 
 function buildRouteUrl(rule: string, tls: boolean): string | null {
 	const match = rule.match(/Host\(`([^`]+)`\)/);
-	if (!match) return null;
+	if (!match) {
+		return null;
+	}
 	return `${tls ? 'https' : 'http'}://${match[1]}`;
 }
 

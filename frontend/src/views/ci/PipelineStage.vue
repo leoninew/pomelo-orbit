@@ -270,7 +270,9 @@ async function fetchStage() {
 }
 
 function openEditModal() {
-	if (!stage.value) return;
+	if (!stage.value) {
+		return;
+	}
 	Object.assign(form, {
 		name: stage.value.name,
 		image: stage.value.image,

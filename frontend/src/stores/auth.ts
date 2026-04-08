@@ -45,7 +45,9 @@ export const useAuthStore = defineStore('auth', () => {
 
 	// 获取当前用户信息
 	async function fetchUser() {
-		if (!token.value) return undefined;
+		if (!token.value) {
+			return undefined;
+		}
 		try {
 			const userInfo = await authApi.getCurrentUser();
 			user.value = userInfo;

@@ -266,7 +266,9 @@ function syncEnv() {
 watch(
 	() => props.open,
 	(val) => {
-		if (!val) return;
+		if (!val) {
+			return;
+		}
 		scriptDrawerVisible.value = false;
 		if (props.editingStage) {
 			const s = props.editingStage;

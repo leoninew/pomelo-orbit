@@ -343,7 +343,9 @@ const snapshotStagesAsOrch = computed(() =>
 
 const stageStatuses = computed<Map<string, TaskStatus>>(() => {
 	const map = new Map<string, TaskStatus>();
-	if (!snapshot.value) return map;
+	if (!snapshot.value) {
+		return map;
+	}
 
 	for (const stage of snapshot.value.stages_snapshot) {
 		const sr = stageRuns.value.find((r) => r.name === stage.name);
@@ -399,13 +401,17 @@ async function startLogPolling(stageRunId: string) {
 		try {
 			const resp = await pipelineRunApi.getStageLog(runId, stageRunId, offset);
 			// 如果用户已切换到其他 stage，丢弃过期响应
-			if (currentStageRun.value?.id !== stageRunId) break;
+			if (currentStageRun.value?.id !== stageRunId) {
+				break;
+			}
 			if (resp.logs) {
 				logsText.value += resp.logs;
 				offset = resp.offset;
 			}
 			logsLoading.value = false;
-			if (resp.is_complete) break;
+			if (resp.is_complete) {
+				break;
+			}
 		} catch {
 			logsLoading.value = false;
 			break;
@@ -475,7 +481,9 @@ async function handleCancel() {
 }
 
 async function startPolling() {
-	if (isPolling.value) return;
+	if (isPolling.value) {
+		return;
+	}
 	isPolling.value = true;
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
@@ -497,8 +505,11 @@ function stopPolling() {
 }
 
 function togglePolling() {
-	if (isPolling.value) stopPolling();
-	else startPolling();
+	if (isPolling.value) {
+		stopPolling();
+	} else {
+		startPolling();
+	}
 }
 
 onMounted(async () => {

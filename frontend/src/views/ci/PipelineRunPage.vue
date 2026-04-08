@@ -8,7 +8,6 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>Run ID</th>
 						<th>Project</th>
 						<th>触发方式</th>
 						<th>Ref</th>
@@ -20,22 +19,17 @@
 				</thead>
 				<tbody>
 					<tr v-if="status === 'loading'">
-						<td colspan="8" class="text-center py-8">
+						<td colspan="7" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
 					</tr>
 					<tr v-else-if="status === 'error'">
-						<td colspan="8" class="text-center py-8 text-error">{{ error }}</td>
+						<td colspan="7" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="runs.length === 0">
-						<td colspan="8" class="text-center py-8 text-base-content/60">暂无记录</td>
+						<td colspan="7" class="text-center py-8 text-base-content/60">暂无记录</td>
 					</tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
-						<td>
-							<router-link :to="`/ci/runs/${r.id}`" class="link link-primary cell-mono">
-								{{ r.id.substring(0, 12) }}
-							</router-link>
-						</td>
 						<td>
 							<router-link :to="`/ci/projects/${r.project_id}`" class="link link-primary cell-mono">
 								{{ r.project_id.substring(0, 8) }}

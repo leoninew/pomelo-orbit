@@ -58,8 +58,12 @@ const readonly = computed(() => props.data.readonly ?? false);
 const selected = computed(() => props.data.selected ?? false);
 
 const statusClass = computed(() => {
-	if (selected.value) return 'selected';
-	if (!status.value) return '';
+	if (selected.value) {
+		return 'selected';
+	}
+	if (!status.value) {
+		return '';
+	}
 	const statusBorderMap: Record<string, string> = {
 		ran_to_completion: 'border-success',
 		faulted: 'border-error',

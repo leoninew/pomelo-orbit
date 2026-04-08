@@ -87,7 +87,9 @@ function validate() {
 }
 
 async function handleLogin() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await execute(async () => {
 			await authStore.login(form.username, form.password);

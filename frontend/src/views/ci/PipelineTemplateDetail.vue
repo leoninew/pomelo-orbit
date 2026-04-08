@@ -306,16 +306,23 @@ const editOrchForm = reactive({ originalKey: '', stageKey: '', dependsOn: [] as 
 
 const stageKeyError = computed(() => {
 	const key = addOrchForm.stageKey.trim();
-	if (!key) return 'Stage Key 不能为空';
-	if (orchestration.value.some((o) => o.stage_key === key)) return 'Stage Key 已存在';
+	if (!key) {
+		return 'Stage Key 不能为空';
+	}
+	if (orchestration.value.some((o) => o.stage_key === key)) {
+		return 'Stage Key 已存在';
+	}
 	return '';
 });
 
 const editStageKeyError = computed(() => {
 	const key = editOrchForm.stageKey.trim();
-	if (!key) return 'Stage Key 不能为空';
-	if (key !== editOrchForm.originalKey && orchestration.value.some((o) => o.stage_key === key))
+	if (!key) {
+		return 'Stage Key 不能为空';
+	}
+	if (key !== editOrchForm.originalKey && orchestration.value.some((o) => o.stage_key === key)) {
 		return 'Stage Key 已存在';
+	}
 	return '';
 });
 
@@ -444,7 +451,9 @@ function extractVarNames(stages: PipelineStage[]): Set<string> {
 			...Object.values(s.env ?? {}),
 			...(s.artifacts ?? []).flatMap((a) => [a.path, a.name]),
 		]) {
-			for (const m of (text ?? '').matchAll(re())) found.add(m[1]);
+			for (const m of (text ?? '').matchAll(re())) {
+				found.add(m[1]);
+			}
 		}
 	}
 	return found;
@@ -474,11 +483,15 @@ function openAddOrchModal() {
 
 function onStageSelect() {
 	const stage = allStages.value.find((s) => s.id === addOrchForm.stageId);
-	if (stage) addOrchForm.stageKey = stage.name;
+	if (stage) {
+		addOrchForm.stageKey = stage.name;
+	}
 }
 
 function confirmAddOrch() {
-	if (!addOrchForm.stageId || stageKeyError.value) return;
+	if (!addOrchForm.stageId || stageKeyError.value) {
+		return;
+	}
 	const maxOrder = orchestration.value.reduce((m, o) => Math.max(m, o.sort_order), 0);
 	orchestration.value.push({
 		stage_id: addOrchForm.stageId,
@@ -508,7 +521,9 @@ function removeOrch(idx: number) {
 
 function openEditOrchModal(idx: number) {
 	const orch = orchestration.value[idx];
-	if (!orch) return;
+	if (!orch) {
+		return;
+	}
 	editOrchForm.originalKey = orch.stage_key;
 	editOrchForm.stageKey = orch.stage_key;
 	editOrchForm.dependsOn = [...orch.depends_on];
@@ -516,7 +531,9 @@ function openEditOrchModal(idx: number) {
 }
 
 function confirmEditOrch() {
-	if (editStageKeyError.value) return;
+	if (editStageKeyError.value) {
+		return;
+	}
 	const newKey = editOrchForm.stageKey.trim();
 	const oldKey = editOrchForm.originalKey;
 	// 更新 stage_key 和 depends_on
@@ -537,12 +554,16 @@ function confirmEditOrch() {
 
 function handleUpdateDependencies(stageKey: string, dependsOnKeys: string[]) {
 	const orch = orchestration.value.find((o) => o.stage_key === stageKey);
-	if (orch) orch.depends_on = dependsOnKeys;
+	if (orch) {
+		orch.depends_on = dependsOnKeys;
+	}
 }
 
 function handleDeleteDependency(sourceKey: string, targetKey: string) {
 	const orch = orchestration.value.find((o) => o.stage_key === targetKey);
-	if (orch) orch.depends_on = orch.depends_on.filter((k) => k !== sourceKey);
+	if (orch) {
+		orch.depends_on = orch.depends_on.filter((k) => k !== sourceKey);
+	}
 }
 
 onMounted(fetchTemplate);

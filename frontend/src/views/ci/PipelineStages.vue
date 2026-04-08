@@ -175,7 +175,9 @@ function openCreateModal() {
 }
 
 async function handleModalOk() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await pipelineStageApi.create({

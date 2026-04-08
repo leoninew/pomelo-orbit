@@ -202,7 +202,9 @@ function openEditModal(record: Credential) {
 }
 
 async function handleModalOk() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			if (isEditing.value) {
@@ -246,8 +248,12 @@ async function handleDelete() {
 }
 
 function getDataPlaceholder(type: string) {
-	if (type === 'git_ssh') return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
-	if (type === 'git_token') return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+	if (type === 'git_ssh') {
+		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
+	}
+	if (type === 'git_token') {
+		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+	}
 	return 'registry_token_here';
 }
 

@@ -172,7 +172,9 @@ function openCreateModal() {
 
 async function handleCreateOk() {
 	errors.name = form.name.trim() ? '' : '请输入模板名称';
-	if (errors.name) return;
+	if (errors.name) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			const tpl = await pipelineTemplateApi.create({

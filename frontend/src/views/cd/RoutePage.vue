@@ -228,7 +228,9 @@ function openCreateModal() {
 }
 
 async function handleSave() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await routeApi.create(form);

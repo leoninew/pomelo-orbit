@@ -14,9 +14,15 @@ export const appStatusColor = (status: string): string => APP_STATUS_COLOR[statu
 export const appStatusLabel = (status: string): string => APP_STATUS_LABEL[status] ?? '未部署';
 
 export function formatDuration(ms?: number | null): string {
-	if (!ms) return '-';
-	if (ms < 1000) return `${ms}ms`;
-	if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+	if (!ms) {
+		return '-';
+	}
+	if (ms < 1000) {
+		return `${ms}ms`;
+	}
+	if (ms < 60000) {
+		return `${(ms / 1000).toFixed(1)}s`;
+	}
 	return `${(ms / 60000).toFixed(1)}min`;
 }
 

@@ -349,10 +349,14 @@ async function pollDeployment(deploymentId: string, app: Application) {
 			if (['ran_to_completion', 'faulted', 'canceled'].includes(data.status)) {
 				const target = applications.value.find((a) => a.id === app.id);
 				if (data.status === 'ran_to_completion') {
-					if (target) target.status = 'deployed';
+					if (target) {
+						target.status = 'deployed';
+					}
 					toast.success(`${app.name} 部署成功`);
 				} else {
-					if (target) target.status = 'deploy_failed';
+					if (target) {
+						target.status = 'deploy_failed';
+					}
 					toast.error(`${app.name} 部署失败`);
 				}
 				break;
@@ -365,7 +369,9 @@ async function pollDeployment(deploymentId: string, app: Application) {
 
 async function handleDeploy(app: Application) {
 	const target = applications.value.find((a) => a.id === app.id);
-	if (target) target.status = 'deploying';
+	if (target) {
+		target.status = 'deploying';
+	}
 	try {
 		await executeOp(async () => {
 			const { deployment_id } = await applicationApi.deploy(app.id);
@@ -373,7 +379,9 @@ async function handleDeploy(app: Application) {
 			pollDeployment(deployment_id, app);
 		});
 	} catch (error) {
-		if (target) target.status = 'deploy_failed';
+		if (target) {
+			target.status = 'deploy_failed';
+		}
 		toast.error(error instanceof Error ? error.message : '部署失败');
 	}
 }
@@ -395,8 +403,11 @@ async function handleStop(app: Application) {
 
 async function viewLastDeployment(appId: string) {
 	const resp = await deploymentApi.list({ application_id: appId, per_page: 1 });
-	if (resp.items.length > 0) $router.push(`/cd/deployments/${resp.items[0].id}`);
-	else $router.push(`/cd/deployments?application_id=${appId}`);
+	if (resp.items.length > 0) {
+		$router.push(`/cd/deployments/${resp.items[0].id}`);
+	} else {
+		$router.push(`/cd/deployments?application_id=${appId}`);
+	}
 }
 
 // ── Create ──
@@ -411,7 +422,9 @@ function openCreateModal() {
 }
 
 async function handleCreateOk() {
-	if (!validateForm(form, formErrors)) return;
+	if (!validateForm(form, formErrors)) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await applicationApi.create({
@@ -436,7 +449,9 @@ function triggerImport() {
 async function handleFileImport(event: Event) {
 	const target = event.target as HTMLInputElement;
 	const file = target.files?.[0];
-	if (!file) return;
+	if (!file) {
+		return;
+	}
 	try {
 		const data = JSON.parse(await file.text()) as ApplicationImportReq;
 		Object.assign(importForm, {
@@ -455,7 +470,9 @@ async function handleFileImport(event: Event) {
 }
 
 async function handleImportOk() {
-	if (!validateForm(importForm, importErrors)) return;
+	if (!validateForm(importForm, importErrors)) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await applicationApi.importApplication({

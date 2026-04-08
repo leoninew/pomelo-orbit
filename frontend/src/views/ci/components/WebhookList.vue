@@ -273,7 +273,9 @@ function handleDelete(wh: ProjectWebhook) {
 }
 
 async function confirmDelete() {
-	if (!deletingWebhook.value) return;
+	if (!deletingWebhook.value) {
+		return;
+	}
 
 	try {
 		await executeOp(async () => {

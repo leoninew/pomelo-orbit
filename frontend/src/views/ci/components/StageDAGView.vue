@@ -203,13 +203,17 @@ function handleNodeClick(event: NodeClickEvent) {
 		// 只读模式（运行详情）：点击节点查看日志
 		const stageName = event.node.id;
 		const stage = props.stages.find((s) => s.name === stageName);
-		if (stage) emit('view-stage', stage);
+		if (stage) {
+			emit('view-stage', stage);
+		}
 		return;
 	}
 
 	const stageName = event.node.id;
 	const stage = props.stages.find((s) => s.name === stageName);
-	if (!stage) return;
+	if (!stage) {
+		return;
+	}
 
 	if (linkMode.value) {
 		if (selectedStage.value === null) {
@@ -232,21 +236,27 @@ function handleNodeClick(event: NodeClickEvent) {
 }
 
 function handleEdgeClick(event: { edge: Edge }) {
-	if (props.readonly || linkMode.value) return;
+	if (props.readonly || linkMode.value) {
+		return;
+	}
 
 	const edge = event.edge;
 	selectedEdge.value = { source: edge.source, target: edge.target };
 }
 
 function deleteSelectedEdge() {
-	if (!selectedEdge.value) return;
+	if (!selectedEdge.value) {
+		return;
+	}
 
 	emit('delete-dependency', selectedEdge.value.source, selectedEdge.value.target);
 	selectedEdge.value = null;
 }
 
 function copySelectedStage() {
-	if (!selectedStage.value) return;
+	if (!selectedStage.value) {
+		return;
+	}
 	emit('copy-stage', selectedStage.value);
 	selectedStage.value = null;
 	linkMode.value = false;

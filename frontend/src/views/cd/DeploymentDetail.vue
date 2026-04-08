@@ -178,16 +178,22 @@ async function fetchLogs() {
 }
 
 function startLogPolling() {
-	if (isPolling.value) return;
+	if (isPolling.value) {
+		return;
+	}
 	isPolling.value = true;
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
 	(async () => {
 		await fetchLogs();
 		while (!signal.aborted) {
-			if (deployment.value && isTerminalStatus(deployment.value.status)) break;
+			if (deployment.value && isTerminalStatus(deployment.value.status)) {
+				break;
+			}
 			await delayAsync(2000);
-			if (signal.aborted) break;
+			if (signal.aborted) {
+				break;
+			}
 			await fetchLogs();
 		}
 		isPolling.value = false;
@@ -201,8 +207,11 @@ function stopLogPolling() {
 }
 
 function togglePolling() {
-	if (isPolling.value) stopLogPolling();
-	else startLogPolling();
+	if (isPolling.value) {
+		stopLogPolling();
+	} else {
+		startLogPolling();
+	}
 }
 
 async function handleCancel() {
@@ -222,7 +231,9 @@ async function refreshDeployment() {
 }
 
 function scrollToBottom() {
-	if (logContainerRef.value) logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
+	if (logContainerRef.value) {
+		logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
+	}
 }
 
 onMounted(async () => {

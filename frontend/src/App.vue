@@ -188,7 +188,9 @@ const sidebarMap = {
 };
 
 const sidebarItems = computed(() => {
-	if (!currentModule.value) return [];
+	if (!currentModule.value) {
+		return [];
+	}
 	return sidebarMap[currentModule.value] ?? [];
 });
 
@@ -196,10 +198,15 @@ const isLoginPage = computed(() => route.name === 'Login');
 
 function syncFromRoute() {
 	const path = route.path;
-	if (path.startsWith('/ci/')) currentModule.value = 'ci';
-	else if (path.startsWith('/cd/')) currentModule.value = 'cd';
-	else if (path === '/login-history' || path === '/settings') currentModule.value = 'settings';
-	else currentModule.value = null;
+	if (path.startsWith('/ci/')) {
+		currentModule.value = 'ci';
+	} else if (path.startsWith('/cd/')) {
+		currentModule.value = 'cd';
+	} else if (path === '/login-history' || path === '/settings') {
+		currentModule.value = 'settings';
+	} else {
+		currentModule.value = null;
+	}
 
 	selectedKey.value = (route.meta.menuKey as string) ?? '';
 }
@@ -209,7 +216,9 @@ watch(() => route.path, syncFromRoute);
 
 function navigateToModule(mod: 'ci' | 'cd' | 'settings') {
 	const first = sidebarMap[mod][0];
-	if (first) router.push(first.path);
+	if (first) {
+		router.push(first.path);
+	}
 }
 
 async function handleLogout() {

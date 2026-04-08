@@ -261,7 +261,9 @@ const form = reactive({ name: '', domain: '', path_prefix: '/', target_url: '', 
 const errors = reactive({ domain: '', target_url: '' });
 
 const canUseLetsencrypt = computed(() => {
-	if (!routeData.value) return false;
+	if (!routeData.value) {
+		return false;
+	}
 	const d = routeData.value.domain;
 	return (
 		d !== 'localhost' &&
@@ -300,7 +302,9 @@ async function handleSave() {
 	errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
 		? ''
 		: '格式应为 http://host:port';
-	if (errors.domain || errors.target_url) return;
+	if (errors.domain || errors.target_url) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			const updateData = {
@@ -357,7 +361,9 @@ async function handleDelete() {
 
 async function handleCertUpload(event: Event) {
 	const file = (event.target as HTMLInputElement).files?.[0];
-	if (!file) return;
+	if (!file) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await routeApi.uploadCert(routeId, file);

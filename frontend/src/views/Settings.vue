@@ -268,8 +268,11 @@ async function fetchConfig() {
 
 function startEdit(record: ConfigItemResp) {
 	editingKey.value = record.key;
-	if (typeof record.default === 'boolean') editingBool.value = record.value as boolean;
-	else editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
+	if (typeof record.default === 'boolean') {
+		editingBool.value = record.value as boolean;
+	} else {
+		editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
+	}
 }
 
 function cancelEdit() {
@@ -326,7 +329,9 @@ function validatePassword() {
 }
 
 async function handleChangePassword() {
-	if (!validatePassword()) return;
+	if (!validatePassword()) {
+		return;
+	}
 	try {
 		await executeChangePassword(async () => {
 			await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);

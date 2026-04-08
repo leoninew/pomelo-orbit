@@ -101,7 +101,9 @@ const variableList = computed(() => {
 
 // 是否可以提交
 const canSubmit = computed(() => {
-	if (!form.template_id) return false;
+	if (!form.template_id) {
+		return false;
+	}
 	// 检查必填变量是否都已填写
 	const required = variableList.value.filter((v) => v.required);
 	return required.every((v) => form.variables[v.name]?.trim());

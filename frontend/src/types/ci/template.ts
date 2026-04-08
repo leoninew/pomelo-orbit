@@ -39,8 +39,8 @@ export interface PipelineStageUpdateReq {
 
 export interface StageOrchestration {
 	stage_id: string
-	stage_key: string // 模板内唯一标识，默认为 stage 名，用于 depends_on 引用
-	depends_on: string[] // 依赖的 stage_key 列表
+	stage_key: string
+	depends_on: string[]  // 存储 stage_id 列表
 	sort_order: number
 }
 
@@ -69,7 +69,7 @@ export interface PipelineTemplate {
 	orchestration: StageOrchestration[]
 	stages: PipelineStage[] // 编排引用的 Stage 详情
 	variable_declarations: VariableDeclaration[]
-	latest_snapshot_version?: number
+	version: number
 	created_at: string
 	updated_at: string
 }
@@ -83,5 +83,6 @@ export interface PipelineTemplateCreateReq {
 export interface PipelineTemplateUpdateReq {
 	name?: string
 	description?: string
+	orchestration?: StageOrchestration[]
 	variable_declarations?: VariableDeclaration[]
 }

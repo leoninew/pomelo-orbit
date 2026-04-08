@@ -5,17 +5,10 @@ export interface SnapshotStage {
 	id: string
 	name: string
 	image: string
-	depends_on: string[]
+	depends_on: string[]  // 存储依赖的 stage_id 列表
 	script: string
 	env: Record<string, string>
 	artifacts?: { path: string; name: string }[]
-}
-
-export interface PipelineSnapshotListItem {
-	id: string
-	template_id: string
-	version: number
-	created_at: string
 }
 
 export interface PipelineSnapshot {

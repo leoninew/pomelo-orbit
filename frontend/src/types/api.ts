@@ -31,7 +31,7 @@ export type {
 	PipelineTemplateCreateReq,
 	PipelineTemplateUpdateReq,
 } from './ci/template';
-export type { PipelineSnapshotListItem, PipelineSnapshot } from './ci/snapshot';
+export type { PipelineSnapshot } from './ci/snapshot';
 export type { Project, ProjectCreateReq, ProjectUpdateReq } from './ci/project';
 export type {
 	ProjectWebhook,

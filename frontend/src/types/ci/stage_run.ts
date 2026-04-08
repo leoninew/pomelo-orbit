@@ -4,7 +4,8 @@ import type { TaskStatus } from '../common';
 export interface StageRun {
 	id: string
 	pipeline_run_id: string
-	name: string
+	stage_id: string
+	stage_name: string
 	status: TaskStatus
 	started_at?: string
 	finished_at?: string

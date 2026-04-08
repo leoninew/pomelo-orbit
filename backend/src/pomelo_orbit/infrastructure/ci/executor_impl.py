@@ -130,7 +130,7 @@ class PipelineExecutorImpl(PipelineExecutor):
 
     async def _execute_stage(self, context: ExecutionContext, stage: StageDefinition) -> bool:
         """执行单个 Stage，创建 StageRun 记录"""
-        stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage.name)
+        stage_run = StageRun.create(pipeline_run_id=context.run_id, stage_id=stage.id, stage_name=stage.name)
         self.stage_run_repo.save(stage_run)
 
         # 日志写入文件，执行过程中实时可读，不再写 DB。
@@ -144,19 +144,20 @@ class PipelineExecutorImpl(PipelineExecutor):
 
             with log_path.open("w", encoding="utf-8") as log_file:
                 if context.credential_id:
-                    exit_code, _ = await self._execute_clone(context, stage, log_file=log_file)
+                    exit_code, output = await self._execute_clone(context, stage, log_file=log_file)
                 else:
-                    exit_code, _ = await self._execute_container(context, stage, log_file=log_file)
+                    exit_code, output = await self._execute_container(context, stage, log_file=log_file)
 
             if exit_code == 0:
                 stage_run.complete_success(exit_code)
                 # artifact 先保存，再 commit stage 状态，保证两者在同一个事务里。
-                self._save_artifacts(context, stage, stage_run.name)
+                self._save_artifacts(context, stage, stage_run.stage_name)
                 self._save_stage_run(stage_run)
                 logger.info(f"Stage succeeded: run={context.run_id}, stage={stage.name}")
                 return True
 
-            stage_run.complete_failed(exit_code, f"Exit code: {exit_code}")
+            error_message = output.strip() if output and output.strip() else f"Exit code: {exit_code}"
+            stage_run.complete_failed(exit_code, error_message)
             self._save_stage_run(stage_run)
             logger.warning(f"Stage failed: run={context.run_id}, stage={stage.name}, exit_code={exit_code}")
             return False
@@ -288,8 +289,9 @@ class PipelineExecutorImpl(PipelineExecutor):
         # 某一层失败后，后续层的 stage 不会被执行，但它们的 StageRun 记录需要
         # 显式创建并标记为 canceled，否则前端看不到这些 stage，无法展示完整的执行图。
         for layer_idx in range(start_layer_idx, len(layers)):
-            for stage_name in layers[layer_idx]:
-                stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage_name)
+            for stage_key in layers[layer_idx]:
+                stage = stages_map[stage_key]
+                stage_run = StageRun.create(pipeline_run_id=context.run_id, stage_id=stage.id, stage_name=stage.name)
                 stage_run.status = TaskStatus.CANCELED
                 self.stage_run_repo.save(stage_run)
             logger.info(f"Layer canceled: run={context.run_id}, layer={layer_idx}")

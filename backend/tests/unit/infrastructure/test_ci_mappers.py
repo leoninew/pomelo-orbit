@@ -152,7 +152,8 @@ class TestStageRunMapper:
         orm = StageRunModel(
             id=str(ULID()),
             pipeline_run_id=str(ULID()),
-            name="build",
+            stage_id=str(ULID()),
+            stage_name="build",
             status="ran_to_completion",
             started_at=utc_now(),
             finished_at=utc_now(),
@@ -161,15 +162,15 @@ class TestStageRunMapper:
         )
         entity = StageRunMapper.to_domain(orm)
         assert entity.id == orm.id
-        assert entity.name == "build"
+        assert entity.stage_name == "build"
         assert entity.status == TaskStatus.RAN_TO_COMPLETION
         assert entity.exit_code == 0
 
     def test_to_orm(self):
-        entity = StageRun.create(pipeline_run_id=str(ULID()), name="test")
+        entity = StageRun.create(pipeline_run_id=str(ULID()), stage_id=str(ULID()), stage_name="test")
         orm = StageRunMapper.to_orm(entity)
         assert orm.id == entity.id
-        assert orm.name == entity.name
+        assert orm.stage_name == entity.stage_name
         assert orm.status == "waiting_to_run"
 
 

@@ -220,7 +220,7 @@ class PipelineStage:
             self.description = description
         self.updated_at = utc_now()
 
-    def to_stage_definition(self, name: str | None = None, depends_on: list[str] | None = None) -> "StageDefinition":
+    def to_stage_definition(self, name: str | None = None, depends_on: list | None = None) -> "StageDefinition":
         """转换为值对象，用于快照和执行。name 和 depends_on 由编排层传入。"""
         return StageDefinition(
             name=name or self.name,
@@ -241,6 +241,7 @@ class PipelineTemplate:
 
     id: str
     name: str
+    version: int
     orchestration: list["StageOrchestration"]  # 编排：stage_id + depends_on + sort_order
     stages: list["PipelineStage"]  # 编排引用的 Stage 实体（加载时填充）
     variable_declarations: list[VariableDeclaration]
@@ -262,6 +263,7 @@ class PipelineTemplate:
             orchestration=[],
             stages=[],
             variable_declarations=variable_declarations,
+            version=1,
             description=description,
         )
 
@@ -270,16 +272,34 @@ class PipelineTemplate:
         name: str | None = None,
         description: str | None = None,
         variable_declarations: list[VariableDeclaration] | None = None,
-    ) -> None:
-        if name is not None:
-            if not name:
-                raise ValueError("Template name cannot be empty")
+    ) -> bool:
+        """更新模板字段，返回是否有实质变更。version 递增由调用方负责。"""
+        changed = False
+        if name is not None and name != self.name:
             self.name = name
-        if description is not None:
+            changed = True
+        if description is not None and description != self.description:
             self.description = description
+            changed = True
         if variable_declarations is not None:
-            self.variable_declarations = variable_declarations
+            # 深度比较：仅在实际变更时才更新
+            existing = [d.model_dump() for d in self.variable_declarations]
+            incoming = [d.model_dump() for d in variable_declarations]
+            if existing != incoming:
+                self.variable_declarations = variable_declarations
+                changed = True
+        return changed
+
+    def bump_version(self) -> None:
+        """版本号递增，同步更新 updated_at。"""
+        self.version += 1
         self.updated_at = utc_now()
+
+    def has_orchestration_changed(self, new_orchestration: list["StageOrchestration"]) -> bool:
+        """深度比较编排是否实际变更。"""
+        existing = sorted(self.orchestration, key=lambda o: o.sort_order)
+        incoming = sorted(new_orchestration, key=lambda o: o.sort_order)
+        return [o.model_dump() for o in existing] != [o.model_dump() for o in incoming]
 
     def get_stage_definitions(self) -> list[StageDefinition]:
         """按 sort_order 排序，将编排 + Stage 内容合并为 StageDefinition 列表，用于快照和执行。"""
@@ -385,7 +405,8 @@ class StageRun:
 
     id: str
     pipeline_run_id: str
-    name: str  # 对应 StageDefinition.name
+    stage_id: str  # 对应 StageDefinition.id
+    stage_name: str  # 对应 StageDefinition.name（用于日志展示）
     status: TaskStatus = TaskStatus.WAITING_TO_RUN
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -393,8 +414,8 @@ class StageRun:
     error_message: str | None = None
 
     @staticmethod
-    def create(pipeline_run_id: str, name: str) -> "StageRun":
-        return StageRun(id=str(ULID()), pipeline_run_id=pipeline_run_id, name=name)
+    def create(pipeline_run_id: str, stage_id: str, stage_name: str) -> "StageRun":
+        return StageRun(id=str(ULID()), pipeline_run_id=pipeline_run_id, stage_id=stage_id, stage_name=stage_name)
 
     def start(self) -> None:
         self.status = TaskStatus.RUNNING

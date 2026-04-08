@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS pipeline_templates (
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     variable_declarations TEXT NOT NULL DEFAULT '[]',  -- JSON array of VariableDeclaration
+    version INTEGER NOT NULL DEFAULT 1,               -- 每次修改递增，快照直接引用此值
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -133,7 +134,8 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_runs_retry_of ON pipeline_runs(retry_of)
 CREATE TABLE IF NOT EXISTS stage_runs (
     id TEXT PRIMARY KEY,
     pipeline_run_id TEXT NOT NULL,
-    name TEXT NOT NULL,
+    stage_id TEXT NOT NULL,
+    stage_name TEXT NOT NULL,
     status TEXT NOT NULL,
     started_at TEXT,
     finished_at TEXT,

@@ -162,39 +162,8 @@ class PipelineSnapshotRepositoryImpl(PipelineSnapshotRepository):
         )
         return self._mapper.to_domain(orm) if orm else None
 
-    def find_by_template(self, template_id: str) -> list[PipelineSnapshot]:
-        orms = (
-            self._session.query(PipelineSnapshotModel)
-            .filter(PipelineSnapshotModel.template_id == template_id)
-            .order_by(PipelineSnapshotModel.version.desc())
-            .all()
-        )
-        return [self._mapper.to_domain(orm) for orm in orms]
-
-    def get_next_version(self, template_id: str) -> int:
-        result = (
-            self._session.query(func.max(PipelineSnapshotModel.version))
-            .filter(PipelineSnapshotModel.template_id == template_id)
-            .scalar()
-        )
-        return (result or 0) + 1
-
     def save(self, snapshot: PipelineSnapshot) -> None:
         existing = self._session.get(PipelineSnapshotModel, snapshot.id)
         if existing:
             return  # 快照不可变
         self._session.add(self._mapper.to_orm(snapshot))
-
-    def find_latest_versions(self, template_ids: list[str]) -> dict[str, int]:
-        if not template_ids:
-            return {}
-        rows = (
-            self._session.query(
-                PipelineSnapshotModel.template_id,
-                func.max(PipelineSnapshotModel.version),
-            )
-            .filter(PipelineSnapshotModel.template_id.in_(template_ids))
-            .group_by(PipelineSnapshotModel.template_id)
-            .all()
-        )
-        return dict(tuple(row) for row in rows)

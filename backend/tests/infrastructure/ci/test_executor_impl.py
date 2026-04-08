@@ -103,7 +103,7 @@ class TestPipelineExecutorImpl:
         saved = [call[0][0] for call in stage_run_repo.save.call_args_list]
         canceled = [s for s in saved if s.status == TaskStatus.CANCELED]
         assert len(canceled) == 1
-        assert canceled[0].name == "c"
+        assert canceled[0].stage_name == "c"
 
     @pytest.mark.asyncio
     async def test_cyclic_dependency_detection(self, executor, context):

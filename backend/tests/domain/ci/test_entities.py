@@ -155,13 +155,13 @@ class TestPipelineRun:
 
 class TestStageRun:
     def test_create_stage_run(self):
-        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
         assert sr.id is not None
-        assert sr.name == "build"
+        assert sr.stage_name == "build"
         assert sr.status == TaskStatus.WAITING_TO_RUN
 
     def test_stage_run_lifecycle_success(self):
-        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
         sr.start()
         assert sr.status == TaskStatus.RUNNING
         assert sr.started_at is not None
@@ -171,7 +171,7 @@ class TestStageRun:
         assert sr.finished_at is not None
 
     def test_stage_run_lifecycle_failed(self):
-        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
         sr.start()
         sr.complete_failed(exit_code=1, error_message="Command failed")
         assert sr.status == TaskStatus.FAULTED
@@ -180,7 +180,7 @@ class TestStageRun:
         assert sr.finished_at is not None
 
     def test_stage_run_lifecycle_faulted(self):
-        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), name="build")
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
         sr.start()
         sr.complete_faulted(error_message="Container timeout")
         assert sr.status == TaskStatus.FAULTED

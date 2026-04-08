@@ -2,6 +2,7 @@
 
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.value_objects import (
+    ArtifactConfig,
     CredentialType,
     PipelineRunTrigger,
     StageDefinition,
@@ -65,8 +66,6 @@ class TestStageDefinition:
         assert stage.artifacts is None
 
     def test_stage_with_env_and_artifacts(self):
-        from pomelo_orbit.domain.ci.value_objects import ArtifactConfig
-
         stage = StageDefinition(
             id="test",
             name="test",
@@ -74,12 +73,13 @@ class TestStageDefinition:
             script="go test ./...",
             env={"GOFLAGS": "-v"},
             artifacts=[ArtifactConfig(path="coverage.out", name="coverage")],
-            depends_on=["clone"],
+            depends_on=["clone-id"],
         )
         assert stage.env == {"GOFLAGS": "-v"}
         assert stage.artifacts is not None
         assert len(stage.artifacts) == 1
-        assert stage.depends_on == ["clone"]
+        assert len(stage.depends_on) == 1
+        assert stage.depends_on[0] == "clone-id"
 
     def test_builtin_stage_flags(self):
         stage = StageDefinition(

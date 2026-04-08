@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ArtifactConfigDto(BaseModel):
@@ -18,7 +18,7 @@ class StageDefinitionDto(BaseModel):
     id: str
     name: str
     image: str
-    depends_on: list[str] = []
+    depends_on: list[str] = []  # 存储依赖的 stage_id 列表
     script: str
     env: dict[str, str] = {}
     artifacts: list[ArtifactConfigDto] | None = None
@@ -69,7 +69,7 @@ class StageOrchestrationDto(BaseModel):
 
     stage_id: str
     stage_key: str
-    depends_on: list[str] = []
+    depends_on: list[str] = []  # 存储依赖的 stage_id 列表
     sort_order: int = 0
 
     model_config = {"from_attributes": True}
@@ -127,7 +127,7 @@ class PipelineTemplateResp(BaseModel):
     orchestration: list[StageOrchestrationDto]
     stages: list[PipelineStageResp]  # 编排引用的 Stage 详情
     variable_declarations: list[VariableDeclarationDto]
-    latest_snapshot_version: int | None = None
+    version: int
     created_at: datetime
     updated_at: datetime
 
@@ -135,13 +135,13 @@ class PipelineTemplateResp(BaseModel):
 
 
 class PipelineTemplateCreateReq(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     description: str = ""
     variable_declarations: list[VariableDeclarationDto] = []
 
 
 class PipelineTemplateUpdateReq(BaseModel):
-    name: str | None = None
+    name: str | None = Field(default=None, min_length=1)
     description: str | None = None
     orchestration: list[StageOrchestrationDto] | None = None
     variable_declarations: list[VariableDeclarationDto] | None = None

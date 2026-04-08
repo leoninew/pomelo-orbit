@@ -359,24 +359,11 @@ class PipelineService:
     def list_templates(self, page: int = 1, per_page: int = 20) -> tuple[list[PipelineTemplate], int]:
         return self.template_repo.find_paginated(page=page, per_page=per_page)
 
-    def list_templates_with_latest_version(
-        self, page: int = 1, per_page: int = 20
-    ) -> tuple[list[tuple[PipelineTemplate, int | None]], int]:
-        templates, total = self.template_repo.find_paginated(page=page, per_page=per_page)
-        if not templates:
-            return [], total
-        latest_versions = self.snapshot_repo.find_latest_versions([t.id for t in templates])
-        return [(t, latest_versions.get(t.id)) for t in templates], total
-
     def get_template(self, template_id: str) -> PipelineTemplate:
         tmpl = self.template_repo.find_by_id(template_id)
         if not tmpl:
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
         return tmpl
-
-    def get_template_latest_version(self, template_id: str) -> int | None:
-        versions = self.snapshot_repo.find_latest_versions([template_id])
-        return versions.get(template_id)
 
     def create_template(
         self,
@@ -401,7 +388,8 @@ class PipelineService:
         decls = None
         if variable_declarations is not None:
             decls = [VariableDeclaration(**d) if isinstance(d, dict) else d for d in variable_declarations]
-        tmpl.update(name=name, description=description, variable_declarations=decls)
+        fields_changed = tmpl.update(name=name, description=description, variable_declarations=decls)
+        orch_changed = False
         if orchestration is not None:
             orch_list = [StageOrchestration(**o) if isinstance(o, dict) else o for o in orchestration]
             stage_ids = [o.stage_id for o in orch_list]
@@ -410,11 +398,14 @@ class PipelineService:
                 found = {s.id for s in stages}
                 missing = [sid for sid in stage_ids if sid not in found]
                 raise BusinessError(f"Stage(s) not found: {missing}", status_code=404)
-            self.template_repo.save_orchestration(template_id, orch_list)
-            # 重新加载含新编排的模板，确保 stages 已更新
-            tmpl = self.get_template(template_id)
-            if decls is not None:
-                tmpl.variable_declarations = decls
+            # 仅在编排实际变更时才写库和递增版本
+            if tmpl.has_orchestration_changed(orch_list):
+                self.template_repo.save_orchestration(template_id, orch_list)
+                orch_changed = True
+        if orch_changed or fields_changed:
+            old_version = tmpl.version
+            tmpl.bump_version()
+            logger.info(f"Template version bumped: template_id={tmpl.id}, old_version={old_version}, new_version={tmpl.version}")
         self.template_repo.save(tmpl)
         return self.get_template(template_id)
 
@@ -505,10 +496,6 @@ class PipelineService:
 
     # ── PipelineSnapshot ──────────────────────────────────────────────────────
 
-    def list_template_snapshots(self, template_id: str) -> list[PipelineSnapshot]:
-        self.get_template(template_id)
-        return self.snapshot_repo.find_by_template(template_id)
-
     def get_snapshot(self, snapshot_id: str) -> PipelineSnapshot:
         snapshot = self.snapshot_repo.find_by_id(snapshot_id)
         if not snapshot:
@@ -524,8 +511,7 @@ class PipelineService:
         latest = self.snapshot_repo.find_latest(template.id)
         if latest and latest.created_at >= template.updated_at:
             return latest
-        next_version = self.snapshot_repo.get_next_version(template.id)
-        snapshot = PipelineSnapshot.create(template, version=next_version)
+        snapshot = PipelineSnapshot.create(template, version=template.version)
         self.snapshot_repo.save(snapshot)
         return snapshot
 

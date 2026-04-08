@@ -98,10 +98,11 @@ class PipelineStageMapper:
 class PipelineTemplateStageMapper:
     @staticmethod
     def to_domain(orm: PipelineTemplateStageModel) -> StageOrchestration:
+        depends_on = json.loads(orm.depends_on or "[]")
         return StageOrchestration(
             stage_id=orm.stage_id,
             stage_key=orm.stage_key,
-            depends_on=json.loads(orm.depends_on),
+            depends_on=depends_on,
             sort_order=orm.sort_order,
         )
 
@@ -135,6 +136,7 @@ class PipelineTemplateMapper:
             orchestration=orchestration,
             stages=stages,
             variable_declarations=variable_declarations,
+            version=orm.version,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
         )
@@ -146,6 +148,7 @@ class PipelineTemplateMapper:
             name=entity.name,
             description=entity.description,
             variable_declarations=json.dumps([vd.model_dump() for vd in entity.variable_declarations]),
+            version=entity.version,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -258,7 +261,8 @@ class StageRunMapper:
         return StageRun(
             id=orm.id,
             pipeline_run_id=orm.pipeline_run_id,
-            name=orm.name,
+            stage_id=orm.stage_id,
+            stage_name=orm.stage_name,
             status=TaskStatus(orm.status),
             started_at=orm.started_at,
             finished_at=orm.finished_at,
@@ -271,7 +275,8 @@ class StageRunMapper:
         return StageRunModel(
             id=entity.id,
             pipeline_run_id=entity.pipeline_run_id,
-            name=entity.name,
+            stage_id=entity.stage_id,
+            stage_name=entity.stage_name,
             status=entity.status.value,
             started_at=entity.started_at,
             finished_at=entity.finished_at,

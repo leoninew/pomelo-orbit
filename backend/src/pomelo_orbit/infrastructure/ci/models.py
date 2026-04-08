@@ -31,6 +31,7 @@ class PipelineTemplateModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     variable_declarations: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -149,7 +150,8 @@ class StageRunModel(Base):
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    stage_id: Mapped[str] = mapped_column(String(26), nullable=False)
+    stage_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

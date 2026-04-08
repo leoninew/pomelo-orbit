@@ -11,7 +11,6 @@ from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.template import (
-    PipelineSnapshotListItemResp,
     PipelineTemplateCreateReq,
     PipelineTemplateResp,
     PipelineTemplateUpdateReq,
@@ -30,14 +29,9 @@ def list_templates(
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[PipelineTemplateResp]:
-    items_with_version, total = pipeline_service.list_templates_with_latest_version(page=page, per_page=per_page)
-    items = []
-    for tmpl, latest_version in items_with_version:
-        resp = PipelineTemplateResp.model_validate(tmpl)
-        resp = resp.model_copy(update={"latest_snapshot_version": latest_version})
-        items.append(resp)
+    items, total = pipeline_service.list_templates(page=page, per_page=per_page)
     return PaginatedResp(
-        items=items,
+        items=[PipelineTemplateResp.model_validate(t) for t in items],
         total=total,
         page=page,
         per_page=per_page,
@@ -53,9 +47,7 @@ def create_template(
 ) -> PipelineTemplateResp:
     decls = [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
     tmpl = pipeline_service.create_template(name=data.name, description=data.description, variable_declarations=decls)
-    resp = PipelineTemplateResp.model_validate(tmpl)
-    latest = pipeline_service.get_template_latest_version(tmpl.id)
-    return resp.model_copy(update={"latest_snapshot_version": latest})
+    return PipelineTemplateResp.model_validate(tmpl)
 
 
 @router.get("/{template_id}", response_model=PipelineTemplateResp)
@@ -65,9 +57,7 @@ def get_template(
     _current_user=Depends(get_current_user),
 ) -> PipelineTemplateResp:
     tmpl = pipeline_service.get_template(template_id)
-    latest = pipeline_service.get_template_latest_version(template_id)
-    resp = PipelineTemplateResp.model_validate(tmpl)
-    return resp.model_copy(update={"latest_snapshot_version": latest})
+    return PipelineTemplateResp.model_validate(tmpl)
 
 
 @router.put("/{template_id}", response_model=PipelineTemplateResp)
@@ -90,9 +80,7 @@ def update_template(
         orchestration=orch,
         variable_declarations=decls,
     )
-    latest = pipeline_service.get_template_latest_version(template_id)
-    resp = PipelineTemplateResp.model_validate(tmpl)
-    return resp.model_copy(update={"latest_snapshot_version": latest})
+    return PipelineTemplateResp.model_validate(tmpl)
 
 
 @router.delete("/{template_id}", status_code=204)
@@ -102,13 +90,3 @@ def delete_template(
     _current_user=Depends(get_current_user),
 ) -> None:
     pipeline_service.delete_template(template_id)
-
-
-@router.get("/{template_id}/snapshots", response_model=list[PipelineSnapshotListItemResp])
-def list_template_snapshots(
-    template_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
-    _current_user=Depends(get_current_user),
-) -> list[PipelineSnapshotListItemResp]:
-    snapshots = pipeline_service.list_template_snapshots(template_id)
-    return [PipelineSnapshotListItemResp.model_validate(s) for s in snapshots]

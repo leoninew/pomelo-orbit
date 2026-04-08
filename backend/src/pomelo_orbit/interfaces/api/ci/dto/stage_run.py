@@ -8,7 +8,8 @@ from pydantic import BaseModel
 class StageRunResp(BaseModel):
     id: str
     pipeline_run_id: str
-    name: str
+    stage_id: str
+    stage_name: str
     status: str
     started_at: datetime | None = None
     finished_at: datetime | None = None

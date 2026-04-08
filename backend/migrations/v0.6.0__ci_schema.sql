@@ -107,7 +107,10 @@ CREATE INDEX IF NOT EXISTS idx_project_webhooks_project ON project_webhooks(proj
 CREATE TABLE IF NOT EXISTS pipeline_runs (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,
+    project_name VARCHAR(255) NOT NULL DEFAULT '',
     pipeline_snapshot_id TEXT NOT NULL,
+    template_id VARCHAR(26) NOT NULL DEFAULT '',
+    template_name VARCHAR(255) NOT NULL DEFAULT '',
     trigger TEXT NOT NULL,
     trigger_ref TEXT NOT NULL,
     variables_snapshot TEXT NOT NULL DEFAULT '{}',

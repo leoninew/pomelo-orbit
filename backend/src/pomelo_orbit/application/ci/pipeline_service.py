@@ -639,7 +639,10 @@ class PipelineService:
         masked = mask_secrets(merged, declarations)
         run = PipelineRun.create(
             project_id=project_id,
+            project_name=project.name,
             pipeline_snapshot_id=snapshot.id,
+            template_id=template.id,
+            template_name=template.name,
             trigger=trigger,
             trigger_ref=effective_ref,
             variables_snapshot=masked,
@@ -681,7 +684,10 @@ class PipelineService:
         masked = mask_secrets(merged, declarations)
         new_run = PipelineRun.create(
             project_id=original.project_id,
+            project_name=project.name,  # 使用最新项目名，而非原 run 的快照名
             pipeline_snapshot_id=original.pipeline_snapshot_id,
+            template_id=original.template_id,
+            template_name=original.template_name,
             trigger=original.trigger,
             trigger_ref=original.trigger_ref,
             variables_snapshot=masked,

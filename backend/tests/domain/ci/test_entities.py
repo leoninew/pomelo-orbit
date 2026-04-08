@@ -89,7 +89,10 @@ class TestPipelineRun:
     def test_create_pipeline_run(self):
         run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            project_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={"KEY": "value"},
@@ -101,7 +104,10 @@ class TestPipelineRun:
     def test_pipeline_run_lifecycle(self):
         run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            project_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={},
@@ -116,7 +122,10 @@ class TestPipelineRun:
     def test_pipeline_run_failure(self):
         run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            project_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={},
@@ -130,7 +139,10 @@ class TestPipelineRun:
         original_run_id = str(ulid.ULID())
         retry_run = PipelineRun.create(
             project_id=str(ulid.ULID()),
+            project_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={"KEY": "value"},

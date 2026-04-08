@@ -322,7 +322,10 @@ class PipelineRun:
 
     id: str
     project_id: str
+    project_name: str
     pipeline_snapshot_id: str
+    template_id: str
+    template_name: str
     trigger: PipelineRunTrigger
     trigger_ref: str
     variables_snapshot: dict[str, Any]
@@ -335,7 +338,10 @@ class PipelineRun:
     @staticmethod
     def create(
         project_id: str,
+        project_name: str,
         pipeline_snapshot_id: str,
+        template_id: str,
+        template_name: str,
         trigger: PipelineRunTrigger,
         trigger_ref: str,
         variables_snapshot: dict[str, Any],
@@ -344,7 +350,10 @@ class PipelineRun:
         return PipelineRun(
             id=str(ULID()),
             project_id=project_id,
+            project_name=project_name,
             pipeline_snapshot_id=pipeline_snapshot_id,
+            template_id=template_id,
+            template_name=template_name,
             trigger=trigger,
             trigger_ref=trigger_ref,
             variables_snapshot=variables_snapshot,

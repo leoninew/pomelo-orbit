@@ -268,7 +268,10 @@ class TestPipelineRun:
     def test_get_run_success(self):
         run = PipelineRun.create(
             project_id="p",
+            project_name="proj",
             pipeline_snapshot_id="snap-1",
+            template_id="tpl-1",
+            template_name="tpl",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={},
@@ -287,7 +290,10 @@ class TestPipelineRun:
     def test_list_artifacts(self):
         run = PipelineRun.create(
             project_id="p",
+            project_name="proj",
             pipeline_snapshot_id="snap-1",
+            template_id="tpl-1",
+            template_name="tpl",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={},
@@ -303,7 +309,10 @@ class TestPipelineRun:
     async def test_retry_pipeline_success(self):
         original = PipelineRun.create(
             project_id="p",
+            project_name="proj",
             pipeline_snapshot_id="snap-1",
+            template_id="tpl-1",
+            template_name="tpl",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={"K": "V"},
@@ -329,7 +338,10 @@ class TestPipelineRun:
     def test_retry_pipeline_invalid_status(self):
         run = PipelineRun.create(
             project_id="p",
+            project_name="proj",
             pipeline_snapshot_id="snap-1",
+            template_id="tpl-1",
+            template_name="tpl",
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
             variables_snapshot={},

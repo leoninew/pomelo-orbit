@@ -218,7 +218,10 @@ class PipelineRunMapper:
         return PipelineRun(
             id=orm.id,
             project_id=orm.project_id,
+            project_name=orm.project_name,
             pipeline_snapshot_id=orm.pipeline_snapshot_id,
+            template_id=orm.template_id,
+            template_name=orm.template_name,
             trigger=PipelineRunTrigger(orm.trigger),
             trigger_ref=orm.trigger_ref,
             variables_snapshot=json.loads(orm.variables_snapshot),
@@ -234,7 +237,10 @@ class PipelineRunMapper:
         return PipelineRunModel(
             id=entity.id,
             project_id=entity.project_id,
+            project_name=entity.project_name,
             pipeline_snapshot_id=entity.pipeline_snapshot_id,
+            template_id=entity.template_id,
+            template_name=entity.template_name,
             trigger=entity.trigger.value,
             trigger_ref=entity.trigger_ref,
             variables_snapshot=json.dumps(entity.variables_snapshot),

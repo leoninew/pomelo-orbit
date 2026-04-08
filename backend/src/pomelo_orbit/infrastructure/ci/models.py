@@ -126,9 +126,12 @@ class PipelineRunModel(Base):
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     project_id: Mapped[str] = mapped_column(String(26), ForeignKey("projects.id"), nullable=False, index=True)
+    project_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     pipeline_snapshot_id: Mapped[str] = mapped_column(
         String(26), ForeignKey("pipeline_snapshots.id"), nullable=False, index=True
     )
+    template_id: Mapped[str] = mapped_column(String(26), nullable=False, default="")
+    template_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     trigger: Mapped[str] = mapped_column(String(50), nullable=False)
     trigger_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON

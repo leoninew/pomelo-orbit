@@ -14,7 +14,10 @@ if TYPE_CHECKING:
 class PipelineRunResp(BaseModel):
     id: str
     project_id: str
+    project_name: str
     pipeline_snapshot_id: str
+    template_id: str
+    template_name: str
     trigger: str
     trigger_ref: str
     status: str

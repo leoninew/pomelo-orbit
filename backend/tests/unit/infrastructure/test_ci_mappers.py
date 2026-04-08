@@ -113,7 +113,10 @@ class TestPipelineRunMapper:
         orm = PipelineRunModel(
             id=str(ULID()),
             project_id=str(ULID()),
+            project_name="test-project",
             pipeline_snapshot_id=str(ULID()),
+            template_id=str(ULID()),
+            template_name="test-template",
             trigger="manual",
             trigger_ref="main",
             variables_snapshot='{"VAR1": "value1"}',
@@ -131,7 +134,10 @@ class TestPipelineRunMapper:
     def test_to_orm(self):
         entity = PipelineRun.create(
             project_id=str(ULID()),
+            project_name="test-project",
             pipeline_snapshot_id=str(ULID()),
+            template_id=str(ULID()),
+            template_name="test-template",
             trigger=PipelineRunTrigger.WEBHOOK,
             trigger_ref="feature/test",
             variables_snapshot={"VAR1": "value1"},

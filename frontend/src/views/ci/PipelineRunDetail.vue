@@ -67,7 +67,7 @@
 									:to="`/ci/projects/${run.project_id}`"
 									class="link link-primary text-xs"
 								>
-									{{ run.project_id }}
+									{{ run.project_name }}
 								</router-link>
 							</dd>
 						</div>
@@ -82,6 +82,10 @@
 							<dd class="text-base-content/60">{{ run.trigger_ref }}</dd>
 						</div>
 						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
+							<dd class="text-base-content/70">{{ run.template_name }}</dd>
+						</div>
+						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">快照</dt>
 							<dd>
 								<router-link
@@ -89,7 +93,7 @@
 									:to="`/ci/snapshots/${run.pipeline_snapshot_id}`"
 									class="link link-primary text-xs"
 								>
-									{{ snapshot.template_id }} v{{ snapshot.version }}
+									{{ run.template_name }} v{{ snapshot.version }}
 								</router-link>
 								<span v-else class="text-base-content/60">—</span>
 							</dd>

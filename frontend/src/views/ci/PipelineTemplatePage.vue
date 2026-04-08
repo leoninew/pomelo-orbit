@@ -2,13 +2,99 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">流水线模板</h1>
-			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
-				<Plus class="size-4" />
-				新建模板
-			</button>
+			<div class="flex items-center gap-2">
+				<div class="join">
+					<button
+						class="join-item btn btn-sm"
+						:class="viewMode === 'card' ? 'btn-primary' : 'btn-ghost'"
+						@click="viewMode = 'card'"
+					>
+						<LayoutGrid class="size-4" />
+					</button>
+					<button
+						class="join-item btn btn-sm"
+						:class="viewMode === 'table' ? 'btn-primary' : 'btn-ghost'"
+						@click="viewMode = 'table'"
+					>
+						<List class="size-4" />
+					</button>
+				</div>
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+					<Plus class="size-4" />
+					新建模板
+				</button>
+			</div>
 		</div>
 
-		<div class="card bg-base-100 shadow-sm overflow-x-auto">
+		<div v-if="status === 'loading'" class="flex justify-center py-16">
+			<span class="loading loading-spinner loading-lg text-primary" />
+		</div>
+		<div v-else-if="status === 'error'" class="flex justify-center py-16 text-error text-sm">
+			{{ error }}
+		</div>
+
+		<template v-else-if="viewMode === 'card'">
+			<div
+				v-if="templates.length === 0"
+				class="flex flex-col items-center gap-2 py-16 text-base-content/60"
+			>
+				<Inbox class="size-12" />
+				<span>暂无模板</span>
+			</div>
+			<div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+				<div
+					v-for="tpl in templates"
+					:key="tpl.id"
+					class="card bg-base-100 shadow-sm border border-base-200 cursor-pointer hover:shadow-md transition-shadow overflow-hidden group"
+					@click="$router.push(`/ci/templates/${tpl.id}`)"
+				>
+					<div class="card-body p-4 gap-3">
+						<div class="flex items-start justify-between gap-2">
+							<span class="font-semibold truncate">{{ tpl.name }}</span>
+							<div class="flex items-center gap-1 shrink-0">
+								<span
+									v-if="tpl.latest_snapshot_version"
+									class="badge badge-sm badge-ghost"
+								>
+									v{{ tpl.latest_snapshot_version }}
+								</span>
+								<span class="badge badge-sm badge-ghost">自定义</span>
+							</div>
+						</div>
+						<p class="text-xs text-base-content/70 line-clamp-2">
+							{{ tpl.description || '暂无描述' }}
+						</p>
+						<div class="flex items-end justify-between mt-auto">
+							<span class="text-xs text-base-content/50">{{ formatTime(tpl.created_at) }}</span>
+							<div class="flex items-center gap-1" @click.stop>
+								<button
+									class="btn btn-xs btn-ghost text-error invisible group-hover:visible"
+									@click="confirmDelete(tpl.id)"
+								>
+									删除
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div v-if="totalPages > 0" class="flex justify-end mt-4">
+				<div class="join">
+					<button
+						v-for="p in totalPages"
+						:key="p"
+						class="join-item btn btn-sm"
+						:class="p === pagination.current ? 'btn-primary' : 'btn-ghost'"
+						@click="goPage(p)"
+					>
+						{{ p }}
+					</button>
+				</div>
+			</div>
+		</template>
+
+		<div v-else class="card bg-base-100 shadow-sm overflow-x-auto">
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
@@ -20,15 +106,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="status === 'loading'">
-						<td colspan="5" class="text-center py-8">
-							<span class="loading loading-spinner loading-md text-primary" />
-						</td>
-					</tr>
-					<tr v-else-if="status === 'error'">
-						<td colspan="5" class="text-center py-8 text-error">{{ error }}</td>
-					</tr>
-					<tr v-else-if="templates.length === 0">
+					<tr v-if="templates.length === 0">
 						<td colspan="5" class="text-center py-8 text-base-content/60">暂无模板</td>
 					</tr>
 					<tr v-for="t in templates" :key="t.id" class="hover">
@@ -119,9 +197,9 @@
 </template>
 
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { LayoutGrid, List, Plus, Inbox } from 'lucide-vue-next';
 import { pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
@@ -134,7 +212,8 @@ const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const templates = ref<PipelineTemplate[]>([]);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const viewMode = ref<'card' | 'table'>('card');
+const pagination = reactive({ current: 1, pageSize: 12, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
 const createModalRef = ref<HTMLDialogElement>();

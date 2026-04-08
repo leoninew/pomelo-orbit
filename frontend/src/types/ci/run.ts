@@ -5,11 +5,14 @@ import type { StageRun } from './stage_run';
 export interface PipelineRun {
 	id: string
 	project_id: string
+	project_name: string
 	trigger: string
 	trigger_ref: string
 	status: TaskStatus
 	retry_of?: string
 	pipeline_snapshot_id: string
+	template_id: string
+	template_name: string
 	started_at?: string
 	finished_at?: string
 	created_at: string

@@ -2,7 +2,7 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">应用管理</h1>
-			<div class="flex items-center gap-2 flex-wrap">
+			<div class="flex items-center gap-2">
 				<label class="input input-sm input-bordered flex items-center gap-2">
 					<Search class="size-3.5 text-base-content/60 shrink-0" />
 					<input

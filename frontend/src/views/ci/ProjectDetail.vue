@@ -105,7 +105,7 @@
 						<tr v-for="v in variableList" :key="v.key" class="hover">
 							<td>{{ v.key }}</td>
 							<td>
-								<code class="text-xs">{{ v.value }}</code>
+								{{ v.value }}
 							</td>
 							<td>
 								<div class="flex items-center gap-3">

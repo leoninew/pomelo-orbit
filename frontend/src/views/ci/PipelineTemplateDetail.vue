@@ -2,29 +2,11 @@
 	<div class="flex flex-col gap-4">
 		<!-- Header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold flex items-center gap-2">
-				{{ template?.name ?? '模板详情' }}
-				<span v-if="template?.latest_snapshot_version" class="badge badge-sm badge-ghost">
-					v{{ template.latest_snapshot_version }}
-				</span>
-			</h1>
-			<div class="flex items-center gap-2">
-				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
-					<ArrowLeft class="size-4" />
-					返回
-				</button>
-				<template v-if="template">
-					<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑信息</button>
-					<button
-						class="btn btn-sm btn-primary"
-						:disabled="saving"
-						@click="handleSaveOrchestration"
-					>
-						<span v-if="saving" class="loading loading-spinner loading-xs" />
-						保存编排
-					</button>
-				</template>
-			</div>
+			<h1 class="text-xl font-semibold">{{ template?.name ?? '模板详情' }}</h1>
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
+				<ArrowLeft class="size-4" />
+				返回
+			</button>
 		</div>
 
 		<!-- Loading -->
@@ -33,6 +15,35 @@
 		</div>
 
 		<template v-else-if="template">
+			<!-- 基本信息 -->
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body p-5">
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="font-semibold">基本信息</h2>
+						<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑</button>
+					</div>
+					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">模板名称</dt>
+							<dd>{{ template.name }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">快照版本</dt>
+							<dd>
+								<span v-if="template.latest_snapshot_version" class="badge badge-sm badge-ghost">
+									v{{ template.latest_snapshot_version }}
+								</span>
+								<span v-else class="text-base-content/40">—</span>
+							</dd>
+						</div>
+						<div class="flex gap-2 sm:col-span-2">
+							<dt class="text-base-content/70 w-24 shrink-0">描述</dt>
+							<dd class="text-base-content/60">{{ template.description || '—' }}</dd>
+						</div>
+					</dl>
+				</div>
+			</div>
+
 			<!-- Stages 编排 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
@@ -59,6 +70,14 @@
 									DAG
 								</button>
 							</div>
+							<button
+								class="btn btn-sm btn-primary"
+								:disabled="savingOrch"
+								@click="handleSaveOrchestration"
+							>
+								<span v-if="savingOrch" class="loading loading-spinner loading-xs" />
+								保存编排
+							</button>
 						</div>
 					</div>
 
@@ -92,6 +111,17 @@
 			<!-- 变量声明 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="font-semibold">变量声明</h2>
+						<button
+							class="btn btn-sm btn-primary"
+							:disabled="savingDecl"
+							@click="handleSaveDeclarations"
+						>
+							<span v-if="savingDecl" class="loading loading-spinner loading-xs" />
+							保存变量
+						</button>
+					</div>
 					<VariableDeclarationsTable v-model:declarations="declarations" :readonly="false" />
 				</div>
 			</div>
@@ -112,8 +142,8 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="saving" @click="handleEditInfoOk">
-						<span v-if="saving" class="loading loading-spinner loading-xs" />
+					<button class="btn btn-primary" :disabled="savingInfo" @click="handleEditInfoOk">
+						<span v-if="savingInfo" class="loading loading-spinner loading-xs" />
 						保存
 					</button>
 					<button class="btn btn-ghost" @click="editInfoModalRef?.close()">取消</button>
@@ -257,7 +287,9 @@ const templateId = route.params.id as string;
 const toast = useToast();
 
 const { status, execute } = useStatusAsync();
-const { loading: saving, execute: executeSave } = useStatusAsync();
+const { loading: savingInfo, execute: executeSaveInfo } = useStatusAsync();
+const { loading: savingOrch, execute: executeSaveOrch } = useStatusAsync();
+const { loading: savingDecl, execute: executeSaveDecl } = useStatusAsync();
 
 const template = ref<PipelineTemplate>();
 const orchestration = ref<StageOrchestration[]>([]);
@@ -338,12 +370,14 @@ function openEditInfoModal() {
 
 async function handleEditInfoOk() {
 	try {
-		await executeSave(async () => {
+		await executeSaveInfo(async () => {
 			const data = await pipelineTemplateApi.update(templateId, {
 				name: editForm.name,
 				description: editForm.description || undefined,
 			});
 			template.value = data;
+			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
+			declarations.value = [...data.variable_declarations];
 			toast.success('更新成功');
 			editInfoModalRef.value?.close();
 		});
@@ -364,10 +398,9 @@ async function handleSaveOrchestration() {
 	}
 
 	try {
-		await executeSave(async () => {
+		await executeSaveOrch(async () => {
 			const data = await pipelineTemplateApi.update(templateId, {
 				orchestration: orchestration.value,
-				variable_declarations: declarations.value,
 			});
 			template.value = data;
 			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
@@ -377,6 +410,22 @@ async function handleSaveOrchestration() {
 					? `保存成功，快照 v${data.latest_snapshot_version}`
 					: '保存成功'
 			);
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+async function handleSaveDeclarations() {
+	try {
+		await executeSaveDecl(async () => {
+			const data = await pipelineTemplateApi.update(templateId, {
+				variable_declarations: declarations.value,
+			});
+			template.value = data;
+			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
+			declarations.value = [...data.variable_declarations];
+			toast.success('保存成功');
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '保存失败');

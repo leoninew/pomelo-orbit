@@ -3,7 +3,7 @@
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ application?.name ?? '应用详情' }}</h1>
-			<button class="btn btn-sm btn-ghost gap-1.5" @click="$router.push('/cd/applications')">
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/applications')">
 				<ArrowLeft class="size-4" />
 				返回
 			</button>
@@ -253,42 +253,34 @@
 		<dialog ref="editModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑基本信息</h3>
-				<div class="flex flex-col gap-4">
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">应用名称</span>
-						</label>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">应用名称</legend>
 						<input
 							v-model="editForm.name"
 							type="text"
-							class="input input-bordered w-full"
+							class="input w-full"
 							:class="{ 'input-error': editErrors.name }"
 						/>
-						<label v-if="editErrors.name" class="label">
-							<span class="label-text-alt text-error">{{ editErrors.name }}</span>
-						</label>
-					</div>
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">应用编码</span>
-						</label>
+						<p v-if="editErrors.name" class="fieldset-label text-error">{{ editErrors.name }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">应用编码</legend>
 						<input
 							:value="editForm.code"
 							type="text"
-							class="input input-bordered w-full opacity-60"
+							class="input w-full opacity-60"
 							disabled
 						/>
-					</div>
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">镜像拉取策略</span>
-						</label>
-						<select v-model="editForm.image_pull_policy" class="select select-bordered w-full">
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">镜像拉取策略</legend>
+						<select v-model="editForm.image_pull_policy" class="select w-full">
 							<option value="always">always</option>
 							<option value="missing">missing</option>
 							<option value="never">never</option>
 						</select>
-					</div>
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">

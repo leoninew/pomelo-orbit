@@ -20,7 +20,7 @@
 				</button>
 				<button
 					v-if="deployment?.status === 'running' || deployment?.status === 'waiting_to_run'"
-					class="btn btn-sm btn-error gap-1"
+					class="btn btn-sm btn-error btn-ghost gap-1"
 					@click="handleCancel"
 				>
 					取消部署

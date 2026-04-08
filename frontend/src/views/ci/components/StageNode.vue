@@ -198,7 +198,7 @@ const statusClass = computed(() => {
 
 .stage-name {
 	font-weight: 500;
-	font-size: 0.875rem;
+	font-size: 0.75rem;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -212,7 +212,7 @@ const statusClass = computed(() => {
 }
 
 .stage-type-badge {
-	font-size: 0.75rem;
+	font-size: 0.6875rem;
 	padding-left: 0.375rem;
 	padding-right: 0.375rem;
 	padding-top: 0.125rem;
@@ -228,7 +228,7 @@ const statusClass = computed(() => {
 }
 
 .commands-count {
-	font-size: 0.75rem;
+	font-size: 0.6875rem;
 	color: hsl(var(--bc) / 0.6);
 }
 

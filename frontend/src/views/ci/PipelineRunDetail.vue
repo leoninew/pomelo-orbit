@@ -305,8 +305,8 @@ import type {
 	StageRun,
 	PipelineRun,
 	PipelineSnapshot,
-	TaskStatus,
 } from '@/types/api';
+import type { TaskStatus } from '@/types/common';
 import type { SnapshotStage } from '@/types/ci/snapshot';
 import { statusBadgeClass, statusLabel, isTerminalStatus } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
@@ -477,13 +477,12 @@ async function startPolling() {
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
 	while (!signal.aborted) {
-		await delayAsync(2000);
-		if (signal.aborted) break;
 		await Promise.all([fetchRun(), fetchStageRuns()]);
 		if (!run.value || isTerminalStatus(run.value.status)) {
 			fetchArtifacts();
 			break;
 		}
+		await delayAsync(2000);
 	}
 	isPolling.value = false;
 }

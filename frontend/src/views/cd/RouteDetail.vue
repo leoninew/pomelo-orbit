@@ -113,7 +113,7 @@
 					<div v-if="!routeData.https_enabled" class="flex flex-col gap-3">
 						<div role="alert" class="alert alert-info text-sm">当前使用 HTTP，未启用 HTTPS</div>
 						<div class="flex items-center gap-2 flex-wrap">
-							<label class="btn btn-sm btn-ghost gap-1.5 cursor-pointer">
+							<label class="btn btn-sm btn-ghost gap-1 cursor-pointer">
 								<Upload class="size-4" />
 								上传证书 (PEM)
 								<input
@@ -167,45 +167,41 @@
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑路由</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">路由名称</span></div>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路由名称</legend>
 						<input
 							:value="form.name"
 							type="text"
-							class="input input-bordered input-sm opacity-60"
+							class="input input-sm opacity-60"
 							disabled
 						/>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">域名</span></div>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">域名</legend>
 						<input
 							v-model="form.domain"
 							type="text"
-							class="input input-bordered input-sm"
+							class="input input-sm"
 							:class="{ 'input-error': errors.domain }"
 						/>
-						<div v-if="errors.domain" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.domain }}</span>
-						</div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">路径前缀</span></div>
-						<input v-model="form.path_prefix" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">目标地址</span></div>
+						<p v-if="errors.domain" class="fieldset-label text-error">{{ errors.domain }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路径前缀</legend>
+						<input v-model="form.path_prefix" type="text" class="input input-sm" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">目标地址</legend>
 						<input
 							v-model="form.target_url"
 							type="text"
-							class="input input-bordered input-sm"
+							class="input input-sm"
 							:class="{ 'input-error': errors.target_url }"
 						/>
-						<div v-if="errors.target_url" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.target_url }}</span>
-						</div>
-					</label>
+						<p v-if="errors.target_url" class="fieldset-label text-error">{{ errors.target_url }}</p>
+					</fieldset>
 					<label class="flex items-center gap-2 cursor-pointer">
-						<span class="label-text text-sm">启用</span>
+						<span class="text-sm">启用</span>
 						<input v-model="form.enabled" type="checkbox" class="toggle toggle-sm toggle-primary" />
 					</label>
 				</div>

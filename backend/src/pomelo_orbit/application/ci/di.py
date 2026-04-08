@@ -21,7 +21,6 @@ from pomelo_orbit.infrastructure.ci.repositories import (
     PipelineTemplateRepositoryImpl,
     ProjectRepositoryImpl,
     ProjectWebhookRepositoryImpl,
-    StageLogRepositoryImpl,
     StageRunRepositoryImpl,
 )
 from pomelo_orbit.infrastructure.config import get_settings
@@ -45,7 +44,6 @@ def _get_cached_executor_factory(settings: Dynaconf):
     def factory(session: Session) -> PipelineExecutor:
         return PipelineExecutorImpl(
             stage_run_repo=StageRunRepositoryImpl(session),
-            stage_log_repo=StageLogRepositoryImpl(session),
             container_executor=container_executor,
             artifact_repo=ArtifactRepositoryImpl(session),
             credential_repo=CredentialRepositoryImpl(session),
@@ -72,7 +70,6 @@ def get_pipeline_service(
         run_repo=PipelineRunRepositoryImpl(db),
         artifact_repo=ArtifactRepositoryImpl(db),
         stage_run_repo=StageRunRepositoryImpl(db),
-        stage_log_repo=StageLogRepositoryImpl(db),
         webhook_repo=ProjectWebhookRepositoryImpl(db),
         session_factory=get_session_factory(),
         executor_factory=_get_cached_executor_factory(settings),

@@ -1,5 +1,11 @@
-import type { Artifact, PaginatedResp, PipelineRun, StageRun } from '@/types/api';
+import type { Artifact, PaginatedResp, PipelineRun } from '@/types/api';
 import request from '@/utils/request';
+
+export interface StageLogResp {
+	logs: string
+	offset: number
+	is_complete: boolean
+}
 
 // PipelineRun API
 export const pipelineRunApi = {
@@ -23,11 +29,11 @@ export const pipelineRunApi = {
 		return request.post(`/api/ci/runs/${id}/cancel`);
 	},
 
-	listStageRuns(runId: string): Promise<StageRun[]> {
-		return request.get(`/api/ci/runs/${runId}/stages`);
-	},
-
 	listArtifacts(runId: string): Promise<Artifact[]> {
 		return request.get(`/api/ci/runs/${runId}/artifacts`);
+	},
+
+	getStageLog(runId: string, stageRunId: string, offset: number): Promise<StageLogResp> {
+		return request.get(`/api/ci/runs/${runId}/stages/${stageRunId}/log`, { params: { offset } });
 	},
 };

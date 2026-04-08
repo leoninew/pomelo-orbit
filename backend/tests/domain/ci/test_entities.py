@@ -10,7 +10,6 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineRun,
     PipelineTemplate,
     Project,
-    StageLog,
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -175,11 +174,3 @@ class TestStageRun:
         assert sr.status == TaskStatus.FAULTED
         assert sr.error_message == "Container timeout"
         assert sr.finished_at is not None
-
-
-class TestStageLog:
-    def test_create_stage_log(self):
-        log = StageLog.create(stage_run_id=str(ulid.ULID()), content="Log content here")
-        assert log.id is not None
-        assert log.content == "Log content here"
-        assert log.created_at is not None

@@ -6,14 +6,12 @@ from pomelo_orbit.domain.ci.entities import (
     Artifact,
     PipelineRun,
     Project,
-    StageLog,
     StageRun,
 )
 from pomelo_orbit.infrastructure.ci.models import (
     ArtifactModel,
     PipelineRunModel,
     ProjectModel,
-    StageLogModel,
     StageRunModel,
 )
 from pomelo_orbit.infrastructure.ci.repositories import (
@@ -22,7 +20,6 @@ from pomelo_orbit.infrastructure.ci.repositories import (
     PipelineRunRepositoryImpl,
     PipelineTemplateRepositoryImpl,
     ProjectRepositoryImpl,
-    StageLogRepositoryImpl,
     StageRunRepositoryImpl,
 )
 
@@ -150,30 +147,6 @@ class TestStageRunRepository:
         repo._mapper = Mock()
         repo._mapper.to_domain.return_value = Mock(spec=StageRun)
         assert len(repo.find_by_run("run-1")) == 1
-
-
-class TestStageLogRepository:
-    def test_find_by_stage_run_exists(self):
-        session = Mock()
-        query_mock = Mock()
-        session.query.return_value = query_mock
-        query_mock.filter.return_value = query_mock
-        log_orm = Mock(spec=StageLogModel)
-        query_mock.first.return_value = log_orm
-        repo = StageLogRepositoryImpl(session)
-        repo._mapper = Mock()
-        repo._mapper.to_domain.return_value = Mock(spec=StageLog)
-        assert repo.find_by_stage_run("sr-1") is not None
-
-    def test_find_by_stage_run_not_exists(self):
-        session = Mock()
-        query_mock = Mock()
-        session.query.return_value = query_mock
-        query_mock.filter.return_value = query_mock
-        query_mock.first.return_value = None
-        repo = StageLogRepositoryImpl(session)
-        repo._mapper = Mock()
-        assert repo.find_by_stage_run("sr-1") is None
 
 
 class TestArtifactRepository:

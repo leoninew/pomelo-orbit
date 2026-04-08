@@ -16,12 +16,3 @@ class StageRunResp(BaseModel):
     error_message: str | None = None
 
     model_config = {"from_attributes": True}
-
-
-class StageLogResp(BaseModel):
-    id: str
-    stage_run_id: str
-    content: str
-    created_at: datetime
-
-    model_config = {"from_attributes": True}

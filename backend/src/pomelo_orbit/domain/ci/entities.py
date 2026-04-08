@@ -409,20 +409,6 @@ class StageRun:
 
 
 @dataclass
-class StageLog:
-    """Stage 执行日志"""
-
-    id: str
-    stage_run_id: str
-    content: str
-    created_at: datetime = field(default_factory=utc_now)
-
-    @staticmethod
-    def create(stage_run_id: str, content: str) -> "StageLog":
-        return StageLog(id=str(ULID()), stage_run_id=stage_run_id, content=content)
-
-
-@dataclass
 class Artifact:
     """制品记录"""
 

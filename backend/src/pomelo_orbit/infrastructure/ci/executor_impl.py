@@ -4,20 +4,23 @@ import asyncio
 import logging
 from copy import copy
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import TextIO
 
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
-from pomelo_orbit.domain.ci.entities import Artifact, StageLog, StageRun
+from pomelo_orbit.domain.ci.entities import Artifact, StageRun
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.repositories import (
     ArtifactRepository,
     CredentialRepository,
-    StageLogRepository,
     StageRunRepository,
 )
 from pomelo_orbit.domain.ci.value_objects import CredentialType, StageDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
-from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path
+from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path, get_stage_log_path
 from pomelo_orbit.infrastructure.security import SecurityService
 
 logger = logging.getLogger(__name__)
@@ -49,14 +52,12 @@ class PipelineExecutorImpl(PipelineExecutor):
     def __init__(
         self,
         stage_run_repo: StageRunRepository,
-        stage_log_repo: StageLogRepository,
         container_executor: ContainerExecutor,
         artifact_repo: ArtifactRepository,
         credential_repo: CredentialRepository,
         security_service: SecurityService,
     ):
         self.stage_run_repo = stage_run_repo
-        self.stage_log_repo = stage_log_repo
         self.container_executor = container_executor
         self.artifact_repo = artifact_repo
         self.credential_repo = credential_repo
@@ -132,18 +133,20 @@ class PipelineExecutorImpl(PipelineExecutor):
         stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage.name)
         self.stage_run_repo.save(stage_run)
 
+        # 日志写入文件，执行过程中实时可读，不再写 DB。
+        log_path = get_stage_log_path(context.run_id, stage_run.id)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
         try:
             stage_run.start()
             self._save_stage_run(stage_run)
             logger.info(f"Stage started: run={context.run_id}, stage={stage.name}, image={stage.image}")
 
-            if context.credential_id:
-                exit_code, output = await self._execute_clone(context, stage)
-            else:
-                exit_code, output = await self._execute_container(context, stage)
-
-            log = StageLog.create(stage_run_id=stage_run.id, content=output or "")
-            self.stage_log_repo.save(log)
+            with log_path.open("w", encoding="utf-8") as log_file:
+                if context.credential_id:
+                    exit_code, _ = await self._execute_clone(context, stage, log_file=log_file)
+                else:
+                    exit_code, _ = await self._execute_container(context, stage, log_file=log_file)
 
             if exit_code == 0:
                 stage_run.complete_success(exit_code)
@@ -186,7 +189,9 @@ class PipelineExecutorImpl(PipelineExecutor):
         self.stage_run_repo.save(stage_run)
         self.stage_run_repo.commit()
 
-    async def _execute_container(self, context: ExecutionContext, stage: StageDefinition) -> tuple[int, str]:
+    async def _execute_container(
+        self, context: ExecutionContext, stage: StageDefinition, log_file: "TextIO | None" = None
+    ) -> tuple[int, str]:
         """普通容器执行：合并 stage.env 和 context.variables 作为环境变量"""
         env = {k: str(v) for k, v in context.variables.items()}
         env.update(stage.env)  # stage 级 env 优先
@@ -199,10 +204,13 @@ class PipelineExecutorImpl(PipelineExecutor):
             workspace_path=Path(context.workspace_path),
             artifacts_path=Path(context.artifacts_path),
             volumes=[],
+            log_file=log_file,
         )
         return exit_code, output
 
-    async def _execute_clone(self, context: ExecutionContext, stage: StageDefinition) -> tuple[int, str]:
+    async def _execute_clone(
+        self, context: ExecutionContext, stage: StageDefinition, log_file: "TextIO | None" = None
+    ) -> tuple[int, str]:
         """clone stage：处理 SSH key / token 挂载"""
         if not context.credential_id:
             raise RuntimeError("clone stage requires git_credential_id on the project")
@@ -220,7 +228,7 @@ class PipelineExecutorImpl(PipelineExecutor):
         key_path: Path | None = None
 
         if decrypted.type == CredentialType.GIT_SSH:
-            secrets_path = get_secrets_path(context.project_code, context.run_id)
+            secrets_path = get_secrets_path(context.run_id)
             secrets_path.mkdir(parents=True, exist_ok=True)
             key_path = secrets_path / "id_rsa"
             key_path.write_text(decrypted.get_private_key())
@@ -261,6 +269,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 artifacts_path=Path(context.artifacts_path),
                 volumes=[],
                 extra_binds=extra_binds,
+                log_file=log_file,
             )
         finally:
             # 容器执行完成后立即删除 SSH 私钥文件

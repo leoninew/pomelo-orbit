@@ -39,4 +39,4 @@ export type {
 	ProjectWebhookUpdateReq,
 } from './ci/webhook';
 export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
-export type { StageRun, StageLog, Artifact } from './ci/stage_run';
+export type { StageRun, Artifact } from './ci/stage_run';

@@ -2,7 +2,7 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold flex items-center gap-2">
-				流水线记录详情
+				流水线详情
 				<span v-if="run" class="badge badge-sm" :class="statusBadgeClass(run.status)">
 					{{ statusLabel(run.status) }}
 				</span>
@@ -233,7 +233,7 @@
 								{{ statusLabel(currentStageRun.status) }}
 							</span>
 						</h3>
-						<button class="btn btn-sm btn-ghost btn-circle" @click="showLogsDrawer = false">
+						<button class="btn btn-sm btn-ghost btn-circle" @click="closeLogDrawer">
 							<X class="size-4" />
 						</button>
 					</div>
@@ -266,11 +266,7 @@
 				leave-from-class="opacity-100"
 				leave-to-class="opacity-0"
 			>
-				<div
-					v-if="showLogsDrawer"
-					class="fixed inset-0 z-40 bg-black/30"
-					@click="showLogsDrawer = false"
-				/>
+				<div v-if="showLogsDrawer" class="fixed inset-0 z-40 bg-black/30" @click="closeLogDrawer" />
 			</Transition>
 		</Teleport>
 
@@ -296,16 +292,10 @@
 import { ArrowLeft, FileX, Loader2, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { stageApi, pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
+import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type {
-	Artifact,
-	StageLog,
-	StageRun,
-	PipelineRun,
-	PipelineSnapshot,
-} from '@/types/api';
+import type { Artifact, StageRun, PipelineRun, PipelineSnapshot } from '@/types/api';
 import type { TaskStatus } from '@/types/common';
 import type { SnapshotStage } from '@/types/ci/snapshot';
 import { statusBadgeClass, statusLabel, isTerminalStatus } from '@/utils/status';
@@ -319,27 +309,28 @@ const runId = route.params.id as string;
 const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
-const { execute: executeJobs } = useStatusAsync();
 const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
-const { loading: logsLoading, execute: executeLogs } = useStatusAsync();
 const { execute: executeSnapshot } = useStatusAsync();
 const { loading: retrying, execute: executeRetry } = useStatusAsync();
 const { loading: canceling, execute: executeCancel } = useStatusAsync();
 
 const run = ref<PipelineRun>();
 const snapshot = ref<PipelineSnapshot>();
-const stageRuns = ref<StageRun[]>([]);
 const artifacts = ref<Artifact[]>([]);
-const currentLog = ref<StageLog | null>(null);
 const currentStageRun = ref<StageRun>();
 const showLogsDrawer = ref(false);
 const cancelModalRef = ref<HTMLDialogElement>();
 const stagesView = ref<'list' | 'dag'>('list');
 
+// 日志 drawer 状态
+const logsText = ref('');
+const logsLoading = ref(false);
+let logPollAbort: AbortController | null = null;
+
 let pollAbort: AbortController | null = null;
 const isPolling = ref(false);
 
-const logsText = computed(() => currentLog.value?.content ?? '');
+const stageRuns = computed<StageRun[]>(() => run.value?.stage_runs ?? []);
 
 const snapshotStagesAsOrch = computed(() =>
 	(snapshot.value?.stages_snapshot ?? []).map((s, i) => ({
@@ -350,7 +341,6 @@ const snapshotStagesAsOrch = computed(() =>
 	}))
 );
 
-// Stage 状态从 stageRuns 计算
 const stageStatuses = computed<Map<string, TaskStatus>>(() => {
 	const map = new Map<string, TaskStatus>();
 	if (!snapshot.value) return map;
@@ -361,11 +351,7 @@ const stageStatuses = computed<Map<string, TaskStatus>>(() => {
 			map.set(stage.name, 'waiting_to_run');
 			continue;
 		}
-		if (sr.status === 'ran_to_completion') map.set(stage.name, 'ran_to_completion');
-		else if (sr.status === 'faulted') map.set(stage.name, 'faulted');
-		else if (sr.status === 'running') map.set(stage.name, 'running');
-		else if (sr.status === 'canceled') map.set(stage.name, 'canceled');
-		else map.set(stage.name, 'waiting_to_run');
+		map.set(stage.name, sr.status);
 	}
 	return map;
 });
@@ -376,7 +362,7 @@ async function onViewStage(stage: SnapshotStage) {
 		toast.error('该 Stage 尚未执行');
 		return;
 	}
-	await showStageLog(sr);
+	openLogDrawer(sr);
 }
 
 async function onViewLog(stageKey: string) {
@@ -385,7 +371,47 @@ async function onViewLog(stageKey: string) {
 		toast.error('该 Stage 尚未执行');
 		return;
 	}
-	await showStageLog(sr);
+	openLogDrawer(sr);
+}
+
+function openLogDrawer(sr: StageRun) {
+	// 停止上一个日志轮询
+	logPollAbort?.abort();
+	currentStageRun.value = sr;
+	logsText.value = '';
+	showLogsDrawer.value = true;
+	startLogPolling(sr.id);
+}
+
+function closeLogDrawer() {
+	showLogsDrawer.value = false;
+	logPollAbort?.abort();
+	logPollAbort = null;
+}
+
+async function startLogPolling(stageRunId: string) {
+	logPollAbort = new AbortController();
+	const signal = logPollAbort.signal;
+	logsLoading.value = true;
+	let offset = 0;
+
+	while (!signal.aborted) {
+		try {
+			const resp = await pipelineRunApi.getStageLog(runId, stageRunId, offset);
+			// 如果用户已切换到其他 stage，丢弃过期响应
+			if (currentStageRun.value?.id !== stageRunId) break;
+			if (resp.logs) {
+				logsText.value += resp.logs;
+				offset = resp.offset;
+			}
+			logsLoading.value = false;
+			if (resp.is_complete) break;
+		} catch {
+			logsLoading.value = false;
+			break;
+		}
+		await delayAsync(1500);
+	}
 }
 
 async function fetchRun() {
@@ -409,17 +435,7 @@ async function fetchSnapshot(snapshotId: string) {
 			snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
 		});
 	} catch {
-		// Silently fail - snapshot might not be critical
-	}
-}
-
-async function fetchStageRuns() {
-	try {
-		await executeJobs(async () => {
-			stageRuns.value = await pipelineRunApi.listStageRuns(runId);
-		});
-	} catch {
-		/* silent */
+		// snapshot 加载失败不影响主流程
 	}
 }
 
@@ -430,19 +446,6 @@ async function fetchArtifacts() {
 		});
 	} catch {
 		/* silent */
-	}
-}
-
-async function showStageLog(sr: StageRun) {
-	currentStageRun.value = sr;
-	showLogsDrawer.value = true;
-	currentLog.value = null;
-	try {
-		await executeLogs(async () => {
-			currentLog.value = await stageApi.getLog(sr.id);
-		});
-	} catch {
-		toast.error('获取日志失败');
 	}
 }
 
@@ -477,8 +480,8 @@ async function startPolling() {
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
 	while (!signal.aborted) {
-		await Promise.all([fetchRun(), fetchStageRuns()]);
-		if (!run.value || isTerminalStatus(run.value.status)) {
+		run.value = await pipelineRunApi.get(runId);
+		if (isTerminalStatus(run.value.status)) {
 			fetchArtifacts();
 			break;
 		}
@@ -500,9 +503,11 @@ function togglePolling() {
 
 onMounted(async () => {
 	await fetchRun();
-	await fetchStageRuns();
 	fetchArtifacts();
 });
 
-onUnmounted(stopPolling);
+onUnmounted(() => {
+	stopPolling();
+	logPollAbort?.abort();
+});
 </script>

@@ -8,7 +8,7 @@ from pomelo_orbit.interfaces.api.ci.dto.credential import (
 )
 from pomelo_orbit.interfaces.api.ci.dto.project import ProjectCreateReq, ProjectResp, ProjectUpdateReq
 from pomelo_orbit.interfaces.api.ci.dto.run import ArtifactResp, PipelineRunResp, TriggerPipelineReq
-from pomelo_orbit.interfaces.api.ci.dto.stage_run import StageLogResp, StageRunResp
+from pomelo_orbit.interfaces.api.ci.dto.stage_run import StageRunResp
 from pomelo_orbit.interfaces.api.ci.dto.template import (
     PipelineSnapshotListItemResp,
     PipelineSnapshotResp,
@@ -32,7 +32,6 @@ __all__ = [
     "ProjectCreateReq",
     "ProjectResp",
     "ProjectUpdateReq",
-    "StageLogResp",
     "StageRunResp",
     "TriggerPipelineReq",
     "VariableDeclarationDto",

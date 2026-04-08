@@ -12,13 +12,12 @@ from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 
 if TYPE_CHECKING:
     from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
-    from pomelo_orbit.infrastructure.ci.repositories import StageLogRepositoryImpl, StageRunRepositoryImpl
+    from pomelo_orbit.infrastructure.ci.repositories import StageRunRepositoryImpl
 
 
-def make_executor(container_executor=None, stage_run_repo=None, stage_log_repo=None, artifact_repo=None):
+def make_executor(container_executor=None, stage_run_repo=None, artifact_repo=None):
     return PipelineExecutorImpl(
         stage_run_repo=cast("StageRunRepositoryImpl", stage_run_repo or Mock()),
-        stage_log_repo=cast("StageLogRepositoryImpl", stage_log_repo or Mock()),
         container_executor=cast("ContainerExecutor", container_executor or AsyncMock()),
         artifact_repo=artifact_repo or Mock(),
         credential_repo=Mock(),
@@ -52,16 +51,12 @@ class TestPipelineExecutorImpl:
     @pytest.mark.asyncio
     async def test_execute_simple_pipeline_success(self):
         stage_run_repo = Mock()
-        stage_log_repo = Mock()
         container_executor = AsyncMock()
         container_executor.run.return_value = (0, "Success output")
-        executor = make_executor(
-            container_executor=container_executor, stage_run_repo=stage_run_repo, stage_log_repo=stage_log_repo
-        )
+        executor = make_executor(container_executor=container_executor, stage_run_repo=stage_run_repo)
         result = await executor.execute(make_context(), [stage("build")])
         assert result is True
         assert stage_run_repo.save.call_count >= 2
-        assert stage_log_repo.save.call_count == 1
         container_executor.run.assert_called_once()
 
     @pytest.mark.asyncio

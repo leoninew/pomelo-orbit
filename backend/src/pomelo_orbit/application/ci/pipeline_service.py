@@ -17,7 +17,6 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineTemplate,
     Project,
     ProjectWebhook,
-    StageLog,
     StageRun,
 )
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
@@ -30,7 +29,6 @@ from pomelo_orbit.domain.ci.repositories import (
     PipelineTemplateRepository,
     ProjectRepository,
     ProjectWebhookRepository,
-    StageLogRepository,
     StageRunRepository,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -55,7 +53,12 @@ from pomelo_orbit.infrastructure.ci.webhook_verifier import (
     verify_github_signature,
     verify_gitlab_signature,
 )
-from pomelo_orbit.infrastructure.ci.workspace import cleanup_project, cleanup_run, create_workspace
+from pomelo_orbit.infrastructure.ci.workspace import (
+    cleanup_project,
+    cleanup_run_secrets,
+    create_workspace,
+    get_stage_log_path,
+)
 from pomelo_orbit.infrastructure.persistence.database import get_session_factory
 from pomelo_orbit.infrastructure.security import SecurityService
 from pomelo_orbit.infrastructure.time_utils import utc_now
@@ -74,7 +77,6 @@ class PipelineService:
         run_repo: PipelineRunRepository,
         artifact_repo: ArtifactRepository,
         stage_run_repo: StageRunRepository,
-        stage_log_repo: StageLogRepository,
         webhook_repo: ProjectWebhookRepository,
         session_factory: Any,
         executor_factory: Callable[[Session], PipelineExecutor],
@@ -89,7 +91,6 @@ class PipelineService:
         self.run_repo = run_repo
         self.artifact_repo = artifact_repo
         self.stage_run_repo = stage_run_repo
-        self.stage_log_repo = stage_log_repo
         self.webhook_repo = webhook_repo
         self.security_service = security_service
         self.global_variables = global_variables or {}
@@ -551,9 +552,40 @@ class PipelineService:
         self.get_run(run_id)
         return self.stage_run_repo.find_by_run(run_id)
 
-    def get_stage_log(self, stage_run_id: str) -> StageLog | None:
-        # 日志可能尚未写入（stage 还在运行），返回 None 而非 404
-        return self.stage_log_repo.find_by_stage_run(stage_run_id)
+    def read_stage_log(self, run_id: str, stage_run_id: str, offset: int = 0) -> tuple[str, int, bool]:
+        """读取 stage 日志（增量），对齐 CD 的 read_deployment_log 接口。
+
+        Returns:
+            (content, new_offset, is_complete)
+        """
+        stage_run = self.stage_run_repo.find_by_id(stage_run_id)
+        if not stage_run or stage_run.pipeline_run_id != run_id:
+            return "", offset, True
+
+        log_path = get_stage_log_path(run_id, stage_run_id)
+        if not log_path.exists():
+            is_complete = stage_run.status in (
+                TaskStatus.RAN_TO_COMPLETION,
+                TaskStatus.FAULTED,
+                TaskStatus.CANCELED,
+            )
+            return "", offset, is_complete
+
+        try:
+            with log_path.open(encoding="utf-8") as f:
+                f.seek(offset)
+                content = f.read()
+                new_offset = f.tell()
+        except Exception as e:
+            logger.error(f"Stage log read failed: run={run_id}, stage_run={stage_run_id}, error={e}", exc_info=True)
+            return "", offset, True
+
+        is_complete = stage_run.status in (
+            TaskStatus.RAN_TO_COMPLETION,
+            TaskStatus.FAULTED,
+            TaskStatus.CANCELED,
+        )
+        return content, new_offset, is_complete
 
     def cancel_run(self, run_id: str) -> PipelineRun:
         run = self.get_run(run_id)
@@ -715,12 +747,12 @@ class PipelineService:
                 logger.error(f"Pipeline execution error: run={run.id}, error={e}", exc_info=True)
                 run.complete_failed()
             finally:
-                # 无论成功、失败还是取消，都必须落库 run 状态并清理工作目录。
+                # 无论成功、失败还是取消，都必须落库 run 状态。
                 # finally 在 Python 中先于 with session 的 __exit__ 执行，
                 # 所以 commit 在 session 关闭前完成，不会被 rollback 覆盖。
                 run_repo.save(run)
                 session.commit()
-                cleanup_run(project.code, run.id)
+                cleanup_run_secrets(run.id)  # 清理 secrets 等临时文件
                 logger.info(f"Pipeline finished: run={run.id}, status={run.status}")
 
     def verify_webhook_signature(

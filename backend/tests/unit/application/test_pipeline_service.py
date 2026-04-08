@@ -29,7 +29,6 @@ def make_service(**overrides) -> PipelineService:
         "run_repo": Mock(),
         "artifact_repo": Mock(),
         "stage_run_repo": Mock(),
-        "stage_log_repo": Mock(),
         "webhook_repo": Mock(),
         "session_factory": Mock(),
         "executor_factory": Mock(),

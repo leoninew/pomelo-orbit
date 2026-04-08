@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from pomelo_orbit.infrastructure.ci.workspace import (
     cleanup_project,
-    cleanup_run,
+    cleanup_run_secrets,
     create_workspace,
     get_artifacts_path,
     get_workspace_path,
@@ -38,14 +38,12 @@ class TestGetArtifactsPath:
     @patch(PATCH_ROOT)
     def test_returns_correct_path(self, mock_root):
         mock_root.return_value = Path("/project")
-        assert get_artifacts_path(PROJECT_CODE, RUN_ID) == Path(
-            f"/project/data/ci/{PROJECT_CODE}/runs/{RUN_ID}/artifacts"
-        )
+        assert get_artifacts_path(RUN_ID) == Path(f"/project/data/ci/runs/{RUN_ID}/artifacts")
 
     @patch(PATCH_ROOT)
     def test_different_runs_different_paths(self, mock_root):
         mock_root.return_value = Path("/project")
-        assert get_artifacts_path(PROJECT_CODE, "run-1") != get_artifacts_path(PROJECT_CODE, "run-2")
+        assert get_artifacts_path("run-1") != get_artifacts_path("run-2")
 
 
 class TestCreateWorkspace:
@@ -61,7 +59,7 @@ class TestCreateWorkspace:
             mock_root.return_value = Path(tmpdir)
             workspace_path, artifacts_path = create_workspace(PROJECT_CODE, RUN_ID)
             assert PROJECT_CODE in str(workspace_path) and "workspace" in str(workspace_path)
-            assert PROJECT_CODE in str(artifacts_path) and RUN_ID in str(artifacts_path)
+            assert RUN_ID in str(artifacts_path) and "artifacts" in str(artifacts_path)
 
     def test_creates_parent_directories(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
@@ -96,55 +94,46 @@ class TestCreateWorkspace:
 
 
 class TestCleanupRun:
-    def test_removes_run_directory(self):
+    def test_removes_secrets_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
+            mock_root.return_value = Path(tmpdir)
+            create_workspace(PROJECT_CODE, RUN_ID)
+            secrets_path = Path(tmpdir) / "data" / "ci" / "runs" / RUN_ID / "secrets"
+            secrets_path.mkdir(parents=True, exist_ok=True)
+            (secrets_path / "id_rsa").write_text("private key")
+            cleanup_run_secrets(RUN_ID)
+            assert not secrets_path.exists()
+
+    def test_keeps_artifacts(self):
+        """cleanup_run_secrets 不应删除 artifacts"""
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
             mock_root.return_value = Path(tmpdir)
             _, artifacts_path = create_workspace(PROJECT_CODE, RUN_ID)
+            (artifacts_path / "output.tar.gz").write_text("artifact")
+            cleanup_run_secrets(RUN_ID)
             assert artifacts_path.exists()
-            cleanup_run(PROJECT_CODE, RUN_ID)
-            assert not artifacts_path.exists()
 
     def test_keeps_workspace(self):
-        """cleanup_run 不应删除 workspace"""
+        """cleanup_run_secrets 不应删除 workspace"""
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
             mock_root.return_value = Path(tmpdir)
             workspace_path, _ = create_workspace(PROJECT_CODE, RUN_ID)
-            cleanup_run(PROJECT_CODE, RUN_ID)
+            cleanup_run_secrets(RUN_ID)
             assert workspace_path.exists()
 
     def test_cleanup_nonexistent_run(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
             mock_root.return_value = Path(tmpdir)
-            cleanup_run(PROJECT_CODE, "nonexistent-run")  # should not raise
-
-    def test_cleanup_with_files(self):
-        with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
-            mock_root.return_value = Path(tmpdir)
-            _, artifacts_path = create_workspace(PROJECT_CODE, RUN_ID)
-            test_file = artifacts_path / "output.tar.gz"
-            test_file.write_text("artifact content")
-            cleanup_run(PROJECT_CODE, RUN_ID)
-            assert not test_file.exists()
-
-    def test_cleanup_with_subdirectories(self):
-        with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
-            mock_root.return_value = Path(tmpdir)
-            _, artifacts_path = create_workspace(PROJECT_CODE, RUN_ID)
-            subdir = artifacts_path / "subdir"
-            subdir.mkdir()
-            (subdir / "file.txt").write_text("content")
-            cleanup_run(PROJECT_CODE, RUN_ID)
-            assert not subdir.exists()
+            cleanup_run_secrets("nonexistent-run")  # should not raise
 
 
 class TestCleanupProject:
     def test_removes_entire_project_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:
             mock_root.return_value = Path(tmpdir)
-            workspace_path, artifacts_path = create_workspace(PROJECT_CODE, RUN_ID)
+            workspace_path, _ = create_workspace(PROJECT_CODE, RUN_ID)
             cleanup_project(PROJECT_CODE)
             assert not workspace_path.exists()
-            assert not artifacts_path.exists()
 
     def test_cleanup_nonexistent_project(self):
         with tempfile.TemporaryDirectory() as tmpdir, patch(PATCH_ROOT) as mock_root:

@@ -12,14 +12,6 @@ export interface StageRun {
 	error_message?: string
 }
 
-// StageLog — Stage 执行日志
-export interface StageLog {
-	id: string
-	stage_run_id: string
-	content: string
-	created_at: string
-}
-
 // Artifact
 export interface Artifact {
 	id: string

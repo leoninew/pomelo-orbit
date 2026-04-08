@@ -12,7 +12,6 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineTemplate,
     Project,
     ProjectWebhook,
-    StageLog,
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -33,7 +32,6 @@ from pomelo_orbit.infrastructure.ci.models import (
     PipelineTemplateStageModel,
     ProjectModel,
     ProjectWebhookModel,
-    StageLogModel,
     StageRunModel,
 )
 
@@ -273,26 +271,6 @@ class StageRunMapper:
             finished_at=entity.finished_at,
             exit_code=entity.exit_code,
             error_message=entity.error_message,
-        )
-
-
-class StageLogMapper:
-    @staticmethod
-    def to_domain(orm: StageLogModel) -> StageLog:
-        return StageLog(
-            id=orm.id,
-            stage_run_id=orm.stage_run_id,
-            content=orm.content,
-            created_at=orm.created_at,
-        )
-
-    @staticmethod
-    def to_orm(entity: StageLog) -> StageLogModel:
-        return StageLogModel(
-            id=entity.id,
-            stage_run_id=entity.stage_run_id,
-            content=entity.content,
-            created_at=entity.created_at,
         )
 
 

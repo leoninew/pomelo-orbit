@@ -12,7 +12,7 @@ from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 
 if TYPE_CHECKING:
     from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
-    from pomelo_orbit.infrastructure.ci.repositories import StageLogRepositoryImpl, StageRunRepositoryImpl
+    from pomelo_orbit.infrastructure.ci.repositories import StageRunRepositoryImpl
 
 
 def make_stage(name: str, commands: list[str], depends_on: list[str] | None = None) -> StageDefinition:
@@ -27,20 +27,15 @@ class TestPipelineExecutorImpl:
         return MagicMock()
 
     @pytest.fixture
-    def stage_log_repo(self):
-        return MagicMock()
-
-    @pytest.fixture
     def container_executor(self):
         executor = MagicMock()
         executor.run = AsyncMock(return_value=(0, "success"))
         return executor
 
     @pytest.fixture
-    def executor(self, stage_run_repo, stage_log_repo, container_executor):
+    def executor(self, stage_run_repo, container_executor):
         return PipelineExecutorImpl(
             stage_run_repo=cast("StageRunRepositoryImpl", stage_run_repo),
-            stage_log_repo=cast("StageLogRepositoryImpl", stage_log_repo),
             container_executor=cast("ContainerExecutor", container_executor),
             artifact_repo=MagicMock(),
             credential_repo=MagicMock(),
@@ -123,14 +118,7 @@ class TestPipelineExecutorImpl:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_stage_log_recording(self, executor, context, container_executor, stage_log_repo):
-        container_executor.run = AsyncMock(return_value=(0, "test output"))
-        await executor.execute(context, [make_stage("a", ["echo a"])])
-        assert stage_log_repo.save.called
-        assert stage_log_repo.save.call_args[0][0].content == "test output"
-
-    @pytest.mark.asyncio
-    async def test_stage_run_status_transitions(self, stage_log_repo, context):
+    async def test_stage_run_status_transitions(self, context):
         saved_statuses = []
 
         def capture(sr):
@@ -142,7 +130,6 @@ class TestPipelineExecutorImpl:
         container_executor.run = AsyncMock(return_value=(0, "success"))
         executor = PipelineExecutorImpl(
             stage_run_repo=stage_run_repo,
-            stage_log_repo=stage_log_repo,
             container_executor=container_executor,
             artifact_repo=MagicMock(),
             credential_repo=MagicMock(),

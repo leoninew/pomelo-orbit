@@ -51,7 +51,7 @@ class TestProjectTrigger:
 
 class TestStageRunList:
     @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
-    def test_list_stage_runs_for_run(self, mock_execute, auth_client, test_project, test_template):
+    def test_stage_runs_embedded_in_run(self, mock_execute, auth_client, test_project, test_template):
         mock_execute.return_value = None
         trigger_resp = auth_client.post(
             f"/api/ci/projects/{test_project.id}/trigger",
@@ -60,13 +60,8 @@ class TestStageRunList:
         assert trigger_resp.status_code == 201
         run_id = trigger_resp.json()["id"]
 
-        resp = auth_client.get(f"/api/ci/runs/{run_id}/stages")
+        # stage_runs 现在内嵌在 run 响应里，不再有独立的 /stages 端点
+        resp = auth_client.get(f"/api/ci/runs/{run_id}")
         assert resp.status_code == 200
-        assert isinstance(resp.json(), list)
-
-
-class TestStageLog:
-    def test_not_found_returns_none(self, auth_client):
-        resp = auth_client.get("/api/ci/stages/nonexistent-stage-run/log")
-        assert resp.status_code == 200
-        assert resp.json() is None
+        assert "stage_runs" in resp.json()
+        assert isinstance(resp.json()["stage_runs"], list)

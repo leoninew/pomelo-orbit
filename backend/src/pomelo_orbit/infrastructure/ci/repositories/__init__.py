@@ -4,7 +4,7 @@ from pomelo_orbit.infrastructure.ci.repositories.artifact import ArtifactReposit
 from pomelo_orbit.infrastructure.ci.repositories.credential import CredentialRepositoryImpl
 from pomelo_orbit.infrastructure.ci.repositories.pipeline_run import PipelineRunRepositoryImpl
 from pomelo_orbit.infrastructure.ci.repositories.project import ProjectRepositoryImpl
-from pomelo_orbit.infrastructure.ci.repositories.stage_run import StageLogRepositoryImpl, StageRunRepositoryImpl
+from pomelo_orbit.infrastructure.ci.repositories.stage_run import StageRunRepositoryImpl
 from pomelo_orbit.infrastructure.ci.repositories.template import (
     PipelineSnapshotRepositoryImpl,
     PipelineStageRepositoryImpl,
@@ -21,6 +21,5 @@ __all__ = [
     "PipelineTemplateRepositoryImpl",
     "ProjectRepositoryImpl",
     "ProjectWebhookRepositoryImpl",
-    "StageLogRepositoryImpl",
     "StageRunRepositoryImpl",
 ]

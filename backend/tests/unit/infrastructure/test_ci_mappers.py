@@ -9,7 +9,6 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineRun,
     PipelineTemplate,
     Project,
-    StageLog,
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -23,7 +22,6 @@ from pomelo_orbit.infrastructure.ci.mappers import (
     PipelineRunMapper,
     PipelineTemplateMapper,
     ProjectMapper,
-    StageLogMapper,
     StageRunMapper,
 )
 from pomelo_orbit.infrastructure.ci.models import (
@@ -32,7 +30,6 @@ from pomelo_orbit.infrastructure.ci.models import (
     PipelineRunModel,
     PipelineTemplateModel,
     ProjectModel,
-    StageLogModel,
     StageRunModel,
 )
 from pomelo_orbit.infrastructure.time_utils import utc_now
@@ -168,26 +165,6 @@ class TestStageRunMapper:
         assert orm.id == entity.id
         assert orm.name == entity.name
         assert orm.status == "waiting_to_run"
-
-
-class TestStageLogMapper:
-    def test_to_domain(self):
-        orm = StageLogModel(
-            id=str(ULID()),
-            stage_run_id=str(ULID()),
-            content="Log content",
-            created_at=utc_now(),
-        )
-        entity = StageLogMapper.to_domain(orm)
-        assert entity.id == orm.id
-        assert entity.stage_run_id == orm.stage_run_id
-        assert entity.content == orm.content
-
-    def test_to_orm(self):
-        entity = StageLog.create(stage_run_id=str(ULID()), content="Log content")
-        orm = StageLogMapper.to_orm(entity)
-        assert orm.stage_run_id == entity.stage_run_id
-        assert orm.content == entity.content
 
 
 class TestArtifactMapper:

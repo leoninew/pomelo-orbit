@@ -142,17 +142,6 @@ CREATE TABLE IF NOT EXISTS stage_runs (
 CREATE INDEX IF NOT EXISTS idx_stage_runs_run ON stage_runs(pipeline_run_id);
 CREATE INDEX IF NOT EXISTS idx_stage_runs_status ON stage_runs(status);
 
--- Stage 执行日志表
-CREATE TABLE IF NOT EXISTS stage_logs (
-    id TEXT PRIMARY KEY,
-    stage_run_id TEXT NOT NULL,
-    content TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (stage_run_id) REFERENCES stage_runs(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_stage_logs_stage_run ON stage_logs(stage_run_id);
-
 -- 制品表
 CREATE TABLE IF NOT EXISTS artifacts (
     id TEXT PRIMARY KEY,

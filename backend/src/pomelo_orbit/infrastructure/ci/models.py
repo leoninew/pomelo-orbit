@@ -154,17 +154,6 @@ class StageRunModel(Base):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
-class StageLogModel(Base):
-    """Stage 执行日志模型"""
-
-    __tablename__ = "stage_logs"
-
-    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    stage_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("stage_runs.id"), nullable=False, index=True)
-    content: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
-
-
 class ArtifactModel(Base):
     """制品模型"""
 

@@ -183,7 +183,8 @@ class ApplicationManagerImpl(ApplicationManager):
             self._write_log(log_file, cmd_str)
         if sys.platform == "win32":
             return await self._run_command_win32(cmd, cwd)
-        return await self._run_command_unix(cmd, cwd)
+        else:  # noqa: RET505
+            return await self._run_command_unix(cmd, cwd)
 
     async def _compose_pull(self, app_dir: Path, log_file: TextIO | None = None) -> str:
         return await self._run_command(

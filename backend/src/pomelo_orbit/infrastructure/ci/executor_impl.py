@@ -66,10 +66,13 @@ class PipelineExecutorImpl(PipelineExecutor):
         """按 Stage 依赖关系拓扑排序后分层并行执行，1 Stage = 1 Job"""
         task = asyncio.current_task()
         if task:
+            # 注册当前 asyncio.Task，使 cancel_task() 能通过 run_id 找到它并调用 task.cancel()。
+            # 必须在执行开始前注册，否则用户在极短窗口内取消时会静默失败。
             register_task(context.run_id, task)
         try:
             return await self._execute_internal(context, stages)
         finally:
+            # 无论正常结束、异常还是取消，都要清理注册表，避免 run_id 泄漏。
             unregister_task(context.run_id)
 
     async def _execute_internal(self, context: ExecutionContext, stages: list[StageDefinition]) -> bool:
@@ -99,16 +102,24 @@ class PipelineExecutorImpl(PipelineExecutor):
             return True
 
         except asyncio.CancelledError:
+            # 取消信号从 _execute_stage 穿透上来，在这里记录日志后继续向上传播。
+            # 不能在此处把 run 标记为 canceled，因为 session 在 execute_run 里管理，
+            # 这里没有访问权限。run 的最终状态由 execute_run 的 except CancelledError 负责。
             logger.info(f"Pipeline cancelled: run={context.run_id}")
             raise
         except Exception as e:
+            # 非取消的意外异常（理论上不应到达这里，因为 _execute_stage 已经把
+            # Exception 转换成了 return False）。作为兜底，记录日志并返回失败。
             logger.error(f"Pipeline execution failed: run={context.run_id}, error={e}", exc_info=True)
             return False
 
     async def _execute_layer(self, context: ExecutionContext, stages: list[StageDefinition]) -> dict[str, bool]:
         """并行执行同一层的所有 Stage"""
         tasks = [self._execute_stage(context, stage) for stage in stages]
-        # 不用 return_exceptions=True，让 CancelledError 正常向上传播
+        # return_exceptions=False：让 CancelledError 不被 gather 吞掉，直接向上传播。
+        # 这样外层 _execute_internal 的 except CancelledError 才能感知到取消信号。
+        # 代价是同层其他 stage 的 task 会被 gather 自动取消，它们各自的 CancelledError
+        # 分支会负责把自己的 StageRun 状态写入 DB。
         results = await asyncio.gather(*tasks, return_exceptions=False)
 
         result_map: dict[str, bool] = {}
@@ -123,7 +134,7 @@ class PipelineExecutorImpl(PipelineExecutor):
 
         try:
             stage_run.start()
-            self.stage_run_repo.save(stage_run)
+            self._save_stage_run(stage_run)
             logger.info(f"Stage started: run={context.run_id}, stage={stage.name}, image={stage.image}")
 
             if context.credential_id:
@@ -136,25 +147,44 @@ class PipelineExecutorImpl(PipelineExecutor):
 
             if exit_code == 0:
                 stage_run.complete_success(exit_code)
-                self.stage_run_repo.save(stage_run)
+                # artifact 先保存，再 commit stage 状态，保证两者在同一个事务里。
                 self._save_artifacts(context, stage, stage_run.name)
+                self._save_stage_run(stage_run)
                 logger.info(f"Stage succeeded: run={context.run_id}, stage={stage.name}")
                 return True
 
             stage_run.complete_failed(exit_code, f"Exit code: {exit_code}")
-            self.stage_run_repo.save(stage_run)
+            self._save_stage_run(stage_run)
             logger.warning(f"Stage failed: run={context.run_id}, stage={stage.name}, exit_code={exit_code}")
             return False
 
         except asyncio.CancelledError:
+            # 取消不是 stage 自身的失败，而是整个 pipeline 被外部中止。
+            # 必须先把 StageRun 状态落库，再 raise，让信号继续向上传播到
+            # execute_run，由它负责把 PipelineRun 标记为 canceled。
+            # 不能 return False：那会让外层误以为是普通失败，把 run 标记为 faulted。
             stage_run.complete_faulted("Cancelled")
-            self.stage_run_repo.save(stage_run)
+            self._save_stage_run(stage_run)
             raise
         except Exception as e:
+            # 意外异常（容器 API 报错、网络中断等）与容器返回非零退出码对 pipeline
+            # 来说结果相同：这个 stage 失败了。先落库 StageRun 状态，再 return False
+            # 让外层走正常的失败流程（_cancel_remaining + run.complete_failed）。
+            # 不 raise：外层 _execute_internal 的 except Exception 不会更新 StageRun，
+            # 也不会调用 _cancel_remaining，直接 raise 会导致后续 stage 状态不一致。
             stage_run.complete_faulted(str(e))
-            self.stage_run_repo.save(stage_run)
+            self._save_stage_run(stage_run)
             logger.error(f"Stage faulted: run={context.run_id}, stage={stage.name}, error={e}", exc_info=True)
             return False
+
+    def _save_stage_run(self, stage_run: StageRun) -> None:
+        """保存 StageRun 并立即提交。
+
+        每次状态变更后立即 commit，而不是等整个 pipeline 结束再统一提交。
+        这样前端轮询时能实时看到各 stage 的进度，而不是等 run 结束后才全部刷新。
+        """
+        self.stage_run_repo.save(stage_run)
+        self.stage_run_repo.commit()
 
     async def _execute_container(self, context: ExecutionContext, stage: StageDefinition) -> tuple[int, str]:
         """普通容器执行：合并 stage.env 和 context.variables 作为环境变量"""
@@ -246,6 +276,8 @@ class PipelineExecutorImpl(PipelineExecutor):
         start_layer_idx: int,
         stages_map: dict[str, StageDefinition],
     ) -> None:
+        # 某一层失败后，后续层的 stage 不会被执行，但它们的 StageRun 记录需要
+        # 显式创建并标记为 canceled，否则前端看不到这些 stage，无法展示完整的执行图。
         for layer_idx in range(start_layer_idx, len(layers)):
             for stage_name in layers[layer_idx]:
                 stage_run = StageRun.create(pipeline_run_id=context.run_id, name=stage_name)

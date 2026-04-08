@@ -1,5 +1,6 @@
 """Pipeline 应用服务"""
 
+import asyncio
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -704,10 +705,19 @@ class PipelineService:
                     run.complete_success()
                 else:
                     run.complete_failed()
+            except asyncio.CancelledError:
+                # 用户主动取消（cancel_run → task.cancel()）触发此分支。
+                # 标记为 canceled 而非 faulted，语义不同：canceled 是主动中止，faulted 是执行出错。
+                # 不再 raise：execute_run 是 BackgroundTasks 回调，CancelledError 传播出去
+                # 没有意义，反而可能干扰 finally 的 commit 执行。
+                run.cancel()
             except Exception as e:
                 logger.error(f"Pipeline execution error: run={run.id}, error={e}", exc_info=True)
                 run.complete_failed()
             finally:
+                # 无论成功、失败还是取消，都必须落库 run 状态并清理工作目录。
+                # finally 在 Python 中先于 with session 的 __exit__ 执行，
+                # 所以 commit 在 session 关闭前完成，不会被 rollback 覆盖。
                 run_repo.save(run)
                 session.commit()
                 cleanup_run(project.code, run.id)

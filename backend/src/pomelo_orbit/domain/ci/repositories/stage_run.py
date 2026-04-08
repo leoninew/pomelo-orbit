@@ -15,6 +15,9 @@ class StageRunRepository(ABC):
     @abstractmethod
     def save(self, stage_run: StageRun) -> None: ...
 
+    @abstractmethod
+    def commit(self) -> None: ...
+
 
 class StageLogRepository(ABC):
     @abstractmethod

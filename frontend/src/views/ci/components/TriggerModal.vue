@@ -4,16 +4,6 @@
 			<h3 class="font-bold text-lg mb-4">手动触发流水线</h3>
 			<div class="flex flex-col gap-3">
 				<fieldset class="fieldset">
-					<legend class="fieldset-legend">模板</legend>
-					<select v-model="form.template_id" class="select w-full">
-						<option value="">选择模板</option>
-						<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
-							{{ tpl.name }}
-						</option>
-					</select>
-				</fieldset>
-
-				<fieldset class="fieldset">
 					<legend class="fieldset-legend">分支 / Ref</legend>
 					<input
 						v-model="form.trigger_ref"
@@ -21,6 +11,16 @@
 						class="input w-full"
 						placeholder="如：main 或 commit SHA"
 					/>
+				</fieldset>
+
+				<fieldset class="fieldset">
+					<legend class="fieldset-legend">模板</legend>
+					<select v-model="form.template_id" class="select w-full">
+						<option value="">选择模板</option>
+						<option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
+							{{ tpl.name }}
+						</option>
+					</select>
 				</fieldset>
 
 				<!-- Variables -->

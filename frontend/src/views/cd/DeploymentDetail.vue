@@ -170,7 +170,7 @@ async function fetchLogs() {
 		}
 		if (data.is_complete) {
 			pollAbort?.abort();
-			await fetchDeployment();
+			deployment.value = await deploymentApi.get(deploymentId);
 		}
 	} catch (error) {
 		console.error('获取日志失败:', error);
@@ -210,7 +210,7 @@ async function handleCancel() {
 		await deploymentApi.cancel(deploymentId);
 		toast.success('已取消部署');
 		stopLogPolling();
-		fetchDeployment();
+		deployment.value = await deploymentApi.get(deploymentId);
 	} catch {
 		toast.error('取消失败');
 	}

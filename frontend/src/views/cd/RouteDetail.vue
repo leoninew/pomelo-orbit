@@ -169,12 +169,7 @@
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">路由名称</legend>
-						<input
-							:value="form.name"
-							type="text"
-							class="input input-sm opacity-60"
-							disabled
-						/>
+						<input :value="form.name" type="text" class="input input-sm opacity-60" disabled />
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">域名</legend>
@@ -198,7 +193,9 @@
 							class="input input-sm"
 							:class="{ 'input-error': errors.target_url }"
 						/>
-						<p v-if="errors.target_url" class="fieldset-label text-error">{{ errors.target_url }}</p>
+						<p v-if="errors.target_url" class="fieldset-label text-error">
+							{{ errors.target_url }}
+						</p>
 					</fieldset>
 					<label class="flex items-center gap-2 cursor-pointer">
 						<span class="text-sm">启用</span>

@@ -266,12 +266,7 @@
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">应用编码</legend>
-						<input
-							:value="editForm.code"
-							type="text"
-							class="input w-full opacity-60"
-							disabled
-						/>
+						<input :value="editForm.code" type="text" class="input w-full opacity-60" disabled />
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">镜像拉取策略</legend>

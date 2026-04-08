@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<dialog ref="modalRef" class="modal">
 		<div class="modal-box">
 			<h3 class="font-bold text-lg mb-4">手动触发流水线</h3>
@@ -27,7 +27,7 @@
 				<div v-if="currentTemplate" class="flex flex-col gap-2">
 					<div class="text-sm font-medium">变量</div>
 					<div v-if="variableList.length === 0" class="text-sm text-base-content/60">
-						此模板无需配置变量
+						暂无数据
 					</div>
 					<div v-else class="flex flex-col gap-2">
 						<div v-for="v in variableList" :key="v.name" class="flex flex-col gap-1">

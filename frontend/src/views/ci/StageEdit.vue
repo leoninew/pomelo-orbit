@@ -86,7 +86,7 @@
 						>
 							{{ form.script }}
 						</div>
-						<p v-else class="text-sm text-base-content/40 pt-1">暂无，点击"添加"编写脚本</p>
+						<p v-else class="text-sm text-base-content/60 pt-1">暂无</p>
 					</fieldset>
 
 					<!-- 环境变量 -->
@@ -119,7 +119,7 @@
 								</button>
 							</div>
 						</div>
-						<p v-else class="text-sm text-base-content/40 pt-1">暂无</p>
+						<p v-else class="text-sm text-base-content/60 pt-1">暂无</p>
 					</fieldset>
 
 					<!-- 制品 -->
@@ -159,7 +159,7 @@
 								</button>
 							</div>
 						</div>
-						<p v-else class="text-sm text-base-content/40 pt-1">暂无</p>
+						<p v-else class="text-sm text-base-content/60 pt-1">暂无</p>
 					</fieldset>
 				</div>
 			</div>

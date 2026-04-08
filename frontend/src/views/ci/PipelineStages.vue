@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">流水线阶段</h1>
@@ -29,7 +29,7 @@
 						<td colspan="5" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="stages.length === 0">
-						<td colspan="5" class="text-center py-8 text-base-content/60">暂无 Stage</td>
+						<td colspan="5" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="s in stages" :key="s.id" class="hover">
 						<td>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
@@ -91,7 +91,7 @@
 					</button>
 				</div>
 				<div v-if="variableList.length === 0" class="text-sm text-base-content/60 py-4 text-center">
-					未配置变量
+					暂无数据
 				</div>
 				<table v-else class="table">
 					<thead>

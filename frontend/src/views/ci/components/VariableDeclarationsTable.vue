@@ -1,9 +1,7 @@
-<template>
+﻿<template>
 	<div>
-		<div v-if="declarations.length === 0" class="text-base-content/60 py-4 text-center">
-			暂无变量，Stage 脚本中使用
-			<code class="text-xs bg-base-200 px-1 rounded">&#123;&#123; VAR_NAME &#125;&#125;</code>
-			占位符后自动提取
+		<div v-if="declarations.length === 0" class="text-sm text-base-content/60 py-4 text-center">
+			暂无数据
 		</div>
 		<table v-else class="table table-sm w-full">
 			<thead>

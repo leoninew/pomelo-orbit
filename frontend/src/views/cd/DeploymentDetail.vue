@@ -91,12 +91,10 @@
 				<div class="flex items-center gap-2">
 					<button
 						v-if="deployment && !isTerminalStatus(deployment.status)"
-						class="btn btn-xs btn-ghost gap-1"
-						:class="{ 'text-primary': isPolling }"
-						@click="togglePolling"
+						class="btn btn-xs btn-ghost gap-1 text-primary"
 					>
-						<Loader2 class="size-3.5" :class="{ 'animate-spin': isPolling }" />
-						{{ isPolling ? '自动刷新中' : '自动刷新' }}
+						<Loader2 class="size-3.5 animate-spin" />
+						自动刷新中
 					</button>
 					<button class="btn btn-xs btn-ghost gap-1" @click="refreshDeployment">
 						<RefreshCw class="size-3.5" />
@@ -147,7 +145,6 @@ const logText = ref('');
 const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
 let pollAbort: AbortController | null = null;
-const isPolling = ref(false);
 
 async function fetchDeployment() {
 	try {
@@ -178,10 +175,6 @@ async function fetchLogs() {
 }
 
 function startLogPolling() {
-	if (isPolling.value) {
-		return;
-	}
-	isPolling.value = true;
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
 	(async () => {
@@ -196,22 +189,12 @@ function startLogPolling() {
 			}
 			await fetchLogs();
 		}
-		isPolling.value = false;
 	})();
 }
 
 function stopLogPolling() {
 	pollAbort?.abort();
 	pollAbort = null;
-	isPolling.value = false;
-}
-
-function togglePolling() {
-	if (isPolling.value) {
-		stopLogPolling();
-	} else {
-		startLogPolling();
-	}
 }
 
 async function handleCancel() {
@@ -238,6 +221,9 @@ function scrollToBottom() {
 
 onMounted(async () => {
 	await fetchDeployment();
+	if (!isTerminalStatus(deployment.value?.status)) {
+		startLogPolling();
+	}
 });
 onUnmounted(stopLogPolling);
 </script>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<!-- Header -->
 		<div class="flex items-center justify-between">
@@ -11,7 +11,7 @@
 
 		<!-- Webhook list -->
 		<div v-if="webhooks.length === 0" class="text-sm text-base-content/60 py-4 text-center">
-			未配置 Webhook
+			暂无数据
 		</div>
 		<div v-else class="overflow-x-auto">
 			<table class="table">

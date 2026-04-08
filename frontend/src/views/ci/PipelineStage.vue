@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
@@ -66,7 +66,7 @@
 						class="bg-base-200 rounded p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all overflow-x-auto max-h-64"
 						>{{ stage.script }}</pre
 					>
-					<p v-else class="text-base-content/40 py-4 text-center">暂无脚本</p>
+					<p v-else class="text-sm text-base-content/60 py-4 text-center">暂无数据</p>
 				</div>
 			</div>
 

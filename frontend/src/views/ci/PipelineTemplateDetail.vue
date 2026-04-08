@@ -1,12 +1,23 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<!-- Header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ template?.name ?? '模板详情' }}</h1>
-			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
-				<ArrowLeft class="size-4" />
-				返回
-			</button>
+			<div class="flex items-center gap-2">
+				<button
+					v-if="template"
+					class="btn btn-sm btn-primary"
+					:disabled="saving"
+					@click="handleSave"
+				>
+					<span v-if="saving" class="loading loading-spinner loading-xs" />
+					保存
+				</button>
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
+			</div>
 		</div>
 
 		<!-- Loading -->
@@ -28,12 +39,9 @@
 							<dd>{{ template.name }}</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">快照版本</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">版本</dt>
 							<dd>
-								<span v-if="template.latest_snapshot_version" class="badge badge-sm badge-ghost">
-									v{{ template.latest_snapshot_version }}
-								</span>
-								<span v-else class="text-base-content/40">—</span>
+								<span class="badge badge-sm badge-ghost">v{{ template.version }}</span>
 							</dd>
 						</div>
 						<div class="flex gap-2 sm:col-span-2">
@@ -70,39 +78,76 @@
 									DAG
 								</button>
 							</div>
-							<button
-								class="btn btn-sm btn-primary"
-								:disabled="savingOrch"
-								@click="handleSaveOrchestration"
-							>
-								<span v-if="savingOrch" class="loading loading-spinner loading-xs" />
-								保存编排
-							</button>
 						</div>
 					</div>
 
-					<StageListView
+					<VueDraggable
 						v-if="viewMode === 'list'"
-						:stages="template.stages"
-						:orchestration="orchestration"
-						@reorder="orchestration = $event"
-						@remove-stage="removeOrch"
-						@edit-stage="openEditOrchModal"
-					/>
+						v-model="sortableOrch"
+						tag="table"
+						class="table w-full"
+						handle=".drag-handle"
+						:animation="150"
+						ghost-class="opacity-30"
+						@end="onDragEnd"
+					>
+						<thead>
+							<tr class="text-base-content/60 text-xs">
+								<th class="w-6 pr-0"></th>
+								<th class="w-8">#</th>
+								<th class="w-36">Stage 名称</th>
+								<th class="w-40">Stage Key</th>
+								<th>依赖</th>
+								<th class="w-16 text-center">制品</th>
+								<th class="w-24">操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="sortableOrch.length === 0">
+								<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
+							</tr>
+							<tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_key" class="hover">
+								<td class="pr-0 w-6">
+									<GripVertical class="drag-handle size-4 text-base-content/30 hover:text-base-content/60 cursor-grab active:cursor-grabbing transition-colors" />
+								</td>
+								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
+								<td>
+									<router-link :to="`/ci/stages/${orch.stage_id}`" class="link link-primary text-xs">
+										{{ stageMap[orch.stage_id]?.name ?? orch.stage_id }}
+									</router-link>
+								</td>
+								<td class="text-xs text-base-content/70">{{ orch.stage_key }}</td>
+								<td>
+									<div v-if="orch.depends_on.length > 0" class="flex items-center gap-1 flex-wrap">
+										<span v-for="depId in orch.depends_on" :key="depId" class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70">
+											{{ stageKeyMap[depId] ?? depId }}
+										</span>
+									</div>
+									<span v-else class="text-base-content/40 text-xs">—</span>
+								</td>
+								<td class="text-center text-xs text-base-content/60">
+									{{ stageMap[orch.stage_id]?.artifacts?.length ?? '—' }}
+								</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="link link-primary text-xs" @click="openEditOrchModal(idx)">编辑</button>
+										<button class="link link-error text-xs" @click="removeOrch(idx)">移除</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</VueDraggable>
 
 					<div v-else class="min-h-[300px]">
 						<p
 							v-if="orchestration.length === 0"
 							class="text-sm text-base-content/60 py-4 text-center"
 						>
-							暂无 Stage
+							暂无数据
 						</p>
 						<StageDAGView
 							v-else
 							:stages="dagStages"
-							:readonly="false"
-							@update-dependencies="handleUpdateDependencies"
-							@delete-dependency="handleDeleteDependency"
 						/>
 					</div>
 				</div>
@@ -111,17 +156,7 @@
 			<!-- 变量声明 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<div class="flex items-center justify-between mb-4">
-						<h2 class="font-semibold">变量声明</h2>
-						<button
-							class="btn btn-sm btn-primary"
-							:disabled="savingDecl"
-							@click="handleSaveDeclarations"
-						>
-							<span v-if="savingDecl" class="loading loading-spinner loading-xs" />
-							保存变量
-						</button>
-					</div>
+					<h2 class="font-semibold mb-4">变量声明</h2>
 					<VariableDeclarationsTable v-model:declarations="declarations" :readonly="false" />
 				</div>
 			</div>
@@ -142,11 +177,11 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="savingInfo" @click="handleEditInfoOk">
-						<span v-if="savingInfo" class="loading loading-spinner loading-xs" />
+					<button class="btn btn-primary" :disabled="saving" @click="handleEditInfoOk">
+						<span v-if="saving" class="loading loading-spinner loading-xs" />
 						保存
 					</button>
-					<button class="btn btn-ghost" @click="editInfoModalRef?.close()">取消</button>
+					<button class="btn btn-ghost" @click="cancelEditInfo">取消</button>
 				</div>
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -188,7 +223,7 @@
 								<input
 									v-model="addOrchForm.dependsOn"
 									type="checkbox"
-									:value="orch.stage_key"
+									:value="orch.stage_id"
 									class="checkbox checkbox-sm"
 								/>
 								{{ orch.stage_key }}
@@ -240,7 +275,7 @@
 								<input
 									v-model="editOrchForm.dependsOn"
 									type="checkbox"
-									:value="orch.stage_key"
+									:value="orch.stage_id"
 									class="checkbox checkbox-sm"
 								/>
 								{{ orch.stage_key }}
@@ -264,9 +299,10 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, Plus } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { ArrowLeft, GripVertical, Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { VueDraggable } from 'vue-draggable-plus';
 import { pipelineStageApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
@@ -278,7 +314,6 @@ import type {
 } from '@/types/ci/template';
 import { detectCircularDependencies } from '@/utils/dag';
 import StageDAGView from './components/StageDAGView.vue';
-import StageListView from './components/StageListView.vue';
 import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
 
 const route = useRoute();
@@ -287,22 +322,31 @@ const templateId = route.params.id as string;
 const toast = useToast();
 
 const { status, execute } = useStatusAsync();
-const { loading: savingInfo, execute: executeSaveInfo } = useStatusAsync();
-const { loading: savingOrch, execute: executeSaveOrch } = useStatusAsync();
-const { loading: savingDecl, execute: executeSaveDecl } = useStatusAsync();
+const { loading: saving, execute: executeSave } = useStatusAsync();
 
 const template = ref<PipelineTemplate>();
 const orchestration = ref<StageOrchestration[]>([]);
+const sortableOrch = ref<StageOrchestration[]>([]);
 const declarations = ref<VariableDeclaration[]>([]);
 const allStages = ref<PipelineStage[]>([]);
 const viewMode = ref<'list' | 'dag'>('list');
+
+watch(orchestration, (val) => { sortableOrch.value = [...val]; }, { immediate: true });
 
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();
 const editOrchModalRef = ref<HTMLDialogElement>();
 const editForm = reactive({ name: '', description: '' });
-const addOrchForm = reactive({ stageId: '', stageKey: '', dependsOn: [] as string[] });
-const editOrchForm = reactive({ originalKey: '', stageKey: '', dependsOn: [] as string[] });
+const addOrchForm = reactive({
+	stageId: '',
+	stageKey: '',
+	dependsOn: [] as string[]
+});
+const editOrchForm = reactive({
+	originalKey: '',
+	stageKey: '',
+	dependsOn: [] as string[]
+});
 
 const stageKeyError = computed(() => {
 	const key = addOrchForm.stageKey.trim();
@@ -334,6 +378,10 @@ const stageMap = computed(() =>
 	Object.fromEntries((template.value?.stages ?? []).map((s) => [s.id, s]))
 );
 
+const stageKeyMap = computed(() =>
+	Object.fromEntries(orchestration.value.map((o) => [o.stage_id, o.stage_key]))
+);
+
 const availableStages = computed(() => {
 	const inOrch = new Set(orchestration.value.map((o) => o.stage_id));
 	return allStages.value.filter((s) => !inOrch.has(s.id));
@@ -343,6 +391,7 @@ const dagStages = computed(() =>
 	orchestration.value.map((orch) => {
 		const stage = stageMap.value[orch.stage_id];
 		return {
+			id: orch.stage_id,
 			name: orch.stage_key,
 			image: stage?.image ?? '',
 			script: stage?.script ?? '',
@@ -355,14 +404,11 @@ const dagStages = computed(() =>
 async function fetchTemplate() {
 	try {
 		await execute(async () => {
-			const [tmpl, stages] = await Promise.all([
-				pipelineTemplateApi.get(templateId),
-				pipelineStageApi.list(),
-			]);
+			const tmpl = await pipelineTemplateApi.get(templateId);
 			template.value = tmpl;
 			orchestration.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
 			declarations.value = [...tmpl.variable_declarations];
-			allStages.value = stages;
+			allStages.value = [];  // 初始为空，按需加载
 			Object.assign(editForm, { name: tmpl.name, description: tmpl.description ?? '' });
 		});
 	} catch {
@@ -371,32 +417,44 @@ async function fetchTemplate() {
 	}
 }
 
-function openEditInfoModal() {
-	editInfoModalRef.value?.showModal();
-}
-
-async function handleEditInfoOk() {
-	try {
-		await executeSaveInfo(async () => {
-			const data = await pipelineTemplateApi.update(templateId, {
-				name: editForm.name,
-				description: editForm.description || undefined,
-			});
-			template.value = data;
-			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
-			declarations.value = [...data.variable_declarations];
-			toast.success('更新成功');
-			editInfoModalRef.value?.close();
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '更新失败');
+async function fetchStages() {
+	// 按需加载：仅在打开"添加 Stage"模态框时才加载
+	if (allStages.value.length === 0) {
+		try {
+			const stages = await pipelineStageApi.list();
+			allStages.value = stages;
+		} catch {
+			toast.error('获取 Stage 列表失败');
+		}
 	}
 }
 
-async function handleSaveOrchestration() {
+function openEditInfoModal() {
+	Object.assign(editForm, { name: template.value?.name ?? '', description: template.value?.description ?? '' });
+	editInfoModalRef.value?.showModal();
+}
+
+function cancelEditInfo() {
+	Object.assign(editForm, { name: template.value?.name ?? '', description: template.value?.description ?? '' });
+	editInfoModalRef.value?.close();
+}
+
+async function handleEditInfoOk() {
+	if (!editForm.name.trim()) {
+		toast.error('模板名称不能为空');
+		return;
+	}
+	editInfoModalRef.value?.close();
+	await handleSave();
+}
+
+async function handleSave() {
 	const orchForCheck = orchestration.value.map((o) => ({
 		name: o.stage_key,
-		depends_on: o.depends_on,
+		depends_on: o.depends_on.map((depId) => {
+			const dep = orchestration.value.find((orch) => orch.stage_id === depId);
+			return dep?.stage_key ?? depId;
+		}),
 	}));
 	const cycle = detectCircularDependencies(orchForCheck);
 	if (cycle) {
@@ -405,34 +463,18 @@ async function handleSaveOrchestration() {
 	}
 
 	try {
-		await executeSaveOrch(async () => {
+		await executeSave(async () => {
 			const data = await pipelineTemplateApi.update(templateId, {
+				name: editForm.name,
+				description: editForm.description,
 				orchestration: orchestration.value,
-			});
-			template.value = data;
-			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
-			declarations.value = [...data.variable_declarations];
-			toast.success(
-				data.latest_snapshot_version != null
-					? `保存成功，快照 v${data.latest_snapshot_version}`
-					: '保存成功'
-			);
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
-async function handleSaveDeclarations() {
-	try {
-		await executeSaveDecl(async () => {
-			const data = await pipelineTemplateApi.update(templateId, {
 				variable_declarations: declarations.value,
 			});
 			template.value = data;
 			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
 			declarations.value = [...data.variable_declarations];
-			toast.success('保存成功');
+			Object.assign(editForm, { name: data.name, description: data.description ?? '' });
+			toast.success(`保存成功，快照 v${data.version}`);
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '保存失败');
@@ -474,10 +516,15 @@ function syncDeclarations(stages: PipelineStage[]) {
 	declarations.value = [...extracted].sort().map((name) => existingMap.get(name) ?? blank(name));
 }
 
-function openAddOrchModal() {
+function onDragEnd() {
+	orchestration.value = sortableOrch.value.map((o, i) => ({ ...o, sort_order: i }));
+}
+
+async function openAddOrchModal() {
 	addOrchForm.stageId = '';
 	addOrchForm.stageKey = '';
 	addOrchForm.dependsOn = [];
+	await fetchStages();  // 按需加载 stages
 	addOrchModalRef.value?.showModal();
 }
 
@@ -496,7 +543,7 @@ function confirmAddOrch() {
 	orchestration.value.push({
 		stage_id: addOrchForm.stageId,
 		stage_key: addOrchForm.stageKey.trim(),
-		depends_on: [...addOrchForm.dependsOn],
+		depends_on: addOrchForm.dependsOn,
 		sort_order: maxOrder + 1,
 	});
 	const stage = allStages.value.find((s) => s.id === addOrchForm.stageId);
@@ -511,7 +558,7 @@ function removeOrch(idx: number) {
 	const removed = orchestration.value[idx];
 	orchestration.value.splice(idx, 1);
 	for (const o of orchestration.value) {
-		o.depends_on = o.depends_on.filter((key) => key !== removed.stage_key);
+		o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
 	}
 	if (template.value) {
 		template.value.stages = template.value.stages.filter((s) => s.id !== removed.stage_id);
@@ -534,36 +581,16 @@ function confirmEditOrch() {
 	if (editStageKeyError.value) {
 		return;
 	}
-	const newKey = editOrchForm.stageKey.trim();
-	const oldKey = editOrchForm.originalKey;
-	// 更新 stage_key 和 depends_on
-	for (const o of orchestration.value) {
-		if (o.stage_key === oldKey) {
-			o.stage_key = newKey;
-			o.depends_on = [...editOrchForm.dependsOn];
-		} else {
-			// 其他 stage 的依赖里如果引用了旧 key，同步更新
-			o.depends_on = o.depends_on.map((k) => (k === oldKey ? newKey : k));
-		}
+	const orch = orchestration.value.find((o) => o.stage_key === editOrchForm.originalKey);
+	if (!orch) {
+		return;
 	}
+	orch.stage_key = editOrchForm.stageKey.trim();
+	orch.depends_on = editOrchForm.dependsOn;
 	editOrchForm.originalKey = '';
 	editOrchForm.stageKey = '';
 	editOrchForm.dependsOn = [];
 	editOrchModalRef.value?.close();
-}
-
-function handleUpdateDependencies(stageKey: string, dependsOnKeys: string[]) {
-	const orch = orchestration.value.find((o) => o.stage_key === stageKey);
-	if (orch) {
-		orch.depends_on = dependsOnKeys;
-	}
-}
-
-function handleDeleteDependency(sourceKey: string, targetKey: string) {
-	const orch = orchestration.value.find((o) => o.stage_key === targetKey);
-	if (orch) {
-		orch.depends_on = orch.depends_on.filter((k) => k !== sourceKey);
-	}
 }
 
 onMounted(fetchTemplate);

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold flex items-center gap-2">
@@ -10,12 +10,10 @@
 			<div class="flex items-center gap-2">
 				<button
 					v-if="run && !isTerminalStatus(run.status)"
-					class="btn btn-sm btn-ghost gap-1"
-					:class="{ 'text-primary': isPolling }"
-					@click="togglePolling"
+					class="btn btn-sm btn-ghost gap-1 text-primary"
 				>
-					<Loader2 class="size-4" :class="{ 'animate-spin': isPolling }" />
-					{{ isPolling ? '自动刷新中' : '自动刷新' }}
+					<Loader2 class="size-4 animate-spin" />
+					自动刷新中
 				</button>
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/runs')">
 					<ArrowLeft class="size-4" />
@@ -83,7 +81,11 @@
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
-							<dd class="text-base-content/70">{{ run.template_name }}</dd>
+							<dd>
+								<router-link :to="`/ci/templates/${run.template_id}`" class="link link-primary text-xs">
+									{{ run.template_name }}
+								</router-link>
+							</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">快照</dt>
@@ -112,6 +114,10 @@
 							</dd>
 						</div>
 						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
+							<dd>{{ formatTime(run.created_at) }}</dd>
+						</div>
+						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">开始时间</dt>
 							<dd>{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd>
 						</div>
@@ -119,19 +125,12 @@
 							<dt class="text-base-content/70 w-24 shrink-0">结束时间</dt>
 							<dd>{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd>
 						</div>
-						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
-							<dd>{{ formatTime(run.created_at) }}</dd>
-						</div>
 					</dl>
 				</div>
 			</div>
 
 			<!-- Stages -->
-			<div
-				v-if="snapshot && snapshot.stages_snapshot.length > 0"
-				class="card bg-base-100 shadow-sm"
-			>
+			<div v-if="run?.stage_runs?.length > 0" class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-3">
 						<h2 class="font-semibold">Stages</h2>
@@ -152,23 +151,61 @@
 							</button>
 						</div>
 					</div>
-					<StageListView
-						v-if="stagesView === 'list'"
-						:stages="snapshot.stages_snapshot"
-						:orchestration="snapshotStagesAsOrch"
-						:stage-statuses="stageStatuses"
-						:readonly="true"
-						@view-log="onViewLog"
-					/>
+					<table v-if="stagesView === 'list'" class="table w-full">
+						<thead>
+							<tr class="text-base-content/60 text-xs">
+								<th class="w-8">#</th>
+								<th>Stage</th>
+								<th class="w-24">状态</th>
+								<th>错误信息</th>
+								<th class="w-16">日志</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="!run?.stage_runs?.length">
+								<td colspan="5" class="text-center py-8 text-base-content/60">暂无数据</td>
+							</tr>
+							<tr v-for="(sr, idx) in run?.stage_runs ?? []" :key="sr.id" class="hover">
+								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
+								<td class="text-xs">{{ sr.stage_name }}</td>
+								<td>
+									<span class="badge badge-xs" :class="statusBadgeClass(sr.status)">
+										{{ statusLabel(sr.status) }}
+									</span>
+								</td>
+								<td class="max-w-xs">
+									<span
+										v-if="sr.error_message"
+										class="tooltip tooltip-top cursor-help"
+										:data-tip="sr.error_message"
+									>
+										<span class="text-xs truncate block max-w-xs">{{ sr.error_message }}</span>
+									</span>
+									<span v-else class="text-base-content/40 text-xs">—</span>
+								</td>
+								<td>
+									<button class="link link-primary text-xs" @click="openLogDrawer(sr)">日志</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 					<template v-else>
-						<StageDAGView
-							:stages="snapshot.stages_snapshot"
-							:stage-statuses="stageStatuses"
-							:show-minimap="true"
-							:readonly="true"
-							@view-stage="onViewStage"
-						/>
-						<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
+						<div v-if="!snapshot" class="flex justify-center py-8">
+							<span class="loading loading-spinner loading-md text-primary" />
+						</div>
+						<template v-else-if="snapshot.stages_snapshot.length > 0">
+							<StageDAGView
+								:stages="snapshot.stages_snapshot"
+								:stage-runs="run?.stage_runs"
+								:show-minimap="true"
+								:readonly="true"
+								@view-stage="(sr) => openLogDrawer(sr)"
+							/>
+							<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
+						</template>
+						<div v-else class="text-center py-8 text-base-content/60 text-sm">
+							暂无 DAG 数据
+						</div>
 					</template>
 				</div>
 			</div>
@@ -184,7 +221,7 @@
 						v-else-if="artifacts.length === 0"
 						class="text-sm text-base-content/60 py-4 text-center"
 					>
-						暂无制品
+						暂无数据
 					</div>
 					<table v-else class="table">
 						<thead>
@@ -256,7 +293,7 @@
 							>
 							<div v-else class="flex flex-col items-center gap-2 py-8 text-base-content/60">
 								<FileX class="size-8" />
-								<span class="text-sm">暂无日志</span>
+								<span class="text-sm">暂无数据</span>
 							</div>
 						</div>
 					</div>
@@ -294,27 +331,23 @@
 
 <script setup lang="ts">
 import { ArrowLeft, FileX, Loader2, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { Artifact, StageRun, PipelineRun, PipelineSnapshot } from '@/types/api';
-import type { TaskStatus } from '@/types/common';
-import type { SnapshotStage } from '@/types/ci/snapshot';
 import { statusBadgeClass, statusLabel, isTerminalStatus } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
-import StageListView from './components/StageListView.vue';
 
 const route = useRoute();
 const router = useRouter();
-const runId = route.params.id as string;
+const runId = computed(() => route.params.id as string);
 const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
 const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
-const { execute: executeSnapshot } = useStatusAsync();
 const { loading: retrying, execute: executeRetry } = useStatusAsync();
 const { loading: canceling, execute: executeCancel } = useStatusAsync();
 
@@ -332,53 +365,6 @@ const logsLoading = ref(false);
 let logPollAbort: AbortController | null = null;
 
 let pollAbort: AbortController | null = null;
-const isPolling = ref(false);
-
-const stageRuns = computed<StageRun[]>(() => run.value?.stage_runs ?? []);
-
-const snapshotStagesAsOrch = computed(() =>
-	(snapshot.value?.stages_snapshot ?? []).map((s, i) => ({
-		stage_id: s.id,
-		stage_key: s.name,
-		depends_on: s.depends_on,
-		sort_order: i,
-	}))
-);
-
-const stageStatuses = computed<Map<string, TaskStatus>>(() => {
-	const map = new Map<string, TaskStatus>();
-	if (!snapshot.value) {
-		return map;
-	}
-
-	for (const stage of snapshot.value.stages_snapshot) {
-		const sr = stageRuns.value.find((r) => r.name === stage.name);
-		if (!sr) {
-			map.set(stage.name, 'waiting_to_run');
-			continue;
-		}
-		map.set(stage.name, sr.status);
-	}
-	return map;
-});
-
-async function onViewStage(stage: SnapshotStage) {
-	const sr = stageRuns.value.find((r) => r.name === stage.name);
-	if (!sr) {
-		toast.error('该 Stage 尚未执行');
-		return;
-	}
-	openLogDrawer(sr);
-}
-
-async function onViewLog(stageKey: string) {
-	const sr = stageRuns.value.find((r) => r.name === stageKey);
-	if (!sr) {
-		toast.error('该 Stage 尚未执行');
-		return;
-	}
-	openLogDrawer(sr);
-}
 
 function openLogDrawer(sr: StageRun) {
 	// 停止上一个日志轮询
@@ -403,7 +389,7 @@ async function startLogPolling(stageRunId: string) {
 
 	while (!signal.aborted) {
 		try {
-			const resp = await pipelineRunApi.getStageLog(runId, stageRunId, offset);
+			const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset);
 			// 如果用户已切换到其他 stage，丢弃过期响应
 			if (currentStageRun.value?.id !== stageRunId) {
 				break;
@@ -427,11 +413,9 @@ async function startLogPolling(stageRunId: string) {
 async function fetchRun() {
 	try {
 		await execute(async () => {
-			const data = await pipelineRunApi.get(runId);
+			const data = await pipelineRunApi.get(runId.value);
 			run.value = data;
-			if (data.pipeline_snapshot_id) {
-				await fetchSnapshot(data.pipeline_snapshot_id);
-			}
+			// 不再自动加载 snapshot，改为按需加载
 		});
 	} catch {
 		toast.error('获取 Run 信息失败');
@@ -441,9 +425,7 @@ async function fetchRun() {
 
 async function fetchSnapshot(snapshotId: string) {
 	try {
-		await executeSnapshot(async () => {
-			snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
-		});
+		snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
 	} catch {
 		// snapshot 加载失败不影响主流程
 	}
@@ -452,7 +434,7 @@ async function fetchSnapshot(snapshotId: string) {
 async function fetchArtifacts() {
 	try {
 		await executeArtifacts(async () => {
-			artifacts.value = await pipelineRunApi.listArtifacts(runId);
+			artifacts.value = await pipelineRunApi.listArtifacts(runId.value);
 		});
 	} catch {
 		/* silent */
@@ -462,7 +444,7 @@ async function fetchArtifacts() {
 async function handleRetry() {
 	try {
 		await executeRetry(async () => {
-			const newRun = await pipelineRunApi.retry(runId);
+			const newRun = await pipelineRunApi.retry(runId.value);
 			toast.success('重试成功');
 			router.push(`/ci/runs/${newRun.id}`);
 		});
@@ -474,7 +456,7 @@ async function handleRetry() {
 async function handleCancel() {
 	try {
 		await executeCancel(async () => {
-			await pipelineRunApi.cancel(runId);
+			await pipelineRunApi.cancel(runId.value);
 			toast.success('已取消');
 			cancelModalRef.value?.close();
 			fetchRun();
@@ -485,41 +467,45 @@ async function handleCancel() {
 }
 
 async function startPolling() {
-	if (isPolling.value) {
-		return;
-	}
-	isPolling.value = true;
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
 	while (!signal.aborted) {
-		run.value = await pipelineRunApi.get(runId);
+		run.value = await pipelineRunApi.get(runId.value);
 		if (isTerminalStatus(run.value.status)) {
 			fetchArtifacts();
 			break;
 		}
 		await delayAsync(2000);
 	}
-	isPolling.value = false;
 }
 
 function stopPolling() {
 	pollAbort?.abort();
 	pollAbort = null;
-	isPolling.value = false;
 }
 
-function togglePolling() {
-	if (isPolling.value) {
-		stopPolling();
-	} else {
+async function init() {
+	stopPolling();
+	run.value = undefined;
+	snapshot.value = undefined;
+	artifacts.value = [];
+	await fetchRun();
+	fetchArtifacts();
+	if (run.value && !isTerminalStatus(run.value.status)) {
 		startPolling();
 	}
 }
 
-onMounted(async () => {
-	await fetchRun();
-	fetchArtifacts();
+watch(runId, init);
+
+// 按需加载 snapshot：只在切换到 DAG 视图时才加载
+watch(stagesView, async (newView) => {
+	if (newView === 'dag' && !snapshot.value && run.value?.pipeline_snapshot_id) {
+		await fetchSnapshot(run.value.pipeline_snapshot_id);
+	}
 });
+
+onMounted(init);
 
 onUnmounted(() => {
 	stopPolling();

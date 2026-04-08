@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">流水线模板</h1>
@@ -39,7 +39,7 @@
 				class="flex flex-col items-center gap-2 py-16 text-base-content/60"
 			>
 				<Inbox class="size-12" />
-				<span>暂无模板</span>
+				<span>暂无数据</span>
 			</div>
 			<div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 				<div
@@ -52,12 +52,7 @@
 						<div class="flex items-start justify-between gap-2">
 							<span class="font-semibold truncate">{{ tpl.name }}</span>
 							<div class="flex items-center gap-1 shrink-0">
-								<span
-									v-if="tpl.latest_snapshot_version"
-									class="badge badge-sm badge-ghost"
-								>
-									v{{ tpl.latest_snapshot_version }}
-								</span>
+								<span class="badge badge-sm badge-ghost">v{{ tpl.version }}</span>
 								<span class="badge badge-sm badge-ghost">自定义</span>
 							</div>
 						</div>
@@ -99,6 +94,7 @@
 				<thead>
 					<tr class="text-base-content/60">
 						<th>模板名称</th>
+						<th>版本</th>
 						<th>类型</th>
 						<th>描述</th>
 						<th>创建时间</th>
@@ -107,13 +103,16 @@
 				</thead>
 				<tbody>
 					<tr v-if="templates.length === 0">
-						<td colspan="5" class="text-center py-8 text-base-content/60">暂无模板</td>
+						<td colspan="6" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="t in templates" :key="t.id" class="hover">
 						<td>
 							<router-link :to="`/ci/templates/${t.id}`" class="link link-primary font-medium">
 								{{ t.name }}
 							</router-link>
+						</td>
+						<td class="cell-muted">
+							<span class="badge badge-sm badge-ghost">v{{ t.version }}</span>
 						</td>
 						<td>
 							<span class="badge badge-sm badge-ghost">自定义</span>

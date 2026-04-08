@@ -1,83 +1,116 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold flex items-center gap-2">
 				快照详情
-				<span class="badge badge-sm badge-ghost">v{{ snapshot?.version }}</span>
+				<span v-if="snapshot" class="badge badge-sm badge-ghost">v{{ snapshot.version }}</span>
 			</h1>
-			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.back()">
 				<ArrowLeft class="size-4" />
 				返回
 			</button>
 		</div>
 
-		<!-- Loading -->
 		<div v-if="status === 'loading'" class="flex justify-center py-16">
 			<span class="loading loading-spinner loading-lg text-primary" />
 		</div>
 
 		<template v-else-if="snapshot">
-			<!-- Snapshot Info -->
+			<!-- 基本信息 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<h2 class="font-semibold mb-3">快照信息</h2>
-					<div class="grid grid-cols-2 gap-4 text-sm">
-						<div>
-							<span class="text-base-content/60">快照 ID:</span>
-							<code class="ml-2">{{ snapshot.id }}</code>
+					<h2 class="font-semibold mb-4">基本信息</h2>
+					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
+							<dd>
+								<router-link :to="`/ci/templates/${snapshot.template_id}`" class="link link-primary text-xs">
+									查看模板
+								</router-link>
+							</dd>
 						</div>
-						<div>
-							<span class="text-base-content/60">模板 ID:</span>
-							<code class="ml-2">{{ snapshot.template_id }}</code>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">版本</dt>
+							<dd><span class="badge badge-sm badge-ghost">v{{ snapshot.version }}</span></dd>
 						</div>
-						<div>
-							<span class="text-base-content/60">版本:</span>
-							<span class="ml-2 font-medium">v{{ snapshot.version }}</span>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
+							<dd class="text-base-content/60">{{ formatTime(snapshot.created_at) }}</dd>
 						</div>
-						<div>
-							<span class="text-base-content/60">创建时间:</span>
-							<span class="ml-2">{{ formatTime(snapshot.created_at) }}</span>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">快照 ID</dt>
+							<dd class="font-mono text-xs">{{ snapshot.id }}</dd>
 						</div>
-						<div>
-							<span class="text-base-content/60">Stage 数量:</span>
-							<span class="ml-2">{{ snapshot.stages_snapshot.length }}</span>
-						</div>
-						<div>
-							<span class="text-base-content/60">变量数量:</span>
-							<span class="ml-2">{{ snapshot.variable_declarations_snapshot.length }}</span>
+					</dl>
+				</div>
+			</div>
+
+			<!-- Stages -->
+			<div class="card bg-base-100 shadow-sm">
+				<div class="card-body p-5">
+					<div class="flex items-center justify-between mb-3">
+						<h2 class="font-semibold">Stages</h2>
+						<div class="join">
+							<button
+								class="btn btn-xs join-item"
+								:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
+								@click="stagesView = 'list'"
+							>
+								列表
+							</button>
+							<button
+								class="btn btn-xs join-item"
+								:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
+								@click="stagesView = 'dag'"
+							>
+								DAG
+							</button>
 						</div>
 					</div>
-					<div class="mt-4 flex gap-2">
-						<RouterLink
-							:to="`/ci/templates/${snapshot.template_id}`"
-							class="btn btn-sm btn-primary"
-						>
-							查看模板
-						</RouterLink>
+					<table v-if="stagesView === 'list'" class="table w-full">
+						<thead>
+							<tr class="text-base-content/60 text-xs">
+								<th class="w-8">#</th>
+								<th>Stage</th>
+								<th>依赖</th>
+								<th class="w-16 text-center">制品</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="snapshot.stages_snapshot.length === 0">
+								<td colspan="4" class="text-center py-8 text-base-content/60">暂无数据</td>
+							</tr>
+							<tr v-for="(stage, idx) in snapshot.stages_snapshot" :key="stage.name" class="hover">
+								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
+								<td class="text-xs">{{ stage.name }}</td>
+								<td>
+									<div v-if="stage.depends_on.length > 0" class="flex flex-wrap gap-1">
+										<span v-for="dep in stage.depends_on" :key="dep.id" class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70">{{ dep.key }}</span>
+									</div>
+									<span v-else class="text-base-content/40 text-xs">—</span>
+								</td>
+								<td class="text-center text-xs text-base-content/60">
+									{{ stage.artifacts?.length ?? '—' }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<div v-else>
+						<div v-if="snapshot.stages_snapshot.length === 0" class="text-sm text-base-content/60 py-4 text-center">
+							暂无数据
+						</div>
+						<StageDAGView v-else :stages="snapshot.stages_snapshot" />
 					</div>
 				</div>
 			</div>
 
-			<!-- DAG View -->
+			<!-- 变量声明 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<h2 class="font-semibold mb-3">Stage 流程图</h2>
-					<div
-						v-if="snapshot.stages_snapshot.length === 0"
-						class="text-sm text-base-content/60 py-4 text-center"
-					>
-						暂无 Stage
-					</div>
-					<StageDAGView v-else :stages="snapshot.stages_snapshot" />
+					<h2 class="font-semibold mb-4">变量声明</h2>
+					<VariableDeclarationsTable :declarations="snapshot.variable_declarations_snapshot" :readonly="true" />
 				</div>
 			</div>
-
-			<!-- Variable Declarations -->
-			<VariableDeclarationsTable
-				:declarations="snapshot.variable_declarations_snapshot"
-				readonly
-				hint="快照中的变量声明不可修改"
-			/>
 		</template>
 	</div>
 </template>
@@ -100,8 +133,8 @@ const snapshotId = route.params.id as string;
 const toast = useToast();
 
 const { status, execute } = useStatusAsync();
-
 const snapshot = ref<PipelineSnapshot>();
+const stagesView = ref<'list' | 'dag'>('list');
 
 async function fetchSnapshot() {
 	try {

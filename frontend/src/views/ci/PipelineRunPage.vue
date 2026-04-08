@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">流水线记录</h1>
@@ -8,7 +8,7 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>Project</th>
+						<th>项目</th>
 						<th>模板</th>
 						<th>触发方式</th>
 						<th>Ref</th>
@@ -28,7 +28,7 @@
 						<td colspan="8" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="runs.length === 0">
-						<td colspan="8" class="text-center py-8 text-base-content/60">暂无记录</td>
+						<td colspan="8" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
 						<td>
@@ -36,7 +36,11 @@
 								{{ r.project_name }}
 							</router-link>
 						</td>
-						<td class="cell-muted">{{ r.template_name }}</td>
+						<td>
+							<router-link :to="`/ci/templates/${r.template_id}`" class="link link-primary text-xs">
+								{{ r.template_name }}
+							</router-link>
+						</td>
 						<td>
 							<span class="badge badge-sm badge-ghost">{{ r.trigger }}</span>
 						</td>

@@ -30,7 +30,14 @@ export const deploymentApi = {
 	getLogs(
 		id: string,
 		offset: number = 0
-	): Promise<{ logs: string; offset: number; is_complete: boolean; status: string }> {
-		return request.get(`/api/cd/deployments/${id}/logs`, { params: { offset } });
+	): Promise<{
+		logs: string
+		offset: number
+		is_complete: boolean
+		status: string
+	}> {
+		return request.get(`/api/cd/deployments/${id}/logs`, {
+			params: { offset },
+		});
 	},
 };

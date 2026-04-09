@@ -3,7 +3,7 @@
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ stage?.name ?? 'Stage 详情' }}</h1>
-			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/stages')">
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/pipeline-stage')">
 				<ArrowLeft class="size-4" />
 				返回
 			</button>
@@ -265,7 +265,7 @@ async function fetchStage() {
 		});
 	} catch {
 		toast.error('获取 Stage 失败');
-		router.push('/ci/stages');
+		router.push('/ci/pipeline-stage');
 	}
 }
 
@@ -293,7 +293,9 @@ function closeScriptDrawer() {
 async function confirmScript() {
 	try {
 		await executeSave(async () => {
-			const updated = await pipelineStageApi.update(stageId, { script: scriptTemp.value });
+			const updated = await pipelineStageApi.update(stageId, {
+				script: scriptTemp.value,
+			});
 			stage.value = updated;
 			showScriptDrawer.value = false;
 			toast.success('脚本已保存');
@@ -329,7 +331,7 @@ async function handleDelete() {
 		await executeDelete(async () => {
 			await pipelineStageApi.delete(stageId);
 			toast.success('删除成功');
-			router.push('/ci/stages');
+			router.push('/ci/pipeline-stage');
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '删除失败');

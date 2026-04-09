@@ -1,6 +1,6 @@
 export { credentialApi } from './credential';
-export { pipelineTemplateApi } from './template';
 export { pipelineStageApi } from './pipeline_stage';
-export { projectApi } from './project';
-export { webhookApi } from './webhook';
+export { repositoryApi } from './repository';
 export { pipelineRunApi } from './run';
+export { pipelineTemplateApi } from './template';
+export { webhookApi } from './webhook';

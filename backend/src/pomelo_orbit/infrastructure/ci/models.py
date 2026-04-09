@@ -13,7 +13,7 @@ from pomelo_orbit.infrastructure.time_utils import utc_now
 class CredentialModel(Base):
     """凭据模型"""
 
-    __tablename__ = "credentials"
+    __tablename__ = "credential"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -25,7 +25,7 @@ class CredentialModel(Base):
 class PipelineTemplateModel(Base):
     """流水线模板模型"""
 
-    __tablename__ = "pipeline_templates"
+    __tablename__ = "pipeline_template"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -39,7 +39,7 @@ class PipelineTemplateModel(Base):
 class PipelineStageModel(Base):
     """流水线 Stage 模型：执行最小单元，不含编排属性"""
 
-    __tablename__ = "pipeline_stages"
+    __tablename__ = "pipeline_stage"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -55,14 +55,14 @@ class PipelineStageModel(Base):
 class PipelineTemplateStageModel(Base):
     """模板编排表：模板对 Stage 的引用 + 依赖 + 顺序"""
 
-    __tablename__ = "pipeline_template_stages"
+    __tablename__ = "pipeline_template_stage"
     __table_args__ = (UniqueConstraint("template_id", "stage_id", name="uq_template_stage"),)
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     template_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_templates.id", ondelete="CASCADE"), nullable=False, index=True
+        String(26), ForeignKey("pipeline_template.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    stage_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_stages.id"), nullable=False)
+    stage_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_stage.id"), nullable=False)
     stage_key: Mapped[str] = mapped_column(String(255), nullable=False)  # 模板内唯一标识
     depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array of stage_key
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -71,13 +71,11 @@ class PipelineTemplateStageModel(Base):
 class PipelineSnapshotModel(Base):
     """流水线快照模型（模板的不可变版本副本）"""
 
-    __tablename__ = "pipeline_snapshots"
+    __tablename__ = "pipeline_snapshot"
     __table_args__ = (UniqueConstraint("template_id", "version", name="uq_snapshot_template_version"),)
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    template_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_templates.id"), nullable=False, index=True
-    )
+    template_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_template.id"), nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     stages_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
     variable_declarations_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
@@ -87,14 +85,14 @@ class PipelineSnapshotModel(Base):
 class ProjectModel(Base):
     """项目模型"""
 
-    __tablename__ = "projects"
+    __tablename__ = "repository"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     code: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
     repository_url: Mapped[str] = mapped_column(Text, nullable=False)
     git_credential_id: Mapped[str | None] = mapped_column(
-        String(26), ForeignKey("credentials.id"), nullable=True, index=True
+        String(26), ForeignKey("credential.id"), nullable=True, index=True
     )
     variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     default_branch: Mapped[str] = mapped_column(String(255), nullable=False, default="master")
@@ -105,14 +103,14 @@ class ProjectModel(Base):
 class ProjectWebhookModel(Base):
     """项目 Webhook 配置模型"""
 
-    __tablename__ = "project_webhooks"
+    __tablename__ = "repository_webhook"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    project_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    repository_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("repository.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    template_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_templates.id"), nullable=False)
+    template_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_template.id"), nullable=False)
     branch_filter: Mapped[str | None] = mapped_column(String(255), nullable=True)
     encrypted_secret: Mapped[str] = mapped_column(Text, nullable=False)
     enabled: Mapped[bool] = mapped_column(Integer, nullable=False, default=1)
@@ -123,13 +121,13 @@ class ProjectWebhookModel(Base):
 class PipelineRunModel(Base):
     """Pipeline 运行模型"""
 
-    __tablename__ = "pipeline_runs"
+    __tablename__ = "pipeline_run"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    project_id: Mapped[str] = mapped_column(String(26), ForeignKey("projects.id"), nullable=False, index=True)
-    project_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    repository_id: Mapped[str] = mapped_column(String(26), ForeignKey("repository.id"), nullable=False, index=True)
+    repository_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     pipeline_snapshot_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_snapshots.id"), nullable=False, index=True
+        String(26), ForeignKey("pipeline_snapshot.id"), nullable=False, index=True
     )
     template_id: Mapped[str] = mapped_column(String(26), nullable=False, default="")
     template_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
@@ -137,7 +135,7 @@ class PipelineRunModel(Base):
     trigger_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    retry_of: Mapped[str | None] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=True, index=True)
+    retry_of: Mapped[str | None] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=True, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
@@ -146,10 +144,10 @@ class PipelineRunModel(Base):
 class StageRunModel(Base):
     """Stage 执行记录模型"""
 
-    __tablename__ = "stage_runs"
+    __tablename__ = "stage_run"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True)
+    pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=False, index=True)
     stage_id: Mapped[str] = mapped_column(String(26), nullable=False)
     stage_name: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
@@ -162,10 +160,10 @@ class StageRunModel(Base):
 class ArtifactModel(Base):
     """制品模型"""
 
-    __tablename__ = "artifacts"
+    __tablename__ = "artifact"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_runs.id"), nullable=False, index=True)
+    pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=False, index=True)
     stage_name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

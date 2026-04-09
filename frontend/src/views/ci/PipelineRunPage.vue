@@ -32,8 +32,8 @@
 					</tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
 						<td>
-							<router-link :to="`/ci/projects/${r.project_id}`" class="link link-primary">
-								{{ r.project_name }}
+							<router-link :to="`/ci/projects/${r.repository_id}`" class="link link-primary">
+								{{ r.repository_name }}
 							</router-link>
 						</td>
 						<td>
@@ -142,11 +142,11 @@ const pendingCancelId = ref('');
 async function fetchRuns() {
 	try {
 		await execute(async () => {
-			const projectId = route.query.project_id as string | undefined;
+			const projectId = route.query.repository_id as string | undefined;
 			const res = await pipelineRunApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				project_id: projectId,
+				repository_id: projectId,
 			});
 			runs.value = res.items;
 			pagination.total = res.total;

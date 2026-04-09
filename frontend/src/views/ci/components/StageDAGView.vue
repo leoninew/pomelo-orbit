@@ -26,8 +26,8 @@ import { VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import dagre from 'dagre';
 import { computed, markRaw } from 'vue';
-import type { TaskStatus } from '@/types/common';
 import type { SnapshotStage } from '@/types/ci/snapshot';
+import type { TaskStatus } from '@/types/common';
 import StageNode from './StageNode.vue';
 
 interface StageRunLike {
@@ -46,9 +46,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), { showMinimap: false });
 
-const emit = defineEmits<{
-	(e: 'view-stage', stageRun: StageRunLike): void
-}>();
+const emit = defineEmits<(e: 'view-stage', stageRun: StageRunLike) => void>();
 
 // stage.id -> StageRun 映射
 const stageRunByIdMap = computed(() => {
@@ -84,8 +82,11 @@ const edges = computed<Edge[]>(() => {
 			const sourceStatus = stageRunByIdMap.value.get(dep)?.status;
 			const targetStatus = stageRunByIdMap.value.get(stage.id)?.status;
 
-			const isFlowing = sourceStatus === 'running' && (targetStatus === 'waiting_to_run' || targetStatus === 'running');
-			const isSuccess = sourceStatus === 'ran_to_completion' && targetStatus === 'ran_to_completion';
+			const isFlowing =
+				sourceStatus === 'running' &&
+				(targetStatus === 'waiting_to_run' || targetStatus === 'running');
+			const isSuccess =
+				sourceStatus === 'ran_to_completion' && targetStatus === 'ran_to_completion';
 			const isFailed = sourceStatus === 'faulted' || targetStatus === 'faulted';
 
 			let edgeClass = '';
@@ -124,7 +125,10 @@ const layoutedNodes = computed(() => {
 	dagre.layout(g);
 	return nodes.value.map((node) => {
 		const n = g.node(node.id);
-		return { ...node, position: { x: n.x - n.width / 2, y: n.y - n.height / 2 } };
+		return {
+			...node,
+			position: { x: n.x - n.width / 2, y: n.y - n.height / 2 },
+		};
 	});
 });
 
@@ -161,8 +165,12 @@ function handleNodeClick(event: NodeClickEvent) {
 }
 
 @keyframes edge-flow {
-	0% { stroke-dashoffset: 12; }
-	100% { stroke-dashoffset: 0; }
+	0% {
+		stroke-dashoffset: 12;
+	}
+	100% {
+		stroke-dashoffset: 0;
+	}
 }
 
 .vue-flow-container :deep(.edge-success) {
@@ -188,12 +196,22 @@ function handleNodeClick(event: NodeClickEvent) {
 }
 
 @keyframes node-fade-in {
-	from { opacity: 0; transform: scale(0.9); }
-	to { opacity: 1; transform: scale(1); }
+	from {
+		opacity: 0;
+		transform: scale(0.9);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 @keyframes edge-draw-in {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 </style>

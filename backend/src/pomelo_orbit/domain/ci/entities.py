@@ -20,7 +20,7 @@ from pomelo_orbit.infrastructure.time_utils import utc_now
 
 
 @dataclass
-class Project:
+class Repository:
     """项目实体"""
 
     id: str
@@ -41,9 +41,9 @@ class Project:
         git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         default_branch: str = "master",
-    ) -> "Project":
+    ) -> "Repository":
         now = utc_now()
-        return Project(
+        return Repository(
             id=str(ULID()),
             name=name,
             code=code,
@@ -77,11 +77,11 @@ class Project:
 
 
 @dataclass
-class ProjectWebhook:
+class RepositoryWebhook:
     """项目 Webhook 配置：每个 Webhook 绑定一个模板，有独立的签名密钥"""
 
     id: str
-    project_id: str
+    repository_id: str
     name: str
     template_id: str
     branch_filter: (
@@ -94,16 +94,16 @@ class ProjectWebhook:
 
     @staticmethod
     def create(
-        project_id: str,
+        repository_id: str,
         name: str,
         template_id: str,
         encrypted_secret: str,
         branch_filter: str | None = None,
-    ) -> "ProjectWebhook":
+    ) -> "RepositoryWebhook":
         now = utc_now()
-        return ProjectWebhook(
+        return RepositoryWebhook(
             id=str(ULID()),
-            project_id=project_id,
+            repository_id=repository_id,
             name=name,
             template_id=template_id,
             branch_filter=branch_filter,
@@ -341,8 +341,8 @@ class PipelineRun:
     """Pipeline 运行实例"""
 
     id: str
-    project_id: str
-    project_name: str
+    repository_id: str
+    repository_name: str
     pipeline_snapshot_id: str
     template_id: str
     template_name: str
@@ -357,8 +357,8 @@ class PipelineRun:
 
     @staticmethod
     def create(
-        project_id: str,
-        project_name: str,
+        repository_id: str,
+        repository_name: str,
         pipeline_snapshot_id: str,
         template_id: str,
         template_name: str,
@@ -369,8 +369,8 @@ class PipelineRun:
     ) -> "PipelineRun":
         return PipelineRun(
             id=str(ULID()),
-            project_id=project_id,
-            project_name=project_name,
+            repository_id=repository_id,
+            repository_name=repository_name,
             pipeline_snapshot_id=pipeline_snapshot_id,
             template_id=template_id,
             template_name=template_name,

@@ -14,7 +14,7 @@ class PipelineRunRepository(ABC):
         self,
         page: int,
         per_page: int,
-        project_id: str | None = None,
+        repository_id: str | None = None,
     ) -> tuple[list[PipelineRun], int]: ...
 
     @abstractmethod

@@ -73,9 +73,7 @@ import type { VariableDeclaration } from '@/types/ci';
 
 const props = defineProps<{ declarations: VariableDeclaration[] }>();
 
-const emit = defineEmits<{
-	(e: 'update:declarations', value: VariableDeclaration[]): void
-}>();
+const emit = defineEmits<(e: 'update:declarations', value: VariableDeclaration[]) => void>();
 
 const editingName = ref<string | null>(null);
 const editValue = ref('');

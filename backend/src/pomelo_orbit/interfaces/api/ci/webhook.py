@@ -28,24 +28,24 @@ router = APIRouter(tags=["webhooks"])
 # ── 项目 Webhook 管理（需认证）────────────────────────────────────────────────
 
 
-@router.get("/projects/{project_id}/webhooks", response_model=list[ProjectWebhookResp])
+@router.get("/repository/{repository_id}/webhook", response_model=list[ProjectWebhookResp])
 def list_webhooks(
-    project_id: str,
+    repository_id: str,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> list[ProjectWebhookResp]:
-    return [ProjectWebhookResp.model_validate(wh) for wh in pipeline_service.list_webhooks(project_id)]
+    return [ProjectWebhookResp.model_validate(wh) for wh in pipeline_service.list_webhooks(repository_id)]
 
 
-@router.post("/projects/{project_id}/webhooks", response_model=ProjectWebhookResp, status_code=201)
+@router.post("/repository/{repository_id}/webhook", response_model=ProjectWebhookResp, status_code=201)
 def create_webhook(
-    project_id: str,
+    repository_id: str,
     data: ProjectWebhookCreateReq,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
 ) -> ProjectWebhookResp:
     wh = pipeline_service.create_webhook(
-        project_id=project_id,
+        repository_id=repository_id,
         name=data.name,
         template_id=data.template_id,
         plain_secret=data.secret,
@@ -54,9 +54,9 @@ def create_webhook(
     return ProjectWebhookResp.model_validate(wh)
 
 
-@router.put("/projects/{project_id}/webhooks/{webhook_id}", response_model=ProjectWebhookResp)
+@router.put("/repository/{repository_id}/webhook/{webhook_id}", response_model=ProjectWebhookResp)
 def update_webhook(
-    project_id: str,
+    repository_id: str,
     webhook_id: str,
     data: ProjectWebhookUpdateReq,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
@@ -73,9 +73,9 @@ def update_webhook(
     return ProjectWebhookResp.model_validate(wh)
 
 
-@router.delete("/projects/{project_id}/webhooks/{webhook_id}", status_code=204)
+@router.delete("/repository/{repository_id}/webhook/{webhook_id}", status_code=204)
 def delete_webhook(
-    project_id: str,
+    repository_id: str,
     webhook_id: str,
     pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
     _current_user=Depends(get_current_user),
@@ -86,7 +86,7 @@ def delete_webhook(
 # ── Git 平台推送入口（公开，无需认证）────────────────────────────────────────
 
 
-@router.post("/webhooks/{webhook_id}")
+@router.post("/webhook/{webhook_id}")
 async def receive_webhook(
     webhook_id: str,
     request: Request,
@@ -149,7 +149,7 @@ async def receive_webhook(
 
     # 触发流水线（branch 为空时 fallback 到 commit_sha，create_run 内再 fallback 到 default_branch）
     run, proj, merged_vars, snapshot = pipeline_service.create_run(
-        project_id=wh.project_id,
+        repository_id=wh.repository_id,
         template_id=wh.template_id,
         trigger=PipelineRunTrigger.WEBHOOK,
         trigger_ref=branch or commit_sha,

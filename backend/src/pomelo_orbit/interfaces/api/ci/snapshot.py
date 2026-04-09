@@ -8,11 +8,11 @@ from fastapi import APIRouter, Depends
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.template import PipelineSnapshotResp
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import PipelineSnapshotResp
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/snapshots", tags=["snapshots"])
+router = APIRouter(prefix="/snapshot", tags=["snapshot"])
 
 
 @router.get("/{snapshot_id}", response_model=PipelineSnapshotResp)

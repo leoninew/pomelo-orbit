@@ -19,8 +19,8 @@ from pomelo_orbit.infrastructure.ci.repositories import (
     PipelineSnapshotRepositoryImpl,
     PipelineStageRepositoryImpl,
     PipelineTemplateRepositoryImpl,
-    ProjectRepositoryImpl,
-    ProjectWebhookRepositoryImpl,
+    RepositoryRepositoryImpl,
+    RepositoryWebhookRepositoryImpl,
     StageRunRepositoryImpl,
 )
 from pomelo_orbit.infrastructure.config import get_settings
@@ -62,7 +62,7 @@ def get_pipeline_service(
         global_vars = dict(settings.get("ci", {}).get("global_variables", {}))
 
     return PipelineService(
-        project_repo=ProjectRepositoryImpl(db),
+        repository_repo=RepositoryRepositoryImpl(db),
         credential_repo=CredentialRepositoryImpl(db),
         template_repo=PipelineTemplateRepositoryImpl(db),
         stage_repo=PipelineStageRepositoryImpl(db),
@@ -70,7 +70,7 @@ def get_pipeline_service(
         run_repo=PipelineRunRepositoryImpl(db),
         artifact_repo=ArtifactRepositoryImpl(db),
         stage_run_repo=StageRunRepositoryImpl(db),
-        webhook_repo=ProjectWebhookRepositoryImpl(db),
+        webhook_repo=RepositoryWebhookRepositoryImpl(db),
         session_factory=get_session_factory(),
         executor_factory=_get_cached_executor_factory(settings),
         security_service=SecurityService(settings),

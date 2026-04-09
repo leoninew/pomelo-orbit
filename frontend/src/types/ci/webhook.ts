@@ -1,6 +1,6 @@
-export interface ProjectWebhook {
+export interface RepositoryWebhook {
 	id: string
-	project_id: string
+	repository_id: string
 	name: string
 	template_id: string
 	branch_filter: string | null

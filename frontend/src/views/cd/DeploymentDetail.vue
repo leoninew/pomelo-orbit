@@ -124,15 +124,15 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowDown, ArrowLeft, Loader2, RefreshCw } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, ArrowDown, Loader2, RefreshCw } from 'lucide-vue-next';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { delayAsync, formatTime } from '@/utils/time';
-import { formatDuration, isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import type { DeploymentDetail } from '@/types/api';
+import { formatDuration, isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
+import { delayAsync, formatTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();

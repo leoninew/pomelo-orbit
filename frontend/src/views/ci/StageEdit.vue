@@ -280,7 +280,10 @@ watch(
 				env: { ...s.env },
 				artifacts: s.artifacts ? JSON.parse(JSON.stringify(s.artifacts)) : [],
 			});
-			envEntries.value = Object.entries(form.env).map(([key, value]) => ({ key, value }));
+			envEntries.value = Object.entries(form.env).map(([key, value]) => ({
+				key,
+				value,
+			}));
 		} else {
 			Object.assign(form, {
 				name: '',

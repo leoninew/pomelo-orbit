@@ -5,7 +5,7 @@ from unittest.mock import Mock
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
     PipelineRun,
-    Project,
+    Repository,
     StageRun,
 )
 from pomelo_orbit.infrastructure.ci.models import (
@@ -19,7 +19,7 @@ from pomelo_orbit.infrastructure.ci.repositories import (
     CredentialRepositoryImpl,
     PipelineRunRepositoryImpl,
     PipelineTemplateRepositoryImpl,
-    ProjectRepositoryImpl,
+    RepositoryRepositoryImpl,
     StageRunRepositoryImpl,
 )
 
@@ -67,7 +67,7 @@ class TestProjectRepository:
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = PipelineRunModel()
-        assert ProjectRepositoryImpl(session).has_running_pipelines("project-1") is True
+        assert RepositoryRepositoryImpl(session).has_running_pipelines("project-1") is True
 
     def test_has_running_pipelines_false(self):
         session = Mock()
@@ -75,7 +75,7 @@ class TestProjectRepository:
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
-        assert ProjectRepositoryImpl(session).has_running_pipelines("project-1") is False
+        assert RepositoryRepositoryImpl(session).has_running_pipelines("project-1") is False
 
     def test_find_by_repository_url(self):
         session = Mock()
@@ -84,9 +84,9 @@ class TestProjectRepository:
         query_mock.filter.return_value = query_mock
         project_orm = Mock(spec=ProjectModel)
         query_mock.all.return_value = [project_orm]
-        repo = ProjectRepositoryImpl(session)
+        repo = RepositoryRepositoryImpl(session)
         repo._mapper = Mock()
-        repo._mapper.to_domain.return_value = Mock(spec=Project)
+        repo._mapper.to_domain.return_value = Mock(spec=Repository)
         assert len(repo.find_by_repository_url("https://github.com/user/repo.git")) == 1
 
     def test_find_by_repository_url_empty(self):
@@ -95,7 +95,7 @@ class TestProjectRepository:
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
         query_mock.all.return_value = []
-        repo = ProjectRepositoryImpl(session)
+        repo = RepositoryRepositoryImpl(session)
         repo._mapper = Mock()
         assert repo.find_by_repository_url("https://github.com/user/nonexist.git") == []
 
@@ -115,7 +115,7 @@ class TestPipelineRunRepository:
         repo = PipelineRunRepositoryImpl(session)
         repo._mapper = Mock()
         repo._mapper.to_domain.return_value = Mock(spec=PipelineRun)
-        runs, total = repo.find_paginated_with_filters(page=1, per_page=20, project_id="project-1")
+        runs, total = repo.find_paginated_with_filters(page=1, per_page=20, repository_id="project-1")
         assert len(runs) == 1 and total == 5
 
     def test_find_by_project_pagination(self):
@@ -130,7 +130,7 @@ class TestPipelineRunRepository:
         query_mock.all.return_value = []
         repo = PipelineRunRepositoryImpl(session)
         repo._mapper = Mock()
-        _, total = repo.find_paginated_with_filters(page=3, per_page=10, project_id="project-1")
+        _, total = repo.find_paginated_with_filters(page=3, per_page=10, repository_id="project-1")
         assert total == 100
         query_mock.offset.assert_called_once_with(20)
 

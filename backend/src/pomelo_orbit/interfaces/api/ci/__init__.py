@@ -2,22 +2,22 @@
 
 from fastapi import APIRouter
 
-from pomelo_orbit.interfaces.api.ci.credentials import router as credentials_router
-from pomelo_orbit.interfaces.api.ci.pipeline_stages import router as pipeline_stages_router
-from pomelo_orbit.interfaces.api.ci.projects import router as projects_router
-from pomelo_orbit.interfaces.api.ci.runs import router as runs_router
-from pomelo_orbit.interfaces.api.ci.snapshots import router as snapshots_router
-from pomelo_orbit.interfaces.api.ci.templates import router as templates_router
-from pomelo_orbit.interfaces.api.ci.webhooks import router as webhooks_router
+from pomelo_orbit.interfaces.api.ci.credential import router as credential_router
+from pomelo_orbit.interfaces.api.ci.pipeline_stage import router as pipeline_stage_router
+from pomelo_orbit.interfaces.api.ci.repository import router as repository_router
+from pomelo_orbit.interfaces.api.ci.run import router as run_router
+from pomelo_orbit.interfaces.api.ci.snapshot import router as snapshot_router
+from pomelo_orbit.interfaces.api.ci.template import router as template_router
+from pomelo_orbit.interfaces.api.ci.webhook import router as webhook_router
 
 # /api/ci/* 路由（需认证）
 router = APIRouter(prefix="/ci", tags=["ci"])
-router.include_router(credentials_router)
-router.include_router(pipeline_stages_router)
-router.include_router(templates_router)
-router.include_router(snapshots_router)
-router.include_router(projects_router)
-router.include_router(runs_router)
-router.include_router(webhooks_router)
+router.include_router(credential_router)
+router.include_router(pipeline_stage_router)
+router.include_router(template_router)
+router.include_router(snapshot_router)
+router.include_router(repository_router)
+router.include_router(run_router)
+router.include_router(webhook_router)
 
 __all__ = ["router"]

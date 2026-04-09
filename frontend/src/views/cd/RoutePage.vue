@@ -163,10 +163,10 @@
 </template>
 
 <script setup lang="ts">
+import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
-import { Plus, RefreshCw, ExternalLink } from 'lucide-vue-next';
-import { routeApi } from '@/api/cd/route';
 import type { Route } from '@/api/cd/route';
+import { routeApi } from '@/api/cd/route';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 

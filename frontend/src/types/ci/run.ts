@@ -4,8 +4,8 @@ import type { StageRun } from './stage_run';
 // PipelineRun
 export interface PipelineRun {
 	id: string
-	project_id: string
-	project_name: string
+	repository_id: string
+	repository_name: string
 	trigger: string
 	trigger_ref: string
 	status: TaskStatus

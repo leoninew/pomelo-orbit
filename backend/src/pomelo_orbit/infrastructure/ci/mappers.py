@@ -10,8 +10,8 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineSnapshot,
     PipelineStage,
     PipelineTemplate,
-    Project,
-    ProjectWebhook,
+    Repository,
+    RepositoryWebhook,
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -185,10 +185,10 @@ class PipelineSnapshotMapper:
         )
 
 
-class ProjectMapper:
+class RepositoryMapper:
     @staticmethod
-    def to_domain(orm: ProjectModel) -> Project:
-        return Project(
+    def to_domain(orm: ProjectModel) -> Repository:
+        return Repository(
             id=orm.id,
             name=orm.name,
             code=orm.code,
@@ -201,7 +201,7 @@ class ProjectMapper:
         )
 
     @staticmethod
-    def to_orm(entity: Project) -> ProjectModel:
+    def to_orm(entity: Repository) -> ProjectModel:
         return ProjectModel(
             id=entity.id,
             name=entity.name,
@@ -220,8 +220,8 @@ class PipelineRunMapper:
     def to_domain(orm: PipelineRunModel) -> PipelineRun:
         return PipelineRun(
             id=orm.id,
-            project_id=orm.project_id,
-            project_name=orm.project_name,
+            repository_id=orm.repository_id,
+            repository_name=orm.repository_name,
             pipeline_snapshot_id=orm.pipeline_snapshot_id,
             template_id=orm.template_id,
             template_name=orm.template_name,
@@ -239,8 +239,8 @@ class PipelineRunMapper:
     def to_orm(entity: PipelineRun) -> PipelineRunModel:
         return PipelineRunModel(
             id=entity.id,
-            project_id=entity.project_id,
-            project_name=entity.project_name,
+            repository_id=entity.repository_id,
+            repository_name=entity.repository_name,
             pipeline_snapshot_id=entity.pipeline_snapshot_id,
             template_id=entity.template_id,
             template_name=entity.template_name,
@@ -313,10 +313,10 @@ class ArtifactMapper:
 
 class ProjectWebhookMapper:
     @staticmethod
-    def to_domain(orm: ProjectWebhookModel) -> ProjectWebhook:
-        return ProjectWebhook(
+    def to_domain(orm: ProjectWebhookModel) -> RepositoryWebhook:
+        return RepositoryWebhook(
             id=orm.id,
-            project_id=orm.project_id,
+            repository_id=orm.repository_id,
             name=orm.name,
             template_id=orm.template_id,
             branch_filter=orm.branch_filter,
@@ -327,10 +327,10 @@ class ProjectWebhookMapper:
         )
 
     @staticmethod
-    def to_orm(entity: ProjectWebhook) -> ProjectWebhookModel:
+    def to_orm(entity: RepositoryWebhook) -> ProjectWebhookModel:
         return ProjectWebhookModel(
             id=entity.id,
-            project_id=entity.project_id,
+            repository_id=entity.repository_id,
             name=entity.name,
             template_id=entity.template_id,
             branch_filter=entity.branch_filter,

@@ -2,8 +2,8 @@
 	<div class="flex flex-col gap-4">
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">{{ project?.name ?? '项目详情' }}</h1>
-			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/projects')">
+			<h1 class="text-xl font-semibold">{{ repository?.name ?? '仓库详情' }}</h1>
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/repository')">
 				<ArrowLeft class="size-4" />
 				返回
 			</button>
@@ -14,7 +14,7 @@
 			<div class="card-body p-5">
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">基本信息</h2>
-					<div v-if="project" class="flex items-center gap-2 flex-wrap">
+					<div v-if="repository" class="flex items-center gap-2 flex-wrap">
 						<button
 							class="btn btn-sm btn-primary gap-1"
 							:disabled="operating"
@@ -42,34 +42,34 @@
 						<div class="skeleton h-4 w-32"></div>
 					</div>
 				</div>
-				<dl v-else-if="project" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+				<dl v-else-if="repository" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">项目名称</dt>
-						<dd>{{ project.name }}</dd>
+						<dt class="text-base-content/70 w-24 shrink-0">名称</dt>
+						<dd>{{ repository.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">项目编码</dt>
-						<dd>{{ project.code }}</dd>
+						<dt class="text-base-content/70 w-24 shrink-0">编码</dt>
+						<dd>{{ repository.code }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">仓库地址</dt>
-						<dd class="text-xs truncate">{{ project.repository_url }}</dd>
+						<dt class="text-base-content/70 w-24 shrink-0">地址</dt>
+						<dd class="text-xs truncate">{{ repository.repository_url }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">默认分支</dt>
-						<dd class="text-base-content/60">{{ project.default_branch }}</dd>
+						<dd class="text-base-content/60">{{ repository.default_branch }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">Git 凭据</dt>
 						<dd class="text-base-content/60">
-							{{ project.git_credential_id ? '已配置' : '未配置' }}
+							{{ repository.git_credential_id ? '已配置' : '未配置' }}
 						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">流水线记录</dt>
 						<dd>
 							<router-link
-								:to="`/ci/runs?project_id=${project.id}`"
+								:to="`/ci/runs?repository_id=${repository.id}`"
 								class="link link-primary text-xs"
 							>
 								查看所有记录
@@ -126,7 +126,7 @@
 			<div class="card-body p-5">
 				<WebhookList
 					v-if="!loading"
-					:project-id="projectId"
+					:repository-id="repositoryId"
 					:webhooks="webhooks"
 					:templates="templates"
 					@refresh="fetchWebhooks"
@@ -137,10 +137,10 @@
 		<!-- Trigger modal -->
 		<TriggerModal
 			ref="triggerModalRef"
-			:project-id="projectId"
+			:repository-id="repositoryId"
 			:templates="templates"
-			:default-branch="project?.default_branch"
-			:project-variables="project?.variable_overrides"
+			:default-branch="repository?.default_branch"
+			:project-variables="repository?.variable_overrides"
 			@trigger="handleTrigger"
 		/>
 
@@ -150,16 +150,16 @@
 				<h3 class="font-bold text-lg mb-4">编辑项目</h3>
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">项目名称</legend>
+						<legend class="fieldset-legend">名称</legend>
 						<input v-model="editForm.name" type="text" class="input w-full" />
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">项目编码</legend>
-						<input :value="project?.code" type="text" class="input w-full opacity-60" disabled />
+						<legend class="fieldset-legend">编码</legend>
+						<input :value="repository?.code" type="text" class="input w-full opacity-60" disabled />
 						<p class="fieldset-label text-base-content/50">创建后不可修改</p>
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">仓库地址</legend>
+						<legend class="fieldset-legend">地址</legend>
 						<input v-model="editForm.repository_url" type="text" class="input w-full" />
 					</fieldset>
 					<fieldset class="fieldset">
@@ -195,10 +195,10 @@
 		<!-- Delete modal -->
 		<dialog ref="deleteModalRef" class="modal">
 			<div class="modal-box">
-				<h3 class="font-bold text-lg">删除项目</h3>
+				<h3 class="font-bold text-lg">删除仓库</h3>
 				<p class="py-4 text-sm">
-					确定要删除项目「
-					<strong>{{ project?.name }}</strong>
+					确定要删除仓库「
+					<strong>{{ repository?.name }}</strong>
 					」吗？此操作不可撤销。
 				</p>
 				<label class="flex items-center gap-2 cursor-pointer mb-2">
@@ -207,7 +207,7 @@
 						type="checkbox"
 						class="checkbox checkbox-sm checkbox-error"
 					/>
-					<span class="text-sm">同时删除工作目录（data/ci/{{ project?.code }}）</span>
+					<span class="text-sm">同时删除工作目录（data/ci/{{ repository?.code }}）</span>
 				</label>
 				<div class="modal-action">
 					<button class="btn btn-error" :disabled="operating" @click="handleDeleteOk">
@@ -276,25 +276,25 @@
 import { ArrowLeft, Play, Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { credentialApi, pipelineTemplateApi, projectApi, webhookApi } from '@/api/ci';
+import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import WebhookList from './components/WebhookList.vue';
-import TriggerModal from './components/TriggerModal.vue';
+import type { Credential, PipelineTemplate, Repository, RepositoryWebhook } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
-import type { Credential, PipelineTemplate, Project, ProjectWebhook } from '@/types/api';
+import TriggerModal from './components/TriggerModal.vue';
+import WebhookList from './components/WebhookList.vue';
 
 const route = useRoute();
 const router = useRouter();
-const projectId = route.params.id as string;
+const repositoryId = route.params.id as string;
 const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
-const project = ref<Project>();
+const repository = ref<Repository>();
 const templates = ref<PipelineTemplate[]>([]);
-const webhooks = ref<ProjectWebhook[]>([]);
+const webhooks = ref<RepositoryWebhook[]>([]);
 const credentials = ref<Credential[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
@@ -319,14 +319,14 @@ const editingVarKey = ref('');
 const editingVarValue = ref('');
 
 const variableList = computed(() =>
-	Object.entries(project.value?.variable_overrides ?? {}).map(([key, value]) => ({ key, value }))
+	Object.entries(repository.value?.variable_overrides ?? {}).map(([key, value]) => ({ key, value }))
 );
 
 async function fetchProject() {
 	try {
 		await execute(async () => {
-			const data = await projectApi.get(projectId);
-			project.value = data;
+			const data = await repositoryApi.get(repositoryId);
+			repository.value = data;
 			Object.assign(editForm, {
 				name: data.name,
 				repository_url: data.repository_url,
@@ -335,8 +335,8 @@ async function fetchProject() {
 			});
 		});
 	} catch {
-		toast.error('获取项目信息失败');
-		router.push('/ci/projects');
+		toast.error('获取代码仓库信息失败');
+		router.push('/ci/repository');
 	}
 }
 
@@ -351,7 +351,7 @@ async function fetchTemplates() {
 
 async function fetchWebhooks() {
 	try {
-		webhooks.value = await webhookApi.list(projectId);
+		webhooks.value = await webhookApi.list(repositoryId);
 	} catch {
 		toast.error('获取 Webhook 列表失败');
 	}
@@ -377,7 +377,7 @@ async function handleTrigger(data: {
 }) {
 	try {
 		await executeOp(async () => {
-			const run = await projectApi.trigger(projectId, data);
+			const run = await repositoryApi.trigger(repositoryId, data);
 			toast.success('触发成功');
 			router.push(`/ci/runs/${run.id}`);
 		});
@@ -395,7 +395,7 @@ async function openEditModal() {
 async function handleEditOk() {
 	try {
 		await executeOp(async () => {
-			await projectApi.update(projectId, {
+			await repositoryApi.update(repositoryId, {
 				name: editForm.name,
 				repository_url: editForm.repository_url,
 				git_credential_id: editForm.git_credential_id || undefined,
@@ -418,9 +418,9 @@ function openDeleteModal() {
 async function handleDeleteOk() {
 	try {
 		await executeOp(async () => {
-			await projectApi.delete(projectId);
+			await repositoryApi.delete(repositoryId);
 			toast.success('删除成功');
-			router.push('/ci/projects');
+			router.push('/ci/repository');
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '删除失败');
@@ -446,9 +446,9 @@ async function handleAddVarOk() {
 	}
 	try {
 		await executeOp(async () => {
-			await projectApi.update(projectId, {
+			await repositoryApi.update(repositoryId, {
 				variable_overrides: {
-					...project.value?.variable_overrides,
+					...repository.value?.variable_overrides,
 					[newVarKey.value]: newVarValue.value,
 				},
 			});
@@ -464,9 +464,9 @@ async function handleAddVarOk() {
 async function handleEditVarOk() {
 	try {
 		await executeOp(async () => {
-			await projectApi.update(projectId, {
+			await repositoryApi.update(repositoryId, {
 				variable_overrides: {
-					...project.value?.variable_overrides,
+					...repository.value?.variable_overrides,
 					[editingVarKey.value]: editingVarValue.value,
 				},
 			});
@@ -482,9 +482,9 @@ async function handleEditVarOk() {
 async function deleteVariable(key: string) {
 	try {
 		await executeOp(async () => {
-			const updated = { ...project.value?.variable_overrides };
+			const updated = { ...repository.value?.variable_overrides };
 			delete updated[key];
-			await projectApi.update(projectId, { variable_overrides: updated });
+			await repositoryApi.update(repositoryId, { variable_overrides: updated });
 			toast.success('删除成功');
 			fetchProject();
 		});

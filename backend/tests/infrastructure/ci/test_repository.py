@@ -4,9 +4,9 @@ import ulid
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from pomelo_orbit.domain.ci.entities import Project
+from pomelo_orbit.domain.ci.entities import Repository
 from pomelo_orbit.infrastructure.ci.models import Base
-from pomelo_orbit.infrastructure.ci.repositories import ProjectRepositoryImpl
+from pomelo_orbit.infrastructure.ci.repositories import RepositoryRepositoryImpl
 
 
 class TestProjectRepository:
@@ -15,14 +15,14 @@ class TestProjectRepository:
         Base.metadata.create_all(self.engine)
         session_local = sessionmaker(bind=self.engine)
         self.session = session_local()
-        self.repo = ProjectRepositoryImpl(self.session)
+        self.repo = RepositoryRepositoryImpl(self.session)
 
     def teardown_method(self):
         self.session.close()
         Base.metadata.drop_all(self.engine)
 
     def test_save_and_find_by_id(self):
-        project = Project.create(
+        project = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -43,9 +43,9 @@ class TestProjectRepository:
     def test_find_by_repository_url(self):
         repo_url = "https://github.com/test/repo.git"
 
-        project1 = Project.create(name="project1", code="project1", repository_url=repo_url)
-        project2 = Project.create(name="project2", code="project2", repository_url=repo_url)
-        project3 = Project.create(
+        project1 = Repository.create(name="project1", code="project1", repository_url=repo_url)
+        project2 = Repository.create(name="project2", code="project2", repository_url=repo_url)
+        project3 = Repository.create(
             name="project3",
             code="project3",
             repository_url="https://github.com/other/repo.git",
@@ -66,7 +66,7 @@ class TestProjectRepository:
         assert len(found) == 0
 
     def test_update_project(self):
-        project = Project.create(
+        project = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",

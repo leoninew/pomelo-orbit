@@ -162,7 +162,7 @@ class WebhookService:
             BusinessError: 签名验证失败（401）
         """
     
-    def get_webhook_url(self, project_id: str) -> dict:
+    def get_webhook_url(self, repository_id: str) -> dict:
         """
         获取 webhook 配置
         
@@ -176,7 +176,7 @@ class WebhookService:
     
     def list_webhook_events(
         self,
-        project_id: str,
+        repository_id: str,
         page: int = 1,
         per_page: int = 20,
     ) -> PaginatedResp[WebhookEvent]:
@@ -248,7 +248,7 @@ def create_project(self, req: CreateProjectReq) -> Project:
     """创建项目"""
     # 生成 webhook_secret
     webhook_secret = secrets.token_urlsafe(32) if req.enable_webhook else None
-    
+
     project = Project.create(
         name=req.name,
         repository_url=req.repository_url,
@@ -259,12 +259,13 @@ def create_project(self, req: CreateProjectReq) -> Project:
     )
     ...
 
-def get_webhook_config(self, project_id: str) -> dict:
+
+def get_webhook_config(self, repository_id: str) -> dict:
     """获取 webhook 配置"""
-    project = self.project_repo.find_by_id(project_id)
+    project = self.repository_repo.find_by_id(repository_id)
     if not project:
-        raise BusinessError(f"Project {project_id} not found", status_code=404)
-    
+        raise BusinessError(f"Project {repository_id} not found", status_code=404)
+
     return {
         "url": f"{self.settings.api_base_url}/api/v1/webhooks/git",
         "secret": project.webhook_secret,

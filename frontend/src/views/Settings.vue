@@ -229,12 +229,12 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
-import { useAuthStore } from '@/stores/auth';
+import { settingApi } from '@/api/settings';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { settingApi } from '@/api/settings';
-import { formatTime } from '@/utils/time';
+import { useAuthStore } from '@/stores/auth';
 import type { ConfigItemResp, SystemConfigResp } from '@/types/api';
+import { formatTime } from '@/utils/time';
 
 const authStore = useAuthStore();
 const toast = useToast();
@@ -245,7 +245,9 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
 const needsRestart = ref(false);
 
-const selectOptions: Record<string, string[]> = { cert__letsencrypt__challenge: ['http', 'dns'] };
+const selectOptions: Record<string, string[]> = {
+	cert__letsencrypt__challenge: ['http', 'dns'],
+};
 const secretKeys = new Set(['jwt__secret_key']);
 
 const editingKey = ref<string>();
@@ -253,8 +255,16 @@ const editingStr = ref('');
 const editingBool = ref(false);
 
 const passwordModalRef = ref<HTMLDialogElement>();
-const passwordForm = reactive({ old_password: '', new_password: '', confirm_password: '' });
-const passwordErrors = reactive({ old_password: '', new_password: '', confirm_password: '' });
+const passwordForm = reactive({
+	old_password: '',
+	new_password: '',
+	confirm_password: '',
+});
+const passwordErrors = reactive({
+	old_password: '',
+	new_password: '',
+	confirm_password: '',
+});
 
 async function fetchConfig() {
 	try {
@@ -308,7 +318,9 @@ function confirmReset(key: string) {
 async function handleReset() {
 	try {
 		await executeOp(async () => {
-			config.value = await settingApi.resetConfig({ keys: [pendingResetKey.value] });
+			config.value = await settingApi.resetConfig({
+				keys: [pendingResetKey.value],
+			});
 			needsRestart.value = true;
 			resetModalRef.value?.close();
 			toast.warning('已重置，请重启服务以生效');
@@ -337,7 +349,11 @@ async function handleChangePassword() {
 			await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
 			toast.success('密码修改成功');
 			passwordModalRef.value?.close();
-			Object.assign(passwordForm, { old_password: '', new_password: '', confirm_password: '' });
+			Object.assign(passwordForm, {
+				old_password: '',
+				new_password: '',
+				confirm_password: '',
+			});
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '密码修改失败');

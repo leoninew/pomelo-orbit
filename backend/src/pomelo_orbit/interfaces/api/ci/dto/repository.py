@@ -5,10 +5,10 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from pomelo_orbit.domain.ci.entities import Project
+from pomelo_orbit.domain.ci.entities import Repository
 
 
-class ProjectResp(BaseModel):
+class RepositoryResp(BaseModel):
     id: str
     name: str
     code: str
@@ -23,22 +23,22 @@ class ProjectResp(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_domain(cls, project: Project, git_credential_name: str | None = None) -> "ProjectResp":
+    def from_domain(cls, repository: Repository, git_credential_name: str | None = None) -> "RepositoryResp":
         return cls(
-            id=project.id,
-            name=project.name,
-            code=project.code,
-            repository_url=project.repository_url,
-            git_credential_id=project.git_credential_id,
+            id=repository.id,
+            name=repository.name,
+            code=repository.code,
+            repository_url=repository.repository_url,
+            git_credential_id=repository.git_credential_id,
             git_credential_name=git_credential_name,
-            variable_overrides=project.variable_overrides,
-            default_branch=project.default_branch,
-            created_at=project.created_at,
-            updated_at=project.updated_at,
+            variable_overrides=repository.variable_overrides,
+            default_branch=repository.default_branch,
+            created_at=repository.created_at,
+            updated_at=repository.updated_at,
         )
 
 
-class ProjectCreateReq(BaseModel):
+class RepositoryCreateReq(BaseModel):
     name: str
     code: str
     repository_url: str
@@ -47,7 +47,7 @@ class ProjectCreateReq(BaseModel):
     default_branch: str = "master"
 
 
-class ProjectUpdateReq(BaseModel):
+class RepositoryUpdateReq(BaseModel):
     name: str | None = None
     repository_url: str | None = None
     git_credential_id: str | None = None

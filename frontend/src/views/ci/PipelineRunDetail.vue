@@ -15,7 +15,7 @@
 					<Loader2 class="size-4 animate-spin" />
 					自动刷新中
 				</button>
-				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/runs')">
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/run')">
 					<ArrowLeft class="size-4" />
 					返回
 				</button>
@@ -59,13 +59,13 @@
 							<dd class="font-mono text-xs">{{ run.id }}</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">Project</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">Repository</dt>
 							<dd>
 								<router-link
-									:to="`/ci/projects/${run.project_id}`"
+									:to="`/ci/projects/${run.repository_id}`"
 									class="link link-primary text-xs"
 								>
-									{{ run.project_name }}
+									{{ run.repository_name }}
 								</router-link>
 							</dd>
 						</div>
@@ -82,7 +82,10 @@
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
 							<dd>
-								<router-link :to="`/ci/templates/${run.template_id}`" class="link link-primary text-xs">
+								<router-link
+									:to="`/ci/templates/${run.template_id}`"
+									class="link link-primary text-xs"
+								>
 									{{ run.template_name }}
 								</router-link>
 							</dd>
@@ -203,9 +206,7 @@
 							/>
 							<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
 						</template>
-						<div v-else class="text-center py-8 text-base-content/60 text-sm">
-							暂无 DAG 数据
-						</div>
+						<div v-else class="text-center py-8 text-base-content/60 text-sm">暂无 DAG 数据</div>
 					</template>
 				</div>
 			</div>
@@ -336,8 +337,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Artifact, StageRun, PipelineRun, PipelineSnapshot } from '@/types/api';
-import { statusBadgeClass, statusLabel, isTerminalStatus } from '@/utils/status';
+import type { Artifact, PipelineRun, PipelineSnapshot, StageRun } from '@/types/api';
+import { isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
 
@@ -419,7 +420,7 @@ async function fetchRun() {
 		});
 	} catch {
 		toast.error('获取 Run 信息失败');
-		router.push('/ci/runs');
+		router.push('/ci/run');
 	}
 }
 

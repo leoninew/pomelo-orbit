@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class ProjectWebhookResp(BaseModel):
     id: str
-    project_id: str
+    repository_id: str
     name: str
     template_id: str
     branch_filter: str | None

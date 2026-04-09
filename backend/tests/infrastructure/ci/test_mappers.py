@@ -2,8 +2,8 @@
 
 import ulid
 
-from pomelo_orbit.domain.ci.entities import Project
-from pomelo_orbit.infrastructure.ci.mappers import ProjectMapper
+from pomelo_orbit.domain.ci.entities import Repository
+from pomelo_orbit.infrastructure.ci.mappers import RepositoryMapper
 from pomelo_orbit.infrastructure.ci.models import ProjectModel
 
 
@@ -18,7 +18,7 @@ class TestProjectMapper:
             default_branch="main",
         )
 
-        entity = ProjectMapper.to_domain(orm)
+        entity = RepositoryMapper.to_domain(orm)
 
         assert entity.id == orm.id
         assert entity.name == orm.name
@@ -35,13 +35,13 @@ class TestProjectMapper:
             variable_overrides="{}",
         )
 
-        entity = ProjectMapper.to_domain(orm)
+        entity = RepositoryMapper.to_domain(orm)
 
         assert entity.git_credential_id is None
         assert entity.variable_overrides == {}
 
     def test_to_orm(self):
-        entity = Project.create(
+        entity = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -50,7 +50,7 @@ class TestProjectMapper:
             default_branch="main",
         )
 
-        orm = ProjectMapper.to_orm(entity)
+        orm = RepositoryMapper.to_orm(entity)
 
         assert orm.id == entity.id
         assert orm.name == entity.name
@@ -59,18 +59,18 @@ class TestProjectMapper:
         assert orm.default_branch == "main"
 
     def test_to_orm_without_optional_fields(self):
-        entity = Project.create(
+        entity = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
         )
 
-        orm = ProjectMapper.to_orm(entity)
+        orm = RepositoryMapper.to_orm(entity)
 
         assert orm.git_credential_id is None
 
     def test_round_trip(self):
-        original = Project.create(
+        original = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -79,8 +79,8 @@ class TestProjectMapper:
             default_branch="develop",
         )
 
-        orm = ProjectMapper.to_orm(original)
-        restored = ProjectMapper.to_domain(orm)
+        orm = RepositoryMapper.to_orm(original)
+        restored = RepositoryMapper.to_domain(orm)
 
         assert restored.id == original.id
         assert restored.name == original.name

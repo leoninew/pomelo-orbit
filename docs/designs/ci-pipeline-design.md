@@ -95,7 +95,7 @@ PipelineSnapshot {
 ```
 PipelineRun {
   id
-  project_id
+  repository_id
   pipeline_snapshot_id    // 本次运行基于哪个快照
   trigger                 // manual | webhook
   trigger_ref             // 分支/commit
@@ -154,7 +154,7 @@ StageRun × N
 ```
 内置变量（自动注入，不可覆盖）
   REPOSITORY_URL, DEFAULT_BRANCH, GIT_CREDENTIAL_ID
-  trigger_ref, trigger_type, project_name
+  trigger_ref, trigger_type, repository_name
     ↓
 运行时临时变量（触发时用户提供，locked 变量除外）
     ↓
@@ -188,7 +188,7 @@ POST /api/ci/webhooks/{webhook_id}
   headers: X-Hub-Signature-256 | X-Gitlab-Token
 ```
 
-1. 查找 `ProjectWebhook`（含 `project_id` + `template_id`）
+1. 查找 `ProjectWebhook`（含 `repository_id` + `template_id`）
 2. 验证签名
 3. 检查 `branch_filter`（空/None 则拒绝所有分支，有值则 glob 匹配）
 4. 触发对应项目 + 模板

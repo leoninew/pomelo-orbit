@@ -251,16 +251,16 @@
 </template>
 
 <script setup lang="ts">
+import { Inbox, LayoutGrid, List, Plus, Search, Upload } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, LayoutGrid, List, Plus, Upload, Inbox } from 'lucide-vue-next';
 import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import type { Application, ApplicationImportReq } from '@/types/api';
 import { appStatusLabel } from '@/utils/status';
 import { delayAsync } from '@/utils/time';
-import type { Application, ApplicationImportReq } from '@/types/api';
 
 // Inline sub-component for shared form fields
 import AppFormFields from './ApplicationFormFields.vue';

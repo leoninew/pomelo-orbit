@@ -33,8 +33,8 @@
 <script setup lang="ts">
 import { CheckCircle, Clock, Cog, Loader2, XCircle } from 'lucide-vue-next';
 import { computed } from 'vue';
-import type { SnapshotStage } from '@/types/ci/snapshot';
 import type { TaskStatus } from '@/types/api';
+import type { SnapshotStage } from '@/types/ci/snapshot';
 
 interface Props {
 	data: {

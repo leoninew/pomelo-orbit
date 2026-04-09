@@ -10,7 +10,7 @@ class TestWebhookList:
     def test_returns_webhooks_for_project(self, auth_client, test_project, test_template):
         # 创建一个 webhook
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "test-webhook",
                 "template_id": test_template.id,
@@ -20,7 +20,7 @@ class TestWebhookList:
         assert create_resp.status_code == 201
 
         # 列出 webhooks
-        resp = auth_client.get(f"/api/ci/projects/{test_project.id}/webhooks")
+        resp = auth_client.get(f"/api/ci/repository/{test_project.id}/webhook")
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
@@ -31,7 +31,7 @@ class TestWebhookList:
 class TestWebhookCreate:
     def test_creates_webhook(self, auth_client, test_project, test_template):
         resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "my-webhook",
                 "template_id": test_template.id,
@@ -46,7 +46,7 @@ class TestWebhookCreate:
 
     def test_validates_required_fields(self, auth_client, test_project):
         resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={"name": "incomplete"},
         )
         assert resp.status_code == 422  # Validation error
@@ -57,7 +57,7 @@ class TestWebhookGet:
         """测试 webhook 信息包含在列表响应中（没有单独的 GET 端点）"""
         # 创建 webhook
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "get-test",
                 "template_id": test_template.id,
@@ -68,7 +68,7 @@ class TestWebhookGet:
         webhook_data = create_resp.json()
 
         # 通过列表端点获取 webhook（没有单独的 GET 端点）
-        resp = auth_client.get(f"/api/ci/projects/{test_project.id}/webhooks")
+        resp = auth_client.get(f"/api/ci/repository/{test_project.id}/webhook")
         assert resp.status_code == 200
         webhooks = resp.json()
         # 找到刚创建的 webhook
@@ -81,7 +81,7 @@ class TestWebhookUpdate:
     def test_updates_webhook(self, auth_client, test_project, test_template):
         # 创建 webhook
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "update-test",
                 "template_id": test_template.id,
@@ -92,7 +92,7 @@ class TestWebhookUpdate:
 
         # 更新 webhook
         resp = auth_client.put(
-            f"/api/ci/projects/{test_project.id}/webhooks/{webhook_id}",
+            f"/api/ci/repository/{test_project.id}/webhook/{webhook_id}",
             json={
                 "name": "updated-webhook",
                 "template_id": test_template.id,
@@ -108,7 +108,7 @@ class TestWebhookDelete:
     def test_deletes_webhook(self, auth_client, db_session, test_project, test_template):
         # 创建 webhook
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "delete-test",
                 "template_id": test_template.id,
@@ -118,14 +118,12 @@ class TestWebhookDelete:
         webhook_id = create_resp.json()["id"]
 
         # 删除 webhook
-        resp = auth_client.delete(f"/api/ci/projects/{test_project.id}/webhooks/{webhook_id}")
+        resp = auth_client.delete(f"/api/ci/repository/{test_project.id}/webhook/{webhook_id}")
         assert resp.status_code == 204
 
         # 验证已删除
         assert (
-            db_session.query(ProjectWebhookModel)
-            .filter_by(project_id=test_project.id, id=webhook_id)
-            .first()
+            db_session.query(ProjectWebhookModel).filter_by(repository_id=test_project.id, id=webhook_id).first()
             is None
         )
 
@@ -137,7 +135,7 @@ class TestWebhookVerification:
 
         # 创建 webhook
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "verify-test",
                 "template_id": test_template.id,
@@ -152,7 +150,7 @@ class TestWebhookVerification:
 
         # 发送请求到全局 webhook 端点
         resp = auth_client.post(
-            f"/api/ci/webhooks/{webhook_id}",
+            f"/api/ci/webhook/{webhook_id}",
             content=payload,
             headers={"X-Hub-Signature-256": f"sha256={signature}"},
         )
@@ -166,7 +164,7 @@ class TestWebhookVerification:
 
         # 创建 webhook
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/webhooks",
+            f"/api/ci/repository/{test_project.id}/webhook",
             json={
                 "name": "reject-test",
                 "template_id": test_template.id,
@@ -178,7 +176,7 @@ class TestWebhookVerification:
         # 发送错误签名的请求
         payload = b'{"ref": "main"}'
         resp = auth_client.post(
-            f"/api/ci/webhooks/{webhook_id}",
+            f"/api/ci/webhook/{webhook_id}",
             content=payload,
             headers={"X-Hub-Signature-256": "sha256=invalid"},
         )

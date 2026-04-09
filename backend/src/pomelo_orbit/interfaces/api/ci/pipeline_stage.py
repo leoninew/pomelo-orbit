@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.template import (
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import (
     PipelineStageCreateReq,
     PipelineStageResp,
     PipelineStageUpdateReq,
 )
 
-router = APIRouter(prefix="/pipeline-stages", tags=["pipeline-stages"])
+router = APIRouter(prefix="/pipeline-stage", tags=["pipeline-stage"])
 
 
 @router.get("", response_model=list[PipelineStageResp])

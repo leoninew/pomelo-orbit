@@ -113,7 +113,7 @@
 						<table class="table table-sm">
 							<tbody>
 								<tr v-for="run in recentRuns" :key="run.id" class="hover">
-									<td class="font-medium">{{ run.project_id }}</td>
+									<td class="font-medium">{{ run.repository_id }}</td>
 									<td class="w-24">
 										<span class="badge badge-sm" :class="statusBadgeClass(run.status)">
 											{{ statusLabel(run.status) }}
@@ -183,16 +183,16 @@
 </template>
 
 <script setup lang="ts">
+import { FolderGit2, GitBranch, Inbox, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
 import { onMounted, reactive, ref } from 'vue';
-import { RefreshCw, LayoutGrid, Rocket, FolderGit2, Play, GitBranch, Inbox } from 'lucide-vue-next';
 import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
-import { projectApi, pipelineRunApi } from '@/api/ci';
+import { pipelineRunApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime, getTodayStart } from '@/utils/time';
-import { statusBadgeClass, statusLabel } from '@/utils/status';
 import type { Deployment, PipelineRun } from '@/types/api';
+import { statusBadgeClass, statusLabel } from '@/utils/status';
+import { formatTime, getTodayStart } from '@/utils/time';
 
 const toast = useToast();
 const { status, execute } = useStatusAsync();
@@ -209,7 +209,7 @@ async function refresh() {
 			const todayEnd = todayStart.add(1, 'day');
 
 			// Fetch CI data
-			const ciProjectsRes = await projectApi.list({ per_page: 1 });
+			const ciProjectsRes = await repositoryApi.list({ per_page: 1 });
 			const ciRunsRes = await pipelineRunApi.list({ per_page: 5 });
 
 			// Fetch CD data

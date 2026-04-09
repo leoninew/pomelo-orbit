@@ -331,17 +331,17 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowLeft, ChevronDown, FileX, Plus, Rocket, X } from 'lucide-vue-next';
+import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Rocket, ChevronDown, Plus, FileX, X } from 'lucide-vue-next';
-import { CodeEditor } from 'monaco-editor-vue3';
 import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { appStatusLabel } from '@/utils/status';
-import { formatTime, delayAsync } from '@/utils/time';
 import type { Application, ConfigFile } from '@/types/api';
+import { appStatusLabel } from '@/utils/status';
+import { delayAsync, formatTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
@@ -422,7 +422,10 @@ async function fetchApplication() {
 
 async function pollActiveDeployment() {
 	try {
-		const resp = await deploymentApi.list({ application_id: applicationId, per_page: 1 });
+		const resp = await deploymentApi.list({
+			application_id: applicationId,
+			per_page: 1,
+		});
 		const latest = resp.items[0];
 		if (!latest) {
 			return;
@@ -513,7 +516,9 @@ async function handleRestart() {
 async function handleExport() {
 	try {
 		const data = await applicationApi.exportApplication(applicationId);
-		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+		const blob = new Blob([JSON.stringify(data, null, 2)], {
+			type: 'application/json',
+		});
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;

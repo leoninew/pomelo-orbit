@@ -1,28 +1,32 @@
-import type { ProjectWebhook, ProjectWebhookCreateReq, ProjectWebhookUpdateReq } from '@/types/api';
+import type {
+	ProjectWebhookCreateReq,
+	ProjectWebhookUpdateReq,
+	RepositoryWebhook,
+} from '@/types/api';
 import request from '@/utils/request';
 
 export const webhookApi = {
-	list(projectId: string): Promise<ProjectWebhook[]> {
-		return request.get(`/api/ci/projects/${projectId}/webhooks`);
+	list(projectId: string): Promise<RepositoryWebhook[]> {
+		return request.get(`/api/ci/repository/${projectId}/webhook`);
 	},
 
-	get(webhookId: string): Promise<ProjectWebhook> {
-		return request.get(`/api/ci/webhooks/${webhookId}`);
+	get(webhookId: string): Promise<RepositoryWebhook> {
+		return request.get(`/api/ci/webhook/${webhookId}`);
 	},
 
-	create(projectId: string, data: ProjectWebhookCreateReq): Promise<ProjectWebhook> {
-		return request.post(`/api/ci/projects/${projectId}/webhooks`, data);
+	create(projectId: string, data: ProjectWebhookCreateReq): Promise<RepositoryWebhook> {
+		return request.post(`/api/ci/repository/${projectId}/webhook`, data);
 	},
 
 	update(
 		projectId: string,
 		webhookId: string,
 		data: ProjectWebhookUpdateReq
-	): Promise<ProjectWebhook> {
-		return request.put(`/api/ci/projects/${projectId}/webhooks/${webhookId}`, data);
+	): Promise<RepositoryWebhook> {
+		return request.put(`/api/ci/repository/${projectId}/webhook/${webhookId}`, data);
 	},
 
 	delete(projectId: string, webhookId: string): Promise<void> {
-		return request.delete(`/api/ci/projects/${projectId}/webhooks/${webhookId}`);
+		return request.delete(`/api/ci/repository/${projectId}/webhook/${webhookId}`);
 	},
 };

@@ -12,28 +12,30 @@ export const pipelineRunApi = {
 	list(params?: {
 		page?: number
 		per_page?: number
-		project_id?: string
+		repository_id?: string
 	}): Promise<PaginatedResp<PipelineRun>> {
-		return request.get('/api/ci/runs', { params });
+		return request.get('/api/ci/run', { params });
 	},
 
 	get(id: string): Promise<PipelineRun> {
-		return request.get(`/api/ci/runs/${id}`);
+		return request.get(`/api/ci/run/${id}`);
 	},
 
 	retry(id: string): Promise<PipelineRun> {
-		return request.post(`/api/ci/runs/${id}/retry`);
+		return request.post(`/api/ci/run/${id}/retry`);
 	},
 
 	cancel(id: string): Promise<PipelineRun> {
-		return request.post(`/api/ci/runs/${id}/cancel`);
+		return request.post(`/api/ci/run/${id}/cancel`);
 	},
 
 	listArtifacts(runId: string): Promise<Artifact[]> {
-		return request.get(`/api/ci/runs/${runId}/artifacts`);
+		return request.get(`/api/ci/run/${runId}/artifacts`);
 	},
 
 	getStageLog(runId: string, stageRunId: string, offset: number): Promise<StageLogResp> {
-		return request.get(`/api/ci/runs/${runId}/stages/${stageRunId}/log`, { params: { offset } });
+		return request.get(`/api/ci/run/${runId}/stages/${stageRunId}/log`, {
+			params: { offset },
+		});
 	},
 };

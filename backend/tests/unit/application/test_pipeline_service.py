@@ -11,7 +11,7 @@ from pomelo_orbit.domain.ci.entities import (
     Credential,
     PipelineRun,
     PipelineTemplate,
-    Project,
+    Repository,
 )
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
@@ -22,7 +22,7 @@ from pomelo_orbit.domain.exceptions import BusinessError
 
 def make_service(**overrides) -> PipelineService:
     defaults: dict = {
-        "project_repo": Mock(),
+        "repository_repo": Mock(),
         "credential_repo": Mock(),
         "template_repo": Mock(),
         "stage_repo": Mock(),
@@ -40,32 +40,32 @@ def make_service(**overrides) -> PipelineService:
     return PipelineService(**defaults)
 
 
-def make_project(**kwargs) -> Project:
+def make_project(**kwargs) -> Repository:
     defaults: dict = {"name": "p", "code": "p", "repository_url": "https://x.git"}
     defaults.update(kwargs)
-    return Project.create(**defaults)
+    return Repository.create(**defaults)
 
 
-class TestProjectCRUD:
-    def test_list_projects(self):
-        project_repo = Mock()
-        project_repo.find_paginated.return_value = ([], 0)
-        service = make_service(project_repo=project_repo)
-        projects, _, total = service.list_projects(page=1, per_page=10)
+class TestRepositoryCRUD:
+    def test_list_repositories(self):
+        repository_repo = Mock()
+        repository_repo.find_paginated.return_value = ([], 0)
+        service = make_service(repository_repo=repository_repo)
+        projects, _, total = service.list_repository(page=1, per_page=10)
         assert projects == [] and total == 0
-        project_repo.find_paginated.assert_called_once_with(page=1, per_page=10)
+        repository_repo.find_paginated.assert_called_once_with(page=1, per_page=10)
 
     def test_get_project_success(self):
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
-        assert make_service(project_repo=project_repo).get_project(project.id) == project
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
+        assert make_service(repository_repo=repository_repo).get_repository(project.id) == project
 
     def test_get_project_not_found(self):
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = None
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = None
         with pytest.raises(BusinessError) as exc:
-            make_service(project_repo=project_repo).get_project("x")
+            make_service(repository_repo=repository_repo).get_repository("x")
         assert exc.value.status_code == 404
 
     def test_create_project_success(self):
@@ -75,9 +75,11 @@ class TestProjectCRUD:
         )
         template_repo = Mock()
         template_repo.find_by_id.return_value = Mock()
-        project_repo = Mock()
-        project_repo.find_by_code.return_value = None
-        service = make_service(project_repo=project_repo, credential_repo=credential_repo, template_repo=template_repo)
+        repository_repo = Mock()
+        repository_repo.find_by_code.return_value = None
+        service = make_service(
+            repository_repo=repository_repo, credential_repo=credential_repo, template_repo=template_repo
+        )
         project = service.create_project(
             name="p",
             code="p",
@@ -86,17 +88,17 @@ class TestProjectCRUD:
             default_branch="main",
         )
         assert project.name == "p"
-        assert project.variable_overrides["project_repository_url"] == "https://x.git"
-        assert project.variable_overrides["project_trigger_ref"] == "main"
-        project_repo.save.assert_called_once_with(project)
+        assert project.variable_overrides["repository_repository_url"] == "https://x.git"
+        assert project.variable_overrides["repository_trigger_ref"] == "main"
+        repository_repo.save.assert_called_once_with(project)
 
     def test_create_project_credential_not_found(self):
         credential_repo = Mock()
         credential_repo.find_by_id.return_value = None
-        project_repo = Mock()
-        project_repo.find_by_code.return_value = None
+        repository_repo = Mock()
+        repository_repo.find_by_code.return_value = None
         with pytest.raises(BusinessError) as exc:
-            make_service(credential_repo=credential_repo, project_repo=project_repo).create_project(
+            make_service(credential_repo=credential_repo).create_project(
                 name="p", code="p", repository_url="https://x.git", git_credential_id="c"
             )
         assert exc.value.status_code == 404
@@ -104,9 +106,9 @@ class TestProjectCRUD:
     def test_update_project_success(self):
         project = make_project()
         project.variable_overrides = {"USER_VAR": "value"}
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
-        service = make_service(project_repo=project_repo)
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
+        service = make_service(repository_repo=repository_repo)
         updated = service.update_project(
             project.id,
             name="new",
@@ -119,26 +121,26 @@ class TestProjectCRUD:
         assert updated.variable_overrides["USER_VAR"] == "value"
         assert updated.variable_overrides["K"] == "V"
         # 验证内置变量自动更新
-        assert updated.variable_overrides["project_repository_url"] == "https://new.git"
-        assert updated.variable_overrides["project_trigger_ref"] == "develop"
-        project_repo.save.assert_called_once()
+        assert updated.variable_overrides["repository_repository_url"] == "https://new.git"
+        assert updated.variable_overrides["repository_trigger_ref"] == "develop"
+        repository_repo.save.assert_called_once()
 
     def test_delete_project_success(self):
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
-        project_repo.has_running_pipelines.return_value = False
-        service = make_service(project_repo=project_repo)
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
+        repository_repo.has_running_pipelines.return_value = False
+        service = make_service(repository_repo=repository_repo)
         service.delete_project(project.id)
-        project_repo.delete.assert_called_once_with(project)
+        repository_repo.delete.assert_called_once_with(project)
 
     def test_delete_project_with_running_pipelines(self):
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
-        project_repo.has_running_pipelines.return_value = True
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
+        repository_repo.has_running_pipelines.return_value = True
         with pytest.raises(BusinessError) as exc:
-            make_service(project_repo=project_repo).delete_project(project.id)
+            make_service(repository_repo=repository_repo).delete_project(project.id)
         assert exc.value.status_code == 409
 
 
@@ -257,19 +259,19 @@ class TestTemplateCRUD:
 class TestPipelineRun:
     def test_list_runs(self):
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
         run_repo = Mock()
         run_repo.find_paginated_with_filters.return_value = ([], 0)
-        runs, total = make_service(project_repo=project_repo, run_repo=run_repo).list_runs(
-            project_id=project.id, page=1, per_page=10
+        runs, total = make_service(repository_repo=repository_repo, run_repo=run_repo).list_runs(
+            repository_id=project.id, page=1, per_page=10
         )
         assert runs == [] and total == 0
 
     def test_get_run_success(self):
         run = PipelineRun.create(
-            project_id="p",
-            project_name="proj",
+            repository_id="p",
+            repository_name="proj",
             pipeline_snapshot_id="snap-1",
             template_id="tpl-1",
             template_name="tpl",
@@ -290,8 +292,8 @@ class TestPipelineRun:
 
     def test_list_artifacts(self):
         run = PipelineRun.create(
-            project_id="p",
-            project_name="proj",
+            repository_id="p",
+            repository_name="proj",
             pipeline_snapshot_id="snap-1",
             template_id="tpl-1",
             template_name="tpl",
@@ -309,8 +311,8 @@ class TestPipelineRun:
     @pytest.mark.asyncio
     async def test_retry_pipeline_success(self):
         original = PipelineRun.create(
-            project_id="p",
-            project_name="proj",
+            repository_id="p",
+            repository_name="proj",
             pipeline_snapshot_id="snap-1",
             template_id="tpl-1",
             template_name="tpl",
@@ -325,12 +327,12 @@ class TestPipelineRun:
 
         run_repo = Mock()
         run_repo.find_by_id.return_value = original
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
         snapshot_repo = Mock()
         snapshot_repo.find_by_id.return_value = snapshot
 
-        service = make_service(project_repo=project_repo, run_repo=run_repo, snapshot_repo=snapshot_repo)
+        service = make_service(repository_repo=repository_repo, run_repo=run_repo, snapshot_repo=snapshot_repo)
         new_run, _, _, snap = service.create_retry_run(original.id)
         assert new_run.retry_of == original.id and new_run.status == TaskStatus.WAITING_TO_RUN
         assert snap is snapshot
@@ -338,8 +340,8 @@ class TestPipelineRun:
 
     def test_retry_pipeline_invalid_status(self):
         run = PipelineRun.create(
-            project_id="p",
-            project_name="proj",
+            repository_id="p",
+            repository_name="proj",
             pipeline_snapshot_id="snap-1",
             template_id="tpl-1",
             template_name="tpl",
@@ -358,19 +360,19 @@ class TestPipelineRun:
 class TestWebhookCRUD:
     def test_list_webhooks(self):
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
         webhook_repo = Mock()
-        webhook_repo.find_by_project.return_value = []
-        webhooks = make_service(project_repo=project_repo, webhook_repo=webhook_repo).list_webhooks(project.id)
+        webhook_repo.find_by_repository.return_value = []
+        webhooks = make_service(repository_repo=repository_repo, webhook_repo=webhook_repo).list_webhooks(project.id)
         assert webhooks == []
-        webhook_repo.find_by_project.assert_called_once_with(project.id)
+        webhook_repo.find_by_repository.assert_called_once_with(project.id)
 
     def test_get_webhook_success(self):
-        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+        from pomelo_orbit.domain.ci.entities import RepositoryWebhook
 
-        webhook = ProjectWebhook.create(
-            project_id="p",
+        webhook = RepositoryWebhook.create(
+            repository_id="p",
             name="w",
             template_id="t",
             encrypted_secret="secret",
@@ -390,12 +392,12 @@ class TestWebhookCRUD:
     def test_create_webhook_success(self):
 
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
         template_repo = Mock()
         template_repo.find_by_id.return_value = Mock()
         webhook_repo = Mock()
-        service = make_service(project_repo=project_repo, template_repo=template_repo, webhook_repo=webhook_repo)
+        service = make_service(repository_repo=repository_repo, template_repo=template_repo, webhook_repo=webhook_repo)
         webhook = service.create_webhook(
             project.id,
             name="w",
@@ -408,10 +410,10 @@ class TestWebhookCRUD:
         webhook_repo.save.assert_called_once()
 
     def test_update_webhook_success(self):
-        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+        from pomelo_orbit.domain.ci.entities import RepositoryWebhook
 
-        webhook = ProjectWebhook.create(
-            project_id="p",
+        webhook = RepositoryWebhook.create(
+            repository_id="p",
             name="w",
             template_id="t",
             encrypted_secret="secret",
@@ -424,10 +426,10 @@ class TestWebhookCRUD:
         webhook_repo.save.assert_called_once()
 
     def test_delete_webhook_success(self):
-        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+        from pomelo_orbit.domain.ci.entities import RepositoryWebhook
 
-        webhook = ProjectWebhook.create(
-            project_id="p",
+        webhook = RepositoryWebhook.create(
+            repository_id="p",
             name="w",
             template_id="t",
             encrypted_secret="secret",
@@ -439,10 +441,10 @@ class TestWebhookCRUD:
         webhook_repo.delete.assert_called_once_with(webhook)
 
     def test_decrypt_webhook_secret(self):
-        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+        from pomelo_orbit.domain.ci.entities import RepositoryWebhook
 
-        webhook = ProjectWebhook.create(
-            project_id="p",
+        webhook = RepositoryWebhook.create(
+            repository_id="p",
             name="w",
             template_id="t",
             encrypted_secret="encrypted",
@@ -570,8 +572,8 @@ class TestPipelineTrigger:
         from pomelo_orbit.domain.ci.entities import PipelineSnapshot
 
         project = make_project()
-        project_repo = Mock()
-        project_repo.find_by_id.return_value = project
+        repository_repo = Mock()
+        repository_repo.find_by_id.return_value = project
         template = PipelineTemplate.create(name="t", variable_declarations=[])
         template_repo = Mock()
         template_repo.find_by_id.return_value = template
@@ -594,7 +596,7 @@ class TestPipelineTrigger:
         executor_factory.create.return_value = executor
 
         service = make_service(
-            project_repo=project_repo,
+            repository_repo=repository_repo,
             template_repo=template_repo,
             snapshot_repo=snapshot_repo,
             run_repo=run_repo,
@@ -606,7 +608,7 @@ class TestPipelineTrigger:
             PipelineRunTrigger.MANUAL,
             "main",
         )
-        assert run.project_id == project.id
+        assert run.repository_id == project.id
         run_repo.save.assert_called_once()
 
     def test_cancel_run_success(self):
@@ -621,8 +623,8 @@ class TestPipelineTrigger:
             created_at=datetime.now(),
         )
         run = PipelineRun.create(
-            project_id="p",
-            project_name="proj",
+            repository_id="p",
+            repository_name="proj",
             pipeline_snapshot_id=snapshot.id,
             template_id="tpl-1",
             template_name="tpl",
@@ -652,8 +654,8 @@ class TestPipelineTrigger:
             created_at=datetime.now(),
         )
         run = PipelineRun.create(
-            project_id="p",
-            project_name="proj",
+            repository_id="p",
+            repository_name="proj",
             pipeline_snapshot_id=snapshot.id,
             template_id="tpl-1",
             template_name="tpl",

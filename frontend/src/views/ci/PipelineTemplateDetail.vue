@@ -13,7 +13,7 @@
 					<span v-if="saving" class="loading loading-spinner loading-xs" />
 					保存
 				</button>
-				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/templates')">
+				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/template')">
 					<ArrowLeft class="size-4" />
 					返回
 				</button>
@@ -108,18 +108,27 @@
 							</tr>
 							<tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_key" class="hover">
 								<td class="pr-0 w-6">
-									<GripVertical class="drag-handle size-4 text-base-content/30 hover:text-base-content/60 cursor-grab active:cursor-grabbing transition-colors" />
+									<GripVertical
+										class="drag-handle size-4 text-base-content/30 hover:text-base-content/60 cursor-grab active:cursor-grabbing transition-colors"
+									/>
 								</td>
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 								<td>
-									<router-link :to="`/ci/stages/${orch.stage_id}`" class="link link-primary text-xs">
+									<router-link
+										:to="`/ci/stages/${orch.stage_id}`"
+										class="link link-primary text-xs"
+									>
 										{{ stageMap[orch.stage_id]?.name ?? orch.stage_id }}
 									</router-link>
 								</td>
 								<td class="text-xs text-base-content/70">{{ orch.stage_key }}</td>
 								<td>
 									<div v-if="orch.depends_on.length > 0" class="flex items-center gap-1 flex-wrap">
-										<span v-for="depId in orch.depends_on" :key="depId" class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70">
+										<span
+											v-for="depId in orch.depends_on"
+											:key="depId"
+											class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70"
+										>
 											{{ stageKeyMap[depId] ?? depId }}
 										</span>
 									</div>
@@ -130,7 +139,9 @@
 								</td>
 								<td>
 									<div class="flex items-center gap-3">
-										<button class="link link-primary text-xs" @click="openEditOrchModal(idx)">编辑</button>
+										<button class="link link-primary text-xs" @click="openEditOrchModal(idx)">
+											编辑
+										</button>
 										<button class="link link-error text-xs" @click="removeOrch(idx)">移除</button>
 									</div>
 								</td>
@@ -145,10 +156,7 @@
 						>
 							暂无数据
 						</p>
-						<StageDAGView
-							v-else
-							:stages="dagStages"
-						/>
+						<StageDAGView v-else :stages="dagStages" />
 					</div>
 				</div>
 			</div>
@@ -301,8 +309,8 @@
 <script setup lang="ts">
 import { ArrowLeft, GripVertical, Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import { VueDraggable } from 'vue-draggable-plus';
+import { useRoute, useRouter } from 'vue-router';
 import { pipelineStageApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
@@ -331,7 +339,13 @@ const declarations = ref<VariableDeclaration[]>([]);
 const allStages = ref<PipelineStage[]>([]);
 const viewMode = ref<'list' | 'dag'>('list');
 
-watch(orchestration, (val) => { sortableOrch.value = [...val]; }, { immediate: true });
+watch(
+	orchestration,
+	(val) => {
+		sortableOrch.value = [...val];
+	},
+	{ immediate: true }
+);
 
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();
@@ -340,12 +354,12 @@ const editForm = reactive({ name: '', description: '' });
 const addOrchForm = reactive({
 	stageId: '',
 	stageKey: '',
-	dependsOn: [] as string[]
+	dependsOn: [] as string[],
 });
 const editOrchForm = reactive({
 	originalKey: '',
 	stageKey: '',
-	dependsOn: [] as string[]
+	dependsOn: [] as string[],
 });
 
 const stageKeyError = computed(() => {
@@ -408,12 +422,15 @@ async function fetchTemplate() {
 			template.value = tmpl;
 			orchestration.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
 			declarations.value = [...tmpl.variable_declarations];
-			allStages.value = [];  // 初始为空，按需加载
-			Object.assign(editForm, { name: tmpl.name, description: tmpl.description ?? '' });
+			allStages.value = []; // 初始为空，按需加载
+			Object.assign(editForm, {
+				name: tmpl.name,
+				description: tmpl.description ?? '',
+			});
 		});
 	} catch {
 		toast.error('获取模板信息失败');
-		router.push('/ci/templates');
+		router.push('/ci/template');
 	}
 }
 
@@ -430,12 +447,18 @@ async function fetchStages() {
 }
 
 function openEditInfoModal() {
-	Object.assign(editForm, { name: template.value?.name ?? '', description: template.value?.description ?? '' });
+	Object.assign(editForm, {
+		name: template.value?.name ?? '',
+		description: template.value?.description ?? '',
+	});
 	editInfoModalRef.value?.showModal();
 }
 
 function cancelEditInfo() {
-	Object.assign(editForm, { name: template.value?.name ?? '', description: template.value?.description ?? '' });
+	Object.assign(editForm, {
+		name: template.value?.name ?? '',
+		description: template.value?.description ?? '',
+	});
 	editInfoModalRef.value?.close();
 }
 
@@ -473,7 +496,10 @@ async function handleSave() {
 			template.value = data;
 			orchestration.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
 			declarations.value = [...data.variable_declarations];
-			Object.assign(editForm, { name: data.name, description: data.description ?? '' });
+			Object.assign(editForm, {
+				name: data.name,
+				description: data.description ?? '',
+			});
 			toast.success(`保存成功，快照 v${data.version}`);
 		});
 	} catch (e) {
@@ -517,14 +543,17 @@ function syncDeclarations(stages: PipelineStage[]) {
 }
 
 function onDragEnd() {
-	orchestration.value = sortableOrch.value.map((o, i) => ({ ...o, sort_order: i }));
+	orchestration.value = sortableOrch.value.map((o, i) => ({
+		...o,
+		sort_order: i,
+	}));
 }
 
 async function openAddOrchModal() {
 	addOrchForm.stageId = '';
 	addOrchForm.stageKey = '';
 	addOrchForm.dependsOn = [];
-	await fetchStages();  // 按需加载 stages
+	await fetchStages(); // 按需加载 stages
 	addOrchModalRef.value?.showModal();
 }
 

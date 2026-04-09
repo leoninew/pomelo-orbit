@@ -12,7 +12,7 @@ class ExecutionContext:
     def __init__(
         self,
         run_id: str,
-        project_id: str,
+        repository_id: str,
         project_code: str,
         repository_url: str,
         credential_id: str | None,
@@ -22,7 +22,7 @@ class ExecutionContext:
         retry_of: str | None = None,
     ):
         self.run_id = run_id
-        self.project_id = project_id
+        self.repository_id = repository_id
         self.project_code = project_code
         self.repository_url = repository_url
         self.credential_id = credential_id

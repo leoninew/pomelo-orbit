@@ -65,7 +65,7 @@ PipelineTemplate
 
 ```
 PipelineRun
-  project_id
+  repository_id
   trigger                 # webhook | manual
   trigger_ref             # branch / tag / commit sha
   resolved_pipeline       # 快照：本次实际使用的 pipeline yaml
@@ -91,7 +91,7 @@ Artifact
 
 ```
 ProjectNotification
-  project_id
+  repository_id
   event              # run.success | run.failed | run.canceled | *
   channel            # webhook | email
   target             # webhook URL 或邮件地址
@@ -140,7 +140,7 @@ variables:
 |------|------|
 | `trigger_ref` | branch / tag / commit sha |
 | `trigger_type` | webhook \| manual |
-| `project_name` | 项目名称 |
+| `repository_name` | 项目名称 |
 | `run_id` | 本次 PipelineRun ID |
 
 ### 校验逻辑
@@ -394,7 +394,7 @@ run 结束后 workspace 清理，artifacts 按保留策略保存。
 
 ```
 concurrency_policy:
-  key: "{{ project_name }}/{{ trigger_ref }}"   # 同分支串行，不同分支并行
+  key: "{{ repository_name }}/{{ trigger_ref }}"   # 同分支串行，不同分支并行
   on_conflict: cancel_running                    # | queue | skip
 ```
 

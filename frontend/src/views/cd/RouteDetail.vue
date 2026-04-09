@@ -236,11 +236,11 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowLeft, ExternalLink, Upload } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, ExternalLink, Upload } from 'lucide-vue-next';
-import { routeApi } from '@/api/cd/route';
 import type { Route } from '@/api/cd/route';
+import { routeApi } from '@/api/cd/route';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';
@@ -257,7 +257,13 @@ const routeData = ref<Route>();
 const editModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
 
-const form = reactive({ name: '', domain: '', path_prefix: '/', target_url: '', enabled: false });
+const form = reactive({
+	name: '',
+	domain: '',
+	path_prefix: '/',
+	target_url: '',
+	enabled: false,
+});
 const errors = reactive({ domain: '', target_url: '' });
 
 const canUseLetsencrypt = computed(() => {

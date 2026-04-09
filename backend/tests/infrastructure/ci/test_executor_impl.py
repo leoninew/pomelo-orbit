@@ -46,7 +46,7 @@ class TestPipelineExecutorImpl:
     def context(self):
         return ExecutionContext(
             run_id="01HX0001",
-            project_id="01HX0002",
+            repository_id="01HX0002",
             project_code="proj-code",
             repository_url="https://github.com/test/repo",
             credential_id="01HX0003",

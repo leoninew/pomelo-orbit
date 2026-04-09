@@ -24,14 +24,19 @@
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
 							<dd>
-								<router-link :to="`/ci/templates/${snapshot.template_id}`" class="link link-primary text-xs">
+								<router-link
+									:to="`/ci/templates/${snapshot.template_id}`"
+									class="link link-primary text-xs"
+								>
 									查看模板
 								</router-link>
 							</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">版本</dt>
-							<dd><span class="badge badge-sm badge-ghost">v{{ snapshot.version }}</span></dd>
+							<dd>
+								<span class="badge badge-sm badge-ghost">v{{ snapshot.version }}</span>
+							</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
@@ -85,7 +90,13 @@
 								<td class="text-xs">{{ stage.name }}</td>
 								<td>
 									<div v-if="stage.depends_on.length > 0" class="flex flex-wrap gap-1">
-										<span v-for="dep in stage.depends_on" :key="dep.id" class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70">{{ dep.key }}</span>
+										<span
+											v-for="dep in stage.depends_on"
+											:key="dep.id"
+											class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70"
+										>
+											{{ dep.key }}
+										</span>
 									</div>
 									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
@@ -96,7 +107,10 @@
 						</tbody>
 					</table>
 					<div v-else>
-						<div v-if="snapshot.stages_snapshot.length === 0" class="text-sm text-base-content/60 py-4 text-center">
+						<div
+							v-if="snapshot.stages_snapshot.length === 0"
+							class="text-sm text-base-content/60 py-4 text-center"
+						>
 							暂无数据
 						</div>
 						<StageDAGView v-else :stages="snapshot.stages_snapshot" />
@@ -108,7 +122,10 @@
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
 					<h2 class="font-semibold mb-4">变量声明</h2>
-					<VariableDeclarationsTable :declarations="snapshot.variable_declarations_snapshot" :readonly="true" />
+					<VariableDeclarationsTable
+						:declarations="snapshot.variable_declarations_snapshot"
+						:readonly="true"
+					/>
 				</div>
 			</div>
 		</template>
@@ -143,7 +160,7 @@ async function fetchSnapshot() {
 		});
 	} catch {
 		toast.error('获取快照信息失败');
-		router.push('/ci/templates');
+		router.push('/ci/template');
 	}
 }
 

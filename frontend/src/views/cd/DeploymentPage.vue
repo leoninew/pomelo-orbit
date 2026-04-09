@@ -91,15 +91,15 @@
 </template>
 
 <script setup lang="ts">
+import { Search } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { Search } from 'lucide-vue-next';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
-import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
 import type { Deployment } from '@/types/api';
+import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
+import { formatTime } from '@/utils/time';
 
 const route = useRoute();
 const toast = useToast();

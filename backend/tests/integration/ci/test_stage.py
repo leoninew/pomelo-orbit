@@ -20,7 +20,7 @@ class TestStageList:
         db_session.commit()
 
         # 列出 stages
-        resp = auth_client.get("/api/ci/pipeline-stages")
+        resp = auth_client.get("/api/ci/pipeline-stage")
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
@@ -30,7 +30,7 @@ class TestStageList:
 class TestStageCreate:
     def test_creates_stage(self, auth_client):
         resp = auth_client.post(
-            "/api/ci/pipeline-stages",
+            "/api/ci/pipeline-stage",
             json={
                 "name": "build",
                 "image": "alpine:latest",
@@ -50,7 +50,7 @@ class TestStageCreate:
 
     def test_validates_required_fields(self, auth_client):
         resp = auth_client.post(
-            "/api/ci/pipeline-stages",
+            "/api/ci/pipeline-stage",
             json={"name": "incomplete"},
         )
         assert resp.status_code == 422
@@ -59,7 +59,7 @@ class TestStageCreate:
         """测试拒绝同名 Stage"""
         # 创建第一个 stage
         create_resp = auth_client.post(
-            "/api/ci/pipeline-stages",
+            "/api/ci/pipeline-stage",
             json={
                 "name": "duplicate-test",
                 "image": "alpine:latest",
@@ -70,7 +70,7 @@ class TestStageCreate:
 
         # 尝试创建同名 stage
         resp = auth_client.post(
-            "/api/ci/pipeline-stages",
+            "/api/ci/pipeline-stage",
             json={
                 "name": "duplicate-test",
                 "image": "ubuntu:latest",
@@ -97,14 +97,14 @@ class TestStageGet:
         db_session.refresh(stage)
 
         # 获取 stage
-        resp = auth_client.get(f"/api/ci/pipeline-stages/{stage.id}")
+        resp = auth_client.get(f"/api/ci/pipeline-stage/{stage.id}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["id"] == stage.id
         assert data["name"] == "get-test"
 
     def test_not_found(self, auth_client):
-        resp = auth_client.get("/api/ci/pipeline-stages/nonexistent-id")
+        resp = auth_client.get("/api/ci/pipeline-stage/nonexistent-id")
         assert resp.status_code == 404
 
 
@@ -126,7 +126,7 @@ class TestStageUpdate:
 
         # 更新 stage
         resp = auth_client.put(
-            f"/api/ci/pipeline-stages/{stage.id}",
+            f"/api/ci/pipeline-stage/{stage.id}",
             json={
                 "name": "updated-stage",
                 "image": "ubuntu:latest",
@@ -156,7 +156,7 @@ class TestStageUpdate:
 
         # 只更新 description
         resp = auth_client.put(
-            f"/api/ci/pipeline-stages/{stage.id}",
+            f"/api/ci/pipeline-stage/{stage.id}",
             json={"description": "new description"},
         )
         assert resp.status_code == 200
@@ -182,7 +182,7 @@ class TestStageDelete:
         db_session.refresh(stage)
 
         # 删除 stage
-        resp = auth_client.delete(f"/api/ci/pipeline-stages/{stage.id}")
+        resp = auth_client.delete(f"/api/ci/pipeline-stage/{stage.id}")
         assert resp.status_code == 204
 
         # 验证已删除
@@ -204,7 +204,7 @@ class TestStageDelete:
         db_session.refresh(stage)
 
         # 尝试删除（应该被阻止，如果被引用）
-        resp = auth_client.delete(f"/api/ci/pipeline-stages/{stage.id}")
+        resp = auth_client.delete(f"/api/ci/pipeline-stage/{stage.id}")
         # 如果 stage 没被引用，可以删除；如果被引用，应该返回 409
         assert resp.status_code in (204, 409)
 
@@ -214,7 +214,7 @@ class TestStageUsage:
         """测试 Stage 可以在多个模板中复用"""
         # 创建一个通用的 build stage
         stage_resp = auth_client.post(
-            "/api/ci/pipeline-stages",
+            "/api/ci/pipeline-stage",
             json={
                 "name": "common-build",
                 "image": "alpine:latest",
@@ -226,18 +226,18 @@ class TestStageUsage:
 
         # 创建两个模板，都使用这个 stage（通过编排）
         template1_resp = auth_client.post(
-            "/api/ci/templates",
+            "/api/ci/template",
             json={"name": "template-1", "description": ""},
         )
         assert template1_resp.status_code == 201
 
         template2_resp = auth_client.post(
-            "/api/ci/templates",
+            "/api/ci/template",
             json={"name": "template-2", "description": ""},
         )
         assert template2_resp.status_code == 201
 
         # 验证 stage 仍然存在且可以被查询
-        resp = auth_client.get(f"/api/ci/pipeline-stages/{stage_id}")
+        resp = auth_client.get(f"/api/ci/pipeline-stage/{stage_id}")
         assert resp.status_code == 200
         assert resp.json()["id"] == stage_id

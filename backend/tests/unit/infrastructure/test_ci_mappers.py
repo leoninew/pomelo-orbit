@@ -8,7 +8,7 @@ from pomelo_orbit.domain.ci.entities import (
     Credential,
     PipelineRun,
     PipelineTemplate,
-    Project,
+    Repository,
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -21,7 +21,7 @@ from pomelo_orbit.infrastructure.ci.mappers import (
     CredentialMapper,
     PipelineRunMapper,
     PipelineTemplateMapper,
-    ProjectMapper,
+    RepositoryMapper,
     StageRunMapper,
 )
 from pomelo_orbit.infrastructure.ci.models import (
@@ -89,13 +89,13 @@ class TestProjectMapper:
             created_at=utc_now(),
             updated_at=utc_now(),
         )
-        entity = ProjectMapper.to_domain(orm)
+        entity = RepositoryMapper.to_domain(orm)
         assert entity.id == orm.id
         assert entity.code == orm.code
         assert entity.variable_overrides == {"VAR1": "override1"}
 
     def test_to_orm(self):
-        entity = Project.create(
+        entity = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo",
@@ -103,7 +103,7 @@ class TestProjectMapper:
             variable_overrides={"VAR1": "override1"},
             default_branch="main",
         )
-        orm = ProjectMapper.to_orm(entity)
+        orm = RepositoryMapper.to_orm(entity)
         assert orm.code == entity.code
         assert '"VAR1": "override1"' in orm.variable_overrides
 
@@ -112,8 +112,8 @@ class TestPipelineRunMapper:
     def test_to_domain(self):
         orm = PipelineRunModel(
             id=str(ULID()),
-            project_id=str(ULID()),
-            project_name="test-project",
+            repository_id=str(ULID()),
+            repository_name="test-project",
             pipeline_snapshot_id=str(ULID()),
             template_id=str(ULID()),
             template_name="test-template",
@@ -133,8 +133,8 @@ class TestPipelineRunMapper:
 
     def test_to_orm(self):
         entity = PipelineRun.create(
-            project_id=str(ULID()),
-            project_name="test-project",
+            repository_id=str(ULID()),
+            repository_name="test-project",
             pipeline_snapshot_id=str(ULID()),
             template_id=str(ULID()),
             template_name="test-template",

@@ -106,3 +106,29 @@ class TestValidation:
         f = make_json_file(tmp_path, "v1.data.json", [{"type": "upsert", "table": "t"}])
         with pytest.raises(MigrationError, match=r"insert \| update \| delete"):
             _parse_data_json_file(f)
+
+
+def get_backend_root():
+    """获取 backend 根目录的绝对路径"""
+    current = Path(__file__).resolve()
+    # 从 tests/unit/infrastructure/test_migrator.py
+    # 向上3级到 backend: ../../..
+    return current.parents[3]  # unit/infrastructure -> unit -> tests -> backend
+
+
+class TestMigrationIntegration:
+    """迁移系统集成测试 - 验证所有迁移文件能在内存数据库中正确执行"""
+
+    def test_all_migrations_run_successfully(self):
+        """测试所有迁移文件能够成功执行"""
+        from sqlalchemy import create_engine
+        from pomelo_orbit.infrastructure.migration.migrator import run_migrations
+
+        backend_root = get_backend_root()
+        migrations_dir = backend_root / "migrations"
+
+        # 在内存数据库中运行所有迁移
+        engine = create_engine("sqlite:///:memory:")
+        with engine.begin():
+            run_migrations(engine, migrations_dir=str(migrations_dir))
+        # 如果有异常会自动回滚

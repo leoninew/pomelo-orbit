@@ -15,8 +15,8 @@ from pomelo_orbit.domain.ci.entities import (
     PipelineSnapshot,
     PipelineStage,
     PipelineTemplate,
-    Project,
-    ProjectWebhook,
+    Repository,
+    RepositoryWebhook,
     StageRun,
 )
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
@@ -27,8 +27,8 @@ from pomelo_orbit.domain.ci.repositories import (
     PipelineSnapshotRepository,
     PipelineStageRepository,
     PipelineTemplateRepository,
-    ProjectRepository,
-    ProjectWebhookRepository,
+    RepositoryRepository,
+    RepositoryWebhookRepository,
     StageRunRepository,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
 class PipelineService:
     def __init__(
         self,
-        project_repo: ProjectRepository,
+        repository_repo: RepositoryRepository,
         credential_repo: CredentialRepository,
         template_repo: PipelineTemplateRepository,
         stage_repo: PipelineStageRepository,
@@ -77,13 +77,13 @@ class PipelineService:
         run_repo: PipelineRunRepository,
         artifact_repo: ArtifactRepository,
         stage_run_repo: StageRunRepository,
-        webhook_repo: ProjectWebhookRepository,
+        webhook_repo: RepositoryWebhookRepository,
         session_factory: Any,
         executor_factory: Callable[[Session], PipelineExecutor],
         security_service: SecurityService,
         global_variables: dict[str, Any] | None = None,
     ):
-        self.project_repo = project_repo
+        self.repository_repo = repository_repo
         self.credential_repo = credential_repo
         self.template_repo = template_repo
         self.stage_repo = stage_repo
@@ -97,20 +97,20 @@ class PipelineService:
         self._session_factory = session_factory
         self._executor_factory = executor_factory
 
-    # ── Project CRUD ──────────────────────────────────────────────────────────
+    # ── Repository CRUD ──────────────────────────────────────────────────────────
 
-    def list_projects(self, page: int = 1, per_page: int = 20) -> tuple[list[Project], list[str | None], int]:
-        """List projects with credential names aligned to the project list."""
-        projects, total = self.project_repo.find_paginated(page=page, per_page=per_page)
-        credential_names = self._get_credential_names_for_projects(projects)
-        return projects, credential_names, total
+    def list_repository(self, page: int = 1, per_page: int = 20) -> tuple[list[Repository], list[str | None], int]:
+        """List projects with credential names aligned to the repository list."""
+        repositories, total = self.repository_repo.find_paginated(page=page, per_page=per_page)
+        credential_names = self._get_credential_names_for_projects(repositories)
+        return repositories, credential_names, total
 
-    def _get_credential_names_for_projects(self, projects: list[Project]) -> list[str | None]:
+    def _get_credential_names_for_projects(self, repositories: list[Repository]) -> list[str | None]:
         """Get credential names for a list of projects, preserving order."""
-        credential_ids = [p.git_credential_id for p in projects]
+        credential_ids = [p.git_credential_id for p in repositories]
         unique_ids = {cid for cid in credential_ids if cid is not None}
         if not unique_ids:
-            return [None] * len(projects)
+            return [None] * len(repositories)
         credentials = {c.id: c.name for c in self.credential_repo.find_all() if c.id in unique_ids}
         return [credentials.get(cid) if cid is not None else None for cid in credential_ids]
 
@@ -121,18 +121,18 @@ class PipelineService:
         cred = self.credential_repo.find_by_id(credential_id)
         return cred.name if cred else None
 
-    def get_project(self, project_id: str) -> Project:
-        """Get project entity (internal use)."""
-        project = self.project_repo.find_by_id(project_id)
-        if not project:
-            raise BusinessError(f"Project {project_id} not found", status_code=404)
-        return project
+    def get_repository(self, repository_id: str) -> Repository:
+        """Get repository entity (internal use)."""
+        repository = self.repository_repo.find_by_id(repository_id)
+        if not repository:
+            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
+        return repository
 
-    def get_project_with_credential_name(self, project_id: str) -> tuple[Project, str | None]:
-        """Get project with its credential name (for API responses)."""
-        project = self.get_project(project_id)
-        credential_name = self._get_credential_name(project.git_credential_id)
-        return project, credential_name
+    def get_repository_with_credential_name(self, repository_id: str) -> tuple[Repository, str | None]:
+        """Get repository with its credential name (for API responses)."""
+        repository = self.get_repository(repository_id)
+        credential_name = self._get_credential_name(repository.git_credential_id)
+        return repository, credential_name
 
     def create_project(
         self,
@@ -142,18 +142,18 @@ class PipelineService:
         git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         default_branch: str = "master",
-    ) -> Project:
+    ) -> Repository:
         if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
-        if self.project_repo.find_by_code(code):
-            raise BusinessError(f"Project code '{code}' already exists", status_code=409)
+        if self.repository_repo.find_by_code(code):
+            raise BusinessError(f"Repository code '{code}' already exists", status_code=409)
 
         # 初始化变量覆盖，自动添加内置变量
         overrides = dict(variable_overrides or {})
-        overrides["project_repository_url"] = repository_url
-        overrides["project_trigger_ref"] = default_branch
+        overrides["repository_repository_url"] = repository_url
+        overrides["repository_trigger_ref"] = default_branch
 
-        project = Project.create(
+        repository = Repository.create(
             name=name,
             code=code,
             repository_url=repository_url,
@@ -161,8 +161,8 @@ class PipelineService:
             variable_overrides=overrides,
             default_branch=default_branch,
         )
-        self.project_repo.save(project)
-        return project
+        self.repository_repo.save(repository)
+        return repository
 
     def create_project_with_credential_name(
         self,
@@ -172,9 +172,9 @@ class PipelineService:
         git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         default_branch: str = "master",
-    ) -> tuple[Project, str | None]:
-        """Create project and return with its credential name (for API responses)."""
-        project, _ = self._create_project_internal(
+    ) -> tuple[Repository, str | None]:
+        """Create repository and return with its credential name (for API responses)."""
+        repository, _ = self._create_project_internal(
             name=name,
             code=code,
             repository_url=repository_url,
@@ -182,8 +182,8 @@ class PipelineService:
             variable_overrides=variable_overrides,
             default_branch=default_branch,
         )
-        credential_name = self._get_credential_name(project.git_credential_id)
-        return project, credential_name
+        credential_name = self._get_credential_name(repository.git_credential_id)
+        return repository, credential_name
 
     def _create_project_internal(
         self,
@@ -193,19 +193,19 @@ class PipelineService:
         git_credential_id: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         default_branch: str = "master",
-    ) -> tuple[Project, str | None]:
+    ) -> tuple[Repository, str | None]:
         """Internal implementation of create_project (returns credential name for convenience)."""
         if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
-        if self.project_repo.find_by_code(code):
-            raise BusinessError(f"Project code '{code}' already exists", status_code=409)
+        if self.repository_repo.find_by_code(code):
+            raise BusinessError(f"Repository code '{code}' already exists", status_code=409)
 
         # 初始化变量覆盖，自动添加内置变量
         overrides = dict(variable_overrides or {})
-        overrides["project_repository_url"] = repository_url
-        overrides["project_trigger_ref"] = default_branch
+        overrides["repository_repository_url"] = repository_url
+        overrides["repository_trigger_ref"] = default_branch
 
-        project = Project.create(
+        repository = Repository.create(
             name=name,
             code=code,
             repository_url=repository_url,
@@ -213,56 +213,56 @@ class PipelineService:
             variable_overrides=overrides,
             default_branch=default_branch,
         )
-        self.project_repo.save(project)
+        self.repository_repo.save(repository)
         credential_name = self._get_credential_name(git_credential_id)
-        return project, credential_name
+        return repository, credential_name
 
     def update_project(
         self,
-        project_id: str,
+        repository_id: str,
         name: str | None = None,
         repository_url: str | None = None,
         variable_overrides: dict[str, Any] | None = None,
         git_credential_id: str | None = None,
         default_branch: str | None = None,
-    ) -> Project:
-        project = self.get_project(project_id)
+    ) -> Repository:
+        repository = self.get_repository(repository_id)
 
         # 合并变量覆盖：保留现有变量，应用用户提供的变量，更新内置变量
-        final_overrides = dict(project.variable_overrides)
+        final_overrides = dict(repository.variable_overrides)
         if variable_overrides is not None:
             final_overrides.update(variable_overrides)
 
         # 自动更新内置变量
         if repository_url is not None:
-            final_overrides["project_repository_url"] = repository_url
+            final_overrides["repository_repository_url"] = repository_url
         if default_branch is not None:
-            final_overrides["project_trigger_ref"] = default_branch
+            final_overrides["repository_trigger_ref"] = default_branch
 
-        project.update(
+        repository.update(
             name=name,
             repository_url=repository_url,
             variable_overrides=final_overrides,
             git_credential_id=git_credential_id,
             default_branch=default_branch,
         )
-        self.project_repo.save(project)
-        return project
+        self.repository_repo.save(repository)
+        return repository
 
-    def delete_project(self, project_id: str) -> None:
-        project = self.get_project(project_id)
-        if self.project_repo.has_running_pipelines(project_id):
-            raise BusinessError("Project has running pipelines, cannot delete", status_code=409)
-        self.project_repo.delete(project)
-        cleanup_project(project.code)
+    def delete_project(self, repository_id: str) -> None:
+        repository = self.get_repository(repository_id)
+        if self.repository_repo.has_running_pipelines(repository_id):
+            raise BusinessError("Repository has running pipelines, cannot delete", status_code=409)
+        self.repository_repo.delete(repository)
+        cleanup_project(repository.code)
 
-    # ── ProjectWebhook CRUD ───────────────────────────────────────────────────
+    # ── RepositoryWebhook CRUD ───────────────────────────────────────────────────
 
-    def list_webhooks(self, project_id: str) -> list[ProjectWebhook]:
-        self.get_project(project_id)
-        return self.webhook_repo.find_by_project(project_id)
+    def list_webhooks(self, repository_id: str) -> list[RepositoryWebhook]:
+        self.get_repository(repository_id)
+        return self.webhook_repo.find_by_repository(repository_id)
 
-    def get_webhook(self, webhook_id: str) -> ProjectWebhook:
+    def get_webhook(self, webhook_id: str) -> RepositoryWebhook:
         wh = self.webhook_repo.find_by_id(webhook_id)
         if not wh:
             raise BusinessError(f"Webhook {webhook_id} not found", status_code=404)
@@ -270,18 +270,18 @@ class PipelineService:
 
     def create_webhook(
         self,
-        project_id: str,
+        repository_id: str,
         name: str,
         template_id: str,
         plain_secret: str,
         branch_filter: str | None = None,
-    ) -> ProjectWebhook:
-        self.get_project(project_id)
+    ) -> RepositoryWebhook:
+        self.get_repository(repository_id)
         if not self.template_repo.find_by_id(template_id):
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
         encrypted = self.security_service.encrypt_value(plain_secret)
-        wh = ProjectWebhook.create(
-            project_id=project_id,
+        wh = RepositoryWebhook.create(
+            repository_id=repository_id,
             name=name,
             template_id=template_id,
             encrypted_secret=encrypted,
@@ -298,7 +298,7 @@ class PipelineService:
         branch_filter: str | None = None,
         plain_secret: str | None = None,
         enabled: bool | None = None,
-    ) -> ProjectWebhook:
+    ) -> RepositoryWebhook:
         wh = self.get_webhook(webhook_id)
         if template_id and not self.template_repo.find_by_id(template_id):
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
@@ -317,7 +317,7 @@ class PipelineService:
         wh = self.get_webhook(webhook_id)
         self.webhook_repo.delete(wh)
 
-    def decrypt_webhook_secret(self, webhook: ProjectWebhook) -> str:
+    def decrypt_webhook_secret(self, webhook: RepositoryWebhook) -> str:
         """解密 webhook 签名密钥（封装 security_service，避免接口层直接访问）"""
         return self.security_service.decrypt_value(webhook.encrypted_secret)
 
@@ -520,11 +520,11 @@ class PipelineService:
     # ── PipelineRun ───────────────────────────────────────────────────────────
 
     def list_runs(
-        self, page: int = 1, per_page: int = 20, project_id: str | None = None
+        self, page: int = 1, per_page: int = 20, repository_id: str | None = None
     ) -> tuple[list[PipelineRun], int]:
-        if project_id:
-            self.get_project(project_id)
-        return self.run_repo.find_paginated_with_filters(page=page, per_page=per_page, project_id=project_id)
+        if repository_id:
+            self.get_repository(repository_id)
+        return self.run_repo.find_paginated_with_filters(page=page, per_page=per_page, repository_id=repository_id)
 
     def get_run(self, run_id: str) -> PipelineRun:
         run = self.run_repo.find_by_id(run_id)
@@ -588,32 +588,32 @@ class PipelineService:
 
     def create_run(
         self,
-        project_id: str,
+        repository_id: str,
         template_id: str,
         trigger: PipelineRunTrigger,
         trigger_ref: str,
         runtime_variables: dict[str, Any] | None = None,
-    ) -> tuple[PipelineRun, Project, dict[str, Any], PipelineSnapshot]:
-        project = self.get_project(project_id)
+    ) -> tuple[PipelineRun, Repository, dict[str, Any], PipelineSnapshot]:
+        repository = self.get_repository(repository_id)
         template = self.get_template(template_id)
 
         # 按需创建快照（模板有变更才创建新版本）
         snapshot = self._get_or_create_snapshot(template)
 
         declarations = snapshot.variable_declarations_snapshot
-        effective_ref = trigger_ref or project.default_branch
+        effective_ref = trigger_ref or repository.default_branch
         builtin = {
-            "project_repository_url": project.repository_url,
-            "DEFAULT_BRANCH": project.default_branch,
-            "GIT_CREDENTIAL_ID": project.git_credential_id or "",
+            "repository_repository_url": repository.repository_url,
+            "DEFAULT_BRANCH": repository.default_branch,
+            "GIT_CREDENTIAL_ID": repository.git_credential_id or "",
             "trigger_ref": effective_ref,
             "trigger_type": trigger.value,
-            "project_name": project.name,
+            "repository_name": repository.name,
         }
 
         merged = merge_variables(
             global_vars=self.global_variables,
-            project_vars=project.variable_overrides,
+            project_vars=repository.variable_overrides,
             runtime_vars=runtime_variables or {},
             declarations=declarations,
             builtin_vars=builtin,
@@ -626,8 +626,8 @@ class PipelineService:
 
         masked = mask_secrets(merged, declarations)
         run = PipelineRun.create(
-            project_id=project_id,
-            project_name=project.name,
+            repository_id=repository_id,
+            repository_name=repository.name,
             pipeline_snapshot_id=snapshot.id,
             template_id=template.id,
             template_name=template.name,
@@ -639,31 +639,31 @@ class PipelineService:
         self.run_repo.commit()
 
         logger.info(
-            f"Pipeline triggered: project={project.name}, template={template.name}, run={run.id}, trigger={trigger.value}"
+            f"Pipeline triggered: repository={repository.name}, template={template.name}, run={run.id}, trigger={trigger.value}"
         )
-        return run, project, merged, snapshot
+        return run, repository, merged, snapshot
 
-    def create_retry_run(self, run_id: str) -> tuple[PipelineRun, Project, dict[str, Any], PipelineSnapshot]:
+    def create_retry_run(self, run_id: str) -> tuple[PipelineRun, Repository, dict[str, Any], PipelineSnapshot]:
         original = self.get_run(run_id)
         if original.status not in {TaskStatus.FAULTED, TaskStatus.RAN_TO_COMPLETION}:
             raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
         snapshot = self.get_snapshot(original.pipeline_snapshot_id)
-        project = self.get_project(original.project_id)
+        repository = self.get_repository(original.repository_id)
 
-        # 重试复用原快照，但需要重新合并变量（secret 变量从 project 重新取）
+        # 重试复用原快照，但需要重新合并变量（secret 变量从 repository 重新取）
         declarations = snapshot.variable_declarations_snapshot
         builtin = {
-            "project_repository_url": project.repository_url,
-            "DEFAULT_BRANCH": project.default_branch,
-            "GIT_CREDENTIAL_ID": project.git_credential_id or "",
+            "repository_repository_url": repository.repository_url,
+            "DEFAULT_BRANCH": repository.default_branch,
+            "GIT_CREDENTIAL_ID": repository.git_credential_id or "",
             "trigger_ref": original.trigger_ref,
             "trigger_type": original.trigger.value,
-            "project_name": project.name,
+            "repository_name": repository.name,
         }
         merged = merge_variables(
             global_vars=self.global_variables,
-            project_vars=project.variable_overrides,
+            project_vars=repository.variable_overrides,
             runtime_vars={},
             declarations=declarations,
             builtin_vars=builtin,
@@ -671,8 +671,8 @@ class PipelineService:
 
         masked = mask_secrets(merged, declarations)
         new_run = PipelineRun.create(
-            project_id=original.project_id,
-            project_name=project.name,  # 使用最新项目名，而非原 run 的快照名
+            repository_id=original.repository_id,
+            repository_name=repository.name,  # 使用最新项目名，而非原 run 的快照名
             pipeline_snapshot_id=original.pipeline_snapshot_id,
             template_id=original.template_id,
             template_name=original.template_name,
@@ -685,10 +685,10 @@ class PipelineService:
         self.run_repo.commit()
 
         logger.info(f"Pipeline retry: original={run_id}, new={new_run.id}")
-        return new_run, project, merged, snapshot
+        return new_run, repository, merged, snapshot
 
     async def execute_run(
-        self, run: PipelineRun, project: Project, variables: dict[str, Any], snapshot: PipelineSnapshot
+        self, run: PipelineRun, repository: Repository, variables: dict[str, Any], snapshot: PipelineSnapshot
     ) -> None:
         """执行 pipeline run（由 BackgroundTasks 调用，使用独立 session）"""
         session_factory = self._session_factory or get_session_factory()
@@ -704,13 +704,13 @@ class PipelineService:
                 session.commit()
             return
 
-        workspace_path, artifacts_path = create_workspace(project.code, run.id)
+        workspace_path, artifacts_path = create_workspace(repository.code, run.id)
         context = ExecutionContext(
             run_id=run.id,
-            project_id=project.id,
-            project_code=project.code,
-            repository_url=project.repository_url,
-            credential_id=project.git_credential_id,
+            repository_id=repository.id,
+            project_code=repository.code,
+            repository_url=repository.repository_url,
+            credential_id=repository.git_credential_id,
             variables=variables,
             workspace_path=str(workspace_path),
             artifacts_path=str(artifacts_path),

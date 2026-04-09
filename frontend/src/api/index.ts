@@ -1,4 +1,10 @@
-export { authApi } from './auth';
-export { deploymentApi } from './deployments';
 export { applicationApi } from './application';
-export { credentialApi, pipelineTemplateApi, projectApi, pipelineRunApi, jobApi } from './ci/index';
+export { authApi } from './auth';
+export {
+	credentialApi,
+	jobApi,
+	pipelineRunApi,
+	pipelineTemplateApi,
+	repositoryApi,
+} from './ci/index';
+export { deploymentApi } from './deployments';

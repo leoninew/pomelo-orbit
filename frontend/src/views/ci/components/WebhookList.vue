@@ -157,11 +157,11 @@ import { reactive, ref } from 'vue';
 import { webhookApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineTemplate, ProjectWebhook } from '@/types/api';
+import type { PipelineTemplate, RepositoryWebhook } from '@/types/api';
 
 const props = defineProps<{
-	projectId: string
-	webhooks: ProjectWebhook[]
+	repositoryId: string
+	webhooks: RepositoryWebhook[]
 	templates: PipelineTemplate[]
 }>();
 
@@ -174,8 +174,8 @@ const { operating, execute: executeOp } = useStatusAsync();
 
 const modalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
-const editingWebhook = ref<ProjectWebhook>();
-const deletingWebhook = ref<ProjectWebhook>();
+const editingWebhook = ref<RepositoryWebhook>();
+const deletingWebhook = ref<RepositoryWebhook>();
 
 const form = reactive({
 	name: '',
@@ -213,7 +213,7 @@ function openCreateModal() {
 	modalRef.value?.showModal();
 }
 
-function openEditModal(wh: ProjectWebhook) {
+function openEditModal(wh: RepositoryWebhook) {
 	editingWebhook.value = wh;
 	Object.assign(form, {
 		name: wh.name,
@@ -242,7 +242,7 @@ async function handleOk() {
 	try {
 		await executeOp(async () => {
 			if (editingWebhook.value) {
-				await webhookApi.update(props.projectId, editingWebhook.value.id, {
+				await webhookApi.update(props.repositoryId, editingWebhook.value.id, {
 					name: form.name,
 					template_id: form.template_id,
 					branch_filter: form.branch_filter || null,
@@ -251,7 +251,7 @@ async function handleOk() {
 				});
 				toast.success('更新成功');
 			} else {
-				await webhookApi.create(props.projectId, {
+				await webhookApi.create(props.repositoryId, {
 					name: form.name,
 					template_id: form.template_id,
 					secret: form.secret,
@@ -267,7 +267,7 @@ async function handleOk() {
 	}
 }
 
-function handleDelete(wh: ProjectWebhook) {
+function handleDelete(wh: RepositoryWebhook) {
 	deletingWebhook.value = wh;
 	deleteModalRef.value?.showModal();
 }
@@ -279,7 +279,7 @@ async function confirmDelete() {
 
 	try {
 		await executeOp(async () => {
-			await webhookApi.delete(props.projectId, deletingWebhook.value?.id ?? '');
+			await webhookApi.delete(props.repositoryId, deletingWebhook.value?.id ?? '');
 			toast.success('删除成功');
 			deleteModalRef.value?.close();
 			emit('refresh');

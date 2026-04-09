@@ -28,7 +28,7 @@ def make_executor(container_executor=None, stage_run_repo=None, artifact_repo=No
 def make_context(run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None) -> ExecutionContext:
     return ExecutionContext(
         run_id=run_id,
-        project_id="project-1",
+        repository_id="project-1",
         project_code="project-1",
         repository_url="https://github.com/user/repo.git",
         credential_id="cred-1",

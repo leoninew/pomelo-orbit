@@ -1,7 +1,7 @@
 [
   {
     "type": "insert",
-    "table": "projects",
+    "table": "repository",
     "data": [
       {
         "id": "01KNNRBH52BQJYT9487B2H8N62",
@@ -9,23 +9,23 @@
         "code": "golang-example",
         "repository_url": "https://github.com/golang/example",
         "git_credential_id": null,
-        "variable_overrides": "{\"project_repository_url\": \"https://github.com/golang/example\", \"project_trigger_ref\": \"master\"}",
+        "variable_overrides": "{\"repository_repository_url\": \"https://github.com/golang/example\", \"repository_trigger_ref\": \"master\"}",
         "default_branch": "master",
         "created_at": "2026-04-08 05:17:01.986477",
         "updated_at": "2026-04-08 05:17:01.986477"
       }
     ],
-    "comment": "内置 Project"
+    "comment": "内置 Repository"
   },
   {
     "type": "insert",
-    "table": "pipeline_stages",
+    "table": "pipeline_stage",
     "data": [
       {
         "id": "01STAGE000000000000000CLONE",
         "name": "git clone",
         "image": "alpine/git",
-        "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ project_repository_url }}\ngit fetch --depth=1 origin {{ project_trigger_ref }}\ngit checkout -B {{ project_trigger_ref }} FETCH_HEAD",
+        "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_repository_url }}\ngit fetch --depth=1 origin {{ repository_trigger_ref }}\ngit checkout -B {{ repository_trigger_ref }} FETCH_HEAD",
         "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
         "artifacts": null,
         "description": "克隆代码仓库",
@@ -59,13 +59,13 @@
   },
   {
     "type": "insert",
-    "table": "pipeline_templates",
+    "table": "pipeline_template",
     "data": [
       {
         "id": "01KNP06F22PAKPHMDDEFHVSPMF",
         "name": "Go 测试模板",
         "description": "测试流水线模板",
-        "variable_declarations": "[{\"name\": \"project_repository_url\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"project_trigger_ref\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}]",
+        "variable_declarations": "[{\"name\": \"repository_repository_url\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"repository_trigger_ref\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}]",
         "version": 1,
         "created_at": "2026-04-08 07:34:04.610701",
         "updated_at": "2026-04-08 07:34:04.610701"
@@ -75,7 +75,7 @@
   },
   {
     "type": "insert",
-    "table": "pipeline_template_stages",
+    "table": "pipeline_template_stage",
     "data": [
       {
         "id": "01KNP18ZGGEN911W5K26FGQAAZ",

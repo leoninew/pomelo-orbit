@@ -26,9 +26,7 @@
 				<!-- Variables -->
 				<div v-if="currentTemplate" class="flex flex-col gap-2">
 					<div class="text-sm font-medium">变量</div>
-					<div v-if="variableList.length === 0" class="text-sm text-base-content/60">
-						暂无数据
-					</div>
+					<div v-if="variableList.length === 0" class="text-sm text-base-content/60">暂无数据</div>
 					<div v-else class="flex flex-col gap-2">
 						<div v-for="v in variableList" :key="v.name" class="flex flex-col gap-1">
 							<label class="text-sm flex items-center gap-1">
@@ -68,14 +66,20 @@ import { useToast } from '@/composables/useToast';
 import type { PipelineTemplate } from '@/types/api';
 
 const props = defineProps<{
-	projectId: string
+	repositoryId: string
 	templates: PipelineTemplate[]
 	defaultBranch?: string
 	projectVariables?: Record<string, string>
 }>();
 
 const emit = defineEmits<{
-	trigger: [data: { template_id: string; trigger_ref: string; variables: Record<string, string> }]
+	trigger: [
+		data: {
+			template_id: string
+			trigger_ref: string
+			variables: Record<string, string>
+		},
+	]
 }>();
 
 const toast = useToast();

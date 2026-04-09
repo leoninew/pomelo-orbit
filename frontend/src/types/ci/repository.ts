@@ -1,4 +1,4 @@
-export interface Project {
+export interface Repository {
 	id: string
 	name: string
 	code: string
@@ -11,7 +11,7 @@ export interface Project {
 	updated_at: string
 }
 
-export interface ProjectCreateReq {
+export interface RepositoryCreateReq {
 	name: string
 	code: string
 	repository_url: string
@@ -20,7 +20,7 @@ export interface ProjectCreateReq {
 	default_branch?: string
 }
 
-export interface ProjectUpdateReq {
+export interface RepositoryUpdateReq {
 	name?: string
 	repository_url?: string
 	git_credential_id?: string | null

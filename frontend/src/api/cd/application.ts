@@ -37,7 +37,9 @@ export const applicationApi = {
 
 	// 删除应用
 	delete(id: string, removeDir: boolean = false): Promise<void> {
-		return request.delete(`/api/cd/applications/${id}`, { data: { remove_dir: removeDir } });
+		return request.delete(`/api/cd/applications/${id}`, {
+			data: { remove_dir: removeDir },
+		});
 	},
 
 	// 手动触发部署
@@ -47,7 +49,9 @@ export const applicationApi = {
 
 	// 停止应用
 	stop(id: string, removeVolumes?: boolean): Promise<{ deployment_id: string }> {
-		return request.post(`/api/cd/applications/${id}/stop`, { remove_volumes: removeVolumes });
+		return request.post(`/api/cd/applications/${id}/stop`, {
+			remove_volumes: removeVolumes,
+		});
 	},
 
 	// 重启应用
@@ -72,7 +76,10 @@ export const applicationApi = {
 
 	// 写入应用文件
 	writeFile(id: string, fileId: string, path: string, content: string): Promise<ConfigFile> {
-		return request.put(`/api/cd/applications/${id}/file/${fileId}`, { path, content });
+		return request.put(`/api/cd/applications/${id}/file/${fileId}`, {
+			path,
+			content,
+		});
 	},
 
 	// 创建应用文件

@@ -1,10 +1,10 @@
 ﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">项目管理</h1>
+			<h1 class="text-xl font-semibold">代码仓库</h1>
 			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
 				<Plus class="size-4" />
-				新建项目
+				新建仓库
 			</button>
 		</div>
 
@@ -12,9 +12,9 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>项目名称</th>
+						<th>名称</th>
 						<th>编码</th>
-						<th>仓库地址</th>
+						<th>地址</th>
 						<th>Git 凭据</th>
 						<th>创建时间</th>
 						<th>操作</th>
@@ -29,12 +29,12 @@
 					<tr v-else-if="status === 'error'">
 						<td colspan="6" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
-					<tr v-else-if="projects.length === 0">
+					<tr v-else-if="repositories.length === 0">
 						<td colspan="6" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
-					<tr v-for="p in projects" :key="p.id" class="hover">
+					<tr v-for="p in repositories" :key="p.id" class="hover">
 						<td>
-							<router-link :to="`/ci/projects/${p.id}`" class="link link-primary font-medium">
+							<router-link :to="`/ci/repositories/${p.id}`" class="link link-primary font-medium">
 								{{ p.name }}
 							</router-link>
 						</td>
@@ -52,7 +52,9 @@
 						</td>
 						<td class="cell-muted">{{ formatTime(p.created_at) }}</td>
 						<td>
-							<router-link :to="`/ci/projects/${p.id}`" class="link link-primary">查看</router-link>
+							<router-link :to="`/ci/repositories/${p.id}`" class="link link-primary">
+								查看
+							</router-link>
 						</td>
 					</tr>
 				</tbody>
@@ -75,13 +77,13 @@
 		<!-- Create modal -->
 		<dialog ref="createModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
-				<h3 class="font-bold text-lg mb-4">新建项目</h3>
+				<h3 class="font-bold text-lg mb-4">新建仓库</h3>
 				<div v-if="modalStatus === 'loading'" class="flex justify-center py-8">
 					<span class="loading loading-spinner loading-md text-primary" />
 				</div>
 				<div v-else class="flex flex-col gap-3">
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">项目名称</legend>
+						<legend class="fieldset-legend">名称</legend>
 						<input
 							v-model="form.name"
 							type="text"
@@ -92,7 +94,7 @@
 						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">项目编码</legend>
+						<legend class="fieldset-legend">仓库编码</legend>
 						<input
 							v-model="form.code"
 							type="text"
@@ -146,11 +148,11 @@
 import { Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { credentialApi, projectApi } from '@/api/ci';
+import { credentialApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import type { Credential, Repository } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
-import type { Credential, Project } from '@/types/api';
 import { formatTime } from '@/utils/time';
 
 const router = useRouter();
@@ -159,7 +161,7 @@ const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
-const projects = ref<Project[]>([]);
+const repositories = ref<Repository[]>([]);
 const credentials = ref<Credential[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
@@ -183,7 +185,7 @@ const errors = reactive({
 });
 
 function validate() {
-	errors.name = form.name.trim() ? '' : '请输入项目名称';
+	errors.name = form.name.trim() ? '' : '请输入名称';
 	errors.code = /^[a-z0-9-]+$/.test(form.code.trim()) ? '' : '编码只能包含小写字母、数字和连字符';
 	errors.repository_url = form.repository_url.trim() ? '' : '请输入仓库地址';
 	return !errors.name && !errors.code && !errors.repository_url;
@@ -192,11 +194,11 @@ function validate() {
 async function fetchProjects() {
 	try {
 		await execute(async () => {
-			const res = await projectApi.list({
+			const res = await repositoryApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
 			});
-			projects.value = res.items;
+			repositories.value = res.items;
 			pagination.total = res.total;
 		});
 	} catch {
@@ -234,7 +236,7 @@ async function handleCreateOk() {
 	}
 	try {
 		await executeOp(async () => {
-			const project = await projectApi.create({
+			const repository = await repositoryApi.create({
 				name: form.name,
 				code: form.code,
 				repository_url: form.repository_url,
@@ -242,7 +244,7 @@ async function handleCreateOk() {
 			});
 			toast.success('创建成功');
 			createModalRef.value?.close();
-			router.push(`/ci/projects/${project.id}`);
+			router.push(`/ci/repositories/${repository.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');

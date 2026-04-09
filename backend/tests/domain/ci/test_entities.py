@@ -9,7 +9,7 @@ from pomelo_orbit.domain.ci.entities import (
     Credential,
     PipelineRun,
     PipelineTemplate,
-    Project,
+    Repository,
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
@@ -21,7 +21,7 @@ from pomelo_orbit.domain.ci.value_objects import (
 
 class TestProject:
     def test_create_project(self):
-        project = Project.create(
+        project = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -35,7 +35,7 @@ class TestProject:
         assert project.updated_at is not None
 
     def test_update_project(self):
-        project = Project.create(
+        project = Repository.create(
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -88,8 +88,8 @@ class TestPipelineTemplate:
 class TestPipelineRun:
     def test_create_pipeline_run(self):
         run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
-            project_name="test-project",
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
             template_id=str(ulid.ULID()),
             template_name="test-template",
@@ -103,8 +103,8 @@ class TestPipelineRun:
 
     def test_pipeline_run_lifecycle(self):
         run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
-            project_name="test-project",
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
             template_id=str(ulid.ULID()),
             template_name="test-template",
@@ -121,8 +121,8 @@ class TestPipelineRun:
 
     def test_pipeline_run_failure(self):
         run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
-            project_name="test-project",
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
             template_id=str(ulid.ULID()),
             template_name="test-template",
@@ -138,8 +138,8 @@ class TestPipelineRun:
     def test_create_pipeline_run_with_retry_of(self):
         original_run_id = str(ulid.ULID())
         retry_run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
-            project_name="test-project",
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
             pipeline_snapshot_id=str(ulid.ULID()),
             template_id=str(ulid.ULID()),
             template_name="test-template",

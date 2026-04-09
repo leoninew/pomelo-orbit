@@ -71,13 +71,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
 import { Search } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { authApi } from '@/api/auth';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
 import type { LoginHistory } from '@/types/api';
+import { formatTime } from '@/utils/time';
 
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();

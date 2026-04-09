@@ -9,12 +9,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.run import ArtifactResp, PipelineRunResp
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import ArtifactResp, PipelineRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/runs", tags=["runs"])
+router = APIRouter(prefix="/run", tags=["run"])
 
 
 @router.get("", response_model=PaginatedResp[PipelineRunResp])
@@ -23,10 +23,10 @@ def list_all_runs(
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
-    project_id: Annotated[str | None, Query()] = None,
+    repository_id: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineRunResp]:
     # 列表场景不需要 stage_runs，直接 model_validate 保持 stage_runs=[]
-    runs, total = pipeline_service.list_runs(project_id=project_id, page=page, per_page=per_page)
+    runs, total = pipeline_service.list_runs(repository_id=repository_id, page=page, per_page=per_page)
     return PaginatedResp(
         items=[PipelineRunResp.model_validate(r) for r in runs],
         total=total,

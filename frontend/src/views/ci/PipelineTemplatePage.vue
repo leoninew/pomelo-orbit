@@ -196,9 +196,9 @@
 </template>
 
 <script setup lang="ts">
+import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { LayoutGrid, List, Plus, Inbox } from 'lucide-vue-next';
 import { pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';

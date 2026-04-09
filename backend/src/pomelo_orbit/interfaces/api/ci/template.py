@@ -10,7 +10,7 @@ from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
 from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.template import (
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import (
     PipelineTemplateCreateReq,
     PipelineTemplateResp,
     PipelineTemplateUpdateReq,
@@ -19,7 +19,7 @@ from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/templates", tags=["templates"])
+router = APIRouter(prefix="/template", tags=["template"])
 
 
 @router.get("", response_model=PaginatedResp[PipelineTemplateResp])

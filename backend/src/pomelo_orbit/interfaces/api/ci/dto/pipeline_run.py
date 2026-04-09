@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from pomelo_orbit.interfaces.api.ci.dto.stage_run import StageRunResp
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_stage_run import StageRunResp
 
 if TYPE_CHECKING:
     from pomelo_orbit.application.ci.pipeline_service import PipelineService
@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 
 class PipelineRunResp(BaseModel):
     id: str
-    project_id: str
-    project_name: str
+    repository_id: str
+    repository_name: str
     pipeline_snapshot_id: str
     template_id: str
     template_name: str

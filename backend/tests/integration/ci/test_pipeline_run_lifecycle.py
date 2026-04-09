@@ -12,7 +12,7 @@ class TestPipelineRunCreation:
         mock_execute.return_value = None
 
         resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={
                 "template_id": test_template.id,
                 "trigger_ref": "main",
@@ -22,8 +22,8 @@ class TestPipelineRunCreation:
         assert resp.status_code == 201
         data = resp.json()
         assert "id" in data
-        assert data["project_id"] == test_project.id
-        assert data["project_name"] == test_project.name
+        assert data["repository_id"] == test_project.id
+        assert data["repository_name"] == test_project.name
         assert data["template_id"] == test_template.id
         assert data["trigger"] == "manual"
         assert data["trigger_ref"] == "main"
@@ -37,7 +37,7 @@ class TestPipelineRunCreation:
         mock_execute.return_value = None
 
         resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id},
         )
         assert resp.status_code == 201
@@ -54,14 +54,14 @@ class TestPipelineRunStatus:
 
         # 创建 run
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id, "trigger_ref": "main"},
         )
         assert create_resp.status_code == 201
         run_id = create_resp.json()["id"]
 
         # 查询 run 状态
-        resp = auth_client.get(f"/api/ci/runs/{run_id}")
+        resp = auth_client.get(f"/api/ci/run/{run_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert "status" in data
@@ -84,14 +84,14 @@ class TestPipelineRunWithStages:
 
         # 创建 run
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id, "trigger_ref": "main"},
         )
         assert create_resp.status_code == 201
         run_id = create_resp.json()["id"]
 
         # 获取 run 详情，应该包含 stage_runs
-        resp = auth_client.get(f"/api/ci/runs/{run_id}")
+        resp = auth_client.get(f"/api/ci/run/{run_id}")
         assert resp.status_code == 200
         data = resp.json()
         assert "stage_runs" in data
@@ -106,18 +106,18 @@ class TestPipelineRunCancellation:
 
         # 创建 run
         create_resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id, "trigger_ref": "main"},
         )
         assert create_resp.status_code == 201
         run_id = create_resp.json()["id"]
 
         # 取消 run
-        cancel_resp = auth_client.post(f"/api/ci/runs/{run_id}/cancel")
+        cancel_resp = auth_client.post(f"/api/ci/run/{run_id}/cancel")
         assert cancel_resp.status_code == 200
 
         # 验证状态已更新
-        resp = auth_client.get(f"/api/ci/runs/{run_id}")
+        resp = auth_client.get(f"/api/ci/run/{run_id}")
         assert resp.status_code == 200
         assert resp.json()["status"] == "canceled"
 
@@ -125,8 +125,8 @@ class TestPipelineRunCancellation:
         """测试不能取消已完成的 run"""
         # 手动创建一个已完成的 run
         run = PipelineRunModel(
-            project_id=test_project.id,
-            project_name=test_project.name,
+            repository_id=test_project.id,
+            repository_name=test_project.name,
             pipeline_snapshot_id="test-snapshot-id",
             template_id="test-template-id",
             template_name="test-template",
@@ -140,7 +140,7 @@ class TestPipelineRunCancellation:
         db_session.refresh(run)
 
         # 尝试取消已完成的 run
-        resp = auth_client.post(f"/api/ci/runs/{run.id}/cancel")
+        resp = auth_client.post(f"/api/ci/run/{run.id}/cancel")
         assert resp.status_code == 400  # Bad Request
 
 
@@ -149,8 +149,8 @@ class TestPipelineRunRetry:
         """测试重试失败的 pipeline"""
         # 创建一个失败的 run（通过 mock 或直接创建数据库记录）
         failed_run = PipelineRunModel(
-            project_id=test_project.id,
-            project_name=test_project.name,
+            repository_id=test_project.id,
+            repository_name=test_project.name,
             pipeline_snapshot_id="test-snapshot-id",
             template_id=test_template.id,
             template_name=test_template.name,
@@ -164,7 +164,7 @@ class TestPipelineRunRetry:
         db_session.refresh(failed_run)
 
         # 重试 run（如果端点存在）
-        retry_resp = auth_client.post(f"/api/ci/runs/{failed_run.id}/retry")
+        retry_resp = auth_client.post(f"/api/ci/run/{failed_run.id}/retry")
         # 如果端点不存在，这是预期的
         assert retry_resp.status_code in (201, 404)
 
@@ -172,8 +172,8 @@ class TestPipelineRunRetry:
         """测试不能重试运行中的 run"""
         # 创建一个运行中的 run
         run = PipelineRunModel(
-            project_id=test_project.id,
-            project_name=test_project.name,
+            repository_id=test_project.id,
+            repository_name=test_project.name,
             pipeline_snapshot_id="test-snapshot-id",
             template_id="test-template-id",
             template_name="test-template",
@@ -187,7 +187,7 @@ class TestPipelineRunRetry:
         db_session.refresh(run)
 
         # 尝试重试运行中的 run
-        resp = auth_client.post(f"/api/ci/runs/{run.id}/retry")
+        resp = auth_client.post(f"/api/ci/run/{run.id}/retry")
         assert resp.status_code == 400
 
 
@@ -200,19 +200,19 @@ class TestPipelineRunFiltering:
         # 为项目创建多个 runs
         for i in range(3):
             auth_client.post(
-                f"/api/ci/projects/{test_project.id}/trigger",
+                f"/api/ci/repository/{test_project.id}/trigger",
                 json={"template_id": test_template.id, "trigger_ref": f"branch-{i}"},
             )
 
         # 按项目过滤
-        resp = auth_client.get(f"/api/ci/runs?project_id={test_project.id}")
+        resp = auth_client.get(f"/api/ci/run?repository_id={test_project.id}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
         assert len(data["items"]) >= 3
         # 验证所有返回的 runs 都属于该项目
         for run in data["items"]:
-            assert run["project_id"] == test_project.id
+            assert run["repository_id"] == test_project.id
 
     @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
     def test_filter_runs_by_status(self, mock_execute, auth_client, db_session, test_project, test_template):
@@ -221,12 +221,12 @@ class TestPipelineRunFiltering:
 
         # 创建不同状态的 runs
         auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id, "trigger_ref": "main"},
         )
 
         # 按状态过滤
-        resp = auth_client.get("/api/ci/runs?status=waiting_to_run")
+        resp = auth_client.get("/api/ci/run?status=waiting_to_run")
         assert resp.status_code == 200
         data = resp.json()
         # 验证返回的 runs 都是指定状态（如果有结果的话）
@@ -243,7 +243,7 @@ class TestPipelineRunVariables:
 
         # 为项目设置变量
         update_resp = auth_client.put(
-            f"/api/ci/projects/{test_project.id}",
+            f"/api/ci/repository/{test_project.id}",
             json={
                 "name": test_project.name,
                 "repository_url": test_project.repository_url,
@@ -255,7 +255,7 @@ class TestPipelineRunVariables:
 
         # 触发运行，不传运行时变量
         resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id, "trigger_ref": "main"},
         )
         assert resp.status_code == 201
@@ -269,7 +269,7 @@ class TestPipelineRunVariables:
 
         # 触发运行，传入运行时变量
         resp = auth_client.post(
-            f"/api/ci/projects/{test_project.id}/trigger",
+            f"/api/ci/repository/{test_project.id}/trigger",
             json={
                 "template_id": test_template.id,
                 "trigger_ref": "main",

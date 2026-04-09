@@ -81,26 +81,20 @@
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
-							<dd>
+							<dd class="flex items-center gap-2">
 								<router-link
 									:to="`/ci/template/${run.template_id}`"
 									class="link link-primary text-xs"
 								>
-									{{ run.template_name }}
+									{{ run.template_name }} v{{ run.template_version }}
 								</router-link>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">快照</dt>
-							<dd>
 								<router-link
 									v-if="run.snapshot_id"
 									:to="`/ci/snapshot/${run.snapshot_id}`"
 									class="link link-primary text-xs"
 								>
-									{{ run.template_name }} v{{ run.template_version }}
+									查看快照
 								</router-link>
-								<span v-else class="text-base-content/60">—</span>
 							</dd>
 						</div>
 						<div class="flex gap-2">
@@ -141,7 +135,7 @@
 			</div>
 
 			<!-- Stages -->
-			<div v-if="run?.stage_runs?.length > 0" class="card bg-base-100 shadow-sm">
+			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-3">
 						<h2 class="font-semibold">Stages</h2>
@@ -166,36 +160,68 @@
 						<thead>
 							<tr class="text-base-content/60 text-xs">
 								<th class="w-8">#</th>
-								<th>Stage</th>
+								<th>Stage 名称</th>
+								<th>依赖</th>
 								<th class="w-24">状态</th>
 								<th>错误信息</th>
 								<th class="w-16">日志</th>
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-if="!run?.stage_runs?.length">
-								<td colspan="5" class="text-center py-8 text-base-content/60">暂无数据</td>
+							<tr v-if="!snapshot && run.snapshot_id">
+								<td colspan="6" class="text-center py-8 text-base-content/60">
+									<span class="loading loading-spinner loading-sm" />
+								</td>
 							</tr>
-							<tr v-for="(sr, idx) in run?.stage_runs ?? []" :key="sr.id" class="hover">
+							<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
+								<td colspan="6" class="text-center py-8 text-base-content/60">暂无数据</td>
+							</tr>
+							<tr v-for="(stage, idx) in snapshot.stages_snapshot" v-if="snapshot?.stages_snapshot" :key="stage.id" class="hover">
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
-								<td class="text-xs">{{ sr.stage_name }}</td>
+								<td class="text-xs">{{ stage.name }}</td>
 								<td>
-									<span class="badge badge-xs" :class="statusBadgeClass(sr.status)">
-										{{ statusLabel(sr.status) }}
+									<div v-if="stage.depends_on.length" class="flex items-center gap-1 flex-wrap">
+										<span
+											v-for="depId in stage.depends_on"
+											:key="depId"
+											class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70"
+										>
+											{{ snapshotStageMap[depId]?.name ?? depId }}
+										</span>
+									</div>
+									<span v-else class="text-base-content/40 text-xs">—</span>
+								</td>
+								<td>
+									<span
+										v-if="stageRunMap[stage.id]"
+										class="badge badge-xs"
+										:class="statusBadgeClass(stageRunMap[stage.id].status)"
+									>
+										{{ statusLabel(stageRunMap[stage.id].status) }}
 									</span>
+									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 								<td class="max-w-xs">
 									<span
-										v-if="sr.error_message"
+										v-if="stageRunMap[stage.id]?.error_message"
 										class="tooltip tooltip-top cursor-help"
-										:data-tip="sr.error_message"
+										:data-tip="stageRunMap[stage.id].error_message"
 									>
-										<span class="text-xs truncate block max-w-xs">{{ sr.error_message }}</span>
+										<span class="text-xs truncate block max-w-xs">
+											{{ stageRunMap[stage.id].error_message }}
+										</span>
 									</span>
 									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 								<td>
-									<button class="link link-primary text-xs" @click="openLogDrawer(sr)">日志</button>
+									<button
+										v-if="stageRunMap[stage.id]"
+										class="link link-primary text-xs"
+										@click="openLogDrawer(stageRunMap[stage.id])"
+									>
+										日志
+									</button>
+									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 							</tr>
 						</tbody>
@@ -340,12 +366,13 @@
 
 <script setup lang="ts">
 import { ArrowLeft, FileX, Loader2, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { Artifact, PipelineRun, PipelineSnapshot, StageRun } from '@/types/api';
+import type { SnapshotStage } from '@/types/ci/snapshot';
 import { isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
@@ -367,6 +394,9 @@ const currentStageRun = ref<StageRun>();
 const showLogsDrawer = ref(false);
 const cancelModalRef = ref<HTMLDialogElement>();
 const stagesView = ref<'list' | 'dag'>('list');
+
+const snapshotStageMap = reactive<Record<string, SnapshotStage>>({});
+const stageRunMap = reactive<Record<string, StageRun>>({});
 
 // 日志 drawer 状态
 const logsText = ref('');
@@ -424,7 +454,8 @@ async function fetchRun() {
 		await execute(async () => {
 			const data = await pipelineRunApi.get(runId.value);
 			run.value = data;
-			// 不再自动加载 snapshot，改为按需加载
+			Object.keys(stageRunMap).forEach((k) => delete stageRunMap[k]);
+			data.stage_runs.forEach((sr) => (stageRunMap[sr.stage_id] = sr));
 		});
 	} catch {
 		toast.error('获取 Run 信息失败');
@@ -434,7 +465,10 @@ async function fetchRun() {
 
 async function fetchSnapshot(snapshotId: string) {
 	try {
-		snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
+		const data = await pipelineTemplateApi.getSnapshot(snapshotId);
+		snapshot.value = data;
+		Object.keys(snapshotStageMap).forEach((k) => delete snapshotStageMap[k]);
+		data.stages_snapshot.forEach((s) => (snapshotStageMap[s.id] = s));
 	} catch {
 		// snapshot 加载失败不影响主流程
 	}
@@ -468,7 +502,7 @@ async function handleCancel() {
 			await pipelineRunApi.cancel(runId.value);
 			toast.success('已取消');
 			cancelModalRef.value?.close();
-			fetchRun();
+			await fetchRun();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '取消失败');
@@ -479,10 +513,16 @@ async function startPolling() {
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
 	while (!signal.aborted) {
-		run.value = await pipelineRunApi.get(runId.value);
-		if (isTerminalStatus(run.value.status)) {
-			fetchArtifacts();
-			break;
+		try {
+			run.value = await pipelineRunApi.get(runId.value);
+			Object.keys(stageRunMap).forEach((k) => delete stageRunMap[k]);
+			run.value.stage_runs.forEach((sr) => (stageRunMap[sr.stage_id] = sr));
+			if (isTerminalStatus(run.value.status)) {
+				fetchArtifacts();
+				break;
+			}
+		} catch {
+			// 网络抖动时静默重试，不中断轮询
 		}
 		await delayAsync(2000);
 	}
@@ -497,22 +537,20 @@ async function init() {
 	stopPolling();
 	run.value = undefined;
 	snapshot.value = undefined;
+	Object.keys(snapshotStageMap).forEach((k) => delete snapshotStageMap[k]);
+	Object.keys(stageRunMap).forEach((k) => delete stageRunMap[k]);
 	artifacts.value = [];
 	await fetchRun();
 	fetchArtifacts();
+	if (run.value?.snapshot_id) {
+		await fetchSnapshot(run.value.snapshot_id);
+	}
 	if (run.value && !isTerminalStatus(run.value.status)) {
 		startPolling();
 	}
 }
 
 watch(runId, init);
-
-// DAG 视图等待 snapshot 加载完成
-watch(stagesView, async (newView) => {
-	if (newView === 'dag' && !snapshot.value && run.value?.snapshot_id) {
-		await fetchSnapshot(run.value.snapshot_id);
-	}
-});
 
 onMounted(init);
 

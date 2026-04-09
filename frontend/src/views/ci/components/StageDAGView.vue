@@ -22,10 +22,10 @@
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import type { Edge, Node, NodeClickEvent } from '@vue-flow/core';
-import { VueFlow } from '@vue-flow/core';
+import { useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import dagre from 'dagre';
-import { computed, markRaw } from 'vue';
+import { computed, markRaw, nextTick, watch } from 'vue';
 import type { SnapshotStage } from '@/types/ci/snapshot';
 import type { TaskStatus } from '@/types/common';
 import StageNode from './StageNode.vue';
@@ -47,6 +47,16 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), { showMinimap: false });
 
 const emit = defineEmits<(e: 'view-stage', stageRun: StageRunLike) => void>();
+
+const { fitView } = useVueFlow();
+
+watch(
+	() => props.stages,
+	async () => {
+		await nextTick();
+		fitView({ padding: 0.2 });
+	}
+);
 
 // stage.id -> StageRun 映射
 const stageRunByIdMap = computed(() => {
@@ -105,6 +115,14 @@ const edges = computed<Edge[]>(() => {
 				type: 'smoothstep',
 				animated: isFlowing,
 				class: edgeClass,
+				markerEnd: {
+					type: 'arrowclosed',
+					color: isFailed
+						? 'hsl(var(--er))'
+						: isSuccess
+							? 'hsl(var(--su))'
+							: 'hsl(var(--bc) / 0.4)',
+				},
 				style: {
 					stroke: isFailed ? 'hsl(var(--er))' : isSuccess ? 'hsl(var(--su))' : undefined,
 					strokeWidth: isFlowing ? 2.5 : 1.5,
@@ -119,7 +137,7 @@ const edges = computed<Edge[]>(() => {
 const layoutedNodes = computed(() => {
 	const g = new dagre.graphlib.Graph();
 	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 120 });
+	g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
 	nodes.value.forEach((node) => g.setNode(node.id, { width: 160, height: 80 }));
 	edges.value.forEach((edge) => g.setEdge(edge.source, edge.target));
 	dagre.layout(g);

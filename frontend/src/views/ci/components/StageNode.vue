@@ -77,10 +77,10 @@ const statusClass = computed(() => {
 
 <style scoped>
 .stage-node {
-	background-color: hsl(var(--b1));
-	border: 2px solid hsl(var(--bc) / 0.3);
+	background-color: hsl(var(--b3));
+	border: 2px solid hsl(var(--bc) / 0.15);
 	border-radius: 0.5rem;
-	box-shadow: 0 2px 4px 0 rgb(0 0 0 / 0.1);
+	box-shadow: 0 2px 6px 0 rgb(0 0 0 / 0.15);
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	min-width: 140px;
 	padding: 0.5rem 0.75rem;
@@ -202,7 +202,7 @@ const statusClass = computed(() => {
 
 .stage-name {
 	font-weight: 500;
-	font-size: 0.75rem;
+	font-size: 0.6875rem;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -216,7 +216,7 @@ const statusClass = computed(() => {
 }
 
 .stage-type-badge {
-	font-size: 0.6875rem;
+	font-size: 0.625rem;
 	padding-left: 0.375rem;
 	padding-right: 0.375rem;
 	padding-top: 0.125rem;
@@ -232,7 +232,7 @@ const statusClass = computed(() => {
 }
 
 .commands-count {
-	font-size: 0.6875rem;
+	font-size: 0.625rem;
 	color: hsl(var(--bc) / 0.6);
 }
 

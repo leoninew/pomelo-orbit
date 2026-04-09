@@ -44,7 +44,11 @@
 							<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary">
 								查看
 							</router-link>
-							<button class="link link-primary ml-3" :disabled="duplicating" @click="handleDuplicate(s.id)">
+							<button
+								class="link link-primary ml-3"
+								:disabled="duplicating"
+								@click="handleDuplicate(s.id)"
+							>
 								复制
 							</button>
 						</td>

@@ -39,7 +39,7 @@ export interface PipelineStageUpdateReq {
 
 export interface StageOrchestration {
 	stage_id: string
-	stage_key: string
+	stage_name: string
 	depends_on: string[] // 存储 stage_id 列表
 	sort_order: number
 }

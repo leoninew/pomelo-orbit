@@ -447,15 +447,15 @@ async function handleAddVarOk() {
 	}
 	try {
 		await executeOp(async () => {
-			await repositoryApi.update(repositoryId, {
+			const data = await repositoryApi.update(repositoryId, {
 				variable_overrides: {
 					...repository.value?.variable_overrides,
 					[newVarKey.value]: newVarValue.value,
 				},
 			});
+			repository.value = data;
 			toast.success('添加成功');
 			addVarModalRef.value?.close();
-			fetchProject();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '添加失败');
@@ -465,15 +465,15 @@ async function handleAddVarOk() {
 async function handleEditVarOk() {
 	try {
 		await executeOp(async () => {
-			await repositoryApi.update(repositoryId, {
+			const data = await repositoryApi.update(repositoryId, {
 				variable_overrides: {
 					...repository.value?.variable_overrides,
 					[editingVarKey.value]: editingVarValue.value,
 				},
 			});
+			repository.value = data;
 			toast.success('更新成功');
 			editVarModalRef.value?.close();
-			fetchProject();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '更新失败');
@@ -485,9 +485,9 @@ async function deleteVariable(key: string) {
 		await executeOp(async () => {
 			const updated = { ...repository.value?.variable_overrides };
 			delete updated[key];
-			await repositoryApi.update(repositoryId, { variable_overrides: updated });
+			const data = await repositoryApi.update(repositoryId, { variable_overrides: updated });
+			repository.value = data;
 			toast.success('删除成功');
-			fetchProject();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '删除失败');

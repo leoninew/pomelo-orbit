@@ -1,5 +1,6 @@
 """Pipeline Service 单元测试"""
 
+from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -352,3 +353,345 @@ class TestPipelineRun:
         with pytest.raises(BusinessError) as exc:
             make_service(run_repo=run_repo).create_retry_run(run.id)
         assert exc.value.status_code == 400
+
+
+class TestWebhookCRUD:
+    def test_list_webhooks(self):
+        project = make_project()
+        project_repo = Mock()
+        project_repo.find_by_id.return_value = project
+        webhook_repo = Mock()
+        webhook_repo.find_by_project.return_value = []
+        webhooks = make_service(project_repo=project_repo, webhook_repo=webhook_repo).list_webhooks(project.id)
+        assert webhooks == []
+        webhook_repo.find_by_project.assert_called_once_with(project.id)
+
+    def test_get_webhook_success(self):
+        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+
+        webhook = ProjectWebhook.create(
+            project_id="p",
+            name="w",
+            template_id="t",
+            encrypted_secret="secret",
+        )
+        webhook_repo = Mock()
+        webhook_repo.find_by_id.return_value = webhook
+        result = make_service(webhook_repo=webhook_repo).get_webhook(webhook.id)
+        assert result == webhook
+
+    def test_get_webhook_not_found(self):
+        webhook_repo = Mock()
+        webhook_repo.find_by_id.return_value = None
+        with pytest.raises(BusinessError) as exc:
+            make_service(webhook_repo=webhook_repo).get_webhook("x")
+        assert exc.value.status_code == 404
+
+    def test_create_webhook_success(self):
+
+        project = make_project()
+        project_repo = Mock()
+        project_repo.find_by_id.return_value = project
+        template_repo = Mock()
+        template_repo.find_by_id.return_value = Mock()
+        webhook_repo = Mock()
+        service = make_service(project_repo=project_repo, template_repo=template_repo, webhook_repo=webhook_repo)
+        webhook = service.create_webhook(
+            project.id,
+            name="w",
+            template_id="t",
+            branch_filter="main",
+            plain_secret="secret",
+        )
+        assert webhook.name == "w"
+        assert webhook.branch_filter == "main"
+        webhook_repo.save.assert_called_once()
+
+    def test_update_webhook_success(self):
+        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+
+        webhook = ProjectWebhook.create(
+            project_id="p",
+            name="w",
+            template_id="t",
+            encrypted_secret="secret",
+        )
+        webhook_repo = Mock()
+        webhook_repo.find_by_id.return_value = webhook
+        service = make_service(webhook_repo=webhook_repo)
+        updated = service.update_webhook(webhook.id, branch_filter="develop")
+        assert updated.branch_filter == "develop"
+        webhook_repo.save.assert_called_once()
+
+    def test_delete_webhook_success(self):
+        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+
+        webhook = ProjectWebhook.create(
+            project_id="p",
+            name="w",
+            template_id="t",
+            encrypted_secret="secret",
+        )
+        webhook_repo = Mock()
+        webhook_repo.find_by_id.return_value = webhook
+        service = make_service(webhook_repo=webhook_repo)
+        service.delete_webhook(webhook.id)
+        webhook_repo.delete.assert_called_once_with(webhook)
+
+    def test_decrypt_webhook_secret(self):
+        from pomelo_orbit.domain.ci.entities import ProjectWebhook
+
+        webhook = ProjectWebhook.create(
+            project_id="p",
+            name="w",
+            template_id="t",
+            encrypted_secret="encrypted",
+        )
+        security_service = Mock()
+        security_service.decrypt_value.return_value = "decrypted"
+        webhook_repo = Mock()
+        webhook_repo.find_by_id.return_value = webhook
+        service = make_service(webhook_repo=webhook_repo, security_service=security_service)
+        secret = service.decrypt_webhook_secret(webhook)
+        assert secret == "decrypted"
+        security_service.decrypt_value.assert_called_once_with("encrypted")
+
+
+class TestStageCRUD:
+    def test_list_stages(self):
+        from pomelo_orbit.domain.ci.entities import PipelineStage
+
+        stages = [
+            PipelineStage.create(name="s1", image="alpine", script="echo"),
+            PipelineStage.create(name="s2", image="golang", script="build"),
+        ]
+        stage_repo = Mock()
+        stage_repo.find_all.return_value = stages
+        result = make_service(stage_repo=stage_repo).list_stages()
+        assert result == stages
+
+    def test_get_stage_success(self):
+        from pomelo_orbit.domain.ci.entities import PipelineStage
+
+        stage = PipelineStage.create(
+            name="s",
+            image="alpine",
+            script="echo",
+        )
+        stage_repo = Mock()
+        stage_repo.find_by_id.return_value = stage
+        result = make_service(stage_repo=stage_repo).get_stage(stage.id)
+        assert result == stage
+
+    def test_get_stage_not_found(self):
+        stage_repo = Mock()
+        stage_repo.find_by_id.return_value = None
+        with pytest.raises(BusinessError) as exc:
+            make_service(stage_repo=stage_repo).get_stage("x")
+        assert exc.value.status_code == 404
+
+    def test_create_stage_success(self):
+
+        stage_repo = Mock()
+        stage_repo.find_by_name.return_value = None
+        service = make_service(stage_repo=stage_repo)
+        stage = service.create_stage(
+            name="s",
+            image="alpine",
+            script="echo",
+        )
+        assert stage.name == "s"
+        stage_repo.save.assert_called_once()
+
+    def test_create_stage_already_exists(self):
+        from pomelo_orbit.domain.ci.entities import PipelineStage
+
+        existing = PipelineStage.create(name="s", image="alpine", script="echo")
+        stage_repo = Mock()
+        stage_repo.find_by_name.return_value = existing
+        service = make_service(stage_repo=stage_repo)
+        with pytest.raises(BusinessError) as exc:
+            service.create_stage(name="s", image="alpine", script="echo")
+        assert exc.value.status_code == 409
+
+    def test_update_stage_success(self):
+        from pomelo_orbit.domain.ci.entities import PipelineStage
+
+        stage = PipelineStage.create(
+            name="s",
+            image="alpine",
+            script="echo",
+        )
+        stage_repo = Mock()
+        stage_repo.find_by_id.return_value = stage
+        template_repo = Mock()
+        template_repo.find_all.return_value = []
+        service = make_service(stage_repo=stage_repo, template_repo=template_repo)
+        updated = service.update_stage(stage.id, image="new_image")
+        assert updated.image == "new_image"
+        stage_repo.save.assert_called_once()
+
+    def test_delete_stage_success(self):
+        from pomelo_orbit.domain.ci.entities import PipelineStage
+
+        stage = PipelineStage.create(
+            name="s",
+            image="alpine",
+            script="echo",
+        )
+        template_repo = Mock()
+        stage_repo = Mock()
+        stage_repo.find_by_id.return_value = stage
+        stage_repo.is_referenced_by_templates.return_value = False
+        service = make_service(stage_repo=stage_repo, template_repo=template_repo)
+        service.delete_stage(stage.id)
+        stage_repo.delete.assert_called_once_with(stage)
+
+    def test_delete_stage_referenced(self):
+        from pomelo_orbit.domain.ci.entities import PipelineStage
+
+        stage = PipelineStage.create(
+            name="s",
+            image="alpine",
+            script="echo",
+        )
+        template_repo = Mock()
+        template_repo.find_by_stage.return_value = [Mock()]
+        stage_repo = Mock()
+        stage_repo.find_by_id.return_value = stage
+        service = make_service(stage_repo=stage_repo, template_repo=template_repo)
+        with pytest.raises(BusinessError) as exc:
+            service.delete_stage(stage.id)
+        assert exc.value.status_code == 409
+
+
+class TestPipelineTrigger:
+    def test_create_run_success(self):
+        from pomelo_orbit.domain.ci.entities import PipelineSnapshot
+
+        project = make_project()
+        project_repo = Mock()
+        project_repo.find_by_id.return_value = project
+        template = PipelineTemplate.create(name="t", variable_declarations=[])
+        template_repo = Mock()
+        template_repo.find_by_id.return_value = template
+        snapshot = PipelineSnapshot(
+            id="snap-1",
+            template_id=template.id,
+            version=1,
+            stages_snapshot=[],
+            variable_declarations_snapshot=[],
+            created_at=datetime.now(),
+        )
+        snapshot_repo = Mock()
+        snapshot_repo.find_by_id.return_value = snapshot
+        snapshot_repo.find_latest.return_value = None
+
+        run_repo = Mock()
+        executor_factory = Mock()
+        executor = Mock()
+        executor.execute.return_value = True
+        executor_factory.create.return_value = executor
+
+        service = make_service(
+            project_repo=project_repo,
+            template_repo=template_repo,
+            snapshot_repo=snapshot_repo,
+            run_repo=run_repo,
+            executor_factory=executor_factory,
+        )
+        run, _, _, _ = service.create_run(
+            project.id,
+            template.id,
+            PipelineRunTrigger.MANUAL,
+            "main",
+        )
+        assert run.project_id == project.id
+        run_repo.save.assert_called_once()
+
+    def test_cancel_run_success(self):
+        from pomelo_orbit.domain.ci.entities import PipelineSnapshot
+
+        snapshot = PipelineSnapshot(
+            id="snap-1",
+            template_id="t",
+            version=1,
+            stages_snapshot=[],
+            variable_declarations_snapshot=[],
+            created_at=datetime.now(),
+        )
+        run = PipelineRun.create(
+            project_id="p",
+            project_name="proj",
+            pipeline_snapshot_id=snapshot.id,
+            template_id="tpl-1",
+            template_name="tpl",
+            trigger=PipelineRunTrigger.MANUAL,
+            trigger_ref="main",
+            variables_snapshot={},
+        )
+        run.start()
+        run_repo = Mock()
+        run_repo.find_by_id.return_value = run
+        run_repo.commit = Mock()
+        service = make_service(run_repo=run_repo)
+        service.cancel_run(run.id)
+        assert run.status == TaskStatus.CANCELED
+        run_repo.save.assert_called_once()
+        run_repo.commit.assert_called_once()
+
+    def test_cancel_run_invalid_status(self):
+        from pomelo_orbit.domain.ci.entities import PipelineSnapshot
+
+        snapshot = PipelineSnapshot(
+            id="snap-1",
+            template_id="t",
+            version=1,
+            stages_snapshot=[],
+            variable_declarations_snapshot=[],
+            created_at=datetime.now(),
+        )
+        run = PipelineRun.create(
+            project_id="p",
+            project_name="proj",
+            pipeline_snapshot_id=snapshot.id,
+            template_id="tpl-1",
+            template_name="tpl",
+            trigger=PipelineRunTrigger.MANUAL,
+            trigger_ref="main",
+            variables_snapshot={},
+        )
+        run.complete_success()
+        run_repo = Mock()
+        run_repo.find_by_id.return_value = run
+        run_repo.commit = Mock()
+        service = make_service(run_repo=run_repo)
+        with pytest.raises(BusinessError) as exc:
+            service.cancel_run(run.id)
+        assert exc.value.status_code == 400
+
+
+class TestSnapshot:
+    def test_get_snapshot_success(self):
+        from pomelo_orbit.domain.ci.entities import PipelineSnapshot
+
+        snapshot = PipelineSnapshot(
+            id="snap-1",
+            template_id="t",
+            version=1,
+            stages_snapshot=[],
+            variable_declarations_snapshot=[],
+            created_at=datetime.now(),
+        )
+        snapshot_repo = Mock()
+        snapshot_repo.find_by_id.return_value = snapshot
+        service = make_service(snapshot_repo=snapshot_repo)
+        result = service.get_snapshot(snapshot.id)
+        assert result == snapshot
+
+    def test_get_snapshot_not_found(self):
+        snapshot_repo = Mock()
+        snapshot_repo.find_by_id.return_value = None
+        with pytest.raises(BusinessError) as exc:
+            make_service(snapshot_repo=snapshot_repo).get_snapshot("x")
+        assert exc.value.status_code == 404

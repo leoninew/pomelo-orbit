@@ -494,6 +494,7 @@ async function deleteVariable(key: string) {
 }
 
 onMounted(async () => {
-	await Promise.all([fetchProject(), fetchTemplates(), fetchWebhooks(), fetchCredentials()]);
+	await fetchProject();
+	await fetchWebhooks();
 });
 </script>

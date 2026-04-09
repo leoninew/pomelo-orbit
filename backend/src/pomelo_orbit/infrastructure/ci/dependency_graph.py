@@ -33,9 +33,7 @@ class DependencyGraph:
         """返回按层分组的 Stage id 列表，同层可并行执行"""
         layers: list[list[str]] = []
         in_degree_copy = self.in_degree.copy()
-        queue: deque[str] = deque(
-            stage_id for stage_id, d in in_degree_copy.items() if d == 0
-        )
+        queue: deque[str] = deque(stage_id for stage_id, d in in_degree_copy.items() if d == 0)
         processed = 0
 
         while queue:

@@ -405,7 +405,9 @@ class PipelineService:
         if orch_changed or fields_changed:
             old_version = tmpl.version
             tmpl.bump_version()
-            logger.info(f"Template version bumped: template_id={tmpl.id}, old_version={old_version}, new_version={tmpl.version}")
+            logger.info(
+                f"Template version bumped: template_id={tmpl.id}, old_version={old_version}, new_version={tmpl.version}"
+            )
         self.template_repo.save(tmpl)
         return self.get_template(template_id)
 

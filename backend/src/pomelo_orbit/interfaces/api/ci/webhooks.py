@@ -5,7 +5,7 @@ import json
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 
 from pomelo_orbit.application.ci.di import get_pipeline_service
 from pomelo_orbit.application.ci.pipeline_service import PipelineService
@@ -112,7 +112,7 @@ async def receive_webhook(
         payload = json.loads(payload_bytes)
     except json.JSONDecodeError:
         logger.warning("Webhook payload is not valid JSON")
-        return {"status": "ignored", "reason": "invalid json"}
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     # 解密 secret 并验证签名
     decrypted_secret = pipeline_service.decrypt_webhook_secret(wh)
@@ -122,7 +122,7 @@ async def receive_webhook(
             "github", payload_bytes, x_hub_signature_256, decrypted_secret
         ):
             logger.warning("Webhook signature verification failed")
-            return {"status": "ignored", "reason": "signature verification failed"}
+            raise HTTPException(status_code=401, detail="Invalid signature")
         source = "github"
         branch = payload.get("ref", "").removeprefix("refs/heads/")
         commit_sha = payload.get("after", "")
@@ -130,13 +130,13 @@ async def receive_webhook(
     elif x_gitlab_token:
         if not pipeline_service.verify_webhook_signature("gitlab", b"", x_gitlab_token, decrypted_secret):
             logger.warning("Webhook token verification failed")
-            return {"status": "ignored", "reason": "signature verification failed"}
+            raise HTTPException(status_code=401, detail="Invalid token")
         source = "gitlab"
         branch = payload.get("ref", "").removeprefix("refs/heads/")
         commit_sha = payload.get("checkout_sha", "")
         author = payload.get("user_name", "")
     else:
-        return {"status": "ignored", "reason": "missing signature header"}
+        raise HTTPException(status_code=401, detail="Missing signature header")
 
     # 分支过滤：None/空字符串表示拒绝所有分支，"*" 表示接受所有分支，其他值用 glob 匹配
     if not wh.branch_filter:

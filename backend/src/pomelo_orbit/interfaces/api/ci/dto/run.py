@@ -20,6 +20,7 @@ class PipelineRunResp(BaseModel):
     template_name: str
     trigger: str
     trigger_ref: str
+    variables_snapshot: dict[str, Any]
     status: str
     retry_of: str | None = None
     started_at: datetime | None

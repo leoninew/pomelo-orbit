@@ -343,9 +343,10 @@ class PipelineRun:
     id: str
     repository_id: str
     repository_name: str
-    pipeline_snapshot_id: str
+    snapshot_id: str
     template_id: str
     template_name: str
+    template_version: int
     trigger: PipelineRunTrigger
     trigger_ref: str
     variables_snapshot: dict[str, Any]
@@ -353,15 +354,17 @@ class PipelineRun:
     retry_of: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    error_message: str | None = None
     created_at: datetime = field(default_factory=utc_now)
 
     @staticmethod
     def create(
         repository_id: str,
         repository_name: str,
-        pipeline_snapshot_id: str,
+        snapshot_id: str,
         template_id: str,
         template_name: str,
+        template_version: int,
         trigger: PipelineRunTrigger,
         trigger_ref: str,
         variables_snapshot: dict[str, Any],
@@ -371,9 +374,10 @@ class PipelineRun:
             id=str(ULID()),
             repository_id=repository_id,
             repository_name=repository_name,
-            pipeline_snapshot_id=pipeline_snapshot_id,
+            snapshot_id=snapshot_id,
             template_id=template_id,
             template_name=template_name,
+            template_version=template_version,
             trigger=trigger,
             trigger_ref=trigger_ref,
             variables_snapshot=variables_snapshot,
@@ -388,9 +392,10 @@ class PipelineRun:
         self.status = TaskStatus.RAN_TO_COMPLETION
         self.finished_at = utc_now()
 
-    def complete_failed(self) -> None:
+    def complete_failed(self, error_message: str | None = None) -> None:
         self.status = TaskStatus.FAULTED
         self.finished_at = utc_now()
+        self.error_message = error_message
 
     def cancel(self) -> None:
         if self.status not in (TaskStatus.WAITING_TO_RUN, TaskStatus.RUNNING):

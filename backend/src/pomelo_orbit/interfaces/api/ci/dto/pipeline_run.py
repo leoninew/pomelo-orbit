@@ -15,9 +15,10 @@ class PipelineRunResp(BaseModel):
     id: str
     repository_id: str
     repository_name: str
-    pipeline_snapshot_id: str
+    snapshot_id: str
     template_id: str
     template_name: str
+    template_version: int
     trigger: str
     trigger_ref: str
     variables_snapshot: dict[str, Any]
@@ -25,6 +26,7 @@ class PipelineRunResp(BaseModel):
     retry_of: str | None = None
     started_at: datetime | None
     finished_at: datetime | None
+    error_message: str | None = None
     created_at: datetime
     stage_runs: list[StageRunResp] = []
 

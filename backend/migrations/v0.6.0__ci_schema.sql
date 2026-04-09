@@ -109,9 +109,10 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     id TEXT PRIMARY KEY,
     repository_id TEXT NOT NULL,
     repository_name VARCHAR(255) NOT NULL DEFAULT '',
-    pipeline_snapshot_id TEXT NOT NULL,
+    snapshot_id TEXT NOT NULL,
     template_id VARCHAR(26) NOT NULL DEFAULT '',
     template_name VARCHAR(255) NOT NULL DEFAULT '',
+    template_version INTEGER NOT NULL,
     trigger TEXT NOT NULL,
     trigger_ref TEXT NOT NULL,
     variables_snapshot TEXT NOT NULL DEFAULT '{}',
@@ -119,15 +120,16 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     retry_of TEXT,
     started_at TEXT,
     finished_at TEXT,
+    error_message TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (repository_id) REFERENCES repository(id),
-    FOREIGN KEY (pipeline_snapshot_id) REFERENCES pipeline_snapshot(id),
+    FOREIGN KEY (snapshot_id) REFERENCES pipeline_snapshot(id),
     FOREIGN KEY (retry_of) REFERENCES pipeline_run(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_project_created ON pipeline_run(repository_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_status ON pipeline_run(status);
-CREATE INDEX IF NOT EXISTS idx_pipeline_run_snapshot ON pipeline_run(pipeline_snapshot_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_run_snapshot ON pipeline_run(snapshot_id);
 CREATE INDEX IF NOT EXISTS idx_pipeline_run_retry_of ON pipeline_run(retry_of);
 
 -- Stage 执行记录表

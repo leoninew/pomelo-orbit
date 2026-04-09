@@ -416,7 +416,7 @@ class PipelineService:
         webhooks = self.webhook_repo.find_by_template(template_id)
         if webhooks:
             raise BusinessError("Template is referenced by webhooks, cannot delete", status_code=409)
-        # 历史 PipelineRun 通过 pipeline_snapshot_id 关联快照，快照独立存储不受影响。
+        # 历史 PipelineRun 通过 snapshot_id 关联快照，快照独立存储不受影响。
         # pipeline_template_stages 有 ON DELETE CASCADE，随模板自动删除。
         self.template_repo.delete(tmpl)
 
@@ -628,9 +628,10 @@ class PipelineService:
         run = PipelineRun.create(
             repository_id=repository_id,
             repository_name=repository.name,
-            pipeline_snapshot_id=snapshot.id,
+            snapshot_id=snapshot.id,
             template_id=template.id,
             template_name=template.name,
+            template_version=snapshot.version,
             trigger=trigger,
             trigger_ref=effective_ref,
             variables_snapshot=masked,
@@ -648,7 +649,7 @@ class PipelineService:
         if original.status not in {TaskStatus.FAULTED, TaskStatus.RAN_TO_COMPLETION}:
             raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
-        snapshot = self.get_snapshot(original.pipeline_snapshot_id)
+        snapshot = self.get_snapshot(original.snapshot_id)
         repository = self.get_repository(original.repository_id)
 
         # 重试复用原快照，但需要重新合并变量（secret 变量从 repository 重新取）
@@ -673,9 +674,10 @@ class PipelineService:
         new_run = PipelineRun.create(
             repository_id=original.repository_id,
             repository_name=repository.name,  # 使用最新项目名，而非原 run 的快照名
-            pipeline_snapshot_id=original.pipeline_snapshot_id,
+            snapshot_id=original.snapshot_id,
             template_id=original.template_id,
             template_name=original.template_name,
+            template_version=original.template_version,
             trigger=original.trigger,
             trigger_ref=original.trigger_ref,
             variables_snapshot=masked,
@@ -699,7 +701,7 @@ class PipelineService:
             logger.error(f"Stage resolution failed: run={run.id}, error={e}", exc_info=True)
             with session_factory() as session:
                 run_repo = PipelineRunRepositoryImpl(session)
-                run.complete_failed()
+                run.complete_failed(f"Stage resolution failed: {e}")
                 run_repo.save(run)
                 session.commit()
             return
@@ -730,7 +732,7 @@ class PipelineService:
                 if success:
                     run.complete_success()
                 else:
-                    run.complete_failed()
+                    run.complete_failed(context.error_message)
             except asyncio.CancelledError:
                 # 用户主动取消（cancel_run → task.cancel()）触发此分支。
                 # 标记为 canceled 而非 faulted，语义不同：canceled 是主动中止，faulted 是执行出错。
@@ -739,7 +741,7 @@ class PipelineService:
                 run.cancel()
             except Exception as e:
                 logger.error(f"Pipeline execution error: run={run.id}, error={e}", exc_info=True)
-                run.complete_failed()
+                run.complete_failed(f"Unexpected error: {e}")
             finally:
                 # 无论成功、失败还是取消，都必须落库 run 状态。
                 # finally 在 Python 中先于 with session 的 __exit__ 执行，

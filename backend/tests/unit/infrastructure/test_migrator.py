@@ -122,6 +122,7 @@ class TestMigrationIntegration:
     def test_all_migrations_run_successfully(self):
         """测试所有迁移文件能够成功执行"""
         from sqlalchemy import create_engine
+
         from pomelo_orbit.infrastructure.migration.migrator import run_migrations
 
         backend_root = get_backend_root()

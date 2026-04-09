@@ -30,6 +30,7 @@ class ExecutionContext:
         self.workspace_path = workspace_path
         self.artifacts_path = artifacts_path
         self.retry_of = retry_of
+        self.error_message: str | None = None  # 执行失败时的错误消息
 
 
 class PipelineExecutor(ABC):

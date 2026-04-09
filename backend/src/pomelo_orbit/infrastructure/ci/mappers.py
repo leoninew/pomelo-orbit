@@ -222,9 +222,10 @@ class PipelineRunMapper:
             id=orm.id,
             repository_id=orm.repository_id,
             repository_name=orm.repository_name,
-            pipeline_snapshot_id=orm.pipeline_snapshot_id,
+            snapshot_id=orm.snapshot_id,
             template_id=orm.template_id,
             template_name=orm.template_name,
+            template_version=orm.template_version,
             trigger=PipelineRunTrigger(orm.trigger),
             trigger_ref=orm.trigger_ref,
             variables_snapshot=json.loads(orm.variables_snapshot),
@@ -232,6 +233,7 @@ class PipelineRunMapper:
             retry_of=orm.retry_of,
             started_at=orm.started_at,
             finished_at=orm.finished_at,
+            error_message=orm.error_message,
             created_at=orm.created_at,
         )
 
@@ -241,9 +243,10 @@ class PipelineRunMapper:
             id=entity.id,
             repository_id=entity.repository_id,
             repository_name=entity.repository_name,
-            pipeline_snapshot_id=entity.pipeline_snapshot_id,
+            snapshot_id=entity.snapshot_id,
             template_id=entity.template_id,
             template_name=entity.template_name,
+            template_version=entity.template_version,
             trigger=entity.trigger.value,
             trigger_ref=entity.trigger_ref,
             variables_snapshot=json.dumps(entity.variables_snapshot),
@@ -251,6 +254,7 @@ class PipelineRunMapper:
             retry_of=entity.retry_of,
             started_at=entity.started_at,
             finished_at=entity.finished_at,
+            error_message=entity.error_message,
             created_at=entity.created_at,
         )
 

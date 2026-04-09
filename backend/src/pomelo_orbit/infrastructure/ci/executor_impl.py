@@ -81,12 +81,12 @@ class PipelineExecutorImpl(PipelineExecutor):
             graph = DependencyGraph(stages)
             try:
                 layers = graph.topological_sort()
-            except CyclicDependencyError:
-                logger.error(f"Cyclic dependency: run={context.run_id}")
+            except CyclicDependencyError as e:
+                logger.error(f"Cyclic dependency: run={context.run_id}, error={e}", exc_info=True)
+                context.error_message = f"Cyclic dependency detected: {e}"
                 return False
 
             stages_map = {s.id: s for s in stages}
-
             for layer_idx, layer in enumerate(layers):
                 logger.info(
                     f"Executing layer: index={layer_idx + 1}, total={len(layers)}, run={context.run_id}, stages={layer}"
@@ -97,6 +97,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 failed = [name for name, ok in results.items() if not ok]
                 if failed:
                     logger.warning(f"Layer failed: run={context.run_id}, failed={failed}")
+                    context.error_message = f"Stage(s) failed: {', '.join(failed)}"
                     await self._cancel_remaining(context, layers, layer_idx + 1, stages_map)
                     return False
 
@@ -112,6 +113,7 @@ class PipelineExecutorImpl(PipelineExecutor):
             # 非取消的意外异常（理论上不应到达这里，因为 _execute_stage 已经把
             # Exception 转换成了 return False）。作为兜底，记录日志并返回失败。
             logger.error(f"Pipeline execution failed: run={context.run_id}, error={e}", exc_info=True)
+            context.error_message = f"Pipeline execution error: {e}"
             return False
 
     async def _execute_layer(self, context: ExecutionContext, stages: list[StageDefinition]) -> dict[str, bool]:

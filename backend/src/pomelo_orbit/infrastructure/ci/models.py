@@ -126,11 +126,10 @@ class PipelineRunModel(Base):
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     repository_id: Mapped[str] = mapped_column(String(26), ForeignKey("repository.id"), nullable=False, index=True)
     repository_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    pipeline_snapshot_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("pipeline_snapshot.id"), nullable=False, index=True
-    )
+    snapshot_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_snapshot.id"), nullable=False, index=True)
     template_id: Mapped[str] = mapped_column(String(26), nullable=False, default="")
     template_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    template_version: Mapped[int] = mapped_column(nullable=False)
     trigger: Mapped[str] = mapped_column(String(50), nullable=False)
     trigger_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
@@ -138,6 +137,7 @@ class PipelineRunModel(Base):
     retry_of: Mapped[str | None] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=True, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
 
 

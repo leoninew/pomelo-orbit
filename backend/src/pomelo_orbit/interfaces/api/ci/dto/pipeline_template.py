@@ -68,7 +68,7 @@ class StageOrchestrationDto(BaseModel):
     """模板对 Stage 的编排：引用 + 依赖 + 顺序"""
 
     stage_id: str
-    stage_key: str
+    stage_name: str
     depends_on: list[str] = []  # 存储依赖的 stage_id 列表
     sort_order: int = 0
 

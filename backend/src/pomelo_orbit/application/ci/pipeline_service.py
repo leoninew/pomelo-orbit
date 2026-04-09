@@ -62,7 +62,6 @@ from pomelo_orbit.infrastructure.ci.workspace import (
 )
 from pomelo_orbit.infrastructure.persistence.database import get_session_factory
 from pomelo_orbit.infrastructure.security import SecurityService
-from pomelo_orbit.infrastructure.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -229,10 +228,10 @@ class PipelineService:
     ) -> Repository:
         repository = self.get_repository(repository_id)
 
-        # 合并变量覆盖：保留现有变量，应用用户提供的变量，更新内置变量
-        final_overrides = dict(repository.variable_overrides)
-        if variable_overrides is not None:
-            final_overrides.update(variable_overrides)
+        # variable_overrides 传入时整体替换，不传则保留现有
+        final_overrides = (
+            dict(variable_overrides) if variable_overrides is not None else dict(repository.variable_overrides)
+        )
 
         # 自动更新内置变量
         if repository_url is not None:
@@ -469,8 +468,7 @@ class PipelineService:
             raise BusinessError(f"Stage '{name}' already exists", status_code=409)
         stage.update(name=name, image=image, script=script, env=env, artifacts=artifacts, description=description)
         self.stage_repo.save(stage)
-        # 更新所有引用此 Stage 的模板的 updated_at，触发快照版本检测
-        self._touch_templates_referencing(stage_id)
+        self._bump_templates_referencing(stage_id)
         return stage
 
     def duplicate_stage(self, stage_id: str) -> PipelineStage:
@@ -486,7 +484,9 @@ class PipelineService:
             image=stage.image,
             script=stage.script,
             env=dict(stage.env),
-            artifacts=[asdict(a) if not isinstance(a, dict) else a for a in stage.artifacts] if stage.artifacts else None,
+            artifacts=[asdict(a) if not isinstance(a, dict) else a for a in stage.artifacts]
+            if stage.artifacts
+            else None,
             description=stage.description,
         )
 
@@ -498,13 +498,12 @@ class PipelineService:
 
     # ── 模板编排 ──────────────────────────────────────────────────────────────
 
-    def _touch_templates_referencing(self, stage_id: str) -> None:
-        """Stage 更新后，touch 所有引用它的模板"""
-        # 通过 find_all 过滤（数量有限，可接受）
+    def _bump_templates_referencing(self, stage_id: str) -> None:
+        """Stage 内容更新后，递增所有引用它的模板版本，确保下次触发时创建新快照。"""
         templates = self.template_repo.find_all()
         for tmpl in templates:
             if any(o.stage_id == stage_id for o in tmpl.orchestration):
-                tmpl.updated_at = utc_now()
+                tmpl.bump_version()
                 self.template_repo.save(tmpl)
 
     def _sync_declarations(
@@ -523,13 +522,9 @@ class PipelineService:
         return snapshot
 
     def _get_or_create_snapshot(self, template: PipelineTemplate) -> PipelineSnapshot:
-        """获取或创建快照：仅当模板有变更时创建新快照。
-
-        快照在模板更新之后创建，所以 created_at >= updated_at 时说明快照已是最新。
-        用 >= 而非 > 是因为同秒内创建的快照 created_at == updated_at 也应复用。
-        """
+        """获取或创建快照：version 相同则复用，否则创建新快照。"""
         latest = self.snapshot_repo.find_latest(template.id)
-        if latest and latest.created_at >= template.updated_at:
+        if latest and latest.version == template.version:
             return latest
         snapshot = PipelineSnapshot.create(template, version=template.version)
         self.snapshot_repo.save(snapshot)

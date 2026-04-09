@@ -8,11 +8,9 @@
         "name": "golang-example",
         "code": "golang-example",
         "repository_url": "https://github.com/golang/example",
-        "git_credential_id": null,
+        "git_credential_id": "01KNNRA86VHSY8W0VR0NQF6C3E",
         "variable_overrides": "{\"repository_repository_url\": \"https://github.com/golang/example\", \"repository_trigger_ref\": \"master\"}",
-        "default_branch": "master",
-        "created_at": "2026-04-08 05:17:01.986477",
-        "updated_at": "2026-04-08 05:17:01.986477"
+        "default_branch": "master"
       }
     ],
     "comment": "内置 Repository"
@@ -28,31 +26,34 @@
         "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_repository_url }}\ngit fetch --depth=1 origin {{ repository_trigger_ref }}\ngit checkout -B {{ repository_trigger_ref }} FETCH_HEAD",
         "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
         "artifacts": null,
-        "description": "克隆代码仓库",
-        "created_at": "2026-04-07 00:00:00",
-        "updated_at": "2026-04-07 00:00:00"
+        "description": "克隆代码仓库"
       },
       {
-        "id": "01STAGE000000000000001BUILD",
-        "name": "golang:1.22 build",
-        "image": "golang:1.22-alpine",
-        "script": "cd {{ working_dir | default('.') }}\ndocker build -t {{ IMAGE }} .",
-        "env": "{}",
-        "artifacts": null,
-        "description": "运行 Go 镜像构建",
-        "created_at": "2026-04-07 00:00:00",
-        "updated_at": "2026-04-07 00:00:00"
-      },
-      {
-        "id": "01STAGE000000000000003TESTGO",
-        "name": "golang:1.22 test",
-        "image": "golang:1.22-alpine",
+        "id": "01KNRANZDR4PASATAXKTBBTRX9",
+        "name": "golang:1.23 test",
+        "image": "golang:1.23-alpine",
         "script": "cd {{ working_dir | default('.') }}\ngo test ./...",
         "env": "{}",
         "artifacts": null,
-        "description": "运行 Go 单元测试",
-        "created_at": "2026-04-07 00:00:00",
-        "updated_at": "2026-04-07 00:00:00"
+        "description": "运行 Go 单元测试"
+      },
+      {
+        "id": "01KNRDSSJ7RNND7110175N4NR2",
+        "name": "golang:1.23 build",
+        "image": "golang:1.23-alpine",
+        "script": "cd {{ working_dir | default('.') }}\nmkdir -p dist\ngo build -v -o dist/",
+        "env": "{}",
+        "artifacts": null,
+        "description": "运行 Go 构建"
+      },
+      {
+        "id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
+        "name": "golang:1.23 lint",
+        "image": "golang:1.23-alpine",
+        "script": "cd {{ working_dir | default('.') }}\ngo install golang.org/x/lint/golint@latest\ngolint ./... ",
+        "env": "{}",
+        "artifacts": null,
+        "description": "运行 Go  代码质量"
       }
     ],
     "comment": "内置 Stage 预设"
@@ -63,12 +64,10 @@
     "data": [
       {
         "id": "01KNP06F22PAKPHMDDEFHVSPMF",
-        "name": "Go 测试模板",
-        "description": "测试流水线模板",
-        "variable_declarations": "[{\"name\": \"repository_repository_url\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"repository_trigger_ref\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}]",
-        "version": 1,
-        "created_at": "2026-04-08 07:34:04.610701",
-        "updated_at": "2026-04-08 07:34:04.610701"
+        "name": "Go 流水线模板",
+        "description": "- 测试+扫描\n- 构建",
+        "variable_declarations": "[{\"name\": \"repository_repository_url\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"repository_trigger_ref\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"working_dir\", \"description\": \"\", \"required\": false, \"default\": \"hello\", \"secret\": false, \"locked\": false}]",
+        "version": 18
       }
     ],
     "comment": "内置模板"
@@ -78,20 +77,36 @@
     "table": "pipeline_template_stage",
     "data": [
       {
-        "id": "01KNP18ZGGEN911W5K26FGQAAZ",
+        "id": "01KNRKVJQGWNVBFA03TW8XQBV4",
         "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
         "stage_id": "01STAGE000000000000000CLONE",
-        "stage_key": "git clone",
+        "stage_name": "git clone",
         "depends_on": "[]",
         "sort_order": 0
       },
       {
-        "id": "01KNP18ZGGEN911W5K26FGQAB0",
+        "id": "01KNRKVJQGWNVBFA03TW8XQBV5",
         "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
-        "stage_id": "01STAGE000000000000003TESTGO",
-        "stage_key": "golang:1.22 test",
+        "stage_id": "01KNRANZDR4PASATAXKTBBTRX9",
+        "stage_name": "golang:1.23 test",
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 1
+      },
+      {
+        "id": "01KNRKVJQGWNVBFA03TW8XQBV6",
+        "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
+        "stage_id": "01KNRDSSJ7RNND7110175N4NR2",
+        "stage_name": "golang:1.23 build",
+        "depends_on": "[\"01STAGE000000000000000CLONE\"]",
+        "sort_order": 2
+      },
+      {
+        "id": "01KNRKVJQGWNVBFA03TW8XQBV7",
+        "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
+        "stage_id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
+        "stage_name": "golang:1.23 lint",
+        "depends_on": "[\"01KNRANZDR4PASATAXKTBBTRX9\"]",
+        "sort_order": 3
       }
     ],
     "comment": "内置模板的 Stage 编排"

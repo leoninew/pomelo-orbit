@@ -44,12 +44,12 @@ CREATE TABLE IF NOT EXISTS pipeline_template_stage (
     id TEXT PRIMARY KEY,
     template_id TEXT NOT NULL,
     stage_id TEXT NOT NULL,
-    stage_key TEXT NOT NULL,              -- 模板内唯一标识，默认为 stage 名，用于 depends_on 引用
-    depends_on TEXT NOT NULL DEFAULT '[]',  -- JSON array of stage_key
+    stage_name TEXT NOT NULL,              -- 模板内唯一标识，默认为 stage 名，用于 depends_on 引用
+    depends_on TEXT NOT NULL DEFAULT '[]',  -- JSON array of stage_name
     sort_order INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (template_id) REFERENCES pipeline_template(id) ON DELETE CASCADE,
     FOREIGN KEY (stage_id) REFERENCES pipeline_stage(id),
-    UNIQUE (template_id, stage_key)
+    UNIQUE (template_id, stage_name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_pipeline_template_stage_template ON pipeline_template_stage(template_id);

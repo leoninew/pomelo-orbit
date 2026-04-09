@@ -309,8 +309,8 @@ class PipelineTemplate:
         for orch in sorted_orch:
             stage = stage_map.get(orch.stage_id)
             if stage:
-                # StageDefinition.name 使用 stage_key，执行器用它做依赖解析
-                result.append(stage.to_stage_definition(name=orch.stage_key, depends_on=orch.depends_on))
+                # StageDefinition.name 使用 stage_name，执行器用它做依赖解析
+                result.append(stage.to_stage_definition(name=orch.stage_name, depends_on=orch.depends_on))
         return result
 
 

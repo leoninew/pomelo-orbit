@@ -114,10 +114,10 @@ class TestRepositoryCRUD:
             name="new",
             repository_url="https://new.git",
             default_branch="develop",
-            variable_overrides={"K": "V"},
+            variable_overrides={"USER_VAR": "value", "K": "V"},
         )
         assert updated.name == "new"
-        # 验证用户变量被保留和更新
+        # 验证变量整体替换
         assert updated.variable_overrides["USER_VAR"] == "value"
         assert updated.variable_overrides["K"] == "V"
         # 验证内置变量自动更新

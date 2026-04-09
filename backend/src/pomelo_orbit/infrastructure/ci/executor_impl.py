@@ -91,7 +91,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 logger.info(
                     f"Executing layer: index={layer_idx + 1}, total={len(layers)}, run={context.run_id}, stages={layer}"
                 )
-                layer_stages = [stages_map[name] for name in layer]
+                layer_stages = [stages_map[stage_id] for stage_id in layer]
                 results = await self._execute_layer(context, layer_stages)
 
                 failed = [name for name, ok in results.items() if not ok]
@@ -291,8 +291,8 @@ class PipelineExecutorImpl(PipelineExecutor):
         # 某一层失败后，后续层的 stage 不会被执行，但它们的 StageRun 记录需要
         # 显式创建并标记为 canceled，否则前端看不到这些 stage，无法展示完整的执行图。
         for layer_idx in range(start_layer_idx, len(layers)):
-            for stage_key in layers[layer_idx]:
-                stage = stages_map[stage_key]
+            for stage_id in layers[layer_idx]:
+                stage = stages_map[stage_id]
                 stage_run = StageRun.create(pipeline_run_id=context.run_id, stage_id=stage.id, stage_name=stage.name)
                 stage_run.status = TaskStatus.CANCELED
                 self.stage_run_repo.save(stage_run)

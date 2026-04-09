@@ -101,7 +101,7 @@ class PipelineTemplateStageMapper:
         depends_on = json.loads(orm.depends_on or "[]")
         return StageOrchestration(
             stage_id=orm.stage_id,
-            stage_key=orm.stage_key,
+            stage_name=orm.stage_name,
             depends_on=depends_on,
             sort_order=orm.sort_order,
         )
@@ -111,7 +111,7 @@ class PipelineTemplateStageMapper:
         return PipelineTemplateStageModel(
             template_id=template_id,
             stage_id=orch.stage_id,
-            stage_key=orch.stage_key,
+            stage_name=orch.stage_name,
             depends_on=json.dumps(orch.depends_on),
             sort_order=orch.sort_order,
         )

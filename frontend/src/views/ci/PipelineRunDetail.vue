@@ -62,7 +62,7 @@
 							<dt class="text-base-content/70 w-24 shrink-0">Repository</dt>
 							<dd>
 								<router-link
-									:to="`/ci/projects/${run.repository_id}`"
+									:to="`/ci/repository/${run.repository_id}`"
 									class="link link-primary text-xs"
 								>
 									{{ run.repository_name }}
@@ -83,7 +83,7 @@
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
 							<dd>
 								<router-link
-									:to="`/ci/templates/${run.template_id}`"
+									:to="`/ci/template/${run.template_id}`"
 									class="link link-primary text-xs"
 								>
 									{{ run.template_name }}
@@ -95,7 +95,7 @@
 							<dd>
 								<router-link
 									v-if="snapshot"
-									:to="`/ci/snapshots/${run.pipeline_snapshot_id}`"
+									:to="`/ci/snapshot/${run.pipeline_snapshot_id}`"
 									class="link link-primary text-xs"
 								>
 									{{ run.template_name }} v{{ snapshot.version }}
@@ -108,7 +108,7 @@
 							<dd>
 								<router-link
 									v-if="run.retry_of"
-									:to="`/ci/runs/${run.retry_of}`"
+									:to="`/ci/run/${run.retry_of}`"
 									class="link link-primary text-xs"
 								>
 									{{ run.retry_of }}
@@ -447,7 +447,7 @@ async function handleRetry() {
 		await executeRetry(async () => {
 			const newRun = await pipelineRunApi.retry(runId.value);
 			toast.success('重试成功');
-			router.push(`/ci/runs/${newRun.id}`);
+			router.push(`/ci/run/${newRun.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '重试失败');

@@ -32,12 +32,12 @@
 					</tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
 						<td>
-							<router-link :to="`/ci/projects/${r.repository_id}`" class="link link-primary">
+							<router-link :to="`/ci/repository/${r.repository_id}`" class="link link-primary">
 								{{ r.repository_name }}
 							</router-link>
 						</td>
 						<td>
-							<router-link :to="`/ci/templates/${r.template_id}`" class="link link-primary text-xs">
+							<router-link :to="`/ci/template/${r.template_id}`" class="link link-primary text-xs">
 								{{ r.template_name }}
 							</router-link>
 						</td>
@@ -53,7 +53,7 @@
 						<td>
 							<router-link
 								v-if="r.retry_of"
-								:to="`/ci/runs/${r.retry_of}`"
+								:to="`/ci/run/${r.retry_of}`"
 								class="link link-primary cell-mono"
 							>
 								{{ r.retry_of.substring(0, 8) }}
@@ -63,7 +63,7 @@
 						<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
 						<td>
 							<div class="flex items-center gap-2">
-								<router-link :to="`/ci/runs/${r.id}`" class="link link-primary">查看</router-link>
+								<router-link :to="`/ci/run/${r.id}`" class="link link-primary">查看</router-link>
 								<button
 									v-if="r.status === 'faulted'"
 									class="link link-info"
@@ -166,7 +166,7 @@ async function handleRetry(runId: string) {
 		await executeOp(async () => {
 			const newRun = await pipelineRunApi.retry(runId);
 			toast.success('重试成功');
-			router.push(`/ci/runs/${newRun.id}`);
+			router.push(`/ci/run/${newRun.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '重试失败');

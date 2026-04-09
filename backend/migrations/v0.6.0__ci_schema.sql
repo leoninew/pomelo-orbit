@@ -108,7 +108,7 @@ CREATE INDEX IF NOT EXISTS idx_repository_webhook_repository ON repository_webho
 CREATE TABLE IF NOT EXISTS pipeline_run (
     id TEXT PRIMARY KEY,
     repository_id TEXT NOT NULL,
-    project_name VARCHAR(255) NOT NULL DEFAULT '',
+    repository_name VARCHAR(255) NOT NULL DEFAULT '',
     pipeline_snapshot_id TEXT NOT NULL,
     template_id VARCHAR(26) NOT NULL DEFAULT '',
     template_name VARCHAR(255) NOT NULL DEFAULT '',

@@ -25,7 +25,7 @@
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
 							<dd>
 								<router-link
-									:to="`/ci/templates/${snapshot.template_id}`"
+									:to="`/ci/template/${snapshot.template_id}`"
 									class="link link-primary text-xs"
 								>
 									查看模板

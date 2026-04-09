@@ -4,3 +4,4 @@
 - 流水线详情 PipelineRun 里没有各 Stage 的状态
 - 流水线异步任务状态管理复杂 backend\src\pomelo_orbit\infrastructure\ci\executor_impl.py
 - 持续部署里 port 应该用变量占位
+- 流水线级别的运行失败存储下来，需要在 pipline_run 上添加失败原因并在列表和详情上展示

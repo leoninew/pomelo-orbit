@@ -19,7 +19,7 @@
 		<!-- Quick actions -->
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 			<router-link
-				to="/ci/projects"
+				to="/ci/repository"
 				class="card bg-gradient-to-br from-blue-500/10 to-blue-600/5 hover:shadow-md transition-shadow"
 			>
 				<div class="card-body p-4">
@@ -36,7 +36,7 @@
 			</router-link>
 
 			<router-link
-				to="/ci/runs"
+				to="/ci/run"
 				class="card bg-gradient-to-br from-green-500/10 to-green-600/5 hover:shadow-md transition-shadow"
 			>
 				<div class="card-body p-4">
@@ -97,7 +97,7 @@
 							<GitBranch class="size-4" />
 							最近构建
 						</h2>
-						<router-link to="/ci/runs" class="link link-primary text-sm">查看全部</router-link>
+						<router-link to="/ci/run" class="link link-primary text-sm">查看全部</router-link>
 					</div>
 					<div v-if="status === 'loading'" class="flex justify-center py-12">
 						<span class="loading loading-spinner loading-md text-primary" />
@@ -121,7 +121,7 @@
 									</td>
 									<td class="text-base-content/60">{{ formatTime(run.created_at) }}</td>
 									<td class="w-16 text-right">
-										<router-link :to="`/ci/runs/${run.id}`" class="link link-primary">
+										<router-link :to="`/ci/run/${run.id}`" class="link link-primary">
 											详情
 										</router-link>
 									</td>

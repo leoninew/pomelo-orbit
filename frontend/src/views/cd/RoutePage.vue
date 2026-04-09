@@ -18,7 +18,7 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>路由名称</th>
+						<th>名称</th>
 						<th>域名</th>
 						<th>路径前缀</th>
 						<th>目标地址</th>
@@ -106,13 +106,13 @@
 				<h3 class="font-bold text-lg mb-4">添加路由</h3>
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">路由名称</legend>
+						<legend class="fieldset-legend">名称</legend>
 						<input
 							v-model="form.name"
 							type="text"
 							class="input w-full"
 							:class="{ 'input-error': errors.name }"
-							placeholder="my-route"
+							placeholder="example-route"
 						/>
 						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
 					</fieldset>

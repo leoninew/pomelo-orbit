@@ -34,7 +34,7 @@
 					</tr>
 					<tr v-for="p in repositories" :key="p.id" class="hover">
 						<td>
-							<router-link :to="`/ci/repositories/${p.id}`" class="link link-primary font-medium">
+							<router-link :to="`/ci/repository/${p.id}`" class="link link-primary font-medium">
 								{{ p.name }}
 							</router-link>
 						</td>
@@ -43,7 +43,7 @@
 						<td class="cell-muted">
 							<router-link
 								v-if="p.git_credential_id"
-								:to="`/ci/credentials/${p.git_credential_id}`"
+								:to="`/ci/credential/${p.git_credential_id}`"
 								class="link link-primary"
 							>
 								{{ p.git_credential_name ?? p.git_credential_id }}
@@ -52,7 +52,7 @@
 						</td>
 						<td class="cell-muted">{{ formatTime(p.created_at) }}</td>
 						<td>
-							<router-link :to="`/ci/repositories/${p.id}`" class="link link-primary">
+							<router-link :to="`/ci/repository/${p.id}`" class="link link-primary">
 								查看
 							</router-link>
 						</td>
@@ -244,7 +244,7 @@ async function handleCreateOk() {
 			});
 			toast.success('创建成功');
 			createModalRef.value?.close();
-			router.push(`/ci/repositories/${repository.id}`);
+			router.push(`/ci/repository/${repository.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');

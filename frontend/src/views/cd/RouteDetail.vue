@@ -47,7 +47,7 @@
 				</div>
 				<dl v-else-if="routeData" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">路由名称</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">名称</dt>
 						<dd>{{ routeData.name }}</dd>
 					</div>
 					<div class="flex gap-2">
@@ -111,7 +111,7 @@
 				<h2 class="font-semibold mb-4">SSL 证书</h2>
 				<template v-if="routeData">
 					<div v-if="!routeData.https_enabled" class="flex flex-col gap-3">
-						<div role="alert" class="alert alert-info text-sm">当前使用 HTTP，未启用 HTTPS</div>
+						<div role="alert" class="text-sm text-base-content/70 border border-base-300 p-3 rounded">当前使用 HTTP，未启用 HTTPS</div>
 						<div class="flex items-center gap-2 flex-wrap">
 							<label class="btn btn-sm btn-ghost gap-1 cursor-pointer">
 								<Upload class="size-4" />
@@ -141,7 +141,7 @@
 						</div>
 					</div>
 					<div v-else class="flex flex-col gap-3">
-						<div role="alert" class="alert alert-success text-sm">
+						<div role="alert" class="text-sm text-base-content/70 border border-base-300 p-3 rounded">
 							{{
 								routeData.cert_type === 'letsencrypt'
 									? "使用 Let's Encrypt 自动证书"
@@ -168,7 +168,7 @@
 				<h3 class="font-bold text-lg mb-4">编辑路由</h3>
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">路由名称</legend>
+						<legend class="fieldset-legend">名称</legend>
 						<input :value="form.name" type="text" class="input input-sm opacity-60" disabled />
 					</fieldset>
 					<fieldset class="fieldset">

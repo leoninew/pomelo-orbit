@@ -69,7 +69,7 @@
 						<dt class="text-base-content/70 w-24 shrink-0">流水线记录</dt>
 						<dd>
 							<router-link
-								:to="`/ci/runs?repository_id=${repository.id}`"
+								:to="`/ci/run?repository_id=${repository.id}`"
 								class="link link-primary text-xs"
 							>
 								查看所有记录
@@ -366,7 +366,8 @@ async function fetchCredentials() {
 	}
 }
 
-function openTriggerModal() {
+async function openTriggerModal() {
+	await fetchTemplates();
 	triggerModalRef.value?.open();
 }
 
@@ -379,7 +380,7 @@ async function handleTrigger(data: {
 		await executeOp(async () => {
 			const run = await repositoryApi.trigger(repositoryId, data);
 			toast.success('触发成功');
-			router.push(`/ci/runs/${run.id}`);
+			router.push(`/ci/run/${run.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '触发失败');

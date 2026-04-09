@@ -85,7 +85,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 logger.error(f"Cyclic dependency: run={context.run_id}")
                 return False
 
-            stages_map = {s.name: s for s in stages}
+            stages_map = {s.id: s for s in stages}
 
             for layer_idx, layer in enumerate(layers):
                 logger.info(

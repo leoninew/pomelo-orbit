@@ -30,7 +30,7 @@
 						<td>{{ wh.name }}</td>
 						<td>
 							<router-link
-								:to="`/ci/templates/${wh.template_id}`"
+								:to="`/ci/template/${wh.template_id}`"
 								class="link link-primary text-xs"
 							>
 								{{ getTemplateName(wh.template_id) }}

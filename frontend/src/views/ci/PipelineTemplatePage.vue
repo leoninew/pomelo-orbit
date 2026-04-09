@@ -46,7 +46,7 @@
 					v-for="tpl in templates"
 					:key="tpl.id"
 					class="card bg-base-100 shadow-sm border border-base-200 cursor-pointer hover:shadow-md transition-shadow overflow-hidden group"
-					@click="$router.push(`/ci/templates/${tpl.id}`)"
+					@click="$router.push(`/ci/template/${tpl.id}`)"
 				>
 					<div class="card-body p-4 gap-3">
 						<div class="flex items-start justify-between gap-2">
@@ -107,7 +107,7 @@
 					</tr>
 					<tr v-for="t in templates" :key="t.id" class="hover">
 						<td>
-							<router-link :to="`/ci/templates/${t.id}`" class="link link-primary font-medium">
+							<router-link :to="`/ci/template/${t.id}`" class="link link-primary font-medium">
 								{{ t.name }}
 							</router-link>
 						</td>
@@ -121,7 +121,7 @@
 						<td class="cell-muted">{{ formatTime(t.created_at) }}</td>
 						<td>
 							<div class="flex items-center gap-2">
-								<router-link :to="`/ci/templates/${t.id}`" class="link link-primary">
+								<router-link :to="`/ci/template/${t.id}`" class="link link-primary">
 									查看
 								</router-link>
 								<button class="link link-error" @click="confirmDelete(t.id)">删除</button>
@@ -263,7 +263,7 @@ async function handleCreateOk() {
 			});
 			toast.success('创建成功');
 			createModalRef.value?.close();
-			router.push(`/ci/templates/${tpl.id}`);
+			router.push(`/ci/template/${tpl.id}`);
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');

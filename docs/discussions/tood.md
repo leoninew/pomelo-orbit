@@ -1,0 +1,2 @@
+- 持续部署里 port 应该用变量占位
+- 流水线异步任务状态管理复杂 backend\src\pomelo_orbit\infrastructure\ci\executor_impl.py

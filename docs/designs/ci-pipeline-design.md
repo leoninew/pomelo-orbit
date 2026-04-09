@@ -96,11 +96,15 @@ PipelineSnapshot {
 PipelineRun {
   id
   repository_id
-  pipeline_snapshot_id    // 本次运行基于哪个快照
+  snapshot_id             // 本次运行基于哪个快照
+  template_id
+  template_name
+  template_version        // 触发时快照的版本号
   trigger                 // manual | webhook
   trigger_ref             // 分支/commit
   variables_snapshot      // 本次运行合并后的变量（脱敏存储）
-  status                  // waiting | running | success | failed | canceled
+  status                  // waiting_to_run | running | ran_to_completion | faulted | canceled
+  error_message           // 失败原因（faulted 时填充）
   retry_of                // 重试时指向原 run
   started_at
   finished_at
@@ -249,35 +253,43 @@ CREATE TABLE pipeline_snapshots (
 
 | 端点 | 用途 |
 |------|------|
-| `GET /api/ci/stages` | Stage 列表 |
-| `POST /api/ci/stages` | 创建 Stage |
-| `GET /api/ci/stages/{id}` | Stage 详情 |
-| `PUT /api/ci/stages/{id}` | 更新 Stage |
-| `DELETE /api/ci/stages/{id}` | 删除 Stage |
-| `GET /api/ci/templates` | 模板列表 |
-| `POST /api/ci/templates` | 创建模板 |
-| `GET /api/ci/templates/{id}` | 模板详情（含编排） |
-| `PUT /api/ci/templates/{id}` | 更新模板信息 |
-| `DELETE /api/ci/templates/{id}` | 删除模板 |
-| `GET /api/ci/templates/{id}/orchestration` | 获取编排 |
-| `PUT /api/ci/templates/{id}/orchestration` | 更新编排（整体替换） |
-| `GET /api/ci/templates/{id}/snapshots` | 快照列表 |
-| `GET /api/ci/projects/{id}/webhooks` | 项目 Webhook 列表 |
-| `POST /api/ci/projects/{id}/webhooks` | 创建 Webhook |
-| `PUT /api/ci/projects/{id}/webhooks/{wid}` | 更新 Webhook |
-| `DELETE /api/ci/projects/{id}/webhooks/{wid}` | 删除 Webhook |
-| `POST /api/ci/webhooks/{webhook_id}` | Git 平台推送入口（公开） |
-| `POST /api/ci/projects/{id}/trigger` | 手动触发 |
-| `GET /api/ci/runs/{id}/stages` | StageRun 列表 |
-| `GET /api/ci/stages/{stage_run_id}/log` | Stage 执行日志 |
+| `GET /api/ci/pipeline-stage` | Stage 列表 |
+| `POST /api/ci/pipeline-stage` | 创建 Stage |
+| `GET /api/ci/pipeline-stage/{id}` | Stage 详情 |
+| `PUT /api/ci/pipeline-stage/{id}` | 更新 Stage |
+| `DELETE /api/ci/pipeline-stage/{id}` | 删除 Stage |
+| `GET /api/ci/template` | 模板列表 |
+| `POST /api/ci/template` | 创建模板 |
+| `GET /api/ci/template/{id}` | 模板详情（含编排） |
+| `PUT /api/ci/template/{id}` | 更新模板信息及编排 |
+| `DELETE /api/ci/template/{id}` | 删除模板 |
+| `GET /api/ci/snapshot/{id}` | 快照详情 |
+| `GET /api/ci/repository` | 仓库列表 |
+| `POST /api/ci/repository` | 创建仓库 |
+| `GET /api/ci/repository/{id}` | 仓库详情 |
+| `PUT /api/ci/repository/{id}` | 更新仓库 |
+| `DELETE /api/ci/repository/{id}` | 删除仓库 |
+| `GET /api/ci/repository/{id}/run` | 仓库的运行列表 |
+| `POST /api/ci/repository/{id}/trigger` | 手动触发 |
+| `GET /api/ci/repository/{id}/webhook` | Webhook 列表 |
+| `POST /api/ci/repository/{id}/webhook` | 创建 Webhook |
+| `PUT /api/ci/repository/{id}/webhook/{wid}` | 更新 Webhook |
+| `DELETE /api/ci/repository/{id}/webhook/{wid}` | 删除 Webhook |
+| `POST /api/ci/webhook/{webhook_id}` | Git 平台推送入口（公开） |
+| `GET /api/ci/run` | 所有运行列表 |
+| `GET /api/ci/run/{id}` | 运行详情（含 stage_runs） |
+| `GET /api/ci/run/{id}/artifacts` | 运行的制品列表 |
+| `GET /api/ci/run/{id}/stages/{stage_run_id}/log` | Stage 执行日志（增量） |
+| `POST /api/ci/run/{id}/cancel` | 取消运行 |
+| `POST /api/ci/run/{id}/retry` | 重试运行 |
 
 ---
 
 ## 工作目录结构
 
 ```
-data/ci/{project.code}/
-├── workspace/              # 克隆目录（项目共享，每次 run 覆盖）
+data/ci/{repository.code}/
+├── workspace/              # 克隆目录（仓库共享，每次 run 覆盖）
 └── runs/{run_id}/
     ├── artifacts/
     └── secrets/            # SSH key 等（执行后立即删除）

@@ -13,7 +13,7 @@
 						<th>触发方式</th>
 						<th>Ref</th>
 						<th>状态</th>
-						<th>重试自</th>
+						<th>异常信息</th>
 						<th>创建时间</th>
 						<th>操作</th>
 					</tr>
@@ -50,15 +50,15 @@
 								{{ statusLabel(r.status) }}
 							</span>
 						</td>
-						<td>
-							<router-link
-								v-if="r.retry_of"
-								:to="`/ci/run/${r.retry_of}`"
-								class="link link-primary cell-mono"
+						<td class="max-w-xs">
+							<span
+								v-if="r.error_message"
+								class="tooltip tooltip-top cursor-help"
+								:data-tip="r.error_message"
 							>
-								{{ r.retry_of.substring(0, 8) }}
-							</router-link>
-							<span v-else class="text-base-content/60">—</span>
+								<span class="text-xs truncate block max-w-xs">{{ r.error_message }}</span>
+							</span>
+							<span v-else class="text-base-content/40 text-xs">—</span>
 						</td>
 						<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
 						<td>

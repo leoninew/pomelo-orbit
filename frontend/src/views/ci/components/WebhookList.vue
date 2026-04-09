@@ -29,10 +29,7 @@
 					<tr v-for="wh in webhooks" :key="wh.id" class="hover">
 						<td>{{ wh.name }}</td>
 						<td>
-							<router-link
-								:to="`/ci/template/${wh.template_id}`"
-								class="link link-primary text-xs"
-							>
+							<router-link :to="`/ci/template/${wh.template_id}`" class="link link-primary text-xs">
 								{{ getTemplateName(wh.template_id) }}
 							</router-link>
 						</td>

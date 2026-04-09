@@ -10,11 +10,13 @@ export interface PipelineRun {
 	trigger_ref: string
 	status: TaskStatus
 	retry_of?: string
-	pipeline_snapshot_id: string
+	snapshot_id: string
 	template_id: string
 	template_name: string
+	template_version: number
 	started_at?: string
 	finished_at?: string
+	error_message?: string
 	created_at: string
 	stage_runs: StageRun[]
 }

@@ -111,7 +111,12 @@
 				<h2 class="font-semibold mb-4">SSL 证书</h2>
 				<template v-if="routeData">
 					<div v-if="!routeData.https_enabled" class="flex flex-col gap-3">
-						<div role="alert" class="text-sm text-base-content/70 border border-base-300 p-3 rounded">当前使用 HTTP，未启用 HTTPS</div>
+						<div
+							role="alert"
+							class="text-sm text-base-content/70 border border-base-300 p-3 rounded"
+						>
+							当前使用 HTTP，未启用 HTTPS
+						</div>
 						<div class="flex items-center gap-2 flex-wrap">
 							<label class="btn btn-sm btn-ghost gap-1 cursor-pointer">
 								<Upload class="size-4" />
@@ -141,7 +146,10 @@
 						</div>
 					</div>
 					<div v-else class="flex flex-col gap-3">
-						<div role="alert" class="text-sm text-base-content/70 border border-base-300 p-3 rounded">
+						<div
+							role="alert"
+							class="text-sm text-base-content/70 border border-base-300 p-3 rounded"
+						>
 							{{
 								routeData.cert_type === 'letsencrypt'
 									? "使用 Let's Encrypt 自动证书"

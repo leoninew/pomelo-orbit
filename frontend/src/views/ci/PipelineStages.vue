@@ -42,7 +42,9 @@
 						<td class="text-base-content/60">{{ formatTime(s.updated_at) }}</td>
 						<td>
 							<div class="flex items-center gap-2">
-								<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary">编辑</router-link>
+								<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary">
+									编辑
+								</router-link>
 								<button class="link link-error" @click="confirmDelete(s.id)">删除</button>
 							</div>
 						</td>

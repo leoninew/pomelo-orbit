@@ -41,14 +41,7 @@
 						<td class="text-base-content/70">{{ p.code }}</td>
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
 						<td class="cell-muted">
-							<router-link
-								v-if="p.git_credential_id"
-								:to="`/ci/credential/${p.git_credential_id}`"
-								class="link link-primary"
-							>
-								{{ p.git_credential_name ?? p.git_credential_id }}
-							</router-link>
-							<span v-else class="text-base-content/40">-</span>
+							{{ p.git_credential_name ?? '—' }}
 						</td>
 						<td class="cell-muted">{{ formatTime(p.created_at) }}</td>
 						<td>

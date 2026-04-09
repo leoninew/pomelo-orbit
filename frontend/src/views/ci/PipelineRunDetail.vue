@@ -94,11 +94,11 @@
 							<dt class="text-base-content/70 w-24 shrink-0">快照</dt>
 							<dd>
 								<router-link
-									v-if="snapshot"
-									:to="`/ci/snapshot/${run.pipeline_snapshot_id}`"
+									v-if="run.snapshot_id"
+									:to="`/ci/snapshot/${run.snapshot_id}`"
 									class="link link-primary text-xs"
 								>
-									{{ run.template_name }} v{{ snapshot.version }}
+									{{ run.template_name }} v{{ run.template_version }}
 								</router-link>
 								<span v-else class="text-base-content/60">—</span>
 							</dd>
@@ -127,6 +127,14 @@
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">结束时间</dt>
 							<dd>{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd>
+						</div>
+						<div v-if="run.error_message" class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">错误信息</dt>
+							<dd>
+								<span class="tooltip tooltip-top cursor-help" :data-tip="run.error_message">
+									<span class="text-xs truncate block max-w-xs">{{ run.error_message }}</span>
+								</span>
+							</dd>
 						</div>
 					</dl>
 				</div>
@@ -266,7 +274,7 @@
 				>
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
 						<h3 class="font-semibold flex items-center gap-2">
-							Stage: {{ currentStageRun?.name }}
+							Stage: {{ currentStageRun?.stage_name }}
 							<span
 								v-if="currentStageRun"
 								class="badge badge-sm"
@@ -499,10 +507,10 @@ async function init() {
 
 watch(runId, init);
 
-// 按需加载 snapshot：只在切换到 DAG 视图时才加载
+// DAG 视图等待 snapshot 加载完成
 watch(stagesView, async (newView) => {
-	if (newView === 'dag' && !snapshot.value && run.value?.pipeline_snapshot_id) {
-		await fetchSnapshot(run.value.pipeline_snapshot_id);
+	if (newView === 'dag' && !snapshot.value && run.value?.snapshot_id) {
+		await fetchSnapshot(run.value.snapshot_id);
 	}
 });
 

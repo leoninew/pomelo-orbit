@@ -62,7 +62,7 @@
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">Git 凭据</dt>
 						<dd class="text-base-content/60">
-							{{ repository.git_credential_id ? '已配置' : '未配置' }}
+							{{ repository.git_credential_name ?? '未配置' }}
 						</dd>
 					</div>
 					<div class="flex gap-2">

@@ -76,3 +76,13 @@ def delete_stage(
     _current_user=Depends(get_current_user),
 ) -> None:
     pipeline_service.delete_stage(stage_id)
+
+
+@router.post("/{stage_id}/duplicate", response_model=PipelineStageResp, status_code=201)
+def duplicate_stage(
+    stage_id: str,
+    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    _current_user=Depends(get_current_user),
+) -> PipelineStageResp:
+    stage = pipeline_service.duplicate_stage(stage_id)
+    return PipelineStageResp.model_validate(stage)

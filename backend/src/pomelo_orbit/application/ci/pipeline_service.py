@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from collections.abc import Callable
+from dataclasses import asdict
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -471,6 +472,23 @@ class PipelineService:
         # 更新所有引用此 Stage 的模板的 updated_at，触发快照版本检测
         self._touch_templates_referencing(stage_id)
         return stage
+
+    def duplicate_stage(self, stage_id: str) -> PipelineStage:
+        stage = self.get_stage(stage_id)
+        base_name = f"{stage.name} copy"
+        new_name = base_name
+        i = 2
+        while self.stage_repo.find_by_name(new_name):
+            new_name = f"{base_name} {i}"
+            i += 1
+        return self.create_stage(
+            name=new_name,
+            image=stage.image,
+            script=stage.script,
+            env=dict(stage.env),
+            artifacts=[asdict(a) if not isinstance(a, dict) else a for a in stage.artifacts] if stage.artifacts else None,
+            description=stage.description,
+        )
 
     def delete_stage(self, stage_id: str) -> None:
         stage = self.get_stage(stage_id)

@@ -25,4 +25,8 @@ export const pipelineStageApi = {
 	delete(id: string): Promise<void> {
 		return request.delete(`/api/ci/pipeline-stage/${id}`);
 	},
+
+	duplicate(id: string): Promise<PipelineStage> {
+		return request.post(`/api/ci/pipeline-stage/${id}/duplicate`);
+	},
 };

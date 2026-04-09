@@ -41,19 +41,19 @@
 						<td class="text-base-content/60 max-w-xs truncate">{{ s.description || '—' }}</td>
 						<td class="text-base-content/60">{{ formatTime(s.updated_at) }}</td>
 						<td>
-							<div class="flex items-center gap-2">
-								<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary">
-									编辑
-								</router-link>
-								<button class="link link-error" @click="confirmDelete(s.id)">删除</button>
-							</div>
+							<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary">
+								查看
+							</router-link>
+							<button class="link link-primary ml-3" :disabled="duplicating" @click="handleDuplicate(s.id)">
+								复制
+							</button>
 						</td>
 					</tr>
 				</tbody>
 			</table>
 		</div>
 
-		<!-- Create/Edit modal -->
+		<!-- Create modal -->
 		<dialog ref="modalRef" class="modal">
 			<div class="modal-box w-full max-w-2xl">
 				<h3 class="font-bold text-lg mb-4">新建 Stage</h3>
@@ -113,42 +113,27 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
-
-		<!-- Delete confirm modal -->
-		<dialog ref="deleteModalRef" class="modal">
-			<div class="modal-box">
-				<h3 class="font-bold text-lg">删除 Stage</h3>
-				<p class="py-4 text-sm">确定删除此 Stage？被模板引用的 Stage 无法删除。</p>
-				<div class="modal-action">
-					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						删除
-					</button>
-					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
-				</div>
-			</div>
-			<form method="dialog" class="modal-backdrop"><button>close</button></form>
-		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
 import { onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { pipelineStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { PipelineStage } from '@/types/ci/template';
 import { formatTime } from '@/utils/time';
 
+const router = useRouter();
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
 const stages = ref<PipelineStage[]>([]);
 const modalRef = ref<HTMLDialogElement>();
-const deleteModalRef = ref<HTMLDialogElement>();
-const pendingDeleteId = ref('');
 
 const form = reactive({ name: '', image: '', script: '', description: '' });
 const errors = reactive({ name: '', image: '', script: '' });
@@ -197,21 +182,15 @@ async function handleModalOk() {
 	}
 }
 
-function confirmDelete(id: string) {
-	pendingDeleteId.value = id;
-	deleteModalRef.value?.showModal();
-}
-
-async function handleDelete() {
+async function handleDuplicate(id: string) {
 	try {
-		await executeOp(async () => {
-			await pipelineStageApi.delete(pendingDeleteId.value);
-			toast.success('删除成功');
-			deleteModalRef.value?.close();
-			fetchStages();
+		await executeDuplicate(async () => {
+			const newStage = await pipelineStageApi.duplicate(id);
+			toast.success('复制成功');
+			router.push(`/ci/pipeline-stage/${newStage.id}`);
 		});
 	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '删除失败');
+		toast.error(err instanceof Error ? err.message : '复制失败');
 	}
 }
 

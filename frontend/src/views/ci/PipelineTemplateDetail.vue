@@ -28,6 +28,13 @@
 								运行
 							</button>
 							<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑</button>
+							<button
+								class="btn btn-sm btn-error btn-ghost"
+								:disabled="saving"
+								@click="openDeleteModal"
+							>
+								删除
+							</button>
 						</div>
 					</div>
 					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
@@ -393,6 +400,26 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- Delete modal -->
+		<dialog ref="deleteModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除模板</h3>
+				<p class="py-4 text-sm">
+					确定要删除模板「
+					<strong>{{ template?.name }}</strong>
+					」吗？此操作不可撤销。
+				</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="saving" @click="handleDeleteOk">
+						<span v-if="saving" class="loading loading-spinner loading-xs" />
+						删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
@@ -438,6 +465,7 @@ const editOrchModalRef = ref<HTMLDialogElement>();
 const runModalRef = ref<HTMLDialogElement>();
 const addVarModalRef = ref<HTMLDialogElement>();
 const editVarModalRef = ref<HTMLDialogElement>();
+const deleteModalRef = ref<HTMLDialogElement>();
 const editForm = reactive({ name: '', description: '' });
 const addOrchForm = reactive({
 	stageId: '',
@@ -602,7 +630,10 @@ async function handleSave() {
 			const data = await pipelineTemplateApi.update(templateId, {
 				name: editForm.name,
 				description: editForm.description,
-				orchestration: sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })),
+				orchestration: sortableOrch.value.map((o, i) => ({
+					...o,
+					sort_order: i,
+				})),
 				variable_declarations: declarations.value,
 			});
 			applyTemplateState(data);
@@ -610,6 +641,22 @@ async function handleSave() {
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+function openDeleteModal() {
+	deleteModalRef.value?.showModal();
+}
+
+async function handleDeleteOk() {
+	try {
+		await executeSave(async () => {
+			await pipelineTemplateApi.delete(templateId);
+			toast.success('删除成功');
+			router.push('/ci/template');
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '删除失败');
 	}
 }
 

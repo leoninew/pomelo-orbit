@@ -61,14 +61,6 @@
 						</p>
 						<div class="flex items-end justify-between mt-auto">
 							<span class="text-xs text-base-content/50">{{ formatTime(tpl.created_at) }}</span>
-							<div class="flex items-center gap-1" @click.stop>
-								<button
-									class="btn btn-xs btn-ghost text-error invisible group-hover:visible"
-									@click="confirmDelete(tpl.id)"
-								>
-									删除
-								</button>
-							</div>
 						</div>
 					</div>
 				</div>
@@ -124,7 +116,6 @@
 								<router-link :to="`/ci/template/${t.id}`" class="link link-primary">
 									查看
 								</router-link>
-								<button class="link link-error" @click="confirmDelete(t.id)">删除</button>
 							</div>
 						</td>
 					</tr>
@@ -176,22 +167,6 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
-
-		<!-- Delete confirm modal -->
-		<dialog ref="deleteModalRef" class="modal">
-			<div class="modal-box">
-				<h3 class="font-bold text-lg">删除模板</h3>
-				<p class="py-4 text-sm">确定删除此模板？</p>
-				<div class="modal-action">
-					<button class="btn btn-error" :disabled="operating" @click="handleDelete">
-						<span v-if="operating" class="loading loading-spinner loading-xs" />
-						删除
-					</button>
-					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
-				</div>
-			</div>
-			<form method="dialog" class="modal-backdrop"><button>close</button></form>
-		</dialog>
 	</div>
 </template>
 
@@ -216,8 +191,6 @@ const pagination = reactive({ current: 1, pageSize: 12, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
 const createModalRef = ref<HTMLDialogElement>();
-const deleteModalRef = ref<HTMLDialogElement>();
-const pendingDeleteId = ref('');
 
 const form = reactive({ name: '', description: '' });
 const errors = reactive({ name: '' });
@@ -266,24 +239,6 @@ async function handleCreateOk() {
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');
-	}
-}
-
-function confirmDelete(id: string) {
-	pendingDeleteId.value = id;
-	deleteModalRef.value?.showModal();
-}
-
-async function handleDelete() {
-	try {
-		await executeOp(async () => {
-			await pipelineTemplateApi.delete(pendingDeleteId.value);
-			toast.success('删除成功');
-			deleteModalRef.value?.close();
-			fetchTemplates();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 

@@ -9,7 +9,7 @@
         "code": "golang-example",
         "repository_url": "https://github.com/golang/example",
         "git_credential_id": "01KNNRA86VHSY8W0VR0NQF6C3E",
-        "variable_overrides": "{\"repository_repository_url\": \"https://github.com/golang/example\", \"repository_trigger_ref\": \"master\"}",
+        "variable_overrides": "[]",
         "default_branch": "master"
       }
     ],
@@ -23,7 +23,7 @@
         "id": "01STAGE000000000000000CLONE",
         "name": "git clone",
         "image": "alpine/git",
-        "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_repository_url }}\ngit fetch --depth=1 origin {{ repository_trigger_ref }}\ngit checkout -B {{ repository_trigger_ref }} FETCH_HEAD",
+        "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD",
         "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
         "artifacts": null,
         "description": "克隆代码仓库"
@@ -63,11 +63,11 @@
     "table": "pipeline_template",
     "data": [
       {
-        "id": "01KNP06F22PAKPHMDDEFHVSPMF",
-        "name": "Go 流水线模板",
-        "description": "- 测试+扫描\n- 构建",
-        "variable_declarations": "[{\"name\": \"repository_repository_url\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"repository_trigger_ref\", \"description\": \"\", \"required\": false, \"default\": null, \"secret\": false, \"locked\": false}, {\"name\": \"working_dir\", \"description\": \"\", \"required\": false, \"default\": \"hello\", \"secret\": false, \"locked\": false}]",
-        "version": 18
+        "id": "01KNVEJPWVK757139NMNNNCEFE",
+        "name": "Go 构建流水线",
+        "description": "- test & lint\n- build",
+        "variable_declarations": "[]",
+        "version": 6
       }
     ],
     "comment": "内置模板"
@@ -77,34 +77,34 @@
     "table": "pipeline_template_stage",
     "data": [
       {
-        "id": "01KNRKVJQGWNVBFA03TW8XQBV4",
-        "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
+        "id": "01KNVEPWDB3CPY9EWPPM4PHDFG",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01STAGE000000000000000CLONE",
         "stage_name": "git clone",
         "depends_on": "[]",
         "sort_order": 0
       },
       {
-        "id": "01KNRKVJQGWNVBFA03TW8XQBV5",
-        "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
+        "id": "01KNVEPWDB3CPY9EWPPM4PHDFH",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRANZDR4PASATAXKTBBTRX9",
         "stage_name": "golang:1.23 test",
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 1
       },
       {
-        "id": "01KNRKVJQGWNVBFA03TW8XQBV6",
-        "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
-        "stage_id": "01KNRDSSJ7RNND7110175N4NR2",
-        "stage_name": "golang:1.23 build",
+        "id": "01KNVEPWDB3CPY9EWPPM4PHDFJ",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
+        "stage_id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
+        "stage_name": "golang:1.23 lint",
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 2
       },
       {
-        "id": "01KNRKVJQGWNVBFA03TW8XQBV7",
-        "template_id": "01KNP06F22PAKPHMDDEFHVSPMF",
-        "stage_id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
-        "stage_name": "golang:1.23 lint",
+        "id": "01KNVEPWDB3CPY9EWPPM4PHDFK",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
+        "stage_id": "01KNRDSSJ7RNND7110175N4NR2",
+        "stage_name": "golang:1.23 build",
         "depends_on": "[\"01KNRANZDR4PASATAXKTBBTRX9\"]",
         "sort_order": 3
       }

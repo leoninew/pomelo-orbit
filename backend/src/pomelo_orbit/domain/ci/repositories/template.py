@@ -16,6 +16,9 @@ class PipelineStageRepository(ABC):
     def find_all(self) -> list[PipelineStage]: ...
 
     @abstractmethod
+    def find_paginated(self, page: int, per_page: int) -> tuple[list[PipelineStage], int]: ...
+
+    @abstractmethod
     def find_by_ids(self, stage_ids: list[str]) -> list[PipelineStage]: ...
 
     @abstractmethod

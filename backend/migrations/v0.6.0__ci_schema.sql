@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     template_id TEXT NOT NULL,
     version INTEGER NOT NULL,
     stages_snapshot TEXT NOT NULL DEFAULT '[]',                 -- JSON，不可修改
-    variable_declarations_snapshot TEXT NOT NULL DEFAULT '[]',  -- JSON，不可修改
+    variables_snapshot TEXT NOT NULL DEFAULT '[]',  -- JSON，不可修改
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (template_id) REFERENCES pipeline_template(id),
     UNIQUE (template_id, version)

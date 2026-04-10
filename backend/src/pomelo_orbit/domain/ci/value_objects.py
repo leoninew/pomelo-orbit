@@ -16,13 +16,36 @@ class PipelineRunTrigger(StrEnum):
     WEBHOOK = "webhook"
 
 
+class VariableSource(StrEnum):
+    """变量来源"""
+
+    GLOBAL = "global"  # 全局内置变量
+    REPOSITORY = "repository"  # 项目内置变量
+    REPOSITORY_CUSTOM = "repository_custom"  # 项目自定义变量
+    TEMPLATE = "template"  # 模板内置变量
+    TEMPLATE_STAGE = "template_stage"  # 模板 Stage 发现的变量
+    TEMPLATE_CUSTOM = "template_custom"  # 模板自定义变量
+    RUNTIME = "runtime"  # 运行时临时变量
+
+
 class VariableDeclaration(BaseModel):
     name: str
     description: str = ""
-    required: bool = False
-    default: Any = None
+    value: Any = None
     secret: bool = False
-    locked: bool = False
+    source: VariableSource = VariableSource.TEMPLATE_CUSTOM  # 默认为自定义
+
+
+type BuiltinVariableSpecs = dict[str, str]
+
+
+class Variable(BaseModel):
+    """变量值对象"""
+
+    name: str
+    value: Any
+    source: VariableSource
+    description: str = ""
 
 
 class ArtifactConfig(BaseModel):

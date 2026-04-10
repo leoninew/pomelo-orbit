@@ -42,6 +42,17 @@ class PipelineStageRepositoryImpl(PipelineStageRepository):
         orms = self._session.query(PipelineStageModel).order_by(PipelineStageModel.name).all()
         return [self._mapper.to_domain(orm) for orm in orms]
 
+    def find_paginated(self, page: int, per_page: int) -> tuple[list[PipelineStage], int]:
+        total = self._session.query(func.count(PipelineStageModel.id)).scalar() or 0
+        orms = (
+            self._session.query(PipelineStageModel)
+            .order_by(PipelineStageModel.created_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        return [self._mapper.to_domain(orm) for orm in orms], total
+
     def find_by_ids(self, stage_ids: list[str]) -> list[PipelineStage]:
         orms = self._session.query(PipelineStageModel).filter(PipelineStageModel.id.in_(stage_ids)).all()
         return [self._mapper.to_domain(orm) for orm in orms]

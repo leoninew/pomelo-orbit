@@ -78,7 +78,7 @@ class PipelineSnapshotModel(Base):
     template_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_template.id"), nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     stages_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
-    variable_declarations_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
+    variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
 
@@ -94,7 +94,7 @@ class ProjectModel(Base):
     git_credential_id: Mapped[str | None] = mapped_column(
         String(26), ForeignKey("credential.id"), nullable=True, index=True
     )
-    variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
+    variable_overrides: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array
     default_branch: Mapped[str] = mapped_column(String(255), nullable=False, default="master")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)

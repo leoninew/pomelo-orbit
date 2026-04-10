@@ -159,15 +159,13 @@ class PipelineSnapshotMapper:
     def to_domain(orm: PipelineSnapshotModel) -> PipelineSnapshot:
         raw_stages = json.loads(orm.stages_snapshot)
         stages_snapshot = [StageDefinition(**PipelineTemplateMapper._normalize_snapshot_stage(s)) for s in raw_stages]
-        variable_declarations_snapshot = [
-            VariableDeclaration(**vd) for vd in json.loads(orm.variable_declarations_snapshot)
-        ]
+        variables_snapshot = [VariableDeclaration(**vd) for vd in json.loads(orm.variables_snapshot)]
         return PipelineSnapshot(
             id=orm.id,
             template_id=orm.template_id,
             version=orm.version,
             stages_snapshot=stages_snapshot,
-            variable_declarations_snapshot=variable_declarations_snapshot,
+            variables_snapshot=variables_snapshot,
             created_at=orm.created_at,
         )
 
@@ -178,9 +176,7 @@ class PipelineSnapshotMapper:
             template_id=entity.template_id,
             version=entity.version,
             stages_snapshot=json.dumps([s.model_dump() for s in entity.stages_snapshot]),
-            variable_declarations_snapshot=json.dumps(
-                [vd.model_dump() for vd in entity.variable_declarations_snapshot]
-            ),
+            variables_snapshot=json.dumps([vd.model_dump() for vd in entity.variables_snapshot]),
             created_at=entity.created_at,
         )
 
@@ -188,13 +184,16 @@ class PipelineSnapshotMapper:
 class RepositoryMapper:
     @staticmethod
     def to_domain(orm: ProjectModel) -> Repository:
+        variable_overrides_data = json.loads(orm.variable_overrides)
+        variable_overrides = [VariableDeclaration(**item) for item in variable_overrides_data]
+
         return Repository(
             id=orm.id,
             name=orm.name,
             code=orm.code,
             repository_url=orm.repository_url,
             git_credential_id=orm.git_credential_id,
-            variable_overrides=json.loads(orm.variable_overrides),
+            variable_overrides=variable_overrides,
             default_branch=orm.default_branch,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
@@ -202,13 +201,14 @@ class RepositoryMapper:
 
     @staticmethod
     def to_orm(entity: Repository) -> ProjectModel:
+        variable_overrides_data = [var.model_dump() for var in entity.variable_overrides]
         return ProjectModel(
             id=entity.id,
             name=entity.name,
             code=entity.code,
             repository_url=entity.repository_url,
             git_credential_id=entity.git_credential_id,
-            variable_overrides=json.dumps(entity.variable_overrides),
+            variable_overrides=json.dumps(variable_overrides_data),
             default_branch=entity.default_branch,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
@@ -218,6 +218,9 @@ class RepositoryMapper:
 class PipelineRunMapper:
     @staticmethod
     def to_domain(orm: PipelineRunModel) -> PipelineRun:
+        variables_snapshot_data = json.loads(orm.variables_snapshot)
+        variables_snapshot = [VariableDeclaration(**vd) for vd in variables_snapshot_data]
+
         return PipelineRun(
             id=orm.id,
             repository_id=orm.repository_id,
@@ -228,7 +231,7 @@ class PipelineRunMapper:
             template_version=orm.template_version,
             trigger=PipelineRunTrigger(orm.trigger),
             trigger_ref=orm.trigger_ref,
-            variables_snapshot=json.loads(orm.variables_snapshot),
+            variables_snapshot=variables_snapshot,
             status=TaskStatus(orm.status),
             retry_of=orm.retry_of,
             started_at=orm.started_at,
@@ -249,7 +252,7 @@ class PipelineRunMapper:
             template_version=entity.template_version,
             trigger=entity.trigger.value,
             trigger_ref=entity.trigger_ref,
-            variables_snapshot=json.dumps(entity.variables_snapshot),
+            variables_snapshot=json.dumps([vd.model_dump() for vd in entity.variables_snapshot]),
             status=entity.status.value,
             retry_of=entity.retry_of,
             started_at=entity.started_at,

@@ -3,7 +3,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
 
 from ulid import ULID
 
@@ -27,7 +26,7 @@ class Repository:
     name: str
     code: str  # 短标识符，固化工作目录路径，创建后不可修改
     repository_url: str
-    variable_overrides: dict[str, Any]
+    variable_overrides: list[VariableDeclaration]  # 项目自定义变量列表
     git_credential_id: str | None = None
     default_branch: str = "master"
     created_at: datetime = field(default_factory=utc_now)
@@ -39,7 +38,7 @@ class Repository:
         code: str,
         repository_url: str,
         git_credential_id: str | None = None,
-        variable_overrides: dict[str, Any] | None = None,
+        variable_overrides: list[VariableDeclaration] | None = None,
         default_branch: str = "master",
     ) -> "Repository":
         now = utc_now()
@@ -49,7 +48,7 @@ class Repository:
             code=code,
             repository_url=repository_url,
             git_credential_id=git_credential_id,
-            variable_overrides=variable_overrides or {},
+            variable_overrides=variable_overrides or [],
             default_branch=default_branch,
             created_at=now,
             updated_at=now,
@@ -59,7 +58,7 @@ class Repository:
         self,
         name: str | None = None,
         repository_url: str | None = None,
-        variable_overrides: dict[str, Any] | None = None,
+        variable_overrides: list[VariableDeclaration] | None = None,
         git_credential_id: str | None = None,
         default_branch: str | None = None,
     ) -> None:
@@ -322,17 +321,28 @@ class PipelineSnapshot:
     template_id: str
     version: int  # 从 1 开始，单调递增
     stages_snapshot: list[StageDefinition]
-    variable_declarations_snapshot: list[VariableDeclaration]
+    variables_snapshot: list[VariableDeclaration]
     created_at: datetime = field(default_factory=utc_now)
 
     @staticmethod
-    def create(template: "PipelineTemplate", version: int) -> "PipelineSnapshot":
+    def create(
+        template: "PipelineTemplate",
+        version: int,
+        variable_declarations: list[VariableDeclaration],
+    ) -> "PipelineSnapshot":
+        """创建快照
+
+        Args:
+            template: 模板实体
+            version: 快照版本号
+            variable_declarations: 完整的变量声明列表（内置 + stage + 自定义）
+        """
         return PipelineSnapshot(
             id=str(ULID()),
             template_id=template.id,
             version=version,
             stages_snapshot=deepcopy(template.get_stage_definitions()),
-            variable_declarations_snapshot=deepcopy(template.variable_declarations),
+            variables_snapshot=deepcopy(variable_declarations),
         )
 
 
@@ -349,7 +359,7 @@ class PipelineRun:
     template_version: int
     trigger: PipelineRunTrigger
     trigger_ref: str
-    variables_snapshot: dict[str, Any]
+    variables_snapshot: list[VariableDeclaration]
     status: TaskStatus = TaskStatus.WAITING_TO_RUN
     retry_of: str | None = None
     started_at: datetime | None = None
@@ -367,7 +377,7 @@ class PipelineRun:
         template_version: int,
         trigger: PipelineRunTrigger,
         trigger_ref: str,
-        variables_snapshot: dict[str, Any],
+        variables_snapshot: list[VariableDeclaration],
         retry_of: str | None = None,
     ) -> "PipelineRun":
         return PipelineRun(

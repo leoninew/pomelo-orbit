@@ -33,10 +33,21 @@ jwt:
 # Webhook 配置
 webhook:
   secret: ""                         # GitHub Webhook Secret，留空则跳过签名验证
+  max_payload_size: 10485760         # 10MB，最大 payload 大小
 
 # CI 配置
 ci:
-  global_variables: {}               # 全局变量，注入所有 pipeline run
+  # 全局变量：注入所有 pipeline run
+  # 示例：
+  # global_variables:
+  #   PROJECT_NAME: "Pomelo Orbit"
+  #   PROJECT_VERSION: "0.1.0"
+  #   ENVIRONMENT: "production"
+  global_variables:
+    PROJECT_NAME: "Pomelo Orbit"
+    PROJECT_VERSION: "0.1.0"
+  
+
 
 # 数据清理
 cleanup:

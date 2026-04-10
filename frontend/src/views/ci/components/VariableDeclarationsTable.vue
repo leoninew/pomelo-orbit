@@ -1,65 +1,45 @@
-﻿<template>
+<template>
 	<div>
 		<div v-if="declarations.length === 0" class="text-sm text-base-content/60 py-4 text-center">
-			暂无数据
+			暂无变量
 		</div>
-		<table v-else class="table table-sm w-full">
+		<table v-else class="table w-full">
 			<thead>
-				<tr class="text-base-content/60">
+				<tr class="text-base-content/60 text-xs">
 					<th>变量名</th>
-					<th class="w-16">内置</th>
 					<th>变量值</th>
-					<th class="w-12">敏感</th>
-					<th class="w-20">操作</th>
+					<th>来源</th>
+					<th>说明</th>
+					<th class="w-24">操作</th>
 				</tr>
 			</thead>
 			<tbody>
 				<tr v-for="decl in declarations" :key="decl.name" class="hover">
-					<td>{{ decl.name }}</td>
-					<td>
-						<span v-if="decl.builtin" class="badge badge-xs badge-ghost">内置</span>
+					<td class="font-mono text-xs">{{ decl.name }}</td>
+					<td class="font-mono text-xs cell-muted">
+						{{ hasDisplayValue(decl.value) ? (decl.secret ? '••••••' : String(decl.value)) : '—' }}
 					</td>
 					<td>
-						<template v-if="editingName === decl.name">
-							<input
-								:ref="
-									(el) => {
-										if (el) editInputRef = el as HTMLInputElement;
-									}
-								"
-								v-model="editValue"
-								type="text"
-								class="input input-xs w-full"
-								placeholder="变量值"
-								@keyup.enter="commitEdit(decl.name)"
-								@keyup.esc="cancelEdit"
-							/>
-						</template>
-						<span v-else-if="decl.default">
-							{{ decl.secret ? '••••••' : decl.default }}
-						</span>
-						<span v-else class="text-base-content/30">未设置</span>
-					</td>
-					<td>
-						<input
-							type="checkbox"
-							class="checkbox checkbox-xs"
-							:checked="decl.secret"
-							@change="update(decl.name, 'secret', ($event.target as HTMLInputElement).checked)"
-						/>
-					</td>
-					<td>
-						<button
-							v-if="editingName !== decl.name"
-							class="link link-primary"
-							@click="startEdit(decl)"
+						<span
+							v-if="decl.source"
+							class="badge badge-sm"
+							:class="getSourceBadgeClass(decl.source)"
 						>
-							编辑
-						</button>
-						<div v-else class="flex items-center gap-1">
-							<button class="link link-primary" @click="commitEdit(decl.name)">确定</button>
-							<button class="link link-ghost" @click="cancelEdit">取消</button>
+							{{ getSourceLabel(decl.source) }}
+						</span>
+						<span v-else class="text-base-content/40">—</span>
+					</td>
+					<td class="cell-muted">{{ decl.description || '—' }}</td>
+					<td>
+						<div v-if="!readonly && canEdit(decl.source)">
+							<button class="link link-primary text-xs" @click="emit('edit', decl.name)">
+								编辑
+							</button>
+							<button class="link link-error text-xs ml-2" @click="emit('delete', decl.name)">
+								删除
+							</button>
 						</div>
+						<span v-else class="text-base-content/40 text-xs">—</span>
 					</td>
 				</tr>
 			</tbody>
@@ -68,36 +48,35 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
-import type { VariableDeclaration } from '@/types/ci';
+import type { VariableDeclaration } from '@/types/ci/template';
+import { getSourceBadgeClass, getSourceLabel, isVariableEditable } from '@/utils/variableSource';
 
-const props = defineProps<{ declarations: VariableDeclaration[] }>();
+withDefaults(
+	defineProps<{
+		declarations: VariableDeclaration[]
+		readonly?: boolean
+	}>(),
+	{
+		readonly: false,
+	}
+);
 
-const emit = defineEmits<(e: 'update:declarations', value: VariableDeclaration[]) => void>();
+const emit = defineEmits<{
+	(e: 'edit', name: string): void
+	(e: 'delete', name: string): void
+}>();
 
-const editingName = ref<string | null>(null);
-const editValue = ref('');
-const editInputRef = ref<HTMLInputElement | null>(null);
-
-function update(name: string, field: keyof VariableDeclaration, value: unknown) {
-	emit(
-		'update:declarations',
-		props.declarations.map((d) => (d.name === name ? { ...d, [field]: value } : d))
-	);
+function hasDisplayValue(value: unknown) {
+	if (value === null || value === undefined) {
+		return false;
+	}
+	if (typeof value === 'string') {
+		return value.trim().length > 0;
+	}
+	return true;
 }
 
-function startEdit(decl: VariableDeclaration) {
-	editingName.value = decl.name;
-	editValue.value = decl.default ?? '';
-	nextTick(() => editInputRef.value?.focus());
-}
-
-function cancelEdit() {
-	editingName.value = null;
-}
-
-function commitEdit(name: string) {
-	update(name, 'default', editValue.value || null);
-	editingName.value = null;
+function canEdit(source?: string) {
+	return source ? isVariableEditable(source) : false;
 }
 </script>

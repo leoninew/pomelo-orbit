@@ -258,7 +258,6 @@ async function handleCreateOk() {
 			const tpl = await pipelineTemplateApi.create({
 				name: form.name,
 				description: form.description || undefined,
-				stages: [],
 				variable_declarations: [],
 			});
 			toast.success('创建成功');

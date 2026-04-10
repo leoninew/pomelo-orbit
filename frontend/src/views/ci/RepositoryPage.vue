@@ -41,7 +41,7 @@
 						<td class="text-base-content/70">{{ p.code }}</td>
 						<td class="cell-muted max-w-xs truncate">{{ p.repository_url }}</td>
 						<td class="cell-muted">
-							{{ p.git_credential_name ?? '—' }}
+							{{ p.has_credential ? '已配置' : '—' }}
 						</td>
 						<td class="cell-muted">{{ formatTime(p.created_at) }}</td>
 						<td>
@@ -144,7 +144,7 @@ import { useRouter } from 'vue-router';
 import { credentialApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Credential, Repository } from '@/types/api';
+import type { Credential, RepositoryListItem } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
 import { formatTime } from '@/utils/time';
 
@@ -154,7 +154,7 @@ const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
-const repositories = ref<Repository[]>([]);
+const repositories = ref<RepositoryListItem[]>([]);
 const credentials = ref<Credential[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')

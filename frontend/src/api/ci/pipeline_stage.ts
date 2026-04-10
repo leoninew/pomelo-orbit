@@ -3,11 +3,12 @@ import type {
 	PipelineStageCreateReq,
 	PipelineStageUpdateReq,
 } from '@/types/ci/template';
+import type { PaginatedResp } from '@/types/api';
 import request from '@/utils/request';
 
 export const pipelineStageApi = {
-	list(): Promise<PipelineStage[]> {
-		return request.get('/api/ci/pipeline-stage');
+	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<PipelineStage>> {
+		return request.get('/api/ci/pipeline-stage', { params });
 	},
 
 	get(id: string): Promise<PipelineStage> {

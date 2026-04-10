@@ -198,11 +198,11 @@
 						<X class="size-4" />
 					</button>
 				</div>
-				<div class="flex-1 overflow-hidden p-4">
+				<div class="flex-1 overflow-hidden p-4 bg-[#1a202c]">
 					<CodeEditor
 						v-model:value="scriptTemp"
 						style="height: 100%"
-						theme="vs"
+						theme="vs-dark"
 						language="shell"
 						:options="{
 							minimap: { enabled: false },

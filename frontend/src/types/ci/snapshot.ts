@@ -16,6 +16,6 @@ export interface PipelineSnapshot {
 	template_id: string
 	version: number
 	stages_snapshot: SnapshotStage[]
-	variable_declarations_snapshot: VariableDeclaration[]
+	variables_snapshot: VariableDeclaration[]
 	created_at: string
 }

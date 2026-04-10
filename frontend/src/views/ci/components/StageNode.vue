@@ -7,31 +7,13 @@
 			{ selected: selected, readonly: readonly && !status, clickable: !readonly || !!status },
 		]"
 	>
-		<div class="stage-node-header">
-			<div class="stage-type-icon">
-				<CheckCircle v-if="stage.builtin" class="size-4" />
-				<Cog v-else class="size-4" />
-			</div>
+		<div class="stage-node-content">
 			<span class="stage-name">{{ stage.name }}</span>
-		</div>
-		<div class="stage-node-footer">
-			<span v-if="stage.builtin" class="stage-type-badge badge-info">内置</span>
-			<span v-else class="stage-type-badge">自定义</span>
-			<span class="commands-count">
-				{{ (stage.script || '').split('\n').filter((l) => l.trim()).length }} 行
-			</span>
-			<div v-if="status" class="status-icon">
-				<CheckCircle v-if="status === 'ran_to_completion'" class="size-3 text-success" />
-				<XCircle v-else-if="status === 'faulted'" class="size-3 text-error" />
-				<Loader2 v-else-if="status === 'running'" class="size-3 text-info animate-spin" />
-				<Clock v-else-if="status === 'waiting_to_run'" class="size-3 text-warning" />
-			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { CheckCircle, Clock, Cog, Loader2, XCircle } from 'lucide-vue-next';
 import { computed } from 'vue';
 import type { TaskStatus } from '@/types/api';
 import type { SnapshotStage } from '@/types/ci/snapshot';
@@ -77,14 +59,19 @@ const statusClass = computed(() => {
 
 <style scoped>
 .stage-node {
-	background-color: hsl(var(--b3));
-	border: 2px solid hsl(var(--bc) / 0.15);
+	background-color: #f7fafc;
+	border: 2px solid #4a5568;
 	border-radius: 0.5rem;
 	box-shadow: 0 2px 6px 0 rgb(0 0 0 / 0.15);
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	min-width: 140px;
-	padding: 0.5rem 0.75rem;
+	min-height: 60px;
+	padding: 0.75rem;
 	animation: node-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 @keyframes node-enter {
@@ -104,7 +91,7 @@ const statusClass = computed(() => {
 
 .stage-node.clickable:hover {
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.1);
+	box-shadow: 0 4px 12px 0 rgb(0 0 0 / 0.2);
 	border-color: hsl(var(--in));
 }
 
@@ -188,55 +175,18 @@ const statusClass = computed(() => {
 	border: 2px solid hsl(var(--wa));
 }
 
-.stage-node-header {
+.stage-node-content {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
-	margin-bottom: 0.25rem;
-}
-
-.stage-type-icon {
-	flex-shrink: 0;
-	color: hsl(var(--in));
+	justify-content: center;
+	width: 100%;
 }
 
 .stage-name {
 	font-weight: 500;
-	font-size: 0.6875rem;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.stage-node-footer {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 0.5rem;
-}
-
-.stage-type-badge {
-	font-size: 0.625rem;
-	padding-left: 0.375rem;
-	padding-right: 0.375rem;
-	padding-top: 0.125rem;
-	padding-bottom: 0.125rem;
-	border-radius: 0.25rem;
-	background-color: hsl(var(--b2));
-	color: hsl(var(--bc) / 0.7);
-}
-
-.badge-info {
-	background-color: hsl(var(--in) / 0.15);
-	color: hsl(var(--in));
-}
-
-.commands-count {
-	font-size: 0.625rem;
-	color: hsl(var(--bc) / 0.6);
-}
-
-.status-icon {
-	flex-shrink: 0;
+	font-size: 0.75rem;
+	color: hsl(var(--bc));
+	word-break: break-word;
+	text-align: center;
 }
 </style>

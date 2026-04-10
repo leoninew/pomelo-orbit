@@ -210,13 +210,50 @@ PascalCase，按功能命名，不加 Page/Detail 后缀
 
 ## 架构设计
 
-### 分层架构
+### DDD 分层架构
 
 ```
-interfaces/api/        # 接口层 - HTTP 适配
+interfaces/api/        # 接口层 - HTTP 适配，DTO 校验
 application/           # 应用层 - 业务编排（services/ + di.py）
-domain/                # 领域层 - 核心业务逻辑（entities、value_objects、repositories）
+domain/                # 领域层 - 核心业务逻辑（entities、value_objects、repositories、domain services）
 infrastructure/        # 基础设施层 - 技术实现
+```
+
+**分层职责**：
+
+- **接口层**：HTTP 请求/响应适配，DTO 校验，不包含业务逻辑
+- **应用层**：业务流程编排，事务管理，调用领域服务和仓储
+- **领域层**：核心业务规则，实体行为，领域服务（跨聚合的业务逻辑）
+- **基础设施层**：数据库、外部服务、技术工具
+
+**依赖规则**：
+
+- 应用服务不得互相引用（同级引用）
+- 应用服务只能依赖：仓储接口、领域服务、领域实体
+- 跨聚合的业务逻辑应下沉到领域服务
+- 领域服务不依赖应用服务
+
+```python
+# ✅ 正确 - 应用服务依赖仓储和领域服务
+class PipelineRunService:
+    def __init__(
+        self,
+        run_repo: PipelineRunRepository,
+        repository_repo: RepositoryRepository,
+        template_repo: PipelineTemplateRepository,
+        snapshot_manager: SnapshotManager,  # 领域服务
+        variable_resolver: VariableResolver,  # 领域服务
+    ):
+        ...
+
+# ❌ 错误 - 应用服务之间互相引用
+class PipelineRunService:
+    def __init__(
+        self,
+        repository_service: RepositoryService,  # 同级应用服务
+        template_service: TemplateService,      # 同级应用服务
+    ):
+        ...
 ```
 
 ### 依赖注入 (DI) 规范
@@ -463,11 +500,40 @@ session.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
 #### 数据验证
 
-使用 Pydantic Field 进行验证，使用正则表达式约束枚举值
+**核心原则**：使用 Pydantic Field 进行声明式校验，不在业务逻辑中兜底处理
+
+- 必填字段使用 `Field(min_length=1)` 确保非空
+- 可选字段使用 `str | None = None`，不使用空字符串默认值
+- 枚举值使用 `Literal` 类型约束
+- 列表字段使用 `Field(default_factory=list)` 而不是 `= []`
 
 ```python
-content_type: str = Field(..., pattern="^(word|sentence|paragraph)$")
+# ✅ 正确 - 声明式校验
+class TriggerPipelineReq(BaseModel):
+    template_id: str = Field(min_length=1)
+    trigger_ref: str = Field(min_length=1)
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+class RepositoryCreateReq(BaseModel):
+    name: str = Field(min_length=1)
+    code: str = Field(min_length=1, pattern=r"^[a-z0-9_-]+$")
+    repository_url: str = Field(min_length=1)
+    default_branch: str = Field(default="master", min_length=1)
+
+# ❌ 错误 - 使用空字符串默认值 + 业务逻辑兜底
+class TriggerPipelineReq(BaseModel):
+    trigger_ref: str = ""  # 空字符串默认值
+
+# 业务逻辑中兜底处理
+effective_ref = trigger_ref or repository.default_branch  # 不要这样做
 ```
+
+**校验规则**：
+- `Field(min_length=1)` - 字符串非空
+- `Field(pattern=r"^[a-z0-9_-]+$")` - 正则约束
+- `Literal["value1", "value2"]` - 枚举值
+- `Field(default_factory=dict)` - 可变默认值
+- `Field(default_factory=list)` - 列表默认值
 
 #### 路由定义
 

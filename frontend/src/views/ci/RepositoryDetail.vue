@@ -85,39 +85,18 @@
 			<div class="card-body p-5">
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">变量配置</h2>
-					<button class="btn btn-sm btn-primary gap-1" @click="openAddVarModal">
-						<Plus class="size-3.5" />
-						添加变量
+					<button class="btn btn-sm btn-primary gap-1.5" @click="openAddVarModal">
+						<Plus class="size-4" />
+						添加自定义变量
 					</button>
 				</div>
-				<div v-if="variableList.length === 0" class="text-sm text-base-content/60 py-4 text-center">
-					暂无数据
-				</div>
-				<table v-else class="table">
-					<thead>
-						<tr class="text-base-content/60">
-							<th>变量名</th>
-							<th>变量值</th>
-							<th>操作</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="v in variableList" :key="v.key" class="hover">
-							<td>{{ v.key }}</td>
-							<td>
-								{{ v.value }}
-							</td>
-							<td>
-								<div class="flex items-center gap-3">
-									<button class="link link-primary" @click="openEditVarModal(v.key, v.value)">
-										编辑
-									</button>
-									<button class="link link-error" @click="deleteVariable(v.key)">删除</button>
-								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+
+				<VariableDeclarationsTable
+					:declarations="allVariables"
+					:readonly="false"
+					@edit="openEditVarModal"
+					@delete="deleteVariable"
+				/>
 			</div>
 		</div>
 
@@ -140,7 +119,8 @@
 			:repository-id="repositoryId"
 			:templates="templates"
 			:default-branch="repository?.default_branch"
-			:project-variables="repository?.variable_overrides"
+			:project-variables="repositoryCustomVariables"
+			:repository="repository"
 			@trigger="handleTrigger"
 		/>
 
@@ -233,6 +213,15 @@
 						<legend class="fieldset-legend">变量值</legend>
 						<input v-model="newVarValue" type="text" class="input w-full" placeholder="变量值" />
 					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">说明（可选）</legend>
+						<input
+							v-model="newVarDescription"
+							type="text"
+							class="input w-full"
+							placeholder="变量说明"
+						/>
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleAddVarOk">
@@ -257,6 +246,15 @@
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">变量值</legend>
 						<input v-model="editingVarValue" type="text" class="input w-full" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">说明（可选）</legend>
+						<input
+							v-model="editingVarDescription"
+							type="text"
+							class="input w-full"
+							placeholder="变量说明"
+						/>
 					</fieldset>
 				</div>
 				<div class="modal-action">
@@ -283,6 +281,7 @@ import type { Credential, PipelineTemplate, Repository, RepositoryWebhook } from
 import { credentialTypeLabels } from '@/types/api';
 import TriggerModal from './components/TriggerModal.vue';
 import WebhookList from './components/WebhookList.vue';
+import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -315,12 +314,21 @@ const editForm = reactive({
 });
 const newVarKey = ref('');
 const newVarValue = ref('');
+const newVarDescription = ref('');
 const editingVarKey = ref('');
 const editingVarValue = ref('');
+const editingVarDescription = ref('');
 
-const variableList = computed(() =>
-	Object.entries(repository.value?.variable_overrides ?? {}).map(([key, value]) => ({ key, value }))
+const repositoryCustomVariables = computed(
+	() => repository.value?.variables?.filter((v) => v.source === 'repository_custom') || []
 );
+
+// 合并所有变量到一个列表
+const allVariables = computed(() => {
+	return repository.value?.variables || [];
+});
+
+// 使用统一的工具函数获取来源标签和样式
 
 async function fetchProject() {
 	try {
@@ -431,12 +439,18 @@ async function handleDeleteOk() {
 function openAddVarModal() {
 	newVarKey.value = '';
 	newVarValue.value = '';
+	newVarDescription.value = '';
 	addVarModalRef.value?.showModal();
 }
 
-function openEditVarModal(key: string, value: string) {
-	editingVarKey.value = key;
-	editingVarValue.value = value;
+function openEditVarModal(name: string) {
+	const variable = allVariables.value.find((v) => v.name === name);
+	if (!variable) {
+		return;
+	}
+	editingVarKey.value = variable.name;
+	editingVarValue.value = variable.value || '';
+	editingVarDescription.value = variable.description || '';
 	editVarModalRef.value?.showModal();
 }
 
@@ -448,11 +462,22 @@ async function handleAddVarOk() {
 	try {
 		await executeOp(async () => {
 			const data = await repositoryApi.update(repositoryId, {
-				variable_overrides: {
-					...repository.value?.variable_overrides,
-					[newVarKey.value]: newVarValue.value,
-				},
+				variable_overrides: [
+					...repositoryCustomVariables.value,
+					{
+						name: newVarKey.value,
+						value: newVarValue.value,
+						description: newVarDescription.value,
+					},
+				],
 			});
+			const repositoryCustom =
+				data.variables?.filter((v) => v.source === 'repository_custom') || [];
+			const added = repositoryCustom.some((v) => v.name === newVarKey.value);
+			if (!added) {
+				toast.error('内置变量不能在项目级配置');
+				return;
+			}
 			repository.value = data;
 			toast.success('添加成功');
 			addVarModalRef.value?.close();
@@ -466,11 +491,23 @@ async function handleEditVarOk() {
 	try {
 		await executeOp(async () => {
 			const data = await repositoryApi.update(repositoryId, {
-				variable_overrides: {
-					...repository.value?.variable_overrides,
-					[editingVarKey.value]: editingVarValue.value,
-				},
+				variable_overrides: repositoryCustomVariables.value.map((v) =>
+					v.name === editingVarKey.value
+						? {
+								name: v.name,
+								value: editingVarValue.value,
+								description: editingVarDescription.value,
+							}
+						: v
+				),
 			});
+			const repositoryCustom =
+				data.variables?.filter((v) => v.source === 'repository_custom') || [];
+			const updated = repositoryCustom.some((v) => v.name === editingVarKey.value);
+			if (!updated) {
+				toast.error('内置变量不能在项目级配置');
+				return;
+			}
 			repository.value = data;
 			toast.success('更新成功');
 			editVarModalRef.value?.close();
@@ -483,9 +520,9 @@ async function handleEditVarOk() {
 async function deleteVariable(key: string) {
 	try {
 		await executeOp(async () => {
-			const updated = { ...repository.value?.variable_overrides };
-			delete updated[key];
-			const data = await repositoryApi.update(repositoryId, { variable_overrides: updated });
+			const data = await repositoryApi.update(repositoryId, {
+				variable_overrides: repositoryCustomVariables.value.filter((v) => v.name !== key),
+			});
 			repository.value = data;
 			toast.success('删除成功');
 		});

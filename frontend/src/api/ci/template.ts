@@ -3,7 +3,9 @@ import type {
 	PipelineSnapshot,
 	PipelineTemplate,
 	PipelineTemplateCreateReq,
+	StageOrchestration,
 	PipelineTemplateUpdateReq,
+	VariableDeclaration,
 } from '@/types/api';
 import request from '@/utils/request';
 
@@ -22,6 +24,13 @@ export const pipelineTemplateApi = {
 
 	update(id: string, data: PipelineTemplateUpdateReq): Promise<PipelineTemplate> {
 		return request.put(`/api/ci/template/${id}`, data);
+	},
+
+	resolveVariables(data: {
+		orchestration: StageOrchestration[]
+		variable_declarations?: VariableDeclaration[]
+	}): Promise<VariableDeclaration[]> {
+		return request.post('/api/ci/template/resolve-variables', data);
 	},
 
 	delete(id: string): Promise<void> {

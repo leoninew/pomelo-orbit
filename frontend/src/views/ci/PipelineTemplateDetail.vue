@@ -4,15 +4,6 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ template?.name ?? '模板详情' }}</h1>
 			<div class="flex items-center gap-2">
-				<button
-					v-if="template"
-					class="btn btn-sm btn-primary"
-					:disabled="saving"
-					@click="handleSave"
-				>
-					<span v-if="saving" class="loading loading-spinner loading-xs" />
-					保存
-				</button>
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/template')">
 					<ArrowLeft class="size-4" />
 					返回
@@ -31,7 +22,13 @@
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="font-semibold">基本信息</h2>
-						<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑</button>
+						<div class="flex items-center gap-2">
+							<button class="btn btn-sm btn-primary gap-1" @click="openRunModal">
+								<Play class="size-3.5" />
+								运行
+							</button>
+							<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑</button>
+						</div>
 					</div>
 					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div class="flex gap-2">
@@ -52,16 +49,12 @@
 				</div>
 			</div>
 
-			<!-- Stages 编排 -->
+			<!-- Stages 编排与变量声明 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
-						<h2 class="font-semibold">Stages 编排</h2>
-						<div class="flex items-center gap-2">
-							<button class="btn btn-sm btn-ghost gap-1" @click="openAddOrchModal">
-								<Plus class="size-3.5" />
-								添加 Stage
-							</button>
+						<div class="flex items-center gap-3">
+							<h2 class="font-semibold">Stages 编排</h2>
 							<div class="join">
 								<button
 									class="btn btn-xs join-item"
@@ -79,8 +72,24 @@
 								</button>
 							</div>
 						</div>
+						<div class="flex items-center gap-2">
+							<button class="btn btn-sm btn-ghost gap-1" @click="openAddOrchModal">
+								<Plus class="size-3.5" />
+								添加 Stage
+							</button>
+							<button
+								v-if="template"
+								class="btn btn-sm btn-primary"
+								:disabled="saving"
+								@click="handleSave"
+							>
+								<span v-if="saving" class="loading loading-spinner loading-xs" />
+								保存
+							</button>
+						</div>
 					</div>
 
+					<!-- Stages 编排内容 -->
 					<VueDraggable
 						v-if="viewMode === 'list'"
 						v-model="sortableOrch"
@@ -98,7 +107,7 @@
 								<th>Stage 名称</th>
 								<th>依赖</th>
 								<th class="w-24 text-center">制品</th>
-								<th class="w-28">操作</th>
+								<th class="w-32">操作</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -156,14 +165,23 @@
 						</p>
 						<StageDAGView v-else :stages="dagStages" />
 					</div>
-				</div>
-			</div>
 
-			<!-- 变量声明 -->
-			<div class="card bg-base-100 shadow-sm">
-				<div class="card-body p-5">
-					<h2 class="font-semibold mb-4">变量声明</h2>
-					<VariableDeclarationsTable v-model:declarations="declarations" :readonly="false" />
+					<!-- 变量声明内容 -->
+					<div class="mt-6 pt-6 border-t border-base-300">
+						<div class="flex items-center justify-between mb-4">
+							<h3 class="font-semibold">变量声明</h3>
+							<button class="btn btn-sm btn-ghost gap-1" @click="openAddVarModal">
+								<Plus class="size-3.5" />
+								添加变量
+							</button>
+						</div>
+						<VariableDeclarationsTable
+							:declarations="declarations"
+							:readonly="false"
+							@edit="openEditVarModal"
+							@delete="deleteVariable"
+						/>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -272,20 +290,124 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- 运行流水线 modal -->
+		<dialog ref="runModalRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">运行流水线</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">选择项目</legend>
+						<select v-model="runForm.repositoryId" class="select w-full">
+							<option value="">— 选择项目 —</option>
+							<option v-for="repo in repositories" :key="repo.id" :value="repo.id">
+								{{ repo.name }} ({{ repo.code }})
+							</option>
+						</select>
+					</fieldset>
+					<fieldset v-if="selectedRepository" class="fieldset">
+						<legend class="fieldset-legend">分支 / Ref</legend>
+						<input
+							v-model="runForm.triggerRef"
+							type="text"
+							class="input w-full"
+							:placeholder="selectedRepository.default_branch || 'main'"
+						/>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button
+						class="btn btn-primary"
+						:disabled="!runForm.repositoryId || running"
+						@click="handleRunOk"
+					>
+						<span v-if="running" class="loading loading-spinner loading-xs" />
+						运行
+					</button>
+					<button class="btn btn-ghost" @click="runModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- 添加变量 modal -->
+		<dialog ref="addVarModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg mb-4">添加变量</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量名</legend>
+						<input v-model="varForm.name" type="text" class="input w-full" placeholder="变量名" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量值</legend>
+						<input v-model="varForm.value" type="text" class="input w-full" placeholder="变量值" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">说明（可选）</legend>
+						<input
+							v-model="varForm.description"
+							type="text"
+							class="input w-full"
+							placeholder="变量说明"
+						/>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="!varForm.name" @click="handleAddVarOk">
+						确定
+					</button>
+					<button class="btn btn-ghost" @click="addVarModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- 编辑变量 modal -->
+		<dialog ref="editVarModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg mb-4">编辑变量</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量名</legend>
+						<input :value="varForm.name" type="text" class="input w-full opacity-60" disabled />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">变量值</legend>
+						<input v-model="varForm.value" type="text" class="input w-full" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">说明（可选）</legend>
+						<input
+							v-model="varForm.description"
+							type="text"
+							class="input w-full"
+							placeholder="变量说明"
+						/>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" @click="handleEditVarOk">保存</button>
+					<button class="btn btn-ghost" @click="editVarModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, GripVertical, Plus } from 'lucide-vue-next';
+import { ArrowLeft, GripVertical, Play, Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useRoute, useRouter } from 'vue-router';
-import { pipelineStageApi, pipelineTemplateApi } from '@/api/ci';
+import { pipelineStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type {
 	PipelineStage,
 	PipelineTemplate,
+	Repository,
 	StageOrchestration,
 	VariableDeclaration,
 } from '@/types/ci/template';
@@ -300,6 +422,7 @@ const toast = useToast();
 
 const { status, execute } = useStatusAsync();
 const { loading: saving, execute: executeSave } = useStatusAsync();
+const { loading: running, execute: executeRun } = useStatusAsync();
 
 const template = ref<PipelineTemplate>();
 const sortableOrch = ref<StageOrchestration[]>([]);
@@ -307,18 +430,31 @@ const declarations = ref<VariableDeclaration[]>([]);
 const allStages = ref<PipelineStage[]>([]);
 const stageCache = reactive<Record<string, PipelineStage>>({});
 const viewMode = ref<'list' | 'dag'>('list');
+const repositories = ref<Repository[]>([]);
 
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();
 const editOrchModalRef = ref<HTMLDialogElement>();
+const runModalRef = ref<HTMLDialogElement>();
+const addVarModalRef = ref<HTMLDialogElement>();
+const editVarModalRef = ref<HTMLDialogElement>();
 const editForm = reactive({ name: '', description: '' });
 const addOrchForm = reactive({
 	stageId: '',
 	dependsOn: [] as string[],
 });
+const runForm = reactive({
+	repositoryId: '',
+	triggerRef: '',
+});
 const editOrchForm = reactive({
 	editingStageId: '',
 	dependsOn: [] as string[],
+});
+const varForm = reactive({
+	name: '',
+	value: '',
+	description: '',
 });
 
 const editableOrchOptions = computed(() =>
@@ -329,6 +465,10 @@ const availableStages = computed(() => {
 	const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
 	return allStages.value.filter((s) => !inOrch.has(s.id));
 });
+
+const selectedRepository = computed(() =>
+	repositories.value.find((r) => r.id === runForm.repositoryId)
+);
 
 const dagStages = computed(() =>
 	sortableOrch.value.map((orch) => {
@@ -344,20 +484,37 @@ const dagStages = computed(() =>
 	})
 );
 
+// 监听项目选择，自动填充默认分支
+watch(
+	() => runForm.repositoryId,
+	(newRepoId) => {
+		if (newRepoId) {
+			const repo = repositories.value.find((r) => r.id === newRepoId);
+			if (repo?.default_branch) {
+				runForm.triggerRef = repo.default_branch;
+			}
+		}
+	}
+);
+
+function applyTemplateState(tmpl: PipelineTemplate) {
+	template.value = tmpl;
+	sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
+	declarations.value = [...tmpl.variable_declarations];
+	Object.keys(stageCache).forEach((key) => delete stageCache[key]);
+	tmpl.stages.forEach((stage) => (stageCache[stage.id] = stage));
+	Object.assign(editForm, {
+		name: tmpl.name,
+		description: tmpl.description ?? '',
+	});
+}
+
 async function fetchTemplate() {
 	try {
 		await execute(async () => {
 			const tmpl = await pipelineTemplateApi.get(templateId);
-			template.value = tmpl;
-			sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
-			declarations.value = [...tmpl.variable_declarations];
 			allStages.value = [];
-			Object.keys(stageCache).forEach((k) => delete stageCache[k]);
-			tmpl.stages.forEach((s) => (stageCache[s.id] = s));
-			Object.assign(editForm, {
-				name: tmpl.name,
-				description: tmpl.description ?? '',
-			});
+			applyTemplateState(tmpl);
 		});
 	} catch {
 		toast.error('获取模板信息失败');
@@ -369,11 +526,25 @@ async function fetchStages() {
 	// 按需加载：仅在打开"添加 Stage"模态框时才加载
 	if (allStages.value.length === 0) {
 		try {
-			const stages = await pipelineStageApi.list();
-			allStages.value = stages;
+			const response = await pipelineStageApi.list({ page: 1, per_page: 100 });
+			allStages.value = response.items;
 		} catch {
 			toast.error('获取 Stage 列表失败');
 		}
+	}
+}
+
+async function syncDeclarations() {
+	try {
+		declarations.value = await pipelineTemplateApi.resolveVariables({
+			orchestration: sortableOrch.value.map((item, index) => ({
+				...item,
+				sort_order: index,
+			})),
+			variable_declarations: declarations.value,
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '同步变量失败');
 	}
 }
 
@@ -398,8 +569,21 @@ async function handleEditInfoOk() {
 		toast.error('模板名称不能为空');
 		return;
 	}
-	editInfoModalRef.value?.close();
-	await handleSave();
+
+	try {
+		await executeSave(async () => {
+			// 只保存基本信息，不传递 orchestration 和 variable_declarations
+			const data = await pipelineTemplateApi.update(templateId, {
+				name: editForm.name,
+				description: editForm.description,
+			});
+			applyTemplateState(data);
+			toast.success('保存成功');
+		});
+		editInfoModalRef.value?.close();
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
 }
 
 async function handleSave() {
@@ -421,15 +605,7 @@ async function handleSave() {
 				orchestration: sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })),
 				variable_declarations: declarations.value,
 			});
-			template.value = data;
-			sortableOrch.value = [...data.orchestration].sort((a, b) => a.sort_order - b.sort_order);
-			declarations.value = [...data.variable_declarations];
-			Object.keys(stageCache).forEach((k) => delete stageCache[k]);
-			data.stages.forEach((s) => (stageCache[s.id] = s));
-			Object.assign(editForm, {
-				name: data.name,
-				description: data.description ?? '',
-			});
+			applyTemplateState(data);
 			toast.success(`保存成功，快照 v${data.version}`);
 		});
 	} catch (e) {
@@ -438,39 +614,6 @@ async function handleSave() {
 }
 
 // ── 编排操作 ──────────────────────────────────────────────────────────────────
-
-// 从当前编排的 stages 实时提取变量占位符，合并到 declarations
-function extractVarNames(stages: PipelineStage[]): Set<string> {
-	const found = new Set<string>();
-	const re = () => /\{\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}\}/g;
-	for (const s of stages) {
-		for (const text of [
-			s.script,
-			...Object.values(s.env ?? {}),
-			...(s.artifacts ?? []).flatMap((a) => [a.path, a.name]),
-		]) {
-			for (const m of (text ?? '').matchAll(re())) {
-				found.add(m[1]);
-			}
-		}
-	}
-	return found;
-}
-
-function syncDeclarations(stages: PipelineStage[]) {
-	const extracted = extractVarNames(stages);
-	const existingMap = new Map(declarations.value.map((d) => [d.name, d]));
-	const blank = (name: string) => ({
-		name,
-		description: '',
-		required: false,
-		default: null,
-		secret: false,
-		locked: false,
-		builtin: false,
-	});
-	declarations.value = [...extracted].sort().map((name) => existingMap.get(name) ?? blank(name));
-}
 
 function onDragEnd() {
 	// VueDraggable 已直接更新 sortableOrch，sort_order 在保存时统一写入
@@ -483,10 +626,14 @@ async function openAddOrchModal() {
 	addOrchModalRef.value?.showModal();
 }
 
-function confirmAddOrch() {
-	if (!addOrchForm.stageId) {return;}
+async function confirmAddOrch() {
+	if (!addOrchForm.stageId) {
+		return;
+	}
 	const stage = allStages.value.find((s) => s.id === addOrchForm.stageId);
-	if (!stage) {return;}
+	if (!stage) {
+		return;
+	}
 	sortableOrch.value.push({
 		stage_id: addOrchForm.stageId,
 		stage_name: stage.name,
@@ -494,26 +641,24 @@ function confirmAddOrch() {
 		sort_order: sortableOrch.value.length,
 	});
 	stageCache[stage.id] = stage;
-	syncDeclarations(
-		sortableOrch.value.map((o) => stageCache[o.stage_id]).filter(Boolean) as PipelineStage[]
-	);
+	await syncDeclarations();
 	addOrchModalRef.value?.close();
 }
 
-function removeOrch(idx: number) {
+async function removeOrch(idx: number) {
 	const removed = sortableOrch.value[idx];
 	sortableOrch.value.splice(idx, 1);
 	for (const o of sortableOrch.value) {
 		o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
 	}
-	syncDeclarations(
-		sortableOrch.value.map((o) => stageCache[o.stage_id]).filter(Boolean) as PipelineStage[]
-	);
+	await syncDeclarations();
 }
 
 function openEditOrchModal(idx: number) {
 	const orch = sortableOrch.value[idx];
-	if (!orch) {return;}
+	if (!orch) {
+		return;
+	}
 	editOrchForm.editingStageId = orch.stage_id;
 	editOrchForm.dependsOn = [...orch.depends_on];
 	editOrchModalRef.value?.showModal();
@@ -521,11 +666,114 @@ function openEditOrchModal(idx: number) {
 
 function confirmEditOrch() {
 	const orch = sortableOrch.value.find((o) => o.stage_id === editOrchForm.editingStageId);
-	if (!orch) {return;}
+	if (!orch) {
+		return;
+	}
 	orch.depends_on = editOrchForm.dependsOn;
 	editOrchForm.editingStageId = '';
 	editOrchForm.dependsOn = [];
 	editOrchModalRef.value?.close();
+}
+
+// ── 运行流水线 ──────────────────────────────────────────────────────────────────
+
+async function fetchRepositories() {
+	try {
+		const resp = await repositoryApi.list({ per_page: 100 });
+		repositories.value = resp.items;
+	} catch {
+		toast.error('获取项目列表失败');
+	}
+}
+
+async function openRunModal() {
+	runForm.repositoryId = '';
+	runForm.triggerRef = '';
+	await fetchRepositories();
+	runModalRef.value?.showModal();
+}
+
+async function handleRunOk() {
+	if (!runForm.repositoryId) {
+		toast.error('请选择项目');
+		return;
+	}
+
+	try {
+		await executeRun(async () => {
+			const repo = selectedRepository.value;
+			const triggerRef = runForm.triggerRef || repo?.default_branch || 'main';
+			const run = await repositoryApi.trigger(runForm.repositoryId, {
+				template_id: templateId,
+				trigger_ref: triggerRef,
+				variables: {},
+			});
+			toast.success('触发成功');
+			runModalRef.value?.close();
+			router.push(`/ci/run/${run.id}`);
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '触发失败');
+	}
+}
+
+// ── 变量管理 ──────────────────────────────────────────────────────────────────
+
+function openAddVarModal() {
+	varForm.name = '';
+	varForm.value = '';
+	varForm.description = '';
+	addVarModalRef.value?.showModal();
+}
+
+function handleAddVarOk() {
+	if (!varForm.name.trim()) {
+		toast.error('变量名不能为空');
+		return;
+	}
+
+	// 检查是否已存在
+	if (declarations.value.some((d) => d.name === varForm.name)) {
+		toast.error('变量名已存在');
+		return;
+	}
+
+	declarations.value.push({
+		name: varForm.name,
+		value: varForm.value || undefined,
+		description: varForm.description || undefined,
+		source: 'template_custom',
+		secret: false,
+	});
+
+	addVarModalRef.value?.close();
+}
+
+function openEditVarModal(name: string) {
+	const decl = declarations.value.find((d) => d.name === name);
+	if (!decl) {
+		return;
+	}
+	varForm.name = decl.name;
+	varForm.value = String(decl.value ?? '');
+	varForm.description = decl.description ?? '';
+	editVarModalRef.value?.showModal();
+}
+
+function handleEditVarOk() {
+	const decl = declarations.value.find((d) => d.name === varForm.name);
+	if (decl) {
+		decl.value = varForm.value || undefined;
+		decl.description = varForm.description || undefined;
+	}
+	editVarModalRef.value?.close();
+}
+
+function deleteVariable(name: string) {
+	const idx = declarations.value.findIndex((d) => d.name === name);
+	if (idx !== -1) {
+		declarations.value.splice(idx, 1);
+	}
 }
 
 onMounted(fetchTemplate);

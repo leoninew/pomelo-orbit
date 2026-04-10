@@ -50,35 +50,39 @@
 				</div>
 			</div>
 
-			<!-- Stages -->
+			<!-- Stages 编排与变量声明 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<div class="flex items-center justify-between mb-3">
-						<h2 class="font-semibold">Stages</h2>
-						<div class="join">
-							<button
-								class="btn btn-xs join-item"
-								:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
-								@click="stagesView = 'list'"
-							>
-								列表
-							</button>
-							<button
-								class="btn btn-xs join-item"
-								:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
-								@click="stagesView = 'dag'"
-							>
-								DAG
-							</button>
+					<div class="flex items-center justify-between mb-4">
+						<div class="flex items-center gap-3">
+							<h2 class="font-semibold">Stages 编排</h2>
+							<div class="join">
+								<button
+									class="btn btn-xs join-item"
+									:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
+									@click="stagesView = 'list'"
+								>
+									列表
+								</button>
+								<button
+									class="btn btn-xs join-item"
+									:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
+									@click="stagesView = 'dag'"
+								>
+									DAG
+								</button>
+							</div>
 						</div>
 					</div>
+
+					<!-- Stages 编排内容 -->
 					<table v-if="stagesView === 'list'" class="table w-full">
 						<thead>
 							<tr class="text-base-content/60 text-xs">
 								<th class="w-8">#</th>
-								<th>Stage</th>
+								<th>Stage 名称</th>
 								<th>依赖</th>
-								<th class="w-16 text-center">制品</th>
+								<th class="w-24 text-center">制品</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -106,26 +110,26 @@
 							</tr>
 						</tbody>
 					</table>
-					<div v-else>
-						<div
+
+					<div v-else class="min-h-[300px]">
+						<p
 							v-if="snapshot.stages_snapshot.length === 0"
 							class="text-sm text-base-content/60 py-4 text-center"
 						>
 							暂无数据
-						</div>
+						</p>
 						<StageDAGView v-else :stages="snapshot.stages_snapshot" />
 					</div>
-				</div>
-			</div>
 
-			<!-- 变量声明 -->
-			<div class="card bg-base-100 shadow-sm">
-				<div class="card-body p-5">
-					<h2 class="font-semibold mb-4">变量声明</h2>
-					<VariableDeclarationsTable
-						:declarations="snapshot.variable_declarations_snapshot"
-						:readonly="true"
-					/>
+					<!-- 变量声明内容 -->
+					<div class="mt-6 pt-6 border-t border-base-300">
+						<h3 class="font-semibold mb-4">变量声明</h3>
+						<VariableDeclarationsTable
+							:declarations="snapshot.variables_snapshot"
+							:readonly="true"
+							context="template"
+						/>
+					</div>
 				</div>
 			</div>
 		</template>

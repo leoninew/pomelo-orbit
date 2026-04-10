@@ -54,10 +54,16 @@ export interface OrchestrationUpdateReq {
 export interface VariableDeclaration {
 	name: string
 	description?: string
-	required: boolean
-	default?: string | null
+	value?: string | number | boolean | null
 	secret: boolean
-	locked: boolean
+	source?:
+		| 'global'
+		| 'repository'
+		| 'repository_custom'
+		| 'template'
+		| 'template_stage'
+		| 'template_custom'
+		| 'runtime'
 }
 
 // ── 模板 ──────────────────────────────────────────────────────────────────────
@@ -67,7 +73,7 @@ export interface PipelineTemplate {
 	name: string
 	description: string
 	orchestration: StageOrchestration[]
-	stages: PipelineStage[] // 编排引用的 Stage 详情
+	stages: PipelineStage[]
 	variable_declarations: VariableDeclaration[]
 	version: number
 	created_at: string

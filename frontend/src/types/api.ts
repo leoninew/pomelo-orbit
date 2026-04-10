@@ -19,7 +19,12 @@ export type {
 } from './cd/settings';
 export type { Credential, CredentialCreateReq, CredentialUpdateReq } from './ci/credential';
 export { credentialTypeLabels } from './ci/credential';
-export type { Repository, RepositoryCreateReq, RepositoryUpdateReq } from './ci/repository';
+export type {
+	Repository,
+	RepositoryCreateReq,
+	RepositoryListItem,
+	RepositoryUpdateReq,
+} from './ci/repository';
 export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
 export type { PipelineSnapshot } from './ci/snapshot';
 export type { Artifact, StageRun } from './ci/stage_run';

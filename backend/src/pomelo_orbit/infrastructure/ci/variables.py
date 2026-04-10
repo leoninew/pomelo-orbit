@@ -123,9 +123,7 @@ def merge_declarations(
 
         for name in sorted(extracted_variables):
             if name in declared_builtin_names:
-                merged.append(
-                    _build_builtin_declaration(name, None, source_for_builtin, builtin_specs)
-                )
+                merged.append(_build_builtin_declaration(name, None, source_for_builtin, builtin_specs))
                 merged_names.add(name)
             else:
                 default_value = extracted_variables[name]

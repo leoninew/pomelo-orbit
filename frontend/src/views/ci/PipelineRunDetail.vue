@@ -134,28 +134,32 @@
 				</div>
 			</div>
 
-			<!-- Stages -->
+			<!-- Stages 编排与变量快照 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<div class="flex items-center justify-between mb-3">
-						<h2 class="font-semibold">Stages</h2>
-						<div class="join">
-							<button
-								class="btn btn-xs join-item"
-								:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
-								@click="stagesView = 'list'"
-							>
-								列表
-							</button>
-							<button
-								class="btn btn-xs join-item"
-								:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
-								@click="stagesView = 'dag'"
-							>
-								DAG
-							</button>
+					<div class="flex items-center justify-between mb-4">
+						<div class="flex items-center gap-3">
+							<h2 class="font-semibold">Stages 编排</h2>
+							<div class="join">
+								<button
+									class="btn btn-xs join-item"
+									:class="stagesView === 'list' ? 'btn-active' : 'btn-ghost'"
+									@click="stagesView = 'list'"
+								>
+									列表
+								</button>
+								<button
+									class="btn btn-xs join-item"
+									:class="stagesView === 'dag' ? 'btn-active' : 'btn-ghost'"
+									@click="stagesView = 'dag'"
+								>
+									DAG
+								</button>
+							</div>
 						</div>
 					</div>
+
+					<!-- Stages 编排内容 -->
 					<table v-if="stagesView === 'list'" class="table w-full">
 						<thead>
 							<tr class="text-base-content/60 text-xs">
@@ -176,7 +180,11 @@
 							<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
 								<td colspan="6" class="text-center py-8 text-base-content/60">暂无数据</td>
 							</tr>
-							<tr v-for="(stage, idx) in snapshot.stages_snapshot" v-if="snapshot?.stages_snapshot" :key="stage.id" class="hover">
+							<tr
+								v-for="(stage, idx) in snapshot?.stages_snapshot ?? []"
+								:key="stage.id"
+								class="hover"
+							>
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 								<td class="text-xs">{{ stage.name }}</td>
 								<td>
@@ -219,29 +227,39 @@
 										class="link link-primary text-xs"
 										@click="openLogDrawer(stageRunMap[stage.id])"
 									>
-										日志
+										查看
 									</button>
 									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 							</tr>
 						</tbody>
 					</table>
-					<template v-else>
+
+					<div v-else class="min-h-[300px]">
 						<div v-if="!snapshot" class="flex justify-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</div>
 						<template v-else-if="snapshot.stages_snapshot.length > 0">
 							<StageDAGView
-								:stages="snapshot.stages_snapshot"
-								:stage-runs="run?.stage_runs"
+								:key="snapshot.id"
+								:stages="stagesWithStatus"
 								:show-minimap="true"
-								:readonly="true"
 								@view-stage="(sr) => openLogDrawer(sr)"
 							/>
 							<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
 						</template>
-						<div v-else class="text-center py-8 text-base-content/60 text-sm">暂无 DAG 数据</div>
-					</template>
+						<div v-else class="text-center py-8 text-base-content/60 text-sm">暂无数据</div>
+					</div>
+
+					<!-- 变量快照内容 -->
+					<div class="mt-6 pt-6 border-t border-base-300">
+						<h3 class="font-semibold mb-4">变量快照</h3>
+						<VariableDeclarationsTable
+							:declarations="runVariableDeclarations"
+							:readonly="true"
+							context="template"
+						/>
+					</div>
 				</div>
 			</div>
 
@@ -320,13 +338,13 @@
 						<div v-if="logsLoading" class="flex justify-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</div>
-						<div v-else class="flex-1 bg-base-200 rounded-box p-4 overflow-auto min-h-64">
+						<div v-else class="flex-1 bg-[#1a202c] rounded-box p-4 overflow-auto min-h-64">
 							<pre
 								v-if="logsText"
-								class="text-base-content font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
+								class="text-gray-300 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
 								>{{ logsText }}</pre
 							>
-							<div v-else class="flex flex-col items-center gap-2 py-8 text-base-content/60">
+							<div v-else class="flex flex-col items-center gap-2 py-8 text-gray-500">
 								<FileX class="size-8" />
 								<span class="text-sm">暂无数据</span>
 							</div>
@@ -376,6 +394,7 @@ import type { SnapshotStage } from '@/types/ci/snapshot';
 import { isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
+import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -397,6 +416,26 @@ const stagesView = ref<'list' | 'dag'>('list');
 
 const snapshotStageMap = reactive<Record<string, SnapshotStage>>({});
 const stageRunMap = reactive<Record<string, StageRun>>({});
+
+// variables_snapshot 现在是 VariableDeclaration[] 格式，直接使用
+const runVariableDeclarations = computed(() => {
+	return run.value?.variables_snapshot ?? [];
+});
+// 合并 stages 和 stageRun 的数据
+const stagesWithStatus = computed(() => {
+	if (!snapshot.value) {
+		return [];
+	}
+	const stages = snapshot.value.stages_snapshot;
+	return stages.map((stage) => {
+		const stageRun = stageRunMap[stage.id];
+		return {
+			...stage,
+			status: stageRun?.status,
+			stageRun: stageRun, // 保存完整的 stageRun 对象
+		};
+	});
+});
 
 // 日志 drawer 状态
 const logsText = ref('');

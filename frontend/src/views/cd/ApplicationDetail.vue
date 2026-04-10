@@ -194,12 +194,12 @@
 								/>
 							</fieldset>
 						</div>
-						<div style="height: calc(100vh - 180px)">
+						<div style="height: calc(100vh - 180px)" class="bg-[#1a202c] rounded-lg p-2">
 							<CodeEditor
 								v-if="!fileContentLoading"
 								v-model:value="currentFileContent"
 								:style="{ height: '100%' }"
-								theme="vs"
+								theme="vs-dark"
 								:language="currentFileLanguage"
 								:options="{
 									readOnly: !isEditingInDrawer && !!currentFileId,

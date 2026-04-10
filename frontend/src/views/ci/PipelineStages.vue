@@ -55,6 +55,19 @@
 					</tr>
 				</tbody>
 			</table>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
+				<div class="join">
+					<button
+						v-for="p in totalPages"
+						:key="p"
+						class="join-item btn btn-sm"
+						:class="p === pagination.current ? 'btn-primary' : 'btn-ghost'"
+						@click="goPage(p)"
+					>
+						{{ p }}
+					</button>
+				</div>
+			</div>
 		</div>
 
 		<!-- Create modal -->
@@ -122,7 +135,7 @@
 
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { pipelineStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -137,6 +150,8 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
 const stages = ref<PipelineStage[]>([]);
+const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 const modalRef = ref<HTMLDialogElement>();
 
 const form = reactive({ name: '', image: '', script: '', description: '' });
@@ -152,11 +167,21 @@ function validate() {
 async function fetchStages() {
 	try {
 		await execute(async () => {
-			stages.value = await pipelineStageApi.list();
+			const res = await pipelineStageApi.list({
+				page: pagination.current,
+				per_page: pagination.pageSize,
+			});
+			stages.value = res.items;
+			pagination.total = res.total;
 		});
 	} catch {
 		toast.error('获取 Stage 列表失败');
 	}
+}
+
+function goPage(p: number) {
+	pagination.current = p;
+	fetchStages();
 }
 
 function openCreateModal() {

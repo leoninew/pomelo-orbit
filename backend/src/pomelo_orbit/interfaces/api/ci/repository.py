@@ -6,12 +6,26 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
-from pomelo_orbit.application.ci.di import get_pipeline_service
-from pomelo_orbit.application.ci.pipeline_service import PipelineService
+from pomelo_orbit.application.ci.credential_service import CredentialService
+from pomelo_orbit.application.ci.di import (
+    get_credential_service,
+    get_pipeline_run_service,
+    get_repository_service,
+    get_variable_resolver,
+)
+from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
+from pomelo_orbit.application.ci.repository_service import RepositoryService
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
+from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
+from pomelo_orbit.domain.exceptions import BusinessError
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp, TriggerPipelineReq
-from pomelo_orbit.interfaces.api.ci.dto.repository import RepositoryCreateReq, RepositoryResp, RepositoryUpdateReq
+from pomelo_orbit.interfaces.api.ci.dto.repository import (
+    RepositoryCreateReq,
+    RepositoryListResp,
+    RepositoryResp,
+    RepositoryUpdateReq,
+)
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
@@ -19,18 +33,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/repository", tags=["repository"])
 
 
-@router.get("", response_model=PaginatedResp[RepositoryResp])
+@router.get("", response_model=PaginatedResp[RepositoryListResp])
 def list_repository(
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> PaginatedResp[RepositoryResp]:
-    projects, credential_names, total = pipeline_service.list_repository(page=page, per_page=per_page)
+) -> PaginatedResp[RepositoryListResp]:
+    repositories, total = repository_service.list_repositories(page=page, per_page=per_page)
     return PaginatedResp(
-        items=[
-            RepositoryResp.from_domain(p, cred_name) for p, cred_name in zip(projects, credential_names, strict=True)
-        ],
+        items=[RepositoryListResp.from_domain(repo) for repo in repositories],
         total=total,
         page=page,
         per_page=per_page,
@@ -38,13 +50,24 @@ def list_repository(
     )
 
 
+def _resolve_cred_name(credential_id: str | None, credential_service: CredentialService) -> str | None:
+    if not credential_id:
+        return None
+    cred = credential_service.get_credential(credential_id)
+    if not cred:
+        raise BusinessError(f"凭据不存在: {credential_id}", status_code=404)
+    return cred.name
+
+
 @router.post("", response_model=RepositoryResp, status_code=201)
 def create_repository(
     data: RepositoryCreateReq,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
+    variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
     _current_user=Depends(get_current_user),
 ) -> RepositoryResp:
-    project = pipeline_service.create_project(
+    repository = repository_service.create_repository(
         name=data.name,
         code=data.code,
         repository_url=data.repository_url,
@@ -52,28 +75,39 @@ def create_repository(
         variable_overrides=data.variable_overrides,
         default_branch=data.default_branch,
     )
-    project, credential_name = pipeline_service.get_repository_with_credential_name(project.id)
-    return RepositoryResp.from_domain(project, credential_name)
+    return RepositoryResp.from_domain(
+        repository,
+        _resolve_cred_name(repository.git_credential_id, credential_service),
+        variables=variable_resolver.get_repository_variables(repository),
+    )
 
 
 @router.get("/{repository_id}", response_model=RepositoryResp)
 def get_repository(
     repository_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
+    variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
     _current_user=Depends(get_current_user),
 ) -> RepositoryResp:
-    project, credential_name = pipeline_service.get_repository_with_credential_name(repository_id)
-    return RepositoryResp.from_domain(project, credential_name)
+    repository = repository_service.get_repository(repository_id)
+    return RepositoryResp.from_domain(
+        repository,
+        _resolve_cred_name(repository.git_credential_id, credential_service),
+        variables=variable_resolver.get_repository_variables(repository),
+    )
 
 
 @router.put("/{repository_id}", response_model=RepositoryResp)
 def update_repository(
     repository_id: str,
     data: RepositoryUpdateReq,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
+    variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
     _current_user=Depends(get_current_user),
 ) -> RepositoryResp:
-    pipeline_service.update_project(
+    repository_service.update_repository(
         repository_id=repository_id,
         name=data.name,
         repository_url=data.repository_url,
@@ -81,34 +115,39 @@ def update_repository(
         git_credential_id=data.git_credential_id,
         default_branch=data.default_branch,
     )
-    project, credential_name = pipeline_service.get_repository_with_credential_name(repository_id)
-    return RepositoryResp.from_domain(project, credential_name)
+
+    repository = repository_service.get_repository(repository_id)
+    return RepositoryResp.from_domain(
+        repository,
+        _resolve_cred_name(repository.git_credential_id, credential_service),
+        variables=variable_resolver.get_repository_variables(repository),
+    )
 
 
 @router.delete("/{repository_id}", status_code=204)
 def delete_repository(
     repository_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     _current_user=Depends(get_current_user),
 ) -> None:
-    pipeline_service.delete_project(repository_id)
+    repository_service.delete_repository(repository_id)
 
 
 @router.get("/{repository_id}/run", response_model=PaginatedResp[PipelineRunResp])
 def list_repository_runs(
     repository_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[PipelineRunResp]:
-    runs, total = pipeline_service.list_runs(repository_id=repository_id, page=page, per_page=per_page)
+    result = pipeline_run_service.list_runs(repository_id=repository_id, page=page, per_page=per_page)
     return PaginatedResp(
-        items=[PipelineRunResp.model_validate(r) for r in runs],
-        total=total,
+        items=[PipelineRunResp.model_validate(r) for r in result.runs],
+        total=result.total,
         page=page,
         per_page=per_page,
-        pages=math.ceil(total / per_page) if total > 0 else 1,
+        pages=math.ceil(result.total / per_page) if result.total > 0 else 1,
     )
 
 
@@ -117,15 +156,17 @@ async def trigger_pipeline(
     repository_id: str,
     data: TriggerPipelineReq,
     background_tasks: BackgroundTasks,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
     _current_user=Depends(get_current_user),
 ) -> PipelineRunResp:
-    run, project, merged_vars, snapshot = pipeline_service.create_run(
+    result = pipeline_run_service.create_run(
         repository_id=repository_id,
         template_id=data.template_id,
         trigger=PipelineRunTrigger.MANUAL,
         trigger_ref=data.trigger_ref,
         runtime_variables=data.variables,
     )
-    background_tasks.add_task(pipeline_service.execute_run, run, project, merged_vars, snapshot)
-    return PipelineRunResp.model_validate(run)
+    background_tasks.add_task(
+        pipeline_run_service.execute_run, result.run, result.repository, result.merged_variables, result.snapshot
+    )
+    return PipelineRunResp.model_validate(result.run)

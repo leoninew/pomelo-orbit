@@ -8,7 +8,7 @@
         "name": "golang-example",
         "code": "golang-example",
         "repository_url": "https://github.com/golang/example",
-        "git_credential_id": "01KNNRA86VHSY8W0VR0NQF6C3E",
+        "git_credential_id": null,
         "variable_overrides": "[]",
         "default_branch": "master"
       }

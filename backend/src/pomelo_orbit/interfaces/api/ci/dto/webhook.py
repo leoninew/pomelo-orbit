@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProjectWebhookResp(BaseModel):
@@ -14,21 +14,34 @@ class ProjectWebhookResp(BaseModel):
     enabled: bool
     created_at: datetime
     updated_at: datetime
-    # encrypted_secret 不返回给前端
 
     model_config = {"from_attributes": True}
 
 
 class ProjectWebhookCreateReq(BaseModel):
-    name: str
-    template_id: str
-    secret: str
-    branch_filter: str | None = None  # None 或空字符串表示拒绝所有分支，有值则用 glob 匹配
+    name: str = Field(min_length=1)
+    template_id: str = Field(min_length=1)
+    secret: str = Field(min_length=1)
+    branch_filter: str | None = None
+
+    @field_validator("branch_filter")
+    @classmethod
+    def normalize_branch_filter(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            return None
+        return value
 
 
 class ProjectWebhookUpdateReq(BaseModel):
-    name: str | None = None
-    template_id: str | None = None
+    name: str | None = Field(default=None, min_length=1)
+    template_id: str | None = Field(default=None, min_length=1)
     branch_filter: str | None = None
-    secret: str | None = None  # 留空则不修改
+    secret: str | None = Field(default=None, min_length=1)
     enabled: bool | None = None
+
+    @field_validator("branch_filter")
+    @classmethod
+    def normalize_branch_filter(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            return None
+        return value

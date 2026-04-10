@@ -3,12 +3,13 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_stage_run import StageRunResp
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import VariableDeclarationDto
 
 if TYPE_CHECKING:
-    from pomelo_orbit.application.ci.pipeline_service import PipelineService
+    from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
 
 
 class PipelineRunResp(BaseModel):
@@ -21,7 +22,7 @@ class PipelineRunResp(BaseModel):
     template_version: int
     trigger: str
     trigger_ref: str
-    variables_snapshot: dict[str, Any]
+    variables_snapshot: list[VariableDeclarationDto]
     status: str
     retry_of: str | None = None
     started_at: datetime | None
@@ -33,19 +34,19 @@ class PipelineRunResp(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def with_stage_runs(cls, run_id: str, pipeline_service: "PipelineService") -> "PipelineRunResp":
+    def with_stage_runs(cls, run_id: str, pipeline_run_service: "PipelineRunService") -> "PipelineRunResp":
         """构建包含 stage_runs 的详情响应（详情/cancel/retry 场景使用）。"""
-        run = pipeline_service.get_run(run_id)
-        stage_runs = pipeline_service.list_stage_runs(run_id)
+        run = pipeline_run_service.get_run(run_id)
+        stage_runs = pipeline_run_service.list_stage_runs(run_id)
         resp = cls.model_validate(run)
         resp.stage_runs = [StageRunResp.model_validate(s) for s in stage_runs]
         return resp
 
 
 class TriggerPipelineReq(BaseModel):
-    template_id: str
-    trigger_ref: str = ""
-    variables: dict[str, Any] = {}
+    template_id: str = Field(min_length=1)
+    trigger_ref: str = Field(min_length=1)
+    variables: dict[str, Any] = Field(default_factory=dict)
 
 
 class ArtifactResp(BaseModel):

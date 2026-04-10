@@ -6,8 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from pomelo_orbit.application.ci.di import get_pipeline_service
-from pomelo_orbit.application.ci.pipeline_service import PipelineService
+from pomelo_orbit.application.ci.credential_service import CredentialService
+from pomelo_orbit.application.ci.di import get_credential_service
 from pomelo_orbit.infrastructure.di import get_security_service
 from pomelo_orbit.infrastructure.security import SecurityService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
@@ -21,12 +21,12 @@ router = APIRouter(prefix="/credential", tags=["credential"])
 
 @router.get("", response_model=PaginatedResp[CredentialResp])
 def list_credentials(
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[CredentialResp]:
-    creds, total = pipeline_service.list_credentials(page=page, per_page=per_page)
+    creds, total = credential_service.list_credentials(page=page, per_page=per_page)
     return PaginatedResp(
         items=[CredentialResp.model_validate(c) for c in creds],
         total=total,
@@ -39,12 +39,12 @@ def list_credentials(
 @router.post("", response_model=CredentialResp, status_code=201)
 def create_credential(
     data: CredentialCreateReq,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     security_service: Annotated[SecurityService, Depends(get_security_service)],
     _current_user=Depends(get_current_user),
 ) -> CredentialResp:
     encrypted = security_service.encrypt_value(data.data)
-    cred = pipeline_service.create_credential(name=data.name, credential_type=data.type, encrypted_data=encrypted)
+    cred = credential_service.create_credential(name=data.name, credential_type=data.type, encrypted_data=encrypted)
     return CredentialResp.model_validate(cred)
 
 
@@ -52,19 +52,19 @@ def create_credential(
 def update_credential(
     credential_id: str,
     data: CredentialUpdateReq,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     security_service: Annotated[SecurityService, Depends(get_security_service)],
     _current_user=Depends(get_current_user),
 ) -> CredentialResp:
     encrypted = security_service.encrypt_value(data.data) if data.data else None
-    cred = pipeline_service.update_credential(credential_id, name=data.name, encrypted_data=encrypted)
+    cred = credential_service.update_credential(credential_id, name=data.name, encrypted_data=encrypted)
     return CredentialResp.model_validate(cred)
 
 
 @router.delete("/{credential_id}", status_code=204)
 def delete_credential(
     credential_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     _current_user=Depends(get_current_user),
 ) -> None:
-    pipeline_service.delete_credential(credential_id)
+    credential_service.delete_credential(credential_id)

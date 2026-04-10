@@ -7,8 +7,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 
-from pomelo_orbit.application.ci.di import get_pipeline_service
-from pomelo_orbit.application.ci.pipeline_service import PipelineService
+from pomelo_orbit.application.ci.di import get_pipeline_run_service, get_webhook_service
+from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
+from pomelo_orbit.application.ci.webhook_service import WebhookService
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.webhook import (
@@ -19,9 +20,6 @@ from pomelo_orbit.interfaces.api.ci.dto.webhook import (
 
 logger = logging.getLogger(__name__)
 
-# 最大 payload 大小：10MB
-MAX_PAYLOAD_SIZE = 10 * 1024 * 1024
-
 router = APIRouter(tags=["webhooks"])
 
 
@@ -31,20 +29,20 @@ router = APIRouter(tags=["webhooks"])
 @router.get("/repository/{repository_id}/webhook", response_model=list[ProjectWebhookResp])
 def list_webhooks(
     repository_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
     _current_user=Depends(get_current_user),
 ) -> list[ProjectWebhookResp]:
-    return [ProjectWebhookResp.model_validate(wh) for wh in pipeline_service.list_webhooks(repository_id)]
+    return [ProjectWebhookResp.model_validate(wh) for wh in webhook_service.list_webhooks(repository_id)]
 
 
 @router.post("/repository/{repository_id}/webhook", response_model=ProjectWebhookResp, status_code=201)
 def create_webhook(
     repository_id: str,
     data: ProjectWebhookCreateReq,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
     _current_user=Depends(get_current_user),
 ) -> ProjectWebhookResp:
-    wh = pipeline_service.create_webhook(
+    wh = webhook_service.create_webhook(
         repository_id=repository_id,
         name=data.name,
         template_id=data.template_id,
@@ -59,10 +57,10 @@ def update_webhook(
     repository_id: str,
     webhook_id: str,
     data: ProjectWebhookUpdateReq,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
     _current_user=Depends(get_current_user),
 ) -> ProjectWebhookResp:
-    wh = pipeline_service.update_webhook(
+    wh = webhook_service.update_webhook(
         webhook_id=webhook_id,
         name=data.name,
         template_id=data.template_id,
@@ -77,10 +75,10 @@ def update_webhook(
 def delete_webhook(
     repository_id: str,
     webhook_id: str,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
     _current_user=Depends(get_current_user),
 ) -> None:
-    pipeline_service.delete_webhook(webhook_id)
+    webhook_service.delete_webhook(webhook_id)
 
 
 # ── Git 平台推送入口（公开，无需认证）────────────────────────────────────────
@@ -91,23 +89,19 @@ async def receive_webhook(
     webhook_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
-    pipeline_service: Annotated[PipelineService, Depends(get_pipeline_service)],
+    webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
+    pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
     x_hub_signature_256: Annotated[str, Header(alias="X-Hub-Signature-256")] = "",
     x_gitlab_token: Annotated[str, Header(alias="X-Gitlab-Token")] = "",
 ) -> dict:
     # 查找 webhook 配置（不存在时 service 层抛 BusinessError 404）
-    wh = pipeline_service.get_webhook(webhook_id)
+    wh = webhook_service.get_webhook(webhook_id)
 
     if not wh.enabled:
         return {"status": "ignored", "reason": "webhook disabled"}
 
-    # 验证 payload 大小
-    payload_bytes = await request.body()
-    if len(payload_bytes) > MAX_PAYLOAD_SIZE:
-        logger.warning("Webhook payload too large")
-        return {"status": "ignored", "reason": "payload too large"}
-
     # 解析 JSON
+    payload_bytes = await request.body()
     try:
         payload = json.loads(payload_bytes)
     except json.JSONDecodeError:
@@ -115,12 +109,10 @@ async def receive_webhook(
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
 
     # 解密 secret 并验证签名
-    decrypted_secret = pipeline_service.decrypt_webhook_secret(wh)
+    decrypted_secret = webhook_service.decrypt_webhook_secret(wh)
 
     if x_hub_signature_256:
-        if not pipeline_service.verify_webhook_signature(
-            "github", payload_bytes, x_hub_signature_256, decrypted_secret
-        ):
+        if not webhook_service.verify_webhook_signature("github", payload_bytes, x_hub_signature_256, decrypted_secret):
             logger.warning("Webhook signature verification failed")
             raise HTTPException(status_code=401, detail="Invalid signature")
         source = "github"
@@ -128,7 +120,7 @@ async def receive_webhook(
         commit_sha = payload.get("after", "")
         author = payload.get("pusher", {}).get("name", "")
     elif x_gitlab_token:
-        if not pipeline_service.verify_webhook_signature("gitlab", b"", x_gitlab_token, decrypted_secret):
+        if not webhook_service.verify_webhook_signature("gitlab", b"", x_gitlab_token, decrypted_secret):
             logger.warning("Webhook token verification failed")
             raise HTTPException(status_code=401, detail="Invalid token")
         source = "gitlab"
@@ -147,8 +139,7 @@ async def receive_webhook(
         logger.info(f"Webhook branch filtered: branch={branch}, filter={wh.branch_filter}")
         return {"status": "ignored", "reason": "branch filtered"}
 
-    # 触发流水线（branch 为空时 fallback 到 commit_sha，create_run 内再 fallback 到 default_branch）
-    run, proj, merged_vars, snapshot = pipeline_service.create_run(
+    result = pipeline_run_service.create_run(
         repository_id=wh.repository_id,
         template_id=wh.template_id,
         trigger=PipelineRunTrigger.WEBHOOK,
@@ -159,6 +150,8 @@ async def receive_webhook(
             "event_type": "push",
         },
     )
-    background_tasks.add_task(pipeline_service.execute_run, run, proj, merged_vars, snapshot)
-    logger.info(f"Webhook triggered: source={source}, run={run.id}, ref={branch}")
-    return {"status": "triggered", "run_id": run.id}
+    background_tasks.add_task(
+        pipeline_run_service.execute_run, result.run, result.repository, result.merged_variables, result.snapshot
+    )
+    logger.info(f"Webhook triggered: source={source}, run={result.run.id}, ref={branch}")
+    return {"status": "triggered", "run_id": result.run.id}

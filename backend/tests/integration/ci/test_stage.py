@@ -23,8 +23,10 @@ class TestStageList:
         resp = auth_client.get("/api/ci/pipeline-stage")
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
-        assert len(data) >= 3
+        assert isinstance(data, dict)
+        assert "items" in data
+        assert isinstance(data["items"], list)
+        assert len(data["items"]) >= 3
 
 
 class TestStageCreate:

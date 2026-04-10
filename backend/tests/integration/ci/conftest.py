@@ -32,7 +32,7 @@ def test_snapshot(db_session, test_template):
         template_id=test_template.id,
         version=1,
         stages_snapshot="[]",
-        variable_declarations_snapshot=test_template.variable_declarations,
+        variables_snapshot=test_template.variable_declarations,
     )
     db_session.add(snapshot)
     db_session.commit()
@@ -60,7 +60,7 @@ def test_project(db_session, test_credential):
         code="test-project",
         repository_url="https://github.com/test/repo.git",
         git_credential_id=test_credential.id,
-        variable_overrides="{}",
+        variable_overrides="[]",
     )
     db_session.add(project)
     db_session.commit()

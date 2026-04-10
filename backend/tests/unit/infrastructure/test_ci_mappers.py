@@ -15,6 +15,7 @@ from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
     PipelineRunTrigger,
     VariableDeclaration,
+    VariableSource,
 )
 from pomelo_orbit.infrastructure.ci.mappers import (
     ArtifactMapper,
@@ -69,7 +70,7 @@ class TestPipelineTemplateMapper:
         entity = PipelineTemplate.create(
             name="test-template",
             description="Test template",
-            variable_declarations=[VariableDeclaration(name="VAR1", default="value1")],
+            variable_declarations=[VariableDeclaration(name="VAR1", value="value1")],
         )
         orm = PipelineTemplateMapper.to_orm(entity)
         assert orm.id == entity.id
@@ -84,7 +85,7 @@ class TestProjectMapper:
             code="test-project",
             repository_url="https://github.com/test/repo",
             git_credential_id=str(ULID()),
-            variable_overrides='{"VAR1": "override1"}',
+            variable_overrides='[{"name": "VAR1", "value": "override1"}]',
             default_branch="main",
             created_at=utc_now(),
             updated_at=utc_now(),
@@ -92,7 +93,9 @@ class TestProjectMapper:
         entity = RepositoryMapper.to_domain(orm)
         assert entity.id == orm.id
         assert entity.code == orm.code
-        assert entity.variable_overrides == {"VAR1": "override1"}
+        assert len(entity.variable_overrides) == 1
+        assert entity.variable_overrides[0].name == "VAR1"
+        assert entity.variable_overrides[0].value == "override1"
 
     def test_to_orm(self):
         entity = Repository.create(
@@ -100,12 +103,13 @@ class TestProjectMapper:
             code="test-project",
             repository_url="https://github.com/test/repo",
             git_credential_id=str(ULID()),
-            variable_overrides={"VAR1": "override1"},
+            variable_overrides=[VariableDeclaration(name="VAR1", value="override1")],
             default_branch="main",
         )
         orm = RepositoryMapper.to_orm(entity)
         assert orm.code == entity.code
-        assert '"VAR1": "override1"' in orm.variable_overrides
+        assert '"name": "VAR1"' in orm.variable_overrides
+        assert '"value": "override1"' in orm.variable_overrides
 
 
 class TestPipelineRunMapper:
@@ -120,7 +124,7 @@ class TestPipelineRunMapper:
             template_version=1,
             trigger="manual",
             trigger_ref="main",
-            variables_snapshot='{"VAR1": "value1"}',
+            variables_snapshot='[{"name": "VAR1", "description": "", "value": "value1", "secret": false, "source": "template_custom"}]',
             status="running",
             retry_of=None,
             started_at=utc_now(),
@@ -130,7 +134,9 @@ class TestPipelineRunMapper:
         entity = PipelineRunMapper.to_domain(orm)
         assert entity.trigger == PipelineRunTrigger.MANUAL
         assert entity.status == TaskStatus.RUNNING
-        assert entity.variables_snapshot == {"VAR1": "value1"}
+        assert len(entity.variables_snapshot) == 1
+        assert entity.variables_snapshot[0].name == "VAR1"
+        assert entity.variables_snapshot[0].value == "value1"
 
     def test_to_orm(self):
         entity = PipelineRun.create(
@@ -142,11 +148,14 @@ class TestPipelineRunMapper:
             template_version=1,
             trigger=PipelineRunTrigger.WEBHOOK,
             trigger_ref="feature/test",
-            variables_snapshot={"VAR1": "value1"},
+            variables_snapshot=[
+                VariableDeclaration(name="VAR1", value="value1", source=VariableSource.TEMPLATE_CUSTOM)
+            ],
         )
         orm = PipelineRunMapper.to_orm(entity)
         assert orm.trigger == "webhook"
-        assert '"VAR1": "value1"' in orm.variables_snapshot
+        assert '"name": "VAR1"' in orm.variables_snapshot
+        assert '"value": "value1"' in orm.variables_snapshot
 
 
 class TestStageRunMapper:

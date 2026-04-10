@@ -6,7 +6,7 @@ from pomelo_orbit.infrastructure.ci.models import PipelineRunModel
 
 
 class TestPipelineRunCreation:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_creates_run_with_manual_trigger(self, mock_execute, auth_client, test_project, test_template):
         """测试手动触发创建 pipeline run"""
         mock_execute.return_value = None
@@ -26,28 +26,28 @@ class TestPipelineRunCreation:
         assert data["repository_name"] == test_project.name
         assert data["template_id"] == test_template.id
         assert data["trigger"] == "manual"
-        assert data["trigger_ref"] == "main"
         assert data["status"] in ("waiting_to_run", "running")
         assert "variables_snapshot" in data
-        assert data["variables_snapshot"]["CUSTOM_VAR"] == "value"
+        assert isinstance(data["variables_snapshot"], list)
+        # 验证快照中包含必要的变量
+        var_names = {v["name"] for v in data["variables_snapshot"]}
+        assert "repository_url" in var_names
+        assert "template_id" in var_names
 
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
-    def test_creates_run_with_default_branch(self, mock_execute, auth_client, test_project, test_template):
-        """测试使用项目默认分支触发"""
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
+    def test_requires_trigger_ref(self, mock_execute, auth_client, test_project, test_template):
+        """测试 trigger_ref 为必填"""
         mock_execute.return_value = None
 
         resp = auth_client.post(
             f"/api/ci/repository/{test_project.id}/trigger",
             json={"template_id": test_template.id},
         )
-        assert resp.status_code == 201
-        data = resp.json()
-        # 应该使用项目的默认分支
-        assert data["trigger_ref"] == test_project.default_branch or "master"
+        assert resp.status_code == 422
 
 
 class TestPipelineRunStatus:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_run_status_progression(self, mock_execute, auth_client, db_session, test_project, test_template):
         """测试 pipeline run 状态流转"""
         mock_execute.return_value = None
@@ -74,7 +74,7 @@ class TestPipelineRunStatus:
 
 
 class TestPipelineRunWithStages:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_run_includes_stage_runs(self, mock_execute, auth_client, test_project, test_template, test_snapshot):
         """测试 pipeline run 包含 stage runs"""
         mock_execute.return_value = None
@@ -99,7 +99,7 @@ class TestPipelineRunWithStages:
 
 
 class TestPipelineRunCancellation:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_cancel_running_run(self, mock_execute, auth_client, test_project, test_template):
         """测试取消运行中的 pipeline"""
         mock_execute.return_value = None
@@ -195,7 +195,7 @@ class TestPipelineRunRetry:
 
 
 class TestPipelineRunFiltering:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_filter_runs_by_project(self, mock_execute, auth_client, db_session, test_project, test_template):
         """测试按项目过滤 runs"""
         mock_execute.return_value = None
@@ -217,7 +217,7 @@ class TestPipelineRunFiltering:
         for run in data["items"]:
             assert run["repository_id"] == test_project.id
 
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_filter_runs_by_status(self, mock_execute, auth_client, db_session, test_project, test_template):
         """测试按状态过滤 runs"""
         mock_execute.return_value = None
@@ -239,7 +239,7 @@ class TestPipelineRunFiltering:
 
 
 class TestPipelineRunVariables:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_run_with_project_variables(self, mock_execute, auth_client, test_project, test_template):
         """测试运行使用项目变量"""
         mock_execute.return_value = None
@@ -251,7 +251,7 @@ class TestPipelineRunVariables:
                 "name": test_project.name,
                 "repository_url": test_project.repository_url,
                 "default_branch": test_project.default_branch,
-                "variable_overrides": {"PROJECT_VAR": "project_value"},
+                "variable_overrides": [{"name": "PROJECT_VAR", "value": "project_value"}],
             },
         )
         assert update_resp.status_code == 200
@@ -265,7 +265,7 @@ class TestPipelineRunVariables:
         # 验证项目变量被包含在快照中
         # 注意：具体的行为取决于实现
 
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_run_with_runtime_variables(self, mock_execute, auth_client, test_project, test_template):
         """测试运行时变量覆盖项目变量"""
         mock_execute.return_value = None

@@ -58,12 +58,14 @@ StageOrchestration {
 - 同一层（依赖相同前置）的多个 Stage 并行执行
 
 **变量管理**：
-- 模板编排好后，遍历所有 Stage 的 `script`/`env`/`artifacts` 自动提取占位符，生成 `variable_declarations`
-- `variable_declarations` 可以补充元数据（描述、是否必填、默认值、是否 secret）
-- 项目（Project）已定义的变量按名称自动匹配填充，未匹配的 required 变量需用户配置
-- 触发时用户可提供临时变量，优先级最高
+- 模板编排好后，遍历所有 Stage 的 `script`/`env`/`artifacts` 自动提取占位符
+- 内置变量（仓库 + 模板）只在 Stage 实际引用时才出现在变量列表中，只读
+- Stage 中引用的非内置变量自动补充到模板变量声明中
+- 支持从 `{{ VAR | default('x') }}` 提取默认值作为变量初始值
+- 所有变量最终都必须有值；`secret` 仅用于脱敏展示
+- 仓库自定义变量在触发时按名称合并，用户可在触发时临时覆盖非内置变量，但不回写模板
 
-**版本管理**：模板可以重新编排、重新配置变量。每次修改 `updated_at` 更新，触发时检测到版本变更则创建新快照。
+**版本管理**：模板可以重新编排、重新配置变量。每次修改递增 `version`，触发时检测到版本变更则创建新快照。
 
 ---
 
@@ -78,8 +80,8 @@ PipelineSnapshot {
   id
   template_id
   version                           // 单调递增，从 1 开始
-  orchestration_snapshot            // 冻结的编排（含 stage 内容 + depends_on）
-  variable_declarations_snapshot    // 冻结的变量声明
+  stages_snapshot                   // 冻结的编排（含 stage 内容 + depends_on）
+  variables_snapshot                // 冻结的变量声明（只含 Stage 实际用到的变量）
   created_at
 }
 ```
@@ -96,13 +98,14 @@ PipelineSnapshot {
 PipelineRun {
   id
   repository_id
+  repository_name
   snapshot_id             // 本次运行基于哪个快照
   template_id
   template_name
   template_version        // 触发时快照的版本号
   trigger                 // manual | webhook
   trigger_ref             // 分支/commit
-  variables_snapshot      // 本次运行合并后的变量（脱敏存储）
+  variables_snapshot      // 本次运行实际变量（脱敏存储，含 source 标记）
   status                  // waiting_to_run | running | ran_to_completion | faulted | canceled
   error_message           // 失败原因（faulted 时填充）
   retry_of                // 重试时指向原 run
@@ -156,17 +159,13 @@ StageRun × N
 高 → 低：
 
 ```
-内置变量（自动注入，不可覆盖）
-  REPOSITORY_URL, DEFAULT_BRANCH, GIT_CREDENTIAL_ID
-  trigger_ref, trigger_type, repository_name
+内置变量（全局 + 仓库 + 模板，只读，不可覆盖）
     ↓
-运行时临时变量（触发时用户提供，locked 变量除外）
+仓库自定义变量（Repository.variable_overrides）
     ↓
-项目级变量（Project.variable_overrides）
+模板声明默认值（variable_declarations[].value）
     ↓
-全局变量（系统配置）
-    ↓
-声明默认值（variable_declarations[].default）
+运行时临时覆盖（触发时用户提供，仅作用于本次运行，不能覆盖内置变量）
 ```
 
 ---
@@ -181,8 +180,8 @@ POST /api/ci/projects/{id}/trigger
 ```
 
 1. 选择模板 → 加载 `variable_declarations`
-2. 项目变量自动匹配填充
-3. 未匹配的 required 变量高亮待填写
+2. 全局内置变量直接展示，项目变量自动匹配填充
+3. 校验所有变量均已有值；仅非内置变量允许在模态窗中覆盖
 4. 提交 → 合并变量 → 检测快照版本 → 创建 PipelineRun → 异步执行
 
 ### Webhook 触发
@@ -262,7 +261,7 @@ CREATE TABLE pipeline_snapshots (
 | `POST /api/ci/template` | 创建模板 |
 | `GET /api/ci/template/{id}` | 模板详情（含编排） |
 | `PUT /api/ci/template/{id}` | 更新模板信息及编排 |
-| `DELETE /api/ci/template/{id}` | 删除模板 |
+| `POST /api/ci/template/resolve-variables` | 实时解析模板变量（前端预览用） |
 | `GET /api/ci/snapshot/{id}` | 快照详情 |
 | `GET /api/ci/repository` | 仓库列表 |
 | `POST /api/ci/repository` | 创建仓库 |

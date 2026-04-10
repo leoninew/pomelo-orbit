@@ -31,7 +31,7 @@ class TestPipelineRunGet:
 
 
 class TestProjectTrigger:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_trigger_creates_run(self, mock_execute, auth_client, test_project, test_template):
         mock_execute.return_value = None
         resp = auth_client.post(
@@ -45,12 +45,14 @@ class TestProjectTrigger:
         assert data["status"] in ("waiting_to_run", "running", "faulted", "ran_to_completion")
 
     def test_trigger_not_found(self, auth_client):
-        resp = auth_client.post("/api/ci/repository/nonexistent/trigger", json={"template_id": "xxx"})
+        resp = auth_client.post(
+            "/api/ci/repository/nonexistent/trigger", json={"template_id": "xxx", "trigger_ref": "main"}
+        )
         assert resp.status_code == 404
 
 
 class TestStageRunList:
-    @patch("pomelo_orbit.application.ci.pipeline_service.PipelineService.execute_run")
+    @patch("pomelo_orbit.application.ci.pipeline_run_service.PipelineRunService.execute_run")
     def test_stage_runs_embedded_in_run(self, mock_execute, auth_client, test_project, test_template):
         mock_execute.return_value = None
         trigger_resp = auth_client.post(

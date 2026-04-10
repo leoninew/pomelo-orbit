@@ -7,6 +7,7 @@ from pomelo_orbit.domain.ci.value_objects import (
     PipelineRunTrigger,
     StageDefinition,
     VariableDeclaration,
+    VariableSource,
 )
 
 
@@ -32,22 +33,22 @@ class TestVariableDeclaration:
         var_decl = VariableDeclaration(
             name="IMAGE_NAME",
             description="Docker image name",
-            required=True,
-            default=None,
+            value=None,
             secret=False,
+            source=VariableSource.TEMPLATE,
         )
         assert var_decl.name == "IMAGE_NAME"
         assert var_decl.description == "Docker image name"
-        assert var_decl.required is True
-        assert var_decl.default is None
+        assert var_decl.value is None
         assert var_decl.secret is False
+        assert var_decl.source == VariableSource.TEMPLATE
 
     def test_variable_declaration_defaults(self):
         var_decl = VariableDeclaration(name="VAR")
         assert var_decl.description == ""
-        assert var_decl.required is False
-        assert var_decl.default is None
+        assert var_decl.value is None
         assert var_decl.secret is False
+        assert var_decl.source == VariableSource.TEMPLATE_CUSTOM
 
 
 class TestStageDefinition:

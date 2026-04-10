@@ -16,6 +16,7 @@ from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
     PipelineRunTrigger,
     VariableDeclaration,
+    VariableSource,
 )
 
 
@@ -26,11 +27,13 @@ class TestProject:
             code="test-project",
             repository_url="https://github.com/test/repo.git",
             git_credential_id=str(ulid.ULID()),
-            variable_overrides={"KEY": "value"},
+            variable_overrides=[VariableDeclaration(name="KEY", value="value")],
         )
         assert project.id is not None
         assert project.name == "test-project"
-        assert project.variable_overrides == {"KEY": "value"}
+        assert len(project.variable_overrides) == 1
+        assert project.variable_overrides[0].name == "KEY"
+        assert project.variable_overrides[0].value == "value"
         assert project.created_at is not None
         assert project.updated_at is not None
 
@@ -43,9 +46,11 @@ class TestProject:
         )
         original_updated_at = project.updated_at
         time.sleep(0.001)
-        project.update(name="new-name", variable_overrides={"NEW_KEY": "new_value"})
+        project.update(name="new-name", variable_overrides=[VariableDeclaration(name="NEW_KEY", value="new_value")])
         assert project.name == "new-name"
-        assert project.variable_overrides == {"NEW_KEY": "new_value"}
+        assert len(project.variable_overrides) == 1
+        assert project.variable_overrides[0].name == "NEW_KEY"
+        assert project.variable_overrides[0].value == "new_value"
         assert project.updated_at >= original_updated_at
 
 
@@ -65,7 +70,7 @@ class TestCredential:
 
 class TestPipelineTemplate:
     def test_create_template(self):
-        var_decl = VariableDeclaration(name="IMAGE_NAME", required=True)
+        var_decl = VariableDeclaration(name="IMAGE_NAME", value="latest")
         template = PipelineTemplate.create(
             name="test-template",
             variable_declarations=[var_decl],
@@ -96,7 +101,7 @@ class TestPipelineRun:
             template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            variables_snapshot={"KEY": "value"},
+            variables_snapshot=[VariableDeclaration(name="KEY", value="value", source=VariableSource.TEMPLATE_CUSTOM)],
         )
         assert run.id is not None
         assert run.status == TaskStatus.WAITING_TO_RUN
@@ -112,7 +117,7 @@ class TestPipelineRun:
             template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            variables_snapshot={},
+            variables_snapshot=[],
         )
         run.start()
         assert run.status == TaskStatus.RUNNING
@@ -131,7 +136,7 @@ class TestPipelineRun:
             template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            variables_snapshot={},
+            variables_snapshot=[],
         )
         run.start()
         run.complete_failed()
@@ -149,7 +154,7 @@ class TestPipelineRun:
             template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            variables_snapshot={"KEY": "value"},
+            variables_snapshot=[VariableDeclaration(name="KEY", value="value", source=VariableSource.TEMPLATE_CUSTOM)],
             retry_of=original_run_id,
         )
         assert retry_run.id is not None

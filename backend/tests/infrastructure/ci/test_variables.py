@@ -2,195 +2,271 @@
 
 import pytest
 
-from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
+from pomelo_orbit.domain.ci.value_objects import (
+    BuiltinVariableSpecs,
+    StageDefinition,
+    VariableDeclaration,
+    VariableSource,
+)
 from pomelo_orbit.infrastructure.ci.variables import (
     VariableError,
+    extract_variables,
     mask_secrets,
+    merge_declarations,
     merge_variables,
     render_template,
     validate_variables,
 )
 
 
+class TestExtractVariables:
+    """测试变量提取"""
+
+    def test_extracts_plain_variables(self):
+        stages = [
+            StageDefinition(
+                id="build",
+                name="build",
+                image="alpine",
+                script="echo {{ IMAGE_NAME }}",
+            )
+        ]
+
+        assert extract_variables(stages) == {"IMAGE_NAME": None}
+
+    def test_extracts_default_filter_values(self):
+        stages = [
+            StageDefinition(
+                id="build",
+                name="build",
+                image="alpine",
+                script="cd {{ working_dir | default('.') }} && echo {{ retry | default(3) }}",
+                env={"DEBUG": "{{ debug | default(false) }}"},
+            )
+        ]
+
+        assert extract_variables(stages) == {
+            "working_dir": ".",
+            "retry": 3,
+            "debug": False,
+        }
+
+
+class TestMergeDeclarations:
+    """测试变量声明合并"""
+
+    def test_builtin_variables_are_always_included(self):
+        # 当没有提取到变量时（无 stage），显示所有内置变量
+        result = merge_declarations(
+            {},
+            [],
+            builtin_specs={"GLOBAL_ENV": "全局环境变量"},
+            source_for_builtin=VariableSource.TEMPLATE,
+        )
+
+        assert [item.name for item in result] == ["GLOBAL_ENV"]
+        assert result[0].source == VariableSource.TEMPLATE
+        assert result[0].value is None
+
+    def test_existing_user_metadata_is_preserved(self):
+        result = merge_declarations(
+            {"IMAGE_TAG": "latest"},
+            [
+                VariableDeclaration(
+                    name="IMAGE_TAG", description="镜像标签", secret=True, source=VariableSource.TEMPLATE_CUSTOM
+                )
+            ],
+            source_for_builtin=VariableSource.TEMPLATE,
+        )
+
+        assert result[0].name == "IMAGE_TAG"
+        assert result[0].description == "镜像标签"
+        assert result[0].secret is True
+        assert result[0].value == "latest"
+
+    def test_builtin_name_hides_user_override(self):
+        result = merge_declarations(
+            {"GLOBAL_ENV": "stage"},
+            [VariableDeclaration(name="GLOBAL_ENV", value="local", source=VariableSource.TEMPLATE_CUSTOM)],
+            builtin_specs={"GLOBAL_ENV": "全局环境变量"},
+            source_for_builtin=VariableSource.TEMPLATE,
+        )
+
+        assert len(result) == 1
+        assert result[0].name == "GLOBAL_ENV"
+        assert result[0].source == VariableSource.TEMPLATE
+        assert result[0].value is None
+
+    def test_runtime_builtin_is_only_included_when_referenced(self):
+        runtime_specs: BuiltinVariableSpecs = {
+            "repository_trigger_ref": "运行时注入: 本次触发 Ref",
+        }
+
+        # 无 stage 时，内置变量会显示
+        result_no_stage = merge_declarations(
+            {},
+            [],
+            builtin_specs=runtime_specs,
+            source_for_builtin=VariableSource.TEMPLATE,
+        )
+        assert len(result_no_stage) == 1
+        assert result_no_stage[0].name == "repository_trigger_ref"
+
+        # 有 stage 但未引用该变量时，不显示
+        result_not_referenced = merge_declarations(
+            {"OTHER_VAR": None},
+            [],
+            builtin_specs=runtime_specs,
+            source_for_builtin=VariableSource.TEMPLATE,
+        )
+        assert all(d.name != "repository_trigger_ref" for d in result_not_referenced)
+
+        # 有 stage 且引用了该变量时，显示
+        result = merge_declarations(
+            {"repository_trigger_ref": None},
+            [],
+            builtin_specs=runtime_specs,
+            source_for_builtin=VariableSource.TEMPLATE,
+        )
+
+        assert len(result) == 1
+        assert result[0].name == "repository_trigger_ref"
+        assert result[0].source == VariableSource.TEMPLATE
+        assert result[0].description == "运行时注入: 本次触发 Ref"
+
+    def test_user_custom_variables_are_preserved(self):
+        """测试用户自定义的变量在 Stage 中使用时会保留元数据"""
+        result = merge_declarations(
+            {"IMAGE_TAG": "latest"},  # 从 Stage 提取的变量
+            [
+                VariableDeclaration(name="IMAGE_TAG", description="镜像标签", source=VariableSource.TEMPLATE_CUSTOM),
+                VariableDeclaration(
+                    name="CUSTOM_VAR",
+                    value="custom_value",
+                    description="用户自定义",
+                    source=VariableSource.TEMPLATE_CUSTOM,
+                ),
+            ],
+            source_for_builtin=VariableSource.TEMPLATE,
+            source_for_extracted=VariableSource.TEMPLATE_STAGE,
+        )
+
+        # 只有在 Stage 中实际使用的变量才会被保留
+        assert len(result) == 1
+        # IMAGE_TAG 从 Stage 提取，但保留用户元数据
+        assert result[0].name == "IMAGE_TAG"
+        assert result[0].source == VariableSource.TEMPLATE_CUSTOM
+        assert result[0].description == "镜像标签"
+        assert result[0].value == "latest"
+
+
 class TestMergeVariables:
     """测试变量合并"""
 
     def test_merge_empty_variables(self):
-        """测试合并空变量"""
-        result = merge_variables({}, {}, {}, [], {})
+        result = merge_variables({}, [], {}, [])
         assert result == {}
 
-    def test_merge_global_only(self):
-        """测试仅全局变量"""
-        result = merge_variables({"KEY": "global"}, {}, {}, [], {})
-        assert result == {"KEY": "global"}
+    def test_project_variables_override_template_defaults(self):
+        declarations = [VariableDeclaration(name="IMAGE_TAG", value="latest", source=VariableSource.TEMPLATE_CUSTOM)]
 
-    def test_merge_project_overrides_global(self):
-        """测试项目变量覆盖全局变量"""
-        result = merge_variables(
-            {"KEY": "global", "GLOBAL_ONLY": "value"},
-            {"KEY": "project"},
-            {},
-            [],
-            {},
-        )
-        assert result == {"KEY": "project", "GLOBAL_ONLY": "value"}
-
-    def test_merge_runtime_overrides_all(self):
-        """测试运行时变量覆盖所有"""
-        result = merge_variables(
-            {"KEY": "global"},
-            {"KEY": "project"},
-            {"KEY": "runtime"},
-            [],
-            {},
-        )
-        assert result == {"KEY": "runtime"}
-
-    def test_merge_all_layers(self):
-        """测试三层变量合并"""
-        result = merge_variables(
-            {"GLOBAL": "g", "KEY": "global"},
-            {"PROJECT": "p", "KEY": "project"},
-            {"RUNTIME": "r", "KEY": "runtime"},
-            [],
-            {},
-        )
-        assert result == {
-            "GLOBAL": "g",
-            "PROJECT": "p",
-            "RUNTIME": "r",
-            "KEY": "runtime",
-        }
-
-    def test_builtin_overrides_all(self):
-        """测试内置变量优先级最高"""
-        result = merge_variables(
-            {"project_repository_url": "global"},
-            {"project_repository_url": "project"},
-            {"project_repository_url": "runtime"},
-            [],
-            {"project_repository_url": "builtin"},
-        )
-        assert result["project_repository_url"] == "builtin"
-
-    def test_locked_variable_not_overridden_by_runtime(self):
-        """测试 locked 变量不被运行时变量覆盖"""
-        declarations = [VariableDeclaration(name="SECRET", locked=True)]
         result = merge_variables(
             {},
-            {"SECRET": "project-value"},
-            {"SECRET": "runtime-attempt"},
+            [VariableDeclaration(name="IMAGE_TAG", value="stable", source=VariableSource.REPOSITORY_CUSTOM)],
+            {},
             declarations,
-            {},
         )
-        assert result["SECRET"] == "project-value"
 
-    def test_default_value_used_when_no_override(self):
-        """测试无覆盖时使用声明默认值"""
-        declarations = [VariableDeclaration(name="KEY", default="default-val")]
-        result = merge_variables({}, {}, {}, declarations, {})
-        assert result["KEY"] == "default-val"
+        assert result == {"IMAGE_TAG": "stable"}
+
+    def test_runtime_variables_override_project_variables(self):
+        declarations = [VariableDeclaration(name="IMAGE_TAG", value="latest", source=VariableSource.TEMPLATE_CUSTOM)]
+
+        result = merge_variables(
+            {},
+            [VariableDeclaration(name="IMAGE_TAG", value="stable", source=VariableSource.REPOSITORY_CUSTOM)],
+            {"IMAGE_TAG": "runtime"},
+            declarations,
+        )
+
+        assert result == {"IMAGE_TAG": "runtime"}
+
+    def test_undeclared_variables_are_ignored(self):
+        declarations = [VariableDeclaration(name="IMAGE_TAG", value="latest", source=VariableSource.TEMPLATE_CUSTOM)]
+
+        result = merge_variables({}, [], {"UNUSED": "value"}, declarations)
+
+        assert result == {"IMAGE_TAG": "latest"}
+
+    def test_builtin_variables_override_all_other_layers(self):
+        declarations = [VariableDeclaration(name="GLOBAL_ENV", value="local", source=VariableSource.TEMPLATE_CUSTOM)]
+
+        result = merge_variables(
+            {"GLOBAL_ENV": "prod"},
+            [VariableDeclaration(name="GLOBAL_ENV", value="stage", source=VariableSource.REPOSITORY_CUSTOM)],
+            {"GLOBAL_ENV": "runtime"},
+            declarations,
+        )
+
+        assert result["GLOBAL_ENV"] == "prod"
 
 
 class TestValidateVariables:
     """测试变量校验"""
 
-    def test_validate_all_required_present(self):
-        """测试所有必填变量都存在"""
+    def test_validate_all_variables_present(self):
         declarations = [
-            VariableDeclaration(name="KEY1", required=True),
-            VariableDeclaration(name="KEY2", required=True),
+            VariableDeclaration(name="KEY1"),
+            VariableDeclaration(name="KEY2"),
         ]
-        variables = {"KEY1": "value1", "KEY2": "value2"}
 
-        # 不应抛出异常
-        validate_variables(variables, declarations)
+        validate_variables({"KEY1": "value1", "KEY2": "value2"}, declarations)
 
-    def test_validate_optional_missing(self):
-        """测试可选变量缺失"""
-        declarations = [
-            VariableDeclaration(name="KEY1", required=True),
-            VariableDeclaration(name="KEY2", required=False),
-        ]
-        variables = {"KEY1": "value1"}
+    def test_validate_empty_string_is_missing(self):
+        declarations = [VariableDeclaration(name="KEY1")]
 
-        # 不应抛出异常
-        validate_variables(variables, declarations)
+        with pytest.raises(VariableError, match="缺少变量值: KEY1"):
+            validate_variables({"KEY1": ""}, declarations)
 
-    def test_validate_required_missing(self):
-        """测试必填变量缺失"""
-        declarations = [
-            VariableDeclaration(name="KEY1", required=True),
-            VariableDeclaration(name="KEY2", required=True),
-        ]
-        variables = {"KEY1": "value1"}
+    def test_validate_builtin_variable_missing(self):
+        declarations = [VariableDeclaration(name="GLOBAL_ENV", source=VariableSource.GLOBAL)]
 
-        with pytest.raises(VariableError, match="缺少必填变量: KEY2"):
-            validate_variables(variables, declarations)
+        with pytest.raises(VariableError, match="缺少变量值: GLOBAL_ENV"):
+            validate_variables({}, declarations)
 
 
 class TestRenderTemplate:
     """测试模板渲染"""
 
     def test_render_simple_template(self):
-        """测试渲染简单模板"""
-        template = "Hello {{ name }}!"
-        variables = {"name": "World"}
-
-        result = render_template(template, variables)
+        result = render_template("Hello {{ name }}!", {"name": "World"})
         assert result == "Hello World!"
 
     def test_render_multiple_variables(self):
-        """测试渲染多个变量"""
-        template = "{{ greeting }} {{ name }}!"
-        variables = {"greeting": "Hello", "name": "World"}
-
-        result = render_template(template, variables)
+        result = render_template("{{ greeting }} {{ name }}!", {"greeting": "Hello", "name": "World"})
         assert result == "Hello World!"
 
     def test_render_with_filter(self):
-        """测试使用过滤器渲染"""
-        template = "{{ name | upper }}"
-        variables = {"name": "world"}
-
-        result = render_template(template, variables)
+        result = render_template("{{ name | upper }}", {"name": "world"})
         assert result == "WORLD"
 
     def test_render_with_condition(self):
-        """测试条件渲染"""
-        template = "{% if enabled %}ON{% else %}OFF{% endif %}"
+        assert render_template("{% if enabled %}ON{% else %}OFF{% endif %}", {"enabled": True}) == "ON"
+        assert render_template("{% if enabled %}ON{% else %}OFF{% endif %}", {"enabled": False}) == "OFF"
 
-        result1 = render_template(template, {"enabled": True})
-        assert result1 == "ON"
-
-        result2 = render_template(template, {"enabled": False})
-        assert result2 == "OFF"
-
-    def test_render_undefined_variable(self):
-        """测试未定义变量"""
-        template = "Hello {{ name }}!"
-        variables: dict[str, str] = {}
-
-        # Jinja2 默认行为是渲染为空字符串，除非设置 undefined=StrictUndefined
-        # 我们的实现使用默认行为，所以这个测试应该检查空字符串
-        result = render_template(template, variables)
-        assert result == "Hello !"
+    def test_render_undefined_variable_raises(self):
+        with pytest.raises(VariableError, match="变量未定义"):
+            render_template("Hello {{ name }}!", {})
 
     def test_render_syntax_error(self):
-        """测试模板语法错误"""
-        template = "Hello {{ name"
-        variables = {"name": "World"}
-
         with pytest.raises(VariableError, match="模板语法错误"):
-            render_template(template, variables)
+            render_template("Hello {{ name", {"name": "World"})
 
 
 class TestMaskSecrets:
     """测试 secret 脱敏"""
 
     def test_mask_no_secrets(self):
-        """测试没有 secret 变量"""
         declarations = [
             VariableDeclaration(name="KEY1", secret=False),
             VariableDeclaration(name="KEY2", secret=False),
@@ -198,10 +274,13 @@ class TestMaskSecrets:
         variables = {"KEY1": "value1", "KEY2": "value2"}
 
         result = mask_secrets(variables, declarations)
-        assert result == {"KEY1": "value1", "KEY2": "value2"}
+        assert len(result) == 2
+        assert result[0].name == "KEY1"
+        assert result[0].value == "value1"
+        assert result[1].name == "KEY2"
+        assert result[1].value == "value2"
 
     def test_mask_secrets_present(self):
-        """测试脱敏 secret 变量"""
         declarations = [
             VariableDeclaration(name="KEY1", secret=False),
             VariableDeclaration(name="PASSWORD", secret=True),
@@ -210,26 +289,28 @@ class TestMaskSecrets:
         variables = {"KEY1": "value1", "PASSWORD": "secret123", "TOKEN": "token456"}
 
         result = mask_secrets(variables, declarations)
-        assert result == {"KEY1": "value1", "PASSWORD": "***", "TOKEN": "***"}
+        assert len(result) == 3
+        assert result[0].name == "KEY1"
+        assert result[0].value == "value1"
+        assert result[1].name == "PASSWORD"
+        assert result[1].value == "***"
+        assert result[2].name == "TOKEN"
+        assert result[2].value == "***"
 
     def test_mask_secrets_not_in_variables(self):
-        """测试 secret 变量不在实际变量中"""
-        declarations = [
-            VariableDeclaration(name="PASSWORD", secret=True),
-        ]
+        declarations = [VariableDeclaration(name="PASSWORD", secret=True)]
         variables = {"KEY1": "value1"}
 
         result = mask_secrets(variables, declarations)
-        assert result == {"KEY1": "value1"}
+        assert len(result) == 1
+        assert result[0].name == "PASSWORD"
+        assert result[0].value == "***"
 
     def test_mask_does_not_modify_original(self):
-        """测试脱敏不修改原始变量"""
-        declarations = [
-            VariableDeclaration(name="PASSWORD", secret=True),
-        ]
+        declarations = [VariableDeclaration(name="PASSWORD", secret=True)]
         variables = {"PASSWORD": "secret123"}
 
         result = mask_secrets(variables, declarations)
 
-        assert result["PASSWORD"] == "***"
-        assert variables["PASSWORD"] == "secret123"  # 原始变量未修改
+        assert result[0].value == "***"
+        assert variables["PASSWORD"] == "secret123"

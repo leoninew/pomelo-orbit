@@ -1,105 +1,66 @@
 """测试 CI 实体"""
 
+import time
+
 import ulid
 
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Credential,
-    Job,
-    JobLog,
     PipelineRun,
     PipelineTemplate,
-    Project,
+    Repository,
+    StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
     CredentialType,
-    JobStatus,
-    PipelineRunStatus,
     PipelineRunTrigger,
     VariableDeclaration,
+    VariableSource,
 )
 
 
 class TestProject:
-    """测试 Project 实体"""
-
     def test_create_project(self):
-        """测试创建项目"""
-        project = Project.create(
+        project = Repository.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
-            variable_overrides={"KEY": "value"},
+            variable_overrides=[VariableDeclaration(name="KEY", value="value")],
         )
-
         assert project.id is not None
         assert project.name == "test-project"
-        assert project.variable_overrides == {"KEY": "value"}
+        assert len(project.variable_overrides) == 1
+        assert project.variable_overrides[0].name == "KEY"
+        assert project.variable_overrides[0].value == "value"
         assert project.created_at is not None
         assert project.updated_at is not None
 
-    def test_create_project_with_webhook_fields(self):
-        """测试创建带 webhook 字段的项目"""
-        project = Project.create(
-            name="test-project",
-            repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
-            git_credential_id=str(ulid.ULID()),
-            webhook_secret="my-secret-token",
-            branch_filter="main,develop",
-        )
-
-        assert project.webhook_secret == "my-secret-token"
-        assert project.branch_filter == "main,develop"
-
     def test_update_project(self):
-        """测试更新项目"""
-        project = Project.create(
+        project = Repository.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
         )
-
         original_updated_at = project.updated_at
-
-        # 添加微小延迟确保时间戳不同
-        import time
-
         time.sleep(0.001)
-
-        project.update(name="new-name", variable_overrides={"NEW_KEY": "new_value"})
-
+        project.update(name="new-name", variable_overrides=[VariableDeclaration(name="NEW_KEY", value="new_value")])
         assert project.name == "new-name"
-        assert project.variable_overrides == {"NEW_KEY": "new_value"}
+        assert len(project.variable_overrides) == 1
+        assert project.variable_overrides[0].name == "NEW_KEY"
+        assert project.variable_overrides[0].value == "new_value"
         assert project.updated_at >= original_updated_at
-
-    def test_update_project_webhook_fields(self):
-        """测试更新项目 webhook 字段"""
-        project = Project.create(
-            name="test-project",
-            repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
-            git_credential_id=str(ulid.ULID()),
-        )
-
-        project.update(webhook_secret="new-secret", branch_filter="main")
-
-        assert project.webhook_secret == "new-secret"
-        assert project.branch_filter == "main"
 
 
 class TestCredential:
-    """测试 Credential 实体"""
-
     def test_create_credential(self):
-        """测试创建凭据"""
         credential = Credential.create(
             name="test-credential",
             type=CredentialType.GIT_SSH,
             encrypted_data="encrypted_data_here",
         )
-
         assert credential.id is not None
         assert credential.name == "test-credential"
         assert credential.type == CredentialType.GIT_SSH
@@ -108,187 +69,129 @@ class TestCredential:
 
 
 class TestPipelineTemplate:
-    """测试 PipelineTemplate 实体"""
-
     def test_create_template(self):
-        """测试创建模板"""
-        var_decl = VariableDeclaration(name="IMAGE_NAME", required=True)
+        var_decl = VariableDeclaration(name="IMAGE_NAME", value="latest")
         template = PipelineTemplate.create(
             name="test-template",
-            content="version: v1\nsteps: []",
             variable_declarations=[var_decl],
             description="Test template",
         )
-
         assert template.id is not None
         assert template.name == "test-template"
         assert len(template.variable_declarations) == 1
-        assert template.is_builtin is False
 
     def test_update_template(self):
-        """测试更新模板"""
-        template = PipelineTemplate.create(
-            name="test-template",
-            content="version: v1\nsteps: []",
-            variable_declarations=[],
-        )
-
+        template = PipelineTemplate.create(name="test-template", variable_declarations=[])
         original_updated_at = template.updated_at
-
-        # 添加微小延迟确保时间戳不同
-        import time
-
         time.sleep(0.001)
-
         template.update(name="new-template", description="Updated")
-
         assert template.name == "new-template"
         assert template.description == "Updated"
         assert template.updated_at >= original_updated_at
 
 
 class TestPipelineRun:
-    """测试 PipelineRun 实体"""
-
     def test_create_pipeline_run(self):
-        """测试创建 pipeline run"""
         run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
+            snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
+            template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
-            variables_snapshot={"KEY": "value"},
+            variables_snapshot=[VariableDeclaration(name="KEY", value="value", source=VariableSource.TEMPLATE_CUSTOM)],
         )
-
         assert run.id is not None
-        assert run.status.value == PipelineRunStatus.WAITING.value
+        assert run.status == TaskStatus.WAITING_TO_RUN
         assert run.started_at is None
 
     def test_pipeline_run_lifecycle(self):
-        """测试 pipeline run 生命周期"""
         run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
+            snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
+            template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
-            variables_snapshot={},
+            variables_snapshot=[],
         )
-
-        # 开始执行
         run.start()
-        assert run.status.value == PipelineRunStatus.RUNNING.value
+        assert run.status == TaskStatus.RUNNING
         assert run.started_at is not None
-
-        # 执行成功
         run.complete_success()
-        assert run.status.value == PipelineRunStatus.SUCCESS.value
-        assert run.finished_at is not None
+        assert run.status == TaskStatus.RAN_TO_COMPLETION  # type: ignore[comparison-overlap]
+        assert run.finished_at is not None  # type: ignore[unreachable]
 
     def test_pipeline_run_failure(self):
-        """测试 pipeline run 失败"""
         run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
+            snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
+            template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
-            variables_snapshot={},
+            variables_snapshot=[],
         )
-
         run.start()
         run.complete_failed()
-
-        assert run.status.value == PipelineRunStatus.FAILED.value
+        assert run.status == TaskStatus.FAULTED
         assert run.finished_at is not None
 
     def test_create_pipeline_run_with_retry_of(self):
-        """测试创建重试的 pipeline run"""
         original_run_id = str(ulid.ULID())
-
         retry_run = PipelineRun.create(
-            project_id=str(ulid.ULID()),
+            repository_id=str(ulid.ULID()),
+            repository_name="test-project",
+            snapshot_id=str(ulid.ULID()),
+            template_id=str(ulid.ULID()),
+            template_name="test-template",
+            template_version=1,
             trigger=PipelineRunTrigger.MANUAL,
             trigger_ref="main",
-            resolved_pipeline="version: v1\nsteps: []",
-            variables_snapshot={"KEY": "value"},
+            variables_snapshot=[VariableDeclaration(name="KEY", value="value", source=VariableSource.TEMPLATE_CUSTOM)],
             retry_of=original_run_id,
         )
-
         assert retry_run.id is not None
         assert retry_run.retry_of == original_run_id
-        assert retry_run.status.value == PipelineRunStatus.WAITING.value
+        assert retry_run.status == TaskStatus.WAITING_TO_RUN
 
 
-class TestJob:
-    """测试 Job 实体"""
+class TestStageRun:
+    def test_create_stage_run(self):
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
+        assert sr.id is not None
+        assert sr.stage_name == "build"
+        assert sr.status == TaskStatus.WAITING_TO_RUN
 
-    def test_create_job(self):
-        """测试创建 job"""
-        job = Job.create(
-            pipeline_run_id=str(ulid.ULID()),
-            name="test-job",
-        )
+    def test_stage_run_lifecycle_success(self):
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
+        sr.start()
+        assert sr.status == TaskStatus.RUNNING
+        assert sr.started_at is not None
+        sr.complete_success(exit_code=0)
+        assert sr.status == TaskStatus.RAN_TO_COMPLETION  # type: ignore[comparison-overlap]
+        assert sr.exit_code == 0  # type: ignore[unreachable]
+        assert sr.finished_at is not None
 
-        assert job.id is not None
-        assert job.name == "test-job"
-        assert job.status.value == JobStatus.WAITING.value
-        assert job.parent_job_id is None
+    def test_stage_run_lifecycle_failed(self):
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
+        sr.start()
+        sr.complete_failed(exit_code=1, error_message="Command failed")
+        assert sr.status == TaskStatus.FAULTED
+        assert sr.exit_code == 1
+        assert sr.error_message == "Command failed"
+        assert sr.finished_at is not None
 
-    def test_job_lifecycle_success(self):
-        """测试 job 成功生命周期"""
-        job = Job.create(
-            pipeline_run_id=str(ulid.ULID()),
-            name="test-job",
-        )
-
-        job.start()
-        assert job.status.value == JobStatus.RUNNING.value
-        assert job.started_at is not None
-
-        job.complete_success(exit_code=0)
-        assert job.status.value == JobStatus.SUCCESS.value
-        assert job.exit_code == 0
-        assert job.finished_at is not None
-
-    def test_job_lifecycle_failed(self):
-        """测试 job 失败生命周期"""
-        job = Job.create(
-            pipeline_run_id=str(ulid.ULID()),
-            name="test-job",
-        )
-
-        job.start()
-        job.complete_failed(exit_code=1, error_message="Command failed")
-
-        assert job.status.value == JobStatus.FAILED.value
-        assert job.exit_code == 1
-        assert job.error_message == "Command failed"
-        assert job.finished_at is not None
-
-    def test_job_lifecycle_faulted(self):
-        """测试 job 故障生命周期"""
-        job = Job.create(
-            pipeline_run_id=str(ulid.ULID()),
-            name="test-job",
-        )
-
-        job.start()
-        job.complete_faulted(error_message="Container timeout")
-
-        assert job.status.value == JobStatus.FAULTED.value
-        assert job.error_message == "Container timeout"
-        assert job.finished_at is not None
-
-
-class TestJobLog:
-    """测试 JobLog 实体"""
-
-    def test_create_job_log(self):
-        """测试创建 job 日志"""
-        log = JobLog.create(
-            job_id=str(ulid.ULID()),
-            content="Log content here",
-        )
-
-        assert log.id is not None
-        assert log.content == "Log content here"
-        assert log.created_at is not None
+    def test_stage_run_lifecycle_faulted(self):
+        sr = StageRun.create(pipeline_run_id=str(ulid.ULID()), stage_id=str(ulid.ULID()), stage_name="build")
+        sr.start()
+        sr.complete_faulted(error_message="Container timeout")
+        assert sr.status == TaskStatus.FAULTED
+        assert sr.error_message == "Container timeout"
+        assert sr.finished_at is not None

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">凭据管理</h1>
@@ -9,7 +9,7 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>凭据名称</th>
@@ -19,13 +19,16 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="loading">
+					<tr v-if="status === 'loading'">
 						<td colspan="4" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
 					</tr>
+					<tr v-else-if="status === 'error'">
+						<td colspan="4" class="text-center py-8 text-error">{{ error }}</td>
+					</tr>
 					<tr v-else-if="credentials.length === 0">
-						<td colspan="4" class="text-center py-8 text-base-content/60">暂无凭据</td>
+						<td colspan="4" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="c in credentials" :key="c.id" class="hover">
 						<td class="font-medium">{{ c.name }}</td>
@@ -44,10 +47,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<div
-				v-if="pagination.total > pagination.pageSize"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -133,17 +133,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
 import { Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { credentialApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
 import type { Credential } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
+import { formatTime } from '@/utils/time';
 
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const credentials = ref<Credential[]>([]);
@@ -202,7 +202,9 @@ function openEditModal(record: Credential) {
 }
 
 async function handleModalOk() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			if (isEditing.value) {
@@ -212,7 +214,11 @@ async function handleModalOk() {
 				});
 				toast.success('更新成功');
 			} else {
-				await credentialApi.create({ name: form.name, type: form.type, data: form.data });
+				await credentialApi.create({
+					name: form.name,
+					type: form.type,
+					data: form.data,
+				});
 				toast.success('创建成功');
 			}
 			modalRef.value?.close();
@@ -242,8 +248,12 @@ async function handleDelete() {
 }
 
 function getDataPlaceholder(type: string) {
-	if (type === 'git_ssh') return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
-	if (type === 'git_token') return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+	if (type === 'git_ssh') {
+		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
+	}
+	if (type === 'git_token') {
+		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+	}
 	return 'registry_token_here';
 }
 

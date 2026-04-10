@@ -1,8 +1,8 @@
 import type { AxiosRequestConfig } from 'axios';
 import axios, { type AxiosError } from 'axios';
 import config from '@/config';
-import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
+import { useAuthStore } from '@/stores/auth';
 
 const request = axios.create({
 	baseURL: config.apiBaseUrl,
@@ -31,7 +31,10 @@ request.interceptors.response.use(
 		if (error.response?.status === 401) {
 			const authStore = useAuthStore();
 			authStore.clearToken();
-			router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } });
+			router.push({
+				name: 'Login',
+				query: { redirect: router.currentRoute.value.fullPath },
+			});
 			return Promise.reject(new Error('登录已过期，请重新登录'));
 		}
 

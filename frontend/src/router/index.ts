@@ -61,43 +61,61 @@ const router = createRouter({
 		},
 		// CI
 		{
-			path: '/ci/credentials',
+			path: '/ci/credential',
 			name: 'Credentials',
 			component: () => import('@/views/ci/CredentialPage.vue'),
 			meta: { title: '凭据管理', menuKey: 'credentials' },
 		},
 		{
-			path: '/ci/templates',
+			path: '/ci/pipeline-stage',
+			name: 'PipelineStages',
+			component: () => import('@/views/ci/PipelineStages.vue'),
+			meta: { title: '流水线阶段', menuKey: 'pipelinestages' },
+		},
+		{
+			path: '/ci/pipeline-stage/:id',
+			name: 'PipelineStageDetail',
+			component: () => import('@/views/ci/PipelineStage.vue'),
+			meta: { title: 'Stage 详情', menuKey: 'pipelinestages' },
+		},
+		{
+			path: '/ci/template',
 			name: 'PipelineTemplates',
 			component: () => import('@/views/ci/PipelineTemplatePage.vue'),
 			meta: { title: '流水线模板', menuKey: 'pipelinetemplates' },
 		},
 		{
-			path: '/ci/templates/:id',
+			path: '/ci/template/:id',
 			name: 'PipelineTemplateDetail',
 			component: () => import('@/views/ci/PipelineTemplateDetail.vue'),
 			meta: { title: '模板详情', menuKey: 'pipelinetemplates' },
 		},
 		{
-			path: '/ci/projects',
-			name: 'Projects',
-			component: () => import('@/views/ci/ProjectPage.vue'),
-			meta: { title: '项目管理', menuKey: 'projects' },
+			path: '/ci/snapshot/:id',
+			name: 'PipelineSnapshotDetail',
+			component: () => import('@/views/ci/PipelineSnapshotDetail.vue'),
+			meta: { title: '快照详情', menuKey: 'pipelinetemplates' },
 		},
 		{
-			path: '/ci/projects/:id',
-			name: 'ProjectDetail',
-			component: () => import('@/views/ci/ProjectDetail.vue'),
-			meta: { title: '项目详情', menuKey: 'projects' },
+			path: '/ci/repository',
+			name: 'Repositories',
+			component: () => import('@/views/ci/RepositoryPage.vue'),
+			meta: { title: '代码仓库', menuKey: 'repository' },
 		},
 		{
-			path: '/ci/runs',
+			path: '/ci/repository/:id',
+			name: 'RepositoryDetail',
+			component: () => import('@/views/ci/RepositoryDetail.vue'),
+			meta: { title: '仓库详情', menuKey: 'repository' },
+		},
+		{
+			path: '/ci/run',
 			name: 'PipelineRuns',
 			component: () => import('@/views/ci/PipelineRunPage.vue'),
-			meta: { title: 'Pipeline Runs', menuKey: 'pipelineruns' },
+			meta: { title: '流水线记录', menuKey: 'pipelineruns' },
 		},
 		{
-			path: '/ci/runs/:id',
+			path: '/ci/run/:id',
 			name: 'PipelineRunDetail',
 			component: () => import('@/views/ci/PipelineRunDetail.vue'),
 			meta: { title: 'Run 详情', menuKey: 'pipelineruns' },
@@ -136,8 +154,7 @@ router.beforeEach(async (to, _from, next) => {
 	if (!authStore.user) {
 		try {
 			await authStore.fetchUser();
-		} catch (error) {
-			console.error('Failed to fetch user in router guard:', error);
+		} catch {
 			authStore.clearToken();
 			next({ name: 'Login', query: { redirect: to.fullPath } });
 			return;

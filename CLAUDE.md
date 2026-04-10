@@ -1,4 +1,4 @@
-# Typing Island V2 编码指南
+# Pomelo Orbit V2 编码指南
 
 ## 核心原则
 
@@ -10,20 +10,89 @@
 
 ### 2. 直接修改，不做兼容
 
+**核心理念**：项目处于活跃开发期，不需要维护向后兼容性
+
 - 不使用兼容层、别名或默认值处理
-- 不写大量 if-else 分支
+- 不写大量 if-else 分支处理新旧两种情况
 - 直接更新代码到目标状态
+- 一次性修改所有相关文件（数据库、模型、API、前端、测试）
+- 不保留 deprecated API 或字段
+
+**实践示例**：
+
+```python
+# ✅ 正确 - 直接修改
+# 1. 数据库迁移：重命名表
+ALTER TABLE projects RENAME TO repository;
+
+# 2. 更新模型
+class RepositoryModel(Base):
+    __tablename__ = "repository"
+
+# 3. 更新 API
+@router.get("/repository")
+
+# 4. 更新前端
+const repositoryApi = { list: () => request.get('/api/ci/repository') }
+
+# ❌ 错误 - 保留兼容性
+# 不需要：
+@router.get("/projects")  # 旧的 endpoint
+@router.get("/repository")  # 新的 endpoint
+def get_projects_compatible(): ...
+```
 
 ### 3. 命名规范
 
-#### API 端点
+**核心原则**：跨层一致性，从数据库表名到前端组件名称保持统一
 
-尽量使用单数，与现有复数风格并存（历史遗留）
+#### 术语一致性原则
+
+当一个业务概念在多个层级中出现时，所有层级使用相同的术语：
 
 ```
-✅ /api/typing-content
-✅ /api/typing-session
-✅ /api/user
+数据库表:      repository
+实体类:        Repository
+Repository:   RepositoryRepository
+DTO:           RepositoryResp, RepositoryCreateReq
+API 路由:      /api/ci/repository
+路由标签:      tags=["repository"]
+API 文件:      repository.py
+前端类型:      Repository
+前端 API:      repositoryApi
+前端组件:      RepositoryPage.vue, RepositoryDetail.vue
+测试文件:      test_repository.py
+```
+
+#### 反例（避免不一致命名）
+
+```
+❌ 数据库: projects
+❌ 实体: Project
+❌ API: /api/ci/repositories
+❌ 前端: projectApi
+❌ 组件: ProjectList.vue
+```
+
+#### API 端点
+
+#### API 端点
+
+**统一使用单数形式**，不使用复数
+
+```
+✅ /api/credential
+✅ /api/repository
+✅ /api/template
+✅ /api/run
+✅ /api/snapshot
+✅ /api/pipeline-stage
+✅ /api/webhook
+
+❌ /api/credentials
+❌ /api/projects
+❌ /api/templates
+❌ /api/runs
 ```
 
 #### 后端 API 文件命名
@@ -31,21 +100,45 @@
 单数 snake_case
 
 ```
-✅ typing_content.py
-✅ typing_session.py
-✅ user.py
+✅ credential.py
+✅ repository.py
+✅ template.py
+✅ run.py
+```
+
+#### 路由定义规范
+
+路由前缀也使用单数，与文件名保持一致：
+
+```python
+# ✅ 正确
+router = APIRouter(prefix="/credential", tags=["credential"])
+router = APIRouter(prefix="/repository", tags=["repository"])
+router = APIRouter(prefix="/template", tags=["template"])
+
+# ❌ 错误 - 使用复数
+router = APIRouter(prefix="/credentials", tags=["credentials"])
+router = APIRouter(prefix="/projects", tags=["projects"])
 ```
 
 #### 前端 API 文件命名与导出
 
-文件名单数 camelCase，导出对象单数 + `API` 后缀
+文件名单数 camelCase，导出对象单数 + `Api` 后缀
 
 ```typescript
-// 文件: typingContent.ts
-✅ export const typingContentAPI = { ... }
+// ✅ 正确
+// 文件: credential.ts
+export const credentialApi = { ... }
 
-// 文件: user.ts
-✅ export const userAPI = { ... }
+// 文件: repository.ts
+export const repositoryApi = { ... }
+
+// 文件: template.ts
+export const pipelineTemplateApi = { ... }
+
+// ❌ 错误 - 复数形式
+// 文件: credentials.ts
+export const credentialsApi = { ... }
 ```
 
 #### DTO 文件命名
@@ -82,6 +175,27 @@ class TypingContentResp(BaseModel):
     type: str = Field(alias="content_type")
 ```
 
+#### 变量命名一致性
+
+相关变量使用统一前缀，保持命名一致性：
+
+```python
+# ✅ 正确 - Repository 相关变量统一前缀
+repository_id: str
+repository_name: str
+repository_url: str
+repository_repository_url: str  # 内置变量
+
+# ✅ 正确 - Pipeline 相关变量统一前缀
+pipeline_run_id: str
+pipeline_snapshot_id: str
+pipeline_template_id: str
+
+# ❌ 错误 - 混用不同前缀
+repository_id: str
+project_name: str  # 应该是 repository_name
+```
+
 #### Vue 组件命名
 
 PascalCase，按功能命名，不加 Page/Detail 后缀
@@ -96,13 +210,50 @@ PascalCase，按功能命名，不加 Page/Detail 后缀
 
 ## 架构设计
 
-### 分层架构
+### DDD 分层架构
 
 ```
-interfaces/api/        # 接口层 - HTTP 适配
+interfaces/api/        # 接口层 - HTTP 适配，DTO 校验
 application/           # 应用层 - 业务编排（services/ + di.py）
-domain/                # 领域层 - 核心业务逻辑（entities、value_objects、repositories）
+domain/                # 领域层 - 核心业务逻辑（entities、value_objects、repositories、domain services）
 infrastructure/        # 基础设施层 - 技术实现
+```
+
+**分层职责**：
+
+- **接口层**：HTTP 请求/响应适配，DTO 校验，不包含业务逻辑
+- **应用层**：业务流程编排，事务管理，调用领域服务和仓储
+- **领域层**：核心业务规则，实体行为，领域服务（跨聚合的业务逻辑）
+- **基础设施层**：数据库、外部服务、技术工具
+
+**依赖规则**：
+
+- 应用服务不得互相引用（同级引用）
+- 应用服务只能依赖：仓储接口、领域服务、领域实体
+- 跨聚合的业务逻辑应下沉到领域服务
+- 领域服务不依赖应用服务
+
+```python
+# ✅ 正确 - 应用服务依赖仓储和领域服务
+class PipelineRunService:
+    def __init__(
+        self,
+        run_repo: PipelineRunRepository,
+        repository_repo: RepositoryRepository,
+        template_repo: PipelineTemplateRepository,
+        snapshot_manager: SnapshotManager,  # 领域服务
+        variable_resolver: VariableResolver,  # 领域服务
+    ):
+        ...
+
+# ❌ 错误 - 应用服务之间互相引用
+class PipelineRunService:
+    def __init__(
+        self,
+        repository_service: RepositoryService,  # 同级应用服务
+        template_service: TemplateService,      # 同级应用服务
+    ):
+        ...
 ```
 
 ### 依赖注入 (DI) 规范
@@ -227,22 +378,22 @@ def get_resend_client(settings: ...) -> ResendClient:
 
 ```python
 # ✅ 正确
-class TypingContentService:
-    def delete_content(self, content_id: str) -> None:
-        content = self.content_repo.find_by_id(content_id)
-        if not content:
-            raise BusinessError(f"Content {content_id} not found", status_code=404)
-        self.content_repo.soft_delete(content)
+class PipelineService:
+    def delete_repository(self, repository_id: str) -> None:
+        repository = self.repository_repo.find_by_id(repository_id)
+        if not repository:
+            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
+        self.repository_repo.delete(repository)
 
-@router.delete("/{content_id}", status_code=204)
-def delete_content(content_id: str, svc: Annotated[TypingContentService, Depends(get_typing_content_service)]):
-    svc.delete_content(content_id)  # 不需要 try-except
+@router.delete("/{repository_id}", status_code=204)
+def delete_repository(repository_id: str, svc: Annotated[PipelineService, Depends(get_pipeline_service)]):
+    svc.delete_repository(repository_id)  # 不需要 try-except
 
 # ❌ 错误
 @router.get("/{id}")
-def get_content(id: str):
+def get_repository(id: str):
     try:
-        return svc.get_content(id)
+        return svc.get_repository(id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 ```
@@ -284,6 +435,24 @@ logger.error(f"Save failed: {e}")
 - 使用外键约束保证数据完整性
 - 使用 `ON DELETE CASCADE` 自动清理关联数据
 - 字段顺序：重要字段在前，辅助字段在后
+- 外键引用使用**单数表名**，与 `__tablename__` 保持一致
+
+```python
+# ✅ 正确 - 外键引用与表名一致
+class CredentialModel(Base):
+    __tablename__ = "credential"
+
+class RepositoryModel(Base):
+    __tablename__ = "repository"
+    git_credential_id: Mapped[str | None] = mapped_column(
+        String(26), ForeignKey("credential.id"), ...  # 单数
+    )
+
+# ❌ 错误 - 外键引用使用复数
+git_credential_id: Mapped[str | None] = mapped_column(
+    String(26), ForeignKey("credentials.id"), ...  # 复数，与表名不一致
+)
+```
 
 ## 技术栈规范
 
@@ -331,11 +500,40 @@ session.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
 #### 数据验证
 
-使用 Pydantic Field 进行验证，使用正则表达式约束枚举值
+**核心原则**：使用 Pydantic Field 进行声明式校验，不在业务逻辑中兜底处理
+
+- 必填字段使用 `Field(min_length=1)` 确保非空
+- 可选字段使用 `str | None = None`，不使用空字符串默认值
+- 枚举值使用 `Literal` 类型约束
+- 列表字段使用 `Field(default_factory=list)` 而不是 `= []`
 
 ```python
-content_type: str = Field(..., pattern="^(word|sentence|paragraph)$")
+# ✅ 正确 - 声明式校验
+class TriggerPipelineReq(BaseModel):
+    template_id: str = Field(min_length=1)
+    trigger_ref: str = Field(min_length=1)
+    variables: dict[str, Any] = Field(default_factory=dict)
+
+class RepositoryCreateReq(BaseModel):
+    name: str = Field(min_length=1)
+    code: str = Field(min_length=1, pattern=r"^[a-z0-9_-]+$")
+    repository_url: str = Field(min_length=1)
+    default_branch: str = Field(default="master", min_length=1)
+
+# ❌ 错误 - 使用空字符串默认值 + 业务逻辑兜底
+class TriggerPipelineReq(BaseModel):
+    trigger_ref: str = ""  # 空字符串默认值
+
+# 业务逻辑中兜底处理
+effective_ref = trigger_ref or repository.default_branch  # 不要这样做
 ```
+
+**校验规则**：
+- `Field(min_length=1)` - 字符串非空
+- `Field(pattern=r"^[a-z0-9_-]+$")` - 正则约束
+- `Literal["value1", "value2"]` - 枚举值
+- `Field(default_factory=dict)` - 可变默认值
+- `Field(default_factory=list)` - 列表默认值
 
 #### 路由定义
 
@@ -346,6 +544,28 @@ def list_contents(...): ...
 @router.get("/{id}", response_model=TypingContentResp)
 def get_content(id: str, ...): ...
 ```
+
+#### 路由文档注释规范
+
+路由函数可以添加简单的单行文档注释说明功能，不强制要求：
+
+```python
+# ✅ 允许 - 简单单行说明
+@router.post("", status_code=201)
+def create_application(...) -> ApplicationResp:
+    """创建应用"""
+    ...
+
+# ✅ 允许 - 无文档注释（函数名已自解释）
+@router.get("/{id}")
+def get_application(id: str, ...) -> ApplicationResp:
+    ...
+```
+
+**原则**：
+- 文档注释应为简单的单行中文说明
+- 如果函数名已清晰表达功能，可以省略文档注释
+- 不需要详细说明参数和返回值（已有类型注解）
 
 #### Schema 定义
 
@@ -359,6 +579,19 @@ class TypingContentResp(BaseModel):
 ```
 
 ### 前端 (Vue 3/TypeScript)
+
+#### 请求规范
+
+少量请求顺序 await 即可，无须 `Promise.all`；仅在请求数量较多或有明显延迟差异时才使用并发。
+
+```typescript
+// ✅ 少量请求 - 顺序执行，简洁清晰
+const tplRes = await pipelineTemplateApi.list();
+const credRes = await credentialApi.list();
+
+// ✅ 大量无依赖请求 - 并发减少等待
+const results = await Promise.all(ids.map(id => itemApi.get(id)));
+```
 
 #### 时间处理规范
 
@@ -476,7 +709,7 @@ export const typingContentApi = {
 ```typescript
 // ✅ 正确
 try {
-  await typingContentApi.create(form);
+  await repositoryApi.create(form);
   message.success('创建成功');
 } catch (error: unknown) {
   message.error(error instanceof Error ? error.message : '操作失败');
@@ -484,7 +717,7 @@ try {
 
 // ❌ 错误 - 不要在业务代码中处理响应格式
 try {
-  const res = await typingContentApi.create(form);
+  const res = await repositoryApi.create(form);
   if (res.error) { ... }
 } catch (error: any) {
   if (error.response?.data?.detail) { ... }
@@ -501,6 +734,19 @@ try {
 ### 测试
 
 - 测试文件命名：`test_*.py`（后端）、`*.test.ts`（前端）
+- 测试文件名使用**单数形式**，与被测试的模块名称保持一致
+
+```
+✅ test_credential.py      (测试 credential 模块)
+✅ test_repository.py       (测试 repository 模块)
+✅ test_template.py         (测试 template 模块)
+✅ test_pipeline_run.py     (测试 pipeline_run 模块)
+
+❌ test_credentials.py      (复数形式)
+❌ test_repositories.py     (复数形式)
+❌ test_templates.py        (复数形式)
+```
+
 - 后端测试使用内存 SQLite（`TYPING_ISLAND_DATABASE__SQLITE__PATH=:memory:`）
 
 ## 迁移脚本规范
@@ -553,27 +799,11 @@ v0.1.3__add_sample.sql
 ### 分页查询
 
 ```python
-@router.get("", response_model=PaginatedResp[TypingContentResp])
-def list_contents(
+@router.get("", response_model=PaginatedResp[RepositoryResp])
+def list_repositories(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
     search: str | None = Query(None),
 ):
     ...
-```
-
-### 前端错误处理
-
-所有 API 错误在拦截器（`frontend/src/utils/request.ts`）中统一处理，业务代码只需 catch Error 对象：
-
-```typescript
-// ✅ 正确
-try {
-  await execute(async () => {
-    await typingContentApi.create(form);
-    message.success('创建成功');
-  });
-} catch (error: unknown) {
-  message.error(error instanceof Error ? error.message : '操作失败');
-}
 ```

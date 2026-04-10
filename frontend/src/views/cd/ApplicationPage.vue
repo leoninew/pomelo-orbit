@@ -1,11 +1,9 @@
 <template>
 	<div class="flex flex-col gap-4">
-		<!-- Page header -->
-		<div class="flex items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold shrink-0">应用管理</h1>
-			<div class="flex items-center gap-2 flex-nowrap ml-auto">
-				<!-- Search -->
-				<label class="input input-sm input-bordered flex items-center gap-2 w-44">
+		<div class="flex items-center justify-between flex-wrap gap-2">
+			<h1 class="text-xl font-semibold">应用管理</h1>
+			<div class="flex items-center gap-2">
+				<label class="input input-sm input-bordered flex items-center gap-2">
 					<Search class="size-3.5 text-base-content/60 shrink-0" />
 					<input
 						v-model="searchText"
@@ -15,8 +13,7 @@
 						@keyup.enter="handleSearch"
 					/>
 				</label>
-				<!-- View toggle -->
-				<div class="join shrink-0">
+				<div class="join">
 					<button
 						class="join-item btn btn-sm"
 						:class="viewMode === 'card' ? 'btn-primary' : 'btn-ghost'"
@@ -32,11 +29,11 @@
 						<List class="size-4" />
 					</button>
 				</div>
-				<button class="btn btn-sm btn-primary gap-1.5 shrink-0" @click="openCreateModal">
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
 					<Plus class="size-4" />
 					新建应用
 				</button>
-				<button class="btn btn-sm btn-ghost gap-1.5 shrink-0" @click="triggerImport">
+				<button class="btn btn-sm btn-ghost gap-1.5" @click="triggerImport">
 					<Upload class="size-4" />
 					导入
 				</button>
@@ -50,12 +47,13 @@
 			</div>
 		</div>
 
-		<!-- Loading -->
-		<div v-if="loading" class="flex justify-center py-16">
+		<div v-if="status === 'loading'" class="flex justify-center py-16">
 			<span class="loading loading-spinner loading-lg text-primary" />
 		</div>
+		<div v-else-if="status === 'error'" class="flex justify-center py-16 text-error text-sm">
+			{{ error }}
+		</div>
 
-		<!-- Card view -->
 		<template v-else-if="viewMode === 'card'">
 			<div
 				v-if="applications.length === 0"
@@ -117,8 +115,7 @@
 				</div>
 			</div>
 
-			<!-- Pagination -->
-			<div v-if="pagination.total > pagination.pageSize" class="flex justify-end mt-2">
+			<div v-if="totalPages > 0" class="flex justify-end mt-4">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -133,9 +130,8 @@
 			</div>
 		</template>
 
-		<!-- Table view -->
 		<div v-else class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>应用名称</th>
@@ -194,11 +190,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<!-- Table pagination -->
-			<div
-				v-if="pagination.total > pagination.pageSize"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -259,23 +251,23 @@
 </template>
 
 <script setup lang="ts">
+import { Inbox, LayoutGrid, List, Plus, Search, Upload } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, LayoutGrid, List, Plus, Upload, Inbox } from 'lucide-vue-next';
-import { applicationApi } from '@/api/application';
-import { deploymentApi } from '@/api/deployments';
+import { applicationApi } from '@/api/cd/application';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import type { Application, ApplicationImportReq } from '@/types/api';
 import { appStatusLabel } from '@/utils/status';
 import { delayAsync } from '@/utils/time';
-import type { Application, ApplicationImportReq } from '@/types/api';
 
 // Inline sub-component for shared form fields
 import AppFormFields from './ApplicationFormFields.vue';
 
 const $router = useRouter();
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const applications = ref<Application[]>([]);
@@ -357,10 +349,14 @@ async function pollDeployment(deploymentId: string, app: Application) {
 			if (['ran_to_completion', 'faulted', 'canceled'].includes(data.status)) {
 				const target = applications.value.find((a) => a.id === app.id);
 				if (data.status === 'ran_to_completion') {
-					if (target) target.status = 'deployed';
+					if (target) {
+						target.status = 'deployed';
+					}
 					toast.success(`${app.name} 部署成功`);
 				} else {
-					if (target) target.status = 'deploy_failed';
+					if (target) {
+						target.status = 'deploy_failed';
+					}
 					toast.error(`${app.name} 部署失败`);
 				}
 				break;
@@ -373,7 +369,9 @@ async function pollDeployment(deploymentId: string, app: Application) {
 
 async function handleDeploy(app: Application) {
 	const target = applications.value.find((a) => a.id === app.id);
-	if (target) target.status = 'deploying';
+	if (target) {
+		target.status = 'deploying';
+	}
 	try {
 		await executeOp(async () => {
 			const { deployment_id } = await applicationApi.deploy(app.id);
@@ -381,7 +379,9 @@ async function handleDeploy(app: Application) {
 			pollDeployment(deployment_id, app);
 		});
 	} catch (error) {
-		if (target) target.status = 'deploy_failed';
+		if (target) {
+			target.status = 'deploy_failed';
+		}
 		toast.error(error instanceof Error ? error.message : '部署失败');
 	}
 }
@@ -403,8 +403,11 @@ async function handleStop(app: Application) {
 
 async function viewLastDeployment(appId: string) {
 	const resp = await deploymentApi.list({ application_id: appId, per_page: 1 });
-	if (resp.items.length > 0) $router.push(`/cd/deployments/${resp.items[0].id}`);
-	else $router.push(`/cd/deployments?application_id=${appId}`);
+	if (resp.items.length > 0) {
+		$router.push(`/cd/deployments/${resp.items[0].id}`);
+	} else {
+		$router.push(`/cd/deployments?application_id=${appId}`);
+	}
 }
 
 // ── Create ──
@@ -419,7 +422,9 @@ function openCreateModal() {
 }
 
 async function handleCreateOk() {
-	if (!validateForm(form, formErrors)) return;
+	if (!validateForm(form, formErrors)) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await applicationApi.create({
@@ -444,7 +449,9 @@ function triggerImport() {
 async function handleFileImport(event: Event) {
 	const target = event.target as HTMLInputElement;
 	const file = target.files?.[0];
-	if (!file) return;
+	if (!file) {
+		return;
+	}
 	try {
 		const data = JSON.parse(await file.text()) as ApplicationImportReq;
 		Object.assign(importForm, {
@@ -463,7 +470,9 @@ async function handleFileImport(event: Event) {
 }
 
 async function handleImportOk() {
-	if (!validateForm(importForm, importErrors)) return;
+	if (!validateForm(importForm, importErrors)) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await applicationApi.importApplication({

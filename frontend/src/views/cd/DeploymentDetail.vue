@@ -19,8 +19,8 @@
 					返回应用
 				</button>
 				<button
-					v-if="deployment?.status === 'running' || deployment?.status === 'queued'"
-					class="btn btn-sm btn-error gap-1"
+					v-if="deployment?.status === 'running' || deployment?.status === 'waiting_to_run'"
+					class="btn btn-sm btn-error btn-ghost gap-1"
 					@click="handleCancel"
 				>
 					取消部署
@@ -50,20 +50,14 @@
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">状态</dt>
 						<dd>
-							<span class="badge badge-sm" :class="deployBadgeClass(deployment.status)">
-								{{ deployment.status }}
+							<span class="badge badge-sm" :class="statusBadgeClass(deployment.status)">
+								{{ statusLabel(deployment.status) }}
 							</span>
 						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">触发方式</dt>
 						<dd class="text-base-content/70">{{ deployment.trigger_type }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-20 shrink-0">分支/Tag</dt>
-						<dd>
-							<code class="text-xs">{{ deployment.trigger_ref || '—' }}</code>
-						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">环境文件</dt>
@@ -95,6 +89,13 @@
 			<div class="flex items-center justify-between px-5 py-3 border-b border-base-200 shrink-0">
 				<h2 class="font-semibold">部署日志</h2>
 				<div class="flex items-center gap-2">
+					<button
+						v-if="deployment && !isTerminalStatus(deployment.status)"
+						class="btn btn-xs btn-ghost gap-1 text-primary"
+					>
+						<Loader2 class="size-3.5 animate-spin" />
+						自动刷新中
+					</button>
 					<button class="btn btn-xs btn-ghost gap-1" @click="refreshDeployment">
 						<RefreshCw class="size-3.5" />
 						刷新
@@ -123,15 +124,15 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowDown, ArrowLeft, Loader2, RefreshCw } from 'lucide-vue-next';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, ArrowDown, RefreshCw } from 'lucide-vue-next';
-import { deploymentApi } from '@/api/deployments';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
-import { formatDuration } from '@/utils/status';
 import type { DeploymentDetail } from '@/types/api';
+import { formatDuration, isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
+import { delayAsync, formatTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
@@ -143,18 +144,7 @@ const deployment = ref<DeploymentDetail>();
 const logText = ref('');
 const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
-let pollTimer: number | null = null;
-
-const badgeMap: Record<string, string> = {
-	ran_to_completion: 'badge-outline badge-success',
-	faulted: 'badge-outline badge-error',
-	running: 'badge-outline badge-info',
-	queued: 'badge-outline badge-warning',
-	canceled: 'badge-ghost',
-};
-function deployBadgeClass(s: string) {
-	return badgeMap[s] ?? 'badge-ghost';
-}
+let pollAbort: AbortController | null = null;
 
 async function fetchDeployment() {
 	try {
@@ -176,8 +166,8 @@ async function fetchLogs() {
 			logOffset.value = data.offset;
 		}
 		if (data.is_complete) {
-			stopLogPolling();
-			await fetchDeployment();
+			pollAbort?.abort();
+			deployment.value = await deploymentApi.get(deploymentId);
 		}
 	} catch (error) {
 		console.error('获取日志失败:', error);
@@ -185,20 +175,26 @@ async function fetchLogs() {
 }
 
 function startLogPolling() {
-	fetchLogs();
-	if (
-		deployment.value &&
-		['ran_to_completion', 'faulted', 'canceled'].includes(deployment.value.status)
-	)
-		return;
-	pollTimer = window.setInterval(fetchLogs, 2000);
+	pollAbort = new AbortController();
+	const signal = pollAbort.signal;
+	(async () => {
+		await fetchLogs();
+		while (!signal.aborted) {
+			if (deployment.value && isTerminalStatus(deployment.value.status)) {
+				break;
+			}
+			await delayAsync(2000);
+			if (signal.aborted) {
+				break;
+			}
+			await fetchLogs();
+		}
+	})();
 }
 
 function stopLogPolling() {
-	if (pollTimer) {
-		clearInterval(pollTimer);
-		pollTimer = null;
-	}
+	pollAbort?.abort();
+	pollAbort = null;
 }
 
 async function handleCancel() {
@@ -206,7 +202,7 @@ async function handleCancel() {
 		await deploymentApi.cancel(deploymentId);
 		toast.success('已取消部署');
 		stopLogPolling();
-		fetchDeployment();
+		deployment.value = await deploymentApi.get(deploymentId);
 	} catch {
 		toast.error('取消失败');
 	}
@@ -218,12 +214,16 @@ async function refreshDeployment() {
 }
 
 function scrollToBottom() {
-	if (logContainerRef.value) logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
+	if (logContainerRef.value) {
+		logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
+	}
 }
 
 onMounted(async () => {
 	await fetchDeployment();
-	startLogPolling();
+	if (!isTerminalStatus(deployment.value?.status)) {
+		startLogPolling();
+	}
 });
 onUnmounted(stopLogPolling);
 </script>

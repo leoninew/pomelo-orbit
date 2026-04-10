@@ -120,29 +120,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
 import {
 	ChevronDown,
 	ChevronLeft,
 	ChevronRight,
-	Code2,
 	CloudCog,
-	Settings,
-	LayoutGrid,
-	Rocket,
-	Globe,
-	Network,
-	FolderGit2,
-	Play,
+	Code2,
 	FileCode2,
-	KeyRound,
+	FolderGit2,
+	Globe,
 	History,
-	UserRound,
+	KeyRound,
+	Layers,
+	LayoutGrid,
 	LogOut,
+	Network,
+	Play,
+	Rocket,
+	Settings,
+	UserRound,
 } from 'lucide-vue-next';
-import { useAuthStore } from '@/stores/auth';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const route = useRoute();
@@ -163,8 +164,18 @@ const modules = [
 // ── Sidebar items per module ──
 const sidebarMap = {
 	cd: [
-		{ key: 'applications', label: '应用管理', path: '/cd/applications', icon: LayoutGrid },
-		{ key: 'deployments', label: '部署记录', path: '/cd/deployments', icon: Rocket },
+		{
+			key: 'applications',
+			label: '应用管理',
+			path: '/cd/applications',
+			icon: LayoutGrid,
+		},
+		{
+			key: 'deployments',
+			label: '部署记录',
+			path: '/cd/deployments',
+			icon: Rocket,
+		},
 		{ key: 'route', label: '路由配置', path: '/cd/routes', icon: Globe },
 		{
 			key: 'traefik-http-routers',
@@ -174,19 +185,47 @@ const sidebarMap = {
 		},
 	],
 	ci: [
-		{ key: 'projects', label: '项目管理', path: '/ci/projects', icon: FolderGit2 },
-		{ key: 'pipelineruns', label: '流水线记录', path: '/ci/runs', icon: Play },
-		{ key: 'pipelinetemplates', label: '流水线模板', path: '/ci/templates', icon: FileCode2 },
-		{ key: 'credentials', label: '凭据管理', path: '/ci/credentials', icon: KeyRound },
+		{
+			key: 'repository',
+			label: '代码仓库',
+			path: '/ci/repository',
+			icon: FolderGit2,
+		},
+		{ key: 'pipelineruns', label: '流水线记录', path: '/ci/run', icon: Play },
+		{
+			key: 'pipelinetemplates',
+			label: '流水线模板',
+			path: '/ci/template',
+			icon: FileCode2,
+		},
+		{
+			key: 'pipelinestages',
+			label: '流水线阶段',
+			path: '/ci/pipeline-stage',
+			icon: Layers,
+		},
+		{
+			key: 'credentials',
+			label: '凭据管理',
+			path: '/ci/credential',
+			icon: KeyRound,
+		},
 	],
 	settings: [
-		{ key: 'loginhistory', label: '登录历史', path: '/login-history', icon: History },
+		{
+			key: 'loginhistory',
+			label: '登录历史',
+			path: '/login-history',
+			icon: History,
+		},
 		{ key: 'settings', label: '系统设置', path: '/settings', icon: Settings },
 	],
 };
 
 const sidebarItems = computed(() => {
-	if (!currentModule.value) return [];
+	if (!currentModule.value) {
+		return [];
+	}
 	return sidebarMap[currentModule.value] ?? [];
 });
 
@@ -194,10 +233,15 @@ const isLoginPage = computed(() => route.name === 'Login');
 
 function syncFromRoute() {
 	const path = route.path;
-	if (path.startsWith('/ci/')) currentModule.value = 'ci';
-	else if (path.startsWith('/cd/')) currentModule.value = 'cd';
-	else if (path === '/login-history' || path === '/settings') currentModule.value = 'settings';
-	else currentModule.value = 'cd';
+	if (path.startsWith('/ci/')) {
+		currentModule.value = 'ci';
+	} else if (path.startsWith('/cd/')) {
+		currentModule.value = 'cd';
+	} else if (path === '/login-history' || path === '/settings') {
+		currentModule.value = 'settings';
+	} else {
+		currentModule.value = null;
+	}
 
 	selectedKey.value = (route.meta.menuKey as string) ?? '';
 }
@@ -207,7 +251,9 @@ watch(() => route.path, syncFromRoute);
 
 function navigateToModule(mod: 'ci' | 'cd' | 'settings') {
 	const first = sidebarMap[mod][0];
-	if (first) router.push(first.path);
+	if (first) {
+		router.push(first.path);
+	}
 }
 
 async function handleLogout() {

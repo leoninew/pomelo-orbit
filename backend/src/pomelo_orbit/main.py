@@ -5,15 +5,8 @@ FastAPI Application Entry Point
 import argparse
 import logging
 import sys
-from pathlib import Path
-
-# Windows 上需要使用 ProactorEventLoop 支持子进程
-if sys.platform == "win32":
-    import asyncio
-
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request, status
@@ -27,13 +20,10 @@ from pomelo_orbit.infrastructure import get_cors_config, get_settings
 from pomelo_orbit.infrastructure.logging import LOGGING_CONFIG, RequestLoggingMiddleware
 from pomelo_orbit.infrastructure.migration.migrator import run_migrations
 from pomelo_orbit.infrastructure.persistence.database import get_engine
-from pomelo_orbit.interfaces.api.application import router as application_router
-from pomelo_orbit.interfaces.api.auth import router as auth_router
+from pomelo_orbit.interfaces.api.auth.router import router as auth_router
+from pomelo_orbit.interfaces.api.cd import router as cd_router
 from pomelo_orbit.interfaces.api.ci import router as ci_router
-from pomelo_orbit.interfaces.api.deployment import router as deployment_router
-from pomelo_orbit.interfaces.api.route import router as route_router
-from pomelo_orbit.interfaces.api.settings import router as settings_router
-from pomelo_orbit.interfaces.api.traefik_route import router as traefik_route_router
+from pomelo_orbit.interfaces.api.settings.router import router as settings_router
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +56,7 @@ app.add_middleware(RequestLoggingMiddleware)
 
 # Include routers
 app.include_router(auth_router, prefix="/api")
-app.include_router(application_router, prefix="/api")
-app.include_router(deployment_router, prefix="/api")
-app.include_router(route_router, prefix="/api")
-app.include_router(traefik_route_router, prefix="/api")
+app.include_router(cd_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(ci_router, prefix="/api")
 
@@ -92,7 +79,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     errors = "; ".join(f"{'.'.join(str(loc_part) for loc_part in e['loc'])}: {e['msg']}" for e in exc.errors())
     logger.warning(f"Validation error: {request.method} {request.url.path}, errors={errors}")
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content={"detail": errors},
     )
 

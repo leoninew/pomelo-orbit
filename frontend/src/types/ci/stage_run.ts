@@ -1,0 +1,25 @@
+import type { TaskStatus } from '../common';
+
+// StageRun — Stage 执行记录
+export interface StageRun {
+	id: string
+	pipeline_run_id: string
+	stage_id: string
+	stage_name: string
+	status: TaskStatus
+	started_at?: string
+	finished_at?: string
+	exit_code?: number
+	error_message?: string
+}
+
+// Artifact
+export interface Artifact {
+	id: string
+	pipeline_run_id: string
+	stage_name: string
+	type: 'docker_image' | 'file'
+	name: string
+	path?: string
+	created_at: string
+}

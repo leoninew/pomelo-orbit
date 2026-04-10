@@ -1,30 +1,43 @@
 import type {
 	PaginatedResp,
+	PipelineSnapshot,
 	PipelineTemplate,
 	PipelineTemplateCreateReq,
+	StageOrchestration,
 	PipelineTemplateUpdateReq,
+	VariableDeclaration,
 } from '@/types/api';
 import request from '@/utils/request';
 
-// PipelineTemplate API
 export const pipelineTemplateApi = {
 	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<PipelineTemplate>> {
-		return request.get('/api/v1/ci/templates', { params });
+		return request.get('/api/ci/template', { params });
 	},
 
 	get(id: string): Promise<PipelineTemplate> {
-		return request.get(`/api/v1/ci/templates/${id}`);
+		return request.get(`/api/ci/template/${id}`);
 	},
 
 	create(data: PipelineTemplateCreateReq): Promise<PipelineTemplate> {
-		return request.post('/api/v1/ci/templates', data);
+		return request.post('/api/ci/template', data);
 	},
 
 	update(id: string, data: PipelineTemplateUpdateReq): Promise<PipelineTemplate> {
-		return request.put(`/api/v1/ci/templates/${id}`, data);
+		return request.put(`/api/ci/template/${id}`, data);
+	},
+
+	resolveVariables(data: {
+		orchestration: StageOrchestration[]
+		variable_declarations?: VariableDeclaration[]
+	}): Promise<VariableDeclaration[]> {
+		return request.post('/api/ci/template/resolve-variables', data);
 	},
 
 	delete(id: string): Promise<void> {
-		return request.delete(`/api/v1/ci/templates/${id}`);
+		return request.delete(`/api/ci/template/${id}`);
+	},
+
+	getSnapshot(snapshotId: string): Promise<PipelineSnapshot> {
+		return request.get(`/api/ci/snapshot/${snapshotId}`);
 	},
 };

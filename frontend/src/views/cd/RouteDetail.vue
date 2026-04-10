@@ -47,7 +47,7 @@
 				</div>
 				<dl v-else-if="routeData" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">路由名称</dt>
+						<dt class="text-base-content/70 w-24 shrink-0">名称</dt>
 						<dd>{{ routeData.name }}</dd>
 					</div>
 					<div class="flex gap-2">
@@ -111,9 +111,14 @@
 				<h2 class="font-semibold mb-4">SSL 证书</h2>
 				<template v-if="routeData">
 					<div v-if="!routeData.https_enabled" class="flex flex-col gap-3">
-						<div role="alert" class="alert alert-info text-sm">当前使用 HTTP，未启用 HTTPS</div>
+						<div
+							role="alert"
+							class="text-sm text-base-content/70 border border-base-300 p-3 rounded"
+						>
+							当前使用 HTTP，未启用 HTTPS
+						</div>
 						<div class="flex items-center gap-2 flex-wrap">
-							<label class="btn btn-sm btn-ghost gap-1.5 cursor-pointer">
+							<label class="btn btn-sm btn-ghost gap-1 cursor-pointer">
 								<Upload class="size-4" />
 								上传证书 (PEM)
 								<input
@@ -141,7 +146,10 @@
 						</div>
 					</div>
 					<div v-else class="flex flex-col gap-3">
-						<div role="alert" class="alert alert-success text-sm">
+						<div
+							role="alert"
+							class="text-sm text-base-content/70 border border-base-300 p-3 rounded"
+						>
 							{{
 								routeData.cert_type === 'letsencrypt'
 									? "使用 Let's Encrypt 自动证书"
@@ -167,45 +175,38 @@
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑路由</h3>
 				<div class="flex flex-col gap-3">
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">路由名称</span></div>
-						<input
-							:value="form.name"
-							type="text"
-							class="input input-bordered input-sm opacity-60"
-							disabled
-						/>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">域名</span></div>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">名称</legend>
+						<input :value="form.name" type="text" class="input input-sm opacity-60" disabled />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">域名</legend>
 						<input
 							v-model="form.domain"
 							type="text"
-							class="input input-bordered input-sm"
+							class="input input-sm"
 							:class="{ 'input-error': errors.domain }"
 						/>
-						<div v-if="errors.domain" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.domain }}</span>
-						</div>
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">路径前缀</span></div>
-						<input v-model="form.path_prefix" type="text" class="input input-bordered input-sm" />
-					</label>
-					<label class="form-control w-full">
-						<div class="label pb-1"><span class="label-text">目标地址</span></div>
+						<p v-if="errors.domain" class="fieldset-label text-error">{{ errors.domain }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路径前缀</legend>
+						<input v-model="form.path_prefix" type="text" class="input input-sm" />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">目标地址</legend>
 						<input
 							v-model="form.target_url"
 							type="text"
-							class="input input-bordered input-sm"
+							class="input input-sm"
 							:class="{ 'input-error': errors.target_url }"
 						/>
-						<div v-if="errors.target_url" class="label pt-1">
-							<span class="label-text-alt text-error">{{ errors.target_url }}</span>
-						</div>
-					</label>
+						<p v-if="errors.target_url" class="fieldset-label text-error">
+							{{ errors.target_url }}
+						</p>
+					</fieldset>
 					<label class="flex items-center gap-2 cursor-pointer">
-						<span class="label-text text-sm">启用</span>
+						<span class="text-sm">启用</span>
 						<input v-model="form.enabled" type="checkbox" class="toggle toggle-sm toggle-primary" />
 					</label>
 				</div>
@@ -243,11 +244,11 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowLeft, ExternalLink, Upload } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, ExternalLink, Upload } from 'lucide-vue-next';
-import { routeApi } from '@/api/route';
-import type { Route } from '@/api/route';
+import type { Route } from '@/api/cd/route';
+import { routeApi } from '@/api/cd/route';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { formatTime } from '@/utils/time';
@@ -264,11 +265,19 @@ const routeData = ref<Route>();
 const editModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
 
-const form = reactive({ name: '', domain: '', path_prefix: '/', target_url: '', enabled: false });
+const form = reactive({
+	name: '',
+	domain: '',
+	path_prefix: '/',
+	target_url: '',
+	enabled: false,
+});
 const errors = reactive({ domain: '', target_url: '' });
 
 const canUseLetsencrypt = computed(() => {
-	if (!routeData.value) return false;
+	if (!routeData.value) {
+		return false;
+	}
 	const d = routeData.value.domain;
 	return (
 		d !== 'localhost' &&
@@ -307,7 +316,9 @@ async function handleSave() {
 	errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
 		? ''
 		: '格式应为 http://host:port';
-	if (errors.domain || errors.target_url) return;
+	if (errors.domain || errors.target_url) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			const updateData = {
@@ -364,7 +375,9 @@ async function handleDelete() {
 
 async function handleCertUpload(event: Event) {
 	const file = (event.target as HTMLInputElement).files?.[0];
-	if (!file) return;
+	if (!file) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await routeApi.uploadCert(routeId, file);

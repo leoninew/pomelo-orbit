@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from pomelo_orbit.domain.shared.entities import LoginHistory, User
+from pomelo_orbit.domain.auth.entities import LoginHistory, User
 
 
 class UserRepository(ABC):

@@ -30,14 +30,14 @@ class ImagePullPolicy(StrEnum):
     NEVER = "never"
 
 
-class DeployStatus(StrEnum):
-    """部署状态"""
+class TaskStatus(StrEnum):
+    """异步任务状态（CI PipelineRun、CD Deployment 统一使用）"""
 
     WAITING_TO_RUN = "waiting_to_run"
     RUNNING = "running"
     RAN_TO_COMPLETION = "ran_to_completion"
-    CANCELED = "canceled"
     FAULTED = "faulted"
+    CANCELED = "canceled"
 
 
-__all__ = ["ApplicationStatus", "DeployStatus", "ImagePullPolicy", "OperationType"]
+__all__ = ["ApplicationStatus", "ImagePullPolicy", "OperationType", "TaskStatus"]

@@ -7,78 +7,68 @@ from pydantic import BaseModel
 
 
 class CredentialType(StrEnum):
-    """凭据类型"""
-
     GIT_SSH = "git_ssh"
     GIT_TOKEN = "git_token"
 
 
-class PipelineRunStatus(StrEnum):
-    """Pipeline 运行状态"""
-
-    WAITING = "waiting"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
-    CANCELED = "canceled"
-
-
 class PipelineRunTrigger(StrEnum):
-    """Pipeline 触发方式"""
-
     MANUAL = "manual"
-    WEBHOOK = "webhook"  # Phase 2
+    WEBHOOK = "webhook"
 
 
-class JobStatus(StrEnum):
-    """Job 状态"""
+class VariableSource(StrEnum):
+    """变量来源"""
 
-    WAITING = "waiting"
-    RUNNING = "running"
-    SUCCESS = "success"
-    FAILED = "failed"
-    FAULTED = "faulted"
-    SKIPPED = "skipped"  # Phase 2
-    CANCELED = "canceled"  # Phase 3
-
-
-class RetryPolicy(StrEnum):
-    """重试策略"""
-
-    ALWAYS_RERUN = "always_rerun"
-    SKIP_IF_SUCCESS = "skip_if_success"
+    GLOBAL = "global"  # 全局内置变量
+    REPOSITORY = "repository"  # 项目内置变量
+    REPOSITORY_CUSTOM = "repository_custom"  # 项目自定义变量
+    TEMPLATE = "template"  # 模板内置变量
+    TEMPLATE_STAGE = "template_stage"  # 模板 Stage 发现的变量
+    TEMPLATE_CUSTOM = "template_custom"  # 模板自定义变量
+    RUNTIME = "runtime"  # 运行时临时变量
 
 
 class VariableDeclaration(BaseModel):
-    """变量声明"""
-
     name: str
     description: str = ""
-    required: bool = False
-    default: Any = None
-    secret: bool = False  # 是否敏感数据
+    value: Any = None
+    secret: bool = False
+    source: VariableSource = VariableSource.TEMPLATE_CUSTOM  # 默认为自定义
 
 
-class StepDefinition(BaseModel):
-    """Step 定义（递归）"""
+type BuiltinVariableSpecs = dict[str, str]
+
+
+class Variable(BaseModel):
+    """变量值对象"""
 
     name: str
-    image: str | None = None
-    commands: list[str] | None = None
-    uses: str | None = None  # "checkout"
-    inputs: dict[str, Any] | None = None
-    volumes: list[str] | None = None
-    depends_on: list[str] | None = None  # Phase 2
-    timeout: int | None = None  # Phase 3
-    retry_policy: RetryPolicy | None = None  # Phase 2
-    artifacts: list[dict[str, Any]] | None = None  # Phase 2
-    outputs: list[str] | None = None
-    steps: list["StepDefinition"] | None = None  # 嵌套
+    value: Any
+    source: VariableSource
+    description: str = ""
 
 
-class PipelineDefinition(BaseModel):
-    """Pipeline 定义"""
+class ArtifactConfig(BaseModel):
+    path: str
+    name: str
 
-    version: str
-    timeout: int | None = None
-    steps: list[StepDefinition]
+
+class StageDefinition(BaseModel):
+    """Stage 定义值对象：用于快照和执行，包含编排信息（已展开）"""
+
+    name: str
+    id: str
+    image: str
+    depends_on: list[str] = []  # 编排属性，存储依赖的 stage_id 列表
+    script: str
+    env: dict[str, str] = {}
+    artifacts: list[ArtifactConfig] | None = None
+
+
+class StageOrchestration(BaseModel):
+    """模板对 Stage 的编排：引用 + 依赖 + 顺序。依赖和顺序属于编排，不属于 Stage 本身。"""
+
+    stage_id: str
+    stage_name: str  # 模板内唯一标识，默认为 stage 名，用于展示
+    depends_on: list[str] = []  # 依赖的 stage_id 列表
+    sort_order: int = 0  # 列表视图显示顺序

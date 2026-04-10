@@ -2,22 +2,20 @@
 领域实体与 ORM 模型之间的映射器
 """
 
+from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     CertType,
     Deployment,
-    ImageSource,
     Route,
     TriggerType,
 )
 from pomelo_orbit.domain.cd.value_objects import OperationType
-from pomelo_orbit.domain.shared.entities import LoginHistory, User
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
     DeploymentModel,
-    ImageSourceModel,
     LoginHistoryModel,
     RouteModel,
     UserModel,
@@ -82,34 +80,6 @@ class LoginHistoryMapper:
         )
 
 
-class ImageSourceMapper:
-    """镜像源映射器"""
-
-    @staticmethod
-    def to_domain(model: ImageSourceModel) -> ImageSource:
-        """ORM 模型转领域实体"""
-        return ImageSource(
-            id=model.id,
-            application_id=model.application_id,
-            image_name=model.image_name,
-            registry_url=model.registry_url,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
-        )
-
-    @staticmethod
-    def to_orm(entity: ImageSource) -> ImageSourceModel:
-        """领域实体转 ORM 模型"""
-        return ImageSourceModel(
-            id=entity.id,
-            application_id=entity.application_id,
-            image_name=entity.image_name,
-            registry_url=entity.registry_url,
-            created_at=entity.created_at,
-            updated_at=entity.updated_at,
-        )
-
-
 class ApplicationConfigFileMapper:
     """应用配置文件映射器"""
 
@@ -143,7 +113,6 @@ class ApplicationMapper:
 
     @staticmethod
     def to_domain(model: ApplicationModel) -> Application:
-        """ORM 模型转领域实体"""
         return Application(
             id=model.id,
             name=model.name,
@@ -152,13 +121,11 @@ class ApplicationMapper:
             status=model.status,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            image_source=ImageSourceMapper.to_domain(model.image_source) if model.image_source else None,
             config_files=[ApplicationConfigFileMapper.to_domain(cf) for cf in model.config_files],
         )
 
     @staticmethod
     def to_orm(entity: Application) -> ApplicationModel:
-        """领域实体转 ORM 模型"""
         model = ApplicationModel(
             id=entity.id,
             name=entity.name,
@@ -168,13 +135,8 @@ class ApplicationMapper:
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
-
-        # 设置关联实体
-        if entity.image_source:
-            model.image_source = ImageSourceMapper.to_orm(entity.image_source)
         if entity.config_files:
             model.config_files = [ApplicationConfigFileMapper.to_orm(cf) for cf in entity.config_files]
-
         return model
 
 
@@ -191,8 +153,6 @@ class DeploymentMapper:
             trigger_type=TriggerType(model.trigger_type),
             status=model.status,
             operation_type=OperationType(model.operation_type),
-            trigger_ref=model.trigger_ref,
-            image_name=model.image_name,
             env_file=model.env_file,
             started_at=model.started_at,
             finished_at=model.finished_at,
@@ -213,8 +173,6 @@ class DeploymentMapper:
             trigger_type=entity.trigger_type.value,
             operation_type=entity.operation_type.value,
             status=entity.status,
-            trigger_ref=entity.trigger_ref,
-            image_name=entity.image_name,
             env_file=entity.env_file,
             started_at=entity.started_at,
             finished_at=entity.finished_at,
@@ -268,7 +226,6 @@ __all__ = [
     "ApplicationConfigFileMapper",
     "ApplicationMapper",
     "DeploymentMapper",
-    "ImageSourceMapper",
     "LoginHistoryMapper",
     "RouteMapper",
     "UserMapper",

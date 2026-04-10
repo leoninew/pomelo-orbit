@@ -15,10 +15,10 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>路由名称</th>
+						<th>名称</th>
 						<th>域名</th>
 						<th>路径前缀</th>
 						<th>目标地址</th>
@@ -28,10 +28,13 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="loading">
+					<tr v-if="status === 'loading'">
 						<td colspan="7" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
+					</tr>
+					<tr v-else-if="status === 'error'">
+						<td colspan="7" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="routes.length === 0">
 						<td colspan="7" class="text-center py-8 text-base-content/60">暂无路由</td>
@@ -82,10 +85,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<div
-				v-if="pagination.total > pagination.pageSize"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -106,13 +106,13 @@
 				<h3 class="font-bold text-lg mb-4">添加路由</h3>
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">路由名称</legend>
+						<legend class="fieldset-legend">名称</legend>
 						<input
 							v-model="form.name"
 							type="text"
 							class="input w-full"
 							:class="{ 'input-error': errors.name }"
-							placeholder="my-route"
+							placeholder="example-route"
 						/>
 						<p v-if="errors.name" class="fieldset-label text-error">{{ errors.name }}</p>
 					</fieldset>
@@ -163,15 +163,15 @@
 </template>
 
 <script setup lang="ts">
+import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
-import { Plus, RefreshCw, ExternalLink } from 'lucide-vue-next';
-import { routeApi } from '@/api/route';
-import type { Route } from '@/api/route';
+import type { Route } from '@/api/cd/route';
+import { routeApi } from '@/api/cd/route';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 
 const routes = ref<Route[]>([]);
@@ -228,7 +228,9 @@ function openCreateModal() {
 }
 
 async function handleSave() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await routeApi.create(form);

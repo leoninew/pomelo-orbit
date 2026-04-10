@@ -60,28 +60,9 @@ class ApplicationModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # 关系
-    image_source: Mapped["ImageSourceModel | None"] = relationship(
-        "ImageSourceModel", back_populates="application", uselist=False, cascade="all, delete-orphan"
-    )
     config_files: Mapped[list["ApplicationConfigFileModel"]] = relationship(
         "ApplicationConfigFileModel", back_populates="application", cascade="all, delete-orphan"
     )
-
-
-class ImageSourceModel(Base):
-    """镜像源"""
-
-    __tablename__ = "image_source"
-
-    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    application_id: Mapped[str] = mapped_column(String(26), ForeignKey("application.id"), nullable=False, unique=True)
-    image_name: Mapped[str] = mapped_column(String(500), nullable=False)
-    registry_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
-
-    # 关系
-    application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="image_source")
 
 
 class DeploymentModel(Base):
@@ -94,10 +75,6 @@ class DeploymentModel(Base):
     application_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     operation_type: Mapped[str] = mapped_column(String(20), default=OperationType.DEPLOY, nullable=False)
     trigger_type: Mapped[str] = mapped_column(String(20), nullable=False)  # webhook | manual
-    trigger_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # 逻辑外键：通过 webhook_event_id 关联到 webhook_event，应用层维护一致性
-    webhook_event_id: Mapped[str | None] = mapped_column(String(26), nullable=True, index=True)
-    image_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     env_file: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # queued | running | success | failed
     started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
@@ -111,7 +88,6 @@ class DeploymentModel(Base):
     )
 
     # 关系（仅自引用）
-    # webhook_event_id 为逻辑外键，通过应用层维护一致性
 
 
 class ApplicationConfigFileModel(Base):

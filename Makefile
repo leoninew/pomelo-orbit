@@ -1,4 +1,4 @@
-.PHONY: help install dev-backend dev-frontend lint test test-backend test-frontend build
+.PHONY: help install dev-backend dev-frontend lint test test-backend test-frontend build clean
 
 help:
 	@echo "Pomelo Orbit - 开发命令"
@@ -16,11 +16,11 @@ help:
 	@echo "  make lint fix=1      - 检查并自动修复"
 	@echo ""
 	@echo "测试:"
-	@echo "  make test            - 运行所有测试（后端+前端）"
-	@echo "  make test-backend    - 运行后端单元测试"
-	@echo "  make test-backend integration=1 - 运行后端所有测试（单元+集成）"
-	@echo "  make test-backend cov=1 - 运行后端单元测试并生成覆盖率报告"
-	@echo "  make test-backend integration=1 cov=1 - 运行所有测试并生成覆盖率报告"
+	@echo "  make test            - 运行所有测试（后端+前端，含集成测试）"
+	@echo "  make test-backend    - 运行后端所有测试（默认含集成测试）"
+	@echo "  make test-backend integration=0 - 仅运行后端单元测试（跳过集成测试）"
+	@echo "  make test-backend cov=1 - 运行后端所有测试并生成覆盖率报告"
+	@echo "  make test-backend integration=0 cov=1 - 仅运行单元测试并生成覆盖率报告"
 	@echo "  make test-frontend   - 运行前端测试"
 	@echo "  make test-frontend cov=1 - 运行前端测试并生成覆盖率报告"
 	@echo ""
@@ -28,6 +28,9 @@ help:
 	@echo "  make build           - 构建 Docker 镜像 (默认 tag: latest)"
 	@echo "  make build tag=v1.0  - 构建指定 tag 的镜像"
 	@echo "  make build cn=1      - 使用国内镜像源构建"
+	@echo ""
+	@echo "清理:"
+	@echo "  make clean           - 删除编译缓存目录（__pycache__、.mypy_cache、.ruff_cache、.pytest_cache、htmlcov）"
 	@echo ""
 
 install:
@@ -66,12 +69,12 @@ test: test-backend test-frontend
 test-backend:
 	@echo "运行后端测试..."
 	$(if $(cov), \
-		$(if $(integration), \
-			cd backend && PYTHONUTF8=1 uv run pytest --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html", \
-			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/ --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html"), \
-		$(if $(integration), \
-			cd backend && PYTHONUTF8=1 uv run pytest, \
-			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/))
+		$(if $(filter 0,$(integration)), \
+			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/ --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html", \
+			cd backend && PYTHONUTF8=1 uv run pytest --cov=src/pomelo_orbit --cov-report=html --cov-report=term && echo "" && echo "✓ 覆盖率报告: backend/htmlcov/index.html"), \
+		$(if $(filter 0,$(integration)), \
+			cd backend && PYTHONUTF8=1 uv run pytest tests/unit/, \
+			cd backend && PYTHONUTF8=1 uv run pytest))
 
 test-frontend:
 	@echo "运行前端测试..."
@@ -83,4 +86,14 @@ build:
 	@echo "构建 Docker 镜像..."
 	docker build -f $(if $(cn),Dockerfile.cn,Dockerfile) -t pomelo-orbit:$(or $(tag),latest) .
 	@echo "✓ 镜像构建完成: pomelo-orbit:$(or $(tag),latest)"
+
+clean:
+	@echo "清理编译缓存..."
+	find . -type d -name "__pycache__" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name ".mypy_cache" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name ".ruff_cache" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name ".pytest_cache" -not -path "./.git/*" | xargs rm -rf
+	find . -type d -name "htmlcov" -not -path "./.git/*" | xargs rm -rf
+	find . -type f -name "*.pyc" -not -path "./.git/*" | xargs rm -f
+	@echo "✓ 清理完成"
 

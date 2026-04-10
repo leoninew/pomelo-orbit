@@ -1,3 +1,5 @@
+import type { TaskStatus } from '../common';
+
 // 部署记录相关
 export interface Deployment {
 	id: string
@@ -5,9 +7,8 @@ export interface Deployment {
 	application_name: string | null
 	operation_type: string
 	trigger_type: string
-	trigger_ref: string | null
 	env_file: string | null
-	status: string
+	status: TaskStatus
 	started_at: string
 	finished_at: string | null
 	duration_ms: number | null
@@ -17,11 +18,3 @@ export interface Deployment {
 export interface DeploymentDetail extends Deployment {
 	log_text: string | null
 }
-
-// 状态颜色映射
-export const deploymentStatusColors: Record<string, string> = {
-	queued: 'default',
-	running: 'processing',
-	success: 'success',
-	failed: 'error',
-};

@@ -2,107 +2,96 @@
 
 import ulid
 
-from pomelo_orbit.domain.ci.entities import Project
-from pomelo_orbit.infrastructure.ci.mappers import ProjectMapper
+from pomelo_orbit.domain.ci.entities import Repository
+from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
+from pomelo_orbit.infrastructure.ci.mappers import RepositoryMapper
 from pomelo_orbit.infrastructure.ci.models import ProjectModel
 
 
 class TestProjectMapper:
-    """测试 ProjectMapper"""
-
     def test_to_domain(self):
-        """测试 ORM 转领域实体"""
         orm = ProjectModel(
             id=str(ulid.ULID()),
             name="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
-            variable_overrides='{"KEY": "value"}',
-            webhook_secret="my-secret",
-            branch_filter="main,develop",
+            variable_overrides='[{"name": "KEY", "value": "value"}]',
+            default_branch="main",
         )
 
-        entity = ProjectMapper.to_domain(orm)
+        entity = RepositoryMapper.to_domain(orm)
 
         assert entity.id == orm.id
         assert entity.name == orm.name
         assert entity.repository_url == orm.repository_url
-        assert entity.variable_overrides == {"KEY": "value"}
-        assert entity.webhook_secret == "my-secret"
-        assert entity.branch_filter == "main,develop"
+        assert len(entity.variable_overrides) == 1
+        assert entity.variable_overrides[0].name == "KEY"
+        assert entity.variable_overrides[0].value == "value"
+        assert entity.default_branch == "main"
 
-    def test_to_domain_without_webhook_fields(self):
-        """测试 ORM 转领域实体（无 webhook 字段）"""
+    def test_to_domain_defaults(self):
         orm = ProjectModel(
             id=str(ulid.ULID()),
             name="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
-            git_credential_id=str(ulid.ULID()),
-            variable_overrides="{}",
-            webhook_secret=None,
-            branch_filter=None,
+            git_credential_id=None,
+            variable_overrides="[]",
         )
 
-        entity = ProjectMapper.to_domain(orm)
+        entity = RepositoryMapper.to_domain(orm)
 
-        assert entity.webhook_secret is None
-        assert entity.branch_filter is None
+        assert entity.git_credential_id is None
+        assert entity.variable_overrides == []
 
     def test_to_orm(self):
-        """测试领域实体转 ORM"""
-        entity = Project.create(
+        entity = Repository.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
-            variable_overrides={"KEY": "value"},
-            webhook_secret="my-secret",
-            branch_filter="main,develop",
+            variable_overrides=[VariableDeclaration(name="KEY", value="value")],
+            default_branch="main",
         )
 
-        orm = ProjectMapper.to_orm(entity)
+        orm = RepositoryMapper.to_orm(entity)
 
         assert orm.id == entity.id
         assert orm.name == entity.name
         assert orm.repository_url == entity.repository_url
-        assert orm.variable_overrides == '{"KEY": "value"}'
-        assert orm.webhook_secret == "my-secret"
-        assert orm.branch_filter == "main,develop"
+        assert '"name": "KEY"' in orm.variable_overrides
+        assert '"value": "value"' in orm.variable_overrides
+        assert orm.default_branch == "main"
 
-    def test_to_orm_without_webhook_fields(self):
-        """测试领域实体转 ORM（无 webhook 字段）"""
-        entity = Project.create(
+    def test_to_orm_without_optional_fields(self):
+        entity = Repository.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
-            git_credential_id=str(ulid.ULID()),
         )
 
-        orm = ProjectMapper.to_orm(entity)
+        orm = RepositoryMapper.to_orm(entity)
 
-        assert orm.webhook_secret is None
-        assert orm.branch_filter is None
+        assert orm.git_credential_id is None
+        assert orm.variable_overrides == "[]"
 
     def test_round_trip(self):
-        """测试往返转换"""
-        original = Project.create(
+        original = Repository.create(
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
-            pipeline_template_id=str(ulid.ULID()),
             git_credential_id=str(ulid.ULID()),
-            variable_overrides={"KEY": "value"},
-            webhook_secret="my-secret",
-            branch_filter="main,develop",
+            variable_overrides=[VariableDeclaration(name="KEY", value="value", description="test var")],
+            default_branch="develop",
         )
 
-        orm = ProjectMapper.to_orm(original)
-        restored = ProjectMapper.to_domain(orm)
+        orm = RepositoryMapper.to_orm(original)
+        restored = RepositoryMapper.to_domain(orm)
 
         assert restored.id == original.id
         assert restored.name == original.name
         assert restored.repository_url == original.repository_url
-        assert restored.variable_overrides == original.variable_overrides
-        assert restored.webhook_secret == original.webhook_secret
-        assert restored.branch_filter == original.branch_filter
+        assert len(restored.variable_overrides) == len(original.variable_overrides)
+        assert restored.variable_overrides[0].name == original.variable_overrides[0].name
+        assert restored.variable_overrides[0].value == original.variable_overrides[0].value
+        assert restored.variable_overrides[0].description == original.variable_overrides[0].description
+        assert restored.default_branch == original.default_branch

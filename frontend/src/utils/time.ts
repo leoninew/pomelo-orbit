@@ -1,7 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -11,7 +11,9 @@ dayjs.extend(relativeTime);
  * 格式化时间 - 将 UTC 时间转换为本地时间显示
  */
 export function formatTime(time?: string | null, format = 'YYYY-MM-DD HH:mm:ss'): string {
-	if (!time) return '-';
+	if (!time) {
+		return '-';
+	}
 	return dayjs.utc(time).local().format(format);
 }
 
@@ -19,7 +21,9 @@ export function formatTime(time?: string | null, format = 'YYYY-MM-DD HH:mm:ss')
  * 格式化相对时间 (如 "3分钟前")
  */
 export function formatRelativeTime(time?: string | null): string {
-	if (!time) return '-';
+	if (!time) {
+		return '-';
+	}
 	return dayjs.utc(time).local().fromNow();
 }
 

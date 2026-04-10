@@ -64,12 +64,12 @@
 </template>
 
 <script setup lang="ts">
+import { Eye, EyeOff, Lock, UserRound } from 'lucide-vue-next';
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { UserRound, Lock, Eye, EyeOff } from 'lucide-vue-next';
-import { useAuthStore } from '@/stores/auth';
-import { useToast } from '@/composables/useToast';
 import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { useAuthStore } from '@/stores/auth';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -87,7 +87,9 @@ function validate() {
 }
 
 async function handleLogin() {
-	if (!validate()) return;
+	if (!validate()) {
+		return;
+	}
 	try {
 		await execute(async () => {
 			await authStore.login(form.username, form.password);

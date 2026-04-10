@@ -5,7 +5,7 @@ import logging
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.entities import Deployment
 from pomelo_orbit.domain.cd.repositories import ApplicationRepository, DeploymentRepository
-from pomelo_orbit.domain.cd.value_objects import DeployStatus
+from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.exceptions import BusinessError
 from pomelo_orbit.infrastructure.time_utils import from_iso8601, utc_now
 
@@ -63,10 +63,10 @@ class DeploymentService:
         if not deployment:
             raise BusinessError(f"Deployment {deployment_id} not found", status_code=404)
 
-        if deployment.status not in (DeployStatus.WAITING_TO_RUN, DeployStatus.RUNNING):
+        if deployment.status not in (TaskStatus.WAITING_TO_RUN, TaskStatus.RUNNING):
             raise BusinessError("Deployment is not in a cancellable state", status_code=400)
 
-        deployment.status = DeployStatus.CANCELED
+        deployment.status = TaskStatus.CANCELED
         deployment.error_message = "Cancelled by user"
         deployment.finished_at = utc_now()
 
@@ -101,6 +101,6 @@ class DeploymentService:
         logs, current_offset = self.app_manager.read_deployment_log(app.code, deployment_id, offset)
 
         # 判断是否完成
-        is_complete = deployment.status in (DeployStatus.RAN_TO_COMPLETION, DeployStatus.FAULTED, DeployStatus.CANCELED)
+        is_complete = deployment.status in (TaskStatus.RAN_TO_COMPLETION, TaskStatus.FAULTED, TaskStatus.CANCELED)
 
         return logs, current_offset, is_complete

@@ -1,6 +1,6 @@
 """UserRepository 单元测试"""
 
-from pomelo_orbit.domain.shared.entities import LoginHistory, User
+from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.infrastructure.cd.repositories.user import UserRepositoryImpl
 from pomelo_orbit.infrastructure.time_utils import utc_now
 

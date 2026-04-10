@@ -15,7 +15,6 @@ from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     Deployment,
-    ImageSource,
     TriggerType,
 )
 from pomelo_orbit.domain.cd.repositories import (
@@ -23,7 +22,7 @@ from pomelo_orbit.domain.cd.repositories import (
     ConfigFileRepository,
     DeploymentRepository,
 )
-from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, DeployStatus, OperationType
+from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, OperationType, TaskStatus
 from pomelo_orbit.domain.exceptions import BusinessError
 
 logger = logging.getLogger(__name__)
@@ -75,7 +74,7 @@ class ApplicationService:
             application.mark_as_deploying()
             self.app_repo.save(application)
 
-            deployment.status = DeployStatus.RUNNING.value
+            deployment.status = TaskStatus.RUNNING.value
             self.deployment_repo.save(deployment)
             self.deployment_repo.commit()
 
@@ -133,7 +132,7 @@ class ApplicationService:
             application.mark_as_deploying()
             self.app_repo.save(application)
 
-            deployment.status = DeployStatus.RUNNING.value
+            deployment.status = TaskStatus.RUNNING.value
             self.deployment_repo.save(deployment)
             self.deployment_repo.commit()
 
@@ -311,29 +310,19 @@ class ApplicationService:
         name: str,
         code: str,
         image_pull_policy: str,
-        image_source_data: dict | None = None,
     ) -> Application:
         """创建应用"""
         existing = self.app_repo.find_by_name(name)
         if existing:
             raise BusinessError(f"Application '{name}' already exists", status_code=400)
 
-        app_id = str(ULID())
         app = Application(
-            id=app_id,
+            id=str(ULID()),
             name=name,
             code=code,
             image_pull_policy=image_pull_policy,
             status=ApplicationStatus.UNDEPLOYED,
         )
-
-        if image_source_data:
-            app.image_source = ImageSource(
-                id=str(ULID()),
-                application_id=app_id,
-                image_name=image_source_data["image_name"],
-                registry_url=image_source_data.get("registry_url"),
-            )
 
         self.app_repo.save(app)
         return app
@@ -342,7 +331,6 @@ class ApplicationService:
         self,
         application_id: str,
         update_data: dict,
-        image_source_data: dict | None = None,
     ) -> Application:
         """更新应用"""
         app = self.app_repo.find_by_id(application_id)
@@ -352,17 +340,6 @@ class ApplicationService:
         for key, value in update_data.items():
             if hasattr(app, key):
                 setattr(app, key, value)
-
-        if image_source_data is not None:
-            if app.image_source:
-                for key, value in image_source_data.items():
-                    setattr(app.image_source, key, value)
-            else:
-                app.image_source = ImageSource(
-                    id=str(ULID()),
-                    application_id=app.id,
-                    **image_source_data,
-                )
 
         self.app_repo.save(app)
         return app
@@ -440,7 +417,6 @@ class ApplicationService:
         application_id: str,
         operation_type: OperationType,
         trigger_type: TriggerType,
-        trigger_ref: str | None = None,
         env_file: str | None = None,
         is_rollback: bool = False,
     ) -> Deployment:
@@ -455,8 +431,7 @@ class ApplicationService:
             application_name=app.name,
             operation_type=operation_type,
             trigger_type=trigger_type,
-            trigger_ref=trigger_ref,
-            status=DeployStatus.WAITING_TO_RUN,
+            status=TaskStatus.WAITING_TO_RUN,
             env_file=env_file,
             is_rollback=is_rollback,
         )
@@ -479,12 +454,6 @@ class ApplicationService:
             "name": app.name,
             "code": app.code,
             "image_pull_policy": app.image_pull_policy,
-            "image_source": {
-                "image_name": app.image_source.image_name,
-                "registry_url": app.image_source.registry_url,
-            }
-            if app.image_source
-            else None,
             "config_files": [{"path": cf.path, "content": cf.content} for cf in config_files],
         }
 
@@ -505,14 +474,6 @@ class ApplicationService:
             image_pull_policy=data.get("image_pull_policy", "missing"),
             status=ApplicationStatus.UNDEPLOYED,
         )
-
-        if data.get("image_source"):
-            app.image_source = ImageSource(
-                id=str(ULID()),
-                application_id=app.id,
-                image_name=data["image_source"]["image_name"],
-                registry_url=data["image_source"].get("registry_url"),
-            )
 
         self.app_repo.save(app)
 

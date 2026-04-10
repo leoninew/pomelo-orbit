@@ -3,8 +3,8 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.repositories import UserRepository
-from pomelo_orbit.domain.shared.entities import LoginHistory, User
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
 from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper, UserMapper

@@ -1,180 +1,141 @@
-"""CI Webhook 应用服务 - 处理 Git webhook 触发 pipeline"""
+"""Webhook 聚合的应用服务"""
 
-import logging
-
-from pomelo_orbit.application.ci.pipeline_service import PipelineService
-from pomelo_orbit.domain.ci.repositories import ProjectRepository
-from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
-from pomelo_orbit.infrastructure.ci.webhook_payload_parser import (
-    CIWebhookPayload,
-    WebhookPayloadParseError,
-    parse_github_webhook,
-    parse_gitlab_webhook,
+from pomelo_orbit.domain.ci.entities import RepositoryWebhook
+from pomelo_orbit.domain.ci.repositories import (
+    PipelineTemplateRepository,
+    RepositoryRepository,
+    RepositoryWebhookRepository,
 )
-from pomelo_orbit.infrastructure.ci.webhook_verifier import (
-    verify_github_signature,
-    verify_gitlab_signature,
-)
-
-logger = logging.getLogger(__name__)
+from pomelo_orbit.domain.exceptions import BusinessError
+from pomelo_orbit.infrastructure.ci.webhook_verifier import verify_github_signature, verify_gitlab_signature
+from pomelo_orbit.infrastructure.security import SecurityService
 
 
-class CIWebhookService:
-    """CI Webhook 服务"""
+class WebhookService:
+    """RepositoryWebhook 聚合根的应用服务
+
+    职责：
+    - Webhook 的 CRUD 操作
+    - Webhook 签名加密/解密
+    - Webhook 签名验证
+    - 关联 Repository 和 Template 验证
+
+    依赖：
+    - RepositoryService: 验证项目存在性
+    - TemplateService: 验证模板存在性
+    - SecurityService: 加密/解密
+    """
 
     def __init__(
         self,
-        project_repo: ProjectRepository,
-        pipeline_service: PipelineService,
+        webhook_repo: RepositoryWebhookRepository,
+        repository_repo: RepositoryRepository,
+        template_repo: PipelineTemplateRepository,
+        security_service: SecurityService,
     ):
-        self.project_repo = project_repo
-        self.pipeline_service = pipeline_service
+        self.webhook_repo = webhook_repo
+        self.repository_repo = repository_repo
+        self.template_repo = template_repo
+        self.security_service = security_service
 
-    def handle_github_webhook(
+    def list_webhooks(self, repository_id: str) -> list[RepositoryWebhook]:
+        """查询项目的 webhook 列表"""
+        # 验证项目存在
+        if not self.repository_repo.find_by_id(repository_id):
+            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
+        return self.webhook_repo.find_by_repository(repository_id)
+
+    def get_webhook(self, webhook_id: str) -> RepositoryWebhook:
+        """获取单个 webhook"""
+        wh = self.webhook_repo.find_by_id(webhook_id)
+        if not wh:
+            raise BusinessError(f"Webhook {webhook_id} not found", status_code=404)
+        return wh
+
+    def create_webhook(
         self,
-        payload_bytes: bytes,
-        payload: dict,
-        signature: str,
-    ) -> dict:
-        """
-        处理 GitHub webhook
+        repository_id: str,
+        name: str,
+        template_id: str,
+        plain_secret: str,
+        branch_filter: str | None = None,
+    ) -> RepositoryWebhook:
+        """创建 webhook"""
+        # 验证项目存在
+        if not self.repository_repo.find_by_id(repository_id):
+            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
 
-        Args:
-            payload_bytes: 原始请求体（用于签名验证）
-            payload: 解析后的 JSON payload
-            signature: X-Hub-Signature-256 header 值
+        # 验证模板存在
+        if not self.template_repo.find_by_id(template_id):
+            raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
 
-        Returns:
-            处理结果 dict
-        """
-        # 解析 payload
-        try:
-            ci_payload = parse_github_webhook(payload)
-        except WebhookPayloadParseError as e:
-            logger.warning(f"GitHub webhook payload parse failed: {e}")
-            return {"status": "ignored", "reason": str(e)}
-
-        return self._handle_webhook(
-            source="github",
-            ci_payload=ci_payload,
-            payload_bytes=payload_bytes,
-            signature=signature,
+        encrypted = self.security_service.encrypt_value(plain_secret)
+        wh = RepositoryWebhook.create(
+            repository_id=repository_id,
+            name=name,
+            template_id=template_id,
+            encrypted_secret=encrypted,
+            branch_filter=branch_filter,
         )
+        self.webhook_repo.save(wh)
+        return wh
 
-    def handle_gitlab_webhook(
+    def update_webhook(
         self,
-        payload: dict,
-        token: str,
-    ) -> dict:
-        """
-        处理 GitLab webhook
+        webhook_id: str,
+        name: str | None = None,
+        template_id: str | None = None,
+        branch_filter: str | None = None,
+        plain_secret: str | None = None,
+        enabled: bool | None = None,
+    ) -> RepositoryWebhook:
+        """更新 webhook"""
+        wh = self.get_webhook(webhook_id)
 
-        Args:
-            payload: 解析后的 JSON payload
-            token: X-Gitlab-Token header 值
+        # 验证模板存在（如果要更新）
+        if template_id and not self.template_repo.find_by_id(template_id):
+            raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
 
-        Returns:
-            处理结果 dict
-        """
-        try:
-            ci_payload = parse_gitlab_webhook(payload)
-        except WebhookPayloadParseError as e:
-            logger.warning(f"GitLab webhook payload parse failed: {e}")
-            return {"status": "ignored", "reason": str(e)}
-
-        return self._handle_webhook(
-            source="gitlab",
-            ci_payload=ci_payload,
-            payload_bytes=None,
-            signature=token,
+        encrypted_secret = self.security_service.encrypt_value(plain_secret) if plain_secret else None
+        wh.update(
+            name=name,
+            template_id=template_id,
+            branch_filter=branch_filter,
+            encrypted_secret=encrypted_secret,
+            enabled=enabled,
         )
+        self.webhook_repo.save(wh)
+        return wh
 
-    def _handle_webhook(
+    def delete_webhook(self, webhook_id: str) -> None:
+        """删除 webhook"""
+        wh = self.get_webhook(webhook_id)
+        self.webhook_repo.delete(wh)
+
+    def decrypt_webhook_secret(self, webhook: RepositoryWebhook) -> str:
+        """解密 webhook 签名密钥"""
+        return self.security_service.decrypt_value(webhook.encrypted_secret)
+
+    def verify_webhook_signature(
         self,
         source: str,
-        ci_payload: CIWebhookPayload,
-        payload_bytes: bytes | None,
+        payload: bytes,
         signature: str,
-    ) -> dict:
+        secret: str,
+    ) -> bool:
+        """验证 webhook 签名
+
+        Args:
+            source: "github" 或 "gitlab"
+            payload: 原始请求体 bytes
+            signature: 签名（GitHub 的 X-Hub-Signature-256 或 GitLab 的 X-Gitlab-Token）
+            secret: 解密后的 webhook secret
+
+        Returns:
+            验证是否通过
         """
-        核心处理逻辑
-
-        1. 根据 repository_url 查找匹配的 Project
-        2. 验证签名
-        3. 检查 branch_filter
-        4. 触发 PipelineRun
-        """
-        repository_url = ci_payload.repository_url
-        projects = self.project_repo.find_by_repository_url(repository_url)
-
-        if not projects:
-            logger.info(f"No matching project for webhook: source={source}, repo={repository_url}")
-            return {"status": "ignored", "reason": "no matching project"}
-
-        triggered_runs = []
-        errors = []
-
-        for project in projects:
-            try:
-                # 验证签名
-                if project.webhook_secret:
-                    if source == "github" and payload_bytes is not None:
-                        valid = verify_github_signature(payload_bytes, signature, project.webhook_secret)
-                    elif source == "gitlab":
-                        valid = verify_gitlab_signature(signature, project.webhook_secret)
-                    else:
-                        valid = False
-
-                    if not valid:
-                        logger.warning(f"Webhook signature verification failed: source={source}, project={project.id}")
-                        continue
-
-                # 检查 branch_filter
-                if project.branch_filter and ci_payload.branch:
-                    allowed = [b.strip() for b in project.branch_filter.split(",")]
-                    if ci_payload.branch not in allowed:
-                        logger.info(
-                            f"Branch filtered: project={project.id}, branch={ci_payload.branch}, allowed={allowed}"
-                        )
-                        continue
-
-                # 触发 pipeline
-                run, triggered_project, merged_vars = self.pipeline_service.create_run(
-                    project_id=project.id,
-                    trigger=PipelineRunTrigger.WEBHOOK,
-                    trigger_ref=ci_payload.branch or ci_payload.commit_sha,
-                    runtime_variables={
-                        "commit_sha": ci_payload.commit_sha,
-                        "author": ci_payload.author,
-                        "event_type": ci_payload.event_type,
-                    },
-                )
-                triggered_runs.append(
-                    {
-                        "project_id": project.id,
-                        "run_id": run.id,
-                        "run": run,
-                        "project": triggered_project,
-                        "merged_vars": merged_vars,
-                    }
-                )
-                logger.info(
-                    f"Pipeline triggered via webhook: source={source}, "
-                    f"project={project.id}, run={run.id}, ref={ci_payload.branch}"
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Failed to trigger pipeline: project={project.id}, error={e}",
-                    exc_info=True,
-                )
-                errors.append({"project_id": project.id, "error": str(e)})
-
-        if not triggered_runs and not errors:
-            return {"status": "ignored", "reason": "branch filtered"}
-
-        return {
-            "status": "triggered",
-            "triggered": triggered_runs,
-            "errors": errors,
-        }
+        if source == "github":
+            return verify_github_signature(payload, signature, secret)
+        if source == "gitlab":
+            return verify_gitlab_signature(signature, secret)
+        return False

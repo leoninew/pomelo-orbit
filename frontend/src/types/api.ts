@@ -1,34 +1,48 @@
 // 向后兼容：从新的模块化文件重新导出所有类型
-export type { PaginatedResp } from './common';
-export type { LoginReq, TokenResp, UserInfo, PasswordChangeReq, LoginHistory } from './auth';
+
+export type { LoginHistory, LoginReq, PasswordChangeReq, TokenResp, UserInfo } from './auth';
 export type {
 	Application,
-	ImageSource,
 	ApplicationCreateReq,
-	ApplicationUpdateReq,
 	ApplicationExportResp,
 	ApplicationImportReq,
+	ApplicationUpdateReq,
 	ConfigFile,
 } from './cd/application';
 export type { Deployment, DeploymentDetail } from './cd/deployment';
-export { deploymentStatusColors } from './cd/deployment';
 export type { Route, RouteCreateReq, RouteUpdateReq } from './cd/route';
 export type {
 	ConfigItemResp,
+	SystemConfigResetReq,
 	SystemConfigResp,
 	SystemConfigUpdateReq,
-	SystemConfigResetReq,
 } from './cd/settings';
 export type { Credential, CredentialCreateReq, CredentialUpdateReq } from './ci/credential';
 export { credentialTypeLabels } from './ci/credential';
 export type {
+	Repository,
+	RepositoryCreateReq,
+	RepositoryListItem,
+	RepositoryUpdateReq,
+} from './ci/repository';
+export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
+export type { PipelineSnapshot } from './ci/snapshot';
+export type { Artifact, StageRun } from './ci/stage_run';
+export type {
+	ArtifactConfig,
+	OrchestrationUpdateReq,
+	PipelineStage,
+	PipelineStageCreateReq,
+	PipelineStageUpdateReq,
 	PipelineTemplate,
-	VariableDeclaration,
 	PipelineTemplateCreateReq,
 	PipelineTemplateUpdateReq,
+	StageOrchestration,
+	VariableDeclaration,
 } from './ci/template';
-export type { Project, ProjectCreateReq, ProjectUpdateReq } from './ci/project';
-export type { PipelineRun, PipelineRunTriggerReq } from './ci/run';
-export { pipelineRunStatusColors } from './ci/run';
-export type { Job, JobLog, Artifact } from './ci/job';
-export { jobStatusColors } from './ci/job';
+export type {
+	RepositoryWebhook,
+	RepositoryWebhookCreateReq,
+	RepositoryWebhookUpdateReq,
+} from './ci/webhook';
+export type { PaginatedResp } from './common';

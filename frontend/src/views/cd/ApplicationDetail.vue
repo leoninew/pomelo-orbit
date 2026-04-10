@@ -3,7 +3,7 @@
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ application?.name ?? '应用详情' }}</h1>
-			<button class="btn btn-sm btn-ghost gap-1.5" @click="$router.push('/cd/applications')">
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/applications')">
 				<ArrowLeft class="size-4" />
 				返回
 			</button>
@@ -194,12 +194,12 @@
 								/>
 							</fieldset>
 						</div>
-						<div style="height: calc(100vh - 180px)">
+						<div style="height: calc(100vh - 180px)" class="bg-[#1a202c] rounded-lg p-2">
 							<CodeEditor
 								v-if="!fileContentLoading"
 								v-model:value="currentFileContent"
 								:style="{ height: '100%' }"
-								theme="vs"
+								theme="vs-dark"
 								:language="currentFileLanguage"
 								:options="{
 									readOnly: !isEditingInDrawer && !!currentFileId,
@@ -253,42 +253,29 @@
 		<dialog ref="editModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
 				<h3 class="font-bold text-lg mb-4">编辑基本信息</h3>
-				<div class="flex flex-col gap-4">
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">应用名称</span>
-						</label>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">应用名称</legend>
 						<input
 							v-model="editForm.name"
 							type="text"
-							class="input input-bordered w-full"
+							class="input w-full"
 							:class="{ 'input-error': editErrors.name }"
 						/>
-						<label v-if="editErrors.name" class="label">
-							<span class="label-text-alt text-error">{{ editErrors.name }}</span>
-						</label>
-					</div>
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">应用编码</span>
-						</label>
-						<input
-							:value="editForm.code"
-							type="text"
-							class="input input-bordered w-full opacity-60"
-							disabled
-						/>
-					</div>
-					<div class="form-control w-full">
-						<label class="label">
-							<span class="label-text">镜像拉取策略</span>
-						</label>
-						<select v-model="editForm.image_pull_policy" class="select select-bordered w-full">
+						<p v-if="editErrors.name" class="fieldset-label text-error">{{ editErrors.name }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">应用编码</legend>
+						<input :value="editForm.code" type="text" class="input w-full opacity-60" disabled />
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">镜像拉取策略</legend>
+						<select v-model="editForm.image_pull_policy" class="select w-full">
 							<option value="always">always</option>
 							<option value="missing">missing</option>
 							<option value="never">never</option>
 						</select>
-					</div>
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
@@ -344,17 +331,17 @@
 </template>
 
 <script setup lang="ts">
+import { ArrowLeft, ChevronDown, FileX, Plus, Rocket, X } from 'lucide-vue-next';
+import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ArrowLeft, Rocket, ChevronDown, Plus, FileX, X } from 'lucide-vue-next';
-import { CodeEditor } from 'monaco-editor-vue3';
-import { applicationApi } from '@/api/application';
-import { deploymentApi } from '@/api/deployments';
+import { applicationApi } from '@/api/cd/application';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { appStatusLabel } from '@/utils/status';
-import { formatTime, delayAsync } from '@/utils/time';
 import type { Application, ConfigFile } from '@/types/api';
+import { appStatusLabel } from '@/utils/status';
+import { delayAsync, formatTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
@@ -404,8 +391,12 @@ function appBadgeClass(s: string) {
 
 const currentFileLanguage = computed(() => {
 	const p = currentFilePath.value.toLowerCase();
-	if (p.endsWith('.sh') || p.endsWith('.bash')) return 'shell';
-	if (p.startsWith('.env') || p.endsWith('.ini') || p.endsWith('.properties')) return 'ini';
+	if (p.endsWith('.sh') || p.endsWith('.bash')) {
+		return 'shell';
+	}
+	if (p.startsWith('.env') || p.endsWith('.ini') || p.endsWith('.properties')) {
+		return 'ini';
+	}
 	return 'yaml';
 });
 
@@ -420,7 +411,9 @@ async function fetchApplication() {
 				image_pull_policy: data.image_pull_policy,
 			});
 		});
-		if (application.value?.status === 'deploying') pollActiveDeployment();
+		if (application.value?.status === 'deploying') {
+			pollActiveDeployment();
+		}
 	} catch {
 		toast.error('获取应用信息失败');
 		router.push('/cd/applications');
@@ -429,17 +422,23 @@ async function fetchApplication() {
 
 async function pollActiveDeployment() {
 	try {
-		const resp = await deploymentApi.list({ application_id: applicationId, per_page: 1 });
+		const resp = await deploymentApi.list({
+			application_id: applicationId,
+			per_page: 1,
+		});
 		const latest = resp.items[0];
-		if (!latest) return;
+		if (!latest) {
+			return;
+		}
 		while (true) {
 			await delayAsync(3000);
 			try {
 				const detail = await deploymentApi.get(latest.id);
 				if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-					if (application.value)
+					if (application.value) {
 						application.value.status =
 							detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
+					}
 					break;
 				}
 			} catch {
@@ -486,9 +485,10 @@ async function handleStop() {
 				try {
 					const detail = await deploymentApi.get(res.deployment_id);
 					if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-						if (application.value)
+						if (application.value) {
 							application.value.status =
 								detail.status === 'ran_to_completion' ? 'undeployed' : 'deploy_failed';
+						}
 						break;
 					}
 				} catch {
@@ -516,7 +516,9 @@ async function handleRestart() {
 async function handleExport() {
 	try {
 		const data = await applicationApi.exportApplication(applicationId);
-		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+		const blob = new Blob([JSON.stringify(data, null, 2)], {
+			type: 'application/json',
+		});
 		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
 		a.href = url;
@@ -536,7 +538,9 @@ function openEditModal() {
 
 async function handleEditOk() {
 	editErrors.name = editForm.name.trim() ? '' : '请输入应用名称';
-	if (editErrors.name) return;
+	if (editErrors.name) {
+		return;
+	}
 	try {
 		await executeOp(async () => {
 			await applicationApi.update(applicationId, {
@@ -629,7 +633,9 @@ async function saveCurrentFile() {
 					content
 				);
 				const idx = files.value.findIndex((f) => f.id === currentFileId.value);
-				if (idx >= 0) files.value[idx] = updated;
+				if (idx >= 0) {
+					files.value[idx] = updated;
+				}
 				toast.success('保存成功');
 			} else {
 				await applicationApi.createFile(applicationId, currentFilePath.value, content);

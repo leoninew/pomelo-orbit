@@ -3,25 +3,24 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">部署记录</h1>
 			<label class="input input-sm input-bordered flex items-center gap-2">
-				<Search class="size-3.5 text-base-content/60" />
+				<Search class="size-3.5 text-base-content/60 shrink-0" />
 				<input
 					v-model="searchText"
 					type="text"
 					placeholder="搜索应用名称"
-					class="w-36"
+					class="min-w-0 w-full"
 					@keyup.enter="handleSearch"
 				/>
 			</label>
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>应用</th>
 						<th>操作类型</th>
 						<th>触发方式</th>
-						<th>分支/Tag</th>
 						<th>环境文件</th>
 						<th>状态</th>
 						<th>开始时间</th>
@@ -30,10 +29,13 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="loading">
+					<tr v-if="status === 'loading'">
 						<td colspan="9" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
+					</tr>
+					<tr v-else-if="status === 'error'">
+						<td colspan="9" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="deployments.length === 0">
 						<td colspan="9" class="text-center py-8 text-base-content/60">暂无部署记录</td>
@@ -46,12 +48,11 @@
 						</td>
 						<td class="cell-muted">{{ d.operation_type }}</td>
 						<td class="cell-muted">{{ d.trigger_type }}</td>
-						<td>
-							<code class="text-xs">{{ d.trigger_ref || '—' }}</code>
-						</td>
 						<td class="cell-muted">{{ d.env_file || '—' }}</td>
 						<td>
-							<span class="badge badge-sm" :class="deployBadgeClass(d.status)">{{ d.status }}</span>
+							<span class="badge badge-sm" :class="statusBadgeClass(d.status)">
+								{{ statusLabel(d.status) }}
+							</span>
 						</td>
 						<td class="cell-muted">{{ formatTime(d.started_at) }}</td>
 						<td class="cell-muted">{{ formatDuration(d.duration_ms) }}</td>
@@ -61,7 +62,7 @@
 									查看
 								</router-link>
 								<button
-									v-if="d.status === 'running' || d.status === 'queued'"
+									v-if="d.status === 'running' || d.status === 'waiting_to_run'"
 									class="link link-error"
 									@click="handleCancel(d.id)"
 								>
@@ -72,10 +73,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<div
-				v-if="pagination.total > pagination.pageSize"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -93,36 +91,25 @@
 </template>
 
 <script setup lang="ts">
+import { Search } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { Search } from 'lucide-vue-next';
-import { deploymentApi } from '@/api/deployments';
+import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
-import { formatDuration } from '@/utils/status';
 import type { Deployment } from '@/types/api';
+import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
+import { formatTime } from '@/utils/time';
 
 const route = useRoute();
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 
 const deployments = ref<Deployment[]>([]);
 const searchText = ref('');
 const applicationId = ref<string | undefined>(route.query.application_id as string | undefined);
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-
-const badgeMap: Record<string, string> = {
-	ran_to_completion: 'badge-outline badge-success',
-	faulted: 'badge-outline badge-error',
-	running: 'badge-outline badge-info',
-	queued: 'badge-outline badge-warning',
-	canceled: 'badge-ghost',
-};
-function deployBadgeClass(s: string) {
-	return badgeMap[s] ?? 'badge-ghost';
-}
 
 async function fetchDeployments() {
 	try {

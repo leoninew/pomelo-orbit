@@ -74,12 +74,12 @@ class ApplicationManagerImpl(ApplicationManager):
 
     def get_app_working_dir(self, application_code: str) -> Path:
         """获取运行时目录"""
-        return get_project_root() / "data" / application_code
+        return get_project_root() / "data" / "cd" / application_code
 
     # ==================== 模板渲染 ====================
     def _render_template(self, application_code: str, content: str) -> str:
         # physical_dir: {root} 的宿主机路径（data 目录的上级）
-        # physical_app_dir: {root}/data/{app_code} 的宿主机路径（应用 data 目录的上级）
+        # physical_app_dir: {root}/data/cd/{app_code} 的宿主机路径
         container_id = self._detect_container_id()
         logger.debug(f"Rendering template, app={application_code}, container_id={container_id}")
 
@@ -88,11 +88,11 @@ class ApplicationManagerImpl(ApplicationManager):
             mount = Path(self._get_container_mount(container_id))
             # pomelo-orbit 自举部署需要完整的宿主机路径配置
             physical_dir = str(mount.parent).replace("\\", "/")
-            physical_app_dir = str(mount / application_code).replace("\\", "/")
+            physical_app_dir = str(mount / "cd" / application_code).replace("\\", "/")
         else:
             # pomelo-orbit 自举部署需要完整的宿主机路径配置
             physical_dir = str(get_project_root()).replace("\\", "/")
-            # 其他应用在 data/{app_code}/ 下执行，./data 即为应用数据目录
+            # 其他应用在 data/cd/{app_code}/ 下执行，./data 即为应用数据目录
             physical_app_dir = "."
 
         domain_suffix = self.settings.traefik.domain_suffix
@@ -183,7 +183,8 @@ class ApplicationManagerImpl(ApplicationManager):
             self._write_log(log_file, cmd_str)
         if sys.platform == "win32":
             return await self._run_command_win32(cmd, cwd)
-        return await self._run_command_unix(cmd, cwd)  # type: ignore[unreachable]
+        else:  # noqa: RET505
+            return await self._run_command_unix(cmd, cwd)
 
     async def _compose_pull(self, app_dir: Path, log_file: TextIO | None = None) -> str:
         return await self._run_command(
@@ -243,33 +244,34 @@ class ApplicationManagerImpl(ApplicationManager):
 
         if sys.platform != "win32":
             return await self._run_command(["bash", "init.sh"], cwd=app_dir, log_file=log_file)
+        else:  # noqa: RET505
+            # sys.platform == "win32"
+            bash_path = shutil.which("bash")
+            if not bash_path:
+                raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")
 
-        bash_path = shutil.which("bash")
-        if not bash_path:
-            raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")
+            cmd_str = f"$ {bash_path} init.sh"
+            logger.info(f"{cmd_str}  (cwd={app_dir})")
+            if log_file:
+                self._write_log(log_file, cmd_str)
 
-        cmd_str = f"$ {bash_path} init.sh"
-        logger.info(f"{cmd_str}  (cwd={app_dir})")
-        if log_file:
-            self._write_log(log_file, cmd_str)
-
-        def _run_sync() -> str:
-            result = subprocess.run(
-                [bash_path, "init.sh"],
-                cwd=str(app_dir),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if result.returncode != 0:
-                error_msg = result.stdout + result.stderr
-                raise subprocess.CalledProcessError(
-                    result.returncode, [bash_path, "init.sh"], error_msg or "(no output)"
+            def _run_sync() -> str:
+                result = subprocess.run(
+                    [bash_path, "init.sh"],
+                    cwd=str(app_dir),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
                 )
-            return result.stdout + result.stderr
+                if result.returncode != 0:
+                    error_msg = result.stdout + result.stderr
+                    raise subprocess.CalledProcessError(
+                        result.returncode, [bash_path, "init.sh"], error_msg or "(no output)"
+                    )
+                return result.stdout + result.stderr
 
-        return await asyncio.to_thread(_run_sync)
+            return await asyncio.to_thread(_run_sync)
 
     async def _compose_ps(self, app_dir: Path) -> str:
         return await self._run_command(

@@ -15,7 +15,7 @@
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
-			<table class="table">
+			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
 						<th>用户名</th>
@@ -26,10 +26,13 @@
 					</tr>
 				</thead>
 				<tbody>
-					<tr v-if="loading">
+					<tr v-if="status === 'loading'">
 						<td colspan="5" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
+					</tr>
+					<tr v-else-if="status === 'error'">
+						<td colspan="5" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="history.length === 0">
 						<td colspan="5" class="text-center py-8 text-base-content/60">暂无记录</td>
@@ -50,10 +53,7 @@
 					</tr>
 				</tbody>
 			</table>
-			<div
-				v-if="pagination.total > pagination.pageSize"
-				class="flex justify-end p-3 border-t border-base-200"
-			>
+			<div v-if="totalPages > 0" class="flex justify-end p-3 border-t border-base-200">
 				<div class="join">
 					<button
 						v-for="p in totalPages"
@@ -71,16 +71,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
 import { Search } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { authApi } from '@/api/auth';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
 import type { LoginHistory } from '@/types/api';
+import { formatTime } from '@/utils/time';
 
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, error, execute } = useStatusAsync();
 const history = ref<LoginHistory[]>([]);
 const searchText = ref('');
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });

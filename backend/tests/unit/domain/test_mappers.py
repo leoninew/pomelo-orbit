@@ -70,13 +70,13 @@ class TestDeploymentMapper:
         from pomelo_orbit.domain.cd.entities import TriggerType
         from pomelo_orbit.domain.cd.value_objects import OperationType
 
-        original = create_test_deployment(trigger_type=TriggerType.WEBHOOK, operation_type=OperationType.RESTART)
+        original = create_test_deployment(trigger_type=TriggerType.MANUAL, operation_type=OperationType.RESTART)
 
         orm_model = DeploymentMapper.to_orm(original)
         restored = DeploymentMapper.to_domain(orm_model)
 
         # 验证枚举类型和值都保持不变
-        assert restored.trigger_type == TriggerType.WEBHOOK
+        assert restored.trigger_type == TriggerType.MANUAL
         assert restored.operation_type == OperationType.RESTART
         assert isinstance(restored.trigger_type, TriggerType)
         assert isinstance(restored.operation_type, OperationType)

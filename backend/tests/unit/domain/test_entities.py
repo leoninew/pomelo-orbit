@@ -32,16 +32,6 @@ class TestApplicationEntity:
         assert app.image_pull_policy == "IfNotPresent"
         assert app.status == "stopped"
 
-    def test_application_with_image_source(self, create_test_application):
-        """测试 Application 实体可以关联镜像源"""
-        from pomelo_orbit.domain.cd.entities import ImageSource
-
-        image_source = ImageSource(id="img-1", application_id="test-app-1", image_name="nginx:latest")
-        app = create_test_application(image_source=image_source)
-
-        assert app.image_source is not None
-        assert app.image_source.image_name == "nginx:latest"
-
     def test_application_with_config_files(self, create_test_application):
         """测试 Application 实体可以关联配置文件"""
         from pomelo_orbit.domain.cd.entities import ApplicationConfigFile
@@ -70,9 +60,9 @@ class TestDeploymentEntity:
 
     def test_create_deployment_with_valid_enums(self, create_test_deployment):
         """测试创建 Deployment 实体时枚举字段为有效值"""
-        deployment = create_test_deployment(trigger_type=TriggerType.WEBHOOK, operation_type=OperationType.RESTART)
+        deployment = create_test_deployment(trigger_type=TriggerType.MANUAL, operation_type=OperationType.RESTART)
 
-        assert deployment.trigger_type == TriggerType.WEBHOOK
+        assert deployment.trigger_type == TriggerType.MANUAL
         assert deployment.operation_type == OperationType.RESTART
         assert isinstance(deployment.trigger_type, TriggerType)
         assert isinstance(deployment.operation_type, OperationType)
@@ -87,13 +77,6 @@ class TestDeploymentEntity:
         assert deployment.finished_at is None
         assert deployment.duration_ms is None
         assert deployment.is_rollback is False
-
-    def test_deployment_with_webhook_trigger(self, create_test_deployment):
-        """测试 Webhook 触发的部署"""
-        deployment = create_test_deployment(trigger_type=TriggerType.WEBHOOK, trigger_ref="refs/heads/main")
-
-        assert deployment.trigger_type == TriggerType.WEBHOOK
-        assert deployment.trigger_ref == "refs/heads/main"
 
     def test_deployment_with_rollback_info(self, create_test_deployment):
         """测试回滚部署"""
@@ -221,33 +204,6 @@ class TestRouteEntity:
         assert route.cert_type == CertType.MANUAL
 
 
-class TestImageSourceEntity:
-    """ImageSource 实体测试"""
-
-    def test_create_image_source_with_required_fields(self):
-        """测试创建 ImageSource 实体"""
-        from pomelo_orbit.domain.cd.entities import ImageSource
-
-        image_source = ImageSource(id="img-1", application_id="app-1", image_name="nginx:latest")
-
-        assert image_source.id == "img-1"
-        assert image_source.application_id == "app-1"
-        assert image_source.image_name == "nginx:latest"
-
-    def test_image_source_with_registry(self):
-        """测试 ImageSource 包含镜像仓库"""
-        from pomelo_orbit.domain.cd.entities import ImageSource
-
-        image_source = ImageSource(
-            id="img-1",
-            application_id="app-1",
-            image_name="myapp:v1.0",
-            registry_url="https://registry.example.com",
-        )
-
-        assert image_source.registry_url == "https://registry.example.com"
-
-
 class TestApplicationConfigFileEntity:
     """ApplicationConfigFile 实体测试"""
 
@@ -283,7 +239,7 @@ class TestLoginHistoryEntity:
 
     def test_create_login_history_with_required_fields(self):
         """测试创建 LoginHistory 实体"""
-        from pomelo_orbit.domain.shared.entities import LoginHistory
+        from pomelo_orbit.domain.auth.entities import LoginHistory
 
         login = LoginHistory(id="login-1", user_id="user-1", username="testuser", success=True)
 
@@ -294,7 +250,7 @@ class TestLoginHistoryEntity:
 
     def test_login_history_with_client_info(self):
         """测试 LoginHistory 包含客户端信息"""
-        from pomelo_orbit.domain.shared.entities import LoginHistory
+        from pomelo_orbit.domain.auth.entities import LoginHistory
 
         login = LoginHistory(
             id="login-1",
@@ -310,7 +266,7 @@ class TestLoginHistoryEntity:
 
     def test_login_history_failed_login(self):
         """测试失败的登录记录"""
-        from pomelo_orbit.domain.shared.entities import LoginHistory
+        from pomelo_orbit.domain.auth.entities import LoginHistory
 
         login = LoginHistory(id="login-1", user_id="user-1", username="testuser", success=False)
 
@@ -320,25 +276,11 @@ class TestLoginHistoryEntity:
 class TestEnumValues:
     """枚举值测试"""
 
-    def test_source_type_enum(self):
-        """测试 SourceType 枚举"""
-        from pomelo_orbit.domain.cd.entities import SourceType
-
-        assert SourceType.GIT.value == "git"
-        assert SourceType.IMAGE.value == "image"
-
     def test_trigger_type_enum(self):
         """测试 TriggerType 枚举"""
         from pomelo_orbit.domain.cd.entities import TriggerType
 
-        assert TriggerType.WEBHOOK.value == "webhook"
         assert TriggerType.MANUAL.value == "manual"
-
-    def test_webhook_source_enum(self):
-        """测试 WebhookSource 枚举"""
-        from pomelo_orbit.domain.cd.entities import WebhookSource
-
-        assert WebhookSource.GITHUB.value == "github"
 
     def test_cert_type_enum(self):
         """测试 CertType 枚举"""

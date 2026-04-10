@@ -4,7 +4,10 @@ import asyncio
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from typing import TextIO
 
 import docker
 from docker.errors import ContainerError, ImageNotFound
@@ -38,6 +41,7 @@ class ContainerExecutor:
         artifacts_path: Path,
         entrypoint: str = "sh",
         extra_binds: dict[str, dict[str, str]] | None = None,
+        log_file: "TextIO | None" = None,
     ) -> tuple[int, str]:
         """
         执行容器
@@ -95,6 +99,9 @@ class ContainerExecutor:
                 environment or {},
                 entrypoint,
             )
+            if log_file is not None and logs:
+                log_file.write(logs)
+                log_file.flush()
             return exit_code, logs
 
         except ImageNotFound:

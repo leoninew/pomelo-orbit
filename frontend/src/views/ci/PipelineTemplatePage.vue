@@ -61,6 +61,13 @@
 						</p>
 						<div class="flex items-end justify-between mt-auto">
 							<span class="text-xs text-base-content/50">{{ formatTime(tpl.created_at) }}</span>
+							<button
+								class="btn btn-xs btn-ghost text-primary invisible group-hover:visible"
+								:disabled="duplicating"
+								@click.stop="handleDuplicate(tpl.id)"
+							>
+								复制
+							</button>
 						</div>
 					</div>
 				</div>
@@ -116,6 +123,13 @@
 								<router-link :to="`/ci/template/${t.id}`" class="link link-primary">
 									查看
 								</router-link>
+								<button
+									class="link link-primary"
+									:disabled="duplicating"
+									@click="handleDuplicate(t.id)"
+								>
+									复制
+								</button>
 							</div>
 						</td>
 					</tr>
@@ -184,6 +198,7 @@ const router = useRouter();
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
 const templates = ref<PipelineTemplate[]>([]);
 const viewMode = ref<'card' | 'table'>('card');
@@ -239,6 +254,18 @@ async function handleCreateOk() {
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '创建失败');
+	}
+}
+
+async function handleDuplicate(id: string) {
+	try {
+		await executeDuplicate(async () => {
+			const newTemplate = await pipelineTemplateApi.duplicate(id);
+			toast.success('复制成功');
+			router.push(`/ci/template/${newTemplate.id}`);
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '复制失败');
 	}
 }
 

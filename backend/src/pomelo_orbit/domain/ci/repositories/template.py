@@ -38,6 +38,9 @@ class PipelineTemplateRepository(ABC):
     def find_by_id(self, template_id: str) -> PipelineTemplate | None: ...
 
     @abstractmethod
+    def find_by_name(self, name: str) -> PipelineTemplate | None: ...
+
+    @abstractmethod
     def find_all(self) -> list[PipelineTemplate]: ...
 
     @abstractmethod

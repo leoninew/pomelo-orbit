@@ -28,6 +28,10 @@
 								运行
 							</button>
 							<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑</button>
+							<button class="btn btn-sm btn-ghost" :disabled="duplicating" @click="handleDuplicate">
+								<span v-if="duplicating" class="loading loading-spinner loading-xs" />
+								复制
+							</button>
 							<button
 								class="btn btn-sm btn-error btn-ghost"
 								:disabled="saving"
@@ -450,6 +454,7 @@ const toast = useToast();
 const { status, execute } = useStatusAsync();
 const { loading: saving, execute: executeSave } = useStatusAsync();
 const { loading: running, execute: executeRun } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
 const template = ref<PipelineTemplate>();
 const sortableOrch = ref<StageOrchestration[]>([]);
@@ -641,6 +646,18 @@ async function handleSave() {
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+async function handleDuplicate() {
+	try {
+		await executeDuplicate(async () => {
+			const newTemplate = await pipelineTemplateApi.duplicate(templateId);
+			toast.success('复制成功');
+			router.push(`/ci/template/${newTemplate.id}`);
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '复制失败');
 	}
 }
 

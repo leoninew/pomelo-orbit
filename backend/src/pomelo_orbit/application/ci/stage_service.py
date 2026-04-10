@@ -1,5 +1,6 @@
 """Stage 聚合的应用服务"""
 
+import re
 from dataclasses import asdict
 
 from pomelo_orbit.domain.ci.entities import PipelineStage
@@ -83,12 +84,18 @@ class StageService:
     def duplicate_stage(self, stage_id: str) -> PipelineStage:
         """复制 Stage（自动生成唯一名称）"""
         stage = self.get_stage(stage_id)
-        base_name = f"{stage.name} copy"
-        new_name = base_name
-        i = 2
-        while self.stage_repo.find_by_name(new_name):
-            new_name = f"{base_name} {i}"
+
+        # 获取基础名称（去掉可能的 " copy" 或 " copy N" 后缀）
+        base_name = re.sub(r" copy( \d+)?$", "", stage.name)
+
+        # 从 "原名称 copy" 开始尝试，依次递增
+        i = 1
+        while True:
+            new_name = f"{base_name} copy" if i == 1 else f"{base_name} copy {i}"
+            if not self.stage_repo.find_by_name(new_name):
+                break
             i += 1
+
         return self.create_stage(
             name=new_name,
             image=stage.image,

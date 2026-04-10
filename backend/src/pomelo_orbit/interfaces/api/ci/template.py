@@ -106,3 +106,13 @@ def delete_template(
     _current_user=Depends(get_current_user),
 ) -> None:
     template_service.delete_template(template_id)
+
+
+@router.post("/{template_id}/duplicate", response_model=PipelineTemplateResp, status_code=201)
+def duplicate_template(
+    template_id: str,
+    template_service: Annotated[TemplateService, Depends(get_template_service)],
+    _current_user=Depends(get_current_user),
+) -> PipelineTemplateResp:
+    tmpl = template_service.duplicate_template(template_id)
+    return PipelineTemplateResp.from_domain(tmpl, template_service.get_template_variables(tmpl))

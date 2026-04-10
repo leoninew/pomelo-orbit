@@ -21,6 +21,10 @@
 						<h2 class="font-semibold">基本信息</h2>
 						<div v-if="stage" class="flex items-center gap-2">
 							<button class="btn btn-sm btn-ghost" @click="openEditModal">编辑</button>
+							<button class="btn btn-sm btn-ghost" :disabled="duplicating" @click="handleDuplicate">
+								<span v-if="duplicating" class="loading loading-spinner loading-xs" />
+								复制
+							</button>
 							<button class="btn btn-sm btn-error btn-ghost" @click="openDeleteModal">删除</button>
 						</div>
 					</div>
@@ -248,6 +252,7 @@ const toast = useToast();
 const { status, execute } = useStatusAsync();
 const { loading: saving, execute: executeSave } = useStatusAsync();
 const { loading: deleting, execute: executeDelete } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
 const stage = ref<PipelineStage>();
 const deleteModalRef = ref<HTMLDialogElement>();
@@ -324,6 +329,18 @@ async function handleSave() {
 
 function openDeleteModal() {
 	deleteModalRef.value?.showModal();
+}
+
+async function handleDuplicate() {
+	try {
+		await executeDuplicate(async () => {
+			const newStage = await pipelineStageApi.duplicate(stageId);
+			toast.success('复制成功');
+			router.push(`/ci/pipeline-stage/${newStage.id}`);
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '复制失败');
+	}
 }
 
 async function handleDelete() {

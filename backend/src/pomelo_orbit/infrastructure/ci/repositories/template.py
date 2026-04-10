@@ -108,6 +108,10 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
         orm = self._session.get(PipelineTemplateModel, template_id)
         return self._load(orm) if orm else None
 
+    def find_by_name(self, name: str) -> PipelineTemplate | None:
+        orm = self._session.query(PipelineTemplateModel).filter(PipelineTemplateModel.name == name).first()
+        return self._load(orm) if orm else None
+
     def find_all(self) -> list[PipelineTemplate]:
         orms = self._session.query(PipelineTemplateModel).all()
         return [self._load(orm) for orm in orms]

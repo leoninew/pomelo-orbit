@@ -37,6 +37,10 @@ export const pipelineTemplateApi = {
 		return request.delete(`/api/ci/template/${id}`);
 	},
 
+	duplicate(id: string): Promise<PipelineTemplate> {
+		return request.post(`/api/ci/template/${id}/duplicate`);
+	},
+
 	getSnapshot(snapshotId: string): Promise<PipelineSnapshot> {
 		return request.get(`/api/ci/snapshot/${snapshotId}`);
 	},

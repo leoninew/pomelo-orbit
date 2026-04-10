@@ -1,6 +1,7 @@
 """Template 聚合的应用服务"""
 
 import logging
+import re
 
 from pomelo_orbit.domain.ci.entities import PipelineSnapshot, PipelineStage, PipelineTemplate
 from pomelo_orbit.domain.ci.repositories import (
@@ -127,6 +128,38 @@ class TemplateService:
         if webhooks:
             raise BusinessError("Template is referenced by webhooks, cannot delete", status_code=409)
         self.template_repo.delete(tmpl)
+
+    def duplicate_template(self, template_id: str) -> PipelineTemplate:
+        """复制模板（自动生成唯一名称）"""
+        tmpl = self.get_template(template_id)
+
+        # 获取基础名称（去掉可能的 " copy" 或 " copy N" 后缀）
+        base_name = re.sub(r" copy( \d+)?$", "", tmpl.name)
+
+        # 从 "原名称 copy" 开始尝试，依次递增
+        i = 1
+        while True:
+            new_name = f"{base_name} copy" if i == 1 else f"{base_name} copy {i}"
+            if not self.template_repo.find_by_name(new_name):
+                break
+            i += 1
+
+        new_template = PipelineTemplate.create(
+            name=new_name,
+            variable_declarations=list(tmpl.variable_declarations),
+            description=tmpl.description,
+        )
+        self.template_repo.save(new_template)
+
+        # 复制编排
+        if tmpl.orchestration:
+            self.template_repo.save_orchestration(new_template.id, tmpl.orchestration)
+
+        # 更新 stages
+        new_template.orchestration = tmpl.orchestration
+        new_template.stages = tmpl.stages
+        self.template_repo.save(new_template)
+        return new_template
 
     def resolve_template_variables(
         self,

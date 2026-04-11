@@ -39,15 +39,6 @@ class VariableDeclaration(BaseModel):
 type BuiltinVariableSpecs = dict[str, str]
 
 
-class Variable(BaseModel):
-    """变量值对象"""
-
-    name: str
-    value: Any
-    source: VariableSource
-    description: str = ""
-
-
 class ArtifactConfig(BaseModel):
     path: str
     name: str

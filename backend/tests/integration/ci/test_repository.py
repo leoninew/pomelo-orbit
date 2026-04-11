@@ -46,10 +46,10 @@ class TestProjectCreate:
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "new-project"
-        assert "variables" in data
+        assert "variable_declarations" in data
 
         # Variables is now a flat list, filter by source
-        custom_vars_list = [v for v in data["variables"] if v["source"] == "repository_custom"]
+        custom_vars_list = [v for v in data["variable_declarations"] if v["source"] == "repository_custom"]
         assert len(custom_vars_list) == 2
         custom_vars = {v["name"]: v["value"] for v in custom_vars_list}
         assert custom_vars == {"ENV": "production", "DEBUG": "false"}
@@ -61,8 +61,8 @@ class TestProjectGet:
         assert resp.status_code == 200
         data = resp.json()
         assert data["id"] == test_project.id
-        assert "variables" in data
-        assert isinstance(data["variables"], list)
+        assert "variable_declarations" in data
+        assert isinstance(data["variable_declarations"], list)
 
     def test_not_found(self, auth_client):
         resp = auth_client.get("/api/ci/repository/nonexistent-id")

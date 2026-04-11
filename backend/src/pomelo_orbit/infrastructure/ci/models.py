@@ -132,7 +132,7 @@ class PipelineRunModel(Base):
     template_version: Mapped[int] = mapped_column(nullable=False)
     trigger: Mapped[str] = mapped_column(String(50), nullable=False)
     trigger_ref: Mapped[str] = mapped_column(String(255), nullable=False)
-    variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
+    variables_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
     status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     retry_of: Mapped[str | None] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=True, index=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

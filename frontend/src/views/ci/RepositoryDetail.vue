@@ -327,12 +327,13 @@ const editingVarValue = ref('');
 const editingVarDescription = ref('');
 
 const repositoryCustomVariables = computed(
-	() => repository.value?.variables?.filter((v) => v.source === 'repository_custom') || []
+	() =>
+		repository.value?.variable_declarations.filter((v) => v.source === 'repository_custom') || []
 );
 
 // 合并所有变量到一个列表
 const allVariables = computed(() => {
-	return repository.value?.variables || [];
+	return repository.value?.variable_declarations || [];
 });
 
 // 使用统一的工具函数获取来源标签和样式
@@ -478,8 +479,9 @@ async function handleAddVarOk() {
 					},
 				],
 			});
-			const repositoryCustom =
-				data.variables?.filter((v) => v.source === 'repository_custom') || [];
+			const repositoryCustom = data.variable_declarations.filter(
+				(v) => v.source === 'repository_custom'
+			);
 			const added = repositoryCustom.some((v) => v.name === newVarKey.value);
 			if (!added) {
 				toast.error('内置变量不能在项目级配置');
@@ -508,8 +510,9 @@ async function handleEditVarOk() {
 						: v
 				),
 			});
-			const repositoryCustom =
-				data.variables?.filter((v) => v.source === 'repository_custom') || [];
+			const repositoryCustom = data.variable_declarations.filter(
+				(v) => v.source === 'repository_custom'
+			);
 			const updated = repositoryCustom.some((v) => v.name === editingVarKey.value);
 			if (!updated) {
 				toast.error('内置变量不能在项目级配置');

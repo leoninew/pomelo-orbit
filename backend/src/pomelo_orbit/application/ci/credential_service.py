@@ -1,6 +1,5 @@
 """Credential 聚合的应用服务"""
 
-
 from pomelo_orbit.domain.ci.entities import Credential
 from pomelo_orbit.domain.ci.repositories import CredentialRepository
 from pomelo_orbit.domain.ci.value_objects import CredentialType
@@ -38,9 +37,7 @@ class CredentialService:
         self.credential_repo.save(cred)
         return cred
 
-    def update_credential(
-        self, credential_id: str, name: str | None = None, data: str | None = None
-    ) -> Credential:
+    def update_credential(self, credential_id: str, name: str | None = None, data: str | None = None) -> Credential:
         """更新凭据"""
         cred = self.get_credential(credential_id)
         if name is not None:

@@ -22,7 +22,7 @@
 from typing import Any
 
 from pomelo_orbit.domain.ci.entities import PipelineStage, Repository
-from pomelo_orbit.domain.ci.value_objects import BuiltinVariableSpecs, Variable, VariableDeclaration, VariableSource
+from pomelo_orbit.domain.ci.value_objects import BuiltinVariableSpecs, VariableDeclaration, VariableSource
 from pomelo_orbit.infrastructure.ci.variables import extract_variables, merge_declarations
 
 
@@ -36,22 +36,27 @@ class VariableResolver:
     # 场景 1: 仓库详情界面 - 展示仓库内置变量 + 自定义变量
     # ═══════════════════════════════════════════════════════════════════════════
 
-    def get_repository_variables(self, repository: Repository) -> list[Variable]:
+    def get_repository_variables(self, repository: Repository) -> list[VariableDeclaration]:
         """获取仓库变量列表（用于仓库详情页展示）
 
         返回：
         - 仓库内置变量（source=REPOSITORY，前端显示为"项目运行时"）
         - 仓库自定义变量（source=REPOSITORY_CUSTOM，前端显示为"项目自定义"）
         """
-        # 仓库内置变量（使用 default_branch 作为 repository_ref 的默认值）
-        builtin_dict = self._build_repository_builtin_variables(repository, repository.default_branch)
+        builtin_specs = self._get_repository_builtin_specs()
+        builtin_values = self._build_repository_builtin_variables(repository, repository.default_branch)
         builtin_vars = [
-            Variable(name=name, value=value, source=VariableSource.REPOSITORY) for name, value in builtin_dict.items()
+            VariableDeclaration(
+                name=name,
+                value=builtin_values[name],
+                source=VariableSource.REPOSITORY,
+                description=builtin_specs[name],
+            )
+            for name in builtin_specs
         ]
 
-        # 自定义变量
         custom_vars = [
-            Variable(name=v.name, value=v.value, source=VariableSource.REPOSITORY_CUSTOM)
+            v.model_copy(update={"source": VariableSource.REPOSITORY_CUSTOM})
             for v in (repository.variable_overrides or [])
         ]
 

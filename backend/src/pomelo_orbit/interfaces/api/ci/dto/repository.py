@@ -5,7 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from pomelo_orbit.domain.ci.entities import Repository
-from pomelo_orbit.domain.ci.value_objects import Variable, VariableDeclaration
+from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
 
 
 class RepositoryListResp(BaseModel):
@@ -47,7 +47,7 @@ class RepositoryResp(BaseModel):
     repository_url: str
     git_credential_id: str | None
     git_credential_name: str | None
-    variables: list[Variable]  # 变量列表（包含内置和自定义）
+    variable_declarations: list[VariableDeclaration]  # 变量列表（包含内置和自定义）
     default_branch: str
     created_at: datetime
     updated_at: datetime
@@ -59,7 +59,7 @@ class RepositoryResp(BaseModel):
         cls,
         repository: Repository,
         git_credential_name: str | None,
-        variables: list[Variable],
+        variable_declarations: list[VariableDeclaration],
     ) -> "RepositoryResp":
         return cls(
             id=repository.id,
@@ -68,7 +68,7 @@ class RepositoryResp(BaseModel):
             repository_url=repository.repository_url,
             git_credential_id=repository.git_credential_id,
             git_credential_name=git_credential_name,
-            variables=variables,
+            variable_declarations=variable_declarations,
             default_branch=repository.default_branch,
             created_at=repository.created_at,
             updated_at=repository.updated_at,

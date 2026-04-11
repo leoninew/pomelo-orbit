@@ -308,7 +308,7 @@ class TestRepositoryVariableLifecycle:
         repo = get_resp.json()
 
         # 3. 验证变量
-        variables = repo["variables"]
+        variables = repo["variable_declarations"]
         var_names = {v["name"] for v in variables}
 
         # 应该包含内置变量
@@ -379,7 +379,7 @@ class TestRepositoryVariableLifecycle:
         assert get_resp.status_code == 200
         repo = get_resp.json()
 
-        variables = repo["variables"]
+        variables = repo["variable_declarations"]
         custom_vars = [v for v in variables if v["source"] == "repository_custom"]
         custom_var_names = {v["name"] for v in custom_vars}
 
@@ -428,7 +428,7 @@ class TestRepositoryVariableLifecycle:
         assert get_resp.status_code == 200
         repo = get_resp.json()
 
-        variables = repo["variables"]
+        variables = repo["variable_declarations"]
 
         # 内置变量应该保持原值
         repo_id_var = next(v for v in variables if v["name"] == "repository_id")

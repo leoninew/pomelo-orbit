@@ -78,7 +78,7 @@ def create_repository(
     return RepositoryResp.from_domain(
         repository,
         _resolve_cred_name(repository.git_credential_id, credential_service),
-        variables=variable_resolver.get_repository_variables(repository),
+        variable_declarations=variable_resolver.get_repository_variables(repository),
     )
 
 
@@ -94,7 +94,7 @@ def get_repository(
     return RepositoryResp.from_domain(
         repository,
         _resolve_cred_name(repository.git_credential_id, credential_service),
-        variables=variable_resolver.get_repository_variables(repository),
+        variable_declarations=variable_resolver.get_repository_variables(repository),
     )
 
 
@@ -120,7 +120,7 @@ def update_repository(
     return RepositoryResp.from_domain(
         repository,
         _resolve_cred_name(repository.git_credential_id, credential_service),
-        variables=variable_resolver.get_repository_variables(repository),
+        variable_declarations=variable_resolver.get_repository_variables(repository),
     )
 
 

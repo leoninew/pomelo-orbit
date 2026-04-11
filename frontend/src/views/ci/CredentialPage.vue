@@ -160,7 +160,9 @@
 							class="input w-full"
 							:class="{ 'input-error': importErrors.name }"
 						/>
-						<p v-if="importErrors.name" class="fieldset-label text-error">{{ importErrors.name }}</p>
+						<p v-if="importErrors.name" class="fieldset-label text-error">
+							{{ importErrors.name }}
+						</p>
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">凭据类型</legend>
@@ -178,7 +180,9 @@
 							rows="8"
 							:class="{ 'textarea-error': importErrors.data }"
 						/>
-						<p v-if="importErrors.data" class="fieldset-label text-error">{{ importErrors.data }}</p>
+						<p v-if="importErrors.data" class="fieldset-label text-error">
+							{{ importErrors.data }}
+						</p>
 					</fieldset>
 				</div>
 				<div class="modal-action">

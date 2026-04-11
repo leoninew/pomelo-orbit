@@ -1,6 +1,8 @@
 import type {
 	Credential,
 	CredentialCreateReq,
+	CredentialExportResp,
+	CredentialImportReq,
 	CredentialUpdateReq,
 	PaginatedResp,
 } from '@/types/api';
@@ -26,5 +28,13 @@ export const credentialApi = {
 
 	delete(id: string): Promise<void> {
 		return request.delete(`/api/ci/credential/${id}`);
+	},
+
+	exportCredential(id: string): Promise<CredentialExportResp> {
+		return request.get(`/api/ci/credential/${id}/export`);
+	},
+
+	importCredential(data: CredentialImportReq): Promise<Credential> {
+		return request.post('/api/ci/credential/import', data);
 	},
 };

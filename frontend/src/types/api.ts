@@ -17,7 +17,7 @@ export type {
 	SystemConfigResp,
 	SystemConfigUpdateReq,
 } from './cd/settings';
-export type { Credential, CredentialCreateReq, CredentialUpdateReq } from './ci/credential';
+export type { Credential, CredentialCreateReq, CredentialExportResp, CredentialImportReq, CredentialUpdateReq } from './ci/credential';
 export { credentialTypeLabels } from './ci/credential';
 export type {
 	Repository,

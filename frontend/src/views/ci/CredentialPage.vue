@@ -2,10 +2,23 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">凭据管理</h1>
-			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
-				<Plus class="size-4" />
-				新建凭据
-			</button>
+			<div class="flex items-center gap-2">
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+					<Plus class="size-4" />
+					新建凭据
+				</button>
+				<button class="btn btn-sm btn-ghost gap-1.5" @click="triggerImport">
+					<Upload class="size-4" />
+					导入
+				</button>
+				<input
+					ref="fileInput"
+					type="file"
+					accept=".json"
+					class="hidden"
+					@change="handleFileImport"
+				/>
+			</div>
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
@@ -31,7 +44,11 @@
 						<td colspan="4" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="c in credentials" :key="c.id" class="hover">
-						<td class="font-medium">{{ c.name }}</td>
+						<td class="font-medium">
+							<router-link :to="`/ci/credential/${c.id}`" class="link link-primary">
+								{{ c.name }}
+							</router-link>
+						</td>
 						<td>
 							<span class="badge badge-sm badge-ghost">
 								{{ credentialTypeLabels[c.type] ?? c.type }}
@@ -129,16 +146,61 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- Import modal -->
+		<dialog ref="importDialogRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">导入凭据</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">凭据名称</legend>
+						<input
+							v-model="importForm.name"
+							type="text"
+							class="input w-full"
+							:class="{ 'input-error': importErrors.name }"
+						/>
+						<p v-if="importErrors.name" class="fieldset-label text-error">{{ importErrors.name }}</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">凭据类型</legend>
+						<select v-model="importForm.type" class="select w-full">
+							<option value="git_ssh">Git SSH</option>
+							<option value="git_token">Git Token</option>
+							<option value="registry_token">Registry Token</option>
+						</select>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">凭据内容</legend>
+						<textarea
+							v-model="importForm.data"
+							class="textarea w-full font-mono text-xs"
+							rows="8"
+							:class="{ 'textarea-error': importErrors.data }"
+						/>
+						<p v-if="importErrors.data" class="fieldset-label text-error">{{ importErrors.data }}</p>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="operating" @click="handleImportOk">
+						<span v-if="operating" class="loading loading-spinner loading-xs" />
+						导入
+					</button>
+					<button class="btn btn-ghost" @click="importDialogRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
+import { Plus, Upload } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { credentialApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Credential } from '@/types/api';
+import type { Credential, CredentialImportReq } from '@/types/api';
 import { credentialTypeLabels } from '@/types/api';
 import { formatTime } from '@/utils/time';
 
@@ -152,12 +214,16 @@ const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSi
 
 const modalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
+const importDialogRef = ref<HTMLDialogElement>();
+const fileInput = ref<HTMLInputElement>();
 const isEditing = ref(false);
 const currentId = ref('');
 const pendingDeleteId = ref('');
 
 const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
 const errors = reactive({ name: '', data: '' });
+const importForm = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+const importErrors = reactive({ name: '', data: '' });
 
 function validate() {
 	errors.name = form.name.trim() ? '' : '请输入凭据名称';
@@ -255,6 +321,55 @@ function getDataPlaceholder(type: string) {
 		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
 	}
 	return 'registry_token_here';
+}
+
+// ── Import ──
+function triggerImport() {
+	fileInput.value?.click();
+}
+
+async function handleFileImport(event: Event) {
+	const target = event.target as HTMLInputElement;
+	const file = target.files?.[0];
+	if (!file) {
+		return;
+	}
+	try {
+		const data = JSON.parse(await file.text()) as CredentialImportReq;
+		Object.assign(importForm, {
+			name: data.name || '',
+			type: data.type || 'git_ssh',
+			data: data.data || '',
+		});
+		Object.assign(importErrors, { name: '', data: '' });
+		importDialogRef.value?.showModal();
+	} catch {
+		toast.error('解析文件失败');
+	} finally {
+		target.value = '';
+	}
+}
+
+async function handleImportOk() {
+	importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称';
+	importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容';
+	if (importErrors.name || importErrors.data) {
+		return;
+	}
+	try {
+		await executeOp(async () => {
+			await credentialApi.importCredential({
+				name: importForm.name,
+				type: importForm.type as CredentialImportReq['type'],
+				data: importForm.data,
+			});
+			toast.success('导入成功');
+			importDialogRef.value?.close();
+			fetchCredentials();
+		});
+	} catch (err) {
+		toast.error(err instanceof Error ? err.message : '导入失败');
+	}
 }
 
 onMounted(fetchCredentials);

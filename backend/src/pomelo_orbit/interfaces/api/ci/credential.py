@@ -8,10 +8,14 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.credential_service import CredentialService
 from pomelo_orbit.application.ci.di import get_credential_service
-from pomelo_orbit.infrastructure.di import get_security_service
-from pomelo_orbit.infrastructure.security import SecurityService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.credential import CredentialCreateReq, CredentialResp, CredentialUpdateReq
+from pomelo_orbit.interfaces.api.ci.dto.credential import (
+    CredentialCreateReq,
+    CredentialExportResp,
+    CredentialImportReq,
+    CredentialResp,
+    CredentialUpdateReq,
+)
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
@@ -40,11 +44,19 @@ def list_credentials(
 def create_credential(
     data: CredentialCreateReq,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    security_service: Annotated[SecurityService, Depends(get_security_service)],
     _current_user=Depends(get_current_user),
 ) -> CredentialResp:
-    encrypted = security_service.encrypt_value(data.data)
-    cred = credential_service.create_credential(name=data.name, credential_type=data.type, encrypted_data=encrypted)
+    cred = credential_service.create_credential(name=data.name, credential_type=data.type, data=data.data)
+    return CredentialResp.model_validate(cred)
+
+
+@router.get("/{credential_id}", response_model=CredentialResp)
+def get_credential(
+    credential_id: str,
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
+    _current_user=Depends(get_current_user),
+) -> CredentialResp:
+    cred = credential_service.get_credential(credential_id)
     return CredentialResp.model_validate(cred)
 
 
@@ -53,11 +65,9 @@ def update_credential(
     credential_id: str,
     data: CredentialUpdateReq,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    security_service: Annotated[SecurityService, Depends(get_security_service)],
     _current_user=Depends(get_current_user),
 ) -> CredentialResp:
-    encrypted = security_service.encrypt_value(data.data) if data.data else None
-    cred = credential_service.update_credential(credential_id, name=data.name, encrypted_data=encrypted)
+    cred = credential_service.update_credential(credential_id, name=data.name, data=data.data)
     return CredentialResp.model_validate(cred)
 
 
@@ -68,3 +78,23 @@ def delete_credential(
     _current_user=Depends(get_current_user),
 ) -> None:
     credential_service.delete_credential(credential_id)
+
+
+@router.get("/{credential_id}/export", response_model=CredentialExportResp)
+def export_credential(
+    credential_id: str,
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
+    _current_user=Depends(get_current_user),
+) -> CredentialExportResp:
+    data = credential_service.export_credential(credential_id)
+    return CredentialExportResp(**data)
+
+
+@router.post("/import", response_model=CredentialResp, status_code=201)
+def import_credential(
+    data: CredentialImportReq,
+    credential_service: Annotated[CredentialService, Depends(get_credential_service)],
+    _current_user=Depends(get_current_user),
+) -> CredentialResp:
+    cred = credential_service.import_credential(name=data.name, credential_type=data.type, data=data.data)
+    return CredentialResp.model_validate(cred)

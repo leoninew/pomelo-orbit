@@ -87,10 +87,12 @@ def get_variable_resolver(
 
 def get_credential_service(
     db: Annotated[Session, Depends(get_db)],
+    settings: Annotated[Dynaconf, Depends(get_settings)],
 ) -> CredentialService:
     """获取 Credential 应用服务"""
     return CredentialService(
         credential_repo=CredentialRepositoryImpl(db),
+        security_service=SecurityService(settings),
     )
 
 

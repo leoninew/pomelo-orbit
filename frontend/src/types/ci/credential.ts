@@ -18,6 +18,20 @@ export interface CredentialUpdateReq {
 	data?: string
 }
 
+export interface CredentialExportResp {
+	version: string
+	name: string
+	type: 'git_ssh' | 'git_token' | 'registry_token'
+	data: string
+}
+
+export interface CredentialImportReq {
+	version?: string
+	name: string
+	type: 'git_ssh' | 'git_token' | 'registry_token'
+	data: string
+}
+
 export const credentialTypeLabels: Record<string, string> = {
 	git_ssh: 'Git SSH',
 	git_token: 'Git Token',

@@ -67,6 +67,13 @@ const router = createRouter({
 			meta: { title: '凭据管理', menuKey: 'credentials' },
 		},
 		{
+			path: '/ci/credential/:id',
+			name: 'CredentialDetail',
+			component: () => import('@/views/ci/CredentialDetail.vue'),
+			props: true,
+			meta: { title: '凭据详情', menuKey: 'credentials' },
+		},
+		{
 			path: '/ci/pipeline-stage',
 			name: 'PipelineStages',
 			component: () => import('@/views/ci/PipelineStages.vue'),

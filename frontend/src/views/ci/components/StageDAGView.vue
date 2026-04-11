@@ -4,7 +4,7 @@
 			<span class="loading loading-spinner loading-md text-primary" />
 		</div>
 		<VueFlow
-			:nodes="layoutedNodes"
+			:nodes="initialNodes"
 			:edges="edges"
 			:default-viewport="{ zoom: 1, x: 0, y: 0 }"
 			:min-zoom="0.2"
@@ -31,62 +31,74 @@ import { useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import dagre from 'dagre';
 import { computed, markRaw, nextTick, ref, watch } from 'vue';
+import type { StageRun } from '@/types/ci/stage_run';
 import type { SnapshotStage } from '@/types/ci/snapshot';
-import type { TaskStatus } from '@/types/common';
 import StageNode from './StageNode.vue';
-
-interface StageRunLike {
-	id: string
-	pipeline_run_id: string
-	stage_id: string
-	stage_name: string
-	status: TaskStatus
-}
 
 interface Props {
 	stages: SnapshotStage[]
-	stageRuns?: StageRunLike[]
+	stageRuns?: StageRun[]
 	showMinimap?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), { showMinimap: false });
+const emit = defineEmits<(e: 'view-stage', stageRun: StageRun) => void>();
 
-const emit = defineEmits<(e: 'view-stage', stageRun: StageRunLike) => void>();
-
-const { fitView } = useVueFlow();
-
-// 缓存 stages，避免每次 props 变化都重新布局
-const cachedStages = ref(props.stages);
+const { fitView, updateNodeData } = useVueFlow();
 const isReady = ref(false);
+const nodeTypes = { stage: markRaw(StageNode) };
 
-watch(
-	() => props.stages,
-	(newStages) => {
-		const newIds = newStages.map((s) => s.id).join(',');
-		const cachedIds = cachedStages.value.map((s) => s.id).join(',');
-		if (newIds !== cachedIds) {
-			isReady.value = false;
-			cachedStages.value = newStages;
-		} else {
-			cachedStages.value = cachedStages.value.map((cached) => {
-				const updated = newStages.find((s) => s.id === cached.id);
-				return updated || cached;
+// ── 布局：只算一次 ────────────────────────────────────────────────────────────
+
+function buildLayoutedNodes(stages: SnapshotStage[]): Node[] {
+	const g = new dagre.graphlib.Graph();
+	g.setDefaultEdgeLabel(() => ({}));
+	g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
+	stages.forEach((s) => g.setNode(s.id, { width: 160, height: 80 }));
+	stages.forEach((s) => s.depends_on.forEach((dep) => g.setEdge(dep, s.id)));
+	dagre.layout(g);
+	return stages
+		.filter((s) => s.id && s.name)
+		.map((stage) => {
+			const n = g.node(stage.id);
+			return {
+				id: stage.id,
+				type: 'stage',
+				position: { x: n.x - n.width / 2, y: n.y - n.height / 2 },
+				data: { stage, status: undefined, stageRun: undefined },
+			};
+		});
+}
+
+const initialNodes = ref<Node[]>(buildLayoutedNodes(props.stages));
+
+const edges = computed<Edge[]>(() => {
+	const result: Edge[] = [];
+	for (const stage of props.stages) {
+		for (const dep of stage.depends_on) {
+			result.push({
+				id: `${dep}->${stage.id}`,
+				source: dep,
+				target: stage.id,
+				type: 'smoothstep',
+				animated: false,
+				markerEnd: { type: 'arrowclosed', color: '#e2e8f0' },
+				style: { stroke: '#e2e8f0', strokeWidth: 2 },
 			});
 		}
 	}
-);
+	return result;
+});
 
-// 在布局计算完成后执行 fitView
+// fitView 在节点挂载后执行一次
 watch(
-	() => cachedStages.value.length,
-	async (newLength) => {
-		if (newLength > 0 && !isReady.value) {
+	() => initialNodes.value.length,
+	async (len) => {
+		if (len > 0 && !isReady.value) {
 			await nextTick();
 			await nextTick();
-			// 给 dagre 和 Vue Flow 足够的时间完成布局
 			setTimeout(() => {
 				fitView({ padding: 0.15, duration: 0 });
-				// 再等一帧确保 fitView 完成
 				requestAnimationFrame(() => {
 					isReady.value = true;
 				});
@@ -96,87 +108,43 @@ watch(
 	{ immediate: true }
 );
 
-// stage.id -> StageRun 映射
-const stageRunByIdMap = computed(() => {
-	const map = new Map<string, StageRunLike>();
+// ── 状态更新：用 updateNodeData，不重新布局 ───────────────────────────────────
+
+function syncStatus() {
+	const map = new Map<string, StageRun>();
 	for (const sr of props.stageRuns ?? []) {
 		map.set(sr.stage_id, sr);
 	}
-	return map;
+	for (const stage of props.stages) {
+		const sr = map.get(stage.id);
+		updateNodeData(stage.id, { stage, status: sr?.status, stageRun: sr }, { replace: true });
+	}
+}
+
+// isReady 变为 true 时同步一次初始状态（此时 Vue Flow store 已就绪）
+watch(isReady, (ready) => {
+	if (ready) {
+		syncStatus();
+	}
 });
 
-const nodeTypes = { stage: markRaw(StageNode) };
-
-const nodes = computed<Node[]>(() =>
-	cachedStages.value
-		.filter((s) => s != null && s.name)
-		.map((stage) => ({
-			id: stage.id,
-			type: 'stage',
-			position: { x: 0, y: 0 },
-			data: {
-				stage,
-				status:
-					(stage as { status?: string }).status || stageRunByIdMap.value.get(stage.id)?.status,
-				readonly: true,
-				selected: false,
-			},
-		}))
+// stageRuns 变化时同步（轮询场景，此时节点已挂载）
+watch(
+	() => props.stageRuns,
+	() => {
+		if (isReady.value) {
+			syncStatus();
+		}
+	},
+	{ deep: true }
 );
 
-const edges = computed<Edge[]>(() => {
-	const result: Edge[] = [];
-	for (const stage of cachedStages.value) {
-		for (const dep of stage.depends_on) {
-			result.push({
-				id: `${dep}->${stage.id}`,
-				source: dep,
-				target: stage.id,
-				type: 'smoothstep',
-				animated: false,
-				markerEnd: {
-					type: 'arrowclosed',
-					color: '#e2e8f0',
-				},
-				style: {
-					stroke: '#e2e8f0',
-					strokeWidth: 2,
-				},
-			});
-		}
-	}
-	return result;
-});
-
-const layoutedNodes = computed(() => {
-	const g = new dagre.graphlib.Graph();
-	g.setDefaultEdgeLabel(() => ({}));
-	g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
-	nodes.value.forEach((node) => g.setNode(node.id, { width: 160, height: 80 }));
-	edges.value.forEach((edge) => g.setEdge(edge.source, edge.target));
-	dagre.layout(g);
-	return nodes.value.map((node) => {
-		const n = g.node(node.id);
-		return {
-			...node,
-			position: { x: n.x - n.width / 2, y: n.y - n.height / 2 },
-		};
-	});
-});
+// ── 交互 ─────────────────────────────────────────────────────────────────────
 
 function handleNodeClick(event: NodeClickEvent) {
-	// 从 cachedStages 中获取 stage 信息
-	const stage = cachedStages.value.find((s) => s.id === event.node.id);
-	if (!stage) {
-		return;
-	}
-
-	// 优先从 stage 对象获取 stageRun，如果没有则从 stageRunByIdMap 获取
-	const stageRun =
-		(stage as { stageRun?: StageRunLike }).stageRun || stageRunByIdMap.value.get(event.node.id);
-
-	if (stageRun) {
-		emit('view-stage', stageRun);
+	const sr = (event.node.data as { stageRun?: StageRun }).stageRun;
+	if (sr) {
+		emit('view-stage', sr);
 	}
 }
 </script>
@@ -190,10 +158,7 @@ function handleNodeClick(event: NodeClickEvent) {
 
 .loading-overlay {
 	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+	inset: 0;
 	display: flex;
 	justify-content: center;
 	align-items: center;
@@ -216,7 +181,6 @@ function handleNodeClick(event: NodeClickEvent) {
 	transition: opacity 0.2s ease;
 }
 
-/* 统一的浅色箭头 */
 .vue-flow-container :deep(.vue-flow__edge-path) {
 	stroke: #e2e8f0;
 	stroke-width: 2;
@@ -240,8 +204,30 @@ function handleNodeClick(event: NodeClickEvent) {
 	animation: node-fade-in 0.4s ease-out backwards;
 }
 
-.vue-flow-container :deep(.vue-flow__node .stage-node) {
+.vue-flow-container :deep(.stage-node) {
+	background: #ffffff;
 	border: 2px solid #4a5568;
+}
+
+.vue-flow-container :deep(.status-waiting) {
+	border-color: #d69e2e;
+	background: #fffbeb;
+}
+.vue-flow-container :deep(.status-running) {
+	border-color: #3182ce;
+	background: #ebf8ff;
+}
+.vue-flow-container :deep(.status-success) {
+	border-color: #38a169;
+	background: #f0fff4;
+}
+.vue-flow-container :deep(.status-error) {
+	border-color: #e53e3e;
+	background: #fff5f5;
+}
+.vue-flow-container :deep(.status-canceled) {
+	border-color: #a0aec0;
+	background: #f7fafc;
 }
 
 .vue-flow-container :deep(.vue-flow__edge) {

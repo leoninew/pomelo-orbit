@@ -69,7 +69,8 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineTemplate, Repository, VariableDeclaration } from '@/types/api';
+import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
+import type { Repository } from '@/types/ci/repository';
 
 const props = defineProps<{
 	repositoryId: string

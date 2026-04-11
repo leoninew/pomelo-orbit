@@ -76,7 +76,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { authApi } from '@/api/auth';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { LoginHistory } from '@/types/api';
+import type { LoginHistory } from '@/types/auth';
 import { formatTime } from '@/utils/time';
 
 const toast = useToast();

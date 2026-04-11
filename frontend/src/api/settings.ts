@@ -1,4 +1,8 @@
-import type { SystemConfigResetReq, SystemConfigResp, SystemConfigUpdateReq } from '@/types/api';
+import type {
+	SystemConfigResetReq,
+	SystemConfigResp,
+	SystemConfigUpdateReq,
+} from '@/types/cd/settings';
 import request from '@/utils/request';
 
 export const settingApi = {

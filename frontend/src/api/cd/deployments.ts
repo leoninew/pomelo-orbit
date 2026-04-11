@@ -1,4 +1,5 @@
-import type { Deployment, DeploymentDetail, PaginatedResp } from '@/types/api';
+import type { Deployment, DeploymentDetail } from '@/types/cd/deployment';
+import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 // 部署记录相关 API

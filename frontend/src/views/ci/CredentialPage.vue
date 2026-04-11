@@ -204,8 +204,8 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { credentialApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Credential, CredentialImportReq } from '@/types/api';
-import { credentialTypeLabels } from '@/types/api';
+import type { Credential, CredentialImportReq } from '@/types/ci/credential';
+import { credentialTypeLabels } from '@/types/ci/credential';
 import { formatTime } from '@/utils/time';
 
 const toast = useToast();

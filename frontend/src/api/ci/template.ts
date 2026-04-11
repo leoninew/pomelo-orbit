@@ -1,12 +1,12 @@
+import type { PaginatedResp } from '@/types/common';
+import type { PipelineSnapshot } from '@/types/ci/snapshot';
 import type {
-	PaginatedResp,
-	PipelineSnapshot,
 	PipelineTemplate,
 	PipelineTemplateCreateReq,
 	StageOrchestration,
 	PipelineTemplateUpdateReq,
 	VariableDeclaration,
-} from '@/types/api';
+} from '@/types/ci/template';
 import request from '@/utils/request';
 
 export const pipelineTemplateApi = {

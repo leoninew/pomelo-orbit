@@ -2,7 +2,7 @@ import type {
 	ProjectWebhookCreateReq,
 	ProjectWebhookUpdateReq,
 	RepositoryWebhook,
-} from '@/types/api';
+} from '@/types/ci/webhook';
 import request from '@/utils/request';
 
 export const webhookApi = {

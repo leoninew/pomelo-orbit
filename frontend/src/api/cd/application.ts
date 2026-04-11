@@ -5,8 +5,8 @@ import type {
 	ApplicationImportReq,
 	ApplicationUpdateReq,
 	ConfigFile,
-	PaginatedResp,
-} from '@/types/api';
+} from '@/types/cd/application';
+import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 // 应用相关 API

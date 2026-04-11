@@ -154,7 +154,8 @@ import { reactive, ref } from 'vue';
 import { webhookApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineTemplate, RepositoryWebhook } from '@/types/api';
+import type { PipelineTemplate } from '@/types/ci/template';
+import type { RepositoryWebhook } from '@/types/ci/webhook';
 
 const props = defineProps<{
 	repositoryId: string

@@ -4,8 +4,8 @@ import type {
 	CredentialExportResp,
 	CredentialImportReq,
 	CredentialUpdateReq,
-	PaginatedResp,
-} from '@/types/api';
+} from '@/types/ci/credential';
+import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 // Credential API

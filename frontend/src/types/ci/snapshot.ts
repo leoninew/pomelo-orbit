@@ -1,4 +1,4 @@
-import type { VariableDeclaration } from './template';
+import type { ArtifactConfig, VariableDeclaration } from './template';
 
 // 快照中的 Stage 定义（执行时展开，含编排属性）
 export interface SnapshotStage {
@@ -8,7 +8,7 @@ export interface SnapshotStage {
 	depends_on: string[] // 存储依赖的 stage_id 列表
 	script: string
 	env: Record<string, string>
-	artifacts?: { path: string; name: string }[]
+	artifacts?: ArtifactConfig[]
 }
 
 export interface PipelineSnapshot {

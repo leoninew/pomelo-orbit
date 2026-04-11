@@ -1,11 +1,5 @@
-import type {
-	LoginHistory,
-	LoginReq,
-	PaginatedResp,
-	PasswordChangeReq,
-	TokenResp,
-	UserInfo,
-} from '@/types/api';
+import type { LoginHistory, LoginReq, PasswordChangeReq, TokenResp, UserInfo } from '@/types/auth';
+import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 // 认证相关 API

@@ -233,7 +233,7 @@ import { settingApi } from '@/api/settings';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { useAuthStore } from '@/stores/auth';
-import type { ConfigItemResp, SystemConfigResp } from '@/types/api';
+import type { ConfigItemResp, SystemConfigResp } from '@/types/cd/settings';
 import { formatTime } from '@/utils/time';
 
 const authStore = useAuthStore();

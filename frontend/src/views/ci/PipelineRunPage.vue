@@ -123,7 +123,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineRun } from '@/types/api';
+import type { PipelineRun } from '@/types/ci/run';
 import { statusBadgeClass, statusLabel } from '@/utils/status';
 import { formatTime } from '@/utils/time';
 

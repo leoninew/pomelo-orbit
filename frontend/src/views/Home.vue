@@ -190,7 +190,8 @@ import { deploymentApi } from '@/api/cd/deployments';
 import { pipelineRunApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Deployment, PipelineRun } from '@/types/api';
+import type { Deployment } from '@/types/cd/deployment';
+import type { PipelineRun } from '@/types/ci/run';
 import { statusBadgeClass, statusLabel } from '@/utils/status';
 import { formatTime, getTodayStart } from '@/utils/time';
 

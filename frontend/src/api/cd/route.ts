@@ -1,4 +1,4 @@
-import type { PaginatedResp } from '@/types/api';
+import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 export interface Route {

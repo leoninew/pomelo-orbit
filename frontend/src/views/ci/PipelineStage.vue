@@ -241,7 +241,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { pipelineStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineStage } from '@/types/api';
+import type { PipelineStage } from '@/types/ci/template';
 import { formatTime } from '@/utils/time';
 
 const route = useRoute();

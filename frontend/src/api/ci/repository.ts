@@ -1,11 +1,6 @@
-import type {
-	PaginatedResp,
-	PipelineRun,
-	PipelineRunTriggerReq,
-	Repository,
-	RepositoryCreateReq,
-	RepositoryUpdateReq,
-} from '@/types/api';
+import type { PipelineRun, PipelineRunTriggerReq } from '@/types/ci/run';
+import type { PaginatedResp } from '@/types/common';
+import type { Repository, RepositoryCreateReq, RepositoryUpdateReq } from '@/types/ci/repository';
 import request from '@/utils/request';
 
 export const repositoryApi = {

@@ -83,7 +83,7 @@
 								</button>
 							</div>
 						</div>
-						<div class="flex items-center gap-2">
+						<div v-if="viewMode === 'list'" class="flex items-center gap-2">
 							<button class="btn btn-sm btn-ghost gap-1" @click="openAddOrchModal">
 								<Plus class="size-3.5" />
 								添加 Stage

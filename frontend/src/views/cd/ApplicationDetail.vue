@@ -342,7 +342,7 @@ import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Application, ConfigFile } from '@/types/api';
+import type { Application, ConfigFile } from '@/types/cd/application';
 import { appStatusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 

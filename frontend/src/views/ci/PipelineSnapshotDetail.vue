@@ -143,7 +143,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineSnapshot } from '@/types/api';
+import type { PipelineSnapshot } from '@/types/ci/snapshot';
 import { formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
 import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';

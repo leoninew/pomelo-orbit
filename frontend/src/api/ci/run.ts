@@ -1,4 +1,6 @@
-import type { Artifact, PaginatedResp, PipelineRun } from '@/types/api';
+import type { Artifact } from '@/types/ci/stage_run';
+import type { PaginatedResp } from '@/types/common';
+import type { PipelineRun } from '@/types/ci/run';
 import request from '@/utils/request';
 
 export interface StageLogResp {

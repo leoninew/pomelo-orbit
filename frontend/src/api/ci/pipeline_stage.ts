@@ -3,7 +3,7 @@ import type {
 	PipelineStageCreateReq,
 	PipelineStageUpdateReq,
 } from '@/types/ci/template';
-import type { PaginatedResp } from '@/types/api';
+import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 export const pipelineStageApi = {

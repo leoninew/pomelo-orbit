@@ -201,31 +201,33 @@
 								</td>
 								<td>
 									<span
-										v-if="stageRunMap[stage.id]"
+										v-if="stageRuns.find((sr) => sr.stage_id === stage.id)"
 										class="badge badge-xs"
-										:class="statusBadgeClass(stageRunMap[stage.id].status)"
+										:class="
+											statusBadgeClass(stageRuns.find((sr) => sr.stage_id === stage.id)!.status)
+										"
 									>
-										{{ statusLabel(stageRunMap[stage.id].status) }}
+										{{ statusLabel(stageRuns.find((sr) => sr.stage_id === stage.id)!.status) }}
 									</span>
 									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 								<td class="max-w-xs">
 									<span
-										v-if="stageRunMap[stage.id]?.error_message"
+										v-if="stageRuns.find((sr) => sr.stage_id === stage.id)?.error_message"
 										class="tooltip tooltip-top cursor-help"
-										:data-tip="stageRunMap[stage.id].error_message"
+										:data-tip="stageRuns.find((sr) => sr.stage_id === stage.id)?.error_message"
 									>
 										<span class="text-xs truncate block max-w-xs">
-											{{ stageRunMap[stage.id].error_message }}
+											{{ stageRuns.find((sr) => sr.stage_id === stage.id)?.error_message }}
 										</span>
 									</span>
 									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 								<td>
 									<button
-										v-if="stageRunMap[stage.id]"
+										v-if="stageRuns.find((sr) => sr.stage_id === stage.id)"
 										class="link link-primary text-xs"
-										@click="openLogDrawer(stageRunMap[stage.id])"
+										@click="openLogDrawer(stageRuns.find((sr) => sr.stage_id === stage.id)!)"
 									>
 										查看
 									</button>
@@ -242,9 +244,10 @@
 						<template v-else-if="snapshot.stages_snapshot.length > 0">
 							<StageDAGView
 								:key="snapshot.id"
-								:stages="stagesWithStatus"
+								:stages="snapshot.stages_snapshot"
+								:stage-runs="stageRuns"
 								:show-minimap="true"
-								@view-stage="(sr) => openLogDrawer(sr)"
+								@view-stage="openLogDrawer"
 							/>
 							<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>
 						</template>
@@ -254,11 +257,7 @@
 					<!-- 变量快照内容 -->
 					<div class="mt-6 pt-6 border-t border-base-300">
 						<h3 class="font-semibold mb-4">变量快照</h3>
-						<VariableDeclarationsTable
-							:declarations="runVariableDeclarations"
-							:readonly="true"
-							context="template"
-						/>
+						<VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
 					</div>
 				</div>
 			</div>
@@ -384,13 +383,15 @@
 
 <script setup lang="ts">
 import { ArrowLeft, FileX, Loader2, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Artifact, PipelineRun, PipelineSnapshot, StageRun } from '@/types/api';
-import type { SnapshotStage } from '@/types/ci/snapshot';
+import type { Artifact } from '@/types/ci/stage_run';
+import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
+import type { PipelineRun } from '@/types/ci/run';
+import type { StageRun } from '@/types/ci/stage_run';
 import { isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
@@ -414,27 +415,14 @@ const showLogsDrawer = ref(false);
 const cancelModalRef = ref<HTMLDialogElement>();
 const stagesView = ref<'list' | 'dag'>('list');
 
-const snapshotStageMap = reactive<Record<string, SnapshotStage>>({});
-const stageRunMap = reactive<Record<string, StageRun>>({});
-
-// variables_snapshot 现在是 VariableDeclaration[] 格式，直接使用
-const runVariableDeclarations = computed(() => {
-	return run.value?.variables_snapshot ?? [];
-});
-// 合并 stages 和 stageRun 的数据
-const stagesWithStatus = computed(() => {
-	if (!snapshot.value) {
-		return [];
+const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
+const stageRuns = computed(() => run.value?.stage_runs ?? []);
+const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
+	const map: Record<string, SnapshotStage> = {};
+	for (const s of snapshot.value?.stages_snapshot ?? []) {
+		map[s.id] = s;
 	}
-	const stages = snapshot.value.stages_snapshot;
-	return stages.map((stage) => {
-		const stageRun = stageRunMap[stage.id];
-		return {
-			...stage,
-			status: stageRun?.status,
-			stageRun: stageRun, // 保存完整的 stageRun 对象
-		};
-	});
+	return map;
 });
 
 // 日志 drawer 状态
@@ -493,8 +481,6 @@ async function fetchRun() {
 		await execute(async () => {
 			const data = await pipelineRunApi.get(runId.value);
 			run.value = data;
-			Object.keys(stageRunMap).forEach((k) => delete stageRunMap[k]);
-			data.stage_runs.forEach((sr) => (stageRunMap[sr.stage_id] = sr));
 		});
 	} catch {
 		toast.error('获取 Run 信息失败');
@@ -506,8 +492,6 @@ async function fetchSnapshot(snapshotId: string) {
 	try {
 		const data = await pipelineTemplateApi.getSnapshot(snapshotId);
 		snapshot.value = data;
-		Object.keys(snapshotStageMap).forEach((k) => delete snapshotStageMap[k]);
-		data.stages_snapshot.forEach((s) => (snapshotStageMap[s.id] = s));
 	} catch {
 		// snapshot 加载失败不影响主流程
 	}
@@ -554,8 +538,6 @@ async function startPolling() {
 	while (!signal.aborted) {
 		try {
 			run.value = await pipelineRunApi.get(runId.value);
-			Object.keys(stageRunMap).forEach((k) => delete stageRunMap[k]);
-			run.value.stage_runs.forEach((sr) => (stageRunMap[sr.stage_id] = sr));
 			if (isTerminalStatus(run.value.status)) {
 				fetchArtifacts();
 				break;
@@ -576,8 +558,6 @@ async function init() {
 	stopPolling();
 	run.value = undefined;
 	snapshot.value = undefined;
-	Object.keys(snapshotStageMap).forEach((k) => delete snapshotStageMap[k]);
-	Object.keys(stageRunMap).forEach((k) => delete stageRunMap[k]);
 	artifacts.value = [];
 	await fetchRun();
 	fetchArtifacts();

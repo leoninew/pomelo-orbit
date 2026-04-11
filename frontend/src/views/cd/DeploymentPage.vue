@@ -97,7 +97,7 @@ import { useRoute } from 'vue-router';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Deployment } from '@/types/api';
+import type { Deployment } from '@/types/cd/deployment';
 import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
 import { formatTime } from '@/utils/time';
 

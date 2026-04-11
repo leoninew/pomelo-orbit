@@ -130,7 +130,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { DeploymentDetail } from '@/types/api';
+import type { DeploymentDetail } from '@/types/cd/deployment';
 import { formatDuration, isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 

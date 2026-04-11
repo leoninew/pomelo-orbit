@@ -655,7 +655,8 @@ async function handleSubmit() {
 
 - 数据类型使用非空（`ref<T>()`），不用可空（`ref<T | null>(null)`）
 - 在区块粒度使用 `v-if` 条件渲染，不在字段级别使用 `?.`
-- 对可能为空的字段使用显式 `v-if/v-else`，不用 `?.` 或 `|| '-'`
+- `v-if` 保护块内部访问字段时使用 `!`（非空断言），不用 `?.`
+- 页面标题等 `v-if` 保护块外部可使用 `?.` 或 `?? '默认值'`
 
 ```vue
 <!-- ✅ 正确 -->
@@ -663,7 +664,10 @@ async function handleSubmit() {
 const session = ref<TypingSession>()  // 非空类型
 </script>
 <template>
-  <div v-if="session">{{ session.wpm }}</div>
+  <!-- v-if 外部：可用 ?. -->
+  <h1>{{ session?.name ?? '详情' }}</h1>
+  <!-- v-if 内部：用 ! 断言 -->
+  <div v-if="session">{{ session.name }}</div>
 </template>
 
 <!-- ❌ 错误 -->

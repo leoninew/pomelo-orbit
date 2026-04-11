@@ -96,7 +96,7 @@ class TestTemplateVariableLifecycle:
         saved_template = update_resp.json()
 
         # 5. 验证：PUT 响应返回完整的变量列表（只包含 Stage 中用到的变量 + 自定义变量）
-        saved_vars = saved_template["variables"]
+        saved_vars = saved_template["variable_declarations"]
         saved_var_names = {v["name"] for v in saved_vars}
 
         # Stage 中用到的变量应该显示
@@ -173,7 +173,7 @@ class TestTemplateVariableLifecycle:
         template = get_resp.json()
 
         # 5. 验证：返回的变量应该只包含 Stage 中用到的变量（custom_var 未在 stage 中使用，不出现）
-        var_names = {v["name"] for v in template["variables"]}
+        var_names = {v["name"] for v in template["variable_declarations"]}
 
         # Stage 中用到的变量应该显示
         assert "repository_url" in var_names
@@ -254,7 +254,7 @@ class TestTemplateVariableLifecycle:
             json={
                 "name": "Multi Save Test",
                 "orchestration": template["orchestration"],
-                "variable_declarations": template["variables"],
+                "variable_declarations": template["variable_declarations"],
             },
         )
         assert update2_resp.status_code == 200
@@ -265,7 +265,7 @@ class TestTemplateVariableLifecycle:
         final_template = final_get_resp.json()
 
         # 验证：my_var 未在 stage 中使用，不出现在变量列表中
-        var_names = {v["name"] for v in final_template["variables"]}
+        var_names = {v["name"] for v in final_template["variable_declarations"]}
         assert "my_var" not in var_names
         assert "repository_url" in var_names  # stage 中用到的变量仍然存在
 

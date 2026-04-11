@@ -95,5 +95,6 @@ clean:
 	find . -type d -name ".pytest_cache" -not -path "./.git/*" | xargs rm -rf
 	find . -type d -name "htmlcov" -not -path "./.git/*" | xargs rm -rf
 	find . -type f -name "*.pyc" -not -path "./.git/*" | xargs rm -f
+	find .
 	@echo "✓ 清理完成"
 

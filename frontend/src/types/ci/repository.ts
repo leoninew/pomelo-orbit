@@ -6,6 +6,7 @@ export interface RepositoryListItem {
 	code: string
 	repository_url: string
 	has_credential: boolean
+	git_credential_id?: string | null
 	default_branch: string
 	created_at: string
 	updated_at: string

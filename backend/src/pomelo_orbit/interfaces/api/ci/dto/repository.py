@@ -16,6 +16,7 @@ class RepositoryListResp(BaseModel):
     code: str
     repository_url: str
     has_credential: bool
+    git_credential_id: str | None
     default_branch: str
     created_at: datetime
     updated_at: datetime
@@ -30,6 +31,7 @@ class RepositoryListResp(BaseModel):
             code=repository.code,
             repository_url=repository.repository_url,
             has_credential=repository.git_credential_id is not None,
+            git_credential_id=repository.git_credential_id,
             default_branch=repository.default_branch,
             created_at=repository.created_at,
             updated_at=repository.updated_at,

@@ -8,8 +8,8 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>项目</th>
 						<th>模板</th>
+						<th>项目</th>
 						<th>触发方式</th>
 						<th>Ref</th>
 						<th>状态</th>
@@ -32,13 +32,13 @@
 					</tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
 						<td>
-							<router-link :to="`/ci/repository/${r.repository_id}`" class="link link-primary">
-								{{ r.repository_name }}
+							<router-link :to="`/ci/template/${r.template_id}`" class="link link-primary text-xs">
+								{{ r.template_name }}
 							</router-link>
 						</td>
 						<td>
-							<router-link :to="`/ci/template/${r.template_id}`" class="link link-primary text-xs">
-								{{ r.template_name }}
+							<router-link :to="`/ci/repository/${r.repository_id}`" class="link link-primary">
+								{{ r.repository_name }}
 							</router-link>
 						</td>
 						<td>

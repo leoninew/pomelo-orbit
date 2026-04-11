@@ -32,6 +32,7 @@ class CredentialService:
 
     def create_credential(self, name: str, credential_type: str, data: str) -> Credential:
         """创建凭据"""
+        self._check_name_unique(name)
         encrypted = self.security_service.encrypt_value(data)
         cred = Credential.create(name=name, type=CredentialType(credential_type), encrypted_data=encrypted)
         self.credential_repo.save(cred)
@@ -41,6 +42,7 @@ class CredentialService:
         """更新凭据"""
         cred = self.get_credential(credential_id)
         if name is not None:
+            self._check_name_unique(name, exclude_id=credential_id)
             cred.name = name
         if data is not None:
             cred.encrypted_data = self.security_service.encrypt_value(data)
@@ -66,3 +68,9 @@ class CredentialService:
     def import_credential(self, name: str, credential_type: str, data: str) -> Credential:
         """导入凭据"""
         return self.create_credential(name=name, credential_type=credential_type, data=data)
+
+    def _check_name_unique(self, name: str, exclude_id: str | None = None) -> None:
+        """检查凭据名称唯一性"""
+        existing = self.credential_repo.find_by_name(name)
+        if existing and existing.id != exclude_id:
+            raise BusinessError(f"凭据名称 '{name}' 已存在", status_code=409)

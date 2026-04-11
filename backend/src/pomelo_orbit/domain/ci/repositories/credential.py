@@ -10,6 +10,9 @@ class CredentialRepository(ABC):
     def find_by_id(self, credential_id: str) -> Credential | None: ...
 
     @abstractmethod
+    def find_by_name(self, name: str) -> Credential | None: ...
+
+    @abstractmethod
     def find_all(self) -> list[Credential]: ...
 
     @abstractmethod

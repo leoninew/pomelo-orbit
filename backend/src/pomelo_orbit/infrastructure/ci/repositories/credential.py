@@ -15,6 +15,11 @@ class CredentialRepositoryImpl(BaseRepository[Credential, CredentialModel], Cred
     def __init__(self, session: Session):
         super().__init__(session, CredentialModel, CredentialMapper())
 
+    def find_by_name(self, name: str) -> Credential | None:
+        """按名称查找凭据"""
+        model = self._session.query(CredentialModel).filter(CredentialModel.name == name).first()
+        return self._mapper.to_domain(model) if model else None
+
     def is_referenced_by_projects(self, credential_id: str) -> bool:
         """检查凭据是否被项目引用"""
         return (

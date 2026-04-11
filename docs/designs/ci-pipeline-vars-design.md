@@ -153,12 +153,18 @@ Stage 提取变量默认值（template_stage）
 class VariableDeclaration(BaseModel):
     name: str
     description: str = ""
-    value: Any = None
+    default: Any = None   # 系统/脚本提供的原始默认值，只读，用于展示和还原
+    value: Any = None     # 用户的显式覆盖值，None 表示"未覆盖，运行时用 default"
     secret: bool = False
     source: VariableSource = VariableSource.TEMPLATE_CUSTOM
+    editable: bool = True  # 展示层属性，由 VariableResolver 根据 source spec 设置
 ```
 
-是否只读由 `source` 决定，不使用 `required`、`locked`、`builtin` 等额外字段。
+- `default`：来自 stage 脚本 `{{ VAR | default('x') }}` 提取，或内置变量的运行时注入值
+- `value`：用户的显式覆盖，`None` 表示未覆盖，运行时取值逻辑为 `value ?? default`
+- `editable`：由 `VariableResolver` 在返回时根据 source spec 设置，不参与持久化语义判断
+
+是否只读由 `editable` 字段决定（由 spec 驱动），不使用 `required`、`locked`、`builtin` 等额外字段。
 
 ---
 

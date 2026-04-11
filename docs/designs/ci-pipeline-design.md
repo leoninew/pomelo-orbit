@@ -59,10 +59,11 @@ StageOrchestration {
 
 **变量管理**：
 - 模板编排好后，遍历所有 Stage 的 `script`/`env`/`artifacts` 自动提取占位符
-- 内置变量（仓库 + 模板）只在 Stage 实际引用时才出现在变量列表中，只读
-- Stage 中引用的非内置变量自动补充到模板变量声明中
-- 支持从 `{{ VAR | default('x') }}` 提取默认值作为变量初始值
-- 所有变量最终都必须有值；`secret` 仅用于脱敏展示
+- 内置变量（仓库 + 模板）只在 Stage 实际引用时才出现在变量列表中，`editable` 由 spec 决定（`repository_ref` 可编辑，其余只读）
+- Stage 中引用的非内置变量自动补充到模板变量声明，标记为 `template_stage`，可编辑
+- 支持从 `{{ VAR | default('x') }}` 提取默认值，存入 `default` 字段；用户覆盖值存入 `value` 字段
+- `template_stage` 变量用户设置了值后，保存时升级为 `template_custom` 持久化
+- 所有 `template_custom` 变量最终都必须有值；`secret` 仅用于脱敏展示
 - 仓库自定义变量在触发时按名称合并，用户可在触发时临时覆盖非内置变量，但不回写模板
 
 **版本管理**：模板可以重新编排、重新配置变量。每次修改递增 `version`，触发时检测到版本变更则创建新快照。
@@ -161,12 +162,16 @@ StageRun × N
 ```
 内置变量（全局 + 仓库 + 模板，只读，不可覆盖）
     ↓
+运行时临时覆盖（触发时用户提供，仅作用于本次运行，不能覆盖内置变量）
+    ↓
 仓库自定义变量（Repository.variable_overrides）
     ↓
-模板声明默认值（variable_declarations[].value）
+模板声明默认值（variable_declarations[].value 或 .default）
     ↓
-运行时临时覆盖（触发时用户提供，仅作用于本次运行，不能覆盖内置变量）
+Stage 提取变量默认值（template_stage，最低优先级）
 ```
+
+**说明**：运行时覆盖优先级高于仓库自定义变量，确保触发时传入的值不被仓库配置静默覆盖。
 
 ---
 
@@ -179,10 +184,10 @@ POST /api/ci/projects/{id}/trigger
   body: { template_id, trigger_ref?, variables? }
 ```
 
-1. 选择模板 → 加载 `variable_declarations`
-2. 全局内置变量直接展示，项目变量自动匹配填充
-3. 校验所有变量均已有值；仅非内置变量允许在模态窗中覆盖
-4. 提交 → 合并变量 → 检测快照版本 → 创建 PipelineRun → 异步执行
+1. 选择模板 → 加载 `variable_declarations`（经 `resolve_template_variables` 计算的完整列表）
+2. 内置变量展示但禁用输入（`repository_ref` 除外，可编辑）；`template_stage` 变量显示 default 值，可覆盖；`template_custom` 变量可输入
+3. 校验所有 `template_custom` 变量均已有值；`template_stage` 有 default 时豁免
+4. 提交 → 合并变量（优先级：内置 > 运行时覆盖 > 仓库自定义 > 模板声明 > stage default）→ 检测快照版本 → 创建 PipelineRun → 异步执行
 
 ### Webhook 触发
 
@@ -202,9 +207,9 @@ POST /api/ci/webhooks/{webhook_id}
 
 ```sql
 -- Stage：独立存储，不含编排属性
-CREATE TABLE pipeline_stages (
+CREATE TABLE pipeline_stage (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     image TEXT NOT NULL,
     script TEXT NOT NULL DEFAULT '',
     env TEXT NOT NULL DEFAULT '{}',       -- JSON
@@ -215,32 +220,33 @@ CREATE TABLE pipeline_stages (
 );
 
 -- 模板：持有编排信息
-CREATE TABLE pipeline_templates (
+CREATE TABLE pipeline_template (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     variable_declarations TEXT NOT NULL DEFAULT '[]',  -- JSON
+    version INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- 编排：模板对 Stage 的引用 + 依赖 + 顺序
-CREATE TABLE pipeline_template_stages (
+CREATE TABLE pipeline_template_stage (
     id TEXT PRIMARY KEY,
-    template_id TEXT NOT NULL REFERENCES pipeline_templates(id) ON DELETE CASCADE,
-    stage_id TEXT NOT NULL REFERENCES pipeline_stages(id),
+    template_id TEXT NOT NULL REFERENCES pipeline_template(id) ON DELETE CASCADE,
+    stage_id TEXT NOT NULL REFERENCES pipeline_stage(id),
     depends_on TEXT NOT NULL DEFAULT '[]',  -- JSON array of stage_id
     sort_order INTEGER NOT NULL DEFAULT 0,
     UNIQUE (template_id, stage_id)
 );
 
 -- 快照：冻结编排 + 变量声明
-CREATE TABLE pipeline_snapshots (
+CREATE TABLE pipeline_snapshot (
     id TEXT PRIMARY KEY,
-    template_id TEXT NOT NULL REFERENCES pipeline_templates(id),
+    template_id TEXT NOT NULL REFERENCES pipeline_template(id),
     version INTEGER NOT NULL,
-    orchestration_snapshot TEXT NOT NULL DEFAULT '[]',          -- JSON
-    variable_declarations_snapshot TEXT NOT NULL DEFAULT '[]',  -- JSON
+    stages_snapshot TEXT NOT NULL DEFAULT '[]',      -- JSON，冻结的 Stage 定义（含 depends_on）
+    variables_snapshot TEXT NOT NULL DEFAULT '[]',   -- JSON，冻结的变量声明
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (template_id, version)
 );

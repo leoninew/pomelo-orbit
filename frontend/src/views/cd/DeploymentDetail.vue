@@ -221,7 +221,13 @@ function scrollToBottom() {
 
 onMounted(async () => {
 	await fetchDeployment();
-	if (!isTerminalStatus(deployment.value?.status)) {
+	if (!deployment.value) {
+		return;
+	}
+	if (isTerminalStatus(deployment.value.status)) {
+		// 已完成的部署直接拉取完整日志
+		await fetchLogs();
+	} else {
 		startLogPolling();
 	}
 });

@@ -49,7 +49,10 @@
 						<button class="btn btn-sm btn-ghost" :disabled="operating" @click="openEditModal">
 							编辑
 						</button>
-						<button class="btn btn-sm btn-ghost" @click="handleExport">导出</button>
+						<button class="btn btn-sm btn-ghost gap-1" @click="handleExport">
+							<Download class="size-3.5" />
+							导出
+						</button>
 						<button
 							class="btn btn-sm btn-error btn-ghost"
 							:disabled="
@@ -331,7 +334,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, FileX, Plus, Rocket, X } from 'lucide-vue-next';
+import { ArrowLeft, ChevronDown, Download, FileX, Plus, Rocket, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

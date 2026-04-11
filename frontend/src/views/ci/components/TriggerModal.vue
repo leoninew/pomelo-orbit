@@ -33,6 +33,9 @@
 								<span v-if="isBuiltinVariable(variable)" class="badge badge-xs badge-ghost">
 									内置
 								</span>
+								<span v-else-if="variable.source === 'template_stage'" class="badge badge-xs badge-outline badge-success">
+									Stage
+								</span>
 							</label>
 							<input
 								v-model="form.variables[variable.name]"
@@ -118,12 +121,9 @@ const projectVariableMap = computed(() => {
 });
 
 function isBuiltinVariable(variable: VariableDeclaration): boolean {
-	// 内置变量包括：运行时变量（template、repository）和从 Stage 发现的变量
-	return (
-		variable.source === 'template' ||
-		variable.source === 'repository' ||
-		variable.source === 'template_stage'
-	);
+	// 内置变量：运行时注入，用户无法覆盖
+	// template_stage 变量（从 Stage 脚本提取）不属于内置，用户可覆盖其 default 值
+	return variable.source === 'template' || variable.source === 'repository';
 }
 
 function stringifyValue(value: unknown): string {

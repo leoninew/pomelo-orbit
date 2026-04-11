@@ -51,7 +51,8 @@ export function getSourceBadgeClass(source: VariableSource): string {
 
 /**
  * 判断变量是否可编辑
+ * template_stage 变量（从 Stage 脚本提取）可在触发时覆盖其 default 值
  */
 export function isVariableEditable(source: VariableSource): boolean {
-	return source === 'repository_custom' || source === 'template_custom';
+	return source === 'repository_custom' || source === 'template_custom' || source === 'template_stage';
 }

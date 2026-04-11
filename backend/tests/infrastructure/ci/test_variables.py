@@ -314,3 +314,40 @@ class TestMaskSecrets:
 
         assert result[0].value == "***"
         assert variables["PASSWORD"] == "secret123"
+
+
+class TestValidateVariablesTemplateStage:
+    """测试 template_stage 变量的校验行为"""
+
+    def test_template_stage_with_default_value_does_not_require_runtime_value(self):
+        """template_stage 变量有 default 值时，即使运行时没有提供值也不报错"""
+        declarations = [
+            VariableDeclaration(name="working_dir", value=".", source=VariableSource.TEMPLATE_STAGE),
+        ]
+        # 运行时没有提供 working_dir，但有 default 值，不应报错
+        validate_variables({}, declarations)
+
+    def test_template_stage_without_default_value_requires_runtime_value(self):
+        """template_stage 变量没有 default 值时，运行时必须提供"""
+        declarations = [
+            VariableDeclaration(name="IMAGE_TAG", value=None, source=VariableSource.TEMPLATE_STAGE),
+        ]
+        with pytest.raises(VariableError, match="缺少变量值: IMAGE_TAG"):
+            validate_variables({}, declarations)
+
+    def test_template_stage_runtime_value_overrides_default(self):
+        """运行时提供了值时，正常通过校验"""
+        declarations = [
+            VariableDeclaration(name="working_dir", value=".", source=VariableSource.TEMPLATE_STAGE),
+        ]
+        # 运行时提供了覆盖值，正常通过
+        validate_variables({"working_dir": "frontend"}, declarations)
+
+    def test_template_custom_without_value_still_fails(self):
+        """template_custom 变量没有值时仍然报错（不受 template_stage 规则影响）"""
+        declarations = [
+            VariableDeclaration(name="working_dir", value=".", source=VariableSource.TEMPLATE_STAGE),
+            VariableDeclaration(name="IMAGE_TAG", value=None, source=VariableSource.TEMPLATE_CUSTOM),
+        ]
+        with pytest.raises(VariableError, match="缺少变量值: IMAGE_TAG"):
+            validate_variables({"working_dir": "."}, declarations)

@@ -211,13 +211,8 @@ class PipelineRunService:
             template=template,
             trigger_ref=trigger_ref,
             runtime_overrides=runtime_variables,
+            stage_declarations=complete_variable_declarations,
         )
-
-        # 补充快照中 template_stage 变量的默认值（build_runtime_variables 只处理
-        # template.variable_declarations，不含从 Stage 脚本提取的变量）
-        for decl in complete_variable_declarations:
-            if decl.source == VariableSource.TEMPLATE_STAGE and decl.name not in merged and decl.value is not None:
-                merged[decl.name] = decl.value
 
         # 验证变量
         try:

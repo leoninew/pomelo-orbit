@@ -109,14 +109,16 @@ class VariableResolver:
         template: Any,  # PipelineTemplate
         trigger_ref: str,
         runtime_overrides: dict[str, Any] | None = None,
+        stage_declarations: list[VariableDeclaration] | None = None,
     ) -> dict[str, Any]:
         """构建运行时变量（用于流水线执行）
 
         合并优先级（高 -> 低）：
         1. 内置变量（全局 + 仓库 + 模板）- 不可覆盖
         2. 仓库自定义变量
-        3. 模板声明变量
-        4. 运行时覆盖变量（用户触发时传入，不能覆盖内置变量）
+        3. 运行时覆盖变量（用户触发时传入，不能覆盖内置变量）
+        4. 模板声明变量（template_custom）
+        5. Stage 提取变量默认值（template_stage）
         """
         # 1. 全局内置变量
         result = dict(self.global_variables)
@@ -127,20 +129,26 @@ class VariableResolver:
         # 3. 模板内置变量
         result.update(self._build_template_builtin_variables(template))
 
-        # 4. 模板声明变量（最低优先级）
-        for decl in template.variable_declarations:
-            if decl.name not in result and decl.value is not None:
-                result[decl.name] = decl.value
+        builtin_names = self.get_builtin_variable_names()
 
-        # 5. 仓库自定义变量
+        # 4. 仓库自定义变量
         for var in repository.variable_overrides or []:
             if var.name not in result and var.value is not None:
                 result[var.name] = var.value
 
-        # 6. 运行时覆盖变量
+        # 5. 运行时覆盖变量（用户触发时传入，可覆盖 template_stage 和 template_custom）
         if runtime_overrides:
-            builtin_names = self.get_builtin_variable_names()
             result.update({n: v for n, v in runtime_overrides.items() if n not in builtin_names})
+
+        # 6. 模板自定义变量默认值（未被运行时覆盖时才填入）
+        for decl in template.variable_declarations:
+            if decl.name not in result and decl.value is not None:
+                result[decl.name] = decl.value
+
+        # 7. Stage 提取变量默认值（最低优先级，未被任何上层覆盖时才填入）
+        for decl in stage_declarations or []:
+            if decl.source == VariableSource.TEMPLATE_STAGE and decl.name not in result and decl.value is not None:
+                result[decl.name] = decl.value
 
         return result
 
@@ -157,24 +165,29 @@ class VariableResolver:
         )
 
     def sanitize_variable_overrides(self, variables: list[VariableDeclaration] | None) -> list[VariableDeclaration]:
-        """过滤掉内置变量和 Stage 解析变量，只保留自定义变量
+        """过滤掉内置变量，只保留可持久化的自定义变量。
 
-        过滤规则：
-        1. 只保留 source=template_custom 或 source=repository_custom 的变量
-        2. 排除所有内置变量名称（即使 source 是 custom）
+        规则：
+        1. 保留 source=template_custom 或 source=repository_custom 的变量
+        2. template_stage 变量若用户已设置值，升级为 template_custom 持久化
+        3. 排除所有内置变量名称（即使 source 是 custom）
         """
         if not variables:
             return []
 
         builtin_names = self.get_builtin_variable_names()
+        result = []
 
-        # 只保留自定义变量，且不能使用内置变量名称
-        return [
-            var
-            for var in variables
-            if var.source in {VariableSource.TEMPLATE_CUSTOM, VariableSource.REPOSITORY_CUSTOM}
-            and var.name not in builtin_names
-        ]
+        for var in variables:
+            if var.name in builtin_names:
+                continue
+            if var.source in {VariableSource.TEMPLATE_CUSTOM, VariableSource.REPOSITORY_CUSTOM}:
+                result.append(var)
+            elif var.source == VariableSource.TEMPLATE_STAGE and var.value is not None:
+                # 用户显式设置了 stage 变量的值，升级为 template_custom 持久化
+                result.append(var.model_copy(update={"source": VariableSource.TEMPLATE_CUSTOM}))
+
+        return result
 
     def _get_repository_builtin_specs(self) -> BuiltinVariableSpecs:
         """仓库内置变量规范（用于生成描述）"""

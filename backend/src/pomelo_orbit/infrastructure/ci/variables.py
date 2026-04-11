@@ -187,8 +187,16 @@ def _has_value(value: Any) -> bool:
 
 
 def validate_variables(variables: dict[str, Any], declarations: list[VariableDeclaration]) -> None:
-    """校验所有变量在合并后都已有值。"""
-    missing = [decl.name for decl in declarations if not _has_value(variables.get(decl.name))]
+    """校验所有变量在合并后都已有值。
+
+    template_stage 变量有 default 值时不强制校验（default 值已在合并阶段填入）。
+    """
+    missing = [
+        decl.name
+        for decl in declarations
+        if not _has_value(variables.get(decl.name))
+        and not (decl.source == VariableSource.TEMPLATE_STAGE and _has_value(decl.value))
+    ]
     if missing:
         raise VariableError(f"缺少变量值: {', '.join(missing)}")
 

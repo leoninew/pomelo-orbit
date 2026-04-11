@@ -54,8 +54,10 @@ export interface OrchestrationUpdateReq {
 export interface VariableDeclaration {
 	name: string
 	description?: string
-	value?: string | number | boolean | null
+	default?: string | number | boolean | null  // 系统/脚本提供的原始默认值
+	value?: string | number | boolean | null     // 用户的显式覆盖值
 	secret: boolean
+	editable?: boolean  // 是否允许用户修改，由后端根据 source 设置
 	source?:
 		| 'global'
 		| 'repository'

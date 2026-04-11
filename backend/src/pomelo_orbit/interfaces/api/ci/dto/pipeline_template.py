@@ -86,9 +86,11 @@ class OrchestrationUpdateReq(BaseModel):
 class VariableDeclarationDto(BaseModel):
     name: str = Field(min_length=1)
     description: str = ""
+    default: Any = None
     value: Any = None
     secret: bool = False
     source: str = "template_custom"
+    editable: bool = True
 
     model_config = {"from_attributes": True}
 

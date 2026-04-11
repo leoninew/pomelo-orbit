@@ -72,7 +72,7 @@ def extract_variables(stages: list[StageDefinition]) -> dict[str, Any]:
 
 def _build_builtin_declaration(
     name: str,
-    value: Any,
+    default: Any,
     source: VariableSource,
     builtin_specs: BuiltinVariableSpecs | None = None,
 ) -> VariableDeclaration:
@@ -80,8 +80,9 @@ def _build_builtin_declaration(
     return VariableDeclaration(
         name=name,
         description=description,
-        value=value,
+        default=default,
         source=source,
+        editable=False,
     )
 
 
@@ -126,17 +127,18 @@ def merge_declarations(
                 merged.append(_build_builtin_declaration(name, None, source_for_builtin, builtin_specs))
                 merged_names.add(name)
             else:
-                default_value = extracted_variables[name]
+                stage_default = extracted_variables[name]
                 existing_decl = existing_map.get(name)
 
                 if existing_decl is not None:
+                    # 保留用户已有的声明（value、description、secret 等），补充 stage default
                     decl = existing_decl.model_copy(deep=True)
-                    if decl.value is None and default_value is not None:
-                        decl.value = default_value
+                    if decl.default is None and stage_default is not None:
+                        decl = decl.model_copy(update={"default": stage_default})
                 else:
                     decl = VariableDeclaration(
                         name=name,
-                        value=default_value,
+                        default=stage_default,
                         source=source_for_extracted,
                     )
                 merged.append(decl)
@@ -189,13 +191,13 @@ def _has_value(value: Any) -> bool:
 def validate_variables(variables: dict[str, Any], declarations: list[VariableDeclaration]) -> None:
     """校验所有变量在合并后都已有值。
 
-    template_stage 变量有 default 值时不强制校验（default 值已在合并阶段填入）。
+    template_stage 变量有 default 值时不强制校验（default 已在合并阶段作为兜底填入）。
     """
     missing = [
         decl.name
         for decl in declarations
         if not _has_value(variables.get(decl.name))
-        and not (decl.source == VariableSource.TEMPLATE_STAGE and _has_value(decl.value))
+        and not (decl.source == VariableSource.TEMPLATE_STAGE and _has_value(decl.default))
     ]
     if missing:
         raise VariableError(f"缺少变量值: {', '.join(missing)}")
@@ -240,10 +242,12 @@ def mask_secrets(variables: dict[str, Any], declarations: list[VariableDeclarati
         result.append(
             VariableDeclaration(
                 name=decl.name,
+                default=decl.default,
                 value=value,
                 description=decl.description,
                 secret=decl.secret,
                 source=decl.source,
+                editable=decl.editable,
             )
         )
     return result

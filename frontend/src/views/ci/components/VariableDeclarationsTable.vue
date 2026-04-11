@@ -17,7 +17,10 @@
 				<tr v-for="decl in declarations" :key="decl.name" class="hover">
 					<td class="font-mono text-xs">{{ decl.name }}</td>
 					<td class="font-mono text-xs cell-muted">
-						{{ hasDisplayValue(decl.value) ? (decl.secret ? '••••••' : String(decl.value)) : '—' }}
+						<span v-if="decl.secret && hasDisplayValue(effectiveValue(decl))">••••••</span>
+						<span v-else-if="hasDisplayValue(effectiveValue(decl))">{{ String(effectiveValue(decl)) }}</span>
+						<span v-else class="text-base-content/30">—</span>
+						<span v-if="decl.value != null && decl.default != null" class="ml-1 text-base-content/40 text-xs">(默认: {{ decl.secret ? '••••••' : String(decl.default) }})</span>
 					</td>
 					<td>
 						<span
@@ -31,7 +34,7 @@
 					</td>
 					<td class="cell-muted">{{ decl.description || '—' }}</td>
 					<td>
-						<div v-if="!readonly && canEdit(decl.source)">
+						<div v-if="!readonly && canEdit(decl)">
 							<button class="link link-primary text-xs" @click="emit('edit', decl.name)">
 								编辑
 							</button>
@@ -76,7 +79,13 @@ function hasDisplayValue(value: unknown) {
 	return true;
 }
 
-function canEdit(source?: string) {
-	return source ? isVariableEditable(source) : false;
+function effectiveValue(decl: VariableDeclaration) {
+	return decl.value ?? decl.default;
+}
+
+function canEdit(decl: VariableDeclaration) {
+	// 优先使用后端明确设置的 editable 字段，回退到 source 推断
+	if (decl.editable !== undefined) return decl.editable;
+	return decl.source ? isVariableEditable(decl.source) : false;
 }
 </script>

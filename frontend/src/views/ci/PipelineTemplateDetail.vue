@@ -23,7 +23,11 @@
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="font-semibold">基本信息</h2>
 						<div class="flex items-center gap-2">
-							<button class="btn btn-sm btn-primary gap-1" @click="openRunModal">
+							<button
+								class="btn btn-sm gap-1"
+								:class="isDirty ? 'btn-warning' : 'btn-primary'"
+								@click="openRunModal"
+							>
 								<Play class="size-3.5" />
 								运行
 							</button>
@@ -464,6 +468,16 @@ const stageCache = reactive<Record<string, PipelineStage>>({});
 const viewMode = ref<'list' | 'dag'>('list');
 const repositories = ref<Repository[]>([]);
 
+// 已保存的快照，用于 dirty 检测
+const savedOrch = ref<string>('[]');
+const savedDeclarations = ref<string>('[]');
+
+const isDirty = computed(() => {
+	const orchStr = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
+	const declStr = JSON.stringify(declarations.value);
+	return orchStr !== savedOrch.value || declStr !== savedDeclarations.value;
+});
+
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();
 const editOrchModalRef = ref<HTMLDialogElement>();
@@ -534,6 +548,9 @@ function applyTemplateState(tmpl: PipelineTemplate) {
 	template.value = tmpl;
 	sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
 	declarations.value = [...tmpl.variable_declarations];
+	// 更新已保存快照
+	savedOrch.value = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
+	savedDeclarations.value = JSON.stringify(declarations.value);
 	Object.keys(stageCache).forEach((key) => delete stageCache[key]);
 	tmpl.stages.forEach((stage) => (stageCache[stage.id] = stage));
 	Object.assign(editForm, {
@@ -751,6 +768,10 @@ async function fetchRepositories() {
 }
 
 async function openRunModal() {
+	if (isDirty.value) {
+		toast.error('有未保存的变更，请先保存后再运行');
+		return;
+	}
 	runForm.repositoryId = '';
 	runForm.triggerRef = '';
 	await fetchRepositories();

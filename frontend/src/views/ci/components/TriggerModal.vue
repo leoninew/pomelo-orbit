@@ -33,7 +33,10 @@
 								<span v-if="isBuiltinVariable(variable)" class="badge badge-xs badge-ghost">
 									内置
 								</span>
-								<span v-else-if="variable.source === 'template_stage'" class="badge badge-xs badge-outline badge-success">
+								<span
+									v-else-if="variable.source === 'template_stage'"
+									class="badge badge-xs badge-outline badge-success"
+								>
 									Stage
 								</span>
 							</label>

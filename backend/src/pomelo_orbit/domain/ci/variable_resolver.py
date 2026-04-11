@@ -30,6 +30,7 @@ from pomelo_orbit.infrastructure.ci.variables import extract_variables, merge_de
 @dataclass(frozen=True)
 class BuiltinVarSpec:
     """内置变量的元数据规范"""
+
     description: str
     editable: bool = False
 
@@ -104,10 +105,7 @@ class VariableResolver:
         )
 
         # editable：内置变量查 spec，其余默认 True
-        return [
-            decl.model_copy(update={"editable": all_editable_map.get(decl.name, True)})
-            for decl in declarations
-        ]
+        return [decl.model_copy(update={"editable": all_editable_map.get(decl.name, True)}) for decl in declarations]
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 场景 4: 运行流水线 - 合并所有来源的变量
@@ -207,17 +205,17 @@ class VariableResolver:
     def _get_repository_builtin_specs(self) -> dict[str, BuiltinVarSpec]:
         """仓库内置变量规范：description 和 editable"""
         return {
-            "repository_id":   BuiltinVarSpec("运行时注入: 当前项目 ID",   editable=False),
+            "repository_id": BuiltinVarSpec("运行时注入: 当前项目 ID", editable=False),
             "repository_name": BuiltinVarSpec("运行时注入: 当前项目名称", editable=False),
-            "repository_url":  BuiltinVarSpec("运行时注入: 当前仓库地址", editable=False),
-            "repository_ref":  BuiltinVarSpec("运行时注入: 当前分支",     editable=True),
+            "repository_url": BuiltinVarSpec("运行时注入: 当前仓库地址", editable=False),
+            "repository_ref": BuiltinVarSpec("运行时注入: 当前分支", editable=True),
         }
 
     def _get_template_builtin_specs(self) -> dict[str, BuiltinVarSpec]:
         """模板内置变量规范：description 和 editable"""
         return {
-            "template_id":      BuiltinVarSpec("运行时注入: 当前模板 ID",   editable=False),
-            "template_name":    BuiltinVarSpec("运行时注入: 当前模板名称", editable=False),
+            "template_id": BuiltinVarSpec("运行时注入: 当前模板 ID", editable=False),
+            "template_name": BuiltinVarSpec("运行时注入: 当前模板名称", editable=False),
             "template_version": BuiltinVarSpec("运行时注入: 当前模板版本", editable=False),
         }
 

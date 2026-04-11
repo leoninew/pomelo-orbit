@@ -9,16 +9,12 @@
 """
 
 from dataclasses import dataclass, field
-from typing import Any
-
-import pytest
 
 from pomelo_orbit.domain.ci.entities import PipelineStage, Repository
 from pomelo_orbit.domain.ci.value_objects import VariableDeclaration, VariableSource
 from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
 
-
-#  测试用 fixtures 
+#  测试用 fixtures
 
 
 def make_repository(
@@ -47,7 +43,7 @@ class FakeTemplate:
     variable_declarations: list = field(default_factory=list)
 
 
-#  场景 1: get_repository_variables 
+#  场景 1: get_repository_variables
 
 
 class TestGetRepositoryVariables:
@@ -227,16 +223,13 @@ class TestBuildRuntimeVariables:
 
     def test_runtime_overrides_cannot_override_builtins(self):
         result = self.resolver.build_runtime_variables(
-            self.repo, self.template, "main",
-            runtime_overrides={"repository_id": "fake", "CI_ENV": "dev"}
+            self.repo, self.template, "main", runtime_overrides={"repository_id": "fake", "CI_ENV": "dev"}
         )
         assert result["repository_id"] == "r1"
         assert result["CI_ENV"] == "production"
 
     def test_runtime_overrides_beat_repo_custom(self):
-        repo = make_repository(
-            variable_overrides=[VariableDeclaration(name="DEPLOY_ENV", value="staging")]
-        )
+        repo = make_repository(variable_overrides=[VariableDeclaration(name="DEPLOY_ENV", value="staging")])
         self.template.variable_declarations = [
             VariableDeclaration(name="DEPLOY_ENV", value="dev", source=VariableSource.TEMPLATE_CUSTOM)
         ]
@@ -246,9 +239,7 @@ class TestBuildRuntimeVariables:
         assert result["DEPLOY_ENV"] == "prod"
 
     def test_repo_custom_beats_template_custom(self):
-        repo = make_repository(
-            variable_overrides=[VariableDeclaration(name="IMAGE_TAG", value="repo-value")]
-        )
+        repo = make_repository(variable_overrides=[VariableDeclaration(name="IMAGE_TAG", value="repo-value")])
         self.template.variable_declarations = [
             VariableDeclaration(name="IMAGE_TAG", value="tmpl-value", source=VariableSource.TEMPLATE_CUSTOM)
         ]
@@ -265,18 +256,16 @@ class TestBuildRuntimeVariables:
     def test_template_custom_default_used_when_value_is_none(self):
         """template_custom 变量 value=None 时用 default"""
         self.template.variable_declarations = [
-            VariableDeclaration(name="IMAGE_TAG", value=None, default="from-default", source=VariableSource.TEMPLATE_CUSTOM)
+            VariableDeclaration(
+                name="IMAGE_TAG", value=None, default="from-default", source=VariableSource.TEMPLATE_CUSTOM
+            )
         ]
         result = self.resolver.build_runtime_variables(self.repo, self.template, "main")
         assert result["IMAGE_TAG"] == "from-default"
 
     def test_stage_default_used_as_lowest_priority(self):
-        stage_decls = [
-            VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE)
-        ]
-        result = self.resolver.build_runtime_variables(
-            self.repo, self.template, "main", stage_declarations=stage_decls
-        )
+        stage_decls = [VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE)]
+        result = self.resolver.build_runtime_variables(self.repo, self.template, "main", stage_declarations=stage_decls)
         assert result["working_dir"] == "."
 
     def test_stage_value_overrides_stage_default(self):
@@ -284,45 +273,33 @@ class TestBuildRuntimeVariables:
         stage_decls = [
             VariableDeclaration(name="working_dir", value="frontend", default=".", source=VariableSource.TEMPLATE_STAGE)
         ]
-        result = self.resolver.build_runtime_variables(
-            self.repo, self.template, "main", stage_declarations=stage_decls
-        )
+        result = self.resolver.build_runtime_variables(self.repo, self.template, "main", stage_declarations=stage_decls)
         assert result["working_dir"] == "frontend"
 
     def test_runtime_override_beats_stage_default(self):
-        stage_decls = [
-            VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE)
-        ]
+        stage_decls = [VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE)]
         result = self.resolver.build_runtime_variables(
-            self.repo, self.template, "main",
+            self.repo,
+            self.template,
+            "main",
             runtime_overrides={"working_dir": "backend"},
             stage_declarations=stage_decls,
         )
         assert result["working_dir"] == "backend"
 
     def test_repo_custom_beats_stage_default(self):
-        repo = make_repository(
-            variable_overrides=[VariableDeclaration(name="working_dir", value="infra")]
-        )
-        stage_decls = [
-            VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE)
-        ]
-        result = self.resolver.build_runtime_variables(
-            repo, self.template, "main", stage_declarations=stage_decls
-        )
+        repo = make_repository(variable_overrides=[VariableDeclaration(name="working_dir", value="infra")])
+        stage_decls = [VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE)]
+        result = self.resolver.build_runtime_variables(repo, self.template, "main", stage_declarations=stage_decls)
         assert result["working_dir"] == "infra"
 
     def test_full_priority_chain(self):
         """完整优先级链：内置 > 运行时 > 仓库自定义 > 模板自定义 > stage default"""
-        repo = make_repository(
-            variable_overrides=[VariableDeclaration(name="VAR", value="repo")]
-        )
+        repo = make_repository(variable_overrides=[VariableDeclaration(name="VAR", value="repo")])
         self.template.variable_declarations = [
             VariableDeclaration(name="VAR", value="tmpl", source=VariableSource.TEMPLATE_CUSTOM)
         ]
-        stage_decls = [
-            VariableDeclaration(name="VAR", default="stage", source=VariableSource.TEMPLATE_STAGE)
-        ]
+        stage_decls = [VariableDeclaration(name="VAR", default="stage", source=VariableSource.TEMPLATE_STAGE)]
 
         # 无运行时覆盖：仓库自定义胜出
         r1 = self.resolver.build_runtime_variables(repo, self.template, "main", stage_declarations=stage_decls)
@@ -330,7 +307,9 @@ class TestBuildRuntimeVariables:
 
         # 有运行时覆盖：运行时胜出
         r2 = self.resolver.build_runtime_variables(
-            repo, self.template, "main",
+            repo,
+            self.template,
+            "main",
             runtime_overrides={"VAR": "runtime"},
             stage_declarations=stage_decls,
         )
@@ -341,7 +320,7 @@ class TestBuildRuntimeVariables:
         assert "repository_id" in result
 
 
-#  场景 4: sanitize_variable_overrides 
+#  场景 4: sanitize_variable_overrides
 
 
 class TestSanitizeVariableOverrides:
@@ -387,9 +366,7 @@ class TestSanitizeVariableOverrides:
 
     def test_template_stage_without_value_is_dropped(self):
         """template_stage 变量没有 value（只有 default）时不持久化"""
-        var = VariableDeclaration(
-            name="working_dir", value=None, default=".", source=VariableSource.TEMPLATE_STAGE
-        )
+        var = VariableDeclaration(name="working_dir", value=None, default=".", source=VariableSource.TEMPLATE_STAGE)
         result = self.resolver.sanitize_variable_overrides([var])
         assert result == []
 
@@ -439,10 +416,9 @@ class TestGetBuiltinVariableNames:
         assert "template_id" in names
 
 
-#  辅助函数 
+#  辅助函数
 
 
 def _make_stage(script: str, env: dict | None = None) -> PipelineStage:
     """创建测试用 PipelineStage"""
     return PipelineStage.create(name="test-stage", image="alpine", script=script, env=env)
-

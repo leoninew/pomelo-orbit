@@ -31,8 +31,8 @@ class VariableSource(StrEnum):
 class VariableDeclaration(BaseModel):
     name: str
     description: str = ""
-    default: Any = None   # 系统/脚本提供的原始默认值，只读，用于展示和还原
-    value: Any = None     # 用户的显式覆盖值，None 表示"未覆盖，运行时用 default"
+    default: Any = None  # 系统/脚本提供的原始默认值，只读，用于展示和还原
+    value: Any = None  # 用户的显式覆盖值，None 表示"未覆盖，运行时用 default"
     secret: bool = False
     source: VariableSource = VariableSource.TEMPLATE_CUSTOM
     editable: bool = True  # 展示层属性，由 VariableResolver 在返回时根据 source 设置，不参与持久化语义判断

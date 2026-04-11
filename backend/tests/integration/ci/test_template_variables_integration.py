@@ -316,10 +316,11 @@ class TestRepositoryVariableLifecycle:
         assert "repository_name" in var_names
         assert "repository_url" in var_names
 
-        # 验证内置变量的 source
+        # 验证内置变量的 source 和 default（内置变量值现在在 default 字段）
         repo_id_var = next(v for v in variables if v["name"] == "repository_id")
         assert repo_id_var["source"] == "repository"
-        assert repo_id_var["value"] == repo_id
+        assert repo_id_var["default"] == repo_id
+        assert repo_id_var["value"] is None  # 用户未覆盖
 
         # 应该包含自定义变量
         assert "DEPLOY_ENV" in var_names
@@ -430,9 +431,10 @@ class TestRepositoryVariableLifecycle:
 
         variables = repo["variable_declarations"]
 
-        # 内置变量应该保持原值
+        # 内置变量应该保持原值（在 default 字段）
         repo_id_var = next(v for v in variables if v["name"] == "repository_id")
-        assert repo_id_var["value"] == repo_id  # 不是 "fake_id"
+        assert repo_id_var["default"] == repo_id  # 不是 "fake_id"
+        assert repo_id_var["value"] is None
         assert repo_id_var["source"] == "repository"
 
         # 自定义变量应该被保留

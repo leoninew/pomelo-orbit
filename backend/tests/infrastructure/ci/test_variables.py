@@ -82,7 +82,8 @@ class TestMergeDeclarations:
         assert result[0].name == "IMAGE_TAG"
         assert result[0].description == "镜像标签"
         assert result[0].secret is True
-        assert result[0].value == "latest"
+        assert result[0].default == "latest"  # stage 提取的默认值存入 default
+        assert result[0].value is None  # 用户未覆盖
 
     def test_builtin_name_hides_user_override(self):
         result = merge_declarations(
@@ -96,6 +97,7 @@ class TestMergeDeclarations:
         assert result[0].name == "GLOBAL_ENV"
         assert result[0].source == VariableSource.TEMPLATE
         assert result[0].value is None
+        assert result[0].default is None  # 内置变量 default 在运行时才注入
 
     def test_runtime_builtin_is_only_included_when_referenced(self):
         runtime_specs: BuiltinVariableSpecs = {
@@ -157,7 +159,8 @@ class TestMergeDeclarations:
         assert result[0].name == "IMAGE_TAG"
         assert result[0].source == VariableSource.TEMPLATE_CUSTOM
         assert result[0].description == "镜像标签"
-        assert result[0].value == "latest"
+        assert result[0].default == "latest"  # stage 提取的默认值存入 default
+        assert result[0].value is None  # 用户未覆盖
 
 
 class TestMergeVariables:
@@ -322,15 +325,14 @@ class TestValidateVariablesTemplateStage:
     def test_template_stage_with_default_value_does_not_require_runtime_value(self):
         """template_stage 变量有 default 值时，即使运行时没有提供值也不报错"""
         declarations = [
-            VariableDeclaration(name="working_dir", value=".", source=VariableSource.TEMPLATE_STAGE),
+            VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE),
         ]
-        # 运行时没有提供 working_dir，但有 default 值，不应报错
         validate_variables({}, declarations)
 
     def test_template_stage_without_default_value_requires_runtime_value(self):
         """template_stage 变量没有 default 值时，运行时必须提供"""
         declarations = [
-            VariableDeclaration(name="IMAGE_TAG", value=None, source=VariableSource.TEMPLATE_STAGE),
+            VariableDeclaration(name="IMAGE_TAG", default=None, source=VariableSource.TEMPLATE_STAGE),
         ]
         with pytest.raises(VariableError, match="缺少变量值: IMAGE_TAG"):
             validate_variables({}, declarations)
@@ -338,16 +340,15 @@ class TestValidateVariablesTemplateStage:
     def test_template_stage_runtime_value_overrides_default(self):
         """运行时提供了值时，正常通过校验"""
         declarations = [
-            VariableDeclaration(name="working_dir", value=".", source=VariableSource.TEMPLATE_STAGE),
+            VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE),
         ]
-        # 运行时提供了覆盖值，正常通过
         validate_variables({"working_dir": "frontend"}, declarations)
 
     def test_template_custom_without_value_still_fails(self):
         """template_custom 变量没有值时仍然报错（不受 template_stage 规则影响）"""
         declarations = [
-            VariableDeclaration(name="working_dir", value=".", source=VariableSource.TEMPLATE_STAGE),
-            VariableDeclaration(name="IMAGE_TAG", value=None, source=VariableSource.TEMPLATE_CUSTOM),
+            VariableDeclaration(name="working_dir", default=".", source=VariableSource.TEMPLATE_STAGE),
+            VariableDeclaration(name="IMAGE_TAG", default=None, source=VariableSource.TEMPLATE_CUSTOM),
         ]
         with pytest.raises(VariableError, match="缺少变量值: IMAGE_TAG"):
             validate_variables({"working_dir": "."}, declarations)

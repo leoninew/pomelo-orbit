@@ -10,10 +10,12 @@
 			<div class="flex items-center gap-2">
 				<button
 					v-if="run && !isTerminalStatus(run.status)"
-					class="btn btn-sm btn-ghost gap-1 text-primary"
+					class="btn btn-sm btn-ghost gap-1"
+					:class="isPolling ? 'text-primary' : 'text-base-content/50'"
+					@click="togglePolling"
 				>
-					<Loader2 class="size-4 animate-spin" />
-					自动刷新中
+					<Loader2 class="size-4" :class="isPolling ? 'animate-spin' : ''" />
+					{{ isPolling ? '自动刷新中' : '已暂停刷新' }}
 				</button>
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/run')">
 					<ArrowLeft class="size-4" />
@@ -270,6 +272,12 @@
 						<span class="loading loading-spinner loading-md text-primary" />
 					</div>
 					<div
+						v-else-if="run && !isTerminalStatus(run.status)"
+						class="text-sm text-base-content/60 py-4 text-center"
+					>
+						运行完成后展示
+					</div>
+					<div
 						v-else-if="artifacts.length === 0"
 						class="text-sm text-base-content/60 py-4 text-center"
 					>
@@ -438,6 +446,7 @@ const logsLoading = ref(false);
 let logPollAbort: AbortController | null = null;
 
 let pollAbort: AbortController | null = null;
+const isPolling = ref(false);
 
 function openLogDrawer(sr: StageRun) {
 	// 停止上一个日志轮询
@@ -542,10 +551,12 @@ async function handleCancel() {
 async function startPolling() {
 	pollAbort = new AbortController();
 	const signal = pollAbort.signal;
+	isPolling.value = true;
 	while (!signal.aborted) {
 		try {
 			run.value = await pipelineRunApi.get(runId.value);
 			if (isTerminalStatus(run.value.status)) {
+				isPolling.value = false;
 				fetchArtifacts();
 				break;
 			}
@@ -559,6 +570,15 @@ async function startPolling() {
 function stopPolling() {
 	pollAbort?.abort();
 	pollAbort = null;
+	isPolling.value = false;
+}
+
+function togglePolling() {
+	if (isPolling.value) {
+		stopPolling();
+	} else {
+		startPolling();
+	}
 }
 
 async function init() {
@@ -567,12 +587,13 @@ async function init() {
 	snapshot.value = undefined;
 	artifacts.value = [];
 	await fetchRun();
-	fetchArtifacts();
 	if (run.value?.snapshot_id) {
 		await fetchSnapshot(run.value.snapshot_id);
 	}
 	if (run.value && !isTerminalStatus(run.value.status)) {
 		startPolling();
+	} else {
+		fetchArtifacts();
 	}
 }
 

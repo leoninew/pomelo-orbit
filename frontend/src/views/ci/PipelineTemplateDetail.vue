@@ -331,8 +331,18 @@
 								{{ repo.name }} ({{ repo.code }})
 							</option>
 						</select>
-						<p v-if="selectedRepository && !selectedRepository.git_credential_id" class="fieldset-label text-error">
-							该项目未配置 Git 凭据，请先在<router-link :to="`/ci/repository/${selectedRepository.id}`" class="link link-primary">仓库详情</router-link>中配置
+						<p
+							v-if="selectedRepository && !selectedRepository.git_credential_id"
+							class="fieldset-label text-error"
+						>
+							该项目未配置 Git 凭据，请先在
+							<router-link
+								:to="`/ci/repository/${selectedRepository.id}`"
+								class="link link-primary"
+							>
+								仓库详情
+							</router-link>
+							中配置
 						</p>
 					</fieldset>
 					<fieldset v-if="selectedRepository" class="fieldset">

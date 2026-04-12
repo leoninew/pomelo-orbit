@@ -200,9 +200,8 @@ class PipelineExecutorImpl(PipelineExecutor):
     async def _execute_container(
         self, context: ExecutionContext, stage: StageDefinition, log_file: "TextIO | None" = None
     ) -> tuple[int, str]:
-        """普通容器执行：合并 stage.env 和 context.variables 作为环境变量"""
+        """普通容器执行：使用 context.variables 作为环境变量"""
         env = {k: str(v) for k, v in context.variables.items()}
-        env.update(stage.env)  # stage 级 env 优先
 
         commands = [line for line in stage.script.splitlines() if line.strip()]
         exit_code, output = await self.container_executor.run(
@@ -219,7 +218,7 @@ class PipelineExecutorImpl(PipelineExecutor):
     async def _execute_clone(
         self, context: ExecutionContext, stage: StageDefinition, log_file: "TextIO | None" = None
     ) -> tuple[int, str]:
-        """clone stage：处理 SSH key / token 挂载"""
+        """clone stage：注入 SSH key（GIT_SSH_COMMAND）或 token（URL 替换）"""
         if not context.credential_id:
             raise RuntimeError("clone stage requires git_credential_id on the project")
 
@@ -231,7 +230,6 @@ class PipelineExecutorImpl(PipelineExecutor):
         decrypted.encrypted_data = self.security_service.decrypt_value(credential.encrypted_data)
 
         env = {k: str(v) for k, v in context.variables.items()}
-        env.update(stage.env)
         extra_binds: dict[str, dict[str, str]] = {}
         key_path: Path | None = None
 
@@ -247,6 +245,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 key_path.unlink(missing_ok=True)
                 raise
             extra_binds[str(secrets_path)] = {"bind": "/run/secrets", "mode": "ro"}
+            env["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
 
         elif decrypted.type == CredentialType.GIT_TOKEN:
             token = decrypted.get_token()
@@ -260,6 +259,9 @@ class PipelineExecutorImpl(PipelineExecutor):
             # 直接替换脚本中已渲染的 SSH URL 为带 token 的 HTTPS URL
             stage = copy(stage)
             stage.script = stage.script.replace(context.repository_url, repo_url)
+
+        else:
+            raise RuntimeError(f"Unsupported credential type for clone: {decrypted.type}")
 
         # 在容器内修正 SSH key 权限（Windows 宿主机 chmod 不生效）
         script_lines = [line for line in stage.script.splitlines() if line.strip()]

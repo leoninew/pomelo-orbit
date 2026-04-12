@@ -41,8 +41,14 @@ class VariableDeclaration(BaseModel):
 type BuiltinVariableSpecs = dict[str, str]
 
 
+class ArtifactType(StrEnum):
+    DOCKER_IMAGE = "docker_image"
+    BINARY = "binary"
+
+
 class ArtifactConfig(BaseModel):
-    path: str
+    type: ArtifactType = ArtifactType.DOCKER_IMAGE
+    path: str  # binary: 容器内文件路径（相对 /artifacts）；docker_image: 镜像名:tag
     name: str
 
 

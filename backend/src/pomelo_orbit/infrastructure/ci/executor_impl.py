@@ -17,7 +17,7 @@ from pomelo_orbit.domain.ci.repositories import (
     CredentialRepository,
     StageRunRepository,
 )
-from pomelo_orbit.domain.ci.value_objects import CredentialType, StageDefinition
+from pomelo_orbit.domain.ci.value_objects import ArtifactType, CredentialType, StageDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
 from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path, get_stage_log_path
@@ -307,18 +307,30 @@ class PipelineExecutorImpl(PipelineExecutor):
         if not stage.artifacts:
             return
         for a in stage.artifacts:
-            full_path = Path(context.artifacts_path) / a.path
-            if not full_path.exists():
-                logger.warning(
-                    f"Artifact file not found, skipping: run={context.run_id}, stage={stage_name}, path={full_path}"
+            if a.type == ArtifactType.BINARY:
+                full_path = Path(context.artifacts_path) / a.path
+                if not full_path.exists():
+                    logger.warning(
+                        f"Artifact file not found, skipping: run={context.run_id}, stage={stage_name}, path={full_path}"
+                    )
+                    continue
+                artifact = Artifact.create(
+                    pipeline_run_id=context.run_id,
+                    stage_name=stage_name,
+                    artifact_type=ArtifactType.BINARY,
+                    name=a.name,
+                    path=str(full_path),
                 )
-                continue
-            artifact = Artifact.create(
-                pipeline_run_id=context.run_id,
-                stage_name=stage_name,
-                artifact_type="file",
-                name=a.name,
-                path=str(full_path),
-            )
+            elif a.type == ArtifactType.DOCKER_IMAGE:
+                # docker_image: path 字段存镜像名:tag，无需文件收集
+                artifact = Artifact.create(
+                    pipeline_run_id=context.run_id,
+                    stage_name=stage_name,
+                    artifact_type=ArtifactType.DOCKER_IMAGE,
+                    name=a.name,
+                    path=a.path,
+                )
+            else:
+                raise AssertionError(f"Unhandled artifact type: {a.type}")
             self.artifact_repo.save(artifact)
-            logger.info(f"Artifact saved: run={context.run_id}, stage={stage_name}, name={a.name}")
+            logger.info(f"Artifact saved: run={context.run_id}, stage={stage_name}, name={a.name}, type={a.type}")

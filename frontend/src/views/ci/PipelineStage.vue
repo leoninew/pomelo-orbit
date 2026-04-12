@@ -106,24 +106,61 @@
 			</div>
 
 			<!-- 制品 -->
-			<div v-if="stage.artifacts && stage.artifacts.length > 0" class="card bg-base-100 shadow-sm">
+			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<h2 class="font-semibold mb-4">制品</h2>
-					<table class="table table-sm">
+					<div class="flex items-center justify-between mb-4">
+						<h2 class="font-semibold">制品</h2>
+						<button class="btn btn-sm btn-ghost gap-1" @click="openAddArtifactModal">
+							<Plus class="size-3.5" />
+							添加制品
+						</button>
+					</div>
+					<div
+						v-if="!stage.artifacts || stage.artifacts.length === 0"
+						class="text-sm text-base-content/60 py-8 text-center"
+					>
+						暂无数据
+					</div>
+					<table v-else class="table w-full">
 						<thead>
-							<tr class="text-base-content/60">
+							<tr class="text-base-content/60 text-xs">
+								<th class="w-6 pr-0"></th>
+								<th class="w-8">#</th>
+								<th class="w-32">类型</th>
 								<th>名称</th>
-								<th>路径</th>
+								<th>路径 / 镜像</th>
+								<th class="w-40">操作</th>
 							</tr>
 						</thead>
-						<tbody>
-							<tr v-for="a in stage.artifacts" :key="a.name">
-								<td>{{ a.name }}</td>
+						<VueDraggable
+							v-model="sortableArtifacts"
+							tag="tbody"
+							handle=".drag-handle"
+							:animation="150"
+							ghost-class="opacity-30"
+						>
+							<tr v-for="(a, idx) in sortableArtifacts" :key="idx" class="hover">
+								<td class="pr-0 w-6">
+									<GripVertical
+										class="drag-handle size-4 text-base-content/30 hover:text-base-content/60 cursor-grab active:cursor-grabbing transition-colors"
+									/>
+								</td>
+								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 								<td>
-									<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ a.path }}</code>
+									<span class="badge badge-sm badge-ghost">{{ a.type }}</span>
+								</td>
+								<td class="text-sm">{{ a.name }}</td>
+								<td class="font-mono text-xs text-base-content/60">{{ a.path }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="link link-primary text-xs" @click="openEditArtifactModal(idx)">
+											编辑
+										</button>
+										<button class="link link-error text-xs" @click="confirmRemoveArtifact(idx)">删除</button>
+									</div>
 								</td>
 							</tr>
-						</tbody>
+						</VueDraggable>
 					</table>
 				</div>
 			</div>
@@ -236,18 +273,135 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- 环境变量 modal -->
+		<dialog ref="envModalRef" class="modal">
+			<div class="modal-box w-full max-w-xl">
+				<h3 class="font-bold text-lg mb-4">环境变量</h3>
+				<div v-if="envForm.length === 0" class="text-sm text-base-content/60 py-4 text-center">
+					暂无数据
+				</div>
+				<table v-else class="table table-sm w-full mb-2">
+					<thead>
+						<tr class="text-base-content/60 text-xs">
+							<th>Key</th>
+							<th>Value</th>
+							<th class="w-20">操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="(entry, idx) in envForm" :key="idx" class="hover">
+							<template v-if="envEditingIdx === idx">
+								<td><input v-model="entry.key" type="text" class="input input-xs w-full font-mono" /></td>
+								<td><input v-model="entry.value" type="text" class="input input-xs w-full font-mono" /></td>
+								<td>
+									<button class="link link-primary text-xs" @click="envEditingIdx = -1">完成</button>
+								</td>
+							</template>
+							<template v-else>
+								<td class="font-mono text-xs">{{ entry.key }}</td>
+								<td class="font-mono text-xs text-base-content/60">{{ entry.value || '—' }}</td>
+								<td>
+									<button class="link link-primary text-xs" @click="envEditingIdx = idx">编辑</button>
+									<button class="link link-error text-xs ml-2" @click="envForm.splice(idx, 1)">删除</button>
+								</td>
+							</template>
+						</tr>
+					</tbody>
+				</table>
+				<button class="btn btn-sm btn-ghost gap-1" @click="envForm.push({ key: '', value: '' }); envEditingIdx = envForm.length - 1">
+					<Plus class="size-3.5" />
+					添加
+				</button>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="saving" @click="handleSaveEnv">
+						<span v-if="saving" class="loading loading-spinner loading-xs" />
+						保存
+					</button>
+					<button class="btn btn-ghost" @click="envModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- 添加/编辑制品 modal -->
+		<dialog ref="artifactModalRef" class="modal">
+			<div class="modal-box w-full max-w-lg">
+				<h3 class="font-bold text-lg mb-4">{{ artifactForm.isEdit ? '编辑制品' : '添加制品' }}</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">类型</legend>
+						<select v-model="artifactForm.type" class="select w-full">
+							<option value="docker_image">Docker 镜像</option>
+							<option value="binary">二进制文件</option>
+						</select>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">名称</legend>
+						<input 
+							v-model="artifactForm.name" 
+							type="text" 
+							class="input w-full" 
+							placeholder="制品名称"
+						/>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路径 / 镜像</legend>
+						<input
+							v-model="artifactForm.path"
+							type="text"
+							class="input w-full font-mono"
+							:placeholder="artifactForm.type === 'docker_image' ? 'image:tag' : 'dist/app'"
+						/>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button 
+						class="btn btn-primary" 
+						:disabled="!artifactForm.name.trim() || !artifactForm.path.trim() || saving" 
+						@click="handleSaveArtifact"
+					>
+						<span v-if="saving" class="loading loading-spinner loading-xs" />
+						保存
+					</button>
+					<button class="btn btn-ghost" @click="artifactModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- 删除制品确认 modal -->
+		<dialog ref="deleteArtifactModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除制品</h3>
+				<p class="py-4 text-sm">
+					确定要删除制品「
+					<strong>{{ sortableArtifacts[artifactToDelete]?.name }}</strong>
+					」吗？此操作不可撤销。
+				</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="saving" @click="removeArtifact">
+						<span v-if="saving" class="loading loading-spinner loading-xs" />
+						删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteArtifactModalRef?.close(); artifactToDelete = -1">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, FilePen, X } from 'lucide-vue-next';
+import { ArrowLeft, FilePen, GripVertical, Plus, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { VueDraggable } from 'vue-draggable-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineStage } from '@/types/ci/template';
+import type { ArtifactConfig, ArtifactType, PipelineStage } from '@/types/ci/template';
 import { formatTime } from '@/utils/time';
 
 const route = useRoute();
@@ -263,9 +417,23 @@ const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 const stage = ref<PipelineStage>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const editModalRef = ref<HTMLDialogElement>();
+const envModalRef = ref<HTMLDialogElement>();
+const artifactModalRef = ref<HTMLDialogElement>();
+const deleteArtifactModalRef = ref<HTMLDialogElement>();
 const showScriptDrawer = ref(false);
 const scriptTemp = ref('');
 const form = reactive({ name: '', image: '', description: '' });
+const envForm = ref<{ key: string; value: string }[]>([]);
+const envEditingIdx = ref(-1);
+const artifactForm = reactive({
+	isEdit: false,
+	order: -1,
+	type: 'docker_image' as ArtifactType,
+	name: '',
+	path: '',
+});
+const sortableArtifacts = ref<ArtifactConfig[]>([]);
+const artifactToDelete = ref(-1);
 
 const envEntries = computed(() => Object.entries(stage.value?.env ?? {}));
 
@@ -273,6 +441,7 @@ async function fetchStage() {
 	try {
 		await execute(async () => {
 			stage.value = await pipelineStageApi.get(stageId.value);
+			sortableArtifacts.value = stage.value.artifacts ? [...stage.value.artifacts] : [];
 		});
 	} catch {
 		toast.error('获取 Stage 失败');
@@ -327,6 +496,122 @@ async function handleSave() {
 			stage.value = updated;
 			toast.success('更新成功');
 			editModalRef.value?.close();
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+function openEnvModal() {
+	envForm.value = Object.entries(stage.value?.env ?? {}).map(([key, value]) => ({ key, value }));
+	envEditingIdx.value = -1;
+	envModalRef.value?.showModal();
+}
+
+async function handleSaveEnv() {
+	const env: Record<string, string> = {};
+	for (const { key, value } of envForm.value) {
+		if (key.trim()) {
+			env[key.trim()] = value;
+		}
+	}
+	try {
+		await executeSave(async () => {
+			stage.value = await pipelineStageApi.update(stageId.value, { env });
+			toast.success('环境变量已保存');
+			envModalRef.value?.close();
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+function openAddArtifactModal() {
+	Object.assign(artifactForm, {
+		isEdit: false,
+		order: -1,
+		type: 'docker_image',
+		name: '',
+		path: '',
+	});
+	artifactModalRef.value?.showModal();
+}
+
+function openEditArtifactModal(idx: number) {
+	const artifact = sortableArtifacts.value[idx];
+	if (!artifact) {
+		return;
+	}
+	Object.assign(artifactForm, {
+		isEdit: true,
+		order: idx,
+		type: artifact.type,
+		name: artifact.name,
+		path: artifact.path,
+	});
+	artifactModalRef.value?.showModal();
+}
+
+function confirmRemoveArtifact(idx: number) {
+	artifactToDelete.value = idx;
+	deleteArtifactModalRef.value?.showModal();
+}
+
+async function removeArtifact() {
+	const idx = artifactToDelete.value;
+	if (idx === -1) {
+		return;
+	}
+	
+	sortableArtifacts.value.splice(idx, 1);
+	
+	try {
+		await executeSave(async () => {
+			stage.value = await pipelineStageApi.update(stageId.value, {
+				artifacts: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [],
+			});
+			toast.success('删除成功');
+			deleteArtifactModalRef.value?.close();
+			artifactToDelete.value = -1;
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '删除失败');
+	}
+}
+
+async function handleSaveArtifact() {
+	if (!artifactForm.name.trim() || !artifactForm.path.trim()) {
+		toast.error('名称和路径不能为空');
+		return;
+	}
+	
+	if (artifactForm.isEdit) {
+		// 编辑模式
+		sortableArtifacts.value[artifactForm.order] = {
+			type: artifactForm.type,
+			name: artifactForm.name,
+			path: artifactForm.path,
+		};
+	} else {
+		// 添加模式 - 检查名称是否重复
+		if (sortableArtifacts.value.some(a => a.name === artifactForm.name)) {
+			toast.error('制品名称已存在');
+			return;
+		}
+		sortableArtifacts.value.push({
+			type: artifactForm.type,
+			name: artifactForm.name,
+			path: artifactForm.path,
+		});
+	}
+	
+	try {
+		await executeSave(async () => {
+			stage.value = await pipelineStageApi.update(stageId.value, {
+				artifacts: sortableArtifacts.value,
+			});
+			toast.success(artifactForm.isEdit ? '更新成功' : '添加成功');
+			artifactModalRef.value?.close();
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '保存失败');

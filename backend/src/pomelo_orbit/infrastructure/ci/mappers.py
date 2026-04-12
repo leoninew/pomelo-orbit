@@ -16,6 +16,7 @@ from pomelo_orbit.domain.ci.entities import (
 )
 from pomelo_orbit.domain.ci.value_objects import (
     ArtifactConfig,
+    ArtifactType,
     CredentialType,
     PipelineRunTrigger,
     StageDefinition,
@@ -303,7 +304,7 @@ class ArtifactMapper:
             id=orm.id,
             pipeline_run_id=orm.pipeline_run_id,
             stage_name=orm.stage_name,
-            type=orm.type,
+            type=ArtifactType(orm.type),
             name=orm.name,
             path=orm.path,
             created_at=orm.created_at,

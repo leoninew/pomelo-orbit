@@ -139,17 +139,21 @@
 								:key="idx"
 								class="flex items-center gap-2"
 							>
+								<select v-model="artifact.type" class="select select-sm w-36">
+									<option value="docker_image">Docker 镜像</option>
+									<option value="binary">二进制文件</option>
+								</select>
+								<input
+									v-model="artifact.name"
+									type="text"
+									class="input input-sm w-28"
+									placeholder="名称"
+								/>
 								<input
 									v-model="artifact.path"
 									type="text"
 									class="input input-sm flex-1 font-mono text-sm"
-									placeholder="路径: coverage.xml"
-								/>
-								<input
-									v-model="artifact.name"
-									type="text"
-									class="input input-sm w-32"
-									placeholder="名称"
+									:placeholder="artifact.type === 'docker_image' ? 'myapp:latest' : 'dist/app'"
 								/>
 								<button
 									class="btn btn-xs btn-ghost text-error shrink-0"
@@ -359,7 +363,7 @@ function removeEnvVar(idx: number) {
 	syncEnv();
 }
 function addArtifact() {
-	form.artifacts.push({ path: '', name: '' });
+	form.artifacts.push({ type: 'docker_image', path: '', name: '' });
 }
 function removeArtifact(idx: number) {
 	form.artifacts.splice(idx, 1);

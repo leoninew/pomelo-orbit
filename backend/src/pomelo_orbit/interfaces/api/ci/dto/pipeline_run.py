@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from pomelo_orbit.domain.ci.value_objects import ArtifactType
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_stage_run import StageRunResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import VariableDeclarationDto
 
@@ -53,7 +54,7 @@ class ArtifactResp(BaseModel):
     id: str
     pipeline_run_id: str
     stage_name: str
-    type: str
+    type: ArtifactType
     name: str
     path: str | None
     created_at: datetime

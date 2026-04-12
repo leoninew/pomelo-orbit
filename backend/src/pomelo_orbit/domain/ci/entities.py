@@ -9,6 +9,7 @@ from ulid import ULID
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.value_objects import (
     ArtifactConfig,
+    ArtifactType,
     CredentialType,
     PipelineRunTrigger,
     StageDefinition,
@@ -470,7 +471,7 @@ class Artifact:
     id: str
     pipeline_run_id: str
     stage_name: str
-    type: str  # docker_image | file
+    type: ArtifactType
     name: str
     path: str | None = None
     created_at: datetime = field(default_factory=utc_now)
@@ -479,7 +480,7 @@ class Artifact:
     def create(
         pipeline_run_id: str,
         stage_name: str,
-        artifact_type: str,
+        artifact_type: ArtifactType,
         name: str,
         path: str | None = None,
     ) -> "Artifact":

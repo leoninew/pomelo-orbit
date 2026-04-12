@@ -1,4 +1,7 @@
+export type ArtifactType = 'docker_image' | 'binary'
+
 export interface ArtifactConfig {
+	type: ArtifactType
 	path: string
 	name: string
 }

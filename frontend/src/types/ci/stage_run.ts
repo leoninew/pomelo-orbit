@@ -1,4 +1,5 @@
 import type { TaskStatus } from '../common';
+import type { ArtifactType } from './template';
 
 // StageRun — Stage 执行记录
 export interface StageRun {
@@ -18,7 +19,7 @@ export interface Artifact {
 	id: string
 	pipeline_run_id: string
 	stage_name: string
-	type: 'docker_image' | 'file'
+	type: ArtifactType
 	name: string
 	path?: string
 	created_at: string

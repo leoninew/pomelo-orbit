@@ -174,7 +174,7 @@
 										<button class="link link-primary text-xs" @click="openEditOrchModal(idx)">
 											编辑
 										</button>
-										<button class="link link-error text-xs" @click="removeOrch(idx)">移除</button>
+										<button class="link link-error text-xs" @click="confirmRemoveOrch(idx)">移除</button>
 									</div>
 								</td>
 							</tr>
@@ -204,7 +204,7 @@
 							:declarations="declarations"
 							:readonly="false"
 							@edit="openEditVarModal"
-							@delete="deleteVariable"
+							@delete="confirmDeleteVariable"
 						/>
 					</div>
 				</div>
@@ -451,6 +451,40 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- 删除 Stage 确认 modal -->
+		<dialog ref="deleteOrchModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">移除 Stage</h3>
+				<p class="py-4 text-sm">
+					确定要移除 Stage「
+					<strong>{{ stageCache[sortableOrch[orchToDelete]?.stage_id]?.name ?? sortableOrch[orchToDelete]?.stage_id }}</strong>
+					」吗？此操作不可撤销。
+				</p>
+				<div class="modal-action">
+					<button class="btn btn-error" @click="removeOrch">移除</button>
+					<button class="btn btn-ghost" @click="deleteOrchModalRef?.close(); orchToDelete = -1">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- 删除变量确认 modal -->
+		<dialog ref="deleteVarModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除变量</h3>
+				<p class="py-4 text-sm">
+					确定要删除变量「
+					<strong>{{ varToDelete }}</strong>
+					」吗？此操作不可撤销。
+				</p>
+				<div class="modal-action">
+					<button class="btn btn-error" @click="deleteVariable">删除</button>
+					<button class="btn btn-ghost" @click="deleteVarModalRef?.close(); varToDelete = ''">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
@@ -516,6 +550,8 @@ const runModalRef = ref<HTMLDialogElement>();
 const addVarModalRef = ref<HTMLDialogElement>();
 const editVarModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
+const deleteOrchModalRef = ref<HTMLDialogElement>();
+const deleteVarModalRef = ref<HTMLDialogElement>();
 const editForm = reactive({ name: '', description: '' });
 const addOrchForm = reactive({
 	stageId: '',
@@ -534,6 +570,8 @@ const varForm = reactive({
 	value: '',
 	description: '',
 });
+const orchToDelete = ref(-1);
+const varToDelete = ref('');
 
 const editableOrchOptions = computed(() =>
 	sortableOrch.value.filter((o) => o.stage_id !== editOrchForm.editingStageId)
@@ -777,13 +815,24 @@ async function confirmAddOrch() {
 	addOrchModalRef.value?.close();
 }
 
-async function removeOrch(idx: number) {
+function confirmRemoveOrch(idx: number) {
+	orchToDelete.value = idx;
+	deleteOrchModalRef.value?.showModal();
+}
+
+async function removeOrch() {
+	const idx = orchToDelete.value;
+	if (idx === -1) {
+		return;
+	}
 	const removed = sortableOrch.value[idx];
 	sortableOrch.value.splice(idx, 1);
 	for (const o of sortableOrch.value) {
 		o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
 	}
 	await syncDeclarations();
+	deleteOrchModalRef.value?.close();
+	orchToDelete.value = -1;
 }
 
 function openEditOrchModal(idx: number) {
@@ -914,11 +963,22 @@ function handleEditVarOk() {
 	editVarModalRef.value?.close();
 }
 
-function deleteVariable(name: string) {
+function confirmDeleteVariable(name: string) {
+	varToDelete.value = name;
+	deleteVarModalRef.value?.showModal();
+}
+
+function deleteVariable() {
+	const name = varToDelete.value;
+	if (!name) {
+		return;
+	}
 	const idx = declarations.value.findIndex((d) => d.name === name);
 	if (idx !== -1) {
 		declarations.value.splice(idx, 1);
 	}
+	deleteVarModalRef.value?.close();
+	varToDelete.value = '';
 }
 
 watch(templateId, fetchTemplate);

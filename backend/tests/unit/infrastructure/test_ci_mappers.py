@@ -12,6 +12,7 @@ from pomelo_orbit.domain.ci.entities import (
     StageRun,
 )
 from pomelo_orbit.domain.ci.value_objects import (
+    ArtifactType,
     CredentialType,
     PipelineRunTrigger,
     VariableDeclaration,
@@ -204,7 +205,7 @@ class TestArtifactMapper:
         entity = Artifact.create(
             pipeline_run_id=str(ULID()),
             stage_name="build",
-            artifact_type="docker_image",
+            artifact_type=ArtifactType.DOCKER_IMAGE,
             name="myapp:latest",
         )
         orm = ArtifactMapper.to_orm(entity)

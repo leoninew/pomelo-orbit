@@ -52,6 +52,7 @@ class StageDefinition(BaseModel):
     name: str
     id: str
     image: str
+    version: int  # 快照时的 stage 版本
     depends_on: list[str] = []  # 编排属性，存储依赖的 stage_id 列表
     script: str
     env: dict[str, str] = {}
@@ -63,5 +64,6 @@ class StageOrchestration(BaseModel):
 
     stage_id: str
     stage_name: str  # 模板内唯一标识，默认为 stage 名，用于展示
+    stage_version: int  # 编排时记录的 stage 版本，用于检测 stage 是否有更新
     depends_on: list[str] = []  # 依赖的 stage_id 列表
     sort_order: int = 0  # 列表视图显示顺序

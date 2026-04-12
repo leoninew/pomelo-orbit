@@ -24,8 +24,7 @@
 						<h2 class="font-semibold">基本信息</h2>
 						<div class="flex items-center gap-2">
 							<button
-								class="btn btn-sm gap-1"
-								:class="isDirty ? 'btn-warning' : 'btn-primary'"
+								class="btn btn-sm btn-primary gap-1"
 								@click="openRunModal"
 							>
 								<Play class="size-3.5" />
@@ -94,12 +93,13 @@
 							</button>
 							<button
 								v-if="template"
-								class="btn btn-sm btn-primary"
+								class="btn btn-sm"
+								:class="isDirty || hasStageUpdates ? 'btn-warning animate-pulse' : 'btn-primary'"
 								:disabled="saving"
 								@click="handleSave"
 							>
 								<span v-if="saving" class="loading loading-spinner loading-xs" />
-								保存
+								更新
 							</button>
 						</div>
 					</div>
@@ -120,14 +120,15 @@
 								<th class="w-6 pr-0"></th>
 								<th class="w-8">#</th>
 								<th>Stage 名称</th>
+								<th class="w-20">版本</th>
 								<th>依赖</th>
 								<th class="w-24 text-center">制品</th>
-								<th class="w-32">操作</th>
+								<th class="w-40">操作</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr v-if="sortableOrch.length === 0">
-								<td colspan="6" class="text-center py-8 text-base-content/60">暂无数据</td>
+								<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
 							</tr>
 							<tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_id" class="hover">
 								<td class="pr-0 w-6">
@@ -137,12 +138,23 @@
 								</td>
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 								<td>
-									<router-link
-										:to="`/ci/pipeline-stage/${orch.stage_id}`"
-										class="link link-primary text-xs"
-									>
-										{{ stageCache[orch.stage_id]?.name ?? orch.stage_id }}
-									</router-link>
+									<div class="flex items-center gap-2">
+										<router-link
+											:to="`/ci/pipeline-stage/${orch.stage_id}`"
+											class="link link-primary text-xs"
+										>
+											{{ stageCache[orch.stage_id]?.name ?? orch.stage_id }}
+										</router-link>
+										<span
+											v-if="stageCache[orch.stage_id] && stageCache[orch.stage_id].version > orch.stage_version"
+											class="badge badge-xs badge-warning"
+										>
+											有更新
+										</span>
+									</div>
+								</td>
+								<td class="text-center">
+									<span class="badge badge-sm badge-ghost">v{{ orch.stage_version }}</span>
 								</td>
 								<td>
 									<div v-if="orch.depends_on.length > 0" class="flex items-center gap-1 flex-wrap">
@@ -419,8 +431,8 @@
 					」吗？此操作不可撤销。
 				</p>
 				<div class="modal-action">
-					<button class="btn btn-error" :disabled="saving" @click="handleDeleteOk">
-						<span v-if="saving" class="loading loading-spinner loading-xs" />
+					<button class="btn btn-error" :disabled="deleting" @click="handleDeleteOk">
+						<span v-if="deleting" class="loading loading-spinner loading-xs" />
 						删除
 					</button>
 					<button class="btn btn-ghost" @click="deleteModalRef?.close()">取消</button>
@@ -442,10 +454,10 @@ import { useToast } from '@/composables/useToast';
 import type {
 	PipelineStage,
 	PipelineTemplate,
-	Repository,
 	StageOrchestration,
 	VariableDeclaration,
 } from '@/types/ci/template';
+import type { Repository } from '@/types/ci/repository';
 import { detectCircularDependencies } from '@/utils/dag';
 import StageDAGView from './components/StageDAGView.vue';
 import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
@@ -457,6 +469,7 @@ const toast = useToast();
 
 const { status, execute } = useStatusAsync();
 const { loading: saving, execute: executeSave } = useStatusAsync();
+const { loading: deleting, execute: executeDelete } = useStatusAsync();
 const { loading: running, execute: executeRun } = useStatusAsync();
 const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
@@ -477,6 +490,13 @@ const isDirty = computed(() => {
 	const declStr = JSON.stringify(declarations.value);
 	return orchStr !== savedOrch.value || declStr !== savedDeclarations.value;
 });
+
+const hasStageUpdates = computed(() =>
+	sortableOrch.value.some((o) => {
+		const stage = stageCache[o.stage_id];
+		return stage && stage.version > o.stage_version;
+	})
+);
 
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();
@@ -526,6 +546,7 @@ const dagStages = computed(() =>
 			image: stage?.image ?? '',
 			script: stage?.script ?? '',
 			env: stage?.env ?? {},
+			version: stage?.version ?? 1,
 			depends_on: orch.depends_on,
 		};
 	})
@@ -638,8 +659,8 @@ async function handleEditInfoOk() {
 
 async function handleSave() {
 	const orchForCheck = sortableOrch.value.map((o) => ({
-		name: stageCache[o.stage_id]?.name ?? o.stage_id,
-		depends_on: o.depends_on.map((depId) => stageCache[depId]?.name ?? depId),
+		name: o.stage_id,
+		depends_on: o.depends_on,
 	}));
 	const cycle = detectCircularDependencies(orchForCheck);
 	if (cycle) {
@@ -649,6 +670,14 @@ async function handleSave() {
 
 	try {
 		await executeSave(async () => {
+			// 自动更新编排中的 stage_version
+			for (const orch of sortableOrch.value) {
+				const stage = stageCache[orch.stage_id];
+				if (stage && stage.version > orch.stage_version) {
+					orch.stage_version = stage.version;
+				}
+			}
+
 			const data = await pipelineTemplateApi.update(templateId, {
 				name: editForm.name,
 				description: editForm.description,
@@ -684,7 +713,7 @@ function openDeleteModal() {
 
 async function handleDeleteOk() {
 	try {
-		await executeSave(async () => {
+		await executeDelete(async () => {
 			await pipelineTemplateApi.delete(templateId);
 			toast.success('删除成功');
 			router.push('/ci/template');
@@ -715,12 +744,23 @@ async function confirmAddOrch() {
 	if (!stage) {
 		return;
 	}
-	sortableOrch.value.push({
+	const newOrch: StageOrchestration = {
 		stage_id: addOrchForm.stageId,
 		stage_name: stage.name,
+		stage_version: stage.version,
 		depends_on: addOrchForm.dependsOn,
 		sort_order: sortableOrch.value.length,
-	});
+	};
+	const orchForCheck = [...sortableOrch.value, newOrch].map((o) => ({
+		name: o.stage_id,
+		depends_on: o.depends_on,
+	}));
+	const cycle = detectCircularDependencies(orchForCheck);
+	if (cycle) {
+		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+		return;
+	}
+	sortableOrch.value.push(newOrch);
 	stageCache[stage.id] = stage;
 	await syncDeclarations();
 	addOrchModalRef.value?.close();
@@ -748,6 +788,15 @@ function openEditOrchModal(idx: number) {
 function confirmEditOrch() {
 	const orch = sortableOrch.value.find((o) => o.stage_id === editOrchForm.editingStageId);
 	if (!orch) {
+		return;
+	}
+	const orchForCheck = sortableOrch.value.map((o) => ({
+		name: o.stage_id,
+		depends_on: o.stage_id === editOrchForm.editingStageId ? editOrchForm.dependsOn : o.depends_on,
+	}));
+	const cycle = detectCircularDependencies(orchForCheck);
+	if (cycle) {
+		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
 		return;
 	}
 	orch.depends_on = editOrchForm.dependsOn;

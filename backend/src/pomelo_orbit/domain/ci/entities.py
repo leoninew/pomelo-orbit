@@ -169,6 +169,7 @@ class PipelineStage:
     image: str
     script: str
     env: dict[str, str]
+    version: int
     artifacts: list | None = None  # list[ArtifactConfig]
     description: str = ""
     created_at: datetime = field(default_factory=utc_now)
@@ -190,6 +191,7 @@ class PipelineStage:
             image=image,
             script=script,
             env=env or {},
+            version=1,
             artifacts=artifacts,
             description=description,
             created_at=now,
@@ -205,18 +207,25 @@ class PipelineStage:
         artifacts: list | None = None,
         description: str | None = None,
     ) -> None:
+        execution_changed = False
         if name is not None:
             self.name = name
-        if image is not None:
+        if image is not None and image != self.image:
             self.image = image
-        if script is not None:
+            execution_changed = True
+        if script is not None and script != self.script:
             self.script = script
-        if env is not None:
+            execution_changed = True
+        if env is not None and env != self.env:
             self.env = env
-        if artifacts is not None:
+            execution_changed = True
+        if artifacts is not None and artifacts != self.artifacts:
             self.artifacts = artifacts
+            execution_changed = True
         if description is not None:
             self.description = description
+        if execution_changed:
+            self.version += 1
         self.updated_at = utc_now()
 
     def to_stage_definition(self, name: str | None = None, depends_on: list | None = None) -> "StageDefinition":
@@ -225,6 +234,7 @@ class PipelineStage:
             name=name or self.name,
             id=self.id,
             image=self.image,
+            version=self.version,
             depends_on=depends_on or [],
             script=self.script,
             env=self.env,

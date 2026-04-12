@@ -29,6 +29,7 @@ class TestExtractVariables:
                 name="build",
                 image="alpine",
                 script="echo {{ IMAGE_NAME }}",
+                version=1,
             )
         ]
 
@@ -41,6 +42,7 @@ class TestExtractVariables:
                 name="build",
                 image="alpine",
                 script="cd {{ working_dir | default('.') }} && echo {{ retry | default(3) }}",
+                version=1,
                 env={"DEBUG": "{{ debug | default(false) }}"},
             )
         ]

@@ -43,7 +43,12 @@ def stage(
     name: str, image: str = "alpine:latest", commands: list[str] | None = None, depends_on: list[str] | None = None
 ) -> StageDefinition:
     return StageDefinition(
-        name=name, id=name, image=image, script="\n".join(commands or ["echo ok"]), depends_on=depends_on or []
+        name=name,
+        id=name,
+        image=image,
+        script="\n".join(commands or ["echo ok"]),
+        depends_on=depends_on or [],
+        version=1,
     )
 
 
@@ -132,6 +137,7 @@ class TestPipelineExecutorImpl:
             image="alpine:latest",
             script="echo build",
             artifacts=[ArtifactConfig(name="output.txt", path="output.txt")],
+            version=1,
         )
         executor = make_executor(container_executor=container_executor, artifact_repo=artifact_repo)
         result = await executor.execute(make_context(), [s])

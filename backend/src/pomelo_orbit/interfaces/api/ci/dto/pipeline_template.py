@@ -18,6 +18,7 @@ class StageDefinitionDto(BaseModel):
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     image: str = Field(min_length=1)
+    version: int
     depends_on: list[str] = Field(default_factory=list)
     script: str = Field(min_length=1)
     env: dict[str, str] = Field(default_factory=dict)
@@ -37,6 +38,7 @@ class PipelineStageResp(BaseModel):
     env: dict[str, str]
     artifacts: list[ArtifactConfigDto] | None
     description: str
+    version: int
     created_at: datetime
     updated_at: datetime
 
@@ -69,6 +71,7 @@ class StageOrchestrationDto(BaseModel):
 
     stage_id: str = Field(min_length=1)
     stage_name: str = Field(min_length=1)
+    stage_version: int
     depends_on: list[str] = Field(default_factory=list)
     sort_order: int = 0
 

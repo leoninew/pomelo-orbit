@@ -13,6 +13,7 @@ export interface PipelineStage {
 	env: Record<string, string>
 	artifacts?: ArtifactConfig[]
 	description: string
+	version: number
 	created_at: string
 	updated_at: string
 }
@@ -40,6 +41,7 @@ export interface PipelineStageUpdateReq {
 export interface StageOrchestration {
 	stage_id: string
 	stage_name: string
+	stage_version: number
 	depends_on: string[] // 存储 stage_id 列表
 	sort_order: number
 }

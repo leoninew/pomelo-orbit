@@ -26,7 +26,8 @@
         "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD",
         "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
         "artifacts": null,
-        "description": "克隆代码仓库"
+        "description": "克隆代码仓库",
+        "version": 1
       },
       {
         "id": "01KNRANZDR4PASATAXKTBBTRX9",
@@ -35,7 +36,8 @@
         "script": "cd {{ working_dir | default('.') }}\ngo test ./...",
         "env": "{}",
         "artifacts": null,
-        "description": "运行 Go 单元测试"
+        "description": "运行 Go 单元测试",
+        "version": 1
       },
       {
         "id": "01KNRDSSJ7RNND7110175N4NR2",
@@ -44,7 +46,8 @@
         "script": "cd {{ working_dir | default('.') }}\nmkdir -p dist\ngo build -v -o dist/",
         "env": "{}",
         "artifacts": null,
-        "description": "运行 Go 构建"
+        "description": "运行 Go 构建",
+        "version": 1
       },
       {
         "id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
@@ -53,7 +56,8 @@
         "script": "cd {{ working_dir | default('.') }}\ngo install golang.org/x/lint/golint@latest\ngolint ./... ",
         "env": "{}",
         "artifacts": null,
-        "description": "运行 Go  代码质量"
+        "description": "运行 Go  代码质量",
+        "version": 1
       }
     ],
     "comment": "内置 Stage 预设"
@@ -66,8 +70,8 @@
         "id": "01KNVEJPWVK757139NMNNNCEFE",
         "name": "Go 构建流水线",
         "description": "- test & lint\n- build",
-        "variable_declarations": "[]",
-        "version": 6
+        "variable_declarations": "[{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"hello\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
+        "version": 1
       }
     ],
     "comment": "内置模板"
@@ -81,6 +85,7 @@
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01STAGE000000000000000CLONE",
         "stage_name": "git clone",
+        "stage_version": 1,
         "depends_on": "[]",
         "sort_order": 0
       },
@@ -89,6 +94,7 @@
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRANZDR4PASATAXKTBBTRX9",
         "stage_name": "golang:1.23 test",
+        "stage_version": 1,
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 1
       },
@@ -97,6 +103,7 @@
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
         "stage_name": "golang:1.23 lint",
+        "stage_version": 1,
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 2
       },
@@ -105,6 +112,7 @@
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRDSSJ7RNND7110175N4NR2",
         "stage_name": "golang:1.23 build",
+        "stage_version": 1,
         "depends_on": "[\"01KNRANZDR4PASATAXKTBBTRX9\"]",
         "sort_order": 3
       }

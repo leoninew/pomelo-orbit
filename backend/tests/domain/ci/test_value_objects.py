@@ -58,6 +58,7 @@ class TestStageDefinition:
             name="build",
             image="python:3.12-slim",
             script="pip install -r requirements.txt\npytest tests/",
+            version=1,
         )
         assert stage.name == "build"
         assert stage.image == "python:3.12-slim"
@@ -75,6 +76,7 @@ class TestStageDefinition:
             env={"GOFLAGS": "-v"},
             artifacts=[ArtifactConfig(path="coverage.out", name="coverage")],
             depends_on=["clone-id"],
+            version=1,
         )
         assert stage.env == {"GOFLAGS": "-v"}
         assert stage.artifacts is not None
@@ -88,5 +90,6 @@ class TestStageDefinition:
             name="clone",
             image="alpine/git",
             script="git clone .",
+            version=1,
         )
         assert stage.name == "clone"

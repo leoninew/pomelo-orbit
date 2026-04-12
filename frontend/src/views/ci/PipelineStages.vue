@@ -14,6 +14,7 @@
 					<tr class="text-base-content/60">
 						<th>名称</th>
 						<th>镜像</th>
+						<th>版本</th>
 						<th>描述</th>
 						<th>更新时间</th>
 						<th>操作</th>
@@ -38,6 +39,7 @@
 							</router-link>
 						</td>
 						<td class="font-mono text-base-content/70">{{ s.image }}</td>
+						<td><span class="badge badge-sm badge-ghost">v{{ s.version }}</span></td>
 						<td class="text-base-content/60 max-w-xs truncate">{{ s.description || '—' }}</td>
 						<td class="text-base-content/60">{{ formatTime(s.updated_at) }}</td>
 						<td>

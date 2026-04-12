@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     env TEXT NOT NULL DEFAULT '{}',       -- JSON object
     artifacts TEXT,                        -- JSON array | NULL
     description TEXT NOT NULL DEFAULT '',
+    version INTEGER NOT NULL DEFAULT 1,   -- 每次修改递增，用于检测模板编排是否需要更新
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS pipeline_template_stage (
     template_id TEXT NOT NULL,
     stage_id TEXT NOT NULL,
     stage_name TEXT NOT NULL,              -- 模板内唯一标识，默认为 stage 名，用于 depends_on 引用
+    stage_version INTEGER NOT NULL DEFAULT 1,  -- 编排时记录的 stage 版本，用于检测 stage 是否有更新
     depends_on TEXT NOT NULL DEFAULT '[]',  -- JSON array of stage_name
     sort_order INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (template_id) REFERENCES pipeline_template(id) ON DELETE CASCADE,

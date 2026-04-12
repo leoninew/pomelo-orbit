@@ -39,6 +39,12 @@
 								<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ stage.image }}</code>
 							</dd>
 						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/60 w-20 shrink-0">版本</dt>
+							<dd>
+								<span class="badge badge-sm badge-ghost">v{{ stage.version }}</span>
+							</dd>
+						</div>
 						<div v-if="stage.description" class="flex gap-2 sm:col-span-2">
 							<dt class="text-base-content/60 w-20 shrink-0">描述</dt>
 							<dd>{{ stage.description }}</dd>

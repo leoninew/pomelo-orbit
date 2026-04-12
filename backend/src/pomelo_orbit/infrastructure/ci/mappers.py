@@ -71,6 +71,7 @@ class PipelineStageMapper:
             env=json.loads(orm.env),
             artifacts=artifacts,
             description=orm.description,
+            version=orm.version,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
         )
@@ -90,6 +91,7 @@ class PipelineStageMapper:
             env=json.dumps(entity.env),
             artifacts=artifacts_json,
             description=entity.description,
+            version=entity.version,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -102,6 +104,7 @@ class PipelineTemplateStageMapper:
         return StageOrchestration(
             stage_id=orm.stage_id,
             stage_name=orm.stage_name,
+            stage_version=orm.stage_version,
             depends_on=depends_on,
             sort_order=orm.sort_order,
         )
@@ -112,6 +115,7 @@ class PipelineTemplateStageMapper:
             template_id=template_id,
             stage_id=orch.stage_id,
             stage_name=orch.stage_name,
+            stage_version=orch.stage_version,
             depends_on=json.dumps(orch.depends_on),
             sort_order=orch.sort_order,
         )

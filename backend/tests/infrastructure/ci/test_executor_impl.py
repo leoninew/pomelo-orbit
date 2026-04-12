@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 def make_stage(name: str, commands: list[str], depends_on: list[str] | None = None) -> StageDefinition:
     return StageDefinition(
-        name=name, id=name, image="alpine:latest", script="\n".join(commands), depends_on=depends_on or []
+        name=name, id=name, image="alpine:latest", script="\n".join(commands), depends_on=depends_on or [], version=1
     )
 
 

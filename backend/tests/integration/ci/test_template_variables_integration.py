@@ -47,6 +47,7 @@ class TestTemplateVariableLifecycle:
                     {
                         "stage_id": stage_id,
                         "stage_name": "git clone",
+                        "stage_version": 1,
                         "depends_on": [],
                         "sort_order": 0,
                     }
@@ -85,6 +86,7 @@ class TestTemplateVariableLifecycle:
                     {
                         "stage_id": stage_id,
                         "stage_name": "git clone",
+                        "stage_version": 1,
                         "depends_on": [],
                         "sort_order": 0,
                     }
@@ -151,6 +153,7 @@ class TestTemplateVariableLifecycle:
                     {
                         "stage_id": stage_id,
                         "stage_name": "build",
+                        "stage_version": 1,
                         "depends_on": [],
                         "sort_order": 0,
                     }
@@ -227,6 +230,7 @@ class TestTemplateVariableLifecycle:
                     {
                         "stage_id": stage_id,
                         "stage_name": "test",
+                        "stage_version": 1,
                         "depends_on": [],
                         "sort_order": 0,
                     }
@@ -514,6 +518,7 @@ class TestRuntimeVariableMerging:
                     {
                         "stage_id": stage_id,
                         "stage_name": "build",
+                        "stage_version": 1,
                         "depends_on": [],
                         "sort_order": 0,
                     }

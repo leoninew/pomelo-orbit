@@ -95,12 +95,18 @@ class TemplateService:
 
         if orchestration is not None:
             stages = self._load_stages_by_ids([o.stage_id for o in orchestration]) if orchestration else []
+            stage_version_map = {s.id: s.version for s in stages}
+
+            # 将当前 stage 版本写入编排记录
+            orchestration_with_version = [
+                o.model_copy(update={"stage_version": stage_version_map[o.stage_id]}) for o in orchestration
+            ]
 
             # 仅在编排实际变更时才写库和递增版本
-            if tmpl.has_orchestration_changed(orchestration):
-                self.template_repo.save_orchestration(template_id, orchestration)
+            if tmpl.has_orchestration_changed(orchestration_with_version):
+                self.template_repo.save_orchestration(template_id, orchestration_with_version)
                 orch_changed = True
-                tmpl.orchestration = orchestration
+                tmpl.orchestration = orchestration_with_version
                 tmpl.stages = stages
 
         fields_changed = tmpl.update(

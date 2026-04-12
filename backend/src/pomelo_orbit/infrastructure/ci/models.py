@@ -48,6 +48,7 @@ class PipelineStageModel(Base):
     env: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     artifacts: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON | NULL
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
@@ -64,6 +65,7 @@ class PipelineTemplateStageModel(Base):
     )
     stage_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_stage.id"), nullable=False)
     stage_name: Mapped[str] = mapped_column(String(255), nullable=False)  # 模板内唯一标识
+    stage_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)  # 编排时的 stage 版本
     depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array of stage_name
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 

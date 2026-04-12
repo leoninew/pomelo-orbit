@@ -165,6 +165,7 @@
 							<tr class="text-base-content/60 text-xs">
 								<th class="w-8">#</th>
 								<th>Stage 名称</th>
+								<th class="w-20">版本</th>
 								<th>依赖</th>
 								<th class="w-24">状态</th>
 								<th>错误信息</th>
@@ -173,12 +174,12 @@
 						</thead>
 						<tbody>
 							<tr v-if="!snapshot && run.snapshot_id">
-								<td colspan="6" class="text-center py-8 text-base-content/60">
+								<td colspan="7" class="text-center py-8 text-base-content/60">
 									<span class="loading loading-spinner loading-sm" />
 								</td>
 							</tr>
 							<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
-								<td colspan="6" class="text-center py-8 text-base-content/60">暂无数据</td>
+								<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
 							</tr>
 							<tr
 								v-for="(stage, idx) in snapshot?.stages_snapshot ?? []"
@@ -187,6 +188,9 @@
 							>
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 								<td class="text-xs">{{ stage.name }}</td>
+								<td class="text-center">
+									<span class="badge badge-sm badge-ghost">v{{ stage.version }}</span>
+								</td>
 								<td>
 									<div v-if="stage.depends_on.length" class="flex items-center gap-1 flex-wrap">
 										<span

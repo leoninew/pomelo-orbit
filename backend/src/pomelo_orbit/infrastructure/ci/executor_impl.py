@@ -302,13 +302,18 @@ class PipelineExecutorImpl(PipelineExecutor):
         if not stage.artifacts:
             return
         for a in stage.artifacts:
-            full_path = str(Path(context.artifacts_path) / a.path)
+            full_path = Path(context.artifacts_path) / a.path
+            if not full_path.exists():
+                logger.warning(
+                    f"Artifact file not found, skipping: run={context.run_id}, stage={stage_name}, path={full_path}"
+                )
+                continue
             artifact = Artifact.create(
                 pipeline_run_id=context.run_id,
                 stage_name=stage_name,
                 artifact_type="file",
                 name=a.name,
-                path=full_path,
+                path=str(full_path),
             )
             self.artifact_repo.save(artifact)
             logger.info(f"Artifact saved: run={context.run_id}, stage={stage_name}, name={a.name}")

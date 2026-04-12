@@ -65,6 +65,7 @@ class ContainerExecutor:
             volume_binds = {
                 str(workspace_path): {"bind": "/workspace", "mode": "rw"},
                 str(artifacts_path): {"bind": "/artifacts", "mode": "rw"},
+                "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
             }
 
             # 添加用户指定的卷

@@ -127,10 +127,13 @@ class TestPipelineExecutorImpl:
         assert len(faulted) >= 1
 
     @pytest.mark.asyncio
-    async def test_save_artifacts(self):
+    async def test_save_artifacts(self, tmp_path):
         artifact_repo = Mock()
         container_executor = AsyncMock()
         container_executor.run.return_value = (0, "Success")
+        # 创建真实文件，通过文件存在性检查
+        artifact_file = tmp_path / "output.txt"
+        artifact_file.write_text("artifact content")
         s = StageDefinition(
             name="build",
             id="build",
@@ -139,8 +142,18 @@ class TestPipelineExecutorImpl:
             artifacts=[ArtifactConfig(name="output.txt", path="output.txt")],
             version=1,
         )
+        context = ExecutionContext(
+            run_id="run-1",
+            repository_id="project-1",
+            project_code="project-1",
+            repository_url="https://github.com/user/repo.git",
+            credential_id="cred-1",
+            workspace_path="/workspace",
+            artifacts_path=str(tmp_path),
+            variables={},
+        )
         executor = make_executor(container_executor=container_executor, artifact_repo=artifact_repo)
-        result = await executor.execute(make_context(), [s])
+        result = await executor.execute(context, [s])
         assert result is True
         assert artifact_repo.save.call_count == 1
 

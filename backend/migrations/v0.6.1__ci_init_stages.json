@@ -43,7 +43,7 @@
         "id": "01KNRDSSJ7RNND7110175N4NR2",
         "name": "golang:1.23 build",
         "image": "golang:1.23-alpine",
-        "script": "cd {{ working_dir | default('.') }}\nmkdir -p dist\ngo build -v -o dist/",
+        "script": "cd {{ working_dir | default('.') }}\nmkdir -p dist\ngo build -o dist/",
         "env": "{}",
         "artifacts": null,
         "description": "运行 Go 构建",

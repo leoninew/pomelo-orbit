@@ -331,6 +331,9 @@
 								{{ repo.name }} ({{ repo.code }})
 							</option>
 						</select>
+						<p v-if="selectedRepository && !selectedRepository.git_credential_id" class="fieldset-label text-error">
+							该项目未配置 Git 凭据，请先在<router-link :to="`/ci/repository/${selectedRepository.id}`" class="link link-primary">仓库详情</router-link>中配置
+						</p>
 					</fieldset>
 					<fieldset v-if="selectedRepository" class="fieldset">
 						<legend class="fieldset-legend">分支 / Ref</legend>
@@ -345,7 +348,7 @@
 				<div class="modal-action">
 					<button
 						class="btn btn-primary"
-						:disabled="!runForm.repositoryId || running"
+						:disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id || running"
 						@click="handleRunOk"
 					>
 						<span v-if="running" class="loading loading-spinner loading-xs" />

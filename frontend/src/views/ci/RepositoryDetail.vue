@@ -386,6 +386,10 @@ async function fetchCredentials() {
 }
 
 async function openTriggerModal() {
+	if (!repository.value?.git_credential_id) {
+		toast.error('请先配置 Git 凭据后再触发流水线');
+		return;
+	}
 	await fetchTemplates();
 	triggerModalRef.value?.open();
 }

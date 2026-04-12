@@ -158,7 +158,12 @@ class PipelineExecutorImpl(PipelineExecutor):
                 logger.info(f"Stage succeeded: run={context.run_id}, stage={stage.name}")
                 return True
 
-            error_message = output.strip() if output and output.strip() else f"Exit code: {exit_code}"
+            # 只取最后 3 行作为错误摘要，完整日志已写入日志文件
+            if output and output.strip():
+                last_lines = [line for line in output.strip().splitlines() if line.strip()][-3:]
+                error_message = "\n".join(last_lines)
+            else:
+                error_message = f"Exit code: {exit_code}"
             stage_run.complete_failed(exit_code, error_message)
             self._save_stage_run(stage_run)
             logger.warning(f"Stage failed: run={context.run_id}, stage={stage.name}, exit_code={exit_code}")

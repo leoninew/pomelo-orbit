@@ -4,9 +4,17 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-from docker.errors import ContainerError, ImageNotFound
+from docker.errors import ImageNotFound
 
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutionError, ContainerExecutor
+
+
+def make_mock_container(log_chunks: list[bytes], exit_code: int = 0) -> Mock:
+    """构造模拟容器对象（detach=True 模式）"""
+    container = Mock()
+    container.logs.return_value = iter(log_chunks)
+    container.wait.return_value = {"StatusCode": exit_code}
+    return container
 
 
 class TestContainerExecutor:
@@ -19,9 +27,8 @@ class TestContainerExecutor:
         workspace_path = Path("/tmp/workspace")
         artifacts_path = Path("/tmp/artifacts")
 
-        mock_container = b"Build successful\n"
         mock_client = Mock()
-        mock_client.containers.run.return_value = mock_container
+        mock_client.containers.run.return_value = make_mock_container([b"Build successful\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -43,12 +50,8 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_multiple_commands(self, mock_docker):
         """测试执行多条命令"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
-        mock_container = b"Command 1\nCommand 2\n"
         mock_client = Mock()
-        mock_client.containers.run.return_value = mock_container
+        mock_client.containers.run.return_value = make_mock_container([b"Command 1\nCommand 2\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -58,12 +61,11 @@ class TestContainerExecutor:
             commands=["echo hello", "echo world"],
             volumes=None,
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
+            workspace_path=Path("/tmp/workspace"),
+            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
-        # 验证命令被正确组合
         call_args = mock_client.containers.run.call_args
         assert call_args[1]["command"] == ["-c", "echo hello && echo world"]
 
@@ -71,12 +73,8 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_with_environment_variables(self, mock_docker):
         """测试传递环境变量"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
-        mock_container = b"ENV_VAR=value\n"
         mock_client = Mock()
-        mock_client.containers.run.return_value = mock_container
+        mock_client.containers.run.return_value = make_mock_container([b"ENV_VAR=value\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -87,8 +85,8 @@ class TestContainerExecutor:
             commands=["env"],
             volumes=None,
             environment=environment,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
+            workspace_path=Path("/tmp/workspace"),
+            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -99,12 +97,8 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_with_custom_volumes(self, mock_docker):
         """测试自定义卷挂载"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
-        mock_container = b"Volume mounted\n"
         mock_client = Mock()
-        mock_client.containers.run.return_value = mock_container
+        mock_client.containers.run.return_value = make_mock_container([b"Volume mounted\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -115,8 +109,8 @@ class TestContainerExecutor:
             commands=["ls /cache"],
             volumes=volumes,
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
+            workspace_path=Path("/tmp/workspace"),
+            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -129,9 +123,6 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_image_not_found(self, mock_docker):
         """测试镜像不存在"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
         mock_client = Mock()
         mock_client.containers.run.side_effect = ImageNotFound("Image not found")
         mock_docker.from_env.return_value = mock_client
@@ -144,26 +135,16 @@ class TestContainerExecutor:
                 commands=["echo hello"],
                 volumes=None,
                 environment=None,
-                workspace_path=workspace_path,
-                artifacts_path=artifacts_path,
+                workspace_path=Path("/tmp/workspace"),
+                artifacts_path=Path("/tmp/artifacts"),
             )
 
     @pytest.mark.asyncio
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_container_error(self, mock_docker):
         """测试容器执行失败（非零退出码）"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
         mock_client = Mock()
-        error = ContainerError(
-            container="test-container",
-            exit_status=1,
-            command="exit 1",
-            image="python:3.12",
-            stderr=b"Command failed",
-        )
-        mock_client.containers.run.side_effect = error
+        mock_client.containers.run.return_value = make_mock_container([b"Command failed\n"], exit_code=1)
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -173,8 +154,8 @@ class TestContainerExecutor:
             commands=["exit 1"],
             volumes=None,
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
+            workspace_path=Path("/tmp/workspace"),
+            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 1
@@ -187,9 +168,8 @@ class TestContainerExecutor:
         workspace_path = Path("/tmp/workspace")
         artifacts_path = Path("/tmp/artifacts")
 
-        mock_container = b"Mounted\n"
         mock_client = Mock()
-        mock_client.containers.run.return_value = mock_container
+        mock_client.containers.run.return_value = make_mock_container([b"Mounted\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -215,12 +195,8 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_working_directory_set(self, mock_docker):
         """测试工作目录设置为 /workspace"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
-        mock_container = b"Working dir: /workspace\n"
         mock_client = Mock()
-        mock_client.containers.run.return_value = mock_container
+        mock_client.containers.run.return_value = make_mock_container([b"Working dir: /workspace\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
@@ -230,8 +206,8 @@ class TestContainerExecutor:
             commands=["pwd"],
             volumes=None,
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
+            workspace_path=Path("/tmp/workspace"),
+            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -241,12 +217,9 @@ class TestContainerExecutor:
     @pytest.mark.asyncio
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_container_removed_after_execution(self, mock_docker):
-        """测试容器执行后自动删除"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
-        mock_container = b"Done\n"
+        """测试容器执行后被显式删除"""
         mock_client = Mock()
+        mock_container = make_mock_container([b"Done\n"])
         mock_client.containers.run.return_value = mock_container
         mock_docker.from_env.return_value = mock_client
 
@@ -257,21 +230,17 @@ class TestContainerExecutor:
             commands=["echo done"],
             volumes=None,
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
+            workspace_path=Path("/tmp/workspace"),
+            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
-        call_args = mock_client.containers.run.call_args
-        assert call_args[1]["remove"] is True
+        mock_container.remove.assert_called_once_with(force=True)
 
     @pytest.mark.asyncio
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_generic_exception(self, mock_docker):
         """测试通用异常处理"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
         mock_client = Mock()
         mock_client.containers.run.side_effect = RuntimeError("Unexpected error")
         mock_docker.from_env.return_value = mock_client
@@ -284,6 +253,6 @@ class TestContainerExecutor:
                 commands=["echo hello"],
                 volumes=None,
                 environment=None,
-                workspace_path=workspace_path,
-                artifacts_path=artifacts_path,
+                workspace_path=Path("/tmp/workspace"),
+                artifacts_path=Path("/tmp/artifacts"),
             )

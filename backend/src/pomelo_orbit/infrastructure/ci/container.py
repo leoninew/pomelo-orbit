@@ -92,7 +92,9 @@ class ContainerExecutor:
             safe_cmd = re.sub(r"https://[^@]+@", "https://***@", cmd_str)
             logger.info(f"Container run: image={image}, workdir=/workspace, command={safe_cmd}")
             loop = asyncio.get_running_loop()
-            fn = partial(self._run_container_sync, image, command, volume_binds, environment or {}, entrypoint, log_file)
+            fn = partial(
+                self._run_container_sync, image, command, volume_binds, environment or {}, entrypoint, log_file
+            )
             exit_code, logs = await loop.run_in_executor(None, fn)
             return exit_code, logs
 
@@ -151,5 +153,5 @@ class ContainerExecutor:
             if container is not None:
                 try:
                     container.remove(force=True)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Container remove failed: {e}")

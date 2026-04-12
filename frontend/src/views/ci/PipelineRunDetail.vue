@@ -345,16 +345,29 @@
 						<div v-if="logsLoading" class="flex justify-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</div>
-						<div v-else class="flex-1 bg-[#1a202c] rounded-box p-4 overflow-auto min-h-64">
-							<pre
-								v-if="logsText"
-								class="text-gray-300 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
-								>{{ logsText }}</pre
+						<div v-else class="relative flex-1">
+							<div
+								ref="logContainer"
+								class="bg-[#1a202c] rounded-box p-4 overflow-auto h-full min-h-64 max-h-[calc(100vh-140px)]"
+								@scroll="onLogScroll"
 							>
-							<div v-else class="flex flex-col items-center gap-2 py-8 text-gray-500">
-								<FileX class="size-8" />
-								<span class="text-sm">暂无数据</span>
+								<pre
+									v-if="logsText"
+									class="text-gray-300 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
+									>{{ logsText }}</pre
+								>
+								<div v-else class="flex flex-col items-center gap-2 py-8 text-gray-500">
+									<FileX class="size-8" />
+									<span class="text-sm">暂无数据</span>
+								</div>
 							</div>
+							<button
+								v-if="!isAtBottom && logsText"
+								class="absolute bottom-4 right-4 btn btn-sm btn-circle btn-neutral opacity-80 hover:opacity-100"
+								@click="scrollToBottom"
+							>
+								<ArrowDown class="size-4" />
+							</button>
 						</div>
 					</div>
 				</div>
@@ -390,8 +403,8 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, FileX, Loader2, X } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { ArrowLeft, ArrowDown, FileX, Loader2, X } from 'lucide-vue-next';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -443,7 +456,22 @@ const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
 // 日志 drawer 状态
 const logsText = ref('');
 const logsLoading = ref(false);
+const logContainer = ref<HTMLDivElement>();
+const isAtBottom = ref(true);
 let logPollAbort: AbortController | null = null;
+
+function onLogScroll() {
+	if (!logContainer.value) return;
+	const { scrollTop, scrollHeight, clientHeight } = logContainer.value;
+	// 距底部 40px 内视为"在底部"，避免 1px 误差导致按钮闪烁
+	isAtBottom.value = scrollHeight - scrollTop - clientHeight < 40;
+}
+
+function scrollToBottom() {
+	if (!logContainer.value) return;
+	logContainer.value.scrollTop = logContainer.value.scrollHeight;
+	isAtBottom.value = true;
+}
 
 let pollAbort: AbortController | null = null;
 const isPolling = ref(false);
@@ -453,6 +481,7 @@ function openLogDrawer(sr: StageRun) {
 	logPollAbort?.abort();
 	currentStageRun.value = sr;
 	logsText.value = '';
+	isAtBottom.value = true;
 	showLogsDrawer.value = true;
 	startLogPolling(sr.id);
 }
@@ -479,6 +508,10 @@ async function startLogPolling(stageRunId: string) {
 			if (resp.logs) {
 				logsText.value += resp.logs;
 				offset = resp.offset;
+				if (isAtBottom.value) {
+					await nextTick();
+					scrollToBottom();
+				}
 			}
 			logsLoading.value = false;
 			if (resp.is_complete) {

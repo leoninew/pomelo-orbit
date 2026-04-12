@@ -1,5 +1,7 @@
 """Repository 聚合的应用服务"""
 
+from dataclasses import MISSING
+
 from pomelo_orbit.domain.ci.entities import Repository
 from pomelo_orbit.domain.ci.repositories import CredentialRepository, RepositoryRepository
 from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
@@ -78,14 +80,18 @@ class RepositoryService:
         name: str | None = None,
         repository_url: str | None = None,
         variable_overrides: list[VariableDeclaration] | None = None,
-        git_credential_id: str | None = None,
+        git_credential_id: str | None = MISSING,  # type: ignore[assignment]
         default_branch: str | None = None,
     ) -> Repository:
         """更新项目"""
         repository = self.get_repository(repository_id)
 
-        # 验证凭据存在（如果要更新）
-        if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
+        # 验证凭据存在（如果要更新且非置空）
+        if (
+            git_credential_id is not MISSING  # type: ignore[comparison-overlap]
+            and git_credential_id
+            and not self.credential_repo.find_by_id(git_credential_id)
+        ):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
 
         repository.update(

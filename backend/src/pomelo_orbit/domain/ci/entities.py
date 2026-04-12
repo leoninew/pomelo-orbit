@@ -1,7 +1,7 @@
 """CI 实体"""
 
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import MISSING, dataclass, field
 from datetime import datetime
 
 from ulid import ULID
@@ -59,7 +59,7 @@ class Repository:
         name: str | None = None,
         repository_url: str | None = None,
         variable_overrides: list[VariableDeclaration] | None = None,
-        git_credential_id: str | None = None,
+        git_credential_id: str | None = MISSING,  # type: ignore[assignment]  # MISSING 作哨兵，区分"未传"和"传了 None（置空）"
         default_branch: str | None = None,
     ) -> None:
         if name is not None:
@@ -68,7 +68,7 @@ class Repository:
             self.repository_url = repository_url
         if variable_overrides is not None:
             self.variable_overrides = variable_overrides
-        if git_credential_id is not None:
+        if git_credential_id is not MISSING:  # type: ignore[comparison-overlap]
             self.git_credential_id = git_credential_id
         if default_branch is not None:
             self.default_branch = default_branch

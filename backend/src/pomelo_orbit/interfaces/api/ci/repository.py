@@ -2,6 +2,7 @@
 
 import logging
 import math
+from dataclasses import MISSING
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
@@ -112,7 +113,7 @@ def update_repository(
         name=data.name,
         repository_url=data.repository_url,
         variable_overrides=data.variable_overrides,
-        git_credential_id=data.git_credential_id,
+        git_credential_id=data.git_credential_id if "git_credential_id" in data.model_fields_set else MISSING,  # type: ignore[arg-type]
         default_branch=data.default_branch,
     )
 

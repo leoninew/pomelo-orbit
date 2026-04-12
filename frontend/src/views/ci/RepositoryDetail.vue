@@ -419,15 +419,21 @@ async function openEditModal() {
 async function handleEditOk() {
 	try {
 		await executeOp(async () => {
-			await repositoryApi.update(repositoryId, {
+			const data = await repositoryApi.update(repositoryId, {
 				name: editForm.name,
 				repository_url: editForm.repository_url,
-				git_credential_id: editForm.git_credential_id || undefined,
+				git_credential_id: editForm.git_credential_id || null,
 				default_branch: editForm.default_branch || 'master',
+			});
+			repository.value = data;
+			Object.assign(editForm, {
+				name: data.name,
+				repository_url: data.repository_url,
+				git_credential_id: data.git_credential_id ?? '',
+				default_branch: data.default_branch ?? 'master',
 			});
 			toast.success('更新成功');
 			editModalRef.value?.close();
-			await fetchProject();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '更新失败');

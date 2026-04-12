@@ -5,9 +5,18 @@
     "data": [
       {
         "id": "01KNNRBH52BQJYT9487B2H8N62",
-        "name": "golang-example",
+        "name": "golang/example",
         "code": "golang-example",
         "repository_url": "https://github.com/golang/example",
+        "git_credential_id": null,
+        "variable_overrides": "[]",
+        "default_branch": "master"
+      },
+      {
+        "id": "01KP0JZFQQA2Z77FRRVH35BYF6",
+        "name": "docker/awesome-compose",
+        "code": "awesome-compose",
+        "repository_url": "https://github.com/docker/awesome-compose",
         "git_credential_id": null,
         "variable_overrides": "[]",
         "default_branch": "master"
@@ -58,6 +67,16 @@
         "artifacts": null,
         "description": "运行 Go  代码质量",
         "version": 1
+      },
+      {
+        "id": "01KP0K4ZTV60PM2XDT11MTX2MY",
+        "name": "docker build",
+        "image": "docker:29.4",
+        "script": "docker build -t {{ docker_image }} {{ working_dir | default('.') }}",
+        "env": "{}",
+        "artifacts": null,
+        "description": "",
+        "version": 7
       }
     ],
     "comment": "内置 Stage 预设"
@@ -72,6 +91,13 @@
         "description": "- test & lint\n- build",
         "variable_declarations": "[{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"hello\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
         "version": 1
+      },
+      {
+        "id": "01KP0K6W1YW73REFQE8YAVTPMN",
+        "name": "General Container Image Build Pipeline",
+        "description": "标准容器镜像制作流程流水线",
+        "variable_declarations": "[{\"name\":\"docker_image\",\"description\":\"\",\"default\":null,\"value\":\"fastapi-test\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true},{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"fastapi\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
+        "version": 11
       }
     ],
     "comment": "内置模板"
@@ -115,6 +141,24 @@
         "stage_version": 1,
         "depends_on": "[\"01KNRANZDR4PASATAXKTBBTRX9\"]",
         "sort_order": 3
+      },
+      {
+        "id": "01KP0MMQDSPNZASKDPMNDJZAHM",
+        "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
+        "stage_id": "01STAGE000000000000000CLONE",
+        "stage_name": "git clone",
+        "stage_version": 1,
+        "depends_on": "[]",
+        "sort_order": 0
+      },
+      {
+        "id": "01KP0MMQDSPNZASKDPMNDJZAHN",
+        "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
+        "stage_id": "01KP0K4ZTV60PM2XDT11MTX2MY",
+        "stage_name": "docker build",
+        "stage_version": 6,
+        "depends_on": "[\"01STAGE000000000000000CLONE\"]",
+        "sort_order": 1
       }
     ],
     "comment": "内置模板的 Stage 编排"

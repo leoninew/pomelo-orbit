@@ -461,14 +461,18 @@ const isAtBottom = ref(true);
 let logPollAbort: AbortController | null = null;
 
 function onLogScroll() {
-	if (!logContainer.value) return;
+	if (!logContainer.value) {
+		return;
+	}
 	const { scrollTop, scrollHeight, clientHeight } = logContainer.value;
 	// 距底部 40px 内视为"在底部"，避免 1px 误差导致按钮闪烁
 	isAtBottom.value = scrollHeight - scrollTop - clientHeight < 40;
 }
 
 function scrollToBottom() {
-	if (!logContainer.value) return;
+	if (!logContainer.value) {
+		return;
+	}
 	logContainer.value.scrollTop = logContainer.value.scrollHeight;
 	isAtBottom.value = true;
 }

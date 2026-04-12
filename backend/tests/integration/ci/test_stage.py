@@ -12,7 +12,6 @@ class TestStageList:
                 name=f"stage-{i}",
                 image="alpine:latest",
                 script=f"echo {i}",
-                env="{}",
                 artifacts="[]",
                 description="",
             )
@@ -37,7 +36,6 @@ class TestStageCreate:
                 "name": "build",
                 "image": "alpine:latest",
                 "script": "echo 'building'",
-                "env": {"VAR": "value"},
                 "artifacts": [{"path": "/app/dist", "name": "dist"}],
                 "description": "Build stage",
             },
@@ -47,7 +45,6 @@ class TestStageCreate:
         assert data["name"] == "build"
         assert data["image"] == "alpine:latest"
         assert data["script"] == "echo 'building'"
-        assert data["env"] == {"VAR": "value"}
         assert len(data["artifacts"]) == 1
 
     def test_validates_required_fields(self, auth_client):
@@ -90,7 +87,6 @@ class TestStageGet:
             name="get-test",
             image="alpine:latest",
             script="echo test",
-            env="{}",
             artifacts="[]",
             description="",
         )
@@ -118,7 +114,6 @@ class TestStageUpdate:
             name="update-test",
             image="alpine:latest",
             script="echo old",
-            env="{}",
             artifacts="[]",
             description="",
         )
@@ -133,7 +128,6 @@ class TestStageUpdate:
                 "name": "updated-stage",
                 "image": "ubuntu:latest",
                 "script": "echo new",
-                "env": {"NEW_VAR": "value"},
             },
         )
         assert resp.status_code == 200
@@ -148,7 +142,6 @@ class TestStageUpdate:
             name="partial-test",
             image="alpine:latest",
             script="echo test",
-            env="{}",
             artifacts="[]",
             description="old description",
         )
@@ -175,7 +168,6 @@ class TestStageDelete:
             name="delete-test",
             image="alpine:latest",
             script="echo test",
-            env="{}",
             artifacts="[]",
             description="",
         )
@@ -197,7 +189,6 @@ class TestStageDelete:
             name="referenced-stage",
             image="alpine:latest",
             script="echo test",
-            env="{}",
             artifacts="[]",
             description="",
         )
@@ -243,3 +234,4 @@ class TestStageUsage:
         resp = auth_client.get(f"/api/ci/pipeline-stage/{stage_id}")
         assert resp.status_code == 200
         assert resp.json()["id"] == stage_id
+

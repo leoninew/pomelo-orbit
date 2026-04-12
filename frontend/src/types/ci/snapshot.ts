@@ -8,7 +8,6 @@ export interface SnapshotStage {
 	version: number
 	depends_on: string[] // 存储依赖的 stage_id 列表
 	script: string
-	env: Record<string, string>
 	artifacts?: ArtifactConfig[]
 }
 

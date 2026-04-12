@@ -1,4 +1,4 @@
-export type ArtifactType = 'docker_image' | 'binary'
+export type ArtifactType = 'docker_image' | 'binary';
 
 export interface ArtifactConfig {
 	type: ArtifactType
@@ -13,7 +13,6 @@ export interface PipelineStage {
 	name: string
 	image: string
 	script: string
-	env: Record<string, string>
 	artifacts?: ArtifactConfig[]
 	description: string
 	version: number
@@ -25,7 +24,6 @@ export interface PipelineStageCreateReq {
 	name: string
 	image: string
 	script: string
-	env?: Record<string, string>
 	artifacts?: ArtifactConfig[]
 	description?: string
 }
@@ -34,7 +32,6 @@ export interface PipelineStageUpdateReq {
 	name?: string
 	image?: string
 	script?: string
-	env?: Record<string, string>
 	artifacts?: ArtifactConfig[]
 	description?: string
 }

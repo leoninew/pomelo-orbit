@@ -25,7 +25,6 @@ def _iter_stage_templates(stages: list[StageDefinition]) -> list[str]:
     texts: list[str] = []
     for stage in stages:
         texts.append(stage.script or "")
-        texts.extend((stage.env or {}).values())
         if stage.artifacts:
             texts.extend(a.path for a in stage.artifacts)
             texts.extend(a.name for a in stage.artifacts)
@@ -224,7 +223,6 @@ def resolve_stage(stage: StageDefinition, variables: dict[str, Any]) -> StageDef
 
     stage = deepcopy(stage)
     stage.script = render_value(stage.script)
-    stage.env = {k: render_value(v) for k, v in stage.env.items()}
     if stage.artifacts:
         for artifact in stage.artifacts:
             artifact.path = render_value(artifact.path)

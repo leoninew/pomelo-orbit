@@ -45,7 +45,6 @@ class PipelineStageModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     image: Mapped[str] = mapped_column(String(255), nullable=False)
     script: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    env: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
     artifacts: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON | NULL
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

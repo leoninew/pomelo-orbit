@@ -64,21 +64,18 @@ class TestStageDefinition:
         assert stage.image == "python:3.12-slim"
         assert "pytest" in stage.script
         assert stage.depends_on == []
-        assert stage.env == {}
         assert stage.artifacts is None
 
-    def test_stage_with_env_and_artifacts(self):
+    def test_stage_with_artifacts(self):
         stage = StageDefinition(
             id="test",
             name="test",
             image="golang:1.22-alpine",
             script="go test ./...",
-            env={"GOFLAGS": "-v"},
             artifacts=[ArtifactConfig(path="coverage.out", name="coverage")],
             depends_on=["clone-id"],
             version=1,
         )
-        assert stage.env == {"GOFLAGS": "-v"}
         assert stage.artifacts is not None
         assert len(stage.artifacts) == 1
         assert len(stage.depends_on) == 1

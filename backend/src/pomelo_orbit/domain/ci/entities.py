@@ -169,7 +169,6 @@ class PipelineStage:
     name: str
     image: str
     script: str
-    env: dict[str, str]
     version: int
     artifacts: list | None = None  # list[ArtifactConfig]
     description: str = ""
@@ -181,7 +180,6 @@ class PipelineStage:
         name: str,
         image: str,
         script: str,
-        env: dict[str, str] | None = None,
         artifacts: list | None = None,
         description: str = "",
     ) -> "PipelineStage":
@@ -191,7 +189,6 @@ class PipelineStage:
             name=name,
             image=image,
             script=script,
-            env=env or {},
             version=1,
             artifacts=artifacts,
             description=description,
@@ -204,7 +201,6 @@ class PipelineStage:
         name: str | None = None,
         image: str | None = None,
         script: str | None = None,
-        env: dict[str, str] | None = None,
         artifacts: list | None = None,
         description: str | None = None,
     ) -> None:
@@ -216,9 +212,6 @@ class PipelineStage:
             execution_changed = True
         if script is not None and script != self.script:
             self.script = script
-            execution_changed = True
-        if env is not None and env != self.env:
-            self.env = env
             execution_changed = True
         if artifacts is not None and artifacts != self.artifacts:
             self.artifacts = artifacts
@@ -238,7 +231,6 @@ class PipelineStage:
             version=self.version,
             depends_on=depends_on or [],
             script=self.script,
-            env=self.env,
             artifacts=[ArtifactConfig(**a) if isinstance(a, dict) else a for a in self.artifacts]
             if self.artifacts
             else None,

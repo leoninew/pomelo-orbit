@@ -192,14 +192,14 @@ class TestArtifactMapper:
             id=str(ULID()),
             pipeline_run_id=str(ULID()),
             stage_name="build",
-            type="file",
+            type="docker_image",
             name="output.txt",
             path="/artifacts/output.txt",
             created_at=utc_now(),
         )
         entity = ArtifactMapper.to_domain(orm)
         assert entity.stage_name == orm.stage_name
-        assert entity.type == orm.type
+        assert entity.type == ArtifactType.DOCKER_IMAGE
 
     def test_to_orm(self):
         entity = Artifact.create(

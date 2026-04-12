@@ -43,14 +43,12 @@ class TestExtractVariables:
                 image="alpine",
                 script="cd {{ working_dir | default('.') }} && echo {{ retry | default(3) }}",
                 version=1,
-                env={"DEBUG": "{{ debug | default(false) }}"},
             )
         ]
 
         assert extract_variables(stages) == {
             "working_dir": ".",
             "retry": 3,
-            "debug": False,
         }
 
 

@@ -33,7 +33,6 @@
         "name": "git clone",
         "image": "alpine/git",
         "script": "git init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD",
-        "env": "{\"GIT_SSH_COMMAND\": \"ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no\"}",
         "artifacts": null,
         "description": "克隆代码仓库",
         "version": 1
@@ -43,7 +42,6 @@
         "name": "golang:1.23 test",
         "image": "golang:1.23-alpine",
         "script": "cd {{ working_dir | default('.') }}\ngo test ./...",
-        "env": "{}",
         "artifacts": null,
         "description": "运行 Go 单元测试",
         "version": 1
@@ -53,7 +51,6 @@
         "name": "golang:1.23 build",
         "image": "golang:1.23-alpine",
         "script": "cd {{ working_dir | default('.') }}\nmkdir -p dist\ngo build -o dist/",
-        "env": "{}",
         "artifacts": null,
         "description": "运行 Go 构建",
         "version": 1
@@ -63,9 +60,8 @@
         "name": "golang:1.23 lint",
         "image": "golang:1.23-alpine",
         "script": "cd {{ working_dir | default('.') }}\ngo install golang.org/x/lint/golint@latest\ngolint ./... ",
-        "env": "{}",
         "artifacts": null,
-        "description": "运行 Go  代码质量",
+        "description": "运行 Go 代码质量",
         "version": 1
       },
       {
@@ -73,7 +69,6 @@
         "name": "docker build",
         "image": "docker:29.4",
         "script": "docker build -t {{ docker_image }} {{ working_dir | default('.') }}",
-        "env": "{}",
         "artifacts": null,
         "description": "",
         "version": 7

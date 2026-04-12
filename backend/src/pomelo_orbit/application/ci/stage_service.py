@@ -45,7 +45,6 @@ class StageService:
         name: str,
         image: str,
         script: str,
-        env: dict[str, str] | None = None,
         artifacts: list | None = None,
         description: str = "",
     ) -> PipelineStage:
@@ -56,7 +55,6 @@ class StageService:
             name=name,
             image=image,
             script=script,
-            env=env,
             artifacts=artifacts,
             description=description,
         )
@@ -69,7 +67,6 @@ class StageService:
         name: str | None = None,
         image: str | None = None,
         script: str | None = None,
-        env: dict[str, str] | None = None,
         artifacts: list | None = None,
         description: str | None = None,
     ) -> PipelineStage:
@@ -77,7 +74,7 @@ class StageService:
         stage = self.get_stage(stage_id)
         if name is not None and name != stage.name and self.stage_repo.find_by_name(name):
             raise BusinessError(f"Stage '{name}' already exists", status_code=409)
-        stage.update(name=name, image=image, script=script, env=env, artifacts=artifacts, description=description)
+        stage.update(name=name, image=image, script=script, artifacts=artifacts, description=description)
         self.stage_repo.save(stage)
         return stage
 
@@ -100,7 +97,6 @@ class StageService:
             name=new_name,
             image=stage.image,
             script=stage.script,
-            env=dict(stage.env),
             artifacts=[asdict(a) if not isinstance(a, dict) else a for a in stage.artifacts]
             if stage.artifacts
             else None,

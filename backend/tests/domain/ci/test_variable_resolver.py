@@ -419,6 +419,6 @@ class TestGetBuiltinVariableNames:
 #  辅助函数
 
 
-def _make_stage(script: str, env: dict | None = None) -> PipelineStage:
+def _make_stage(script: str) -> PipelineStage:
     """创建测试用 PipelineStage"""
-    return PipelineStage.create(name="test-stage", image="alpine", script=script, env=env)
+    return PipelineStage.create(name="test-stage", image="alpine", script=script)

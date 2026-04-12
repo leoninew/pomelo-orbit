@@ -45,7 +45,6 @@ def create_stage(
         name=data.name,
         image=data.image,
         script=data.script,
-        env=data.env,
         artifacts=[a.model_dump() for a in data.artifacts] if data.artifacts else None,
         description=data.description,
     )
@@ -73,7 +72,6 @@ def update_stage(
         name=data.name,
         image=data.image,
         script=data.script,
-        env=data.env,
         artifacts=[a.model_dump() for a in data.artifacts] if data.artifacts is not None else None,
         description=data.description,
     )

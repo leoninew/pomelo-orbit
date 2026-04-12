@@ -174,7 +174,9 @@
 										<button class="link link-primary text-xs" @click="openEditOrchModal(idx)">
 											编辑
 										</button>
-										<button class="link link-error text-xs" @click="confirmRemoveOrch(idx)">移除</button>
+										<button class="link link-error text-xs" @click="confirmRemoveOrch(idx)">
+											移除
+										</button>
 									</div>
 								</td>
 							</tr>
@@ -458,12 +460,25 @@
 				<h3 class="font-bold text-lg">移除 Stage</h3>
 				<p class="py-4 text-sm">
 					确定要移除 Stage「
-					<strong>{{ stageCache[sortableOrch[orchToDelete]?.stage_id]?.name ?? sortableOrch[orchToDelete]?.stage_id }}</strong>
+					<strong>
+						{{
+							stageCache[sortableOrch[orchToDelete]?.stage_id]?.name ??
+							sortableOrch[orchToDelete]?.stage_id
+						}}
+					</strong>
 					」吗？此操作不可撤销。
 				</p>
 				<div class="modal-action">
 					<button class="btn btn-error" @click="removeOrch">移除</button>
-					<button class="btn btn-ghost" @click="deleteOrchModalRef?.close(); orchToDelete = -1">取消</button>
+					<button
+						class="btn btn-ghost"
+						@click="
+							deleteOrchModalRef?.close();
+							orchToDelete = -1;
+						"
+					>
+						取消
+					</button>
 				</div>
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -480,7 +495,15 @@
 				</p>
 				<div class="modal-action">
 					<button class="btn btn-error" @click="deleteVariable">删除</button>
-					<button class="btn btn-ghost" @click="deleteVarModalRef?.close(); varToDelete = ''">取消</button>
+					<button
+						class="btn btn-ghost"
+						@click="
+							deleteVarModalRef?.close();
+							varToDelete = '';
+						"
+					>
+						取消
+					</button>
 				</div>
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -594,7 +617,6 @@ const dagStages = computed(() =>
 			name: stage?.name ?? orch.stage_id,
 			image: stage?.image ?? '',
 			script: stage?.script ?? '',
-			env: stage?.env ?? {},
 			version: stage?.version ?? 1,
 			depends_on: orch.depends_on,
 		};

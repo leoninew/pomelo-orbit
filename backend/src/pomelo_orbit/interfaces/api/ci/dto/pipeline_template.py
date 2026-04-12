@@ -24,7 +24,6 @@ class StageDefinitionDto(BaseModel):
     version: int
     depends_on: list[str] = Field(default_factory=list)
     script: str = Field(min_length=1)
-    env: dict[str, str] = Field(default_factory=dict)
     artifacts: list[ArtifactConfigDto] | None = None
 
     model_config = {"from_attributes": True}
@@ -38,7 +37,6 @@ class PipelineStageResp(BaseModel):
     name: str
     image: str
     script: str
-    env: dict[str, str]
     artifacts: list[ArtifactConfigDto] | None
     description: str
     version: int
@@ -52,7 +50,6 @@ class PipelineStageCreateReq(BaseModel):
     name: str = Field(min_length=1)
     image: str = Field(min_length=1)
     script: str = Field(min_length=1)
-    env: dict[str, str] = Field(default_factory=dict)
     artifacts: list[ArtifactConfigDto] | None = None
     description: str = ""
 
@@ -61,7 +58,6 @@ class PipelineStageUpdateReq(BaseModel):
     name: str | None = Field(default=None, min_length=1)
     image: str | None = Field(default=None, min_length=1)
     script: str | None = Field(default=None, min_length=1)
-    env: dict[str, str] | None = None
     artifacts: list[ArtifactConfigDto] | None = None
     description: str | None = None
 

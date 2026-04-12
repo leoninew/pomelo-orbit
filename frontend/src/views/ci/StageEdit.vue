@@ -89,39 +89,6 @@
 						<p v-else class="text-sm text-base-content/60 pt-1">暂无</p>
 					</fieldset>
 
-					<!-- 环境变量 -->
-					<fieldset class="fieldset">
-						<legend class="fieldset-legend">
-							<span>环境变量（可选）</span>
-							<button class="btn btn-xs btn-ghost ml-2" @click="addEnvVar">
-								<Plus class="size-3" />
-							</button>
-						</legend>
-						<div v-if="envEntries.length > 0" class="flex flex-col gap-2 pt-1">
-							<div v-for="(entry, idx) in envEntries" :key="idx" class="flex items-center gap-2">
-								<input
-									v-model="entry.key"
-									type="text"
-									class="input input-sm w-36 font-mono text-sm"
-									placeholder="KEY"
-									@change="syncEnv"
-								/>
-								<span class="text-base-content/40 shrink-0">=</span>
-								<input
-									v-model="entry.value"
-									type="text"
-									class="input input-sm flex-1 font-mono text-sm"
-									placeholder="value"
-									@input="syncEnv"
-								/>
-								<button class="btn btn-xs btn-ghost text-error shrink-0" @click="removeEnvVar(idx)">
-									<X class="size-3" />
-								</button>
-							</div>
-						</div>
-						<p v-else class="text-sm text-base-content/60 pt-1">暂无</p>
-					</fieldset>
-
 					<!-- 制品 -->
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">
@@ -255,17 +222,8 @@ const form = reactive({
 	image: '',
 	description: '',
 	script: '',
-	env: {} as Record<string, string>,
 	artifacts: [] as ArtifactConfig[],
 });
-
-const envEntries = ref<{ key: string; value: string }[]>([]);
-
-function syncEnv() {
-	form.env = Object.fromEntries(
-		envEntries.value.filter((e) => e.key.trim()).map((e) => [e.key, e.value])
-	);
-}
 
 watch(
 	() => props.open,
@@ -281,23 +239,16 @@ watch(
 				image: s.image,
 				description: s.description,
 				script: s.script,
-				env: { ...s.env },
 				artifacts: s.artifacts ? JSON.parse(JSON.stringify(s.artifacts)) : [],
 			});
-			envEntries.value = Object.entries(form.env).map(([key, value]) => ({
-				key,
-				value,
-			}));
 		} else {
 			Object.assign(form, {
 				name: '',
 				image: '',
 				description: '',
 				script: '',
-				env: {},
 				artifacts: [],
 			});
-			envEntries.value = [];
 		}
 	}
 );
@@ -319,7 +270,6 @@ function handleClose() {
 }
 
 async function handleSave() {
-	syncEnv();
 	if (!form.name.trim()) {
 		toast.error('请输入 Stage 名称');
 		return;
@@ -339,7 +289,6 @@ async function handleSave() {
 			name: form.name.trim(),
 			image: form.image.trim(),
 			script: form.script.trim(),
-			env: form.env,
 			artifacts: form.artifacts.length > 0 ? form.artifacts : undefined,
 			description: form.description,
 		};
@@ -355,13 +304,6 @@ async function handleSave() {
 	}
 }
 
-function addEnvVar() {
-	envEntries.value.push({ key: '', value: '' });
-}
-function removeEnvVar(idx: number) {
-	envEntries.value.splice(idx, 1);
-	syncEnv();
-}
 function addArtifact() {
 	form.artifacts.push({ type: 'docker_image', path: '', name: '' });
 }

@@ -80,31 +80,6 @@
 				</div>
 			</div>
 
-			<!-- 环境变量 -->
-			<div v-if="envEntries.length > 0" class="card bg-base-100 shadow-sm">
-				<div class="card-body p-5">
-					<h2 class="font-semibold mb-4">环境变量</h2>
-					<table class="table table-sm">
-						<thead>
-							<tr class="text-base-content/60">
-								<th>Key</th>
-								<th>Value</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr v-for="[k, v] in envEntries" :key="k">
-								<td>
-									<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ k }}</code>
-								</td>
-								<td>
-									<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ v }}</code>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-
 			<!-- 制品 -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
@@ -156,7 +131,9 @@
 										<button class="link link-primary text-xs" @click="openEditArtifactModal(idx)">
 											编辑
 										</button>
-										<button class="link link-error text-xs" @click="confirmRemoveArtifact(idx)">删除</button>
+										<button class="link link-error text-xs" @click="confirmRemoveArtifact(idx)">
+											删除
+										</button>
 									</div>
 								</td>
 							</tr>
@@ -274,56 +251,6 @@
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
 
-		<!-- 环境变量 modal -->
-		<dialog ref="envModalRef" class="modal">
-			<div class="modal-box w-full max-w-xl">
-				<h3 class="font-bold text-lg mb-4">环境变量</h3>
-				<div v-if="envForm.length === 0" class="text-sm text-base-content/60 py-4 text-center">
-					暂无数据
-				</div>
-				<table v-else class="table table-sm w-full mb-2">
-					<thead>
-						<tr class="text-base-content/60 text-xs">
-							<th>Key</th>
-							<th>Value</th>
-							<th class="w-20">操作</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="(entry, idx) in envForm" :key="idx" class="hover">
-							<template v-if="envEditingIdx === idx">
-								<td><input v-model="entry.key" type="text" class="input input-xs w-full font-mono" /></td>
-								<td><input v-model="entry.value" type="text" class="input input-xs w-full font-mono" /></td>
-								<td>
-									<button class="link link-primary text-xs" @click="envEditingIdx = -1">完成</button>
-								</td>
-							</template>
-							<template v-else>
-								<td class="font-mono text-xs">{{ entry.key }}</td>
-								<td class="font-mono text-xs text-base-content/60">{{ entry.value || '—' }}</td>
-								<td>
-									<button class="link link-primary text-xs" @click="envEditingIdx = idx">编辑</button>
-									<button class="link link-error text-xs ml-2" @click="envForm.splice(idx, 1)">删除</button>
-								</td>
-							</template>
-						</tr>
-					</tbody>
-				</table>
-				<button class="btn btn-sm btn-ghost gap-1" @click="envForm.push({ key: '', value: '' }); envEditingIdx = envForm.length - 1">
-					<Plus class="size-3.5" />
-					添加
-				</button>
-				<div class="modal-action">
-					<button class="btn btn-primary" :disabled="saving" @click="handleSaveEnv">
-						<span v-if="saving" class="loading loading-spinner loading-xs" />
-						保存
-					</button>
-					<button class="btn btn-ghost" @click="envModalRef?.close()">取消</button>
-				</div>
-			</div>
-			<form method="dialog" class="modal-backdrop"><button>close</button></form>
-		</dialog>
-
 		<!-- 添加/编辑制品 modal -->
 		<dialog ref="artifactModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
@@ -338,10 +265,10 @@
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">名称</legend>
-						<input 
-							v-model="artifactForm.name" 
-							type="text" 
-							class="input w-full" 
+						<input
+							v-model="artifactForm.name"
+							type="text"
+							class="input w-full"
 							placeholder="制品名称"
 						/>
 					</fieldset>
@@ -356,9 +283,9 @@
 					</fieldset>
 				</div>
 				<div class="modal-action">
-					<button 
-						class="btn btn-primary" 
-						:disabled="!artifactForm.name.trim() || !artifactForm.path.trim() || saving" 
+					<button
+						class="btn btn-primary"
+						:disabled="!artifactForm.name.trim() || !artifactForm.path.trim() || saving"
 						@click="handleSaveArtifact"
 					>
 						<span v-if="saving" class="loading loading-spinner loading-xs" />
@@ -384,7 +311,15 @@
 						<span v-if="saving" class="loading loading-spinner loading-xs" />
 						删除
 					</button>
-					<button class="btn btn-ghost" @click="deleteArtifactModalRef?.close(); artifactToDelete = -1">取消</button>
+					<button
+						class="btn btn-ghost"
+						@click="
+							deleteArtifactModalRef?.close();
+							artifactToDelete = -1;
+						"
+					>
+						取消
+					</button>
 				</div>
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
@@ -417,14 +352,11 @@ const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 const stage = ref<PipelineStage>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const editModalRef = ref<HTMLDialogElement>();
-const envModalRef = ref<HTMLDialogElement>();
 const artifactModalRef = ref<HTMLDialogElement>();
 const deleteArtifactModalRef = ref<HTMLDialogElement>();
 const showScriptDrawer = ref(false);
 const scriptTemp = ref('');
 const form = reactive({ name: '', image: '', description: '' });
-const envForm = ref<{ key: string; value: string }[]>([]);
-const envEditingIdx = ref(-1);
 const artifactForm = reactive({
 	isEdit: false,
 	order: -1,
@@ -434,8 +366,6 @@ const artifactForm = reactive({
 });
 const sortableArtifacts = ref<ArtifactConfig[]>([]);
 const artifactToDelete = ref(-1);
-
-const envEntries = computed(() => Object.entries(stage.value?.env ?? {}));
 
 async function fetchStage() {
 	try {
@@ -502,30 +432,6 @@ async function handleSave() {
 	}
 }
 
-function openEnvModal() {
-	envForm.value = Object.entries(stage.value?.env ?? {}).map(([key, value]) => ({ key, value }));
-	envEditingIdx.value = -1;
-	envModalRef.value?.showModal();
-}
-
-async function handleSaveEnv() {
-	const env: Record<string, string> = {};
-	for (const { key, value } of envForm.value) {
-		if (key.trim()) {
-			env[key.trim()] = value;
-		}
-	}
-	try {
-		await executeSave(async () => {
-			stage.value = await pipelineStageApi.update(stageId.value, { env });
-			toast.success('环境变量已保存');
-			envModalRef.value?.close();
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
 function openAddArtifactModal() {
 	Object.assign(artifactForm, {
 		isEdit: false,
@@ -562,9 +468,9 @@ async function removeArtifact() {
 	if (idx === -1) {
 		return;
 	}
-	
+
 	sortableArtifacts.value.splice(idx, 1);
-	
+
 	try {
 		await executeSave(async () => {
 			stage.value = await pipelineStageApi.update(stageId.value, {
@@ -584,7 +490,7 @@ async function handleSaveArtifact() {
 		toast.error('名称和路径不能为空');
 		return;
 	}
-	
+
 	if (artifactForm.isEdit) {
 		// 编辑模式
 		sortableArtifacts.value[artifactForm.order] = {
@@ -594,7 +500,7 @@ async function handleSaveArtifact() {
 		};
 	} else {
 		// 添加模式 - 检查名称是否重复
-		if (sortableArtifacts.value.some(a => a.name === artifactForm.name)) {
+		if (sortableArtifacts.value.some((a) => a.name === artifactForm.name)) {
 			toast.error('制品名称已存在');
 			return;
 		}
@@ -604,7 +510,7 @@ async function handleSaveArtifact() {
 			path: artifactForm.path,
 		});
 	}
-	
+
 	try {
 		await executeSave(async () => {
 			stage.value = await pipelineStageApi.update(stageId.value, {

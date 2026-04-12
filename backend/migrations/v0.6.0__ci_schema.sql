@@ -30,7 +30,6 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     name TEXT NOT NULL UNIQUE,
     image TEXT NOT NULL,
     script TEXT NOT NULL DEFAULT '',
-    env TEXT NOT NULL DEFAULT '{}',       -- JSON object
     artifacts TEXT,                        -- JSON array | NULL
     description TEXT NOT NULL DEFAULT '',
     version INTEGER NOT NULL DEFAULT 1,   -- 每次修改递增，用于检测模板编排是否需要更新

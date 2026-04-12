@@ -61,7 +61,6 @@ class StageDefinition(BaseModel):
     version: int  # 快照时的 stage 版本
     depends_on: list[str] = []  # 编排属性，存储依赖的 stage_id 列表
     script: str
-    env: dict[str, str] = {}
     artifacts: list[ArtifactConfig] | None = None
 
 

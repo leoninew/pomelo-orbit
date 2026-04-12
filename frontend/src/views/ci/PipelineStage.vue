@@ -242,7 +242,7 @@
 <script setup lang="ts">
 import { ArrowLeft, FilePen, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -252,7 +252,7 @@ import { formatTime } from '@/utils/time';
 
 const route = useRoute();
 const router = useRouter();
-const stageId = route.params.id as string;
+const stageId = computed(() => route.params.id as string);
 const toast = useToast();
 
 const { status, execute } = useStatusAsync();
@@ -272,7 +272,7 @@ const envEntries = computed(() => Object.entries(stage.value?.env ?? {}));
 async function fetchStage() {
 	try {
 		await execute(async () => {
-			stage.value = await pipelineStageApi.get(stageId);
+			stage.value = await pipelineStageApi.get(stageId.value);
 		});
 	} catch {
 		toast.error('获取 Stage 失败');
@@ -304,7 +304,7 @@ function closeScriptDrawer() {
 async function confirmScript() {
 	try {
 		await executeSave(async () => {
-			const updated = await pipelineStageApi.update(stageId, {
+			const updated = await pipelineStageApi.update(stageId.value, {
 				script: scriptTemp.value,
 			});
 			stage.value = updated;
@@ -319,7 +319,7 @@ async function confirmScript() {
 async function handleSave() {
 	try {
 		await executeSave(async () => {
-			const updated = await pipelineStageApi.update(stageId, {
+			const updated = await pipelineStageApi.update(stageId.value, {
 				name: form.name,
 				image: form.image,
 				description: form.description,
@@ -340,7 +340,7 @@ function openDeleteModal() {
 async function handleDuplicate() {
 	try {
 		await executeDuplicate(async () => {
-			const newStage = await pipelineStageApi.duplicate(stageId);
+			const newStage = await pipelineStageApi.duplicate(stageId.value);
 			toast.success('复制成功');
 			router.push(`/ci/pipeline-stage/${newStage.id}`);
 		});
@@ -352,7 +352,7 @@ async function handleDuplicate() {
 async function handleDelete() {
 	try {
 		await executeDelete(async () => {
-			await pipelineStageApi.delete(stageId);
+			await pipelineStageApi.delete(stageId.value);
 			toast.success('删除成功');
 			router.push('/ci/pipeline-stage');
 		});
@@ -361,5 +361,6 @@ async function handleDelete() {
 	}
 }
 
+watch(stageId, fetchStage);
 onMounted(fetchStage);
 </script>

@@ -467,7 +467,7 @@ import VariableDeclarationsTable from './components/VariableDeclarationsTable.vu
 
 const route = useRoute();
 const router = useRouter();
-const templateId = route.params.id as string;
+const templateId = computed(() => route.params.id as string);
 const toast = useToast();
 
 const { status, execute } = useStatusAsync();
@@ -586,7 +586,7 @@ function applyTemplateState(tmpl: PipelineTemplate) {
 async function fetchTemplate() {
 	try {
 		await execute(async () => {
-			const tmpl = await pipelineTemplateApi.get(templateId);
+			const tmpl = await pipelineTemplateApi.get(templateId.value);
 			allStages.value = [];
 			applyTemplateState(tmpl);
 		});
@@ -647,7 +647,7 @@ async function handleEditInfoOk() {
 	try {
 		await executeSave(async () => {
 			// 只保存基本信息，不传递 orchestration 和 variable_declarations
-			const data = await pipelineTemplateApi.update(templateId, {
+			const data = await pipelineTemplateApi.update(templateId.value, {
 				name: editForm.name,
 				description: editForm.description,
 			});
@@ -681,7 +681,7 @@ async function handleSave() {
 				}
 			}
 
-			const data = await pipelineTemplateApi.update(templateId, {
+			const data = await pipelineTemplateApi.update(templateId.value, {
 				name: editForm.name,
 				description: editForm.description,
 				orchestration: sortableOrch.value.map((o, i) => ({
@@ -701,7 +701,7 @@ async function handleSave() {
 async function handleDuplicate() {
 	try {
 		await executeDuplicate(async () => {
-			const newTemplate = await pipelineTemplateApi.duplicate(templateId);
+			const newTemplate = await pipelineTemplateApi.duplicate(templateId.value);
 			toast.success('复制成功');
 			router.push(`/ci/template/${newTemplate.id}`);
 		});
@@ -717,7 +717,7 @@ function openDeleteModal() {
 async function handleDeleteOk() {
 	try {
 		await executeDelete(async () => {
-			await pipelineTemplateApi.delete(templateId);
+			await pipelineTemplateApi.delete(templateId.value);
 			toast.success('删除成功');
 			router.push('/ci/template');
 		});
@@ -841,7 +841,7 @@ async function handleRunOk() {
 			const repo = selectedRepository.value;
 			const triggerRef = runForm.triggerRef || repo?.default_branch || 'main';
 			const run = await repositoryApi.trigger(runForm.repositoryId, {
-				template_id: templateId,
+				template_id: templateId.value,
 				trigger_ref: triggerRef,
 				variables: {},
 			});
@@ -913,5 +913,6 @@ function deleteVariable(name: string) {
 	}
 }
 
+watch(templateId, fetchTemplate);
 onMounted(fetchTemplate);
 </script>

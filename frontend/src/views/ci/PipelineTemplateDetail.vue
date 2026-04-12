@@ -102,16 +102,7 @@
 					</div>
 
 					<!-- Stages 编排内容 -->
-					<VueDraggable
-						v-if="viewMode === 'list'"
-						v-model="sortableOrch"
-						tag="table"
-						class="table w-full"
-						handle=".drag-handle"
-						:animation="150"
-						ghost-class="opacity-30"
-						@end="onDragEnd"
-					>
+					<table v-if="viewMode === 'list'" class="table w-full">
 						<thead>
 							<tr class="text-base-content/60 text-xs">
 								<th class="w-6 pr-0"></th>
@@ -123,7 +114,14 @@
 								<th class="w-40">操作</th>
 							</tr>
 						</thead>
-						<tbody>
+						<VueDraggable
+							v-model="sortableOrch"
+							tag="tbody"
+							handle=".drag-handle"
+							:animation="150"
+							ghost-class="opacity-30"
+							@end="onDragEnd"
+						>
 							<tr v-if="sortableOrch.length === 0">
 								<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
 							</tr>
@@ -180,8 +178,8 @@
 									</div>
 								</td>
 							</tr>
-						</tbody>
-					</VueDraggable>
+						</VueDraggable>
+					</table>
 
 					<div v-else class="min-h-[300px]">
 						<p

@@ -92,7 +92,9 @@ function effectiveValue(decl: VariableDeclaration) {
 
 function canEdit(decl: VariableDeclaration) {
 	// 优先使用后端明确设置的 editable 字段，回退到 source 推断
-	if (decl.editable !== undefined) {return decl.editable;}
+	if (decl.editable !== undefined) {
+		return decl.editable;
+	}
 	return decl.source ? isVariableEditable(decl.source) : false;
 }
 </script>

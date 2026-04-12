@@ -205,33 +205,29 @@
 								</td>
 								<td>
 									<span
-										v-if="stageRuns.find((sr) => sr.stage_id === stage.id)"
 										class="badge badge-xs"
-										:class="
-											statusBadgeClass(stageRuns.find((sr) => sr.stage_id === stage.id)!.status)
-										"
+										:class="statusBadgeClass(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
 									>
-										{{ statusLabel(stageRuns.find((sr) => sr.stage_id === stage.id)!.status) }}
+										{{ statusLabel(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
 									</span>
-									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 								<td class="max-w-xs">
 									<span
-										v-if="stageRuns.find((sr) => sr.stage_id === stage.id)?.error_message"
+										v-if="stageRunMap[stage.id]?.error_message"
 										class="tooltip tooltip-top cursor-help"
-										:data-tip="stageRuns.find((sr) => sr.stage_id === stage.id)?.error_message"
+										:data-tip="stageRunMap[stage.id]?.error_message"
 									>
 										<span class="text-xs truncate block max-w-xs">
-											{{ stageRuns.find((sr) => sr.stage_id === stage.id)?.error_message }}
+											{{ stageRunMap[stage.id]?.error_message }}
 										</span>
 									</span>
 									<span v-else class="text-base-content/40 text-xs">—</span>
 								</td>
 								<td>
 									<button
-										v-if="stageRuns.find((sr) => sr.stage_id === stage.id)"
+										v-if="stageRunMap[stage.id]"
 										class="link link-primary text-xs"
-										@click="openLogDrawer(stageRuns.find((sr) => sr.stage_id === stage.id)!)"
+										@click="openLogDrawer(stageRunMap[stage.id]!)"
 									>
 										查看
 									</button>
@@ -421,6 +417,13 @@ const stagesView = ref<'list' | 'dag'>('list');
 
 const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
 const stageRuns = computed(() => run.value?.stage_runs ?? []);
+const stageRunMap = computed<Record<string, StageRun>>(() => {
+	const map: Record<string, StageRun> = {};
+	for (const sr of stageRuns.value) {
+		map[sr.stage_id] = sr;
+	}
+	return map;
+});
 const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
 	const map: Record<string, SnapshotStage> = {};
 	for (const s of snapshot.value?.stages_snapshot ?? []) {

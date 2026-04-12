@@ -23,10 +23,7 @@
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="font-semibold">基本信息</h2>
 						<div class="flex items-center gap-2">
-							<button
-								class="btn btn-sm btn-primary gap-1"
-								@click="openRunModal"
-							>
+							<button class="btn btn-sm btn-primary gap-1" @click="openRunModal">
 								<Play class="size-3.5" />
 								运行
 							</button>
@@ -146,7 +143,10 @@
 											{{ stageCache[orch.stage_id]?.name ?? orch.stage_id }}
 										</router-link>
 										<span
-											v-if="stageCache[orch.stage_id] && stageCache[orch.stage_id].version > orch.stage_version"
+											v-if="
+												stageCache[orch.stage_id] &&
+												stageCache[orch.stage_id].version > orch.stage_version
+											"
 											class="badge badge-xs badge-warning"
 										>
 											有更新

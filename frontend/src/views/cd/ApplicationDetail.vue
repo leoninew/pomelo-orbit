@@ -2,7 +2,12 @@
 	<div class="flex flex-col gap-4">
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">{{ application?.name ?? '应用详情' }}</h1>
+			<h1 class="text-xl font-semibold flex items-center gap-2">
+				{{ application?.name ?? '应用详情' }}
+				<span v-if="application" class="badge badge-sm" :class="appBadgeClass(application.status)">
+					{{ appStatusLabel(application.status) }}
+				</span>
+			</h1>
 			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/applications')">
 				<ArrowLeft class="size-4" />
 				返回
@@ -73,14 +78,6 @@
 						<dt class="text-base-content/70 w-24 shrink-0">应用编码</dt>
 						<dd>
 							<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ application.code }}</code>
-						</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">状态</dt>
-						<dd>
-							<span class="badge badge-sm" :class="appBadgeClass(application.status)">
-								{{ appStatusLabel(application.status) }}
-							</span>
 						</dd>
 					</div>
 					<div class="flex gap-2">

@@ -13,12 +13,20 @@
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">基本信息</h2>
 					<div v-if="credential" class="flex items-center gap-2">
-						<button class="btn btn-sm btn-ghost" @click="openEditModal">编辑</button>
-						<button class="btn btn-sm btn-ghost gap-1" @click="handleExport">
+						<button class="btn btn-sm btn-ghost" :disabled="operating" @click="openEditModal">
+							编辑
+						</button>
+						<button class="btn btn-sm btn-ghost gap-1" :disabled="operating" @click="handleExport">
 							<Download class="size-3.5" />
 							导出
 						</button>
-						<button class="btn btn-sm btn-error btn-ghost" @click="openDeleteModal">删除</button>
+						<button
+							class="btn btn-sm btn-error btn-ghost"
+							:disabled="operating"
+							@click="openDeleteModal"
+						>
+							删除
+						</button>
 					</div>
 				</div>
 
@@ -40,7 +48,7 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
-						<dd class="text-base-content/70">{{ formatTime(credential.created_at) }}</dd>
+						<dd class="text-base-content/60">{{ formatTime(credential.created_at) }}</dd>
 					</div>
 				</dl>
 			</div>

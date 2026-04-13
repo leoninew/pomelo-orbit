@@ -1,7 +1,16 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">{{ routeData?.domain ?? '路由详情' }}</h1>
+			<h1 class="text-xl font-semibold flex items-center gap-2">
+				{{ routeData?.domain ?? '路由详情' }}
+				<span
+					v-if="routeData"
+					class="badge badge-sm"
+					:class="routeData.enabled ? 'badge-outline badge-success' : 'badge-ghost'"
+				>
+					{{ routeData.enabled ? '启用' : '停用' }}
+				</span>
+			</h1>
 			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/routes')">
 				<ArrowLeft class="size-4" />
 				返回
@@ -69,18 +78,7 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">目标地址</dt>
-						<dd class="text-xs">{{ routeData.target_url }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-24 shrink-0">状态</dt>
-						<dd>
-							<span
-								class="badge badge-sm"
-								:class="routeData.enabled ? 'badge-outline badge-success' : 'badge-ghost'"
-							>
-								{{ routeData.enabled ? '启用' : '停用' }}
-							</span>
-						</dd>
+						<dd>{{ routeData.target_url }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">协议</dt>

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<div class="flex flex-col gap-4">
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
@@ -20,41 +20,57 @@
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="font-semibold">基本信息</h2>
 						<div v-if="stage" class="flex items-center gap-2">
-							<button class="btn btn-sm btn-ghost" @click="openEditModal">编辑</button>
-							<button class="btn btn-sm btn-ghost" :disabled="duplicating" @click="handleDuplicate">
+							<button
+								class="btn btn-sm btn-ghost"
+								:disabled="saving || deleting || duplicating"
+								@click="openEditModal"
+							>
+								编辑
+							</button>
+							<button
+								class="btn btn-sm btn-ghost"
+								:disabled="saving || deleting || duplicating"
+								@click="handleDuplicate"
+							>
 								<span v-if="duplicating" class="loading loading-spinner loading-xs" />
 								复制
 							</button>
-							<button class="btn btn-sm btn-error btn-ghost" @click="openDeleteModal">删除</button>
+							<button
+								class="btn btn-sm btn-error btn-ghost"
+								:disabled="saving || deleting || duplicating"
+								@click="openDeleteModal"
+							>
+								删除
+							</button>
 						</div>
 					</div>
 					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div class="flex gap-2">
-							<dt class="text-base-content/60 w-20 shrink-0">名称</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">名称</dt>
 							<dd class="font-medium">{{ stage.name }}</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/60 w-20 shrink-0">镜像</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">镜像</dt>
 							<dd>
 								<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ stage.image }}</code>
 							</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/60 w-20 shrink-0">版本</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">版本</dt>
 							<dd>
 								<span class="badge badge-sm badge-ghost">v{{ stage.version }}</span>
 							</dd>
 						</div>
 						<div v-if="stage.description" class="flex gap-2 sm:col-span-2">
-							<dt class="text-base-content/60 w-20 shrink-0">描述</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">描述</dt>
 							<dd>{{ stage.description }}</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/60 w-20 shrink-0">创建时间</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
 							<dd class="text-base-content/60">{{ formatTime(stage.created_at) }}</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/60 w-20 shrink-0">更新时间</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">更新时间</dt>
 							<dd class="text-base-content/60">{{ formatTime(stage.updated_at) }}</dd>
 						</div>
 					</dl>
@@ -85,7 +101,7 @@
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
 						<h2 class="font-semibold">制品</h2>
-						<button class="btn btn-sm btn-ghost gap-1" @click="openAddArtifactModal">
+						<button class="btn btn-sm btn-primary gap-1" @click="openAddArtifactModal">
 							<Plus class="size-3.5" />
 							添加制品
 						</button>

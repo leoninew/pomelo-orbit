@@ -33,7 +33,7 @@
 			<!-- Basic info -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<div class="flex items-center justify-between mb-3">
+					<div class="flex items-center justify-between mb-4">
 						<h2 class="font-semibold">基本信息</h2>
 						<div class="flex items-center gap-2">
 							<button
@@ -57,11 +57,7 @@
 					</div>
 					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">Run ID</dt>
-							<dd class="text-xs">{{ run.id }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">Repository</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">代码仓库</dt>
 							<dd>
 								<router-link
 									:to="`/ci/repository/${run.repository_id}`"
@@ -78,7 +74,7 @@
 							</dd>
 						</div>
 						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">Ref</dt>
+							<dt class="text-base-content/70 w-24 shrink-0">触发分支</dt>
 							<dd class="text-base-content/60">{{ run.trigger_ref }}</dd>
 						</div>
 						<div class="flex gap-2">
@@ -113,7 +109,7 @@
 									:to="`/ci/run/${run.retry_of}`"
 									class="link link-primary text-xs"
 								>
-									{{ run.retry_of }}
+									查看
 								</router-link>
 								<span v-else class="text-base-content/60">—</span>
 							</dd>
@@ -284,7 +280,7 @@
 			<!-- Artifacts -->
 			<div class="card bg-base-100 shadow-sm">
 				<div class="card-body p-5">
-					<h2 class="font-semibold mb-3">制品</h2>
+					<h2 class="font-semibold mb-4">制品</h2>
 					<div v-if="artifactsLoading" class="flex justify-center py-6">
 						<span class="loading loading-spinner loading-md text-primary" />
 					</div>

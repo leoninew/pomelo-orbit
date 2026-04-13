@@ -42,10 +42,6 @@
 							<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
 							<dd class="text-base-content/60">{{ formatTime(snapshot.created_at) }}</dd>
 						</div>
-						<div class="flex gap-2">
-							<dt class="text-base-content/70 w-24 shrink-0">快照 ID</dt>
-							<dd class="text-xs">{{ snapshot.id }}</dd>
-						</div>
 					</dl>
 				</div>
 			</div>

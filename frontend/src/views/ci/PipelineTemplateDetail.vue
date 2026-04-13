@@ -27,7 +27,9 @@
 								<Play class="size-3.5" />
 								运行
 							</button>
-							<button class="btn btn-sm btn-ghost" @click="openEditInfoModal">编辑</button>
+							<button class="btn btn-sm btn-ghost" :disabled="saving" @click="openEditInfoModal">
+								编辑
+							</button>
 							<button class="btn btn-sm btn-ghost" :disabled="duplicating" @click="handleDuplicate">
 								<span v-if="duplicating" class="loading loading-spinner loading-xs" />
 								复制

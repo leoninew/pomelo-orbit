@@ -2,9 +2,14 @@
 	<div class="flex flex-col gap-4 h-full">
 		<!-- Header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">
+			<h1 class="text-xl font-semibold flex items-center gap-2">
 				部署记录
-				<span class="text-base-content/60 text-base">#{{ deploymentId }}</span>
+				<span v-if="deployment" class="text-base-content/60 text-base font-normal">
+					{{ deployment.application_name }}
+				</span>
+				<span v-if="deployment" class="badge badge-sm" :class="statusBadgeClass(deployment.status)">
+					{{ statusLabel(deployment.status) }}
+				</span>
 			</h1>
 			<div class="flex items-center gap-2">
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/deployments')">
@@ -31,7 +36,7 @@
 		<!-- Basic info -->
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
-				<h2 class="font-semibold mb-3">基本信息</h2>
+				<h2 class="font-semibold mb-4">基本信息</h2>
 				<div v-if="loading" class="flex justify-center py-6">
 					<span class="loading loading-spinner loading-md text-primary" />
 				</div>
@@ -48,14 +53,6 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-base-content/70 w-20 shrink-0">状态</dt>
-						<dd>
-							<span class="badge badge-sm" :class="statusBadgeClass(deployment.status)">
-								{{ statusLabel(deployment.status) }}
-							</span>
-						</dd>
-					</div>
-					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">触发方式</dt>
 						<dd class="text-base-content/70">{{ deployment.trigger_type }}</dd>
 					</div>
@@ -69,11 +66,11 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">开始时间</dt>
-						<dd class="text-base-content/60 text-xs">{{ formatTime(deployment.started_at) }}</dd>
+						<dd class="text-base-content/60">{{ formatTime(deployment.started_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-20 shrink-0">结束时间</dt>
-						<dd class="text-base-content/60 text-xs">{{ formatTime(deployment.finished_at) }}</dd>
+						<dd class="text-base-content/60">{{ formatTime(deployment.finished_at) }}</dd>
 					</div>
 				</dl>
 			</div>

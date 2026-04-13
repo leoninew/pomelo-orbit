@@ -115,9 +115,7 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
         if search:
             query = query.filter(PipelineTemplateModel.name.ilike(f"%{search}%"))
         total = query.count()
-        orms = (
-            query.order_by(PipelineTemplateModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
-        )
+        orms = query.order_by(PipelineTemplateModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         return [self._load(orm) for orm in orms], total
 
     def save(self, template: PipelineTemplate) -> None:

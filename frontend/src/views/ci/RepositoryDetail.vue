@@ -89,8 +89,8 @@
 			<div class="card-body p-5">
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">变量配置</h2>
-					<button class="btn btn-sm btn-primary gap-1.5" @click="openAddVarModal">
-						<Plus class="size-4" />
+					<button class="btn btn-sm btn-primary gap-1" @click="openAddVarModal">
+						<Plus class="size-3.5" />
 						添加自定义变量
 					</button>
 				</div>

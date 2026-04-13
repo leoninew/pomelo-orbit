@@ -25,7 +25,7 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>凭据名称</th>
+						<th>名称</th>
 						<th>类型</th>
 						<th>创建时间</th>
 						<th>操作</th>

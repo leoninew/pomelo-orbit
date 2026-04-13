@@ -2,14 +2,14 @@
 export interface Credential {
 	id: string
 	name: string
-	type: 'git_ssh' | 'git_token' | 'registry_token'
+	type: string
 	created_at: string
 	updated_at: string
 }
 
 export interface CredentialCreateReq {
 	name: string
-	type: 'git_ssh' | 'git_token' | 'registry_token'
+	type: string
 	data: string
 }
 
@@ -21,14 +21,14 @@ export interface CredentialUpdateReq {
 export interface CredentialExportResp {
 	version: string
 	name: string
-	type: 'git_ssh' | 'git_token' | 'registry_token'
+	type: string
 	data: string
 }
 
 export interface CredentialImportReq {
 	version?: string
 	name: string
-	type: 'git_ssh' | 'git_token' | 'registry_token'
+	type: string
 	data: string
 }
 

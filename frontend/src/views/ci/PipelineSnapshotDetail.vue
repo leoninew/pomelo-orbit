@@ -28,7 +28,7 @@
 									:to="`/ci/template/${snapshot.template_id}`"
 									class="link link-primary text-xs"
 								>
-									查看模板
+									查看
 								</router-link>
 							</dd>
 						</div>

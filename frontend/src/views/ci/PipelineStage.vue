@@ -125,7 +125,7 @@
 									<span class="badge badge-sm badge-ghost">{{ a.type }}</span>
 								</td>
 								<td class="text-sm">{{ a.name }}</td>
-								<td class="font-mono text-xs text-base-content/60">{{ a.path }}</td>
+								<td class="text-sm">{{ a.path }}</td>
 								<td>
 									<div class="flex items-center gap-3">
 										<button class="link link-primary text-xs" @click="openEditArtifactModal(idx)">

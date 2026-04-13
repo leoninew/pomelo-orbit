@@ -146,6 +146,15 @@ class PipelineRunService:
         """查询运行的制品列表"""
         return self.artifact_repo.find_by_run(run_id)
 
+    def list_all_artifacts(
+        self,
+        repository_id: str | None = None,
+        page: int = 1,
+        per_page: int = 20,
+    ) -> tuple[list[Artifact], int]:
+        """分页查询所有制品"""
+        return self.artifact_repo.find_paginated(page=page, per_page=per_page, repository_id=repository_id)
+
     def list_stage_runs(self, run_id: str) -> list[StageRun]:
         """查询运行的 stage 列表"""
         return self.stage_run_repo.find_by_run(run_id)
@@ -376,6 +385,9 @@ class PipelineRunService:
         context = ExecutionContext(
             run_id=run.id,
             repository_id=repository.id,
+            repository_name=repository.name,
+            template_id=run.template_id,
+            template_name=run.template_name,
             project_code=repository.code,
             repository_url=repository.repository_url,
             credential_id=repository.git_credential_id,

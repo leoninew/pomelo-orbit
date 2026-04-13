@@ -18,6 +18,10 @@ export interface StageRun {
 export interface Artifact {
 	id: string
 	pipeline_run_id: string
+	repository_id: string
+	repository_name: string
+	template_id: string
+	template_name: string
 	stage_name: string
 	type: ArtifactType
 	name: string

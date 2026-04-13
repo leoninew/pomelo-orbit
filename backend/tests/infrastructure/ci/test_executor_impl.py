@@ -47,9 +47,12 @@ class TestPipelineExecutorImpl:
         return ExecutionContext(
             run_id="01HX0001",
             repository_id="01HX0002",
+            repository_name="Test Project",
+            template_id="01HX0004",
+            template_name="Test Template",
             project_code="proj-code",
             repository_url="https://github.com/test/repo",
-            credential_id="01HX0003",
+            credential_id=None,
             variables={"key": "value"},
             workspace_path="/tmp/workspace",
             artifacts_path="/tmp/artifacts",

@@ -318,15 +318,22 @@ class PipelineExecutorImpl(PipelineExecutor):
                     continue
                 artifact = Artifact.create(
                     pipeline_run_id=context.run_id,
+                    repository_id=context.repository_id,
+                    repository_name=context.repository_name,
+                    template_id=context.template_id,
+                    template_name=context.template_name,
                     stage_name=stage_name,
                     artifact_type=ArtifactType.BINARY,
                     name=a.name,
                     path=str(full_path),
                 )
             elif a.type == ArtifactType.DOCKER_IMAGE:
-                # docker_image: path 字段存镜像名:tag，无需文件收集
                 artifact = Artifact.create(
                     pipeline_run_id=context.run_id,
+                    repository_id=context.repository_id,
+                    repository_name=context.repository_name,
+                    template_id=context.template_id,
+                    template_name=context.template_name,
                     stage_name=stage_name,
                     artifact_type=ArtifactType.DOCKER_IMAGE,
                     name=a.name,

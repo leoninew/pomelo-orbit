@@ -165,6 +165,10 @@ class ArtifactModel(Base):
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=False, index=True)
+    repository_id: Mapped[str] = mapped_column(String(26), nullable=False, default="", index=True)
+    repository_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    template_id: Mapped[str] = mapped_column(String(26), nullable=False, default="")
+    template_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     stage_name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

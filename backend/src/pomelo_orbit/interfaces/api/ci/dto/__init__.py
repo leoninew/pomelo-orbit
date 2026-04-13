@@ -1,12 +1,13 @@
 """CI 模块 DTO"""
 
 # 重新导出所有子模块的 DTO
+from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
 from pomelo_orbit.interfaces.api.ci.dto.credential import (
     CredentialCreateReq,
     CredentialResp,
     CredentialUpdateReq,
 )
-from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import ArtifactResp, PipelineRunResp, TriggerPipelineReq
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp, TriggerPipelineReq
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_stage_run import StageRunResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import (
     PipelineSnapshotListItemResp,

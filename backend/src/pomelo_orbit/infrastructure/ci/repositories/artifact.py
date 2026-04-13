@@ -24,3 +24,17 @@ class ArtifactRepositoryImpl(BaseRepository[Artifact, ArtifactModel], ArtifactRe
             .all()
         )
         return [self._mapper.to_domain(orm) for orm in orms]
+
+    def find_paginated(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        repository_id: str | None = None,
+    ) -> tuple[list[Artifact], int]:
+        """分页查询制品列表"""
+        query = self._session.query(ArtifactModel)
+        if repository_id:
+            query = query.filter(ArtifactModel.repository_id == repository_id)
+        total = query.count()
+        orms = query.order_by(ArtifactModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        return [self._mapper.to_domain(orm) for orm in orms], total

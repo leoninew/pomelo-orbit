@@ -346,7 +346,9 @@
 						class="absolute left-0 inset-y-0 w-3 cursor-ew-resize group"
 						@mousedown="onResizeMousedown"
 					>
-						<div class="absolute left-1.5 inset-y-0 w-px bg-transparent group-hover:bg-blue-500/60 transition-colors duration-150" />
+						<div
+							class="absolute left-1.5 inset-y-0 w-px bg-transparent group-hover:bg-blue-500/60 transition-colors duration-150"
+						/>
 					</div>
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
 						<h3 class="font-semibold flex items-center gap-2">
@@ -374,7 +376,10 @@
 							<div
 								ref="logContainer"
 								class="bg-[#1a202c] rounded-box p-4 overflow-x-auto overflow-y-auto h-full min-h-64 max-h-[calc(100vh-140px)]"
-								:style="{ scrollbarWidth: 'thin', scrollbarColor: isScrolled ? '#6b7280 transparent' : 'transparent transparent' }"
+								:style="{
+									scrollbarWidth: 'thin',
+									scrollbarColor: isScrolled ? '#6b7280 transparent' : 'transparent transparent',
+								}"
 								@scroll="checkScrollState"
 							>
 								<pre
@@ -503,7 +508,10 @@ function onResizeMousedown(e: MouseEvent) {
 
 	function onMousemove(e: MouseEvent) {
 		const delta = startX - e.clientX;
-		drawerWidth.value = Math.min(Math.max(startWidth + delta, MIN_DRAWER_WIDTH), MAX_DRAWER_WIDTH());
+		drawerWidth.value = Math.min(
+			Math.max(startWidth + delta, MIN_DRAWER_WIDTH),
+			MAX_DRAWER_WIDTH()
+		);
 	}
 	function onMouseup() {
 		document.removeEventListener('mousemove', onMousemove);
@@ -518,13 +526,14 @@ function onResizeMousedown(e: MouseEvent) {
 }
 
 function checkScrollState() {
-	if (!logContainer.value) return;
+	if (!logContainer.value) {
+		return;
+	}
 	const { scrollTop, scrollHeight, clientHeight } = logContainer.value;
 	isScrolled.value = scrollHeight > clientHeight;
 	// 距底部 40px 内视为"在底部"，避免 1px 误差导致按钮闪烁
 	isAtBottom.value = scrollHeight - scrollTop - clientHeight < 40;
 }
-
 
 function scrollToBottom() {
 	if (!logContainer.value) {

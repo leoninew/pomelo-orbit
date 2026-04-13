@@ -127,6 +127,12 @@ const router = createRouter({
 			component: () => import('@/views/ci/PipelineRunDetail.vue'),
 			meta: { title: 'Run 详情', menuKey: 'pipelineruns' },
 		},
+		{
+			path: '/ci/artifact',
+			name: 'Artifacts',
+			component: () => import('@/views/ci/ArtifactPage.vue'),
+			meta: { title: '制品记录', menuKey: 'artifacts' },
+		},
 		// Shared
 		{
 			path: '/login-history',

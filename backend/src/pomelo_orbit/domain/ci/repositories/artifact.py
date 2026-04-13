@@ -10,4 +10,12 @@ class ArtifactRepository(ABC):
     def find_by_run(self, pipeline_run_id: str) -> list[Artifact]: ...
 
     @abstractmethod
+    def find_paginated(
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        repository_id: str | None = None,
+    ) -> tuple[list[Artifact], int]: ...
+
+    @abstractmethod
     def save(self, artifact: Artifact) -> None: ...

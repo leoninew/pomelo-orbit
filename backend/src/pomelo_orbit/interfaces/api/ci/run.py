@@ -9,7 +9,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pomelo_orbit.application.ci.di import get_pipeline_run_service
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import ArtifactResp, PipelineRunResp
+from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
+from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)

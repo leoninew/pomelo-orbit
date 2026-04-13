@@ -1,3 +1,4 @@
+export { artifactApi } from './artifact';
 export { credentialApi } from './credential';
 export { pipelineStageApi } from './pipeline_stage';
 export { repositoryApi } from './repository';

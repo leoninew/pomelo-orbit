@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from pomelo_orbit.domain.ci.value_objects import ArtifactType
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_stage_run import StageRunResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import VariableDeclarationDto
 
@@ -48,15 +47,3 @@ class TriggerPipelineReq(BaseModel):
     template_id: str = Field(min_length=1)
     trigger_ref: str = Field(min_length=1)
     variables: dict[str, Any] = Field(default_factory=dict)
-
-
-class ArtifactResp(BaseModel):
-    id: str
-    pipeline_run_id: str
-    stage_name: str
-    type: ArtifactType
-    name: str
-    path: str | None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}

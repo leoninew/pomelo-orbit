@@ -301,6 +301,10 @@ class ArtifactMapper:
         return Artifact(
             id=orm.id,
             pipeline_run_id=orm.pipeline_run_id,
+            repository_id=orm.repository_id,
+            repository_name=orm.repository_name,
+            template_id=orm.template_id,
+            template_name=orm.template_name,
             stage_name=orm.stage_name,
             type=ArtifactType(orm.type),
             name=orm.name,
@@ -313,6 +317,10 @@ class ArtifactMapper:
         return ArtifactModel(
             id=entity.id,
             pipeline_run_id=entity.pipeline_run_id,
+            repository_id=entity.repository_id,
+            repository_name=entity.repository_name,
+            template_id=entity.template_id,
+            template_name=entity.template_name,
             stage_name=entity.stage_name,
             type=entity.type,
             name=entity.name,

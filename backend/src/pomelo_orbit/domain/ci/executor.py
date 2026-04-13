@@ -13,6 +13,9 @@ class ExecutionContext:
         self,
         run_id: str,
         repository_id: str,
+        repository_name: str,
+        template_id: str,
+        template_name: str,
         project_code: str,
         repository_url: str,
         credential_id: str | None,
@@ -23,6 +26,9 @@ class ExecutionContext:
     ):
         self.run_id = run_id
         self.repository_id = repository_id
+        self.repository_name = repository_name
+        self.template_id = template_id
+        self.template_name = template_name
         self.project_code = project_code
         self.repository_url = repository_url
         self.credential_id = credential_id

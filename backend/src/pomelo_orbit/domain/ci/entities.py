@@ -462,6 +462,10 @@ class Artifact:
 
     id: str
     pipeline_run_id: str
+    repository_id: str
+    repository_name: str
+    template_id: str
+    template_name: str
     stage_name: str
     type: ArtifactType
     name: str
@@ -471,6 +475,10 @@ class Artifact:
     @staticmethod
     def create(
         pipeline_run_id: str,
+        repository_id: str,
+        repository_name: str,
+        template_id: str,
+        template_name: str,
         stage_name: str,
         artifact_type: ArtifactType,
         name: str,
@@ -479,6 +487,10 @@ class Artifact:
         return Artifact(
             id=str(ULID()),
             pipeline_run_id=pipeline_run_id,
+            repository_id=repository_id,
+            repository_name=repository_name,
+            template_id=template_id,
+            template_name=template_name,
             stage_name=stage_name,
             type=artifact_type,
             name=name,

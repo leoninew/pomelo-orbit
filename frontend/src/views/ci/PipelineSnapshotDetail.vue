@@ -174,7 +174,7 @@ const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
 		map[s.id] = s;
 	}
 	return map;
-})
+});
 
 async function fetchSnapshot() {
 	try {

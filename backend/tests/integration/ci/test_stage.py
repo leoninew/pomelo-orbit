@@ -234,4 +234,3 @@ class TestStageUsage:
         resp = auth_client.get(f"/api/ci/pipeline-stage/{stage_id}")
         assert resp.status_code == 200
         assert resp.json()["id"] == stage_id
-

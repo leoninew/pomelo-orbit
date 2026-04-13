@@ -103,7 +103,7 @@
 								<th class="w-8">#</th>
 								<th class="w-32">类型</th>
 								<th>名称</th>
-								<th>路径 / 镜像</th>
+								<th>路径/镜像</th>
 								<th class="w-40">操作</th>
 							</tr>
 						</thead>
@@ -273,7 +273,7 @@
 						/>
 					</fieldset>
 					<fieldset class="fieldset">
-						<legend class="fieldset-legend">路径 / 镜像</legend>
+						<legend class="fieldset-legend">路径/镜像</legend>
 						<input
 							v-model="artifactForm.path"
 							type="text"

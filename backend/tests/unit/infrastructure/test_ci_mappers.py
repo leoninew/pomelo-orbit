@@ -204,6 +204,10 @@ class TestArtifactMapper:
     def test_to_orm(self):
         entity = Artifact.create(
             pipeline_run_id=str(ULID()),
+            repository_id=str(ULID()),
+            repository_name="Test Repo",
+            template_id=str(ULID()),
+            template_name="Test Template",
             stage_name="build",
             artifact_type=ArtifactType.DOCKER_IMAGE,
             name="myapp:latest",

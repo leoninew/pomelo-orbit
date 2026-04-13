@@ -55,7 +55,7 @@
 							<input
 								v-model="form.image"
 								type="text"
-								class="input w-full font-mono text-sm"
+								class="input w-full text-sm"
 								placeholder="例如: python:3.12-slim"
 							/>
 						</fieldset>
@@ -119,7 +119,7 @@
 								<input
 									v-model="artifact.path"
 									type="text"
-									class="input input-sm flex-1 font-mono text-sm"
+									class="input input-sm flex-1 text-sm"
 									:placeholder="artifact.type === 'docker_image' ? 'myapp:latest' : 'dist/app'"
 								/>
 								<button

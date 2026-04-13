@@ -154,7 +154,7 @@
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">镜像</legend>
-						<input v-model="form.image" type="text" class="input w-full font-mono text-sm" />
+						<input v-model="form.image" type="text" class="input w-full text-sm" />
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">描述（可选）</legend>
@@ -277,7 +277,7 @@
 						<input
 							v-model="artifactForm.path"
 							type="text"
-							class="input w-full font-mono"
+							class="input w-full"
 							:placeholder="artifactForm.type === 'docker_image' ? 'image:tag' : 'dist/app'"
 						/>
 					</fieldset>

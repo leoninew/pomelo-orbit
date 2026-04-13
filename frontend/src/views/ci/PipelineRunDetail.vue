@@ -58,7 +58,7 @@
 					<dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">Run ID</dt>
-							<dd class="font-mono text-xs">{{ run.id }}</dd>
+							<dd class="text-xs">{{ run.id }}</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">Repository</dt>
@@ -147,7 +147,7 @@
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
 						<div class="flex items-center gap-3">
-							<h2 class="font-semibold">Stages 编排</h2>
+							<h2 class="font-semibold">阶段编排</h2>
 							<div class="join">
 								<button
 									class="btn btn-xs join-item"
@@ -399,10 +399,6 @@
 							>
 								<ArrowDown class="size-4" />
 							</button>
-							<!-- 拖拽宽度提示 -->
-							<div class="absolute bottom-2 left-2 text-gray-600 pointer-events-none">
-								<GripVertical class="size-3.5" />
-							</div>
 						</div>
 					</div>
 				</div>
@@ -438,7 +434,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ArrowDown, FileX, GripVertical, Loader2, X } from 'lucide-vue-next';
+import { ArrowLeft, ArrowDown, FileX, Loader2, X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';

@@ -38,7 +38,7 @@
 						<td>
 							<router-link
 								:to="`/ci/repository/${a.repository_id}`"
-								class="link link-primary text-sm"
+								class="link link-primary text-xs"
 							>
 								{{ a.repository_name }}
 							</router-link>

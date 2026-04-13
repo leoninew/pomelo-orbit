@@ -4,7 +4,7 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">
 				部署记录
-				<span class="text-base-content/60 text-base font-mono">#{{ deploymentId }}</span>
+				<span class="text-base-content/60 text-base">#{{ deploymentId }}</span>
 			</h1>
 			<div class="flex items-center gap-2">
 				<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/cd/deployments')">

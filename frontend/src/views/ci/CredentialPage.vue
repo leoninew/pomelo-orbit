@@ -112,7 +112,7 @@
 						</legend>
 						<textarea
 							v-model="form.data"
-							class="textarea w-full font-mono text-xs"
+							class="textarea w-full text-xs"
 							rows="8"
 							:class="{ 'textarea-error': errors.data }"
 							:placeholder="getDataPlaceholder(form.type)"
@@ -176,7 +176,7 @@
 						<legend class="fieldset-legend">凭据内容</legend>
 						<textarea
 							v-model="importForm.data"
-							class="textarea w-full font-mono text-xs"
+							class="textarea w-full text-xs"
 							rows="8"
 							:class="{ 'textarea-error': importErrors.data }"
 						/>

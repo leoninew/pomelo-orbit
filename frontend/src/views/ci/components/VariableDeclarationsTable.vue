@@ -15,8 +15,8 @@
 			</thead>
 			<tbody>
 				<tr v-for="decl in declarations" :key="decl.name" class="hover">
-					<td class="font-mono text-xs">{{ decl.name }}</td>
-					<td class="font-mono text-xs cell-muted">
+					<td class="text-xs">{{ decl.name }}</td>
+					<td class="text-xs cell-muted">
 						<span v-if="decl.secret && hasDisplayValue(effectiveValue(decl))">••••••</span>
 						<span v-else-if="hasDisplayValue(effectiveValue(decl))">
 							{{ String(effectiveValue(decl)) }}

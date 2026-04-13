@@ -68,7 +68,7 @@
 						</legend>
 						<textarea
 							v-model="form.data"
-							class="textarea w-full font-mono text-xs"
+							class="textarea w-full text-xs"
 							rows="8"
 							:placeholder="credential ? getDataPlaceholder(credential.type) : ''"
 						/>

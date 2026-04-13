@@ -69,7 +69,7 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">目标地址</dt>
-						<dd class="text-xs font-mono">{{ routeData.target_url }}</dd>
+						<dd class="text-xs">{{ routeData.target_url }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">状态</dt>

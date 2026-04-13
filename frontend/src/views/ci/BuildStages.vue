@@ -38,7 +38,7 @@
 								{{ s.name }}
 							</router-link>
 						</td>
-						<td class="font-mono text-base-content/70">{{ s.image }}</td>
+						<td class="text-base-content/70">{{ s.image }}</td>
 						<td>
 							<span class="badge badge-sm badge-ghost">v{{ s.version }}</span>
 						</td>

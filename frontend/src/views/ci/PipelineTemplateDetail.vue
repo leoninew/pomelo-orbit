@@ -65,7 +65,7 @@
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
 						<div class="flex items-center gap-3">
-							<h2 class="font-semibold">Stages 编排</h2>
+							<h2 class="font-semibold">阶段编排</h2>
 							<div class="join">
 								<button
 									class="btn btn-xs join-item"

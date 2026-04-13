@@ -44,7 +44,7 @@
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">快照 ID</dt>
-							<dd class="font-mono text-xs">{{ snapshot.id }}</dd>
+							<dd class="text-xs">{{ snapshot.id }}</dd>
 						</div>
 					</dl>
 				</div>
@@ -55,7 +55,7 @@
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
 						<div class="flex items-center gap-3">
-							<h2 class="font-semibold">Stages 编排</h2>
+							<h2 class="font-semibold">阶段编排</h2>
 							<div class="join">
 								<button
 									class="btn btn-xs join-item"

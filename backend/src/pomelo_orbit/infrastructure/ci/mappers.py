@@ -5,10 +5,10 @@ import json
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
     Artifact,
+    BuildStage,
     Credential,
     PipelineRun,
     PipelineSnapshot,
-    PipelineStage,
     PipelineTemplate,
     Repository,
     RepositoryWebhook,
@@ -25,10 +25,10 @@ from pomelo_orbit.domain.ci.value_objects import (
 )
 from pomelo_orbit.infrastructure.ci.models import (
     ArtifactModel,
+    BuildStageModel,
     CredentialModel,
     PipelineRunModel,
     PipelineSnapshotModel,
-    PipelineStageModel,
     PipelineTemplateModel,
     PipelineTemplateStageModel,
     ProjectModel,
@@ -59,12 +59,12 @@ class CredentialMapper:
         )
 
 
-class PipelineStageMapper:
+class BuildStageMapper:
     @staticmethod
-    def to_domain(orm: PipelineStageModel) -> PipelineStage:
+    def to_domain(orm: BuildStageModel) -> BuildStage:
         artifacts_raw = json.loads(orm.artifacts) if orm.artifacts else None
         artifacts = [ArtifactConfig(**a) for a in artifacts_raw] if artifacts_raw else None
-        return PipelineStage(
+        return BuildStage(
             id=orm.id,
             name=orm.name,
             image=orm.image,
@@ -77,13 +77,13 @@ class PipelineStageMapper:
         )
 
     @staticmethod
-    def to_orm(entity: PipelineStage) -> PipelineStageModel:
+    def to_orm(entity: BuildStage) -> BuildStageModel:
         artifacts_json = (
             json.dumps([a.model_dump() if hasattr(a, "model_dump") else a for a in entity.artifacts])
             if entity.artifacts
             else None
         )
-        return PipelineStageModel(
+        return BuildStageModel(
             id=entity.id,
             name=entity.name,
             image=entity.image,
@@ -129,7 +129,7 @@ class PipelineTemplateMapper:
 
     @staticmethod
     def to_domain(
-        orm: PipelineTemplateModel, orchestration: list[StageOrchestration], stages: list[PipelineStage]
+        orm: PipelineTemplateModel, orchestration: list[StageOrchestration], stages: list[BuildStage]
     ) -> PipelineTemplate:
         variable_declarations = [VariableDeclaration(**vd) for vd in json.loads(orm.variable_declarations)]
         return PipelineTemplate(

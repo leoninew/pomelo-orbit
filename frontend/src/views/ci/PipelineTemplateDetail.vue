@@ -135,7 +135,7 @@
 								<td>
 									<div class="flex items-center gap-2">
 										<router-link
-											:to="`/ci/pipeline-stage/${orch.stage_id}`"
+											:to="`/ci/build-stage/${orch.stage_id}`"
 											class="link link-primary text-xs"
 										>
 											{{ stageCache[orch.stage_id]?.name ?? orch.stage_id }}
@@ -516,11 +516,11 @@ import { ArrowLeft, GripVertical, Play, Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useRoute, useRouter } from 'vue-router';
-import { pipelineStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
+import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type {
-	PipelineStage,
+	BuildStage,
 	PipelineTemplate,
 	StageOrchestration,
 	VariableDeclaration,
@@ -544,8 +544,8 @@ const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 const template = ref<PipelineTemplate>();
 const sortableOrch = ref<StageOrchestration[]>([]);
 const declarations = ref<VariableDeclaration[]>([]);
-const allStages = ref<PipelineStage[]>([]);
-const stageCache = reactive<Record<string, PipelineStage>>({});
+const allStages = ref<BuildStage[]>([]);
+const stageCache = reactive<Record<string, BuildStage>>({});
 const viewMode = ref<'list' | 'dag'>('list');
 const repositories = ref<Repository[]>([]);
 
@@ -668,7 +668,7 @@ async function fetchStages() {
 	// 按需加载：仅在打开"添加 Stage"模态框时才加载
 	if (allStages.value.length === 0) {
 		try {
-			const response = await pipelineStageApi.list({ page: 1, per_page: 100 });
+			const response = await buildStageApi.list({ page: 1, per_page: 100 });
 			allStages.value = response.items;
 		} catch {
 			toast.error('获取 Stage 列表失败');

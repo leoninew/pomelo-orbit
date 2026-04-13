@@ -1,6 +1,6 @@
 export { artifactApi } from './artifact';
+export { buildStageApi } from './build_stage';
 export { credentialApi } from './credential';
-export { pipelineStageApi } from './pipeline_stage';
 export { repositoryApi } from './repository';
 export { pipelineRunApi } from './run';
 export { pipelineTemplateApi } from './template';

@@ -159,8 +159,8 @@ class Credential:
 
 
 @dataclass
-class PipelineStage:
-    """流水线 Stage 实体：执行的最小单元，描述"做什么"。
+class BuildStage:
+    """构建 Stage 实体：执行的最小单元，描述"做什么"。
 
     不含任何编排信息（depends_on、sort_order 属于 PipelineTemplate 的编排，不属于 Stage）。
     """
@@ -182,9 +182,9 @@ class PipelineStage:
         script: str,
         artifacts: list | None = None,
         description: str = "",
-    ) -> "PipelineStage":
+    ) -> "BuildStage":
         now = utc_now()
-        return PipelineStage(
+        return BuildStage(
             id=str(ULID()),
             name=name,
             image=image,
@@ -245,7 +245,7 @@ class PipelineTemplate:
     name: str
     version: int
     orchestration: list["StageOrchestration"]  # 编排：stage_id + depends_on + sort_order
-    stages: list["PipelineStage"]  # 编排引用的 Stage 实体（加载时填充）
+    stages: list["BuildStage"]  # 编排引用的 Stage 实体（加载时填充）
     variable_declarations: list[VariableDeclaration]
     description: str = ""
     created_at: datetime = field(default_factory=utc_now)

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS pipeline_template (
 CREATE INDEX IF NOT EXISTS idx_pipeline_template_name ON pipeline_template(name);
 
 -- 独立 Stage 表（执行最小单元，不含编排属性）
-CREATE TABLE IF NOT EXISTS pipeline_stage (
+CREATE TABLE IF NOT EXISTS build_stage (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     image TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_pipeline_stage_name ON pipeline_stage(name);
+CREATE INDEX IF NOT EXISTS idx_build_stage_name ON build_stage(name);
 
 -- 模板编排表（模板对 Stage 的引用 + 依赖 + 顺序）
 CREATE TABLE IF NOT EXISTS pipeline_template_stage (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS pipeline_template_stage (
     depends_on TEXT NOT NULL DEFAULT '[]',  -- JSON array of stage_name
     sort_order INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (template_id) REFERENCES pipeline_template(id) ON DELETE CASCADE,
-    FOREIGN KEY (stage_id) REFERENCES pipeline_stage(id),
+    FOREIGN KEY (stage_id) REFERENCES build_stage(id),
     UNIQUE (template_id, stage_name)
 );
 

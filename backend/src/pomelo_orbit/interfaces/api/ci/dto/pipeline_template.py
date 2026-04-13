@@ -5,14 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from pomelo_orbit.domain.ci.value_objects import ArtifactType
-
-
-class ArtifactConfigDto(BaseModel):
-    type: ArtifactType = ArtifactType.BINARY
-    path: str = Field(min_length=1)
-    name: str = Field(min_length=1)
-    model_config = {"from_attributes": True}
+from pomelo_orbit.interfaces.api.ci.dto.build_stage import BuildStageResp
+from pomelo_orbit.interfaces.api.ci.dto.common import ArtifactConfigDto
 
 
 class StageDefinitionDto(BaseModel):
@@ -27,39 +21,6 @@ class StageDefinitionDto(BaseModel):
     artifacts: list[ArtifactConfigDto] | None = None
 
     model_config = {"from_attributes": True}
-
-
-# ── PipelineStage DTO ─────────────────────────────────────────────────────────
-
-
-class PipelineStageResp(BaseModel):
-    id: str
-    name: str
-    image: str
-    script: str
-    artifacts: list[ArtifactConfigDto] | None
-    description: str
-    version: int
-    created_at: datetime
-    updated_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
-class PipelineStageCreateReq(BaseModel):
-    name: str = Field(min_length=1)
-    image: str = Field(min_length=1)
-    script: str = Field(min_length=1)
-    artifacts: list[ArtifactConfigDto] | None = None
-    description: str = ""
-
-
-class PipelineStageUpdateReq(BaseModel):
-    name: str | None = Field(default=None, min_length=1)
-    image: str | None = Field(default=None, min_length=1)
-    script: str | None = Field(default=None, min_length=1)
-    artifacts: list[ArtifactConfigDto] | None = None
-    description: str | None = None
 
 
 # ── 编排 DTO ──────────────────────────────────────────────────────────────────
@@ -133,7 +94,7 @@ class PipelineTemplateResp(BaseModel):
     name: str
     description: str
     orchestration: list[StageOrchestrationDto]
-    stages: list[PipelineStageResp]
+    stages: list[BuildStageResp]
     variable_declarations: list[VariableDeclarationDto]
     version: int
     created_at: datetime

@@ -26,7 +26,7 @@
   },
   {
     "type": "insert",
-    "table": "pipeline_stage",
+    "table": "build_stage",
     "data": [
       {
         "id": "01STAGE000000000000000CLONE",

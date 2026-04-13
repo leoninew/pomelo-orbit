@@ -12,10 +12,10 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.application.ci import (
+    BuildStageService,
     CredentialService,
     PipelineRunService,
     RepositoryService,
-    StageService,
     TemplateService,
     WebhookService,
 )
@@ -26,10 +26,10 @@ from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 from pomelo_orbit.infrastructure.ci.repositories import (
     ArtifactRepositoryImpl,
+    BuildStageRepositoryImpl,
     CredentialRepositoryImpl,
     PipelineRunRepositoryImpl,
     PipelineSnapshotRepositoryImpl,
-    PipelineStageRepositoryImpl,
     PipelineTemplateRepositoryImpl,
     RepositoryRepositoryImpl,
     RepositoryWebhookRepositoryImpl,
@@ -98,10 +98,10 @@ def get_credential_service(
 
 def get_stage_service(
     db: Annotated[Session, Depends(get_db)],
-) -> StageService:
+) -> BuildStageService:
     """获取 Stage 应用服务"""
-    return StageService(
-        stage_repo=PipelineStageRepositoryImpl(db),
+    return BuildStageService(
+        stage_repo=BuildStageRepositoryImpl(db),
     )
 
 
@@ -126,7 +126,7 @@ def get_template_service(
         template_repo=PipelineTemplateRepositoryImpl(db),
         snapshot_repo=PipelineSnapshotRepositoryImpl(db),
         webhook_repo=RepositoryWebhookRepositoryImpl(db),
-        stage_repo=PipelineStageRepositoryImpl(db),
+        stage_repo=BuildStageRepositoryImpl(db),
         variable_resolver=_get_variable_resolver(settings),
     )
 

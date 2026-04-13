@@ -193,9 +193,9 @@ const sidebarMap = {
 			icon: FolderGit2,
 		},
 		{
-			key: 'pipelinestages',
+			key: 'buildstages',
 			label: '构建阶段',
-			path: '/ci/pipeline-stage',
+			path: '/ci/build-stage',
 			icon: Layers,
 		},
 		{

@@ -1,7 +1,7 @@
 ﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
-			<h1 class="text-xl font-semibold">流水线阶段</h1>
+			<h1 class="text-xl font-semibold">构建阶段</h1>
 			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
 				<Plus class="size-4" />
 				新建 Stage
@@ -34,7 +34,7 @@
 					</tr>
 					<tr v-for="s in stages" :key="s.id" class="hover">
 						<td>
-							<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary font-medium">
+							<router-link :to="`/ci/build-stage/${s.id}`" class="link link-primary font-medium">
 								{{ s.name }}
 							</router-link>
 						</td>
@@ -45,7 +45,7 @@
 						<td class="text-base-content/60 max-w-xs truncate">{{ s.description || '—' }}</td>
 						<td class="text-base-content/60">{{ formatTime(s.updated_at) }}</td>
 						<td>
-							<router-link :to="`/ci/pipeline-stage/${s.id}`" class="link link-primary">
+							<router-link :to="`/ci/build-stage/${s.id}`" class="link link-primary">
 								查看
 							</router-link>
 							<button
@@ -141,10 +141,10 @@
 import { Plus } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { pipelineStageApi } from '@/api/ci';
+import { buildStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineStage } from '@/types/ci/template';
+import type { BuildStage } from '@/types/ci/template';
 import { formatTime } from '@/utils/time';
 
 const router = useRouter();
@@ -153,7 +153,7 @@ const { status, error, execute } = useStatusAsync();
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-const stages = ref<PipelineStage[]>([]);
+const stages = ref<BuildStage[]>([]);
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 const modalRef = ref<HTMLDialogElement>();
@@ -171,7 +171,7 @@ function validate() {
 async function fetchStages() {
 	try {
 		await execute(async () => {
-			const res = await pipelineStageApi.list({
+			const res = await buildStageApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
 			});
@@ -200,7 +200,7 @@ async function handleModalOk() {
 	}
 	try {
 		await executeOp(async () => {
-			await pipelineStageApi.create({
+			await buildStageApi.create({
 				name: form.name,
 				image: form.image,
 				script: form.script,
@@ -218,9 +218,9 @@ async function handleModalOk() {
 async function handleDuplicate(id: string) {
 	try {
 		await executeDuplicate(async () => {
-			const newStage = await pipelineStageApi.duplicate(id);
+			const newStage = await buildStageApi.duplicate(id);
 			toast.success('复制成功');
-			router.push(`/ci/pipeline-stage/${newStage.id}`);
+			router.push(`/ci/build-stage/${newStage.id}`);
 		});
 	} catch (err) {
 		toast.error(err instanceof Error ? err.message : '复制失败');

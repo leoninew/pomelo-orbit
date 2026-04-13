@@ -2,6 +2,7 @@
 
 # 重新导出所有子模块的 DTO
 from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
+from pomelo_orbit.interfaces.api.ci.dto.build_stage import BuildStageCreateReq, BuildStageResp, BuildStageUpdateReq
 from pomelo_orbit.interfaces.api.ci.dto.credential import (
     CredentialCreateReq,
     CredentialResp,
@@ -21,6 +22,9 @@ from pomelo_orbit.interfaces.api.ci.dto.repository import RepositoryCreateReq, R
 
 __all__ = [
     "ArtifactResp",
+    "BuildStageCreateReq",
+    "BuildStageResp",
+    "BuildStageUpdateReq",
     "CredentialCreateReq",
     "CredentialResp",
     "CredentialUpdateReq",

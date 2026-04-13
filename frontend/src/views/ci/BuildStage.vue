@@ -3,7 +3,7 @@
 		<!-- Page header -->
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">{{ stage?.name ?? 'Stage 详情' }}</h1>
-			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/pipeline-stage')">
+			<button class="btn btn-sm btn-ghost gap-1" @click="$router.push('/ci/build-stage')">
 				<ArrowLeft class="size-4" />
 				返回
 			</button>
@@ -333,10 +333,10 @@ import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useRoute, useRouter } from 'vue-router';
-import { pipelineStageApi } from '@/api/ci';
+import { buildStageApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { ArtifactConfig, ArtifactType, PipelineStage } from '@/types/ci/template';
+import type { ArtifactConfig, ArtifactType, BuildStage } from '@/types/ci/template';
 import { formatTime } from '@/utils/time';
 
 const route = useRoute();
@@ -349,7 +349,7 @@ const { loading: saving, execute: executeSave } = useStatusAsync();
 const { loading: deleting, execute: executeDelete } = useStatusAsync();
 const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-const stage = ref<PipelineStage>();
+const stage = ref<BuildStage>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const editModalRef = ref<HTMLDialogElement>();
 const artifactModalRef = ref<HTMLDialogElement>();
@@ -370,12 +370,12 @@ const artifactToDelete = ref(-1);
 async function fetchStage() {
 	try {
 		await execute(async () => {
-			stage.value = await pipelineStageApi.get(stageId.value);
+			stage.value = await buildStageApi.get(stageId.value);
 			sortableArtifacts.value = stage.value.artifacts ? [...stage.value.artifacts] : [];
 		});
 	} catch {
 		toast.error('获取 Stage 失败');
-		router.push('/ci/pipeline-stage');
+		router.push('/ci/build-stage');
 	}
 }
 
@@ -403,7 +403,7 @@ function closeScriptDrawer() {
 async function confirmScript() {
 	try {
 		await executeSave(async () => {
-			const updated = await pipelineStageApi.update(stageId.value, {
+			const updated = await buildStageApi.update(stageId.value, {
 				script: scriptTemp.value,
 			});
 			stage.value = updated;
@@ -418,7 +418,7 @@ async function confirmScript() {
 async function handleSave() {
 	try {
 		await executeSave(async () => {
-			const updated = await pipelineStageApi.update(stageId.value, {
+			const updated = await buildStageApi.update(stageId.value, {
 				name: form.name,
 				image: form.image,
 				description: form.description,
@@ -473,7 +473,7 @@ async function removeArtifact() {
 
 	try {
 		await executeSave(async () => {
-			stage.value = await pipelineStageApi.update(stageId.value, {
+			stage.value = await buildStageApi.update(stageId.value, {
 				artifacts: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [],
 			});
 			toast.success('删除成功');
@@ -513,7 +513,7 @@ async function handleSaveArtifact() {
 
 	try {
 		await executeSave(async () => {
-			stage.value = await pipelineStageApi.update(stageId.value, {
+			stage.value = await buildStageApi.update(stageId.value, {
 				artifacts: sortableArtifacts.value,
 			});
 			toast.success(artifactForm.isEdit ? '更新成功' : '添加成功');
@@ -531,9 +531,9 @@ function openDeleteModal() {
 async function handleDuplicate() {
 	try {
 		await executeDuplicate(async () => {
-			const newStage = await pipelineStageApi.duplicate(stageId.value);
+			const newStage = await buildStageApi.duplicate(stageId.value);
 			toast.success('复制成功');
-			router.push(`/ci/pipeline-stage/${newStage.id}`);
+			router.push(`/ci/build-stage/${newStage.id}`);
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '复制失败');
@@ -543,9 +543,9 @@ async function handleDuplicate() {
 async function handleDelete() {
 	try {
 		await executeDelete(async () => {
-			await pipelineStageApi.delete(stageId.value);
+			await buildStageApi.delete(stageId.value);
 			toast.success('删除成功');
-			router.push('/ci/pipeline-stage');
+			router.push('/ci/build-stage');
 		});
 	} catch (e) {
 		toast.error(e instanceof Error ? e.message : '删除失败');

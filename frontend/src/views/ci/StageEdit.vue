@@ -198,18 +198,18 @@
 import { Plus, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { reactive, ref, watch } from 'vue';
-import { pipelineStageApi } from '@/api/ci';
+import { buildStageApi } from '@/api/ci';
 import { useToast } from '@/composables/useToast';
-import type { ArtifactConfig, PipelineStage } from '@/types/ci/template';
+import type { ArtifactConfig, BuildStage } from '@/types/ci/template';
 
 const props = defineProps<{
 	open: boolean
-	editingStage?: PipelineStage // undefined = 新建
+	editingStage?: BuildStage // undefined = 新建
 }>();
 
 const emit = defineEmits<{
 	close: []
-	saved: [stage: PipelineStage]
+	saved: [stage: BuildStage]
 }>();
 
 const toast = useToast();
@@ -293,8 +293,8 @@ async function handleSave() {
 			description: form.description,
 		};
 		const stage = props.editingStage
-			? await pipelineStageApi.update(props.editingStage.id, payload)
-			: await pipelineStageApi.create(payload);
+			? await buildStageApi.update(props.editingStage.id, payload)
+			: await buildStageApi.create(payload);
 		toast.success(props.editingStage ? '更新成功' : '创建成功');
 		emit('saved', stage);
 	} catch (e) {

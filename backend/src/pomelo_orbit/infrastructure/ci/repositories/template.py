@@ -3,62 +3,62 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from pomelo_orbit.domain.ci.entities import PipelineSnapshot, PipelineStage, PipelineTemplate
+from pomelo_orbit.domain.ci.entities import BuildStage, PipelineSnapshot, PipelineTemplate
 from pomelo_orbit.domain.ci.repositories import (
+    BuildStageRepository,
     PipelineSnapshotRepository,
-    PipelineStageRepository,
     PipelineTemplateRepository,
 )
 from pomelo_orbit.domain.ci.value_objects import StageOrchestration
 from pomelo_orbit.infrastructure.ci.mappers import (
+    BuildStageMapper,
     PipelineSnapshotMapper,
-    PipelineStageMapper,
     PipelineTemplateMapper,
     PipelineTemplateStageMapper,
 )
 from pomelo_orbit.infrastructure.ci.models import (
+    BuildStageModel,
     PipelineSnapshotModel,
-    PipelineStageModel,
     PipelineTemplateModel,
     PipelineTemplateStageModel,
     ProjectWebhookModel,
 )
 
 
-class PipelineStageRepositoryImpl(PipelineStageRepository):
+class BuildStageRepositoryImpl(BuildStageRepository):
     def __init__(self, session: Session):
         self._session = session
-        self._mapper = PipelineStageMapper()
+        self._mapper = BuildStageMapper()
 
-    def find_by_id(self, stage_id: str) -> PipelineStage | None:
-        orm = self._session.get(PipelineStageModel, stage_id)
+    def find_by_id(self, stage_id: str) -> BuildStage | None:
+        orm = self._session.get(BuildStageModel, stage_id)
         return self._mapper.to_domain(orm) if orm else None
 
-    def find_by_name(self, name: str) -> PipelineStage | None:
-        orm = self._session.query(PipelineStageModel).filter(PipelineStageModel.name == name).first()
+    def find_by_name(self, name: str) -> BuildStage | None:
+        orm = self._session.query(BuildStageModel).filter(BuildStageModel.name == name).first()
         return self._mapper.to_domain(orm) if orm else None
 
-    def find_all(self) -> list[PipelineStage]:
-        orms = self._session.query(PipelineStageModel).order_by(PipelineStageModel.name).all()
+    def find_all(self) -> list[BuildStage]:
+        orms = self._session.query(BuildStageModel).order_by(BuildStageModel.name).all()
         return [self._mapper.to_domain(orm) for orm in orms]
 
-    def find_paginated(self, page: int, per_page: int) -> tuple[list[PipelineStage], int]:
-        total = self._session.query(func.count(PipelineStageModel.id)).scalar() or 0
+    def find_paginated(self, page: int, per_page: int) -> tuple[list[BuildStage], int]:
+        total = self._session.query(func.count(BuildStageModel.id)).scalar() or 0
         orms = (
-            self._session.query(PipelineStageModel)
-            .order_by(PipelineStageModel.created_at.desc())
+            self._session.query(BuildStageModel)
+            .order_by(BuildStageModel.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
             .all()
         )
         return [self._mapper.to_domain(orm) for orm in orms], total
 
-    def find_by_ids(self, stage_ids: list[str]) -> list[PipelineStage]:
-        orms = self._session.query(PipelineStageModel).filter(PipelineStageModel.id.in_(stage_ids)).all()
+    def find_by_ids(self, stage_ids: list[str]) -> list[BuildStage]:
+        orms = self._session.query(BuildStageModel).filter(BuildStageModel.id.in_(stage_ids)).all()
         return [self._mapper.to_domain(orm) for orm in orms]
 
-    def save(self, stage: PipelineStage) -> None:
-        existing = self._session.get(PipelineStageModel, stage.id)
+    def save(self, stage: BuildStage) -> None:
+        existing = self._session.get(BuildStageModel, stage.id)
         orm = self._mapper.to_orm(stage)
         if existing:
             for k, v in orm.__dict__.items():
@@ -67,8 +67,8 @@ class PipelineStageRepositoryImpl(PipelineStageRepository):
         else:
             self._session.add(orm)
 
-    def delete(self, stage: PipelineStage) -> None:
-        orm = self._session.get(PipelineStageModel, stage.id)
+    def delete(self, stage: BuildStage) -> None:
+        orm = self._session.get(BuildStageModel, stage.id)
         if orm:
             self._session.delete(orm)
 
@@ -84,7 +84,7 @@ class PipelineStageRepositoryImpl(PipelineStageRepository):
 class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
     def __init__(self, session: Session):
         self._session = session
-        self._stage_mapper = PipelineStageMapper()
+        self._stage_mapper = BuildStageMapper()
         self._orch_mapper = PipelineTemplateStageMapper()
 
     def _load(self, orm: PipelineTemplateModel) -> PipelineTemplate:
@@ -97,9 +97,7 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
         orchestration = [self._orch_mapper.to_domain(o) for o in orch_orms]
         stage_ids = [o.stage_id for o in orch_orms]
         stage_orms = (
-            (self._session.query(PipelineStageModel).filter(PipelineStageModel.id.in_(stage_ids)).all())
-            if stage_ids
-            else []
+            (self._session.query(BuildStageModel).filter(BuildStageModel.id.in_(stage_ids)).all()) if stage_ids else []
         )
         stages = [self._stage_mapper.to_domain(s) for s in stage_orms]
         return PipelineTemplateMapper.to_domain(orm, orchestration, stages)

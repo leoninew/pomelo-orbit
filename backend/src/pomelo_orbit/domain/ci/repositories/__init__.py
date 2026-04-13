@@ -6,18 +6,18 @@ from pomelo_orbit.domain.ci.repositories.pipeline_run import PipelineRunReposito
 from pomelo_orbit.domain.ci.repositories.repository import RepositoryRepository
 from pomelo_orbit.domain.ci.repositories.stage_run import StageRunRepository
 from pomelo_orbit.domain.ci.repositories.template import (
+    BuildStageRepository,
     PipelineSnapshotRepository,
-    PipelineStageRepository,
     PipelineTemplateRepository,
 )
 from pomelo_orbit.domain.ci.repositories.webhook import RepositoryWebhookRepository
 
 __all__ = [
     "ArtifactRepository",
+    "BuildStageRepository",
     "CredentialRepository",
     "PipelineRunRepository",
     "PipelineSnapshotRepository",
-    "PipelineStageRepository",
     "PipelineTemplateRepository",
     "RepositoryRepository",
     "RepositoryWebhookRepository",

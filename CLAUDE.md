@@ -86,7 +86,7 @@ API 文件:      repository.py
 ✅ /api/template
 ✅ /api/run
 ✅ /api/snapshot
-✅ /api/pipeline-stage
+✅ /api/build-stage
 ✅ /api/webhook
 
 ❌ /api/credentials

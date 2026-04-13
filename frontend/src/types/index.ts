@@ -25,10 +25,10 @@ export type { PipelineSnapshot } from './ci/snapshot';
 export type { Artifact, StageRun } from './ci/stage_run';
 export type {
 	ArtifactConfig,
+	BuildStage,
+	BuildStageCreateReq,
+	BuildStageUpdateReq,
 	OrchestrationUpdateReq,
-	PipelineStage,
-	PipelineStageCreateReq,
-	PipelineStageUpdateReq,
 	PipelineTemplate,
 	PipelineTemplateCreateReq,
 	PipelineTemplateUpdateReq,

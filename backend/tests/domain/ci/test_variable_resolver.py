@@ -10,7 +10,7 @@
 
 from dataclasses import dataclass, field
 
-from pomelo_orbit.domain.ci.entities import PipelineStage, Repository
+from pomelo_orbit.domain.ci.entities import BuildStage, Repository
 from pomelo_orbit.domain.ci.value_objects import VariableDeclaration, VariableSource
 from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
 
@@ -419,6 +419,6 @@ class TestGetBuiltinVariableNames:
 #  辅助函数
 
 
-def _make_stage(script: str) -> PipelineStage:
-    """创建测试用 PipelineStage"""
-    return PipelineStage.create(name="test-stage", image="alpine", script=script)
+def _make_stage(script: str) -> BuildStage:
+    """创建测试用 BuildStage"""
+    return BuildStage.create(name="test-stage", image="alpine", script=script)

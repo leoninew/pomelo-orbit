@@ -3,10 +3,10 @@
 import logging
 import re
 
-from pomelo_orbit.domain.ci.entities import PipelineSnapshot, PipelineStage, PipelineTemplate
+from pomelo_orbit.domain.ci.entities import BuildStage, PipelineSnapshot, PipelineTemplate
 from pomelo_orbit.domain.ci.repositories import (
+    BuildStageRepository,
     PipelineSnapshotRepository,
-    PipelineStageRepository,
     PipelineTemplateRepository,
     RepositoryWebhookRepository,
 )
@@ -28,7 +28,7 @@ class TemplateService:
     - Template 版本管理
 
     依赖：
-    - PipelineStageRepository: 加载 Stage 实体
+    - BuildStageRepository: 加载 Stage 实体
     - VariableResolver: 变量解析
     """
 
@@ -37,7 +37,7 @@ class TemplateService:
         template_repo: PipelineTemplateRepository,
         snapshot_repo: PipelineSnapshotRepository,
         webhook_repo: RepositoryWebhookRepository,
-        stage_repo: PipelineStageRepository,
+        stage_repo: BuildStageRepository,
         variable_resolver: VariableResolver,
     ):
         self.template_repo = template_repo
@@ -187,7 +187,7 @@ class TemplateService:
 
     # ── 私有方法 ──────────────────────────────────────────────────────────────
 
-    def _load_stages_by_ids(self, stage_ids: list[str]) -> list[PipelineStage]:
+    def _load_stages_by_ids(self, stage_ids: list[str]) -> list[BuildStage]:
         """批量加载 Stage（用于模板编排）"""
         stages = self.stage_repo.find_by_ids(stage_ids)
         if len(stages) != len(stage_ids):

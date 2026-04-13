@@ -3,13 +3,13 @@
 import re
 from dataclasses import asdict
 
-from pomelo_orbit.domain.ci.entities import PipelineStage
-from pomelo_orbit.domain.ci.repositories import PipelineStageRepository
+from pomelo_orbit.domain.ci.entities import BuildStage
+from pomelo_orbit.domain.ci.repositories import BuildStageRepository
 from pomelo_orbit.domain.exceptions import BusinessError
 
 
-class StageService:
-    """PipelineStage 聚合根的应用服务
+class BuildStageService:
+    """BuildStage 聚合根的应用服务
 
     职责：
     - Stage 的 CRUD 操作
@@ -17,21 +17,21 @@ class StageService:
     - Stage 复制功能
     """
 
-    def __init__(self, stage_repo: PipelineStageRepository):
+    def __init__(self, stage_repo: BuildStageRepository):
         self.stage_repo = stage_repo
 
-    def list_stages(self, page: int = 1, per_page: int = 20) -> tuple[list[PipelineStage], int]:
+    def list_stages(self, page: int = 1, per_page: int = 20) -> tuple[list[BuildStage], int]:
         """分页查询 Stage"""
         return self.stage_repo.find_paginated(page, per_page)
 
-    def get_stage(self, stage_id: str) -> PipelineStage:
+    def get_stage(self, stage_id: str) -> BuildStage:
         """获取单个 Stage"""
         stage = self.stage_repo.find_by_id(stage_id)
         if not stage:
             raise BusinessError(f"Stage {stage_id} not found", status_code=404)
         return stage
 
-    def load_stages_by_ids(self, stage_ids: list[str]) -> list[PipelineStage]:
+    def load_stages_by_ids(self, stage_ids: list[str]) -> list[BuildStage]:
         """批量加载 Stage（用于模板编排）"""
         stages = self.stage_repo.find_by_ids(stage_ids)
         if len(stages) != len(stage_ids):
@@ -47,11 +47,11 @@ class StageService:
         script: str,
         artifacts: list | None = None,
         description: str = "",
-    ) -> PipelineStage:
+    ) -> BuildStage:
         """创建 Stage"""
         if self.stage_repo.find_by_name(name):
             raise BusinessError(f"Stage '{name}' already exists", status_code=409)
-        stage = PipelineStage.create(
+        stage = BuildStage.create(
             name=name,
             image=image,
             script=script,
@@ -69,7 +69,7 @@ class StageService:
         script: str | None = None,
         artifacts: list | None = None,
         description: str | None = None,
-    ) -> PipelineStage:
+    ) -> BuildStage:
         """更新 Stage"""
         stage = self.get_stage(stage_id)
         if name is not None and name != stage.name and self.stage_repo.find_by_name(name):
@@ -78,7 +78,7 @@ class StageService:
         self.stage_repo.save(stage)
         return stage
 
-    def duplicate_stage(self, stage_id: str) -> PipelineStage:
+    def duplicate_stage(self, stage_id: str) -> BuildStage:
         """复制 Stage（自动生成唯一名称）"""
         stage = self.get_stage(stage_id)
 

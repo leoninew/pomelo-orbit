@@ -29,7 +29,7 @@ class TestSnapshotVariables:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/pipeline-stage",
+            "/api/ci/build-stage",
             json={
                 "name": "build",
                 "image": "alpine",

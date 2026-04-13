@@ -36,10 +36,10 @@ class PipelineTemplateModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
 
-class PipelineStageModel(Base):
-    """流水线 Stage 模型：执行最小单元，不含编排属性"""
+class BuildStageModel(Base):
+    """构建 Stage 模型：执行最小单元，不含编排属性"""
 
-    __tablename__ = "pipeline_stage"
+    __tablename__ = "build_stage"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
@@ -62,7 +62,7 @@ class PipelineTemplateStageModel(Base):
     template_id: Mapped[str] = mapped_column(
         String(26), ForeignKey("pipeline_template.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    stage_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_stage.id"), nullable=False)
+    stage_id: Mapped[str] = mapped_column(String(26), ForeignKey("build_stage.id"), nullable=False)
     stage_name: Mapped[str] = mapped_column(String(255), nullable=False)  # 模板内唯一标识
     stage_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)  # 编排时的 stage 版本
     depends_on: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON array of stage_name

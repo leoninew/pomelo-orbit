@@ -22,7 +22,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from pomelo_orbit.domain.ci.entities import PipelineStage, Repository
+from pomelo_orbit.domain.ci.entities import BuildStage, Repository
 from pomelo_orbit.domain.ci.value_objects import BuiltinVariableSpecs, VariableDeclaration, VariableSource
 from pomelo_orbit.infrastructure.ci.variables import extract_variables, merge_declarations
 
@@ -78,7 +78,7 @@ class VariableResolver:
 
     def resolve_template_variables(
         self,
-        stages: list[PipelineStage],
+        stages: list[BuildStage],
         custom_declarations: list[VariableDeclaration],
     ) -> list[VariableDeclaration]:
         """解析模板变量（用于模板详情页展示 & 前端编排 Stage 时实时计算）

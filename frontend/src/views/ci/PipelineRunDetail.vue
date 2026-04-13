@@ -198,7 +198,7 @@
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
 								<td>
 									<router-link
-										:to="`/ci/pipeline-stage/${stage.id}`"
+										:to="`/ci/build-stage/${stage.id}`"
 										class="link link-primary text-xs"
 									>
 										{{ stage.name }}

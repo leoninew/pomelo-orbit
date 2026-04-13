@@ -28,7 +28,7 @@ class TestTemplateVariableLifecycle:
 
         # 2. 创建一个 Stage（包含变量引用）
         stage_resp = auth_client.post(
-            "/api/ci/pipeline-stage",
+            "/api/ci/build-stage",
             json={
                 "name": "git clone",
                 "image": "alpine/git",
@@ -133,7 +133,7 @@ class TestTemplateVariableLifecycle:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/pipeline-stage",
+            "/api/ci/build-stage",
             json={
                 "name": "build",
                 "image": "alpine",
@@ -210,7 +210,7 @@ class TestTemplateVariableLifecycle:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/pipeline-stage",
+            "/api/ci/build-stage",
             json={
                 "name": "test",
                 "image": "alpine",
@@ -487,7 +487,7 @@ class TestRuntimeVariableMerging:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/pipeline-stage",
+            "/api/ci/build-stage",
             json={
                 "name": "build",
                 "image": "alpine",

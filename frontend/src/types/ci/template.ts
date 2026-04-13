@@ -6,9 +6,9 @@ export interface ArtifactConfig {
 	name: string
 }
 
-// ── PipelineStage ─────────────────────────────────────────────────────────────
+// ── BuildStage ────────────────────────────────────────────────────────────────
 
-export interface PipelineStage {
+export interface BuildStage {
 	id: string
 	name: string
 	image: string
@@ -20,7 +20,7 @@ export interface PipelineStage {
 	updated_at: string
 }
 
-export interface PipelineStageCreateReq {
+export interface BuildStageCreateReq {
 	name: string
 	image: string
 	script: string
@@ -28,7 +28,7 @@ export interface PipelineStageCreateReq {
 	description?: string
 }
 
-export interface PipelineStageUpdateReq {
+export interface BuildStageUpdateReq {
 	name?: string
 	image?: string
 	script?: string
@@ -77,7 +77,7 @@ export interface PipelineTemplate {
 	name: string
 	description: string
 	orchestration: StageOrchestration[]
-	stages: PipelineStage[]
+	stages: BuildStage[]
 	variable_declarations: VariableDeclaration[]
 	version: number
 	created_at: string

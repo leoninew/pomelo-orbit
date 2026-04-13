@@ -5,7 +5,7 @@
 			<div class="flex items-center gap-2 flex-wrap">
 				<!-- 项目选择 -->
 				<div class="dropdown">
-					<label class="input input-sm flex items-center gap-1 w-40">
+					<label class="input input-sm flex items-center gap-1 w-60">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
 						<input v-model="repoInput" tabindex="0" type="text" class="grow" placeholder="筛选项目" @input="onRepoInput" />
 						<button v-if="repoInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearRepo"><X class="size-3" /></button>
@@ -19,7 +19,7 @@
 				</div>
 				<!-- 模板选择 -->
 				<div class="dropdown">
-					<label class="input input-sm flex items-center gap-1 w-40">
+					<label class="input input-sm flex items-center gap-1 w-60">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
 						<input v-model="templateInput" tabindex="0" type="text" class="grow" placeholder="筛选模板" @input="onTemplateInput" />
 						<button v-if="templateInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearTemplate"><X class="size-3" /></button>

@@ -7,7 +7,7 @@
 			<div class="flex items-center gap-2 flex-wrap">
 				<!-- 项目选择 -->
 				<div class="dropdown">
-					<label class="input input-sm flex items-center gap-1 w-40">
+					<label class="input input-sm flex items-center gap-1 w-60">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
 						<input
 							v-model="repoInput"
@@ -41,7 +41,7 @@
 
 				<!-- 模板选择 -->
 				<div class="dropdown">
-					<label class="input input-sm flex items-center gap-1 w-40">
+					<label class="input input-sm flex items-center gap-1 w-60">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
 						<input
 							v-model="templateInput"

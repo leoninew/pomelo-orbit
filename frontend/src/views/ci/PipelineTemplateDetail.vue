@@ -86,7 +86,7 @@
 						<div v-if="viewMode === 'list'" class="flex items-center gap-2">
 							<button class="btn btn-sm btn-ghost gap-1" @click="openAddOrchModal">
 								<Plus class="size-3.5" />
-								添加 Stage
+								添加阶段
 							</button>
 							<button
 								v-if="template"
@@ -280,6 +280,7 @@
 									type="text"
 									class="grow"
 									placeholder="搜索阶段名称"
+									ref="stageSearchInputRef"
 									@input="onStageSearchInput"
 								/>
 								<button v-if="stageSearchInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearStageSearch"><X class="size-3" /></button>
@@ -652,6 +653,8 @@ const editVarModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const deleteOrchModalRef = ref<HTMLDialogElement>();
 const deleteVarModalRef = ref<HTMLDialogElement>();
+const stageSearchInputRef = ref<HTMLInputElement>();
+
 const editForm = reactive({ name: '', description: '' });
 const addOrchForm = reactive({
 	stageId: '',
@@ -893,8 +896,9 @@ async function openAddOrchModal() {
 	addOrchForm.stageId = '';
 	addOrchForm.dependsOn = [];
 	stageSearchInput.value = '';
-	await searchStages();
 	addOrchModalRef.value?.showModal();
+	await searchStages();
+	stageSearchInputRef.value?.blur();
 }
 
 async function confirmAddOrch() {

@@ -10,7 +10,7 @@ import type {
 import request from '@/utils/request';
 
 export const pipelineTemplateApi = {
-	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<PipelineTemplate>> {
+	list(params?: { page?: number; per_page?: number; search?: string }): Promise<PaginatedResp<PipelineTemplate>> {
 		return request.get('/api/ci/template', { params });
 	},
 

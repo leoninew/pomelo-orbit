@@ -40,8 +40,9 @@ def list_repository(
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[RepositoryListResp]:
-    repositories, total = repository_service.list_repositories(page=page, per_page=per_page)
+    repositories, total = repository_service.list_repositories(page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[RepositoryListResp.from_domain(repo) for repo in repositories],
         total=total,

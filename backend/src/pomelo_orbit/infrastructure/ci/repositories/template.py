@@ -1,6 +1,5 @@
 """CI 流水线模板与快照仓储实现"""
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.ci.entities import BuildStage, PipelineSnapshot, PipelineTemplate
@@ -42,10 +41,13 @@ class BuildStageRepositoryImpl(BuildStageRepository):
         orms = self._session.query(BuildStageModel).order_by(BuildStageModel.name).all()
         return [self._mapper.to_domain(orm) for orm in orms]
 
-    def find_paginated(self, page: int, per_page: int) -> tuple[list[BuildStage], int]:
-        total = self._session.query(func.count(BuildStageModel.id)).scalar() or 0
+    def find_paginated(self, page: int, per_page: int, search: str | None = None) -> tuple[list[BuildStage], int]:
+        query = self._session.query(BuildStageModel)
+        if search:
+            query = query.filter(BuildStageModel.name.ilike(f"%{search}%"))
+        total = query.count()
         orms = (
-            self._session.query(BuildStageModel)
+            query
             .order_by(BuildStageModel.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)
@@ -114,10 +116,13 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
         orms = self._session.query(PipelineTemplateModel).all()
         return [self._load(orm) for orm in orms]
 
-    def find_paginated(self, page: int, per_page: int) -> tuple[list[PipelineTemplate], int]:
-        total = self._session.query(func.count(PipelineTemplateModel.id)).scalar() or 0
+    def find_paginated(self, page: int, per_page: int, search: str | None = None) -> tuple[list[PipelineTemplate], int]:
+        query = self._session.query(PipelineTemplateModel)
+        if search:
+            query = query.filter(PipelineTemplateModel.name.ilike(f"%{search}%"))
+        total = query.count()
         orms = (
-            self._session.query(PipelineTemplateModel)
+            query
             .order_by(PipelineTemplateModel.created_at.desc())
             .offset((page - 1) * per_page)
             .limit(per_page)

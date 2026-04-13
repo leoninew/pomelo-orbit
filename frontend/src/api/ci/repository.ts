@@ -4,7 +4,7 @@ import type { Repository, RepositoryCreateReq, RepositoryUpdateReq } from '@/typ
 import request from '@/utils/request';
 
 export const repositoryApi = {
-	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<Repository>> {
+	list(params?: { page?: number; per_page?: number; search?: string }): Promise<PaginatedResp<Repository>> {
 		return request.get('/api/ci/repository', { params });
 	},
 

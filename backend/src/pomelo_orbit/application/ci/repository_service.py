@@ -34,9 +34,9 @@ class RepositoryService:
         self.credential_repo = credential_repo
         self.variable_resolver = variable_resolver
 
-    def list_repositories(self, page: int = 1, per_page: int = 20) -> tuple[list[Repository], int]:
+    def list_repositories(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[Repository], int]:
         """分页查询项目列表"""
-        return self.repository_repo.find_paginated(page=page, per_page=per_page)
+        return self.repository_repo.find_paginated(page=page, per_page=per_page, search=search)
 
     def get_repository(self, repository_id: str) -> Repository:
         """获取单个项目"""

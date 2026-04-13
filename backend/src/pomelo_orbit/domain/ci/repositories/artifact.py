@@ -15,6 +15,8 @@ class ArtifactRepository(ABC):
         page: int = 1,
         per_page: int = 20,
         repository_id: str | None = None,
+        template_id: str | None = None,
+        search: str | None = None,
     ) -> tuple[list[Artifact], int]: ...
 
     @abstractmethod

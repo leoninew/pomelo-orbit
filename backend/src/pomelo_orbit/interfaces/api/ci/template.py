@@ -30,8 +30,9 @@ def list_templates(
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineTemplateResp]:
-    items, total = template_service.list_templates(page=page, per_page=per_page)
+    items, total = template_service.list_templates(page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[PipelineTemplateResp.model_validate(t) for t in items],
         total=total,

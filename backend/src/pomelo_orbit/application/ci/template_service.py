@@ -46,9 +46,9 @@ class TemplateService:
         self.stage_repo = stage_repo
         self.variable_resolver = variable_resolver
 
-    def list_templates(self, page: int = 1, per_page: int = 20) -> tuple[list[PipelineTemplate], int]:
+    def list_templates(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[PipelineTemplate], int]:
         """分页查询模板列表"""
-        return self.template_repo.find_paginated(page=page, per_page=per_page)
+        return self.template_repo.find_paginated(page=page, per_page=per_page, search=search)
 
     def get_template(self, template_id: str) -> PipelineTemplate:
         """获取存储的模板（不含变量装饰）"""

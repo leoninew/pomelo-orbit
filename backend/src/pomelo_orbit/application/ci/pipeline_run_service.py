@@ -149,11 +149,16 @@ class PipelineRunService:
     def list_all_artifacts(
         self,
         repository_id: str | None = None,
+        template_id: str | None = None,
+        search: str | None = None,
         page: int = 1,
         per_page: int = 20,
     ) -> tuple[list[Artifact], int]:
         """分页查询所有制品"""
-        return self.artifact_repo.find_paginated(page=page, per_page=per_page, repository_id=repository_id)
+        return self.artifact_repo.find_paginated(
+            page=page, per_page=per_page,
+            repository_id=repository_id, template_id=template_id, search=search,
+        )
 
     def list_stage_runs(self, run_id: str) -> list[StageRun]:
         """查询运行的 stage 列表"""

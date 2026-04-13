@@ -21,9 +21,11 @@ def list_artifacts(
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     repository_id: Annotated[str | None, Query()] = None,
+    template_id: Annotated[str | None, Query()] = None,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[ArtifactResp]:
     artifacts, total = pipeline_run_service.list_all_artifacts(
-        repository_id=repository_id, page=page, per_page=per_page
+        repository_id=repository_id, template_id=template_id, search=search, page=page, per_page=per_page
     )
     return PaginatedResp(
         items=[ArtifactResp.model_validate(a) for a in artifacts],

@@ -83,20 +83,26 @@
 						</div>
 						<div class="flex gap-2">
 							<dt class="text-base-content/70 w-24 shrink-0">模板</dt>
-							<dd class="flex items-center gap-2">
+							<dd>
 								<router-link
 									:to="`/ci/template/${run.template_id}`"
 									class="link link-primary text-xs"
 								>
 									{{ run.template_name }} v{{ run.template_version }}
 								</router-link>
+							</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="text-base-content/70 w-24 shrink-0">快照</dt>
+							<dd>
 								<router-link
 									v-if="run.snapshot_id"
 									:to="`/ci/snapshot/${run.snapshot_id}`"
 									class="link link-primary text-xs"
 								>
-									查看快照
+									查看
 								</router-link>
+								<span v-else class="text-base-content/60">—</span>
 							</dd>
 						</div>
 						<div class="flex gap-2">
@@ -321,8 +327,16 @@
 			>
 				<div
 					v-if="showLogsDrawer"
-					class="fixed inset-y-0 right-0 z-50 w-[800px] max-w-full bg-base-100 shadow-2xl flex flex-col border-l border-base-200"
+					class="fixed inset-y-0 right-0 z-50 bg-base-100 shadow-2xl flex flex-col border-l border-base-200"
+					:style="{ width: drawerWidth + 'px' }"
 				>
+					<!-- 拖拽把手：热区宽，视觉细 -->
+					<div
+						class="absolute left-0 inset-y-0 w-3 cursor-ew-resize group"
+						@mousedown="onResizeMousedown"
+					>
+						<div class="absolute left-1.5 inset-y-0 w-px bg-transparent group-hover:bg-blue-500/60 transition-colors duration-150" />
+					</div>
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
 						<h3 class="font-semibold flex items-center gap-2">
 							Stage: {{ currentStageRun?.stage_name }}
@@ -338,18 +352,19 @@
 							<X class="size-4" />
 						</button>
 					</div>
-					<div class="flex-1 overflow-auto p-5 flex flex-col gap-4">
+					<div class="flex-1 overflow-hidden min-h-0 p-5 flex flex-col gap-4">
 						<div v-if="currentStageRun?.error_message" class="alert alert-error py-2 text-xs">
 							{{ currentStageRun.error_message }}
 						</div>
 						<div v-if="logsLoading" class="flex justify-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</div>
-						<div v-else class="relative flex-1">
+						<div v-else class="relative flex-1 min-h-0">
 							<div
 								ref="logContainer"
-								class="bg-[#1a202c] rounded-box p-4 overflow-auto h-full min-h-64 max-h-[calc(100vh-140px)]"
-								@scroll="onLogScroll"
+								class="bg-[#1a202c] rounded-box p-4 overflow-x-auto overflow-y-auto h-full min-h-64 max-h-[calc(100vh-140px)]"
+								:style="{ scrollbarWidth: 'thin', scrollbarColor: isScrolled ? '#6b7280 transparent' : 'transparent transparent' }"
+								@scroll="checkScrollState"
 							>
 								<pre
 									v-if="logsText"
@@ -368,6 +383,10 @@
 							>
 								<ArrowDown class="size-4" />
 							</button>
+							<!-- 拖拽宽度提示 -->
+							<div class="absolute bottom-2 left-2 text-gray-600 pointer-events-none">
+								<GripVertical class="size-3.5" />
+							</div>
 						</div>
 					</div>
 				</div>
@@ -403,7 +422,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ArrowDown, FileX, Loader2, X } from 'lucide-vue-next';
+import { ArrowLeft, ArrowDown, FileX, GripVertical, Loader2, X } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
@@ -458,16 +477,43 @@ const logsText = ref('');
 const logsLoading = ref(false);
 const logContainer = ref<HTMLDivElement>();
 const isAtBottom = ref(true);
+const isScrolled = ref(false);
 let logPollAbort: AbortController | null = null;
 
-function onLogScroll() {
-	if (!logContainer.value) {
-		return;
+// 抽屉宽度拖拽
+const drawerWidth = ref(800);
+const MIN_DRAWER_WIDTH = 400;
+const MAX_DRAWER_WIDTH = () => window.innerWidth - 48;
+
+function onResizeMousedown(e: MouseEvent) {
+	e.preventDefault();
+	const startX = e.clientX;
+	const startWidth = drawerWidth.value;
+
+	function onMousemove(e: MouseEvent) {
+		const delta = startX - e.clientX;
+		drawerWidth.value = Math.min(Math.max(startWidth + delta, MIN_DRAWER_WIDTH), MAX_DRAWER_WIDTH());
 	}
+	function onMouseup() {
+		document.removeEventListener('mousemove', onMousemove);
+		document.removeEventListener('mouseup', onMouseup);
+		document.body.style.userSelect = '';
+		document.body.style.cursor = '';
+	}
+	document.addEventListener('mousemove', onMousemove);
+	document.addEventListener('mouseup', onMouseup);
+	document.body.style.userSelect = 'none';
+	document.body.style.cursor = 'ew-resize';
+}
+
+function checkScrollState() {
+	if (!logContainer.value) return;
 	const { scrollTop, scrollHeight, clientHeight } = logContainer.value;
+	isScrolled.value = scrollHeight > clientHeight;
 	// 距底部 40px 内视为"在底部"，避免 1px 误差导致按钮闪烁
 	isAtBottom.value = scrollHeight - scrollTop - clientHeight < 40;
 }
+
 
 function scrollToBottom() {
 	if (!logContainer.value) {
@@ -485,7 +531,7 @@ function openLogDrawer(sr: StageRun) {
 	logPollAbort?.abort();
 	currentStageRun.value = sr;
 	logsText.value = '';
-	isAtBottom.value = true;
+	isScrolled.value = false;
 	showLogsDrawer.value = true;
 	startLogPolling(sr.id);
 }
@@ -512,8 +558,8 @@ async function startLogPolling(stageRunId: string) {
 			if (resp.logs) {
 				logsText.value += resp.logs;
 				offset = resp.offset;
+				await nextTick();
 				if (isAtBottom.value) {
-					await nextTick();
 					scrollToBottom();
 				}
 			}
@@ -635,6 +681,19 @@ async function init() {
 }
 
 watch(runId, init);
+
+watch(logsText, async () => {
+	await nextTick();
+	checkScrollState();
+});
+
+watch([showLogsDrawer, logsLoading], async ([drawerVisible, loading]) => {
+	if (!drawerVisible || loading) {
+		return;
+	}
+	await nextTick();
+	checkScrollState();
+});
 
 onMounted(init);
 

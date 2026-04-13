@@ -90,20 +90,27 @@
 							<tr v-if="snapshot.stages_snapshot.length === 0">
 								<td colspan="5" class="text-center py-8 text-base-content/60">暂无数据</td>
 							</tr>
-							<tr v-for="(stage, idx) in snapshot.stages_snapshot" :key="stage.name" class="hover">
+							<tr v-for="(stage, idx) in snapshot.stages_snapshot" :key="stage.id" class="hover">
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
-								<td class="text-xs">{{ stage.name }}</td>
+								<td>
+									<router-link
+										:to="`/ci/pipeline-stage/${stage.id}`"
+										class="link link-primary text-xs"
+									>
+										{{ stage.name }}
+									</router-link>
+								</td>
 								<td class="text-center">
 									<span class="badge badge-sm badge-ghost">v{{ stage.version }}</span>
 								</td>
 								<td>
-									<div v-if="stage.depends_on.length > 0" class="flex flex-wrap gap-1">
+									<div v-if="stage.depends_on.length > 0" class="flex items-center gap-1 flex-wrap">
 										<span
-											v-for="dep in stage.depends_on"
-											:key="dep.id"
+											v-for="depId in stage.depends_on"
+											:key="depId"
 											class="text-xs bg-base-200 rounded px-2 py-0.5 text-base-content/70"
 										>
-											{{ dep.key }}
+											{{ snapshotStageMap[depId]?.name ?? depId }}
 										</span>
 									</div>
 									<span v-else class="text-base-content/40 text-xs">—</span>
@@ -142,12 +149,12 @@
 
 <script setup lang="ts">
 import { ArrowLeft } from 'lucide-vue-next';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineSnapshot } from '@/types/ci/snapshot';
+import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
 import { formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
 import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
@@ -160,6 +167,14 @@ const toast = useToast();
 const { status, execute } = useStatusAsync();
 const snapshot = ref<PipelineSnapshot>();
 const stagesView = ref<'list' | 'dag'>('list');
+
+const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
+	const map: Record<string, SnapshotStage> = {};
+	for (const s of snapshot.value?.stages_snapshot ?? []) {
+		map[s.id] = s;
+	}
+	return map;
+})
 
 async function fetchSnapshot() {
 	try {

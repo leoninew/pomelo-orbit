@@ -8,37 +8,38 @@
 			<table class="table min-h-48">
 				<thead>
 					<tr class="text-base-content/60">
-						<th>模板</th>
 						<th>项目</th>
+						<th>模板</th>
 						<th>触发方式</th>
 						<th>Ref</th>
 						<th>状态</th>
 						<th>异常信息</th>
-						<th>创建时间</th>
+						<th>开始时间</th>
+						<th>结束时间</th>
 						<th>操作</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr v-if="status === 'loading'">
-						<td colspan="8" class="text-center py-8">
+						<td colspan="9" class="text-center py-8">
 							<span class="loading loading-spinner loading-md text-primary" />
 						</td>
 					</tr>
 					<tr v-else-if="status === 'error'">
-						<td colspan="8" class="text-center py-8 text-error">{{ error }}</td>
+						<td colspan="9" class="text-center py-8 text-error">{{ error }}</td>
 					</tr>
 					<tr v-else-if="runs.length === 0">
-						<td colspan="8" class="text-center py-8 text-base-content/60">暂无数据</td>
+						<td colspan="9" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="r in runs" :key="r.id" class="hover">
 						<td>
-							<router-link :to="`/ci/template/${r.template_id}`" class="link link-primary text-xs">
-								{{ r.template_name }}
+							<router-link :to="`/ci/repository/${r.repository_id}`" class="link link-primary">
+								{{ r.repository_name }}
 							</router-link>
 						</td>
 						<td>
-							<router-link :to="`/ci/repository/${r.repository_id}`" class="link link-primary">
-								{{ r.repository_name }}
+							<router-link :to="`/ci/template/${r.template_id}`" class="link link-primary text-xs">
+								{{ r.template_name }}
 							</router-link>
 						</td>
 						<td>
@@ -60,7 +61,8 @@
 							</span>
 							<span v-else class="text-base-content/40 text-xs">—</span>
 						</td>
-						<td class="cell-muted">{{ formatTime(r.created_at) }}</td>
+						<td class="cell-muted">{{ r.started_at ? formatTime(r.started_at) : '—' }}</td>
+						<td class="cell-muted">{{ r.finished_at ? formatTime(r.finished_at) : '—' }}</td>
 						<td>
 							<div class="flex items-center gap-2">
 								<router-link :to="`/ci/run/${r.id}`" class="link link-primary">查看</router-link>

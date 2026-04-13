@@ -175,6 +175,7 @@
 								<th>Stage 名称</th>
 								<th class="w-20">版本</th>
 								<th>依赖</th>
+								<th class="w-24 text-center">制品</th>
 								<th class="w-24">状态</th>
 								<th>错误信息</th>
 								<th class="w-16">日志</th>
@@ -182,12 +183,12 @@
 						</thead>
 						<tbody>
 							<tr v-if="!snapshot && run.snapshot_id">
-								<td colspan="7" class="text-center py-8 text-base-content/60">
+								<td colspan="8" class="text-center py-8 text-base-content/60">
 									<span class="loading loading-spinner loading-sm" />
 								</td>
 							</tr>
 							<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
-								<td colspan="7" class="text-center py-8 text-base-content/60">暂无数据</td>
+								<td colspan="8" class="text-center py-8 text-base-content/60">暂无数据</td>
 							</tr>
 							<tr
 								v-for="(stage, idx) in snapshot?.stages_snapshot ?? []"
@@ -195,7 +196,14 @@
 								class="hover"
 							>
 								<td class="text-base-content/40 text-xs">{{ idx + 1 }}</td>
-								<td class="text-xs">{{ stage.name }}</td>
+								<td>
+									<router-link
+										:to="`/ci/pipeline-stage/${stage.id}`"
+										class="link link-primary text-xs"
+									>
+										{{ stage.name }}
+									</router-link>
+								</td>
 								<td class="text-center">
 									<span class="badge badge-sm badge-ghost">v{{ stage.version }}</span>
 								</td>
@@ -210,6 +218,9 @@
 										</span>
 									</div>
 									<span v-else class="text-base-content/40 text-xs">—</span>
+								</td>
+								<td class="text-center text-xs text-base-content/60">
+									{{ stage.artifacts?.length ?? '—' }}
 								</td>
 								<td>
 									<span

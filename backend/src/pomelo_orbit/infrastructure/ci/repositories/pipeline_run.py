@@ -23,11 +23,11 @@ class PipelineRunRepositoryImpl(BaseRepository[PipelineRun, PipelineRunModel], P
         template_id: str | None = None,
     ) -> tuple[list[PipelineRun], int]:
         """分页查询运行列表（支持按项目/模板过滤）"""
-        query = self._session.query(PipelineRunModel).order_by(PipelineRunModel.created_at.desc())
+        query = self._session.query(PipelineRunModel)
         if repository_id:
             query = query.filter(PipelineRunModel.repository_id == repository_id)
         if template_id:
             query = query.filter(PipelineRunModel.template_id == template_id)
         total = query.count()
-        orms = query.offset((page - 1) * per_page).limit(per_page).all()
+        orms = query.order_by(PipelineRunModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         return [self._mapper.to_domain(orm) for orm in orms], total

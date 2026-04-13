@@ -42,5 +42,5 @@ class ArtifactRepositoryImpl(BaseRepository[Artifact, ArtifactModel], ArtifactRe
         if search:
             query = query.filter(ArtifactModel.name.ilike(f"%{search}%") | ArtifactModel.path.ilike(f"%{search}%"))
         total = query.count()
-        orms = query.order_by(ArtifactModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        orms = query.order_by(ArtifactModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         return [self._mapper.to_domain(orm) for orm in orms], total

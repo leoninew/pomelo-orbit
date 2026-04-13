@@ -32,15 +32,15 @@ class ApplicationRepositoryImpl(BaseRepository[Application, ApplicationModel], A
         return ApplicationMapper.to_domain(orm) if orm else None
 
     def find_paginated(
-        self, page: int = 1, per_page: int = 10, search: str | None = None
+        self, page: int = 1, per_page: int = 20, search: str | None = None
     ) -> tuple[list[Application], int]:
         """分页查询应用（重写以支持自定义排序和搜索）"""
         query = self._session.query(ApplicationModel)
         if search:
-            query = query.filter(ApplicationModel.name.contains(search))
+            query = query.filter(ApplicationModel.name.ilike(f"%{search}%"))
         total = query.count()
         offset = (page - 1) * per_page
-        orms = query.order_by(ApplicationModel.created_at.desc()).offset(offset).limit(per_page).all()
+        orms = query.order_by(ApplicationModel.id.desc()).offset(offset).limit(per_page).all()
         return [ApplicationMapper.to_domain(orm) for orm in orms], total
 
 

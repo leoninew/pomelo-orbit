@@ -1,5 +1,6 @@
 """CI 项目仓储实现"""
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.ci.entities import Repository
@@ -14,6 +15,23 @@ class RepositoryRepositoryImpl(BaseRepository[Repository, ProjectModel], Reposit
 
     def __init__(self, session: Session):
         super().__init__(session, ProjectModel, RepositoryMapper())
+
+    def find_paginated(
+        self, page: int = 1, per_page: int = 20, search: str | None = None
+    ) -> tuple[list[Repository], int]:
+        """分页查询，支持按名称或仓库地址搜索"""
+        query = self._session.query(ProjectModel)
+        if search:
+            pattern = f"%{search}%"
+            query = query.filter(
+                or_(
+                    ProjectModel.name.ilike(pattern),
+                    ProjectModel.repository_url.ilike(pattern),
+                )
+            )
+        total = query.count()
+        orms = query.order_by(ProjectModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        return [self._mapper.to_domain(orm) for orm in orms], total
 
     def has_running_pipelines(self, repository_id: str) -> bool:
         """检查项目是否有运行中的 pipeline"""

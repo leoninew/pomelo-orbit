@@ -31,7 +31,7 @@ class BaseRepository[TDomain, TORM: Base]:
         orms = self._session.query(self._orm_class).all()
         return [self._mapper.to_domain(orm) for orm in orms]
 
-    def find_paginated(self, page: int = 1, per_page: int = 10, search: str | None = None) -> tuple[list[TDomain], int]:
+    def find_paginated(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[TDomain], int]:
         """分页查询"""
         query = self._session.query(self._orm_class)
 
@@ -41,7 +41,12 @@ class BaseRepository[TDomain, TORM: Base]:
             )
 
         total = query.count()
-        orms = query.offset((page - 1) * per_page).limit(per_page).all()
+        orms = (
+            query.order_by(self._orm_class.id.desc())  # type: ignore[attr-defined]
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
         return [self._mapper.to_domain(orm) for orm in orms], total
 
     def save(self, entity: TDomain) -> None:

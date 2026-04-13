@@ -31,10 +31,10 @@ class UserRepositoryImpl(BaseRepository[User, UserModel], UserRepository):
     ) -> tuple[list[LoginHistory], int]:
         query = self._session.query(LoginHistoryModel)
         if search:
-            query = query.filter(LoginHistoryModel.username.contains(search))
+            query = query.filter(LoginHistoryModel.username.ilike(f"%{search}%"))
         total = query.count()
         offset = (page - 1) * per_page
-        models = query.order_by(LoginHistoryModel.login_at.desc()).offset(offset).limit(per_page).all()
+        models = query.order_by(LoginHistoryModel.id.desc()).offset(offset).limit(per_page).all()
         return [LoginHistoryMapper.to_domain(m) for m in models], total
 
 

@@ -46,7 +46,7 @@ class BuildStageRepositoryImpl(BuildStageRepository):
         if search:
             query = query.filter(BuildStageModel.name.ilike(f"%{search}%"))
         total = query.count()
-        orms = query.order_by(BuildStageModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        orms = query.order_by(BuildStageModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         return [self._mapper.to_domain(orm) for orm in orms], total
 
     def find_by_ids(self, stage_ids: list[str]) -> list[BuildStage]:
@@ -116,7 +116,7 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
             query = query.filter(PipelineTemplateModel.name.ilike(f"%{search}%"))
         total = query.count()
         orms = (
-            query.order_by(PipelineTemplateModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+            query.order_by(PipelineTemplateModel.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
         )
         return [self._load(orm) for orm in orms], total
 

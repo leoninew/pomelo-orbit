@@ -28,7 +28,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
         query = self._session.query(DeploymentModel).filter(DeploymentModel.application_id == app_id)
         total = query.count()
         offset = (page - 1) * per_page
-        orms = query.order_by(DeploymentModel.started_at.desc()).offset(offset).limit(per_page).all()
+        orms = query.order_by(DeploymentModel.id.desc()).offset(offset).limit(per_page).all()
         return [DeploymentMapper.to_domain(orm) for orm in orms], total
 
     def find_last_successful_deploy(self, app_id: str) -> Deployment | None:
@@ -40,7 +40,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
                 DeploymentModel.operation_type == OperationType.DEPLOY,
                 DeploymentModel.status == TaskStatus.RAN_TO_COMPLETION.value,
             )
-            .order_by(DeploymentModel.started_at.desc())
+            .order_by(DeploymentModel.id.desc())
             .first()
         )
         return DeploymentMapper.to_domain(orm) if orm else None
@@ -63,7 +63,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
         if status:
             query = query.filter(DeploymentModel.status == status)
         if search:
-            query = query.filter(DeploymentModel.application_name.contains(search))
+            query = query.filter(DeploymentModel.application_name.ilike(f"%{search}%"))
         if date_from:
             query = query.filter(DeploymentModel.started_at >= date_from)
         if date_to:
@@ -71,7 +71,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
 
         total = query.count()
         offset = (page - 1) * per_page
-        orms = query.order_by(DeploymentModel.started_at.desc()).offset(offset).limit(per_page).all()
+        orms = query.order_by(DeploymentModel.id.desc()).offset(offset).limit(per_page).all()
 
         return [DeploymentMapper.to_domain(orm) for orm in orms], total
 

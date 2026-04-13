@@ -55,7 +55,7 @@
 				<div class="card-body p-5">
 					<div class="flex items-center justify-between mb-4">
 						<div class="flex items-center gap-3">
-							<h2 class="font-semibold">阶段编排</h2>
+							<h2 class="font-semibold">阶段快照</h2>
 							<div class="join">
 								<button
 									class="btn btn-xs join-item"
@@ -141,6 +141,32 @@
 							context="template"
 						/>
 					</div>
+
+					<!-- 制品声明内容 -->
+					<div class="mt-6 pt-6 border-t border-base-300">
+						<h3 class="font-semibold mb-4">制品声明</h3>
+						<div v-if="artifactDeclarations.length === 0" class="text-sm text-base-content/60 py-2">
+							暂无数据
+						</div>
+						<table v-else class="table w-full">
+							<thead>
+								<tr class="text-base-content/60 text-xs">
+									<th>Stage</th>
+									<th>类型</th>
+									<th>名称</th>
+									<th>路径/镜像</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-for="(a, idx) in artifactDeclarations" :key="idx" class="hover">
+									<td class="text-sm">{{ a.stageName }}</td>
+									<td><span class="badge badge-sm badge-ghost">{{ a.type }}</span></td>
+									<td class="text-sm">{{ a.name }}</td>
+									<td class="text-sm text-base-content/70">{{ a.path }}</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -155,6 +181,7 @@ import { pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
+import type { ArtifactDeclaration } from '@/types/ci/template';
 import { formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
 import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
@@ -174,6 +201,16 @@ const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
 		map[s.id] = s;
 	}
 	return map;
+});
+
+const artifactDeclarations = computed(() => {
+	const result: ArtifactDeclaration[] = [];
+	for (const s of snapshot.value?.stages_snapshot ?? []) {
+		for (const a of s.artifacts ?? []) {
+			result.push({ stageName: s.name, type: a.type, name: a.name, path: a.path });
+		}
+	}
+	return result;
 });
 
 async function fetchSnapshot() {

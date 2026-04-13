@@ -6,6 +6,13 @@ export interface ArtifactConfig {
 	name: string
 }
 
+export interface ArtifactDeclaration {
+	stageName: string
+	type: string
+	name: string
+	path: string
+}
+
 // ── BuildStage ────────────────────────────────────────────────────────────────
 
 export interface BuildStage {

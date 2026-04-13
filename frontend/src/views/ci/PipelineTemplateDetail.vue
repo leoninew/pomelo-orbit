@@ -209,6 +209,32 @@
 							@delete="confirmDeleteVariable"
 						/>
 					</div>
+
+					<!-- 制品声明内容 -->
+					<div class="mt-6 pt-6 border-t border-base-300">
+						<h3 class="font-semibold mb-4">制品声明</h3>
+						<div v-if="artifactDeclarations.length === 0" class="text-sm text-base-content/60 py-2">
+							暂无数据
+						</div>
+						<table v-else class="table w-full">
+							<thead>
+								<tr class="text-base-content/60 text-xs">
+									<th>Stage</th>
+									<th>类型</th>
+									<th>名称</th>
+									<th>路径/镜像</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-for="(a, idx) in artifactDeclarations" :key="idx" class="hover">
+									<td class="text-sm">{{ a.stageName }}</td>
+									<td><span class="badge badge-sm badge-ghost">{{ a.type }}</span></td>
+									<td class="text-sm">{{ a.name }}</td>
+									<td class="text-sm text-base-content/70">{{ a.path }}</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -520,6 +546,7 @@ import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type {
+	ArtifactDeclaration,
 	BuildStage,
 	PipelineTemplate,
 	StageOrchestration,
@@ -565,6 +592,17 @@ const hasStageUpdates = computed(() =>
 		return stage && stage.version > o.stage_version;
 	})
 );
+
+const artifactDeclarations = computed(() => {
+	const result: ArtifactDeclaration[] = [];
+	for (const o of sortableOrch.value) {
+		const stage = stageCache[o.stage_id];
+		for (const a of stage?.artifacts ?? []) {
+			result.push({ stageName: o.stage_name, type: a.type, name: a.name, path: a.path });
+		}
+	}
+	return result;
+});
 
 const editInfoModalRef = ref<HTMLDialogElement>();
 const addOrchModalRef = ref<HTMLDialogElement>();

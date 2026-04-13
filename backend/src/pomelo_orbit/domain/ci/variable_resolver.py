@@ -207,6 +207,7 @@ class VariableResolver:
         return {
             "repository_id": BuiltinVarSpec("运行时注入: 当前项目 ID", editable=False),
             "repository_name": BuiltinVarSpec("运行时注入: 当前项目名称", editable=False),
+            "repository_code": BuiltinVarSpec("运行时注入: 当前项目编码", editable=False),
             "repository_url": BuiltinVarSpec("运行时注入: 当前仓库地址", editable=False),
             "repository_ref": BuiltinVarSpec("运行时注入: 当前分支", editable=True),
         }
@@ -224,6 +225,7 @@ class VariableResolver:
         return {
             "repository_id": repository.id,
             "repository_name": repository.name,
+            "repository_code": repository.code,
             "repository_url": repository.repository_url,
             "repository_ref": trigger_ref,
         }

@@ -80,10 +80,10 @@ class ContainerExecutor:
             if extra_binds:
                 volume_binds.update(extra_binds)
 
-            # 构造命令
+            # 构造命令：用换行符拼接，保留注释和空行语义，sh -c 按行顺序执行
             command = None
             if commands:
-                joined = " && ".join(commands)
+                joined = "\n".join(commands)
                 command = ["-c", joined]
 
             # 在线程池中执行 Docker 操作（避免阻塞事件循环）

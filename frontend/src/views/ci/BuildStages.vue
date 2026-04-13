@@ -2,10 +2,29 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">构建阶段</h1>
-			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
-				<Plus class="size-4" />
-				新建 Stage
-			</button>
+			<div class="flex items-center gap-2">
+				<label class="input input-sm flex items-center gap-1 w-52">
+					<Search class="size-3.5 text-base-content/40 shrink-0" />
+					<input
+						v-model="searchText"
+						type="text"
+						class="grow"
+						placeholder="搜索名称/描述"
+						@keydown.enter="doSearch"
+					/>
+					<button v-if="searchText" class="text-base-content/40 hover:text-base-content/70" @click="searchText = ''; doSearch()">
+						<X class="size-3" />
+					</button>
+				</label>
+				<button class="btn btn-sm btn-primary" :disabled="status === 'loading'" @click="doSearch">
+					<span v-if="status === 'loading'" class="loading loading-spinner loading-xs" />
+					搜索
+				</button>
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+					<Plus class="size-4" />
+					新建 Stage
+				</button>
+			</div>
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
@@ -138,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
+import { Plus, Search, X } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { buildStageApi } from '@/api/ci';
@@ -156,6 +175,7 @@ const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 const stages = ref<BuildStage[]>([]);
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
 const modalRef = ref<HTMLDialogElement>();
 
 const form = reactive({ name: '', image: '', script: '', description: '' });
@@ -174,6 +194,7 @@ async function fetchStages() {
 			const res = await buildStageApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
+				search: searchText.value || undefined,
 			});
 			stages.value = res.items;
 			pagination.total = res.total;
@@ -181,6 +202,14 @@ async function fetchStages() {
 	} catch {
 		toast.error('获取 Stage 列表失败');
 	}
+}
+
+function doSearch() {
+	if (status.value === 'loading') {
+		return;
+	}
+	pagination.current = 1;
+	fetchStages();
 }
 
 function goPage(p: number) {

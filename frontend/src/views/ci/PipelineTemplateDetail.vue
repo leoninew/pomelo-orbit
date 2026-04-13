@@ -264,19 +264,37 @@
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
 
-		<!-- 添加 Stage 到编排 modal -->
+		<!-- 添加阶段到编排 modal -->
 		<dialog ref="addOrchModalRef" class="modal">
 			<div class="modal-box w-full max-w-lg">
-				<h3 class="font-bold text-lg mb-4">添加 Stage 到编排</h3>
+				<h3 class="font-bold text-lg mb-4">添加阶段到编排</h3>
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">选择 Stage</legend>
-						<select v-model="addOrchForm.stageId" class="select w-full">
-							<option value="">— 选择 —</option>
-							<option v-for="s in availableStages" :key="s.id" :value="s.id">
-								{{ s.name }} ({{ s.image }})
-							</option>
-						</select>
+						<div class="dropdown w-full">
+							<label class="input flex items-center gap-1 w-full">
+								<Search class="size-3.5 text-base-content/40 shrink-0" />
+								<input
+									v-model="stageSearchInput"
+									tabindex="0"
+									type="text"
+									class="grow"
+									placeholder="搜索阶段名称"
+									@input="onStageSearchInput"
+								/>
+								<button v-if="stageSearchInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearStageSearch"><X class="size-3" /></button>
+							</label>
+							<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
+								<li v-if="stageSearchOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+								<li v-for="s in stageSearchOptions" :key="s.id">
+									<a
+										class="text-xs px-3 py-1.5 rounded-none block truncate"
+										:class="{ 'bg-primary/10 font-medium': s.id === addOrchForm.stageId }"
+										@mousedown.prevent="selectStage(s)"
+									>{{ s.name }} <span class="text-base-content/50">({{ s.image }})</span></a>
+								</li>
+							</ul>
+						</div>
 					</fieldset>
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">依赖（depends_on）</legend>
@@ -351,23 +369,36 @@
 				<div class="flex flex-col gap-3">
 					<fieldset class="fieldset">
 						<legend class="fieldset-legend">选择项目</legend>
-						<select v-model="runForm.repositoryId" class="select w-full">
-							<option value="">— 选择项目 —</option>
-							<option v-for="repo in repositories" :key="repo.id" :value="repo.id">
-								{{ repo.name }} ({{ repo.code }})
-							</option>
-						</select>
+						<div class="dropdown w-full">
+							<label class="input flex items-center gap-1 w-full">
+								<Search class="size-3.5 text-base-content/40 shrink-0" />
+								<input
+									v-model="repoSearchInput"
+									tabindex="0"
+									type="text"
+									class="grow"
+									placeholder="搜索项目名称"
+									@input="onRepoSearchInput"
+								/>
+								<button v-if="repoSearchInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearRepoSearch"><X class="size-3" /></button>
+							</label>
+							<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
+								<li v-if="repoSearchOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+								<li v-for="repo in repoSearchOptions" :key="repo.id">
+									<a
+										class="text-xs px-3 py-1.5 rounded-none block truncate"
+										:class="{ 'bg-primary/10 font-medium': repo.id === runForm.repositoryId }"
+										@mousedown.prevent="selectRunRepo(repo)"
+									>{{ repo.name }} <span class="text-base-content/50">({{ repo.code }})</span></a>
+								</li>
+							</ul>
+						</div>
 						<p
 							v-if="selectedRepository && !selectedRepository.git_credential_id"
 							class="fieldset-label text-error"
 						>
 							该项目未配置 Git 凭据，请先在
-							<router-link
-								:to="`/ci/repository/${selectedRepository.id}`"
-								class="link link-primary"
-							>
-								仓库详情
-							</router-link>
+							<router-link :to="`/ci/repository/${selectedRepository.id}`" class="link link-primary">仓库详情</router-link>
 							中配置
 						</p>
 					</fieldset>
@@ -538,8 +569,8 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, GripVertical, Play, Plus } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { ArrowLeft, GripVertical, Play, Plus, Search, X } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { VueDraggable } from 'vue-draggable-plus';
 import { useRoute, useRouter } from 'vue-router';
 import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
@@ -571,10 +602,18 @@ const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 const template = ref<PipelineTemplate>();
 const sortableOrch = ref<StageOrchestration[]>([]);
 const declarations = ref<VariableDeclaration[]>([]);
-const allStages = ref<BuildStage[]>([]);
 const stageCache = reactive<Record<string, BuildStage>>({});
 const viewMode = ref<'list' | 'dag'>('list');
-const repositories = ref<Repository[]>([]);
+
+// Stage 搜索 dropdown（添加阶段模态框）
+const stageSearchInput = ref('');
+const stageSearchOptions = ref<BuildStage[]>([]);
+let stageDebounce: ReturnType<typeof setTimeout> | null = null;
+
+// 项目搜索 dropdown（运行模态框）
+const repoSearchInput = ref('');
+const repoSearchOptions = ref<Repository[]>([]);
+let repoDebounce: ReturnType<typeof setTimeout> | null = null;
 
 // 已保存的快照，用于 dirty 检测
 const savedOrch = ref<string>('[]');
@@ -638,13 +677,9 @@ const editableOrchOptions = computed(() =>
 	sortableOrch.value.filter((o) => o.stage_id !== editOrchForm.editingStageId)
 );
 
-const availableStages = computed(() => {
-	const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
-	return allStages.value.filter((s) => !inOrch.has(s.id));
-});
 
 const selectedRepository = computed(() =>
-	repositories.value.find((r) => r.id === runForm.repositoryId)
+	repoSearchOptions.value.find((r) => r.id === runForm.repositoryId)
 );
 
 const dagStages = computed(() =>
@@ -666,7 +701,7 @@ watch(
 	() => runForm.repositoryId,
 	(newRepoId) => {
 		if (newRepoId) {
-			const repo = repositories.value.find((r) => r.id === newRepoId);
+			const repo = repoSearchOptions.value.find((r) => r.id === newRepoId);
 			if (repo?.default_branch) {
 				runForm.triggerRef = repo.default_branch;
 			}
@@ -693,7 +728,6 @@ async function fetchTemplate() {
 	try {
 		await execute(async () => {
 			const tmpl = await pipelineTemplateApi.get(templateId.value);
-			allStages.value = [];
 			applyTemplateState(tmpl);
 		});
 	} catch {
@@ -702,16 +736,33 @@ async function fetchTemplate() {
 	}
 }
 
-async function fetchStages() {
-	// 按需加载：仅在打开"添加 Stage"模态框时才加载
-	if (allStages.value.length === 0) {
-		try {
-			const response = await buildStageApi.list({ page: 1, per_page: 100 });
-			allStages.value = response.items;
-		} catch {
-			toast.error('获取 Stage 列表失败');
-		}
+async function searchStages() {
+	try {
+		const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
+		const resp = await buildStageApi.list({ search: stageSearchInput.value || undefined, per_page: 20 });
+		stageSearchOptions.value = resp.items.filter((s) => !inOrch.has(s.id));
+	} catch (err: unknown) {
+		toast.error(err instanceof Error ? err.message : '获取 Stage 列表失败');
 	}
+}
+
+function onStageSearchInput() {
+	if (stageDebounce) {
+		clearTimeout(stageDebounce);
+	}
+	stageDebounce = setTimeout(searchStages, 300);
+}
+
+function selectStage(s: BuildStage) {
+	addOrchForm.stageId = s.id;
+	stageCache[s.id] = s;
+	stageSearchInput.value = s.name;
+}
+
+function clearStageSearch() {
+	stageSearchInput.value = '';
+	addOrchForm.stageId = '';
+	searchStages();
 }
 
 async function syncDeclarations() {
@@ -841,7 +892,8 @@ function onDragEnd() {
 async function openAddOrchModal() {
 	addOrchForm.stageId = '';
 	addOrchForm.dependsOn = [];
-	await fetchStages();
+	stageSearchInput.value = '';
+	await searchStages();
 	addOrchModalRef.value?.showModal();
 }
 
@@ -849,7 +901,8 @@ async function confirmAddOrch() {
 	if (!addOrchForm.stageId) {
 		return;
 	}
-	const stage = allStages.value.find((s) => s.id === addOrchForm.stageId);
+	const stage = stageSearchOptions.value.find((s) => s.id === addOrchForm.stageId)
+		?? stageCache[addOrchForm.stageId];
 	if (!stage) {
 		return;
 	}
@@ -927,13 +980,29 @@ function confirmEditOrch() {
 
 // ── 运行流水线 ──────────────────────────────────────────────────────────────────
 
-async function fetchRepositories() {
+async function searchRepos() {
 	try {
-		const resp = await repositoryApi.list({ per_page: 100 });
-		repositories.value = resp.items;
-	} catch {
-		toast.error('获取项目列表失败');
+		const resp = await repositoryApi.list({ search: repoSearchInput.value || undefined, per_page: 20 });
+		repoSearchOptions.value = resp.items;
+	} catch (err: unknown) {
+		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
 	}
+}
+
+function onRepoSearchInput() {
+	if (repoDebounce) { clearTimeout(repoDebounce); }
+	repoDebounce = setTimeout(searchRepos, 300);
+}
+
+function selectRunRepo(repo: Repository) {
+	runForm.repositoryId = repo.id;
+	repoSearchInput.value = repo.name;
+}
+
+function clearRepoSearch() {
+	runForm.repositoryId = '';
+	repoSearchInput.value = '';
+	searchRepos();
 }
 
 async function openRunModal() {
@@ -943,7 +1012,8 @@ async function openRunModal() {
 	}
 	runForm.repositoryId = '';
 	runForm.triggerRef = '';
-	await fetchRepositories();
+	repoSearchInput.value = '';
+	await searchRepos();
 	runModalRef.value?.showModal();
 }
 
@@ -1043,4 +1113,12 @@ function deleteVariable() {
 
 watch(templateId, fetchTemplate);
 onMounted(fetchTemplate);
+onUnmounted(() => {
+	if (stageDebounce) {
+		clearTimeout(stageDebounce);
+	}
+	if (repoDebounce) {
+		clearTimeout(repoDebounce);
+	}
+});
 </script>

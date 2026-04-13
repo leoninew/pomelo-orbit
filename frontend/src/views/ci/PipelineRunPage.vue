@@ -2,6 +2,40 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">流水线记录</h1>
+			<div class="flex items-center gap-2 flex-wrap">
+				<!-- 项目选择 -->
+				<div class="dropdown">
+					<label class="input input-sm flex items-center gap-1 w-40">
+						<Search class="size-3.5 text-base-content/40 shrink-0" />
+						<input v-model="repoInput" tabindex="0" type="text" class="grow" placeholder="筛选项目" @input="onRepoInput" />
+						<button v-if="repoInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearRepo"><X class="size-3" /></button>
+					</label>
+					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
+						<li v-if="repoOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+						<li v-for="r in repoOptions" :key="r.id">
+							<a class="text-xs px-3 py-1.5 rounded-none block truncate" :class="{ 'bg-primary/10 font-medium': r.id === query.repository_id }" @mousedown.prevent="selectRepo(r)">{{ r.name }}</a>
+						</li>
+					</ul>
+				</div>
+				<!-- 模板选择 -->
+				<div class="dropdown">
+					<label class="input input-sm flex items-center gap-1 w-40">
+						<Search class="size-3.5 text-base-content/40 shrink-0" />
+						<input v-model="templateInput" tabindex="0" type="text" class="grow" placeholder="筛选模板" @input="onTemplateInput" />
+						<button v-if="templateInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearTemplate"><X class="size-3" /></button>
+					</label>
+					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
+						<li v-if="templateOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+						<li v-for="t in templateOptions" :key="t.id">
+							<a class="text-xs px-3 py-1.5 rounded-none block truncate" :class="{ 'bg-primary/10 font-medium': t.id === query.template_id }" @mousedown.prevent="selectTemplate(t)">{{ t.name }}</a>
+						</li>
+					</ul>
+				</div>
+				<button class="btn btn-sm btn-primary" :disabled="status === 'loading'" @click="doSearch">
+					<span v-if="status === 'loading'" class="loading loading-spinner loading-xs" />
+					搜索
+				</button>
+			</div>
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
@@ -120,12 +154,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { Search, X } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
-import { pipelineRunApi } from '@/api/ci';
+import { pipelineRunApi, repositoryApi, pipelineTemplateApi } from '@/api/ci';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { PipelineRun } from '@/types/ci/run';
+import type { Repository } from '@/types/ci/repository';
+import type { PipelineTemplate } from '@/types/ci/template';
 import { statusBadgeClass, statusLabel } from '@/utils/status';
 import { formatTime } from '@/utils/time';
 
@@ -139,16 +176,80 @@ const runs = ref<PipelineRun[]>([]);
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 const cancelModalRef = ref<HTMLDialogElement>();
+
+const query = reactive({ repository_id: '', template_id: '' });
+const repoInput = ref('');
+const templateInput = ref('');
+const repoOptions = ref<Repository[]>([]);
+const templateOptions = ref<PipelineTemplate[]>([]);
+
+let repoDebounce: ReturnType<typeof setTimeout> | null = null;
+let templateDebounce: ReturnType<typeof setTimeout> | null = null;
+
+async function searchRepos() {
+	try {
+		const resp = await repositoryApi.list({ search: repoInput.value, per_page: 20 });
+		repoOptions.value = resp.items;
+	} catch (err: unknown) {
+		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+	}
+}
+
+async function searchTemplates() {
+	try {
+		const resp = await pipelineTemplateApi.list({ search: templateInput.value, per_page: 20 });
+		templateOptions.value = resp.items;
+	} catch (err: unknown) {
+		toast.error(err instanceof Error ? err.message : '获取模板列表失败');
+	}
+}
+
+function onRepoInput() {
+	if (repoDebounce) { clearTimeout(repoDebounce); }
+	repoDebounce = setTimeout(searchRepos, 300);
+}
+
+function onTemplateInput() {
+	if (templateDebounce) { clearTimeout(templateDebounce); }
+	templateDebounce = setTimeout(searchTemplates, 300);
+}
+
+function selectRepo(r: Repository) {
+	query.repository_id = r.id;
+	repoInput.value = r.name;
+}
+
+function clearRepo() {
+	query.repository_id = '';
+	repoInput.value = '';
+	doSearch();
+}
+
+function selectTemplate(t: PipelineTemplate) {
+	query.template_id = t.id;
+	templateInput.value = t.name;
+}
+
+function clearTemplate() {
+	query.template_id = '';
+	templateInput.value = '';
+	doSearch();
+}
+
+function doSearch() {
+	pagination.current = 1;
+	fetchRuns();
+}
 const pendingCancelId = ref('');
 
 async function fetchRuns() {
 	try {
 		await execute(async () => {
-			const projectId = route.query.repository_id as string | undefined;
 			const res = await pipelineRunApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				repository_id: projectId,
+				repository_id: query.repository_id || undefined,
+				template_id: query.template_id || undefined,
 			});
 			runs.value = res.items;
 			pagination.total = res.total;
@@ -193,5 +294,30 @@ async function handleCancel() {
 	}
 }
 
-onMounted(fetchRuns);
+onMounted(async () => {
+	// 从 URL query 初始化项目过滤
+	const projectId = route.query.repository_id as string | undefined;
+	if (projectId) {
+		query.repository_id = projectId;
+		try {
+			const repo = await repositoryApi.get(projectId);
+			repoInput.value = repo.name;
+		} catch (err: unknown) {
+			// eslint-disable-next-line no-console
+			console.warn('Failed to load repository:', err);
+		}
+	}
+	fetchRuns();
+	await searchRepos();
+	await searchTemplates();
+});
+
+onUnmounted(() => {
+	if (repoDebounce) {
+		clearTimeout(repoDebounce);
+	}
+	if (templateDebounce) {
+		clearTimeout(templateDebounce);
+	}
+});
 </script>

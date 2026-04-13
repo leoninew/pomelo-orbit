@@ -15,6 +15,7 @@ class PipelineRunRepository(ABC):
         page: int,
         per_page: int,
         repository_id: str | None = None,
+        template_id: str | None = None,
     ) -> tuple[list[PipelineRun], int]: ...
 
     @abstractmethod

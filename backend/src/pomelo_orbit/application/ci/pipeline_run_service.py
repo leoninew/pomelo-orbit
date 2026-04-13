@@ -124,14 +124,14 @@ class PipelineRunService:
 
     # ── 查询方法 ──────────────────────────────────────────────────────────────
 
-    def list_runs(self, page: int = 1, per_page: int = 20, repository_id: str | None = None) -> PaginatedRuns:
+    def list_runs(self, page: int = 1, per_page: int = 20, repository_id: str | None = None, template_id: str | None = None) -> PaginatedRuns:
         """分页查询运行列表"""
         if repository_id:
             repository = self.repository_repo.find_by_id(repository_id)
             if not repository:
                 raise BusinessError(f"Repository {repository_id} not found", status_code=404)
         runs, total = self.run_repo.find_paginated_with_filters(
-            page=page, per_page=per_page, repository_id=repository_id
+            page=page, per_page=per_page, repository_id=repository_id, template_id=template_id
         )
         return PaginatedRuns(runs=runs, total=total)
 

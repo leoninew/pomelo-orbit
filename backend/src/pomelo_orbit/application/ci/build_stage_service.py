@@ -20,9 +20,9 @@ class BuildStageService:
     def __init__(self, stage_repo: BuildStageRepository):
         self.stage_repo = stage_repo
 
-    def list_stages(self, page: int = 1, per_page: int = 20) -> tuple[list[BuildStage], int]:
+    def list_stages(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[BuildStage], int]:
         """分页查询 Stage"""
-        return self.stage_repo.find_paginated(page, per_page)
+        return self.stage_repo.find_paginated(page, per_page, search=search)
 
     def get_stage(self, stage_id: str) -> BuildStage:
         """获取单个 Stage"""

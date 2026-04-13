@@ -24,8 +24,9 @@ def list_stages(
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[BuildStageResp]:
-    stages, total = stage_service.list_stages(page=page, per_page=per_page)
+    stages, total = stage_service.list_stages(page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[BuildStageResp.model_validate(s) for s in stages],
         total=total,

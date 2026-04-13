@@ -3,16 +3,34 @@
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">应用管理</h1>
 			<div class="flex items-center gap-2">
-				<label class="input input-sm input-bordered flex items-center gap-2">
-					<Search class="size-3.5 text-base-content/60 shrink-0" />
+				<label class="input input-sm flex items-center gap-1 w-52">
+					<Search class="size-3.5 text-base-content/40 shrink-0" />
 					<input
 						v-model="searchText"
 						type="text"
 						placeholder="搜索应用名称"
-						class="min-w-0 w-full"
-						@keyup.enter="handleSearch"
+						class="grow"
+						@keydown.enter="handleSearch"
 					/>
+					<button
+						v-if="searchText"
+						class="text-base-content/40 hover:text-base-content/70"
+						@click="
+							searchText = '';
+							handleSearch();
+						"
+					>
+						<X class="size-3" />
+					</button>
 				</label>
+				<button
+					class="btn btn-sm btn-primary"
+					:disabled="status === 'loading'"
+					@click="handleSearch"
+				>
+					<span v-if="status === 'loading'" class="loading loading-spinner loading-xs" />
+					搜索
+				</button>
 				<div class="join">
 					<button
 						class="join-item btn btn-sm"
@@ -251,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { Inbox, LayoutGrid, List, Plus, Search, Upload } from 'lucide-vue-next';
+import { Inbox, LayoutGrid, List, Plus, Search, Upload, X } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { applicationApi } from '@/api/cd/application';

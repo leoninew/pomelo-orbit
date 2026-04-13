@@ -2,10 +2,40 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex items-center justify-between flex-wrap gap-2">
 			<h1 class="text-xl font-semibold">代码仓库</h1>
-			<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
-				<Plus class="size-4" />
-				新建仓库
-			</button>
+			<div class="flex items-center gap-2">
+				<label class="input input-sm flex items-center gap-1 w-52">
+					<Search class="size-3.5 text-base-content/40 shrink-0" />
+					<input
+						v-model="searchText"
+						type="text"
+						class="grow"
+						placeholder="搜索名称/地址"
+						@keydown.enter="handleSearch"
+					/>
+					<button
+						v-if="searchText"
+						class="text-base-content/40 hover:text-base-content/70"
+						@click="
+							searchText = '';
+							handleSearch();
+						"
+					>
+						<X class="size-3" />
+					</button>
+				</label>
+				<button
+					class="btn btn-sm btn-primary"
+					:disabled="status === 'loading'"
+					@click="handleSearch"
+				>
+					<span v-if="status === 'loading'" class="loading loading-spinner loading-xs" />
+					搜索
+				</button>
+				<button class="btn btn-sm btn-primary gap-1.5" @click="openCreateModal">
+					<Plus class="size-4" />
+					新建仓库
+				</button>
+			</div>
 		</div>
 
 		<div class="card bg-base-100 shadow-sm overflow-x-auto">
@@ -145,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
+import { Plus, Search, X } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { credentialApi, repositoryApi } from '@/api/ci';
@@ -168,8 +198,9 @@ const gitCredentials = computed(() =>
 	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token')
 );
 
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
 
 const createModalRef = ref<HTMLDialogElement>();
 
@@ -198,6 +229,7 @@ async function fetchProjects() {
 			const res = await repositoryApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
+				search: searchText.value || undefined,
 			});
 			repositories.value = res.items;
 			pagination.total = res.total;
@@ -205,6 +237,11 @@ async function fetchProjects() {
 	} catch {
 		toast.error('获取项目列表失败');
 	}
+}
+
+function handleSearch() {
+	pagination.current = 1;
+	fetchProjects();
 }
 
 function goPage(p: number) {

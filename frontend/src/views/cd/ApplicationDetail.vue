@@ -96,7 +96,7 @@
 						<dd>
 							<router-link
 								:to="`/cd/deployments?application_id=${application.id}`"
-								class="link link-primary text-xs"
+								class="link link-primary"
 							>
 								查看所有部署
 							</router-link>

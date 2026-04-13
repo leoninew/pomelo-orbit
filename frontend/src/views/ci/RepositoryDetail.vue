@@ -53,7 +53,7 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">地址</dt>
-						<dd class="text-xs truncate">{{ repository.repository_url }}</dd>
+						<dd class="truncate">{{ repository.repository_url }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">默认分支</dt>
@@ -65,7 +65,7 @@
 							<router-link
 								v-if="repository.git_credential_id"
 								:to="`/ci/credential/${repository.git_credential_id}`"
-								class="link link-primary text-sm"
+								class="link link-primary"
 							>
 								{{ repository.git_credential_name }}
 							</router-link>
@@ -75,10 +75,7 @@
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">流水线记录</dt>
 						<dd>
-							<router-link
-								:to="`/ci/run?repository_id=${repository.id}`"
-								class="link link-primary text-xs"
-							>
+							<router-link :to="`/ci/run?repository_id=${repository.id}`" class="link link-primary">
 								查看所有记录
 							</router-link>
 						</dd>

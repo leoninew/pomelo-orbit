@@ -31,7 +31,7 @@ export interface RouteUpdateReq {
 }
 
 export const routeApi = {
-	list(page = 1, per_page = 100): Promise<PaginatedResp<Route>> {
+	list(page = 1, per_page = 20): Promise<PaginatedResp<Route>> {
 		return request.get('/api/cd/routes', { params: { page, per_page } });
 	},
 

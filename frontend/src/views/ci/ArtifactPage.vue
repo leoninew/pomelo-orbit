@@ -6,10 +6,11 @@
 			<!-- 过滤控件组 -->
 			<div class="flex items-center gap-2 flex-wrap">
 				<!-- 项目选择 -->
-				<div class="dropdown">
-					<label class="input input-sm flex items-center gap-1 w-60">
+				<div class="dropdown w-60">
+					<label class="input input-sm flex items-center gap-1 w-full">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
 						<input
+							ref="repoInputRef"
 							v-model="repoInput"
 							tabindex="0"
 							type="text"
@@ -27,7 +28,7 @@
 					</label>
 					<ul
 						tabindex="0"
-						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
 					>
 						<li v-if="repoOptions.length === 0">
 							<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
@@ -45,10 +46,11 @@
 				</div>
 
 				<!-- 模板选择 -->
-				<div class="dropdown">
-					<label class="input input-sm flex items-center gap-1 w-60">
+				<div class="dropdown w-60">
+					<label class="input input-sm flex items-center gap-1 w-full">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
 						<input
+							ref="templateInputRef"
 							v-model="templateInput"
 							tabindex="0"
 							type="text"
@@ -66,7 +68,7 @@
 					</label>
 					<ul
 						tabindex="0"
-						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
 					>
 						<li v-if="templateOptions.length === 0">
 							<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
@@ -91,19 +93,26 @@
 						type="text"
 						class="grow"
 						placeholder="搜索名称/路径"
-						@keydown.enter="doSearch"
+						@keydown.enter="handleSearch"
 					/>
 					<button
 						v-if="query.search"
 						class="text-base-content/40 hover:text-base-content/70"
-						@click="query.search = ''"
+						@click="
+							query.search = '';
+							handleSearch();
+						"
 					>
 						<X class="size-3" />
 					</button>
 				</label>
 
 				<!-- 搜索按钮 -->
-				<button class="btn btn-sm btn-primary" :disabled="status === 'loading'" @click="doSearch">
+				<button
+					class="btn btn-sm btn-primary"
+					:disabled="status === 'loading'"
+					@click="handleSearch"
+				>
 					<span v-if="status === 'loading'" class="loading loading-spinner loading-xs" />
 					搜索
 				</button>
@@ -205,6 +214,8 @@ const query = reactive({ search: '', repository_id: '', template_id: '' });
 // 下拉输入（展示层，不参与查询）
 const repoInput = ref('');
 const templateInput = ref('');
+const repoInputRef = ref<HTMLInputElement>();
+const templateInputRef = ref<HTMLInputElement>();
 
 const repoOptions = ref<Repository[]>([]);
 const templateOptions = ref<PipelineTemplate[]>([]);
@@ -247,26 +258,28 @@ function onTemplateInput() {
 function selectRepo(r: Repository) {
 	query.repository_id = r.id;
 	repoInput.value = r.name;
+	repoInputRef.value?.blur();
 }
 
 function clearRepo() {
 	query.repository_id = '';
 	repoInput.value = '';
-	doSearch();
+	handleSearch();
 }
 
 function selectTemplate(t: PipelineTemplate) {
 	query.template_id = t.id;
 	templateInput.value = t.name;
+	templateInputRef.value?.blur();
 }
 
 function clearTemplate() {
 	query.template_id = '';
 	templateInput.value = '';
-	doSearch();
+	handleSearch();
 }
 
-function doSearch() {
+function handleSearch() {
 	pagination.current = 1;
 	fetchArtifacts();
 }

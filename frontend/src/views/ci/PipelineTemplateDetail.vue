@@ -390,6 +390,7 @@
 							<label class="input flex items-center gap-1 w-full">
 								<Search class="size-3.5 text-base-content/40 shrink-0" />
 								<input
+									ref="repoSearchInputRef"
 									v-model="repoSearchInput"
 									tabindex="0"
 									type="text"
@@ -689,6 +690,7 @@ const deleteModalRef = ref<HTMLDialogElement>();
 const deleteOrchModalRef = ref<HTMLDialogElement>();
 const deleteVarModalRef = ref<HTMLDialogElement>();
 const stageSearchInputRef = ref<HTMLInputElement>();
+const repoSearchInputRef = ref<HTMLInputElement>();
 
 const editForm = reactive({ name: '', description: '' });
 const addOrchForm = reactive({
@@ -797,6 +799,7 @@ function selectStage(s: BuildStage) {
 	addOrchForm.stageId = s.id;
 	stageCache[s.id] = s;
 	stageSearchInput.value = s.name;
+	stageSearchInputRef.value?.blur();
 }
 
 function clearStageSearch() {
@@ -1044,6 +1047,7 @@ function onRepoSearchInput() {
 function selectRunRepo(repo: Repository) {
 	runForm.repositoryId = repo.id;
 	repoSearchInput.value = repo.name;
+	repoSearchInputRef.value?.blur();
 }
 
 function clearRepoSearch() {
@@ -1062,6 +1066,7 @@ async function openRunModal() {
 	repoSearchInput.value = '';
 	await searchRepos();
 	runModalRef.value?.showModal();
+	repoSearchInputRef.value?.blur();
 }
 
 async function handleRunOk() {

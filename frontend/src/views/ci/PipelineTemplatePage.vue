@@ -10,20 +10,24 @@
 						type="text"
 						class="grow"
 						placeholder="搜索名称/描述"
-						@keydown.enter="doSearch"
+						@keydown.enter="handleSearch"
 					/>
 					<button
 						v-if="searchText"
 						class="text-base-content/40 hover:text-base-content/70"
 						@click="
 							searchText = '';
-							doSearch();
+							handleSearch();
 						"
 					>
 						<X class="size-3" />
 					</button>
 				</label>
-				<button class="btn btn-sm btn-primary" :disabled="status === 'loading'" @click="doSearch">
+				<button
+					class="btn btn-sm btn-primary"
+					:disabled="status === 'loading'"
+					@click="handleSearch"
+				>
 					<span v-if="status === 'loading'" class="loading loading-spinner loading-xs" />
 					搜索
 				</button>
@@ -251,7 +255,7 @@ async function fetchTemplates() {
 	}
 }
 
-function doSearch() {
+function handleSearch() {
 	if (status.value === 'loading') {
 		return;
 	}

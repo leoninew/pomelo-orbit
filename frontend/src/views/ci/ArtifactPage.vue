@@ -25,7 +25,10 @@
 							<X class="size-3" />
 						</button>
 					</label>
-					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
+					<ul
+						tabindex="0"
+						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+					>
 						<li v-if="repoOptions.length === 0">
 							<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
 						</li>
@@ -34,7 +37,9 @@
 								class="text-xs px-3 py-1.5 rounded-none block truncate"
 								:class="{ 'bg-primary/10 font-medium': r.id === query.repository_id }"
 								@mousedown.prevent="selectRepo(r)"
-							>{{ r.name }}</a>
+							>
+								{{ r.name }}
+							</a>
 						</li>
 					</ul>
 				</div>
@@ -59,7 +64,10 @@
 							<X class="size-3" />
 						</button>
 					</label>
-					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
+					<ul
+						tabindex="0"
+						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+					>
 						<li v-if="templateOptions.length === 0">
 							<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
 						</li>
@@ -68,7 +76,9 @@
 								class="text-xs px-3 py-1.5 rounded-none block truncate"
 								:class="{ 'bg-primary/10 font-medium': t.id === query.template_id }"
 								@mousedown.prevent="selectTemplate(t)"
-							>{{ t.name }}</a>
+							>
+								{{ t.name }}
+							</a>
 						</li>
 					</ul>
 				</div>
@@ -128,7 +138,10 @@
 					</tr>
 					<tr v-for="a in artifacts" :key="a.id" class="hover">
 						<td>
-							<router-link :to="`/ci/repository/${a.repository_id}`" class="link link-primary text-xs">
+							<router-link
+								:to="`/ci/repository/${a.repository_id}`"
+								class="link link-primary text-xs"
+							>
 								{{ a.repository_name }}
 							</router-link>
 						</td>

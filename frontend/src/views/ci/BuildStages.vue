@@ -12,7 +12,14 @@
 						placeholder="搜索名称/描述"
 						@keydown.enter="doSearch"
 					/>
-					<button v-if="searchText" class="text-base-content/40 hover:text-base-content/70" @click="searchText = ''; doSearch()">
+					<button
+						v-if="searchText"
+						class="text-base-content/40 hover:text-base-content/70"
+						@click="
+							searchText = '';
+							doSearch();
+						"
+					>
 						<X class="size-3" />
 					</button>
 				</label>

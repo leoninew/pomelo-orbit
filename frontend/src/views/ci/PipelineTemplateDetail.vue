@@ -228,7 +228,9 @@
 							<tbody>
 								<tr v-for="(a, idx) in artifactDeclarations" :key="idx" class="hover">
 									<td class="text-sm">{{ a.stageName }}</td>
-									<td><span class="badge badge-sm badge-ghost">{{ a.type }}</span></td>
+									<td>
+										<span class="badge badge-sm badge-ghost">{{ a.type }}</span>
+									</td>
 									<td class="text-sm">{{ a.name }}</td>
 									<td class="text-sm text-base-content/70">{{ a.path }}</td>
 								</tr>
@@ -275,24 +277,38 @@
 							<label class="input flex items-center gap-1 w-full">
 								<Search class="size-3.5 text-base-content/40 shrink-0" />
 								<input
+									ref="stageSearchInputRef"
 									v-model="stageSearchInput"
 									tabindex="0"
 									type="text"
 									class="grow"
 									placeholder="搜索阶段名称"
-									ref="stageSearchInputRef"
 									@input="onStageSearchInput"
 								/>
-								<button v-if="stageSearchInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearStageSearch"><X class="size-3" /></button>
+								<button
+									v-if="stageSearchInput"
+									class="text-base-content/40 hover:text-base-content/70"
+									@click.prevent="clearStageSearch"
+								>
+									<X class="size-3" />
+								</button>
 							</label>
-							<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
-								<li v-if="stageSearchOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+							<ul
+								tabindex="0"
+								class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+							>
+								<li v-if="stageSearchOptions.length === 0">
+									<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
+								</li>
 								<li v-for="s in stageSearchOptions" :key="s.id">
 									<a
 										class="text-xs px-3 py-1.5 rounded-none block truncate"
 										:class="{ 'bg-primary/10 font-medium': s.id === addOrchForm.stageId }"
 										@mousedown.prevent="selectStage(s)"
-									>{{ s.name }} <span class="text-base-content/50">({{ s.image }})</span></a>
+									>
+										{{ s.name }}
+										<span class="text-base-content/50">({{ s.image }})</span>
+									</a>
 								</li>
 							</ul>
 						</div>
@@ -381,16 +397,30 @@
 									placeholder="搜索项目名称"
 									@input="onRepoSearchInput"
 								/>
-								<button v-if="repoSearchInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearRepoSearch"><X class="size-3" /></button>
+								<button
+									v-if="repoSearchInput"
+									class="text-base-content/40 hover:text-base-content/70"
+									@click.prevent="clearRepoSearch"
+								>
+									<X class="size-3" />
+								</button>
 							</label>
-							<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
-								<li v-if="repoSearchOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+							<ul
+								tabindex="0"
+								class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+							>
+								<li v-if="repoSearchOptions.length === 0">
+									<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
+								</li>
 								<li v-for="repo in repoSearchOptions" :key="repo.id">
 									<a
 										class="text-xs px-3 py-1.5 rounded-none block truncate"
 										:class="{ 'bg-primary/10 font-medium': repo.id === runForm.repositoryId }"
 										@mousedown.prevent="selectRunRepo(repo)"
-									>{{ repo.name }} <span class="text-base-content/50">({{ repo.code }})</span></a>
+									>
+										{{ repo.name }}
+										<span class="text-base-content/50">({{ repo.code }})</span>
+									</a>
 								</li>
 							</ul>
 						</div>
@@ -399,7 +429,12 @@
 							class="fieldset-label text-error"
 						>
 							该项目未配置 Git 凭据，请先在
-							<router-link :to="`/ci/repository/${selectedRepository.id}`" class="link link-primary">仓库详情</router-link>
+							<router-link
+								:to="`/ci/repository/${selectedRepository.id}`"
+								class="link link-primary"
+							>
+								仓库详情
+							</router-link>
 							中配置
 						</p>
 					</fieldset>
@@ -680,7 +715,6 @@ const editableOrchOptions = computed(() =>
 	sortableOrch.value.filter((o) => o.stage_id !== editOrchForm.editingStageId)
 );
 
-
 const selectedRepository = computed(() =>
 	repoSearchOptions.value.find((r) => r.id === runForm.repositoryId)
 );
@@ -742,7 +776,10 @@ async function fetchTemplate() {
 async function searchStages() {
 	try {
 		const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
-		const resp = await buildStageApi.list({ search: stageSearchInput.value || undefined, per_page: 20 });
+		const resp = await buildStageApi.list({
+			search: stageSearchInput.value || undefined,
+			per_page: 20,
+		});
 		stageSearchOptions.value = resp.items.filter((s) => !inOrch.has(s.id));
 	} catch (err: unknown) {
 		toast.error(err instanceof Error ? err.message : '获取 Stage 列表失败');
@@ -905,8 +942,9 @@ async function confirmAddOrch() {
 	if (!addOrchForm.stageId) {
 		return;
 	}
-	const stage = stageSearchOptions.value.find((s) => s.id === addOrchForm.stageId)
-		?? stageCache[addOrchForm.stageId];
+	const stage =
+		stageSearchOptions.value.find((s) => s.id === addOrchForm.stageId) ??
+		stageCache[addOrchForm.stageId];
 	if (!stage) {
 		return;
 	}
@@ -986,7 +1024,10 @@ function confirmEditOrch() {
 
 async function searchRepos() {
 	try {
-		const resp = await repositoryApi.list({ search: repoSearchInput.value || undefined, per_page: 20 });
+		const resp = await repositoryApi.list({
+			search: repoSearchInput.value || undefined,
+			per_page: 20,
+		});
 		repoSearchOptions.value = resp.items;
 	} catch (err: unknown) {
 		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
@@ -994,7 +1035,9 @@ async function searchRepos() {
 }
 
 function onRepoSearchInput() {
-	if (repoDebounce) { clearTimeout(repoDebounce); }
+	if (repoDebounce) {
+		clearTimeout(repoDebounce);
+	}
 	repoDebounce = setTimeout(searchRepos, 300);
 }
 

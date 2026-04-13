@@ -3,7 +3,11 @@ import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
 export const buildStageApi = {
-	list(params?: { page?: number; per_page?: number; search?: string }): Promise<PaginatedResp<BuildStage>> {
+	list(params?: {
+		page?: number
+		per_page?: number
+		search?: string
+	}): Promise<PaginatedResp<BuildStage>> {
 		return request.get('/api/ci/build-stage', { params });
 	},
 

@@ -7,13 +7,37 @@
 				<div class="dropdown">
 					<label class="input input-sm flex items-center gap-1 w-60">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
-						<input v-model="repoInput" tabindex="0" type="text" class="grow" placeholder="筛选项目" @input="onRepoInput" />
-						<button v-if="repoInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearRepo"><X class="size-3" /></button>
+						<input
+							v-model="repoInput"
+							tabindex="0"
+							type="text"
+							class="grow"
+							placeholder="筛选项目"
+							@input="onRepoInput"
+						/>
+						<button
+							v-if="repoInput"
+							class="text-base-content/40 hover:text-base-content/70"
+							@click.prevent="clearRepo"
+						>
+							<X class="size-3" />
+						</button>
 					</label>
-					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
-						<li v-if="repoOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+					<ul
+						tabindex="0"
+						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+					>
+						<li v-if="repoOptions.length === 0">
+							<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
+						</li>
 						<li v-for="r in repoOptions" :key="r.id">
-							<a class="text-xs px-3 py-1.5 rounded-none block truncate" :class="{ 'bg-primary/10 font-medium': r.id === query.repository_id }" @mousedown.prevent="selectRepo(r)">{{ r.name }}</a>
+							<a
+								class="text-xs px-3 py-1.5 rounded-none block truncate"
+								:class="{ 'bg-primary/10 font-medium': r.id === query.repository_id }"
+								@mousedown.prevent="selectRepo(r)"
+							>
+								{{ r.name }}
+							</a>
 						</li>
 					</ul>
 				</div>
@@ -21,13 +45,37 @@
 				<div class="dropdown">
 					<label class="input input-sm flex items-center gap-1 w-60">
 						<Search class="size-3.5 text-base-content/40 shrink-0" />
-						<input v-model="templateInput" tabindex="0" type="text" class="grow" placeholder="筛选模板" @input="onTemplateInput" />
-						<button v-if="templateInput" class="text-base-content/40 hover:text-base-content/70" @click.prevent="clearTemplate"><X class="size-3" /></button>
+						<input
+							v-model="templateInput"
+							tabindex="0"
+							type="text"
+							class="grow"
+							placeholder="筛选模板"
+							@input="onTemplateInput"
+						/>
+						<button
+							v-if="templateInput"
+							class="text-base-content/40 hover:text-base-content/70"
+							@click.prevent="clearTemplate"
+						>
+							<X class="size-3" />
+						</button>
 					</label>
-					<ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1">
-						<li v-if="templateOptions.length === 0"><span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span></li>
+					<ul
+						tabindex="0"
+						class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-44 max-h-48 overflow-y-auto flex-nowrap p-0 mt-1"
+					>
+						<li v-if="templateOptions.length === 0">
+							<span class="text-xs text-base-content/50 px-3 py-2">暂无数据</span>
+						</li>
 						<li v-for="t in templateOptions" :key="t.id">
-							<a class="text-xs px-3 py-1.5 rounded-none block truncate" :class="{ 'bg-primary/10 font-medium': t.id === query.template_id }" @mousedown.prevent="selectTemplate(t)">{{ t.name }}</a>
+							<a
+								class="text-xs px-3 py-1.5 rounded-none block truncate"
+								:class="{ 'bg-primary/10 font-medium': t.id === query.template_id }"
+								@mousedown.prevent="selectTemplate(t)"
+							>
+								{{ t.name }}
+							</a>
 						</li>
 					</ul>
 				</div>
@@ -205,12 +253,16 @@ async function searchTemplates() {
 }
 
 function onRepoInput() {
-	if (repoDebounce) { clearTimeout(repoDebounce); }
+	if (repoDebounce) {
+		clearTimeout(repoDebounce);
+	}
 	repoDebounce = setTimeout(searchRepos, 300);
 }
 
 function onTemplateInput() {
-	if (templateDebounce) { clearTimeout(templateDebounce); }
+	if (templateDebounce) {
+		clearTimeout(templateDebounce);
+	}
 	templateDebounce = setTimeout(searchTemplates, 300);
 }
 

@@ -160,7 +160,9 @@
 							<tbody>
 								<tr v-for="(a, idx) in artifactDeclarations" :key="idx" class="hover">
 									<td class="text-sm">{{ a.stageName }}</td>
-									<td><span class="badge badge-sm badge-ghost">{{ a.type }}</span></td>
+									<td>
+										<span class="badge badge-sm badge-ghost">{{ a.type }}</span>
+									</td>
 									<td class="text-sm">{{ a.name }}</td>
 									<td class="text-sm text-base-content/70">{{ a.path }}</td>
 								</tr>

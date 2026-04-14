@@ -4,6 +4,8 @@ import logging
 import math
 from typing import Annotated
 
+from dishka import AsyncContainer
+from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
 from pomelo_orbit.application.ci.di import get_pipeline_run_service
@@ -12,6 +14,7 @@ from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
+from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 logger = logging.getLogger(__name__)
 
@@ -84,14 +87,22 @@ def cancel_pipeline(
 
 
 @router.post("/{run_id}/retry", response_model=PipelineRunResp, status_code=201)
+@inject
 async def retry_pipeline(
     run_id: str,
     background_tasks: BackgroundTasks,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
+    container: FromDishka[AsyncContainer],
     _current_user=Depends(get_current_user),
 ) -> PipelineRunResp:
     result = pipeline_run_service.create_retry_run(run_id)
-    background_tasks.add_task(
-        pipeline_run_service.execute_run, result.run, result.repository, result.merged_variables, result.snapshot
-    )
+
+    async def _run() -> None:
+        await run_in_new_scope(
+            container,
+            PipelineRunService,
+            lambda svc: svc.execute_run(result.run, result.repository, result.merged_variables, result.snapshot),
+        )
+
+    background_tasks.add_task(_run)
     return PipelineRunResp.with_stage_runs(result.run.id, pipeline_run_service)

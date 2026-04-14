@@ -1,12 +1,8 @@
-from typing import Annotated
-
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.repositories import UserRepository
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
-from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper, UserMapper
 from pomelo_orbit.infrastructure.persistence.models import LoginHistoryModel, UserModel
 
@@ -36,8 +32,3 @@ class UserRepositoryImpl(BaseRepository[User, UserModel], UserRepository):
         offset = (page - 1) * per_page
         models = query.order_by(LoginHistoryModel.id.desc()).offset(offset).limit(per_page).all()
         return [LoginHistoryMapper.to_domain(m) for m in models], total
-
-
-def get_user_repository(db: Annotated[Session, Depends(get_db)]) -> UserRepository:
-    """获取用户仓储实例"""
-    return UserRepositoryImpl(db)

@@ -5,6 +5,8 @@ import math
 from dataclasses import MISSING
 from typing import Annotated
 
+from dishka import AsyncContainer
+from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
 from pomelo_orbit.application.ci.credential_service import CredentialService
@@ -28,6 +30,7 @@ from pomelo_orbit.interfaces.api.ci.dto.repository import (
     RepositoryUpdateReq,
 )
 from pomelo_orbit.interfaces.api.common import PaginatedResp
+from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 logger = logging.getLogger(__name__)
 
@@ -154,11 +157,13 @@ def list_repository_runs(
 
 
 @router.post("/{repository_id}/trigger", response_model=PipelineRunResp, status_code=201)
+@inject
 async def trigger_pipeline(
     repository_id: str,
     data: TriggerPipelineReq,
     background_tasks: BackgroundTasks,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
+    container: FromDishka[AsyncContainer],
     _current_user=Depends(get_current_user),
 ) -> PipelineRunResp:
     result = pipeline_run_service.create_run(
@@ -168,7 +173,13 @@ async def trigger_pipeline(
         trigger_ref=data.trigger_ref,
         runtime_variables=data.variables,
     )
-    background_tasks.add_task(
-        pipeline_run_service.execute_run, result.run, result.repository, result.merged_variables, result.snapshot
-    )
+
+    async def _run() -> None:
+        await run_in_new_scope(
+            container,
+            PipelineRunService,
+            lambda svc: svc.execute_run(result.run, result.repository, result.merged_variables, result.snapshot),
+        )
+
+    background_tasks.add_task(_run)
     return PipelineRunResp.model_validate(result.run)

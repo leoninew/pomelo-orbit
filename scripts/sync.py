@@ -28,7 +28,8 @@ SEND_EXCLUDES = [
     "--exclude=.git",
     "--filter=:- .gitignore",
     "--exclude=scripts",
-    # "--exclude=docs",
+    "--exclude=.kiro",
+    "--exclude=docs",
     "--exclude=CLAUDE.md",
     "--exclude=.pomelo-pw.yaml",
 ]

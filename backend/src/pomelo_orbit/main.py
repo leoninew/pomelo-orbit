@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
+from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from pomelo_orbit.domain import BusinessError
 from pomelo_orbit.infrastructure import get_cors_config, get_settings
+from pomelo_orbit.infrastructure.container import create_container
 from pomelo_orbit.infrastructure.logging import LOGGING_CONFIG, RequestLoggingMiddleware
 from pomelo_orbit.infrastructure.migration.migrator import run_migrations
 from pomelo_orbit.infrastructure.persistence.database import get_engine
@@ -36,10 +38,13 @@ async def lifespan(app: FastAPI):
     logger.info("Database migrations completed successfully!")
 
     yield
+
+    await app.state.dishka_container.close()
     logger.info("Shutting down...")
 
 
 settings = get_settings()
+container = create_container()
 
 app = FastAPI(
     title=settings.app.name,
@@ -53,6 +58,8 @@ app = FastAPI(
 cors_config = get_cors_config()
 app.add_middleware(CORSMiddleware, **cors_config)
 app.add_middleware(RequestLoggingMiddleware)
+
+setup_dishka(container=container, app=app)
 
 # Include routers
 app.include_router(auth_router, prefix="/api")

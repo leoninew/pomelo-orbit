@@ -2,15 +2,11 @@
 应用仓储实现
 """
 
-from typing import Annotated
-
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.cd.entities import Application
 from pomelo_orbit.domain.cd.repositories import ApplicationRepository
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
-from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import ApplicationMapper
 from pomelo_orbit.infrastructure.persistence.models import ApplicationModel
 
@@ -42,8 +38,3 @@ class ApplicationRepositoryImpl(BaseRepository[Application, ApplicationModel], A
         offset = (page - 1) * per_page
         orms = query.order_by(ApplicationModel.id.desc()).offset(offset).limit(per_page).all()
         return [ApplicationMapper.to_domain(orm) for orm in orms], total
-
-
-def get_application_repository(db: Annotated[Session, Depends(get_db)]) -> ApplicationRepository:
-    """获取应用仓储实例（依赖注入）- 返回接口类型"""
-    return ApplicationRepositoryImpl(db)

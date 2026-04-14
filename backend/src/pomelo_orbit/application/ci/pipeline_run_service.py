@@ -2,11 +2,8 @@
 
 import asyncio
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-
-from sqlalchemy.orm import Session, sessionmaker
 
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
@@ -30,7 +27,6 @@ from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger, VariableDec
 from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
 from pomelo_orbit.domain.exceptions import BusinessError
 from pomelo_orbit.infrastructure.ci.executor_impl import cancel_task
-from pomelo_orbit.infrastructure.ci.repositories import PipelineRunRepositoryImpl
 from pomelo_orbit.infrastructure.ci.variables import (
     VariableError,
     mask_secrets,
@@ -42,7 +38,6 @@ from pomelo_orbit.infrastructure.ci.workspace import (
     create_workspace,
     get_stage_log_path,
 )
-from pomelo_orbit.infrastructure.persistence.database import get_session_factory
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +103,7 @@ class PipelineRunService:
         snapshot_repo: PipelineSnapshotRepository,
         snapshot_manager: SnapshotManager,
         variable_resolver: VariableResolver,
-        session_factory: sessionmaker[Session],
-        executor_factory: Callable[[Session], PipelineExecutor],
+        pipeline_executor: PipelineExecutor,
     ):
         self.run_repo = run_repo
         self.artifact_repo = artifact_repo
@@ -119,8 +113,7 @@ class PipelineRunService:
         self.snapshot_repo = snapshot_repo
         self.snapshot_manager = snapshot_manager
         self.variable_resolver = variable_resolver
-        self._session_factory = session_factory
-        self._executor_factory = executor_factory
+        self._pipeline_executor = pipeline_executor
 
     # ── 查询方法 ──────────────────────────────────────────────────────────────
 
@@ -377,18 +370,14 @@ class PipelineRunService:
     async def execute_run(
         self, run: PipelineRun, repository: Repository, variables: dict[str, Any], snapshot: PipelineSnapshot
     ) -> None:
-        """执行 pipeline run（由 BackgroundTasks 调用，使用独立 session）"""
-        session_factory = self._session_factory or get_session_factory()
-
+        """执行 pipeline run（由 Dishka 容器在 BackgroundTasks 中调用，拥有独立 session）"""
         try:
             resolved_stages = [resolve_stage(s, variables) for s in snapshot.stages_snapshot]
         except Exception as e:
             logger.error(f"Stage resolution failed: run={run.id}, error={e}", exc_info=True)
-            with session_factory() as session:
-                run_repo = PipelineRunRepositoryImpl(session)
-                run.complete_failed(f"Stage resolution failed: {e}")
-                run_repo.save(run)
-                session.commit()
+            run.complete_failed(f"Stage resolution failed: {e}")
+            self.run_repo.save(run)
+            self.run_repo.commit()
             return
 
         workspace_path, artifacts_path = create_workspace(repository.code, run.id)
@@ -407,27 +396,23 @@ class PipelineRunService:
             retry_of=run.retry_of,
         )
 
-        with session_factory() as session:
-            run_repo = PipelineRunRepositoryImpl(session)
-            executor = self._executor_factory(session)
+        run.start()
+        self.run_repo.save(run)
+        self.run_repo.commit()
 
-            run.start()
-            run_repo.save(run)
-            session.commit()
-
-            try:
-                success = await executor.execute(context, resolved_stages)
-                if success:
-                    run.complete_success()
-                else:
-                    run.complete_failed(context.error_message)
-            except asyncio.CancelledError:
-                run.cancel()
-            except Exception as e:
-                logger.error(f"Pipeline execution error: run={run.id}, error={e}", exc_info=True)
-                run.complete_failed(f"Unexpected error: {e}")
-            finally:
-                run_repo.save(run)
-                session.commit()
-                cleanup_run_secrets(run.id)
-                logger.info(f"Pipeline finished: run={run.id}, status={run.status}")
+        try:
+            success = await self._pipeline_executor.execute(context, resolved_stages)
+            if success:
+                run.complete_success()
+            else:
+                run.complete_failed(context.error_message)
+        except asyncio.CancelledError:
+            run.cancel()
+        except Exception as e:
+            logger.error(f"Pipeline execution error: run={run.id}, error={e}", exc_info=True)
+            run.complete_failed(f"Unexpected error: {e}")
+        finally:
+            self.run_repo.save(run)
+            self.run_repo.commit()
+            cleanup_run_secrets(run.id)
+            logger.info(f"Pipeline finished: run={run.id}, status={run.status}")

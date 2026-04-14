@@ -3,16 +3,13 @@
 """
 
 from datetime import datetime
-from typing import Annotated
 
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.cd.entities import Deployment
 from pomelo_orbit.domain.cd.repositories import DeploymentRepository
 from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
-from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import DeploymentMapper
 from pomelo_orbit.infrastructure.persistence.models import DeploymentModel
 
@@ -74,8 +71,3 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
         orms = query.order_by(DeploymentModel.id.desc()).offset(offset).limit(per_page).all()
 
         return [DeploymentMapper.to_domain(orm) for orm in orms], total
-
-
-def get_deployment_repository(db: Annotated[Session, Depends(get_db)]) -> DeploymentRepository:
-    """获取部署记录仓储实例（依赖注入）- 返回接口类型"""
-    return DeploymentRepositoryImpl(db)

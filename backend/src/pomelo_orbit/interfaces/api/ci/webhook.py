@@ -5,6 +5,8 @@ import json
 import logging
 from typing import Annotated
 
+from dishka import AsyncContainer
+from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
 
 from pomelo_orbit.application.ci.di import get_pipeline_run_service, get_webhook_service
@@ -17,6 +19,7 @@ from pomelo_orbit.interfaces.api.ci.dto.webhook import (
     ProjectWebhookResp,
     ProjectWebhookUpdateReq,
 )
+from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 logger = logging.getLogger(__name__)
 
@@ -85,12 +88,14 @@ def delete_webhook(
 
 
 @router.post("/webhook/{webhook_id}")
+@inject
 async def receive_webhook(
     webhook_id: str,
     request: Request,
     background_tasks: BackgroundTasks,
     webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
+    container: FromDishka[AsyncContainer],
     x_hub_signature_256: Annotated[str, Header(alias="X-Hub-Signature-256")] = "",
     x_gitlab_token: Annotated[str, Header(alias="X-Gitlab-Token")] = "",
 ) -> dict:
@@ -150,8 +155,14 @@ async def receive_webhook(
             "event_type": "push",
         },
     )
-    background_tasks.add_task(
-        pipeline_run_service.execute_run, result.run, result.repository, result.merged_variables, result.snapshot
-    )
+
+    async def _run() -> None:
+        await run_in_new_scope(
+            container,
+            PipelineRunService,
+            lambda svc: svc.execute_run(result.run, result.repository, result.merged_variables, result.snapshot),
+        )
+
+    background_tasks.add_task(_run)
     logger.info(f"Webhook triggered: source={source}, run={result.run.id}, ref={branch}")
     return {"status": "triggered", "run_id": result.run.id}

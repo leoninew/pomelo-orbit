@@ -13,8 +13,8 @@ from pomelo_orbit.domain import AuthenticationError, AuthorizationError
 from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.repositories import UserRepository
 from pomelo_orbit.infrastructure import SecurityService, get_security_service, hash_password, verify_password
+from pomelo_orbit.infrastructure.cd.repositories.di import get_user_repo
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
-from pomelo_orbit.infrastructure.repositories import get_user_repository
 from pomelo_orbit.infrastructure.time_utils import utc_now
 from pomelo_orbit.interfaces.api.auth.dto import (
     LoginHistoryResp,
@@ -31,7 +31,7 @@ security = HTTPBearer()
 
 def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    user_repo: Annotated[UserRepository, Depends(get_user_repository)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
     security_service: Annotated[SecurityService, Depends(get_security_service)],
 ) -> User:
     """获取当前用户"""
@@ -52,7 +52,7 @@ def get_current_user(
 def login(
     login_req: LoginReq,
     request: Request,
-    user_repo: Annotated[UserRepository, Depends(get_user_repository)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
     security_service: Annotated[SecurityService, Depends(get_security_service)],
 ) -> TokenResp:
     """用户登录"""
@@ -104,7 +104,7 @@ def get_me(current_user: Annotated[User, Depends(get_current_user)]) -> UserInfo
 def change_password(
     request: PasswordChangeReq,
     current_user: Annotated[User, Depends(get_current_user)],
-    user_repo: Annotated[UserRepository, Depends(get_user_repository)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
 ) -> dict:
     """修改密码"""
     if not verify_password(request.old_password, current_user.password_hash):
@@ -116,7 +116,7 @@ def change_password(
 
 @router.get("/login-history", response_model=PaginatedResp[LoginHistoryResp])
 def list_login_history(
-    user_repo: Annotated[UserRepository, Depends(get_user_repository)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,

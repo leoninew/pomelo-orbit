@@ -5,6 +5,8 @@
 import math
 from typing import Annotated
 
+from dishka import AsyncContainer
+from dishka.integrations.fastapi import FromDishka, inject
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query
 
 from pomelo_orbit.application.cd.application_service import ApplicationService
@@ -22,6 +24,7 @@ from pomelo_orbit.interfaces.api.cd.dto.application import (
     ConfigFileResp,
 )
 from pomelo_orbit.interfaces.api.common import PaginatedResp
+from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 router = APIRouter(prefix="/applications", tags=["application"])
 
@@ -183,10 +186,12 @@ def delete_application_file(
 
 
 @router.post("/{app_id}/deploy")
+@inject
 async def deploy_application(
     app_id: str,
     background_tasks: BackgroundTasks,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    container: FromDishka[AsyncContainer],
     _current_user=Depends(get_current_user),
     branch: Annotated[str | None, Body(embed=True)] = None,
     env: Annotated[str | None, Body(embed=True)] = None,
@@ -202,7 +207,10 @@ async def deploy_application(
         is_rollback=False,
     )
 
-    background_tasks.add_task(app_service.deploy, app, deployment)
+    async def _run_deploy() -> None:
+        await run_in_new_scope(container, ApplicationService, lambda svc: svc.deploy(app, deployment))
+
+    background_tasks.add_task(_run_deploy)
 
     return {"deployment_id": deployment.id}
 
@@ -221,10 +229,12 @@ async def stop_application(
 
 
 @router.post("/{app_id}/restart")
+@inject
 async def restart_application(
     app_id: str,
     background_tasks: BackgroundTasks,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    container: FromDishka[AsyncContainer],
     _current_user=Depends(get_current_user),
     env: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
@@ -233,7 +243,10 @@ async def restart_application(
 
     deployment = await app_service.restart_application(app_id, env)
 
-    background_tasks.add_task(app_service.execute_restart, app, deployment)
+    async def _run_restart() -> None:
+        await run_in_new_scope(container, ApplicationService, lambda svc: svc.execute_restart(app, deployment))
+
+    background_tasks.add_task(_run_restart)
 
     return {"deployment_id": deployment.id}
 

@@ -64,7 +64,9 @@ export const STATUS_COLOR: Record<string, string> = {
 const STATUS_COLOR_DEFAULT = '#94a3b8'; // slate-400，无状态时
 
 export function statusColor(status: string | undefined): string {
-	if (!status) {return STATUS_COLOR_DEFAULT;}
+	if (!status) {
+		return STATUS_COLOR_DEFAULT;
+	}
 	return STATUS_COLOR[status] ?? STATUS_COLOR_DEFAULT;
 }
 

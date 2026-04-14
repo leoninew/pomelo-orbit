@@ -2,15 +2,11 @@
 配置文件仓储实现
 """
 
-from typing import Annotated
-
-from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.cd.entities import ApplicationConfigFile
 from pomelo_orbit.domain.cd.repositories import ConfigFileRepository
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
-from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import ApplicationConfigFileMapper
 from pomelo_orbit.infrastructure.persistence.models import ApplicationConfigFileModel
 
@@ -30,8 +26,3 @@ class ConfigFileRepositoryImpl(BaseRepository[ApplicationConfigFile, Application
             .all()
         )
         return [ApplicationConfigFileMapper.to_domain(orm) for orm in orms]
-
-
-def get_config_file_repository(db: Annotated[Session, Depends(get_db)]) -> ConfigFileRepository:
-    """获取配置文件仓储实例（依赖注入）- 返回接口类型"""
-    return ConfigFileRepositoryImpl(db)

@@ -27,6 +27,7 @@ dependencies = [
     # ULID 支持
     "python-ulid>=2.0.0",
     "httpx>=0.27.0",
+    "dishka>=1.9.1",
 ]
 
 [build-system]

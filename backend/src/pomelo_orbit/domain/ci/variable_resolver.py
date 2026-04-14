@@ -219,7 +219,9 @@ class VariableResolver:
             "template_id": BuiltinVarSpec("运行时注入: 当前模板 ID", editable=False),
             "template_name": BuiltinVarSpec("运行时注入: 当前模板名称", editable=False),
             "template_version": BuiltinVarSpec("运行时注入: 当前模板版本", editable=False),
-            "runtime_datetime": BuiltinVarSpec("运行时注入: 流水线启动时间 (UTC, 格式 YYYYmmdd-HHmmss)", editable=False),
+            "runtime_datetime": BuiltinVarSpec(
+                "运行时注入: 流水线启动时间 (UTC, 格式 YYYYmmdd-HHmmss)", editable=False
+            ),
         }
 
     def _build_repository_builtin_variables(self, repository: Repository, trigger_ref: str) -> dict[str, Any]:

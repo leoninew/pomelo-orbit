@@ -211,8 +211,9 @@ class TestApplicationAPI:
         data = response.json()
         assert data["deployment_id"] == "test-deployment-id"
 
+    @patch("pomelo_orbit.application.cd.application_service.ApplicationService.execute_restart")
     @patch("pomelo_orbit.application.cd.application_service.ApplicationService.restart_application")
-    def test_restart_application(self, mock_restart, auth_client, test_app):
+    def test_restart_application(self, mock_restart, mock_execute, auth_client, test_app):
         """测试重启应用"""
         from pomelo_orbit.domain.cd.entities import Deployment, TriggerType
         from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus

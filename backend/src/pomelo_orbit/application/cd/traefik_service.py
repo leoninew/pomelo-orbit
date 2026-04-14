@@ -2,9 +2,9 @@
 
 from dynaconf import Dynaconf
 
+from pomelo_orbit.application.cd.dto.traefik import TraefikConfigResp, TraefikRouteListResp
 from pomelo_orbit.domain.cd.repositories import RouteRepository
 from pomelo_orbit.infrastructure.traefik import TraefikAPIClient
-from pomelo_orbit.interfaces.api.cd.dto.traefik_route import TraefikConfigResp, TraefikRouteListResp
 
 
 class TraefikService:

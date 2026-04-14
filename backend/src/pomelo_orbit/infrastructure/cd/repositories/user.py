@@ -20,7 +20,6 @@ class UserRepositoryImpl(BaseRepository[User, UserModel], UserRepository):
     def save_login_history(self, history: LoginHistory) -> None:
         model = LoginHistoryMapper.to_orm(history)
         self._session.add(model)
-        self._session.commit()
 
     def find_login_history(
         self, page: int = 1, per_page: int = 20, search: str | None = None

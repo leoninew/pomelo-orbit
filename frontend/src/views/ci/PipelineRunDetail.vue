@@ -339,12 +339,16 @@
 				>
 					<!-- 拖拽把手：热区宽，视觉细 -->
 					<div
-						class="absolute left-0 inset-y-0 w-3 cursor-ew-resize group"
+						class="absolute left-0 inset-y-0 w-4 group z-10"
 						@mousedown="onResizeMousedown"
 					>
-						<div
-							class="absolute left-1.5 inset-y-0 w-px bg-transparent group-hover:bg-blue-500/60 transition-colors duration-150"
-						/>
+						<!-- 左半：col-resize -->
+						<div class="absolute left-0 inset-y-0 w-2 cursor-col-resize">
+							<!-- 蓝色细线 -->
+							<div class="absolute right-0 inset-y-0 w-0.5 bg-transparent group-hover:bg-primary transition-colors duration-150" />
+						</div>
+						<!-- 右半：grab -->
+						<div class="absolute left-2 right-0 inset-y-0 cursor-grab" />
 					</div>
 					<div class="flex items-center justify-between px-5 py-4 border-b border-base-200">
 						<h3 class="font-semibold flex items-center gap-2">
@@ -514,7 +518,7 @@ function onResizeMousedown(e: MouseEvent) {
 	document.addEventListener('mousemove', onMousemove);
 	document.addEventListener('mouseup', onMouseup);
 	document.body.style.userSelect = 'none';
-	document.body.style.cursor = 'ew-resize';
+	document.body.style.cursor = 'grabbing';
 }
 
 function checkScrollState() {

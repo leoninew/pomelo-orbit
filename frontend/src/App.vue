@@ -7,29 +7,29 @@
 
 		<template v-else>
 			<!-- ── Top navbar ── -->
-			<header class="navbar bg-base-100 border-b border-base-200 h-16 min-h-16 shrink-0 px-4 gap-0">
+			<header class="navbar bg-base-100 border-b border-base-200 h-12 min-h-12 shrink-0 px-4 gap-0">
 				<!-- Logo -->
 				<router-link
 					to="/"
-					class="text-lg font-bold text-base-content hover:text-primary transition-colors mr-6 pr-6 border-r border-base-200"
+					class="text-base font-bold text-base-content hover:text-primary transition-colors mr-6 pr-6 border-r border-base-200"
 				>
 					Pomelo Orbit
 				</router-link>
 
 				<!-- Module tabs -->
-				<nav class="flex items-stretch h-full gap-1">
+				<nav class="flex items-stretch h-full gap-0.5">
 					<button
 						v-for="mod in modules"
 						:key="mod.key"
-						class="flex items-center gap-1.5 px-4 text-sm border-b-2 transition-colors cursor-pointer"
+						class="flex items-center gap-1.5 px-3 text-sm transition-colors cursor-pointer border-b-2"
 						:class="
 							currentModule === mod.key
 								? 'border-primary text-primary'
-								: 'border-transparent text-base-content/70 hover:text-base-content'
+								: 'border-transparent text-base-content/60 hover:text-base-content'
 						"
 						@click="navigateToModule(mod.key)"
 					>
-						<component :is="mod.icon" class="size-4" />
+						<component :is="mod.icon" class="size-3.5" />
 						{{ mod.label }}
 					</button>
 				</nav>
@@ -65,15 +65,18 @@
 			<div class="flex flex-1 overflow-hidden">
 				<!-- Sidebar -->
 				<aside
+					v-if="currentModule"
 					class="shrink-0 bg-base-100 border-r border-base-200 flex flex-col transition-all duration-200 overflow-hidden"
 					:class="collapsed ? 'w-14' : 'w-52'"
 				>
-					<ul class="menu flex-1 p-2 gap-0.5">
+					<ul class="menu flex-1 p-2 gap-1">
 						<li v-for="item in sidebarItems" :key="item.key">
 							<router-link
 								:to="item.path"
 								class="flex items-center gap-3 rounded-btn"
-								:class="selectedKey === item.key ? 'active' : ''"
+								:class="selectedKey === item.key
+									? 'bg-primary/10 text-primary hover:bg-primary/15'
+									: 'text-base-content/70 hover:text-base-content hover:bg-base-200'"
 								:title="collapsed ? item.label : undefined"
 							>
 								<component :is="item.icon" class="size-4 shrink-0" />
@@ -84,11 +87,11 @@
 
 					<!-- Collapse toggle -->
 					<button
-						class="flex items-center justify-center h-10 border-t border-base-200 text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors cursor-pointer"
+						class="flex items-center justify-center h-9 border-t border-base-200 text-base-content/30 hover:text-base-content/60 hover:bg-base-200 transition-colors cursor-pointer"
 						@click="collapsed = !collapsed"
 					>
-						<ChevronLeft v-if="!collapsed" class="size-4" />
-						<ChevronRight v-else class="size-4" />
+						<PanelLeftClose v-if="!collapsed" class="size-3.5" />
+						<PanelLeftOpen v-else class="size-3.5" />
 					</button>
 				</aside>
 
@@ -122,8 +125,6 @@
 <script setup lang="ts">
 import {
 	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
 	CloudCog,
 	Code2,
 	FileCode2,
@@ -136,6 +137,8 @@ import {
 	LogOut,
 	Network,
 	Package,
+	PanelLeftClose,
+	PanelLeftOpen,
 	Play,
 	Rocket,
 	Settings,
@@ -152,7 +155,7 @@ const authStore = useAuthStore();
 const { toasts } = useToast();
 
 const collapsed = ref(false);
-const currentModule = ref<'ci' | 'cd' | 'settings' | null>(null);
+const currentModule = ref<string | null>(null);
 const selectedKey = ref('');
 
 // ── Module definitions ──
@@ -164,6 +167,9 @@ const modules = [
 
 // ── Sidebar items per module ──
 const sidebarMap = {
+	home: [
+		{ key: 'home', label: '项目概述', path: '/', icon: LayoutGrid },
+	],
 	cd: [
 		{
 			key: 'applications',
@@ -240,7 +246,9 @@ const isLoginPage = computed(() => route.name === 'Login');
 
 function syncFromRoute() {
 	const path = route.path;
-	if (path.startsWith('/ci/')) {
+	if (path === '/') {
+		currentModule.value = 'home';
+	} else if (path.startsWith('/ci/')) {
 		currentModule.value = 'ci';
 	} else if (path.startsWith('/cd/')) {
 		currentModule.value = 'cd';

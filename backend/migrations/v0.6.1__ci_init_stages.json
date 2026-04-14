@@ -68,10 +68,10 @@
         "id": "01KP0K4ZTV60PM2XDT11MTX2MY",
         "name": "docker build",
         "image": "docker:29.4",
-        "script": "set -e\ndocker build -t {{ repository_code }} {{ working_dir | default('.') }}\n# docker push {{ repository_code }}",
-        "artifacts": "[{\"type\": \"docker_image\", \"path\": \"{{ repository_code }}\", \"name\": \"{{ repository_code }}\"}]",
+        "script": "set -e\ndocker build -t {{ repository_code }}:{{ runtime_datetime }} {{ working_dir | default('.') }}\n# docker push {{ repository_code }}:{{ runtime_datetime }}",
+        "artifacts": "[{\"type\": \"docker_image\", \"path\": \"{{ repository_code }}:{{ runtime_datetime }}\", \"name\": \"{{ repository_code }}\"}]",
         "description": "通用镜像构建+推送",
-        "version": 13
+        "version": 15
       }
     ],
     "comment": "内置 Stage 预设"
@@ -92,7 +92,7 @@
         "name": "General Container Image Build Pipeline",
         "description": "标准容器镜像制作流程流水线",
         "variable_declarations": "[{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"fastapi\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
-        "version": 15
+        "version": 16
       }
     ],
     "comment": "内置模板"
@@ -138,7 +138,7 @@
         "sort_order": 3
       },
       {
-        "id": "01KP2MDAP2QW7NSEPHAMZ5YPHV",
+        "id": "01KP4N6A45YJ2X7ADM9Q437J5T",
         "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
         "stage_id": "01STAGE000000000000000CLONE",
         "stage_name": "git clone",
@@ -147,11 +147,11 @@
         "sort_order": 0
       },
       {
-        "id": "01KP2MDAP2QW7NSEPHAMZ5YPHW",
+        "id": "01KP4N6A45YJ2X7ADM9Q437J5V",
         "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
         "stage_id": "01KP0K4ZTV60PM2XDT11MTX2MY",
         "stage_name": "docker build",
-        "stage_version": 13,
+        "stage_version": 15,
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 1
       }

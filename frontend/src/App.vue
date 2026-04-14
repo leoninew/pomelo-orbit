@@ -67,7 +67,7 @@
 				<aside
 					v-if="currentModule"
 					class="shrink-0 bg-base-100 border-r border-base-200 flex flex-col transition-all duration-200 overflow-hidden"
-					:class="collapsed ? 'w-14' : 'w-52'"
+					:class="collapsed ? 'w-14' : 'w-44'"
 				>
 					<ul class="menu flex-1 p-2 gap-1">
 						<li v-for="item in sidebarItems" :key="item.key">

@@ -339,14 +339,13 @@
 					:style="{ width: drawerWidth + 'px' }"
 				>
 					<!-- 拖拽把手：热区宽，视觉细 -->
-					<div
-						class="absolute left-0 inset-y-0 w-4 group z-10"
-						@mousedown="onResizeMousedown"
-					>
+					<div class="absolute left-0 inset-y-0 w-4 group z-10" @mousedown="onResizeMousedown">
 						<!-- 左半：col-resize -->
 						<div class="absolute left-0 inset-y-0 w-2 cursor-col-resize">
 							<!-- 蓝色细线 -->
-							<div class="absolute right-0 inset-y-0 w-0.5 bg-transparent group-hover:bg-primary transition-colors duration-150" />
+							<div
+								class="absolute right-0 inset-y-0 w-0.5 bg-transparent group-hover:bg-primary transition-colors duration-150"
+							/>
 						</div>
 						<!-- 右半：grab -->
 						<div class="absolute left-2 right-0 inset-y-0 cursor-grab" />

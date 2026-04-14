@@ -83,9 +83,10 @@ const edges = computed<Edge[]>(() => {
 	const result: Edge[] = [];
 	for (const stage of props.stages) {
 		for (const dep of stage.depends_on) {
-			const targetStatus = props.stageRuns !== undefined
-				? (stageRunMap.get(stage.id)?.status ?? 'waiting_to_run')
-				: stageRunMap.get(stage.id)?.status;
+			const targetStatus =
+				props.stageRuns !== undefined
+					? (stageRunMap.get(stage.id)?.status ?? 'waiting_to_run')
+					: stageRunMap.get(stage.id)?.status;
 			const color = statusColor(targetStatus);
 			result.push({
 				id: `${dep}->${stage.id}`,
@@ -129,14 +130,8 @@ function syncStatus() {
 		const sr = map.get(stage.id);
 		// 只有传入了 stageRuns（运行详情场景）才显示默认 waiting_to_run
 		// 纯展示模式（模板/快照详情）不传 stageRuns，status 保持 undefined
-		const status = props.stageRuns !== undefined
-			? (sr?.status ?? 'waiting_to_run')
-			: sr?.status;
-		updateNodeData(
-			stage.id,
-			{ stage, status, stageRun: sr },
-			{ replace: true }
-		);
+		const status = props.stageRuns !== undefined ? (sr?.status ?? 'waiting_to_run') : sr?.status;
+		updateNodeData(stage.id, { stage, status, stageRun: sr }, { replace: true });
 	}
 }
 

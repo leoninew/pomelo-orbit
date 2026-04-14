@@ -114,7 +114,10 @@
 							<tbody>
 								<tr v-for="run in recentRuns" :key="run.id" class="hover">
 									<td class="font-medium">
-										<router-link :to="`/ci/repository/${run.repository_id}`" class="link link-primary">
+										<router-link
+											:to="`/ci/repository/${run.repository_id}`"
+											class="link link-primary"
+										>
 											{{ run.repository_name || run.repository_id }}
 										</router-link>
 									</td>
@@ -163,7 +166,10 @@
 							<tbody>
 								<tr v-for="d in recentDeploys" :key="d.id" class="hover">
 									<td class="font-medium">
-										<router-link :to="`/cd/applications/${d.application_id}`" class="link link-primary">
+										<router-link
+											:to="`/cd/applications/${d.application_id}`"
+											class="link link-primary"
+										>
 											{{ d.application_name || d.application_id }}
 										</router-link>
 									</td>

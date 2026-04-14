@@ -1,10 +1,5 @@
 <template>
-	<div
-		v-if="stage"
-		class="stage-node"
-		:class="{ 'is-running': isRunning }"
-		@click="emit('click')"
-	>
+	<div v-if="stage" class="stage-node" :class="{ 'is-running': isRunning }" @click="emit('click')">
 		<div class="stage-node-content">
 			<span class="stage-name" :style="{ color: textColor }">{{ stage.name }}</span>
 		</div>
@@ -14,9 +9,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { TaskStatus } from '@/types/api';
 import type { SnapshotStage } from '@/types/ci/snapshot';
 import { statusColor, statusLabel } from '@/utils/status';
+import type { TaskStatus } from '@/types/common';
 
 interface Props {
 	data: {
@@ -39,9 +34,7 @@ const emit = defineEmits(['click']);
 const stage = computed(() => props.data.stage);
 const status = computed(() => props.data.status);
 
-const statusText = computed(() =>
-	statusLabel(status.value ?? '')
-);
+const statusText = computed(() => statusLabel(status.value ?? ''));
 
 const textColor = computed(() => statusColor(status.value));
 const isRunning = computed(() => status.value === 'running');
@@ -85,7 +78,12 @@ const isRunning = computed(() => status.value === 'running');
 }
 
 @keyframes pulse-border {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.6; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
 }
 </style>

@@ -74,9 +74,11 @@
 							<router-link
 								:to="item.path"
 								class="flex items-center gap-3 rounded-btn"
-								:class="selectedKey === item.key
-									? 'bg-primary/10 text-primary hover:bg-primary/15'
-									: 'text-base-content/70 hover:text-base-content hover:bg-base-200'"
+								:class="
+									selectedKey === item.key
+										? 'bg-primary/10 text-primary hover:bg-primary/15'
+										: 'text-base-content/70 hover:text-base-content hover:bg-base-200'
+								"
 								:title="collapsed ? item.label : undefined"
 							>
 								<component :is="item.icon" class="size-4 shrink-0" />
@@ -167,9 +169,7 @@ const modules = [
 
 // ── Sidebar items per module ──
 const sidebarMap = {
-	home: [
-		{ key: 'home', label: '项目概述', path: '/', icon: LayoutGrid },
-	],
+	home: [{ key: 'home', label: '项目概述', path: '/', icon: LayoutGrid }],
 	cd: [
 		{
 			key: 'applications',

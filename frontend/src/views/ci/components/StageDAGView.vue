@@ -33,15 +33,17 @@ import dagre from 'dagre';
 import { computed, markRaw, nextTick, ref, watch } from 'vue';
 import type { StageRun } from '@/types/ci/stage_run';
 import type { SnapshotStage } from '@/types/ci/snapshot';
+import { statusColor } from '@/utils/status';
 import StageNode from './StageNode.vue';
 
 interface Props {
 	stages: SnapshotStage[]
 	stageRuns?: StageRun[]
 	showMinimap?: boolean
+	animated?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), { showMinimap: false });
+const props = withDefaults(defineProps<Props>(), { showMinimap: false, animated: false });
 const emit = defineEmits<(e: 'view-stage', stageRun: StageRun) => void>();
 
 const { fitView, updateNodeData } = useVueFlow();
@@ -73,17 +75,25 @@ function buildLayoutedNodes(stages: SnapshotStage[]): Node[] {
 const initialNodes = ref<Node[]>(buildLayoutedNodes(props.stages));
 
 const edges = computed<Edge[]>(() => {
+	const stageRunMap = new Map<string, StageRun>();
+	for (const sr of props.stageRuns ?? []) {
+		stageRunMap.set(sr.stage_id, sr);
+	}
+
 	const result: Edge[] = [];
 	for (const stage of props.stages) {
 		for (const dep of stage.depends_on) {
+			const targetStatus = props.stageRuns !== undefined
+				? (stageRunMap.get(stage.id)?.status ?? 'waiting_to_run')
+				: stageRunMap.get(stage.id)?.status;
+			const color = statusColor(targetStatus);
 			result.push({
 				id: `${dep}->${stage.id}`,
 				source: dep,
 				target: stage.id,
 				type: 'smoothstep',
-				animated: false,
-				markerEnd: { type: 'arrowclosed', color: '#e2e8f0' },
-				style: { stroke: '#e2e8f0', strokeWidth: 2 },
+				animated: props.animated,
+				style: { stroke: color, strokeWidth: 2 },
 			});
 		}
 	}
@@ -117,7 +127,16 @@ function syncStatus() {
 	}
 	for (const stage of props.stages) {
 		const sr = map.get(stage.id);
-		updateNodeData(stage.id, { stage, status: sr?.status, stageRun: sr }, { replace: true });
+		// 只有传入了 stageRuns（运行详情场景）才显示默认 waiting_to_run
+		// 纯展示模式（模板/快照详情）不传 stageRuns，status 保持 undefined
+		const status = props.stageRuns !== undefined
+			? (sr?.status ?? 'waiting_to_run')
+			: sr?.status;
+		updateNodeData(
+			stage.id,
+			{ stage, status, stageRun: sr },
+			{ replace: true }
+		);
 	}
 }
 
@@ -128,7 +147,7 @@ watch(isReady, (ready) => {
 	}
 });
 
-// stageRuns 变化时同步（轮询场景，此时节点已挂载）
+// stageRuns 变化时同步；isReady 前的变化会在 isReady 触发时通过上面的 watch 补齐
 watch(
 	() => props.stageRuns,
 	() => {
@@ -136,7 +155,7 @@ watch(
 			syncStatus();
 		}
 	},
-	{ deep: true }
+	{ deep: true, immediate: true }
 );
 
 // ── 交互 ─────────────────────────────────────────────────────────────────────
@@ -182,13 +201,7 @@ function handleNodeClick(event: NodeClickEvent) {
 }
 
 .vue-flow-container :deep(.vue-flow__edge-path) {
-	stroke: #e2e8f0;
 	stroke-width: 2;
-}
-
-.vue-flow-container :deep(.vue-flow__edge marker) {
-	fill: #e2e8f0;
-	stroke: #e2e8f0;
 }
 
 .vue-flow-container :deep(.vue-flow__minimap) {
@@ -206,28 +219,7 @@ function handleNodeClick(event: NodeClickEvent) {
 
 .vue-flow-container :deep(.stage-node) {
 	background: #ffffff;
-	border: 2px solid #4a5568;
-}
-
-.vue-flow-container :deep(.status-waiting) {
-	border-color: #d69e2e;
-	background: #fffbeb;
-}
-.vue-flow-container :deep(.status-running) {
-	border-color: #3182ce;
-	background: #ebf8ff;
-}
-.vue-flow-container :deep(.status-success) {
-	border-color: #38a169;
-	background: #f0fff4;
-}
-.vue-flow-container :deep(.status-error) {
-	border-color: #e53e3e;
-	background: #fff5f5;
-}
-.vue-flow-container :deep(.status-canceled) {
-	border-color: #a0aec0;
-	background: #f7fafc;
+	border: 2px solid #cbd5e0;
 }
 
 .vue-flow-container :deep(.vue-flow__edge) {

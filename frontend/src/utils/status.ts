@@ -52,6 +52,22 @@ export function statusBadgeClass(status: string): string {
 	return STATUS_BADGE_MAP[status] ?? 'badge-ghost';
 }
 
+// 异步任务状态颜色（用于 DAG 节点文字、连接线等需要 hex 颜色的场景）
+export const STATUS_COLOR: Record<string, string> = {
+	waiting_to_run: '#d97706', // amber-600
+	running: '#2563eb',        // blue-600
+	ran_to_completion: '#16a34a', // green-600
+	faulted: '#dc2626',        // red-600
+	canceled: '#9ca3af',       // gray-400
+};
+
+const STATUS_COLOR_DEFAULT = '#94a3b8'; // slate-400，无状态时
+
+export function statusColor(status: string | undefined): string {
+	if (!status) return STATUS_COLOR_DEFAULT;
+	return STATUS_COLOR[status] ?? STATUS_COLOR_DEFAULT;
+}
+
 export function isTerminalStatus(status: string): boolean {
 	return status === 'ran_to_completion' || status === 'faulted' || status === 'canceled';
 }

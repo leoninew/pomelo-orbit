@@ -262,6 +262,7 @@
 								:stages="snapshot.stages_snapshot"
 								:stage-runs="stageRuns"
 								:show-minimap="true"
+								:animated="run ? !isTerminalStatus(run.status) : false"
 								@view-stage="openLogDrawer"
 							/>
 							<p class="text-xs text-base-content/50 mt-2">点击节点查看日志</p>

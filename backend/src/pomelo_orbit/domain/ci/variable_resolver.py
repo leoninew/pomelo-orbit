@@ -25,6 +25,7 @@ from typing import Any
 from pomelo_orbit.domain.ci.entities import BuildStage, Repository
 from pomelo_orbit.domain.ci.value_objects import BuiltinVariableSpecs, VariableDeclaration, VariableSource
 from pomelo_orbit.infrastructure.ci.variables import extract_variables, merge_declarations
+from pomelo_orbit.infrastructure.time_utils import utc_now
 
 
 @dataclass(frozen=True)
@@ -218,6 +219,7 @@ class VariableResolver:
             "template_id": BuiltinVarSpec("运行时注入: 当前模板 ID", editable=False),
             "template_name": BuiltinVarSpec("运行时注入: 当前模板名称", editable=False),
             "template_version": BuiltinVarSpec("运行时注入: 当前模板版本", editable=False),
+            "runtime_datetime": BuiltinVarSpec("运行时注入: 流水线启动时间 (UTC, 格式 YYYYmmdd-HHmmss)", editable=False),
         }
 
     def _build_repository_builtin_variables(self, repository: Repository, trigger_ref: str) -> dict[str, Any]:
@@ -236,4 +238,5 @@ class VariableResolver:
             "template_id": template.id,
             "template_name": template.name,
             "template_version": template.version,
+            "runtime_datetime": utc_now().strftime("%Y%m%d-%H%M%S"),
         }

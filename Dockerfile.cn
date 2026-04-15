@@ -53,7 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /usr/local/lib/docker/cli-plugins
 
-RUN curl -SL https://github.com/docker/compose/releases/download/v5.1.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose \
+RUN curl -SL https://ghproxy.net/https://github.com/docker/compose/releases/download/v5.1.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
 # Copy Python dependencies from builder

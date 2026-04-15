@@ -37,6 +37,19 @@ class ApplicationConfigFile:
 
 
 @dataclass
+class ApplicationRoute:
+    """应用路由配置"""
+
+    id: str
+    application_id: str
+    service_name: str
+    domain: str
+    port: int
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+
+
+@dataclass
 class Application:
     """应用实体（聚合根）"""
 
@@ -45,10 +58,12 @@ class Application:
     code: str
     image_pull_policy: str
     status: str
+    route_managed: bool = False
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
 
     config_files: list[ApplicationConfigFile] = field(default_factory=list)
+    routes: list[ApplicationRoute] = field(default_factory=list)
 
     def can_deploy(self) -> bool:
         return self.status != ApplicationStatus.DEPLOYING

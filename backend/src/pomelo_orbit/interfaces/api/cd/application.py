@@ -19,6 +19,8 @@ from pomelo_orbit.interfaces.api.cd.dto.application import (
     ApplicationExportResp,
     ApplicationImportReq,
     ApplicationResp,
+    ApplicationRouteReq,
+    ApplicationRouteResp,
     ApplicationUpdateReq,
     ConfigFileReq,
     ConfigFileResp,
@@ -274,3 +276,60 @@ async def get_application_logs(
     app = app_service.get_application(app_id)
     logs = await app_service.get_application_logs(app.code, tail)
     return {"logs": logs}
+
+
+@router.get("/{app_id}/route")
+def list_app_routes(
+    app_id: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> list[ApplicationRouteResp]:
+    """获取应用路由配置列表"""
+    routes = app_service.list_app_routes(app_id)
+    return [ApplicationRouteResp.model_validate(r) for r in routes]
+
+
+@router.post("/{app_id}/route", status_code=201)
+def create_app_route(
+    app_id: str,
+    data: ApplicationRouteReq,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> ApplicationRouteResp:
+    """创建应用路由配置"""
+    route = app_service.create_app_route(app_id, data.service_name, data.domain, data.port)
+    return ApplicationRouteResp.model_validate(route)
+
+
+@router.put("/{app_id}/route/{route_id}")
+def update_app_route(
+    app_id: str,
+    route_id: str,
+    data: ApplicationRouteReq,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> ApplicationRouteResp:
+    """更新应用路由配置"""
+    route = app_service.update_app_route(app_id, route_id, data.service_name, data.domain, data.port)
+    return ApplicationRouteResp.model_validate(route)
+
+
+@router.delete("/{app_id}/route/{route_id}", status_code=204)
+def delete_app_route(
+    app_id: str,
+    route_id: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> None:
+    """删除应用路由配置"""
+    app_service.delete_app_route(app_id, route_id)
+
+
+@router.get("/{app_id}/compose-service")
+def list_compose_services(
+    app_id: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> list[str]:
+    """解析 docker-compose 模板，返回 service 名列表"""
+    return app_service.parse_compose_services(app_id)

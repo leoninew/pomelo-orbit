@@ -6,6 +6,7 @@ from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
+    ApplicationRoute,
     CertType,
     Deployment,
     Route,
@@ -15,6 +16,7 @@ from pomelo_orbit.domain.cd.value_objects import OperationType
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
+    ApplicationRouteModel,
     DeploymentModel,
     LoginHistoryModel,
     RouteModel,
@@ -108,6 +110,34 @@ class ApplicationConfigFileMapper:
         )
 
 
+class ApplicationRouteMapper:
+    """应用路由映射器"""
+
+    @staticmethod
+    def to_domain(model: ApplicationRouteModel) -> ApplicationRoute:
+        return ApplicationRoute(
+            id=model.id,
+            application_id=model.application_id,
+            service_name=model.service_name,
+            domain=model.domain,
+            port=model.port,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: ApplicationRoute) -> ApplicationRouteModel:
+        return ApplicationRouteModel(
+            id=entity.id,
+            application_id=entity.application_id,
+            service_name=entity.service_name,
+            domain=entity.domain,
+            port=entity.port,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+        )
+
+
 class ApplicationMapper:
     """应用映射器"""
 
@@ -119,9 +149,11 @@ class ApplicationMapper:
             code=model.code,
             image_pull_policy=model.image_pull_policy,
             status=model.status,
+            route_managed=model.route_managed,
             created_at=model.created_at,
             updated_at=model.updated_at,
             config_files=[ApplicationConfigFileMapper.to_domain(cf) for cf in model.config_files],
+            routes=[ApplicationRouteMapper.to_domain(r) for r in model.app_routes],
         )
 
     @staticmethod
@@ -132,6 +164,7 @@ class ApplicationMapper:
             code=entity.code,
             image_pull_policy=entity.image_pull_policy,
             status=entity.status,
+            route_managed=entity.route_managed,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -225,6 +258,7 @@ class RouteMapper:
 __all__ = [
     "ApplicationConfigFileMapper",
     "ApplicationMapper",
+    "ApplicationRouteMapper",
     "DeploymentMapper",
     "LoginHistoryMapper",
     "RouteMapper",

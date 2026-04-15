@@ -13,11 +13,13 @@ from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
+    ApplicationRouteRepository,
     ConfigFileRepository,
     DeploymentRepository,
 )
 from pomelo_orbit.infrastructure.repositories import (
     ApplicationRepositoryImpl,
+    ApplicationRouteRepositoryImpl,
     ConfigFileRepositoryImpl,
     DeploymentRepositoryImpl,
 )
@@ -35,6 +37,7 @@ def make_test_provider(mock_session: Session) -> Provider:
     provider.provide(get_session, scope=Scope.REQUEST, provides=Session)
 
     provider.provide(ApplicationRepositoryImpl, scope=Scope.REQUEST, provides=ApplicationRepository)
+    provider.provide(ApplicationRouteRepositoryImpl, scope=Scope.REQUEST, provides=ApplicationRouteRepository)
     provider.provide(ConfigFileRepositoryImpl, scope=Scope.REQUEST, provides=ConfigFileRepository)
     provider.provide(DeploymentRepositoryImpl, scope=Scope.REQUEST, provides=DeploymentRepository)
 
@@ -62,6 +65,7 @@ class TestDishkaCdContainer:
         assert isinstance(svc.app_repo, ApplicationRepository)
         assert isinstance(svc.deployment_repo, DeploymentRepository)
         assert isinstance(svc.config_file_repo, ConfigFileRepository)
+        assert isinstance(svc.app_route_repo, ApplicationRouteRepository)
         assert isinstance(svc.app_manager, ApplicationManager)
 
     def test_request_scope_creates_new_session_per_scope(self, db_session):

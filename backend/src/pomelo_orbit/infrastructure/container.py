@@ -12,6 +12,7 @@ from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
+    ApplicationRouteRepository,
     ConfigFileRepository,
     DeploymentRepository,
 )
@@ -32,6 +33,7 @@ from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
 from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
 from pomelo_orbit.infrastructure.cd.repositories.di import (
     get_application_repo,
+    get_application_route_repo,
     get_config_file_repo,
     get_deployment_repo,
 )
@@ -113,6 +115,7 @@ def _build_provider() -> Provider:
 
     # REQUEST scope — CD
     provider.provide(get_application_repo, scope=Scope.REQUEST, provides=ApplicationRepository)
+    provider.provide(get_application_route_repo, scope=Scope.REQUEST, provides=ApplicationRouteRepository)
     provider.provide(get_config_file_repo, scope=Scope.REQUEST, provides=ConfigFileRepository)
     provider.provide(get_deployment_repo, scope=Scope.REQUEST, provides=DeploymentRepository)
     provider.provide(ApplicationService, scope=Scope.REQUEST)

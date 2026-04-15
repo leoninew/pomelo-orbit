@@ -3,6 +3,7 @@ import type {
 	ApplicationCreateReq,
 	ApplicationExportResp,
 	ApplicationImportReq,
+	ApplicationRoute,
 	ApplicationUpdateReq,
 	ConfigFile,
 } from '@/types/cd/application';
@@ -105,5 +106,37 @@ export const applicationApi = {
 	// 导入应用
 	importApplication(data: ApplicationImportReq): Promise<Application> {
 		return request.post('/api/cd/applications/import', data);
+	},
+
+	// 获取路由托管列表
+	listRoutes(id: string): Promise<ApplicationRoute[]> {
+		return request.get(`/api/cd/applications/${id}/route`);
+	},
+
+	// 创建路由托管
+	createRoute(
+		id: string,
+		data: { service_name: string; domain: string; port: number }
+	): Promise<ApplicationRoute> {
+		return request.post(`/api/cd/applications/${id}/route`, data);
+	},
+
+	// 更新路由托管
+	updateRoute(
+		id: string,
+		routeId: string,
+		data: { service_name: string; domain: string; port: number }
+	): Promise<ApplicationRoute> {
+		return request.put(`/api/cd/applications/${id}/route/${routeId}`, data);
+	},
+
+	// 删除路由托管
+	deleteRoute(id: string, routeId: string): Promise<void> {
+		return request.delete(`/api/cd/applications/${id}/route/${routeId}`);
+	},
+
+	// 解析 docker-compose service 列表
+	listComposeServices(id: string): Promise<string[]> {
+		return request.get(`/api/cd/applications/${id}/compose-service`);
 	},
 };

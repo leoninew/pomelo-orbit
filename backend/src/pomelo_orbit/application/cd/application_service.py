@@ -7,6 +7,7 @@ import asyncio
 import logging
 import subprocess
 
+import yaml
 from ulid import ULID
 
 from pomelo_orbit.domain.cd.application_lifecycle_service import ApplicationLifecycleDomainService
@@ -14,16 +15,19 @@ from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
+    ApplicationRoute,
     Deployment,
     TriggerType,
 )
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
+    ApplicationRouteRepository,
     ConfigFileRepository,
     DeploymentRepository,
 )
 from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, OperationType, TaskStatus
 from pomelo_orbit.domain.exceptions import BusinessError
+from pomelo_orbit.infrastructure.time_utils import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +40,13 @@ class ApplicationService:
         app_repo: ApplicationRepository,
         deployment_repo: DeploymentRepository,
         config_file_repo: ConfigFileRepository,
+        app_route_repo: ApplicationRouteRepository,
         app_manager: ApplicationManager,
     ):
         self.app_repo = app_repo
         self.deployment_repo = deployment_repo
         self.config_file_repo = config_file_repo
+        self.app_route_repo = app_route_repo
         self.app_manager = app_manager
         self._locks: dict[str, asyncio.Lock] = {}
 
@@ -80,12 +86,14 @@ class ApplicationService:
 
             try:
                 config_files = self.config_file_repo.find_by_application(application.id)
+                routes = self.app_route_repo.find_by_application(application.id) if application.route_managed else None
                 await self.app_manager.deploy(
                     application.code,
                     config_files=config_files,
                     pull_policy=application.image_pull_policy,
                     deployment_id=deployment.id,
                     env_file=deployment.env_file,
+                    routes=routes,
                 )
 
                 ApplicationLifecycleDomainService.mark_deploy_success(deployment, application)
@@ -449,12 +457,15 @@ class ApplicationService:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
         config_files = self.config_file_repo.find_by_application(application_id)
+        routes = self.app_route_repo.find_by_application(application_id)
 
         return {
             "name": app.name,
             "code": app.code,
             "image_pull_policy": app.image_pull_policy,
+            "route_managed": app.route_managed,
             "config_files": [{"path": cf.path, "content": cf.content} for cf in config_files],
+            "routes": [{"service_name": r.service_name, "domain": r.domain, "port": r.port} for r in routes],
         }
 
     def import_application(self, data: dict) -> Application:
@@ -472,6 +483,7 @@ class ApplicationService:
             name=data["name"],
             code=data["code"],
             image_pull_policy=data.get("image_pull_policy", "missing"),
+            route_managed=data.get("route_managed", False),
             status=ApplicationStatus.UNDEPLOYED,
         )
 
@@ -486,7 +498,85 @@ class ApplicationService:
             )
             self.config_file_repo.save(config_file)
 
+        for r_data in data.get("routes", []):
+            route = ApplicationRoute(
+                id=str(ULID()),
+                application_id=app.id,
+                service_name=r_data["service_name"],
+                domain=r_data["domain"],
+                port=r_data["port"],
+            )
+            self.app_route_repo.save(route)
+
         return app
+
+    # ==================== 应用路由管理 ====================
+
+    def list_app_routes(self, application_id: str) -> list[ApplicationRoute]:
+        """获取应用的路由配置列表"""
+        app = self.app_repo.find_by_id(application_id)
+        if not app:
+            raise BusinessError(f"Application {application_id} not found", status_code=404)
+        return self.app_route_repo.find_by_application(application_id)
+
+    def create_app_route(self, application_id: str, service_name: str, domain: str, port: int) -> ApplicationRoute:
+        """创建应用路由配置"""
+        app = self.app_repo.find_by_id(application_id)
+        if not app:
+            raise BusinessError(f"Application {application_id} not found", status_code=404)
+        if not app.route_managed:
+            raise BusinessError("应用未启用路由托管", status_code=400)
+        route = ApplicationRoute(
+            id=str(ULID()),
+            application_id=application_id,
+            service_name=service_name,
+            domain=domain,
+            port=port,
+        )
+        self.app_route_repo.save(route)
+        return route
+
+    def update_app_route(
+        self, application_id: str, route_id: str, service_name: str, domain: str, port: int
+    ) -> ApplicationRoute:
+        """更新应用路由配置"""
+        route = self.app_route_repo.find_by_id(route_id)
+        if not route or route.application_id != application_id:
+            raise BusinessError(f"Route {route_id} not found", status_code=404)
+        route.service_name = service_name
+        route.domain = domain
+        route.port = port
+        route.updated_at = utc_now()
+        self.app_route_repo.save(route)
+        return route
+
+    def delete_app_route(self, application_id: str, route_id: str) -> None:
+        """删除应用路由配置"""
+        route = self.app_route_repo.find_by_id(route_id)
+        if not route or route.application_id != application_id:
+            raise BusinessError(f"Route {route_id} not found", status_code=404)
+        self.app_route_repo.delete(route)
+
+    def parse_compose_services(self, application_id: str) -> list[str]:
+        """渲染 docker-compose 模板后解析 service 名列表，供路由配置 UI 使用"""
+        app = self.app_repo.find_by_id(application_id)
+        if not app:
+            raise BusinessError(f"Application {application_id} not found", status_code=404)
+
+        config_files = self.config_file_repo.find_by_application(application_id)
+        compose_file = next(
+            (f for f in config_files if f.path in ("docker-compose.yml", "docker-compose.yml.jinja")),
+            None,
+        )
+        if not compose_file:
+            raise BusinessError("No docker-compose file found for this application", status_code=400)
+
+        rendered = self.app_manager.render_compose(app.code, compose_file.content, compose_file.path)
+        try:
+            data = yaml.safe_load(rendered)
+        except yaml.YAMLError as e:
+            raise BusinessError(f"docker-compose 解析失败: {e}", status_code=400) from e
+        return list(data.get("services", {}).keys())
 
 
 __all__ = ["ApplicationService"]

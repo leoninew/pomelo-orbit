@@ -55,6 +55,7 @@ class ApplicationModel(Base):
     # 部署配置
     image_pull_policy: Mapped[str] = mapped_column(String(20), default=ImagePullPolicy.MISSING, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default=ApplicationStatus.UNDEPLOYED, nullable=False)
+    route_managed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
@@ -62,6 +63,9 @@ class ApplicationModel(Base):
     # 关系
     config_files: Mapped[list["ApplicationConfigFileModel"]] = relationship(
         "ApplicationConfigFileModel", back_populates="application", cascade="all, delete-orphan"
+    )
+    app_routes: Mapped[list["ApplicationRouteModel"]] = relationship(
+        "ApplicationRouteModel", back_populates="application", cascade="all, delete-orphan"
     )
 
 
@@ -106,6 +110,25 @@ class ApplicationConfigFileModel(Base):
 
     # 关系
     application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="config_files")
+
+
+class ApplicationRouteModel(Base):
+    """应用路由配置"""
+
+    __tablename__ = "application_route"
+
+    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    application_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("application.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    service_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    domain: Mapped[str] = mapped_column(String(255), nullable=False)
+    port: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    # 关系
+    application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="app_routes")
 
 
 class RouteModel(Base):

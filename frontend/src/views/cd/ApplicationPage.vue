@@ -101,6 +101,10 @@
 							</span>
 							<span class="mx-2 text-base-content/30">|</span>
 							<span>拉取策略: {{ app.image_pull_policy }}</span>
+							<template v-if="app.route_managed">
+								<span class="mx-2 text-base-content/30">|</span>
+								<span class="text-success">路由托管</span>
+							</template>
 						</div>
 						<div class="flex items-end justify-between">
 							<button class="link link-primary text-xs" @click.stop="viewLastDeployment(app.id)">
@@ -155,12 +159,13 @@
 						<th>应用名称</th>
 						<th>编码</th>
 						<th>状态</th>
+						<th>路由托管</th>
 						<th>操作</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr v-if="applications.length === 0">
-						<td colspan="4" class="text-center py-8 text-base-content/60">暂无数据</td>
+						<td colspan="5" class="text-center py-8 text-base-content/60">暂无数据</td>
 					</tr>
 					<tr v-for="app in applications" :key="app.id" class="hover">
 						<td>
@@ -175,6 +180,12 @@
 							<span class="badge badge-sm" :class="appBadgeClass(app.status)">
 								{{ appStatusLabel(app.status) }}
 							</span>
+						</td>
+						<td>
+							<span v-if="app.route_managed" class="badge badge-sm badge-success badge-outline">
+								已启用
+							</span>
+							<span v-else class="text-base-content/40 text-xs">—</span>
 						</td>
 						<td>
 							<div class="flex items-center gap-2">
@@ -314,13 +325,16 @@ const form = reactive({
 	name: '',
 	code: '',
 	image_pull_policy: 'missing',
+	route_managed: false,
 });
 const formErrors = reactive({ name: '', code: '' });
 const importForm = reactive({
 	name: '',
 	code: '',
 	image_pull_policy: 'missing',
+	route_managed: false,
 	config_files: [] as { path: string; content: string }[],
+	routes: [] as { service_name: string; domain: string; port: number }[],
 });
 const importErrors = reactive({ name: '', code: '' });
 
@@ -434,6 +448,7 @@ function openCreateModal() {
 		name: '',
 		code: '',
 		image_pull_policy: 'missing',
+		route_managed: false,
 	});
 	Object.assign(formErrors, { name: '', code: '' });
 	createDialogRef.value?.showModal();
@@ -449,6 +464,7 @@ async function handleCreateOk() {
 				name: form.name,
 				code: form.code,
 				image_pull_policy: form.image_pull_policy,
+				route_managed: form.route_managed,
 			});
 			toast.success('创建成功');
 			createDialogRef.value?.close();
@@ -476,7 +492,9 @@ async function handleFileImport(event: Event) {
 			name: data.name || '',
 			code: data.code || '',
 			image_pull_policy: data.image_pull_policy || 'missing',
+			route_managed: data.route_managed ?? false,
 			config_files: data.config_files || [],
+			routes: data.routes || [],
 		});
 		Object.assign(importErrors, { name: '', code: '' });
 		importDialogRef.value?.showModal();
@@ -497,7 +515,9 @@ async function handleImportOk() {
 				name: importForm.name,
 				code: importForm.code,
 				image_pull_policy: importForm.image_pull_policy,
+				route_managed: importForm.route_managed,
 				config_files: importForm.config_files,
+				routes: importForm.routes,
 			});
 			toast.success('导入成功');
 			importDialogRef.value?.close();

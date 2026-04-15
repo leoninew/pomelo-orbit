@@ -23,6 +23,7 @@ class ApplicationUpdateReq(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     code: str | None = Field(None, min_length=1, max_length=100, pattern="^[a-z0-9-]+$")
     image_pull_policy: ImagePullPolicy | None = None
+    route_managed: bool | None = None
 
 
 class ConfigFileReq(BaseModel):
@@ -64,6 +65,28 @@ class ApplicationResp(BaseModel):
     code: str
     status: str
     image_pull_policy: str
+    route_managed: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ApplicationRouteReq(BaseModel):
+    """应用路由配置请求"""
+
+    service_name: str = Field(min_length=1)
+    domain: str = Field(min_length=1)
+    port: int = Field(ge=1, le=65535)
+
+
+class ApplicationRouteResp(BaseModel):
+    """应用路由配置响应"""
+
+    id: str
+    service_name: str
+    domain: str
+    port: int
     created_at: datetime
     updated_at: datetime
 
@@ -77,7 +100,9 @@ class ApplicationExportResp(BaseModel):
     name: str
     code: str
     image_pull_policy: str
+    route_managed: bool = False
     config_files: list[ConfigFileExportReq] = []
+    routes: list[ApplicationRouteReq] = []
 
 
 class ApplicationImportReq(BaseModel):
@@ -87,4 +112,6 @@ class ApplicationImportReq(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     code: str = Field(..., min_length=1, max_length=100, pattern="^[a-z][a-z0-9-]*$")
     image_pull_policy: ImagePullPolicy = ImagePullPolicy.MISSING
+    route_managed: bool = False
     config_files: list[ConfigFileImportReq] = []
+    routes: list[ApplicationRouteReq] = []

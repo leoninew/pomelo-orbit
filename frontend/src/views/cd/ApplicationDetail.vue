@@ -85,6 +85,18 @@
 						<dd>{{ application.image_pull_policy }}</dd>
 					</div>
 					<div class="flex gap-2">
+						<dt class="text-base-content/70 w-24 shrink-0">路由托管</dt>
+						<dd>
+							<span
+								v-if="application.route_managed"
+								class="badge badge-sm badge-success badge-outline"
+							>
+								已启用
+							</span>
+							<span v-else class="badge badge-sm badge-ghost">未启用</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">创建时间</dt>
 						<dd class="text-base-content/60">{{ formatTime(application.created_at) }}</dd>
 					</div>
@@ -147,6 +159,64 @@
 										<button class="link link-error" @click="confirmDeleteFile(file.id)">
 											删除
 										</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<!-- Route management card -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="font-semibold">路由托管</h2>
+					<div class="tooltip tooltip-left" :data-tip="!application?.route_managed ? '请先在基本信息中启用路由托管' : undefined">
+						<button
+							class="btn btn-sm btn-primary gap-1"
+							:disabled="!application?.route_managed"
+							@click="openAddRouteModal"
+						>
+							<Plus class="size-3.5" />
+							添加路由
+						</button>
+					</div>
+				</div>
+				<div v-if="routeListLoading" class="flex justify-center py-8">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<div
+					v-else-if="appRoutes.length === 0"
+					class="flex flex-col items-center gap-2 py-8 text-base-content/60"
+				>
+					<Network class="size-10" />
+					<span class="text-sm">暂无路由配置</span>
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="table">
+						<thead>
+							<tr class="text-base-content/60">
+								<th>Service</th>
+								<th>域名</th>
+								<th>端口</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="r in appRoutes" :key="r.id" class="hover">
+								<td><code class="text-xs">{{ r.service_name }}</code></td>
+								<td class="text-sm">{{ r.domain }}</td>
+								<td class="text-sm">{{ r.port }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button
+											class="link link-primary"
+											:class="{ 'opacity-30 pointer-events-none': !application?.route_managed }"
+											@click="openEditRouteModal(r)"
+										>编辑</button>
+										<button class="link link-error" @click="confirmDeleteRoute(r.id)">删除</button>
 									</div>
 								</td>
 							</tr>
@@ -276,6 +346,13 @@
 							<option value="never">never</option>
 						</select>
 					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">路由托管</legend>
+						<label class="flex items-center gap-3 cursor-pointer">
+							<input v-model="editForm.route_managed" type="checkbox" class="toggle toggle-sm" />
+							<span class="text-sm text-base-content/70">启用后，部署时将自动生成 Traefik 路由配置</span>
+						</label>
+					</fieldset>
 				</div>
 				<div class="modal-action">
 					<button class="btn btn-primary" :disabled="operating" @click="handleEditOk">
@@ -327,11 +404,108 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- Add/Edit route modal -->
+		<dialog ref="routeModalRef" class="modal">
+			<div class="modal-box w-full max-w-md">
+				<h3 class="font-bold text-lg mb-4">{{ editingRouteId ? '编辑路由' : '添加路由' }}</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">Service</legend>
+						<div class="dropdown w-full">
+							<label
+								ref="serviceDropdownRef"
+								tabindex="0"
+								class="input w-full flex items-center justify-between cursor-pointer"
+								:class="{ 'input-error': routeFormErrors.service_name }"
+							>
+								<span :class="routeForm.service_name ? '' : 'text-base-content/40'">
+									{{ routeForm.service_name || '请选择 service' }}
+								</span>
+								<ChevronDown class="size-4 text-base-content/40 shrink-0" />
+							</label>
+							<ul
+								tabindex="0"
+								class="dropdown-content menu bg-base-100 rounded-box border border-base-200 shadow-lg z-50 w-full flex-nowrap p-0 mt-1"
+							>
+								<li v-if="composeServices.length === 0">
+									<span class="text-xs text-base-content/50 px-3 py-2">暂无 service</span>
+								</li>
+								<li v-for="s in composeServices" :key="s">
+									<a
+										class="text-xs px-3 py-1.5 rounded-none block truncate"
+										:class="{ 'bg-primary/10 font-medium': s === routeForm.service_name }"
+										@mousedown.prevent="routeForm.service_name = s; serviceDropdownRef?.blur()"
+									>
+										{{ s }}
+									</a>
+								</li>
+							</ul>
+						</div>
+						<p v-if="routeFormErrors.service_name" class="fieldset-label text-error">
+							{{ routeFormErrors.service_name }}
+						</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">域名</legend>
+						<input
+							v-model="routeForm.domain"
+							type="text"
+							class="input w-full"
+							placeholder="例如: myapp.lvh.me"
+							:class="{ 'input-error': routeFormErrors.domain }"
+						/>
+						<p v-if="routeFormErrors.domain" class="fieldset-label text-error">
+							{{ routeFormErrors.domain }}
+						</p>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">容器端口</legend>
+						<input
+							v-model.number="routeForm.port"
+							type="number"
+							class="input w-full"
+							placeholder="例如: 80"
+							min="1"
+							max="65535"
+							:class="{ 'input-error': routeFormErrors.port }"
+						/>
+						<p v-if="routeFormErrors.port" class="fieldset-label text-error">
+							{{ routeFormErrors.port }}
+						</p>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-primary" :disabled="routeLoading" @click="handleRouteOk">
+						<span v-if="routeLoading" class="loading loading-spinner loading-xs" />
+						保存
+					</button>
+					<button class="btn btn-ghost" @click="routeModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Delete route confirm modal -->
+		<dialog ref="deleteRouteModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">删除路由</h3>
+				<p class="py-4 text-sm">确定删除此路由配置？</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="routeLoading" @click="executeDeleteRoute">
+						<span v-if="routeLoading" class="loading loading-spinner loading-xs" />
+						删除
+					</button>
+					<button class="btn btn-ghost" @click="deleteRouteModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, Download, FileX, Plus, Rocket, X } from 'lucide-vue-next';
+import { ArrowLeft, ChevronDown, Download, FileX, Network, Plus, Rocket, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -339,7 +513,7 @@ import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Application, ConfigFile } from '@/types/cd/application';
+import type { Application, ApplicationRoute, ConfigFile } from '@/types/cd/application';
 import { appStatusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 
@@ -352,15 +526,27 @@ const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync(
 const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
 const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
+const { loading: routeListLoading, execute: executeRouteList } = useStatusAsync();
+const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
 
 const application = ref<Application>();
 const files = ref<ConfigFile[]>([]);
+const appRoutes = ref<ApplicationRoute[]>([]);
+const composeServices = ref<string[]>([]);
 
 const editModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const deleteFileModalRef = ref<HTMLDialogElement>();
+const routeModalRef = ref<HTMLDialogElement>();
+const deleteRouteModalRef = ref<HTMLDialogElement>();
 const pendingDeleteFileId = ref('');
+const pendingDeleteRouteId = ref('');
+const editingRouteId = ref('');
 const deleteDir = ref(false);
+
+const routeForm = reactive({ service_name: '', domain: '', port: 80 });
+const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
+const serviceDropdownRef = ref<HTMLElement>();
 
 const fileDrawerVisible = ref(false);
 const currentFileId = ref('');
@@ -372,6 +558,7 @@ const editForm = reactive({
 	name: '',
 	code: '',
 	image_pull_policy: 'missing',
+	route_managed: false,
 });
 const editErrors = reactive({ name: '' });
 
@@ -409,6 +596,7 @@ async function fetchApplication() {
 				name: data.name,
 				code: data.code,
 				image_pull_policy: data.image_pull_policy,
+				route_managed: data.route_managed,
 			});
 		});
 		if (application.value?.status === 'deploying') {
@@ -546,6 +734,7 @@ async function handleEditOk() {
 			await applicationApi.update(applicationId, {
 				name: editForm.name,
 				image_pull_policy: editForm.image_pull_policy,
+				route_managed: editForm.route_managed,
 			});
 			toast.success('更新成功');
 			editModalRef.value?.close();
@@ -668,8 +857,106 @@ async function executeDeleteFile() {
 	}
 }
 
-onMounted(() => {
-	fetchApplication();
-	loadFiles();
+// ── Route management ──
+
+async function loadRoutes() {
+	try {
+		await executeRouteList(async () => {
+			appRoutes.value = await applicationApi.listRoutes(applicationId);
+		});
+	} catch {
+		toast.error('加载路由配置失败');
+	}
+}
+
+async function loadComposeServices() {
+	composeServices.value = [];
+	try {
+		composeServices.value = await applicationApi.listComposeServices(applicationId);
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '解析 docker-compose 失败，无法配置路由');
+	}
+}
+
+async function openAddRouteModal() {
+	editingRouteId.value = '';
+	Object.assign(routeForm, { service_name: '', domain: '', port: 80 });
+	Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
+	await loadComposeServices();
+	if (composeServices.value.length === 0) {
+		return;
+	}
+	routeModalRef.value?.showModal();
+	serviceDropdownRef.value?.blur();
+}
+
+async function openEditRouteModal(r: ApplicationRoute) {
+	editingRouteId.value = r.id;
+	Object.assign(routeForm, { service_name: r.service_name, domain: r.domain, port: r.port });
+	Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
+	await loadComposeServices();
+	if (composeServices.value.length === 0) {
+		return;
+	}
+	routeModalRef.value?.showModal();
+	serviceDropdownRef.value?.blur();
+}
+
+function validateRouteForm() {
+	routeFormErrors.service_name = routeForm.service_name ? '' : '请选择 service';
+	routeFormErrors.domain = routeForm.domain.trim() ? '' : '请输入域名';
+	routeFormErrors.port = routeForm.port >= 1 && routeForm.port <= 65535 ? '' : '端口范围 1-65535';
+	return !routeFormErrors.service_name && !routeFormErrors.domain && !routeFormErrors.port;
+}
+
+async function handleRouteOk() {
+	if (!validateRouteForm()) {
+		return;
+	}
+	try {
+		await executeRoute(async () => {
+			const data = {
+				service_name: routeForm.service_name,
+				domain: routeForm.domain,
+				port: routeForm.port,
+			};
+			if (editingRouteId.value) {
+				await applicationApi.updateRoute(applicationId, editingRouteId.value, data);
+			} else {
+				await applicationApi.createRoute(applicationId, data);
+			}
+			toast.success('保存成功');
+			routeModalRef.value?.close();
+			await loadRoutes();
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '保存失败');
+	}
+}
+
+function confirmDeleteRoute(routeId: string) {
+	pendingDeleteRouteId.value = routeId;
+	deleteRouteModalRef.value?.showModal();
+}
+
+async function executeDeleteRoute() {
+	try {
+		await executeRoute(async () => {
+			await applicationApi.deleteRoute(applicationId, pendingDeleteRouteId.value);
+			toast.success('删除成功');
+			deleteRouteModalRef.value?.close();
+			await loadRoutes();
+		});
+	} catch {
+		toast.error('删除失败');
+	}
+}
+
+onMounted(async () => {
+	await fetchApplication();
+	await loadFiles();
+	if (application.value?.route_managed) {
+		await loadRoutes();
+	}
 });
 </script>

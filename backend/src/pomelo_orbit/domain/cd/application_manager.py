@@ -2,6 +2,8 @@
 
 from abc import ABC, abstractmethod
 
+from pomelo_orbit.domain.cd.entities import ApplicationRoute
+
 
 class ApplicationManager(ABC):
     """应用管理器抽象接口"""
@@ -14,6 +16,7 @@ class ApplicationManager(ABC):
         pull_policy: str,
         deployment_id: str,
         env_file: str | None = None,
+        routes: list[ApplicationRoute] | None = None,
     ) -> None: ...
 
     @abstractmethod
@@ -33,6 +36,9 @@ class ApplicationManager(ABC):
 
     @abstractmethod
     def purge(self, application_code: str) -> None: ...
+
+    @abstractmethod
+    def render_compose(self, application_code: str, content: str, filename: str) -> str: ...
 
     @abstractmethod
     def read_deployment_log(self, application_code: str, deployment_id: str, offset: int = 0) -> tuple[str, int]: ...

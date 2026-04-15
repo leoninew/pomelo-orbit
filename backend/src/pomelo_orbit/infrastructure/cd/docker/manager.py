@@ -12,10 +12,12 @@ import sys
 from pathlib import Path
 from typing import TextIO, cast
 
+import yaml
 from dynaconf import Dynaconf
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError, UndefinedError
 
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
+from pomelo_orbit.domain.cd.entities import ApplicationRoute
 from pomelo_orbit.infrastructure.config import get_project_root
 
 logger = logging.getLogger(__name__)
@@ -126,16 +128,21 @@ class ApplicationManagerImpl(ApplicationManager):
 
     # ==================== 文件操作 ====================
 
-    def _write_file(self, application_code: str, filename: str, content: str, newline: str = "") -> None:
+    def _write_file_raw(self, application_code: str, filename: str, content: str, newline: str = "") -> None:
+        """写文件（不渲染，content 已是最终内容）"""
         working_dir = self.get_app_working_dir(application_code)
-        if filename.endswith(".jinja"):
-            filename = filename.removesuffix(".jinja")
-            content = self._render_template(application_code, content)
         filepath = working_dir / filename
         filepath.parent.mkdir(parents=True, exist_ok=True)
         filepath.write_text(content, encoding="utf-8", newline=newline)
         if filepath.name == "init.sh":
             filepath.chmod(0o755)
+
+    def _write_file(self, application_code: str, filename: str, content: str, newline: str = "") -> None:
+        """写文件（.jinja 自动渲染）"""
+        if filename.endswith(".jinja"):
+            filename = filename.removesuffix(".jinja")
+            content = self._render_template(application_code, content)
+        self._write_file_raw(application_code, filename, content, newline)
 
     def _read_file(self, application_code: str, filename: str) -> str | None:
         working_dir = self.get_app_working_dir(application_code)
@@ -143,6 +150,45 @@ class ApplicationManagerImpl(ApplicationManager):
         if path.exists():
             return path.read_text(encoding="utf-8")
         return None
+
+    def _inject_route_labels(self, compose_yaml: str, routes: list[ApplicationRoute], letsencrypt: bool) -> str:
+        """将路由配置注入 docker-compose YAML 的 labels，返回新的 YAML 字符串。
+        route_managed=True 时必须调用，即使 routes 为空也会清除所有 service 的 traefik labels。
+        """
+        data = yaml.safe_load(compose_yaml)
+        services: dict = data.get("services", {})
+
+        # 先清除所有 service 的 labels（托管模式下模板里的 labels 不生效）
+        # TODO: 只清除 traefik. 开头的 label，保留其他自定义 label
+        for service in services.values():
+            if service and "labels" in service:
+                del service["labels"]
+
+        # 再按路由配置注入
+        for route in routes:
+            service = services.get(route.service_name)
+            if not service:
+                raise ValueError(f"Service '{route.service_name}' not found in docker-compose.yml")
+            router_name = route.service_name
+            if letsencrypt:
+                labels = [
+                    "traefik.enable=true",
+                    f"traefik.http.routers.{router_name}.rule=Host(`{route.domain}`)",
+                    f"traefik.http.routers.{router_name}.entrypoints=websecure",
+                    f"traefik.http.routers.{router_name}.tls=true",
+                    f"traefik.http.routers.{router_name}.tls.certresolver=letsencrypt",
+                    f"traefik.http.services.{router_name}.loadbalancer.server.port={route.port}",
+                ]
+            else:
+                labels = [
+                    "traefik.enable=true",
+                    f"traefik.http.routers.{router_name}.rule=Host(`{route.domain}`)",
+                    f"traefik.http.routers.{router_name}.entrypoints=web",
+                    f"traefik.http.services.{router_name}.loadbalancer.server.port={route.port}",
+                ]
+            service["labels"] = labels
+
+        return yaml.dump(data, allow_unicode=True, default_flow_style=False)
 
     # ==================== Docker 命令 ====================
 
@@ -306,10 +352,12 @@ class ApplicationManagerImpl(ApplicationManager):
         pull_policy: str,
         deployment_id: str,
         env_file: str | None = None,
+        routes: list[ApplicationRoute] | None = None,
     ) -> None:
         working_dir = self.get_app_working_dir(application_code)
         log_path = self._get_deployment_log_path(application_code, deployment_id)
         log_file = log_path.open("w", encoding="utf-8")
+        letsencrypt_enabled: bool = self.settings.cert.letsencrypt.enabled
 
         try:
             logger.info(f"Deploy executing: app={application_code}, deployment={deployment_id}")
@@ -318,8 +366,20 @@ class ApplicationManagerImpl(ApplicationManager):
             init_script_file = None
             for config_file in config_files:
                 content = config_file.content
-                self._write_log(log_file, f"Writing configuration file: {config_file.path}")
-                self._write_file(application_code, config_file.path, content, newline="")
+                filename = config_file.path
+                self._write_log(log_file, f"Writing configuration file: {filename}")
+
+                # 渲染 jinja 模板
+                if filename.endswith(".jinja"):
+                    filename = filename.removesuffix(".jinja")
+                    content = self._render_template(application_code, content)
+
+                # 注入路由 labels（仅 docker-compose.yml，且启用了路由托管）
+                if filename == "docker-compose.yml" and routes is not None:
+                    content = self._inject_route_labels(content, routes, letsencrypt_enabled)
+
+                self._write_file_raw(application_code, filename, content)
+
                 if config_file.path == "init.sh":
                     init_script_file = config_file
 
@@ -372,6 +432,12 @@ class ApplicationManagerImpl(ApplicationManager):
     async def cleanup(self, application_code: str) -> str:
         working_dir = self.get_app_working_dir(application_code)
         return await self._image_prune(working_dir)
+
+    def render_compose(self, application_code: str, content: str, filename: str) -> str:
+        """渲染 docker-compose 模板（不写文件），供 UI 解析 service 列表使用"""
+        if filename.endswith(".jinja"):
+            return self._render_template(application_code, content)
+        return content
 
     def purge(self, application_code: str) -> None:
         working_dir = self.get_app_working_dir(application_code)

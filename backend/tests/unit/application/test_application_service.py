@@ -48,12 +48,19 @@ def mock_app_manager():
 
 
 @pytest.fixture
-def app_service(mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_app_manager):
+def mock_app_route_repo():
+    """Mock 应用路由仓储"""
+    return Mock()
+
+
+@pytest.fixture
+def app_service(mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_app_route_repo, mock_app_manager):
     """创建应用服务实例"""
     return ApplicationService(
         app_repo=mock_app_repo,
         deployment_repo=mock_deployment_repo,
         config_file_repo=mock_config_file_repo,
+        app_route_repo=mock_app_route_repo,
         app_manager=mock_app_manager,
     )
 
@@ -96,6 +103,7 @@ class TestApplicationServiceInit:
             app_repo=mock_app_repo,
             deployment_repo=mock_deployment_repo,
             config_file_repo=mock_config_file_repo,
+            app_route_repo=Mock(),
             app_manager=ApplicationManagerImpl(get_settings()),
         )
 

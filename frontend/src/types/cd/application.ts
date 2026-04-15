@@ -57,3 +57,9 @@ export interface ApplicationRoute {
 	created_at: string
 	updated_at: string
 }
+
+export interface ComposeServiceResp {
+	service_name: string
+	default_domain: string
+	default_port: number
+}

@@ -439,6 +439,10 @@ class ApplicationManagerImpl(ApplicationManager):
             return self._render_template(application_code, content)
         return content
 
+    def get_domain_suffix(self) -> str:
+        """获取域名后缀配置"""
+        return str(self.settings.traefik.domain_suffix)
+
     def purge(self, application_code: str) -> None:
         working_dir = self.get_app_working_dir(application_code)
         if working_dir.exists():

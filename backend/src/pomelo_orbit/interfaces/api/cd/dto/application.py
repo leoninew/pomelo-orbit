@@ -93,6 +93,14 @@ class ApplicationRouteResp(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ComposeServiceResp(BaseModel):
+    """docker-compose service 信息"""
+
+    service_name: str
+    default_domain: str
+    default_port: int
+
+
 class ApplicationExportResp(BaseModel):
     """应用导出响应"""
 

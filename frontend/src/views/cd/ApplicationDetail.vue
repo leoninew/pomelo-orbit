@@ -431,13 +431,14 @@
 								<li v-if="composeServices.length === 0">
 									<span class="text-xs text-base-content/50 px-3 py-2">暂无 service</span>
 								</li>
-								<li v-for="s in composeServices" :key="s">
+								<li v-for="s in composeServices" :key="s.service_name">
 									<a
 										class="text-xs px-3 py-1.5 rounded-none block truncate"
-										:class="{ 'bg-primary/10 font-medium': s === routeForm.service_name }"
-										@mousedown.prevent="routeForm.service_name = s; serviceDropdownRef?.blur()"
+										:class="{ 'bg-primary/10 font-medium': s.service_name === routeForm.service_name }"
+										@mousedown.prevent="selectComposeService(s)"
 									>
-										{{ s }}
+										{{ s.service_name }}
+										<span class="text-base-content/40 ml-1">{{ s.default_domain }}:{{ s.default_port }}</span>
 									</a>
 								</li>
 							</ul>
@@ -513,7 +514,7 @@ import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Application, ApplicationRoute, ConfigFile } from '@/types/cd/application';
+import type { Application, ApplicationRoute, ComposeServiceResp, ConfigFile } from '@/types/cd/application';
 import { appStatusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 
@@ -532,7 +533,7 @@ const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
 const application = ref<Application>();
 const files = ref<ConfigFile[]>([]);
 const appRoutes = ref<ApplicationRoute[]>([]);
-const composeServices = ref<string[]>([]);
+const composeServices = ref<ComposeServiceResp[]>([]);
 
 const editModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
@@ -876,6 +877,13 @@ async function loadComposeServices() {
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '解析 docker-compose 失败，无法配置路由');
 	}
+}
+
+function selectComposeService(s: ComposeServiceResp) {
+	routeForm.service_name = s.service_name;
+	routeForm.domain = s.default_domain;
+	routeForm.port = s.default_port;
+	serviceDropdownRef.value?.blur();
 }
 
 async function openAddRouteModal() {

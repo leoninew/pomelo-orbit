@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import contextlib
 import logging
 import subprocess
 
@@ -557,8 +558,8 @@ class ApplicationService:
             raise BusinessError(f"Route {route_id} not found", status_code=404)
         self.app_route_repo.delete(route)
 
-    def parse_compose_services(self, application_id: str) -> list[str]:
-        """渲染 docker-compose 模板后解析 service 名列表，供路由配置 UI 使用"""
+    def parse_compose_services(self, application_id: str) -> list[dict]:
+        """渲染 docker-compose 模板后解析 service 信息，供路由配置 UI 使用"""
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -576,7 +577,27 @@ class ApplicationService:
             data = yaml.safe_load(rendered)
         except yaml.YAMLError as e:
             raise BusinessError(f"docker-compose 解析失败: {e}", status_code=400) from e
-        return list(data.get("services", {}).keys())
+
+        domain_suffix = self.app_manager.get_domain_suffix()
+        result = []
+        for service_name in data.get("services", {}):
+            service = data["services"][service_name] or {}
+            # 取第一个 ports 映射的容器端口，格式可能是 "host:container" 或纯数字
+            default_port = 80
+            ports = service.get("ports") or []
+            if ports:
+                first = str(ports[0])
+                container_port = first.split(":")[-1].split("/")[0]
+                with contextlib.suppress(ValueError):
+                    default_port = int(container_port)
+            result.append(
+                {
+                    "service_name": service_name,
+                    "default_domain": f"{app.code}.{domain_suffix}",
+                    "default_port": default_port,
+                }
+            )
+        return result
 
 
 __all__ = ["ApplicationService"]

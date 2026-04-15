@@ -5,6 +5,7 @@ import type {
 	ApplicationImportReq,
 	ApplicationRoute,
 	ApplicationUpdateReq,
+	ComposeServiceResp,
 	ConfigFile,
 } from '@/types/cd/application';
 import type { PaginatedResp } from '@/types/common';
@@ -136,7 +137,7 @@ export const applicationApi = {
 	},
 
 	// 解析 docker-compose service 列表
-	listComposeServices(id: string): Promise<string[]> {
+	listComposeServices(id: string): Promise<ComposeServiceResp[]> {
 		return request.get(`/api/cd/applications/${id}/compose-service`);
 	},
 };

@@ -22,6 +22,7 @@ from pomelo_orbit.interfaces.api.cd.dto.application import (
     ApplicationRouteReq,
     ApplicationRouteResp,
     ApplicationUpdateReq,
+    ComposeServiceResp,
     ConfigFileReq,
     ConfigFileResp,
 )
@@ -330,6 +331,6 @@ def list_compose_services(
     app_id: str,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     _current_user=Depends(get_current_user),
-) -> list[str]:
-    """解析 docker-compose 模板，返回 service 名列表"""
-    return app_service.parse_compose_services(app_id)
+) -> list[ComposeServiceResp]:
+    """解析 docker-compose 模板，返回 service 信息列表"""
+    return [ComposeServiceResp(**s) for s in app_service.parse_compose_services(app_id)]

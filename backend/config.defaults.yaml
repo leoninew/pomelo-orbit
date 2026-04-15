@@ -59,8 +59,8 @@ cleanup:
 traefik:
   api_url: "http://traefik:8080"           # Traefik API 地址（内部访问）
   domain_suffix: "lvh.me"                    # 应用域名后缀，拼接时加 . 分隔，如 traefik.lvh.me
-  dynamic_route_dir: "data/traefik/data/dynamic"  # 相对于项目根目录
-  cert_dir: "data/traefik/data/certs"             # 相对于项目根目录
+  dynamic_route_dir: "data/cd/traefik/data/dynamic"  # 相对于项目根目录
+  cert_dir: "data/cd/traefik/data/certs"             # 相对于项目根目录
   container_name: "traefik"                  # Traefik 容器名称
 
 # 证书配置（影响 Traefik 配置文件生成）
@@ -79,6 +79,6 @@ cert:
     # Route53: AWS_ACCESS_KEY_ID=xxx, AWS_SECRET_ACCESS_KEY=xxx
 
   # 静态证书（mkcert 和手动上传）
-  # 证书文件存放在 data/traefik/certs/ 目录
-  # 动态配置由应用层生成（data/traefik/dynamic/certificates.yml）
+  # 证书文件存放在 data/cd/traefik/data/certs 目录
+  # 动态配置由应用层生成（data/cd/traefik/data/dynamic/certificates.yml）
   # 适用场景：本地开发（mkcert）、内网域名（手动上传）

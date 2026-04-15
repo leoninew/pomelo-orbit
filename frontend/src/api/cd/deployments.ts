@@ -27,7 +27,7 @@ export const deploymentApi = {
 		return request.post(`/api/cd/deployments/${id}/cancel`);
 	},
 
-	// 获取部署日志（增量读取）
+	// 获取部署日志（增量读取，回退用）
 	getLogs(
 		id: string,
 		offset: number = 0
@@ -39,6 +39,14 @@ export const deploymentApi = {
 	}> {
 		return request.get(`/api/cd/deployments/${id}/logs`, {
 			params: { offset },
+		});
+	},
+
+	// SSE 流式获取部署日志
+	streamLogs(id: string, token: string | null, signal?: AbortSignal): Promise<Response> {
+		return fetch(`/api/cd/deployments/${id}/stream-log`, {
+			headers: token ? { Authorization: `Bearer ${token}` } : {},
+			signal,
 		});
 	},
 };

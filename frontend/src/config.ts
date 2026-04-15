@@ -16,6 +16,9 @@ export const config = {
 	},
 	isDev: import.meta.env.DEV,
 	isProd: import.meta.env.PROD,
+	features: {
+		sseDeploymentLog: import.meta.env.VITE_FEATURE_SSE_DEPLOYMENT_LOG === 'true',
+	},
 };
 
 export default config;

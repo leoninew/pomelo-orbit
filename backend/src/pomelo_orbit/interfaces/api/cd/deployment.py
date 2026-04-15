@@ -2,11 +2,15 @@
 部署操作 API
 """
 
+import asyncio
+import json
 import logging
 import math
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 
 from pomelo_orbit.application.cd.deployment_service import DeploymentService
 from pomelo_orbit.application.cd.di import get_deployment_service
@@ -78,6 +82,42 @@ async def get_deployment_logs(
         "is_complete": is_complete,
         "status": deployment.status,
     }
+
+
+@router.get("/{deployment_id}/stream-log")
+async def stream_deployment_log(
+    deployment_id: str,
+    deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
+    _current_user=Depends(get_current_user),
+) -> StreamingResponse:
+    """SSE 流式推送部署日志"""
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        offset = 0
+        while True:
+            logs, new_offset, is_complete = await asyncio.to_thread(
+                deployment_service.read_deployment_log, deployment_id, offset
+            )
+
+            if logs:
+                data = json.dumps({"logs": logs, "offset": new_offset}, ensure_ascii=False)
+                yield f"data: {data}\n\n"
+                offset = new_offset
+
+            if is_complete:
+                yield "event: complete\ndata: {}\n\n"
+                break
+
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/{deployment_id}/cancel")

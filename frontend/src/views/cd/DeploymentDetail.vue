@@ -127,22 +127,24 @@ import { useRoute, useRouter } from 'vue-router';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import { useAuthStore } from '@/stores/auth';
 import type { DeploymentDetail } from '@/types/cd/deployment';
 import { formatDuration, isTerminalStatus, statusBadgeClass, statusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
+import config from '@/config';
 
 const route = useRoute();
 const router = useRouter();
 const deploymentId = route.params.id as string;
 const toast = useToast();
 const { loading, execute } = useStatusAsync();
+const authStore = useAuthStore();
 
 const deployment = ref<DeploymentDetail>();
 const logText = ref('');
 const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
-let pollAbort: AbortController | null = null;
-
+let logAbort: AbortController | null = null;
 async function fetchDeployment() {
 	try {
 		await execute(async () => {
@@ -163,7 +165,7 @@ async function fetchLogs() {
 			logOffset.value = data.offset;
 		}
 		if (data.is_complete) {
-			pollAbort?.abort();
+			logAbort?.abort();
 			deployment.value = await deploymentApi.get(deploymentId);
 		}
 	} catch (error) {
@@ -172,8 +174,8 @@ async function fetchLogs() {
 }
 
 function startLogPolling() {
-	pollAbort = new AbortController();
-	const signal = pollAbort.signal;
+	logAbort = new AbortController();
+	const signal = logAbort.signal;
 	(async () => {
 		await fetchLogs();
 		while (!signal.aborted) {
@@ -189,16 +191,63 @@ function startLogPolling() {
 	})();
 }
 
-function stopLogPolling() {
-	pollAbort?.abort();
-	pollAbort = null;
+function stopLog() {
+	logAbort?.abort();
+	logAbort = null;
+}
+
+async function startLogStream(refreshOnComplete = true) {
+	logAbort = new AbortController();
+	const signal = logAbort.signal;
+
+	try {
+		const response = await deploymentApi.streamLogs(deploymentId, authStore.token, signal);
+		if (!response.body) {
+			return;
+		}
+
+		const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+		let buffer = '';
+
+		while (!signal.aborted) {
+			const { done, value } = await reader.read();
+			if (done) {
+				break;
+			}
+
+			buffer += value;
+			const parts = buffer.split('\n\n');
+			buffer = parts.pop() ?? '';
+
+			for (const part of parts) {
+				if (part.startsWith('event: complete')) {
+					if (refreshOnComplete) {
+						deployment.value = await deploymentApi.get(deploymentId);
+					}
+					return;
+				}
+				const dataLine = part.split('\n').find((l) => l.startsWith('data: '));
+				if (dataLine) {
+					const payload = JSON.parse(dataLine.slice(6));
+					if (payload.logs) {
+						logText.value += payload.logs;
+						scrollToBottom();
+					}
+				}
+			}
+		}
+	} catch (error) {
+		if (!signal.aborted) {
+			console.error('日志流读取失败:', error);
+		}
+	}
 }
 
 async function handleCancel() {
 	try {
 		await deploymentApi.cancel(deploymentId);
 		toast.success('已取消部署');
-		stopLogPolling();
+		stopLog();
 		deployment.value = await deploymentApi.get(deploymentId);
 	} catch {
 		toast.error('取消失败');
@@ -221,12 +270,20 @@ onMounted(async () => {
 	if (!deployment.value) {
 		return;
 	}
-	if (isTerminalStatus(deployment.value.status)) {
-		// 已完成的部署直接拉取完整日志
-		await fetchLogs();
+	if (config.features.sseDeploymentLog) {
+		if (isTerminalStatus(deployment.value.status)) {
+			startLogStream(false);
+		} else {
+			startLogStream();
+		}
 	} else {
-		startLogPolling();
+		if (isTerminalStatus(deployment.value.status)) {
+			// 已完成的部署直接拉取完整日志
+			await fetchLogs();
+		} else {
+			startLogPolling();
+		}
 	}
 });
-onUnmounted(stopLogPolling);
+onUnmounted(stopLog);
 </script>

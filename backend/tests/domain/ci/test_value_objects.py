@@ -3,6 +3,7 @@
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.value_objects import (
     ArtifactConfig,
+    ArtifactType,
     CredentialType,
     PipelineRunTrigger,
     StageDefinition,
@@ -72,7 +73,7 @@ class TestStageDefinition:
             name="test",
             image="golang:1.22-alpine",
             script="go test ./...",
-            artifacts=[ArtifactConfig(path="coverage.out", name="coverage")],
+            artifacts=[ArtifactConfig(type=ArtifactType.BINARY, path="coverage.out", name="coverage")],
             depends_on=["clone-id"],
             version=1,
         )

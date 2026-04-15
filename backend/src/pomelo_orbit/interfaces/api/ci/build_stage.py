@@ -46,7 +46,7 @@ def create_stage(
         name=data.name,
         image=data.image,
         script=data.script,
-        artifacts=[a.model_dump() for a in data.artifacts] if data.artifacts else None,
+        artifacts=[a.to_artifact_config() for a in data.artifacts] if data.artifacts else None,
         description=data.description,
     )
     return BuildStageResp.model_validate(stage)
@@ -73,7 +73,7 @@ def update_stage(
         name=data.name,
         image=data.image,
         script=data.script,
-        artifacts=[a.model_dump() for a in data.artifacts] if data.artifacts is not None else None,
+        artifacts=[a.to_artifact_config() for a in data.artifacts] if data.artifacts is not None else None,
         description=data.description,
     )
     return BuildStageResp.model_validate(stage)

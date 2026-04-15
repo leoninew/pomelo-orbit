@@ -1,5 +1,6 @@
 """CI 值对象和枚举"""
 
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -46,9 +47,10 @@ class ArtifactType(StrEnum):
     BINARY = "binary"
 
 
-class ArtifactConfig(BaseModel):
-    type: ArtifactType = ArtifactType.DOCKER_IMAGE
-    path: str  # binary: 容器内文件路径（相对 /artifacts）；docker_image: 镜像名:tag
+@dataclass
+class ArtifactConfig:
+    type: ArtifactType
+    path: str
     name: str
 
 

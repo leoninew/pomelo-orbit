@@ -7,7 +7,7 @@ import pytest
 
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.executor import ExecutionContext
-from pomelo_orbit.domain.ci.value_objects import ArtifactConfig, StageDefinition
+from pomelo_orbit.domain.ci.value_objects import ArtifactConfig, ArtifactType, StageDefinition
 from pomelo_orbit.infrastructure.ci.executor_impl import PipelineExecutorImpl
 
 if TYPE_CHECKING:
@@ -142,7 +142,7 @@ class TestPipelineExecutorImpl:
             id="build",
             image="alpine:latest",
             script="echo build",
-            artifacts=[ArtifactConfig(name="output.txt", path="output.txt")],
+            artifacts=[ArtifactConfig(path="output.txt", name="output.txt", type=ArtifactType.BINARY)],
             version=1,
         )
         context = ExecutionContext(

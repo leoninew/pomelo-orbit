@@ -1,6 +1,7 @@
 """CI Mapper - ORM 和领域实体转换"""
 
 import json
+from dataclasses import asdict
 
 from pomelo_orbit.domain.cd.value_objects import TaskStatus
 from pomelo_orbit.domain.ci.entities import (
@@ -78,11 +79,7 @@ class BuildStageMapper:
 
     @staticmethod
     def to_orm(entity: BuildStage) -> BuildStageModel:
-        artifacts_json = (
-            json.dumps([a.model_dump() if hasattr(a, "model_dump") else a for a in entity.artifacts])
-            if entity.artifacts
-            else None
-        )
+        artifacts_json = json.dumps([asdict(a) for a in entity.artifacts]) if entity.artifacts else None
         return BuildStageModel(
             id=entity.id,
             name=entity.name,

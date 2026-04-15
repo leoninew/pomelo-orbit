@@ -1,10 +1,10 @@
 """Stage 聚合的应用服务"""
 
 import re
-from dataclasses import asdict
 
 from pomelo_orbit.domain.ci.entities import BuildStage
 from pomelo_orbit.domain.ci.repositories import BuildStageRepository
+from pomelo_orbit.domain.ci.value_objects import ArtifactConfig
 from pomelo_orbit.domain.exceptions import BusinessError
 
 
@@ -45,7 +45,7 @@ class BuildStageService:
         name: str,
         image: str,
         script: str,
-        artifacts: list | None = None,
+        artifacts: list[ArtifactConfig] | None = None,
         description: str = "",
     ) -> BuildStage:
         """创建 Stage"""
@@ -67,7 +67,7 @@ class BuildStageService:
         name: str | None = None,
         image: str | None = None,
         script: str | None = None,
-        artifacts: list | None = None,
+        artifacts: list[ArtifactConfig] | None = None,
         description: str | None = None,
     ) -> BuildStage:
         """更新 Stage"""
@@ -97,9 +97,7 @@ class BuildStageService:
             name=new_name,
             image=stage.image,
             script=stage.script,
-            artifacts=[asdict(a) if not isinstance(a, dict) else a for a in stage.artifacts]
-            if stage.artifacts
-            else None,
+            artifacts=list(stage.artifacts) if stage.artifacts else None,
             description=stage.description,
         )
 

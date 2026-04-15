@@ -170,7 +170,7 @@ class BuildStage:
     image: str
     script: str
     version: int
-    artifacts: list | None = None  # list[ArtifactConfig]
+    artifacts: list[ArtifactConfig] | None = None
     description: str = ""
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
@@ -180,7 +180,7 @@ class BuildStage:
         name: str,
         image: str,
         script: str,
-        artifacts: list | None = None,
+        artifacts: list[ArtifactConfig] | None = None,
         description: str = "",
     ) -> "BuildStage":
         now = utc_now()
@@ -201,7 +201,7 @@ class BuildStage:
         name: str | None = None,
         image: str | None = None,
         script: str | None = None,
-        artifacts: list | None = None,
+        artifacts: list[ArtifactConfig] | None = None,
         description: str | None = None,
     ) -> None:
         execution_changed = False
@@ -231,9 +231,7 @@ class BuildStage:
             version=self.version,
             depends_on=depends_on or [],
             script=self.script,
-            artifacts=[ArtifactConfig(**a) if isinstance(a, dict) else a for a in self.artifacts]
-            if self.artifacts
-            else None,
+            artifacts=list(self.artifacts) if self.artifacts else None,
         )
 
 

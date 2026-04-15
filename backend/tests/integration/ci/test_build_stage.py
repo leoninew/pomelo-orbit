@@ -36,7 +36,7 @@ class TestStageCreate:
                 "name": "build",
                 "image": "alpine:latest",
                 "script": "echo 'building'",
-                "artifacts": [{"path": "/app/dist", "name": "dist"}],
+                "artifacts": [{"type": "binary", "path": "/app/dist", "name": "dist"}],
                 "description": "Build stage",
             },
         )

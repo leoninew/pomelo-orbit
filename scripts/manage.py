@@ -406,7 +406,7 @@ class Deployer:
         logger.info("\n=== 部署成功! ===\n")
         logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
-    def upgrade(self, image: str | None = None):
+    def upgrade(self, image: str | None = None, skip_pull: bool = False):
         """更新部署：只更新镜像和 .env"""
         logger.info("=== Pomelo Orbit 更新部署 ===\n")
         logger.info(f"目标服务器: {self.config.ssh_target}")
@@ -427,7 +427,8 @@ class Deployer:
             self._update_image(image or self.config.image)
 
         # 拉取镜像
-        self._pull_image()
+        if not skip_pull:
+            self._pull_image()
 
         # 重启服务
         self._restart_service()
@@ -648,6 +649,9 @@ def main():
     # upgrade 命令
     upgrade_parser = subparsers.add_parser("upgrade", help="更新已有环境")
     upgrade_parser.add_argument("--image", help="指定 Docker 镜像")
+    upgrade_parser.add_argument(
+        "--skip-pull", action="store_true", help="跳过拉取镜像"
+    )
 
     # tunnel 命令
     tunnel_parser = subparsers.add_parser("tunnel", help="SSH 隧道管理")
@@ -694,7 +698,7 @@ def main():
         deployer.install(args.image)
     elif args.command == "upgrade":
         deployer = Deployer(config)
-        deployer.upgrade(args.image)
+        deployer.upgrade(args.image, args.skip_pull)
     elif args.command == "tunnel":
         tunnel = SSHTunnel(config)
         if args.action == "start":

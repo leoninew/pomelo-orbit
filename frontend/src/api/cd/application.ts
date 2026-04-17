@@ -4,6 +4,7 @@ import type {
 	ApplicationExportResp,
 	ApplicationImportReq,
 	ApplicationRoute,
+	ApplicationServiceConfig,
 	ApplicationUpdateReq,
 	ComposeServiceResp,
 	ConfigFile,
@@ -139,5 +140,19 @@ export const applicationApi = {
 	// 解析 docker-compose service 列表
 	listComposeServices(id: string): Promise<ComposeServiceResp[]> {
 		return request.get(`/api/cd/applications/${id}/compose-service`);
+	},
+
+	// 获取 service 级配置
+	listServiceConfigs(id: string): Promise<ApplicationServiceConfig[]> {
+		return request.get(`/api/cd/applications/${id}/service-config`);
+	},
+
+	// 更新 service 级配置
+	updateServiceConfig(
+		id: string,
+		serviceName: string,
+		image: string | null
+	): Promise<ApplicationServiceConfig> {
+		return request.put(`/api/cd/applications/${id}/service-config/${serviceName}`, { image });
 	},
 };

@@ -7,6 +7,7 @@ import asyncio
 import contextlib
 import logging
 import subprocess
+from typing import Any
 
 import yaml
 from ulid import ULID
@@ -17,12 +18,14 @@ from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     ApplicationRoute,
+    ApplicationServiceConfig,
     Deployment,
     TriggerType,
 )
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
     ApplicationRouteRepository,
+    ApplicationServiceConfigRepository,
     ConfigFileRepository,
     DeploymentRepository,
 )
@@ -42,12 +45,14 @@ class ApplicationService:
         deployment_repo: DeploymentRepository,
         config_file_repo: ConfigFileRepository,
         app_route_repo: ApplicationRouteRepository,
+        app_service_config_repo: ApplicationServiceConfigRepository,
         app_manager: ApplicationManager,
     ):
         self.app_repo = app_repo
         self.deployment_repo = deployment_repo
         self.config_file_repo = config_file_repo
         self.app_route_repo = app_route_repo
+        self.app_service_config_repo = app_service_config_repo
         self.app_manager = app_manager
         self._locks: dict[str, asyncio.Lock] = {}
 
@@ -87,10 +92,12 @@ class ApplicationService:
 
             try:
                 config_files = self.config_file_repo.find_by_application(application.id)
+                service_configs = self.app_service_config_repo.find_by_application(application.id)
                 routes = self.app_route_repo.find_by_application(application.id) if application.route_managed else None
                 await self.app_manager.deploy(
                     application.code,
                     config_files=config_files,
+                    service_configs=service_configs,
                     pull_policy=application.image_pull_policy,
                     deployment_id=deployment.id,
                     env_file=deployment.env_file,
@@ -458,6 +465,7 @@ class ApplicationService:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
         config_files = self.config_file_repo.find_by_application(application_id)
+        service_configs = self.app_service_config_repo.find_by_application(application_id)
         routes = self.app_route_repo.find_by_application(application_id)
 
         return {
@@ -466,6 +474,15 @@ class ApplicationService:
             "image_pull_policy": app.image_pull_policy,
             "route_managed": app.route_managed,
             "config_files": [{"path": cf.path, "content": cf.content} for cf in config_files],
+            "service_configs": [
+                {
+                    "service_name": sc.service_name,
+                    "image": sc.image,
+                    "environment": sc.environment,
+                    "volumes": sc.volumes,
+                }
+                for sc in service_configs
+            ],
             "routes": [{"service_name": r.service_name, "domain": r.domain, "port": r.port} for r in routes],
         }
 
@@ -498,6 +515,22 @@ class ApplicationService:
                 content=cf_data.get("content", ""),
             )
             self.config_file_repo.save(config_file)
+
+        for sc_data in data.get("service_configs", []):
+            image = self._normalize_image(sc_data.get("image"))
+            environment = self._normalize_optional_text(sc_data.get("environment"))
+            volumes = self._normalize_optional_text(sc_data.get("volumes"))
+            if not any((image, environment, volumes)):
+                continue
+            service_config = ApplicationServiceConfig(
+                id=str(ULID()),
+                application_id=app.id,
+                service_name=sc_data["service_name"],
+                image=image,
+                environment=environment,
+                volumes=volumes,
+            )
+            self.app_service_config_repo.save(service_config)
 
         for r_data in data.get("routes", []):
             route = ApplicationRoute(
@@ -558,8 +591,8 @@ class ApplicationService:
             raise BusinessError(f"Route {route_id} not found", status_code=404)
         self.app_route_repo.delete(route)
 
-    def parse_compose_services(self, application_id: str) -> list[dict]:
-        """渲染 docker-compose 模板后解析 service 信息，供路由配置 UI 使用"""
+    def _load_compose_services(self, application_id: str) -> tuple[Application, dict[str, Any]]:
+        """渲染 docker-compose 模板后解析 services 节点"""
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
@@ -574,30 +607,122 @@ class ApplicationService:
 
         rendered = self.app_manager.render_compose(app.code, compose_file.content, compose_file.path)
         try:
-            data = yaml.safe_load(rendered)
+            data = yaml.safe_load(rendered) or {}
         except yaml.YAMLError as e:
             raise BusinessError(f"docker-compose 解析失败: {e}", status_code=400) from e
 
+        if not isinstance(data, dict):
+            raise BusinessError("docker-compose 内容无效", status_code=400)
+
+        services = data.get("services") or {}
+        if not isinstance(services, dict):
+            raise BusinessError("docker-compose services 节点无效", status_code=400)
+
+        return app, services
+
+    @staticmethod
+    def _extract_default_port(service: dict[str, Any]) -> int:
+        """取第一个 ports 映射的容器端口，格式可能是 host:container 或纯数字"""
+        default_port = 80
+        ports = service.get("ports") or []
+        if ports:
+            first = str(ports[0])
+            container_port = first.split(":")[-1].split("/")[0]
+            with contextlib.suppress(ValueError):
+                default_port = int(container_port)
+        return default_port
+
+    @staticmethod
+    def _normalize_image(image: Any) -> str | None:
+        if not isinstance(image, str):
+            return None
+        normalized = image.strip()
+        return normalized or None
+
+    @staticmethod
+    def _normalize_optional_text(value: Any) -> str | None:
+        if not isinstance(value, str):
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    def _build_service_config_view(
+        self,
+        app: Application,
+        service_name: str,
+        service: dict[str, Any],
+        config: ApplicationServiceConfig | None,
+    ) -> dict[str, Any]:
         domain_suffix = self.app_manager.get_domain_suffix()
+        base_image = service.get("image")
+        base_image = str(base_image).strip() if base_image is not None else None
+        if base_image == "":
+            base_image = None
+
+        override_image = self._normalize_image(config.image if config else None)
+
+        return {
+            "service_name": service_name,
+            "default_domain": f"{app.code}.{domain_suffix}",
+            "default_port": self._extract_default_port(service),
+            "base_image": base_image,
+            "image": override_image,
+            "config_id": config.id if config else None,
+            "created_at": config.created_at if config else None,
+            "updated_at": config.updated_at if config else None,
+        }
+
+    def list_service_configs(self, application_id: str) -> list[dict[str, Any]]:
+        """列出当前 compose 中的 service 及其配置覆盖"""
+        app, services = self._load_compose_services(application_id)
+        configs = {
+            config.service_name: config for config in self.app_service_config_repo.find_by_application(application_id)
+        }
+
         result = []
-        for service_name in data.get("services", {}):
-            service = data["services"][service_name] or {}
-            # 取第一个 ports 映射的容器端口，格式可能是 "host:container" 或纯数字
-            default_port = 80
-            ports = service.get("ports") or []
-            if ports:
-                first = str(ports[0])
-                container_port = first.split(":")[-1].split("/")[0]
-                with contextlib.suppress(ValueError):
-                    default_port = int(container_port)
-            result.append(
-                {
-                    "service_name": service_name,
-                    "default_domain": f"{app.code}.{domain_suffix}",
-                    "default_port": default_port,
-                }
-            )
+        for service_name, raw_service in services.items():
+            service = raw_service if isinstance(raw_service, dict) else {}
+            result.append(self._build_service_config_view(app, service_name, service, configs.get(service_name)))
         return result
+
+    def update_service_config(self, application_id: str, service_name: str, image: str | None) -> dict[str, Any]:
+        """更新应用某个 service 的配置覆盖"""
+        app, services = self._load_compose_services(application_id)
+        if service_name not in services:
+            raise BusinessError(f"Service {service_name} not found", status_code=404)
+
+        normalized_image = self._normalize_image(image)
+        if not normalized_image:
+            raise BusinessError("Image cannot be empty", status_code=400)
+
+        existing = self.app_service_config_repo.find_by_application_and_service(application_id, service_name)
+        service = services.get(service_name)
+        service_dict = service if isinstance(service, dict) else {}
+
+        if existing:
+            existing.image = normalized_image
+            existing.updated_at = utc_now()
+            config = existing
+        else:
+            config = ApplicationServiceConfig(
+                id=str(ULID()),
+                application_id=application_id,
+                service_name=service_name,
+                image=normalized_image,
+            )
+        self.app_service_config_repo.save(config)
+        return self._build_service_config_view(app, service_name, service_dict, config)
+
+    def parse_compose_services(self, application_id: str) -> list[dict]:
+        """渲染 docker-compose 模板后解析 service 信息，供路由配置 UI 使用"""
+        return [
+            {
+                "service_name": service["service_name"],
+                "default_domain": service["default_domain"],
+                "default_port": service["default_port"],
+            }
+            for service in self.list_service_configs(application_id)
+        ]
 
 
 __all__ = ["ApplicationService"]

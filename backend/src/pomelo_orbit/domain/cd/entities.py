@@ -50,6 +50,20 @@ class ApplicationRoute:
 
 
 @dataclass
+class ApplicationServiceConfig:
+    """应用 service 级配置"""
+
+    id: str
+    application_id: str
+    service_name: str
+    image: str | None = None
+    environment: str | None = None
+    volumes: str | None = None
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+
+
+@dataclass
 class Application:
     """应用实体（聚合根）"""
 
@@ -173,6 +187,8 @@ class Route:
 __all__ = [
     "Application",
     "ApplicationConfigFile",
+    "ApplicationRoute",
+    "ApplicationServiceConfig",
     "CertType",
     "Deployment",
     "Route",

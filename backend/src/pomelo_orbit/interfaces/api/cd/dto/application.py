@@ -93,12 +93,40 @@ class ApplicationRouteResp(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ApplicationServiceConfigUpdateReq(BaseModel):
+    """应用 service 配置更新请求"""
+
+    image: str | None = None
+
+
+class ApplicationServiceConfigResp(BaseModel):
+    """应用 service 配置响应"""
+
+    service_name: str
+    default_domain: str
+    default_port: int
+    base_image: str | None = None
+    image: str | None = None
+    config_id: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
 class ComposeServiceResp(BaseModel):
     """docker-compose service 信息"""
 
     service_name: str
     default_domain: str
     default_port: int
+
+
+class ApplicationServiceConfigImportReq(BaseModel):
+    """应用 service 配置导入/导出请求"""
+
+    service_name: str = Field(min_length=1)
+    image: str | None = None
+    environment: str | None = None
+    volumes: str | None = None
 
 
 class ApplicationExportResp(BaseModel):
@@ -110,6 +138,7 @@ class ApplicationExportResp(BaseModel):
     image_pull_policy: str
     route_managed: bool = False
     config_files: list[ConfigFileExportReq] = []
+    service_configs: list[ApplicationServiceConfigImportReq] = []
     routes: list[ApplicationRouteReq] = []
 
 
@@ -122,4 +151,5 @@ class ApplicationImportReq(BaseModel):
     image_pull_policy: ImagePullPolicy = ImagePullPolicy.MISSING
     route_managed: bool = False
     config_files: list[ConfigFileImportReq] = []
+    service_configs: list[ApplicationServiceConfigImportReq] = []
     routes: list[ApplicationRouteReq] = []

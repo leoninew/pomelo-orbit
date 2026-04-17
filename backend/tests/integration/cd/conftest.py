@@ -7,6 +7,7 @@ from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
+    ApplicationServiceConfigModel,
     DeploymentModel,
     RouteModel,
 )
@@ -36,6 +37,32 @@ def test_config_file(db_session, test_app):
     db_session.commit()
     db_session.refresh(config_file)
     return config_file
+
+
+@pytest.fixture
+def test_compose_file(db_session, test_app):
+    config_file = ApplicationConfigFileModel(
+        application_id=test_app.id,
+        path="docker-compose.yml",
+        content='services:\n  web:\n    image: nginx:1.25\n    ports:\n      - "8080:80"\n',
+    )
+    db_session.add(config_file)
+    db_session.commit()
+    db_session.refresh(config_file)
+    return config_file
+
+
+@pytest.fixture
+def test_service_config(db_session, test_app):
+    service_config = ApplicationServiceConfigModel(
+        application_id=test_app.id,
+        service_name="web",
+        image="nginx:1.27",
+    )
+    db_session.add(service_config)
+    db_session.commit()
+    db_session.refresh(service_config)
+    return service_config
 
 
 @pytest.fixture

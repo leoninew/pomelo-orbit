@@ -4,7 +4,11 @@
 
 from unittest.mock import patch
 
-from pomelo_orbit.infrastructure.persistence.models import ApplicationConfigFileModel, ApplicationModel
+from pomelo_orbit.infrastructure.persistence.models import (
+    ApplicationConfigFileModel,
+    ApplicationModel,
+    ApplicationServiceConfigModel,
+)
 
 
 class TestApplicationAPI:
@@ -257,3 +261,47 @@ class TestApplicationAPI:
         assert response.status_code == 200
         data = response.json()
         assert "logs" in data
+
+    def test_list_service_configs(self, auth_client, test_app, test_compose_file, test_service_config):
+        """测试列出 service 级配置"""
+        response = auth_client.get(f"/api/cd/applications/{test_app.id}/service-config")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["service_name"] == "web"
+        assert data[0]["base_image"] == "nginx:1.25"
+        assert data[0]["image"] == "nginx:1.27"
+        assert data[0]["default_port"] == 80
+        assert data[0]["default_domain"].startswith("test-app.")
+
+    def test_update_service_config(self, auth_client, db_session, test_app, test_compose_file):
+        """测试更新 service 级配置"""
+        response = auth_client.put(
+            f"/api/cd/applications/{test_app.id}/service-config/web",
+            json={"image": "nginx:1.28"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["service_name"] == "web"
+        assert data["image"] == "nginx:1.28"
+
+        db_session.expire_all()
+        service_config = (
+            db_session.query(ApplicationServiceConfigModel)
+            .filter_by(application_id=test_app.id, service_name="web")
+            .first()
+        )
+        assert service_config is not None
+        assert service_config.image == "nginx:1.28"
+
+    def test_update_service_config_rejects_empty_image(self, auth_client, test_app, test_compose_file):
+        """测试更新 service 级配置时不允许空镜像"""
+        response = auth_client.put(
+            f"/api/cd/applications/{test_app.id}/service-config/web",
+            json={"image": "   "},
+        )
+
+        assert response.status_code == 400
+        assert "Image cannot be empty" in response.json()["detail"]

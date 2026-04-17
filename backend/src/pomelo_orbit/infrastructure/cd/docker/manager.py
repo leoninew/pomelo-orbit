@@ -17,7 +17,7 @@ from dynaconf import Dynaconf
 from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError, UndefinedError
 
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
-from pomelo_orbit.domain.cd.entities import ApplicationRoute
+from pomelo_orbit.domain.cd.entities import ApplicationRoute, ApplicationServiceConfig
 from pomelo_orbit.infrastructure.config import get_project_root
 
 logger = logging.getLogger(__name__)
@@ -190,6 +190,30 @@ class ApplicationManagerImpl(ApplicationManager):
 
         return yaml.dump(data, allow_unicode=True, default_flow_style=False)
 
+    def _apply_service_configs(
+        self, compose_yaml: str, service_configs: list[ApplicationServiceConfig] | None
+    ) -> str:
+        if not service_configs:
+            return compose_yaml
+
+        data = yaml.safe_load(compose_yaml) or {}
+        if not isinstance(data, dict):
+            raise ValueError("docker-compose content must be a mapping")
+
+        services = data.get("services") or {}
+        if not isinstance(services, dict):
+            raise ValueError("docker-compose services must be a mapping")
+
+        for service_config in service_configs:
+            service = services.get(service_config.service_name)
+            if not isinstance(service, dict):
+                continue
+
+            if isinstance(service_config.image, str) and service_config.image.strip():
+                service["image"] = service_config.image.strip()
+
+        return yaml.dump(data, allow_unicode=True, default_flow_style=False)
+
     # ==================== Docker 命令 ====================
 
     async def _run_command_win32(self, cmd: list[str], cwd: Path) -> str:
@@ -349,6 +373,7 @@ class ApplicationManagerImpl(ApplicationManager):
         self,
         application_code: str,
         config_files: list,
+        service_configs: list[ApplicationServiceConfig] | None,
         pull_policy: str,
         deployment_id: str,
         env_file: str | None = None,
@@ -373,6 +398,9 @@ class ApplicationManagerImpl(ApplicationManager):
                 if filename.endswith(".jinja"):
                     filename = filename.removesuffix(".jinja")
                     content = self._render_template(application_code, content)
+
+                if filename == "docker-compose.yml":
+                    content = self._apply_service_configs(content, service_configs)
 
                 # 注入路由 labels（仅 docker-compose.yml，且启用了路由托管）
                 if filename == "docker-compose.yml" and routes is not None:

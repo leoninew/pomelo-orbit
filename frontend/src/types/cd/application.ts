@@ -58,6 +58,17 @@ export interface ApplicationRoute {
 	updated_at: string
 }
 
+export interface ApplicationServiceConfig {
+	service_name: string
+	default_domain: string
+	default_port: number
+	base_image: string | null
+	image: string | null
+	config_id: string | null
+	created_at: string | null
+	updated_at: string | null
+}
+
 export interface ComposeServiceResp {
 	service_name: string
 	default_domain: string

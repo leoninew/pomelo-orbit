@@ -14,6 +14,7 @@ from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
     ApplicationRouteRepository,
+    ApplicationServiceConfigRepository,
     ConfigFileRepository,
     DeploymentRepository,
     RouteRepository,
@@ -24,6 +25,7 @@ from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
 from pomelo_orbit.infrastructure.cd.repositories.di import (
     get_application_repo,
     get_application_route_repo,
+    get_application_service_config_repo,
     get_config_file_repo,
     get_deployment_repo,
     get_route_repository,
@@ -46,6 +48,9 @@ def get_application_service(
     deployment_repo: Annotated[DeploymentRepository, Depends(get_deployment_repo)],
     config_file_repo: Annotated[ConfigFileRepository, Depends(get_config_file_repo)],
     app_route_repo: Annotated[ApplicationRouteRepository, Depends(get_application_route_repo)],
+    app_service_config_repo: Annotated[
+        ApplicationServiceConfigRepository, Depends(get_application_service_config_repo)
+    ],
     app_manager: Annotated[ApplicationManager, Depends(get_app_manager)],
 ) -> ApplicationService:
     """获取应用服务实例"""
@@ -54,6 +59,7 @@ def get_application_service(
         deployment_repo=deployment_repo,
         config_file_repo=config_file_repo,
         app_route_repo=app_route_repo,
+        app_service_config_repo=app_service_config_repo,
         app_manager=app_manager,
     )
 

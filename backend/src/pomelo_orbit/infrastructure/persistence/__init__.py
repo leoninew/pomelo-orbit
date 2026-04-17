@@ -10,6 +10,7 @@ from pomelo_orbit.infrastructure.persistence.di import get_db
 from pomelo_orbit.infrastructure.persistence.mappers import (
     ApplicationConfigFileMapper,
     ApplicationMapper,
+    ApplicationServiceConfigMapper,
     DeploymentMapper,
     LoginHistoryMapper,
     RouteMapper,
@@ -18,6 +19,7 @@ from pomelo_orbit.infrastructure.persistence.mappers import (
 from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
+    ApplicationServiceConfigModel,
     Base,
     DeploymentModel,
     LoginHistoryModel,
@@ -30,6 +32,8 @@ __all__ = [
     "ApplicationConfigFileModel",
     "ApplicationMapper",
     "ApplicationModel",
+    "ApplicationServiceConfigMapper",
+    "ApplicationServiceConfigModel",
     "Base",
     "BaseMapper",
     "BaseRepository",

@@ -7,6 +7,7 @@ from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
     ApplicationRoute,
+    ApplicationServiceConfig,
     CertType,
     Deployment,
     Route,
@@ -17,6 +18,7 @@ from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
     ApplicationRouteModel,
+    ApplicationServiceConfigModel,
     DeploymentModel,
     LoginHistoryModel,
     RouteModel,
@@ -133,6 +135,36 @@ class ApplicationRouteMapper:
             service_name=entity.service_name,
             domain=entity.domain,
             port=entity.port,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
+        )
+
+
+class ApplicationServiceConfigMapper:
+    """应用 service 配置映射器"""
+
+    @staticmethod
+    def to_domain(model: ApplicationServiceConfigModel) -> ApplicationServiceConfig:
+        return ApplicationServiceConfig(
+            id=model.id,
+            application_id=model.application_id,
+            service_name=model.service_name,
+            image=model.image,
+            environment=model.environment,
+            volumes=model.volumes,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: ApplicationServiceConfig) -> ApplicationServiceConfigModel:
+        return ApplicationServiceConfigModel(
+            id=entity.id,
+            application_id=entity.application_id,
+            service_name=entity.service_name,
+            image=entity.image,
+            environment=entity.environment,
+            volumes=entity.volumes,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )
@@ -259,6 +291,7 @@ __all__ = [
     "ApplicationConfigFileMapper",
     "ApplicationMapper",
     "ApplicationRouteMapper",
+    "ApplicationServiceConfigMapper",
     "DeploymentMapper",
     "LoginHistoryMapper",
     "RouteMapper",

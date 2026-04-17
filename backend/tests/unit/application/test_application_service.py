@@ -9,7 +9,13 @@ import pytest
 
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
-from pomelo_orbit.domain.cd.entities import Application, ApplicationConfigFile, Deployment, TriggerType
+from pomelo_orbit.domain.cd.entities import (
+    Application,
+    ApplicationConfigFile,
+    ApplicationServiceConfig,
+    Deployment,
+    TriggerType,
+)
 from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, OperationType, TaskStatus
 from pomelo_orbit.domain.exceptions import BusinessError
 
@@ -33,6 +39,15 @@ def mock_config_file_repo():
 
 
 @pytest.fixture
+def mock_app_service_config_repo():
+    """Mock 应用 service 配置仓储"""
+    repo = Mock()
+    repo.find_by_application.return_value = []
+    repo.find_by_application_and_service.return_value = None
+    return repo
+
+
+@pytest.fixture
 def mock_app_manager():
     """Mock 应用管理器（自动对齐 ApplicationManager 接口）"""
     manager = create_autospec(ApplicationManager, instance=True)
@@ -43,6 +58,8 @@ def mock_app_manager():
     manager.status = AsyncMock(return_value="status")
     manager.logs = AsyncMock(return_value="logs")
     manager.purge = Mock()
+    manager.render_compose = Mock(side_effect=lambda _app, content, _filename: content)
+    manager.get_domain_suffix = Mock(return_value="example.com")
     manager.read_deployment_log = Mock(return_value=("", 0))
     return manager
 
@@ -54,13 +71,21 @@ def mock_app_route_repo():
 
 
 @pytest.fixture
-def app_service(mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_app_route_repo, mock_app_manager):
+def app_service(
+    mock_app_repo,
+    mock_deployment_repo,
+    mock_config_file_repo,
+    mock_app_route_repo,
+    mock_app_service_config_repo,
+    mock_app_manager,
+):
     """创建应用服务实例"""
     return ApplicationService(
         app_repo=mock_app_repo,
         deployment_repo=mock_deployment_repo,
         config_file_repo=mock_config_file_repo,
         app_route_repo=mock_app_route_repo,
+        app_service_config_repo=mock_app_service_config_repo,
         app_manager=mock_app_manager,
     )
 
@@ -94,7 +119,9 @@ def sample_deployment():
 class TestApplicationServiceInit:
     """ApplicationService 初始化测试"""
 
-    def test_creates_service_with_repositories(self, mock_app_repo, mock_deployment_repo, mock_config_file_repo):
+    def test_creates_service_with_repositories(
+        self, mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_app_service_config_repo
+    ):
         """测试使用仓储创建服务"""
         from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
         from pomelo_orbit.infrastructure.config import get_settings
@@ -104,6 +131,7 @@ class TestApplicationServiceInit:
             deployment_repo=mock_deployment_repo,
             config_file_repo=mock_config_file_repo,
             app_route_repo=Mock(),
+            app_service_config_repo=mock_app_service_config_repo,
             app_manager=ApplicationManagerImpl(get_settings()),
         )
 
@@ -269,6 +297,87 @@ class TestConfigFileManagement:
             app_service.delete_config_file("app-1", "cfg-1")
 
 
+class TestServiceConfigManagement:
+    """service 级配置管理测试"""
+
+    def test_list_service_configs_merges_compose_and_override(
+        self, app_service, sample_application, mock_app_repo, mock_config_file_repo, mock_app_service_config_repo
+    ):
+        mock_app_repo.find_by_id.return_value = sample_application
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content=(
+                    "services:\n"
+                    "  web:\n"
+                    "    image: nginx:1.25\n"
+                    "    ports:\n"
+                    '      - "8080:80"\n'
+                    "  worker:\n"
+                    "    image: busybox:1.36\n"
+                ),
+            )
+        ]
+        mock_app_service_config_repo.find_by_application.return_value = [
+            ApplicationServiceConfig(
+                id="svc-1",
+                application_id="app-1",
+                service_name="web",
+                image="nginx:1.27",
+            )
+        ]
+
+        result = app_service.list_service_configs("app-1")
+
+        assert result[0]["service_name"] == "web"
+        assert result[0]["base_image"] == "nginx:1.25"
+        assert result[0]["image"] == "nginx:1.27"
+        assert result[0]["default_domain"] == "test-app.example.com"
+        assert result[0]["default_port"] == 80
+        assert result[1]["service_name"] == "worker"
+        assert result[1]["image"] is None
+
+    def test_update_service_config_upserts_image(
+        self, app_service, sample_application, mock_app_repo, mock_config_file_repo, mock_app_service_config_repo
+    ):
+        mock_app_repo.find_by_id.return_value = sample_application
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx:1.25\n",
+            )
+        ]
+
+        result = app_service.update_service_config("app-1", "web", " nginx:1.27 ")
+
+        saved = mock_app_service_config_repo.save.call_args[0][0]
+        assert saved.service_name == "web"
+        assert saved.image == "nginx:1.27"
+        assert result["image"] == "nginx:1.27"
+
+    def test_update_service_config_rejects_empty_image(
+        self, app_service, sample_application, mock_app_repo, mock_config_file_repo, mock_app_service_config_repo
+    ):
+        mock_app_repo.find_by_id.return_value = sample_application
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx:1.25\n",
+            )
+        ]
+        with pytest.raises(BusinessError, match="Image cannot be empty"):
+            app_service.update_service_config("app-1", "web", "   ")
+
+        mock_app_service_config_repo.delete.assert_not_called()
+        mock_app_service_config_repo.save.assert_not_called()
+
+
 class TestDeployBusinessLogic:
     """部署业务逻辑测试"""
 
@@ -375,6 +484,34 @@ class TestDeployBusinessLogic:
         await app_service.deploy(sample_application, sample_deployment)
 
         assert not lock.locked()
+
+    @pytest.mark.asyncio
+    async def test_deploy_passes_service_configs_to_app_manager(
+        self,
+        app_service,
+        sample_application,
+        sample_deployment,
+        mock_config_file_repo,
+        mock_app_service_config_repo,
+        mock_app_manager,
+    ):
+        config_files = [
+            ApplicationConfigFile(id="cfg-1", application_id="app-1", path="docker-compose.yml", content="version: '3'")
+        ]
+        service_configs = [
+            ApplicationServiceConfig(
+                id="svc-1",
+                application_id="app-1",
+                service_name="web",
+                image="nginx:1.27",
+            )
+        ]
+        mock_config_file_repo.find_by_application.return_value = config_files
+        mock_app_service_config_repo.find_by_application.return_value = service_configs
+
+        await app_service.deploy(sample_application, sample_deployment)
+
+        assert mock_app_manager.deploy.await_args.kwargs["service_configs"] == service_configs
 
 
 class TestStopApplicationBusinessLogic:

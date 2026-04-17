@@ -21,6 +21,8 @@ from pomelo_orbit.interfaces.api.cd.dto.application import (
     ApplicationResp,
     ApplicationRouteReq,
     ApplicationRouteResp,
+    ApplicationServiceConfigResp,
+    ApplicationServiceConfigUpdateReq,
     ApplicationUpdateReq,
     ComposeServiceResp,
     ConfigFileReq,
@@ -334,3 +336,26 @@ def list_compose_services(
 ) -> list[ComposeServiceResp]:
     """解析 docker-compose 模板，返回 service 信息列表"""
     return [ComposeServiceResp(**s) for s in app_service.parse_compose_services(app_id)]
+
+
+@router.get("/{app_id}/service-config")
+def list_service_configs(
+    app_id: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> list[ApplicationServiceConfigResp]:
+    """获取应用 service 级配置列表"""
+    return [ApplicationServiceConfigResp(**s) for s in app_service.list_service_configs(app_id)]
+
+
+@router.put("/{app_id}/service-config/{service_name}")
+def update_service_config(
+    app_id: str,
+    service_name: str,
+    data: ApplicationServiceConfigUpdateReq,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> ApplicationServiceConfigResp:
+    """更新应用某个 service 的配置覆盖"""
+    service_config = app_service.update_service_config(app_id, service_name, data.image)
+    return ApplicationServiceConfigResp(**service_config)

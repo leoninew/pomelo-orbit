@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from pomelo_orbit.domain.cd.entities import ApplicationRoute
+from pomelo_orbit.domain.cd.entities import ApplicationRoute, ApplicationServiceConfig
 
 
 class ApplicationManager(ABC):
@@ -13,6 +13,7 @@ class ApplicationManager(ABC):
         self,
         application_code: str,
         config_files: list,
+        service_configs: list[ApplicationServiceConfig] | None,
         pull_policy: str,
         deployment_id: str,
         env_file: str | None = None,

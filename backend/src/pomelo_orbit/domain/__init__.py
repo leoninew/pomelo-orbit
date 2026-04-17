@@ -6,6 +6,7 @@ from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
+    ApplicationServiceConfig,
     Deployment,
     Route,
     TriggerType,
@@ -20,6 +21,7 @@ from pomelo_orbit.domain.exceptions import (
 __all__ = [
     "Application",
     "ApplicationConfigFile",
+    "ApplicationServiceConfig",
     "AuthenticationError",
     "AuthorizationError",
     "BusinessError",

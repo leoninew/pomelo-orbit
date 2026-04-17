@@ -168,6 +168,88 @@
 			</div>
 		</div>
 
+		<!-- Service config card -->
+		<div class="card bg-base-100 shadow-sm">
+			<div class="card-body p-5">
+				<div class="mb-4">
+					<h2 class="font-semibold">服务镜像</h2>
+					<p class="mt-1 text-xs text-base-content/60">
+						读取 compose service 的当前 image，可通过弹窗修改。后续再扩展环境变量和目录挂载。
+					</p>
+				</div>
+				<div v-if="serviceConfigListLoading" class="flex justify-center py-8">
+					<span class="loading loading-spinner loading-md text-primary" />
+				</div>
+				<div
+					v-else-if="serviceConfigError"
+					class="rounded-box border border-base-200 bg-base-200/40 px-4 py-5 text-sm text-base-content/70"
+				>
+					{{ serviceConfigError }}
+				</div>
+				<div
+					v-else-if="serviceConfigs.length === 0"
+					class="flex flex-col items-center gap-2 py-8 text-base-content/60"
+				>
+					<span class="text-sm">暂无 compose service</span>
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="table">
+						<thead>
+							<tr class="text-base-content/60">
+								<th>Service</th>
+								<th>镜像</th>
+								<th>已覆盖</th>
+								<th>更新时间</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="serviceConfig in serviceConfigs" :key="serviceConfig.service_name" class="hover">
+								<td>
+									<code class="text-xs">{{ serviceConfig.service_name }}</code>
+								</td>
+								<td class="text-sm">
+									<code
+										v-if="getServiceDisplayImage(serviceConfig)"
+										class="text-xs break-all"
+									>
+										{{ getServiceDisplayImage(serviceConfig) }}
+									</code>
+									<span v-else class="text-base-content/40">未配置 image</span>
+								</td>
+								<td class="text-sm">
+									<span
+										v-if="isServiceOverridden(serviceConfig)"
+										class="badge badge-sm badge-primary badge-outline"
+									>
+										已覆盖
+									</span>
+									<span v-else class="text-base-content/40">—</span>
+								</td>
+								<td class="text-sm text-base-content/60">
+									{{ serviceConfig.updated_at ? formatTime(serviceConfig.updated_at) : '—' }}
+								</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="link link-primary" @click="openEditServiceConfigModal(serviceConfig)">
+											编辑
+										</button>
+										<button
+											class="link link-error disabled:no-underline disabled:opacity-30"
+											:disabled="serviceConfigSaving || !canResetServiceConfig(serviceConfig)"
+											@click="confirmResetServiceConfig(serviceConfig)"
+										>
+											重置
+										</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
 		<!-- Route management card -->
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
@@ -405,6 +487,66 @@
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
 
+		<!-- Edit service image modal -->
+		<dialog ref="serviceConfigModalRef" class="modal">
+			<div class="modal-box w-full max-w-md">
+				<h3 class="font-bold text-lg mb-4">编辑服务镜像</h3>
+				<div class="flex flex-col gap-3">
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">Service</legend>
+						<input
+							:value="activeServiceConfig?.service_name || ''"
+							type="text"
+							class="input w-full opacity-60"
+							disabled
+						/>
+					</fieldset>
+					<fieldset class="fieldset">
+						<legend class="fieldset-legend">镜像 Image</legend>
+						<input
+							v-model="serviceConfigForm.image"
+							type="text"
+							class="input w-full"
+							placeholder="例如: nginx:1.28"
+						/>
+						<p class="fieldset-label">留空会移除单独覆盖，回退到 compose 中的 image。</p>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button
+						class="btn btn-primary"
+						:disabled="serviceConfigSaving || !activeServiceConfig || !serviceConfigDirty"
+						@click="saveServiceConfig"
+					>
+						<span v-if="serviceConfigSaving" class="loading loading-spinner loading-xs" />
+						确定
+					</button>
+					<button class="btn btn-ghost" @click="serviceConfigModalRef?.close()">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
+
+		<!-- Reset service image confirm modal -->
+		<dialog ref="deleteServiceConfigModalRef" class="modal">
+			<div class="modal-box">
+				<h3 class="font-bold text-lg">重置服务镜像</h3>
+				<p class="py-4 text-sm">
+					确定删除
+					<code class="text-xs">{{ pendingDeleteServiceName || '当前 service' }}</code>
+					的镜像覆盖并回退到 compose 原值？
+				</p>
+				<div class="modal-action">
+					<button class="btn btn-error" :disabled="serviceConfigSaving" @click="executeResetServiceConfig">
+						<span v-if="serviceConfigSaving" class="loading loading-spinner loading-xs" />
+						删除
+					</button>
+					<button class="btn btn-ghost" @click="cancelResetServiceConfig">取消</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button @click="cancelResetServiceConfig">close</button></form>
+		</dialog>
+
 		<!-- Add/Edit route modal -->
 		<dialog ref="routeModalRef" class="modal">
 			<div class="modal-box w-full max-w-md">
@@ -508,13 +650,19 @@
 <script setup lang="ts">
 import { ArrowLeft, ChevronDown, Download, FileX, Network, Plus, Rocket, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { Application, ApplicationRoute, ComposeServiceResp, ConfigFile } from '@/types/cd/application';
+import type {
+	Application,
+	ApplicationRoute,
+	ApplicationServiceConfig,
+	ComposeServiceResp,
+	ConfigFile,
+} from '@/types/cd/application';
 import { appStatusLabel } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 
@@ -529,18 +677,26 @@ const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
 const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
 const { loading: routeListLoading, execute: executeRouteList } = useStatusAsync();
 const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
+const { loading: serviceConfigListLoading, execute: executeServiceConfigList } = useStatusAsync();
+const { loading: serviceConfigSaving, execute: executeServiceConfigSave } = useStatusAsync();
 
 const application = ref<Application>();
 const files = ref<ConfigFile[]>([]);
 const appRoutes = ref<ApplicationRoute[]>([]);
 const composeServices = ref<ComposeServiceResp[]>([]);
+const serviceConfigs = ref<ApplicationServiceConfig[]>([]);
+const selectedServiceName = ref('');
+const serviceConfigError = ref('');
 
 const editModalRef = ref<HTMLDialogElement>();
 const deleteModalRef = ref<HTMLDialogElement>();
 const deleteFileModalRef = ref<HTMLDialogElement>();
+const serviceConfigModalRef = ref<HTMLDialogElement>();
+const deleteServiceConfigModalRef = ref<HTMLDialogElement>();
 const routeModalRef = ref<HTMLDialogElement>();
 const deleteRouteModalRef = ref<HTMLDialogElement>();
 const pendingDeleteFileId = ref('');
+const pendingDeleteServiceName = ref('');
 const pendingDeleteRouteId = ref('');
 const editingRouteId = ref('');
 const deleteDir = ref(false);
@@ -548,6 +704,7 @@ const deleteDir = ref(false);
 const routeForm = reactive({ service_name: '', domain: '', port: 80 });
 const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
 const serviceDropdownRef = ref<HTMLElement>();
+const serviceConfigForm = reactive({ image: '' });
 
 const fileDrawerVisible = ref(false);
 const currentFileId = ref('');
@@ -566,6 +723,15 @@ const editErrors = reactive({ name: '' });
 const envs = computed(() =>
 	files.value.filter((f) => f.path.match(/^\.env(\..+)?$/)).map((f) => f.path)
 );
+const activeServiceConfig = computed(() =>
+	serviceConfigs.value.find((item) => item.service_name === selectedServiceName.value)
+);
+const currentServiceImage = computed(
+	() => (activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : '')
+);
+const serviceConfigDirty = computed(
+	() => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
+);
 
 const badgeMap: Record<string, string> = {
 	deployed: 'badge-outline badge-success',
@@ -576,6 +742,14 @@ const badgeMap: Record<string, string> = {
 function appBadgeClass(s: string) {
 	return badgeMap[s] ?? 'badge-ghost';
 }
+
+watch(
+	currentServiceImage,
+	(value) => {
+		serviceConfigForm.image = value;
+	},
+	{ immediate: true }
+);
 
 const currentFileLanguage = computed(() => {
 	const p = currentFilePath.value.toLowerCase();
@@ -739,7 +913,12 @@ async function handleEditOk() {
 			});
 			toast.success('更新成功');
 			editModalRef.value?.close();
-			fetchApplication();
+			await fetchApplication();
+			if (application.value?.route_managed) {
+				await loadRoutes();
+			} else {
+				appRoutes.value = [];
+			}
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '更新失败');
@@ -770,6 +949,101 @@ async function loadFiles() {
 		});
 	} catch {
 		toast.error('加载配置文件失败');
+	}
+}
+
+async function loadServiceConfigs() {
+	serviceConfigError.value = '';
+	try {
+		await executeServiceConfigList(async () => {
+			serviceConfigs.value = await applicationApi.listServiceConfigs(applicationId);
+		});
+	} catch (error) {
+		serviceConfigs.value = [];
+		serviceConfigError.value = error instanceof Error ? error.message : '加载 service 配置失败';
+	}
+}
+
+function getServiceDisplayImage(serviceConfig: ApplicationServiceConfig) {
+	return serviceConfig.image?.trim() || serviceConfig.base_image || '';
+}
+
+function isServiceOverridden(serviceConfig: ApplicationServiceConfig) {
+	const overrideImage = serviceConfig.image?.trim() || '';
+	const baseImage = serviceConfig.base_image?.trim() || '';
+	return Boolean(overrideImage) && overrideImage !== baseImage;
+}
+
+function canResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
+	return Boolean(serviceConfig.image?.trim());
+}
+
+function openEditServiceConfigModal(serviceConfig: ApplicationServiceConfig) {
+	selectedServiceName.value = serviceConfig.service_name;
+	serviceConfigForm.image = getServiceDisplayImage(serviceConfig);
+	serviceConfigModalRef.value?.showModal();
+}
+
+function confirmResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
+	if (!canResetServiceConfig(serviceConfig)) {
+		return;
+	}
+	pendingDeleteServiceName.value = serviceConfig.service_name;
+	deleteServiceConfigModalRef.value?.showModal();
+}
+
+function cancelResetServiceConfig() {
+	pendingDeleteServiceName.value = '';
+	deleteServiceConfigModalRef.value?.close();
+}
+
+async function executeResetServiceConfig() {
+	if (!pendingDeleteServiceName.value) {
+		return;
+	}
+	try {
+		await executeServiceConfigSave(async () => {
+			const saved = await applicationApi.updateServiceConfig(applicationId, pendingDeleteServiceName.value, null);
+			const idx = serviceConfigs.value.findIndex((item) => item.service_name === saved.service_name);
+			if (idx >= 0) {
+				serviceConfigs.value[idx] = saved;
+			} else {
+				serviceConfigs.value.push(saved);
+			}
+			if (selectedServiceName.value === saved.service_name) {
+				serviceConfigForm.image = getServiceDisplayImage(saved);
+				serviceConfigModalRef.value?.close();
+			}
+			deleteServiceConfigModalRef.value?.close();
+			pendingDeleteServiceName.value = '';
+			toast.success('服务镜像已重置');
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '重置服务镜像失败');
+	}
+}
+
+async function saveServiceConfig() {
+	const active = activeServiceConfig.value;
+	if (!active || !serviceConfigDirty.value) {
+		return;
+	}
+	try {
+		await executeServiceConfigSave(async () => {
+			const saved = await applicationApi.updateServiceConfig(applicationId, active.service_name, serviceConfigForm.image);
+			const idx = serviceConfigs.value.findIndex((item) => item.service_name === saved.service_name);
+			if (idx >= 0) {
+				serviceConfigs.value[idx] = saved;
+			} else {
+				serviceConfigs.value.push(saved);
+			}
+			selectedServiceName.value = saved.service_name;
+			serviceConfigForm.image = getServiceDisplayImage(saved);
+			serviceConfigModalRef.value?.close();
+			toast.success('服务镜像保存成功');
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '保存服务镜像失败');
 	}
 }
 
@@ -833,7 +1107,8 @@ async function saveCurrentFile() {
 			}
 			fileDrawerVisible.value = false;
 			isEditingInDrawer.value = false;
-			loadFiles();
+			await loadFiles();
+			await loadServiceConfigs();
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '保存失败');
@@ -851,7 +1126,8 @@ async function executeDeleteFile() {
 			await applicationApi.deleteFile(applicationId, pendingDeleteFileId.value);
 			toast.success('删除成功');
 			deleteFileModalRef.value?.close();
-			loadFiles();
+			await loadFiles();
+			await loadServiceConfigs();
 		});
 	} catch {
 		toast.error('删除失败');
@@ -963,6 +1239,7 @@ async function executeDeleteRoute() {
 onMounted(async () => {
 	await fetchApplication();
 	await loadFiles();
+	await loadServiceConfigs();
 	if (application.value?.route_managed) {
 		await loadRoutes();
 	}

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
     ApplicationRouteRepository,
+    ApplicationServiceConfigRepository,
     ConfigFileRepository,
     DeploymentRepository,
     RouteRepository,
@@ -15,6 +16,9 @@ from pomelo_orbit.domain.cd.repositories import (
 )
 from pomelo_orbit.infrastructure.cd.repositories.application import ApplicationRepositoryImpl
 from pomelo_orbit.infrastructure.cd.repositories.application_route import ApplicationRouteRepositoryImpl
+from pomelo_orbit.infrastructure.cd.repositories.application_service_config import (
+    ApplicationServiceConfigRepositoryImpl,
+)
 from pomelo_orbit.infrastructure.cd.repositories.config_file import ConfigFileRepositoryImpl
 from pomelo_orbit.infrastructure.cd.repositories.deployment import DeploymentRepositoryImpl
 from pomelo_orbit.infrastructure.cd.repositories.route import RouteRepositoryImpl
@@ -32,6 +36,12 @@ def get_application_repo(db: Annotated[Session, Depends(get_db)]) -> Application
 
 def get_application_route_repo(db: Annotated[Session, Depends(get_db)]) -> ApplicationRouteRepository:
     return ApplicationRouteRepositoryImpl(db)
+
+
+def get_application_service_config_repo(
+    db: Annotated[Session, Depends(get_db)],
+) -> ApplicationServiceConfigRepository:
+    return ApplicationServiceConfigRepositoryImpl(db)
 
 
 def get_config_file_repo(db: Annotated[Session, Depends(get_db)]) -> ConfigFileRepository:

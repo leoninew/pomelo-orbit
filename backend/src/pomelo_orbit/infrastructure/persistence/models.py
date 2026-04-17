@@ -5,7 +5,7 @@ SQLAlchemy ORM 模型定义
 from datetime import datetime
 
 import ulid
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from pomelo_orbit.domain.cd.value_objects import ApplicationStatus, ImagePullPolicy, OperationType
@@ -63,6 +63,9 @@ class ApplicationModel(Base):
     # 关系
     config_files: Mapped[list["ApplicationConfigFileModel"]] = relationship(
         "ApplicationConfigFileModel", back_populates="application", cascade="all, delete-orphan"
+    )
+    service_configs: Mapped[list["ApplicationServiceConfigModel"]] = relationship(
+        "ApplicationServiceConfigModel", back_populates="application", cascade="all, delete-orphan"
     )
     app_routes: Mapped[list["ApplicationRouteModel"]] = relationship(
         "ApplicationRouteModel", back_populates="application", cascade="all, delete-orphan"
@@ -129,6 +132,26 @@ class ApplicationRouteModel(Base):
 
     # 关系
     application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="app_routes")
+
+
+class ApplicationServiceConfigModel(Base):
+    """应用 service 级配置"""
+
+    __tablename__ = "application_service"
+    __table_args__ = (UniqueConstraint("application_id", "service_name", name="uq_application_service_app_service"),)
+
+    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    application_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("application.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    service_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    image: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    environment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    volumes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    application: Mapped["ApplicationModel"] = relationship("ApplicationModel", back_populates="service_configs")
 
 
 class RouteModel(Base):

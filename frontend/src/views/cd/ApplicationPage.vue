@@ -97,15 +97,15 @@
 						<div class="text-xs text-base-content/70">
 							<span>
 								编码:
-								<code>{{ app.code }}</code>
+								{{ app.code }}
 							</span>
 							<span class="mx-2 text-base-content/30">|</span>
 							<span>拉取策略: {{ app.image_pull_policy }}</span>
 						</div>
 						<div class="text-xs text-base-content/70 flex items-center gap-1.5">
 							路由托管:
-							<span v-if="app.route_managed" class="badge badge-xs badge-success badge-outline">已启用</span>
-							<span v-else class="badge badge-xs badge-ghost">未启用</span>
+							<span v-if="app.route_managed" class="text-success font-medium">已启用</span>
+							<span v-else class="text-base-content/45">未启用</span>
 						</div>
 						<div class="flex items-end justify-between">
 							<button class="link link-primary text-xs" @click.stop="viewLastDeployment(app.id)">
@@ -174,9 +174,7 @@
 								{{ app.name }}
 							</router-link>
 						</td>
-						<td>
-							<code class="text-xs">{{ app.code }}</code>
-						</td>
+						<td>{{ app.code }}</td>
 						<td>
 							<span class="badge badge-sm" :class="appBadgeClass(app.status)">
 								{{ appStatusLabel(app.status) }}

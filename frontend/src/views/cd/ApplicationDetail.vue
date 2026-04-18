@@ -76,9 +76,7 @@
 				<dl v-else-if="application" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">应用编码</dt>
-						<dd>
-							<code class="text-xs bg-base-200 px-1.5 py-0.5 rounded">{{ application.code }}</code>
-						</dd>
+						<dd>{{ application.code }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">拉取策略</dt>
@@ -87,13 +85,8 @@
 					<div class="flex gap-2">
 						<dt class="text-base-content/70 w-24 shrink-0">路由托管</dt>
 						<dd>
-							<span
-								v-if="application.route_managed"
-								class="badge badge-sm badge-success badge-outline"
-							>
-								已启用
-							</span>
-							<span v-else class="badge badge-sm badge-ghost">未启用</span>
+							<span v-if="application.route_managed" class="text-success font-medium">已启用</span>
+							<span v-else class="text-base-content/45">未启用</span>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -146,9 +139,7 @@
 						</thead>
 						<tbody>
 							<tr v-for="file in files" :key="file.id" class="hover">
-								<td>
-									<code class="text-xs">{{ file.path }}</code>
-								</td>
+								<td class="text-sm break-all">{{ file.path }}</td>
 								<td class="cell-muted">{{ formatTime(file.created_at) }}</td>
 								<td>
 									<div class="flex items-center gap-3">
@@ -171,11 +162,8 @@
 		<!-- Service config card -->
 		<div class="card bg-base-100 shadow-sm">
 			<div class="card-body p-5">
-				<div class="mb-4">
+				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">服务镜像</h2>
-					<p class="mt-1 text-xs text-base-content/60">
-						读取 compose service 的当前 image，可通过弹窗修改。后续再扩展环境变量和目录挂载。
-					</p>
 				</div>
 				<div v-if="serviceConfigListLoading" class="flex justify-center py-8">
 					<span class="loading loading-spinner loading-md text-primary" />
@@ -190,6 +178,7 @@
 					v-else-if="serviceConfigs.length === 0"
 					class="flex flex-col items-center gap-2 py-8 text-base-content/60"
 				>
+					<Package class="size-10" />
 					<span class="text-sm">暂无 compose service</span>
 				</div>
 				<div v-else class="overflow-x-auto">
@@ -205,16 +194,11 @@
 						</thead>
 						<tbody>
 							<tr v-for="serviceConfig in serviceConfigs" :key="serviceConfig.service_name" class="hover">
-								<td>
-									<code class="text-xs">{{ serviceConfig.service_name }}</code>
-								</td>
+								<td class="text-sm">{{ serviceConfig.service_name }}</td>
 								<td class="text-sm">
-									<code
-										v-if="getServiceDisplayImage(serviceConfig)"
-										class="text-xs break-all"
-									>
+									<span v-if="getServiceDisplayImage(serviceConfig)" class="break-all">
 										{{ getServiceDisplayImage(serviceConfig) }}
-									</code>
+									</span>
 									<span v-else class="text-base-content/40">未配置 image</span>
 								</td>
 								<td class="text-sm">
@@ -288,7 +272,7 @@
 						</thead>
 						<tbody>
 							<tr v-for="r in appRoutes" :key="r.id" class="hover">
-								<td><code class="text-xs">{{ r.service_name }}</code></td>
+								<td class="text-sm">{{ r.service_name }}</td>
 								<td class="text-sm">{{ r.domain }}</td>
 								<td class="text-sm">{{ r.port }}</td>
 								<td>
@@ -648,7 +632,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, Download, FileX, Network, Plus, Rocket, X } from 'lucide-vue-next';
+import { ArrowLeft, ChevronDown, Download, FileX, Network, Package, Plus, Rocket, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

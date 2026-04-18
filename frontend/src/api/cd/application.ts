@@ -95,6 +95,11 @@ export const applicationApi = {
 		return request.get(`/api/cd/applications/${id}/files`);
 	},
 
+	/** 预览部署时生成的 docker-compose.yml（模板渲染、镜像覆盖、路由 labels） */
+	previewCompose(id: string): Promise<{ compose_yaml: string }> {
+		return request.post(`/api/cd/applications/${id}/compose-preview`);
+	},
+
 	// 删除应用文件
 	deleteFile(id: string, fileId: string): Promise<void> {
 		return request.delete(`/api/cd/applications/${id}/file/${fileId}`);

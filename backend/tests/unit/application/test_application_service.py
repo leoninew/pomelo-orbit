@@ -59,6 +59,7 @@ def mock_app_manager():
     manager.logs = AsyncMock(return_value="logs")
     manager.purge = Mock()
     manager.render_compose = Mock(side_effect=lambda _app, content, _filename: content)
+    manager.preview_docker_compose = Mock(return_value="version: '3'\nservices: {}\n")
     manager.get_domain_suffix = Mock(return_value="example.com")
     manager.read_deployment_log = Mock(return_value=("", 0))
     return manager
@@ -737,3 +738,86 @@ class TestDeleteApplicationBusinessLogic:
 
         assert result is True
         assert not app_dir.exists()
+
+
+class TestPreviewComposeYaml:
+    """docker-compose 预览"""
+
+    def test_preview_returns_manager_output(
+        self, app_service, mock_app_repo, mock_config_file_repo, mock_app_service_config_repo, mock_app_manager
+    ):
+        mock_app_repo.find_by_id.return_value = Application(
+            id="app-1",
+            name="Test App",
+            code="test-app",
+            status=ApplicationStatus.UNDEPLOYED,
+            image_pull_policy="IfNotPresent",
+        )
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx:1.25\n",
+            )
+        ]
+        mock_app_manager.preview_docker_compose.return_value = "rendered-yaml"
+
+        result = app_service.preview_compose_yaml("app-1")
+
+        assert result == "rendered-yaml"
+        mock_app_manager.preview_docker_compose.assert_called_once()
+
+    def test_preview_requires_compose_file(self, app_service, mock_app_repo, mock_config_file_repo):
+        mock_app_repo.find_by_id.return_value = Application(
+            id="app-1",
+            name="Test App",
+            code="test-app",
+            status=ApplicationStatus.UNDEPLOYED,
+            image_pull_policy="IfNotPresent",
+        )
+        mock_config_file_repo.find_by_application.return_value = []
+
+        with pytest.raises(BusinessError, match="No docker-compose"):
+            app_service.preview_compose_yaml("app-1")
+
+    def test_preview_with_route_managed(
+        self, app_service, mock_app_repo, mock_config_file_repo, mock_app_service_config_repo, mock_app_route_repo, mock_app_manager
+    ):
+        """route_managed=True 时应传入路由列表"""
+        from pomelo_orbit.domain.cd.entities import ApplicationRoute
+
+        mock_app_repo.find_by_id.return_value = Application(
+            id="app-1",
+            name="Test App",
+            code="test-app",
+            status=ApplicationStatus.UNDEPLOYED,
+            image_pull_policy="IfNotPresent",
+            route_managed=True,
+        )
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx:1.25\n",
+            )
+        ]
+        routes = [
+            ApplicationRoute(
+                id="route-1",
+                application_id="app-1",
+                service_name="web",
+                domain="app.example.com",
+                port=80,
+            )
+        ]
+        mock_app_route_repo.find_by_application.return_value = routes
+        mock_app_manager.preview_docker_compose.return_value = "rendered-with-labels"
+
+        result = app_service.preview_compose_yaml("app-1")
+
+        assert result == "rendered-with-labels"
+        call_kwargs = mock_app_manager.preview_docker_compose.call_args
+        # 确认 routes 参数被传入（非 None）
+        assert call_kwargs.args[4] == routes or call_kwargs.kwargs.get("routes") == routes

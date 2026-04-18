@@ -591,6 +591,36 @@ class ApplicationService:
             raise BusinessError(f"Route {route_id} not found", status_code=404)
         self.app_route_repo.delete(route)
 
+    def preview_compose_yaml(self, application_id: str) -> str:
+        """计算与部署时写入的 docker-compose.yml 等价的 YAML（预览，不写磁盘）。"""
+        app = self.app_repo.find_by_id(application_id)
+        if not app:
+            raise BusinessError(f"Application {application_id} not found", status_code=404)
+
+        config_files = self.config_file_repo.find_by_application(application_id)
+        compose_file = next(
+            (f for f in config_files if f.path in ("docker-compose.yml", "docker-compose.yml.jinja")),
+            None,
+        )
+        if not compose_file:
+            raise BusinessError("No docker-compose file found for this application", status_code=400)
+
+        service_configs = self.app_service_config_repo.find_by_application(application_id)
+        routes: list[ApplicationRoute] | None = None
+        if app.route_managed:
+            routes = self.app_route_repo.find_by_application(application_id)
+
+        try:
+            return self.app_manager.preview_docker_compose(
+                app.code,
+                compose_file.path,
+                compose_file.content,
+                service_configs,
+                routes,
+            )
+        except (ValueError, yaml.YAMLError) as e:
+            raise BusinessError(str(e), status_code=400) from e
+
     def _load_compose_services(self, application_id: str) -> tuple[Application, dict[str, Any]]:
         """渲染 docker-compose 模板后解析 services 节点"""
         app = self.app_repo.find_by_id(application_id)

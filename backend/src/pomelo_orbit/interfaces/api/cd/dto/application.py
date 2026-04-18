@@ -120,6 +120,12 @@ class ComposeServiceResp(BaseModel):
     default_port: int
 
 
+class ComposePreviewResp(BaseModel):
+    """部署时生成的 docker-compose.yml 预览"""
+
+    compose_yaml: str
+
+
 class ApplicationServiceConfigImportReq(BaseModel):
     """应用 service 配置导入/导出请求"""
 

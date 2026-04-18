@@ -262,6 +262,21 @@ class TestApplicationAPI:
         data = response.json()
         assert "logs" in data
 
+    def test_compose_preview(self, auth_client, test_app, test_compose_file, test_service_config):
+        """测试 docker-compose 预览含镜像覆盖"""
+        response = auth_client.post(f"/api/cd/applications/{test_app.id}/compose-preview")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "compose_yaml" in data
+        assert "nginx:1.27" in data["compose_yaml"]
+
+    def test_compose_preview_without_compose_file(self, auth_client, test_app):
+        """无 docker-compose 时预览返回 400"""
+        response = auth_client.post(f"/api/cd/applications/{test_app.id}/compose-preview")
+
+        assert response.status_code == 400
+
     def test_list_service_configs(self, auth_client, test_app, test_compose_file, test_service_config):
         """测试列出 service 级配置"""
         response = auth_client.get(f"/api/cd/applications/{test_app.id}/service-config")

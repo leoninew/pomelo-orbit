@@ -24,6 +24,7 @@ from pomelo_orbit.interfaces.api.cd.dto.application import (
     ApplicationServiceConfigResp,
     ApplicationServiceConfigUpdateReq,
     ApplicationUpdateReq,
+    ComposePreviewResp,
     ComposeServiceResp,
     ConfigFileReq,
     ConfigFileResp,
@@ -129,6 +130,17 @@ async def delete_application(
 ):
     """删除应用"""
     await app_service.delete_application(app_id, remove_dir)
+
+
+@router.post("/{app_id}/compose-preview", response_model=ComposePreviewResp)
+def preview_compose_yaml(
+    app_id: str,
+    app_service: Annotated[ApplicationService, Depends(get_application_service)],
+    _current_user=Depends(get_current_user),
+) -> ComposePreviewResp:
+    """预览部署时生成的 docker-compose.yml"""
+    yaml_text = app_service.preview_compose_yaml(app_id)
+    return ComposePreviewResp(compose_yaml=yaml_text)
 
 
 @router.get("/{app_id}/files")

@@ -467,6 +467,22 @@ class ApplicationManagerImpl(ApplicationManager):
             return self._render_template(application_code, content)
         return content
 
+    def preview_docker_compose(
+        self,
+        application_code: str,
+        compose_path: str,
+        compose_content: str,
+        service_configs: list[ApplicationServiceConfig] | None,
+        routes: list[ApplicationRoute] | None,
+    ) -> str:
+        """与 deploy 中 docker-compose.yml 写入逻辑一致，供预览。"""
+        letsencrypt_enabled: bool = self.settings.cert.letsencrypt.enabled
+        content = self.render_compose(application_code, compose_content, compose_path)
+        content = self._apply_service_configs(content, service_configs)
+        if routes is not None:
+            content = self._inject_route_labels(content, routes, letsencrypt_enabled)
+        return content
+
     def get_domain_suffix(self) -> str:
         """获取域名后缀配置"""
         return str(self.settings.traefik.domain_suffix)

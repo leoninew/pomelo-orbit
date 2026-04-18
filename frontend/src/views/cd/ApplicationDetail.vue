@@ -113,10 +113,16 @@
 			<div class="card-body p-5">
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">配置文件</h2>
-					<button class="btn btn-sm btn-primary gap-1" @click="openAddFileDrawer">
-						<Plus class="size-3.5" />
-						添加文件
-					</button>
+					<div class="flex items-center gap-2">
+						<button type="button" class="btn btn-sm btn-ghost gap-1" @click="openComposePreview">
+							<Eye class="size-3.5" />
+							预览
+						</button>
+						<button type="button" class="btn btn-sm btn-primary gap-1" @click="openAddFileDrawer">
+							<Plus class="size-3.5" />
+							添加文件
+						</button>
+					</div>
 				</div>
 				<div v-if="fileListLoading" class="flex justify-center py-8">
 					<span class="loading loading-spinner loading-md text-primary" />
@@ -628,11 +634,48 @@
 			</div>
 			<form method="dialog" class="modal-backdrop"><button>close</button></form>
 		</dialog>
+
+		<!-- docker-compose preview -->
+		<dialog ref="composePreviewModalRef" class="modal">
+			<div class="modal-box w-full max-w-4xl max-h-[90vh] flex flex-col">
+				<h3 class="font-bold text-lg mb-4">docker-compose 预览</h3>
+				<div class="flex flex-col gap-3 min-h-0">
+					<p class="text-sm text-base-content/70">
+						与部署时写入的 docker-compose.yml 一致：模板渲染、服务镜像覆盖、路由托管 labels。
+					</p>
+					<div
+						v-if="composePreviewLoading"
+						class="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-box border border-base-200 bg-base-200/30 py-12"
+					>
+						<span class="loading loading-spinner loading-md text-primary" />
+						<span class="text-sm text-base-content/60">正在生成预览…</span>
+					</div>
+					<div
+						v-else-if="composePreviewError"
+						class="rounded-box border border-error/30 bg-error/5 px-4 py-5 text-sm text-error"
+					>
+						{{ composePreviewError }}
+					</div>
+					<fieldset v-else class="fieldset min-h-0">
+						<legend class="fieldset-legend">YAML</legend>
+						<div
+							class="rounded-box border border-base-200 bg-base-200/40 px-4 py-3 overflow-auto max-h-[60vh] font-mono text-xs leading-relaxed whitespace-pre-wrap break-words"
+						>
+							{{ composePreviewYaml }}
+						</div>
+					</fieldset>
+				</div>
+				<div class="modal-action">
+					<button class="btn btn-ghost" @click="closeComposePreview">关闭</button>
+				</div>
+			</div>
+			<form method="dialog" class="modal-backdrop"><button>close</button></form>
+		</dialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, Download, FileX, Network, Package, Plus, Rocket, X } from 'lucide-vue-next';
+import { ArrowLeft, ChevronDown, Download, Eye, FileX, Network, Package, Plus, Rocket, X } from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -663,6 +706,11 @@ const { loading: routeListLoading, execute: executeRouteList } = useStatusAsync(
 const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
 const { loading: serviceConfigListLoading, execute: executeServiceConfigList } = useStatusAsync();
 const { loading: serviceConfigSaving, execute: executeServiceConfigSave } = useStatusAsync();
+const {
+	loading: composePreviewLoading,
+	error: composePreviewError,
+	execute: executeComposePreview,
+} = useStatusAsync();
 
 const application = ref<Application>();
 const files = ref<ConfigFile[]>([]);
@@ -679,6 +727,8 @@ const serviceConfigModalRef = ref<HTMLDialogElement>();
 const deleteServiceConfigModalRef = ref<HTMLDialogElement>();
 const routeModalRef = ref<HTMLDialogElement>();
 const deleteRouteModalRef = ref<HTMLDialogElement>();
+const composePreviewModalRef = ref<HTMLDialogElement>();
+const composePreviewYaml = ref('');
 const pendingDeleteFileId = ref('');
 const pendingDeleteServiceName = ref('');
 const pendingDeleteRouteId = ref('');
@@ -1054,6 +1104,24 @@ function openAddFileDrawer() {
 	currentFileContent.value = '';
 	isEditingInDrawer.value = true;
 	fileDrawerVisible.value = true;
+}
+
+async function openComposePreview() {
+	composePreviewYaml.value = '';
+	composePreviewModalRef.value?.showModal();
+	try {
+		await executeComposePreview(async () => {
+			const { compose_yaml } = await applicationApi.previewCompose(applicationId);
+			composePreviewYaml.value = compose_yaml;
+		});
+	} catch (e: unknown) {
+		toast.error(e instanceof Error ? e.message : '加载预览失败');
+	}
+}
+
+function closeComposePreview() {
+	composePreviewModalRef.value?.close();
+	composePreviewYaml.value = '';
 }
 
 function handleDrawerClose() {

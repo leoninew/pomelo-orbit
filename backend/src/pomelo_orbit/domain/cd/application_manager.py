@@ -42,6 +42,16 @@ class ApplicationManager(ABC):
     def render_compose(self, application_code: str, content: str, filename: str) -> str: ...
 
     @abstractmethod
+    def preview_docker_compose(
+        self,
+        application_code: str,
+        compose_path: str,
+        compose_content: str,
+        service_configs: list[ApplicationServiceConfig] | None,
+        routes: list[ApplicationRoute] | None,
+    ) -> str: ...
+
+    @abstractmethod
     def get_domain_suffix(self) -> str: ...
 
     @abstractmethod

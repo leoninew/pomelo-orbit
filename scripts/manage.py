@@ -17,6 +17,7 @@ Pomelo Orbit Remote Deployment Tool
   POMELO_ORBIT_JWT__SECRET_KEY    - JWT 密钥（必填）
   POMELO_ORBIT_IMAGE              - Docker 镜像（可选，默认从数据库读取）
   POMELO_ORBIT_TRAEFIK__API_URL   - Traefik API 地址（可选）
+  GHCR_TOKEN                      - GitHub Container Registry 令牌（可选，拉取私有镜像需要）
 
 用法:
   python scripts/renew.py install [--image IMAGE]    - 初次部署（从数据库读取配置）
@@ -25,7 +26,7 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/renew.py tunnel stop                - 停止 SSH 隧道
   python scripts/renew.py tunnel status              - 查看隧道状态
   python scripts/renew.py exec <command>             - 执行远程命令
-  python scripts/renew.py docker-compose <args>      - 执行 docker-compose 命令
+  python scripts/renew.py docker-compose <args>      - 执行 docker compose 命令
   python scripts/renew.py backup                     - 备份远程数据目录
 
 示例:
@@ -112,6 +113,7 @@ class Config:
         self.local_port = env_vars.get("LOCAL_PORT", self.remote_port)
         self.image = env_vars.get("POMELO_ORBIT_IMAGE")
         self.traefik_api_url = env_vars.get("POMELO_ORBIT_TRAEFIK__API_URL")
+        self.ghcr_token = env_vars.get("GHCR_TOKEN")
 
     @property
     def ssh_target(self) -> str:
@@ -362,11 +364,11 @@ class RemoteExecutor:
         os.system(f"ssh {self.config.ssh_target} {command}")
 
     def docker_compose(self, args: list[str]):
-        """执行 docker-compose 命令"""
+        """执行 docker compose 命令"""
         args_str = " ".join(args)
         # 使用双引号包裹整个命令，避免引号嵌套问题
         os.system(
-            f'ssh {self.config.ssh_target} "cd {self.config.remote_deploy_dir} && docker-compose --env-file .env {args_str}"'
+            f'ssh {self.config.ssh_target} "cd {self.config.remote_deploy_dir} && docker compose --env-file .env {args_str}"'
         )
 
 
@@ -397,6 +399,10 @@ class Deployer:
         # 传输管理脚本
         self._deploy_boot_script()
 
+        # 确保 traefik 网络存在并登录 ghcr
+        self._ensure_traefik_network()
+        self._docker_login()
+
         # 拉取镜像
         self._pull_image()
 
@@ -421,6 +427,10 @@ class Deployer:
         except SystemExit:
             logger.error("未检测到已有部署, 请先执行 install 命令")
             sys.exit(1)
+
+        # 确保 traefik 网络存在并登录 ghcr
+        self._ensure_traefik_network()
+        self._docker_login()
 
         # 更新镜像
         if image or self.config.image:
@@ -449,7 +459,7 @@ class Deployer:
 
         logger.info("检查远程环境...")
         run_ssh_command("command -v docker", "检查 docker")
-        run_ssh_command("command -v docker-compose", "检查 docker-compose")
+        run_ssh_command("docker compose version", "检查 docker compose")
         logger.info("远程环境检查通过\n")
 
     def _create_deploy_dir(self):
@@ -575,6 +585,30 @@ class Deployer:
         )
         logger.info("管理脚本传输完成\n")
 
+    def _ensure_traefik_network(self):
+        """确保 traefik Docker 网络存在且标签正确"""
+        logger.info("检查 Traefik 网络...")
+        # docker-compose.yml 声明了 external: true，网络必须由我们手动创建
+        # 带上 com.docker.compose.network 标签以避免 compose 的 warning
+        run_ssh_command(
+            "docker network inspect traefik >/dev/null || "
+            "docker network create --label com.docker.compose.network=traefik traefik",
+            "创建 traefik 网络",
+        )
+        logger.info("Traefik 网络就绪\n")
+
+    def _docker_login(self):
+        """登录 GitHub Container Registry（若配置了 GHCR_TOKEN）"""
+        if not self.config.ghcr_token:
+            logger.info("GHCR_TOKEN 未配置，跳过 docker login\n")
+            return
+        logger.info("登录 GitHub Container Registry...")
+        run_ssh_command(
+            f"echo '{self.config.ghcr_token}' | docker login ghcr.io -u leoninew --password-stdin",
+            "ghcr.io 登录",
+        )
+        logger.info("登录成功\n")
+
     def _pull_image(self):
         """拉取 Docker 镜像"""
         logger.info("拉取 Docker 镜像...")
@@ -609,7 +643,7 @@ class Deployer:
         """重启服务"""
         logger.info("重启服务...")
         run_ssh_command(
-            f"cd {self.config.remote_deploy_dir} && docker-compose --env-file .env up -d",
+            f"cd {self.config.remote_deploy_dir} && docker compose --env-file .env up -d",
             "重启服务",
         )
         logger.info("服务重启完成\n")
@@ -669,9 +703,9 @@ def main():
     )
 
     # docker-compose 命令
-    dc_parser = subparsers.add_parser("docker-compose", help="执行 docker-compose 命令")
+    dc_parser = subparsers.add_parser("docker-compose", help="执行 docker compose 命令")
     dc_parser.add_argument(
-        "dc_args", nargs=argparse.REMAINDER, help="docker-compose 参数"
+        "dc_args", nargs=argparse.REMAINDER, help="docker compose 参数"
     )
 
     # ssh 命令

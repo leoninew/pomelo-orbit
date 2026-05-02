@@ -17,7 +17,7 @@ class CredentialResp(BaseModel):
 
 class CredentialCreateReq(BaseModel):
     name: str = Field(min_length=1)
-    type: Literal["git_ssh", "git_token", "registry_token"]
+    type: Literal["git_ssh", "git_token", "gitee_token", "registry_token"]
     data: str = Field(min_length=1)
 
 
@@ -31,7 +31,7 @@ class CredentialExportResp(BaseModel):
 
     version: str = "1.0"
     name: str
-    type: Literal["git_ssh", "git_token", "registry_token"]
+    type: Literal["git_ssh", "git_token", "gitee_token", "registry_token"]
     data: str
 
 
@@ -40,5 +40,5 @@ class CredentialImportReq(BaseModel):
 
     version: str = "1.0"
     name: str = Field(min_length=1)
-    type: Literal["git_ssh", "git_token", "registry_token"]
+    type: Literal["git_ssh", "git_token", "gitee_token", "registry_token"]
     data: str = Field(min_length=1)

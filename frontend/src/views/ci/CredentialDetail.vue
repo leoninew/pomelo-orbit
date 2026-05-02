@@ -208,6 +208,9 @@ function getDataPlaceholder(type: string) {
 	if (type === 'git_token') {
 		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
 	}
+	if (type === 'gitee_token') {
+		return 'your_username:your_gitee_token';
+	}
 	return 'registry_token_here';
 }
 

@@ -248,17 +248,26 @@ class PipelineExecutorImpl(PipelineExecutor):
             env["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
 
         elif decrypted.type == CredentialType.GIT_TOKEN:
+            logger.info(f"Using GIT_TOKEN authentication: run={context.run_id}")
             token = decrypted.get_token()
-            repo_url = context.repository_url
-            if repo_url.startswith("git@"):
-                without_prefix = repo_url[len("git@") :]
-                host, path = without_prefix.split(":", 1)
-                repo_url = f"https://{token}@{host}/{path}"
-            elif repo_url.startswith("https://"):
-                repo_url = repo_url.replace("https://", f"https://{token}@")
+            repo_url = self._build_authenticated_url(context.repository_url, token)
             # 直接替换脚本中已渲染的 SSH URL 为带 token 的 HTTPS URL
             stage = copy(stage)
             stage.script = stage.script.replace(context.repository_url, repo_url)
+            # 设置 GIT_TERMINAL_PROMPT=0 禁止 Git 交互式提示密码
+            env["GIT_TERMINAL_PROMPT"] = "0"
+
+        elif decrypted.type == CredentialType.GITEE_TOKEN:
+            logger.info(f"Using GITEE_TOKEN authentication: run={context.run_id}")
+            username, token = decrypted.get_gitee_credentials()
+            # Gitee 需要 username:token 格式
+            auth_part = f"{username}:{token}"
+            repo_url = self._build_authenticated_url(context.repository_url, auth_part)
+            # 直接替换脚本中已渲染的 SSH URL 为带凭据的 HTTPS URL
+            stage = copy(stage)
+            stage.script = stage.script.replace(context.repository_url, repo_url)
+            # 设置 GIT_TERMINAL_PROMPT=0 禁止 Git 交互式提示密码
+            env["GIT_TERMINAL_PROMPT"] = "0"
 
         else:
             raise RuntimeError(f"Unsupported credential type for clone: {decrypted.type}")
@@ -287,6 +296,28 @@ class PipelineExecutorImpl(PipelineExecutor):
                 key_path.unlink()
 
         return exit_code, output
+
+    def _build_authenticated_url(self, repo_url: str, auth_part: str) -> str:
+        """构造带认证信息的 HTTPS URL
+        
+        Args:
+            repo_url: 原始仓库 URL（git@ 或 https:// 格式）
+            auth_part: 认证部分（token 或 username:token）
+            
+        Returns:
+            带认证信息的 HTTPS URL
+            
+        Raises:
+            ValueError: 不支持的 URL 格式
+        """
+        if repo_url.startswith("git@"):
+            without_prefix = repo_url[len("git@") :]
+            host, path = without_prefix.split(":", 1)
+            return f"https://{auth_part}@{host}/{path}"
+        elif repo_url.startswith("https://"):
+            return repo_url.replace("https://", f"https://{auth_part}@")
+        else:
+            raise ValueError(f"Unsupported repository URL format: {repo_url}")
 
     async def _cancel_remaining(
         self,

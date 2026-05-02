@@ -99,7 +99,8 @@
 						<legend class="fieldset-legend">凭据类型</legend>
 						<select v-model="form.type" class="select w-full" :disabled="isEditing">
 							<option value="git_ssh">Git SSH</option>
-							<option value="git_token">Git Token</option>
+							<option value="git_token">Git Token（GitHub/GitLab）</option>
+							<option value="gitee_token">Gitee 私人令牌</option>
 							<option value="registry_token">Registry Token</option>
 						</select>
 					</fieldset>
@@ -168,7 +169,8 @@
 						<legend class="fieldset-legend">凭据类型</legend>
 						<select v-model="importForm.type" class="select w-full">
 							<option value="git_ssh">Git SSH</option>
-							<option value="git_token">Git Token</option>
+							<option value="git_token">Git Token（GitHub/GitLab）</option>
+							<option value="gitee_token">Gitee 私人令牌</option>
 							<option value="registry_token">Registry Token</option>
 						</select>
 					</fieldset>
@@ -323,6 +325,9 @@ function getDataPlaceholder(type: string) {
 	}
 	if (type === 'git_token') {
 		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+	}
+	if (type === 'gitee_token') {
+		return 'your_username:your_gitee_token';
 	}
 	return 'registry_token_here';
 }

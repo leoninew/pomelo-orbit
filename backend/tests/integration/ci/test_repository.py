@@ -75,6 +75,76 @@ class TestProjectUpdate:
         assert resp.status_code == 200
         assert resp.json()["name"] == "updated-project"
 
+    def test_preserves_variables_when_updating_basic_info(self, auth_client, test_credential):
+        """修改基本信息时应保留原有变量"""
+        # 1. 创建带变量的项目
+        resp = auth_client.post(
+            "/api/ci/repository",
+            json={
+                "name": "test-preserve-vars",
+                "code": "test-preserve-vars",
+                "repository_url": "https://github.com/test/repo.git",
+                "git_credential_id": test_credential.id,
+                "variable_overrides": [
+                    {"name": "VAR1", "value": "value1"},
+                    {"name": "VAR2", "value": "value2"},
+                ],
+            },
+        )
+        assert resp.status_code == 201
+        project_id = resp.json()["id"]
+        
+        # 2. 更新基本信息（不传 variable_overrides）
+        resp = auth_client.put(
+            f"/api/ci/repository/{project_id}",
+            json={
+                "name": "updated-name",
+                "repository_url": "https://github.com/test/updated.git",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "updated-name"
+        assert data["repository_url"] == "https://github.com/test/updated.git"
+        
+        # 3. 验证变量仍然存在
+        custom_vars = [v for v in data["variable_declarations"] if v["source"] == "repository_custom"]
+        assert len(custom_vars) == 2
+        var_dict = {v["name"]: v["value"] for v in custom_vars}
+        assert var_dict == {"VAR1": "value1", "VAR2": "value2"}
+
+    def test_can_clear_variables_explicitly(self, auth_client, test_credential):
+        """明确传递空列表可以清空变量"""
+        # 1. 创建带变量的项目
+        resp = auth_client.post(
+            "/api/ci/repository",
+            json={
+                "name": "test-clear-vars",
+                "code": "test-clear-vars",
+                "repository_url": "https://github.com/test/repo.git",
+                "git_credential_id": test_credential.id,
+                "variable_overrides": [
+                    {"name": "VAR1", "value": "value1"},
+                ],
+            },
+        )
+        assert resp.status_code == 201
+        project_id = resp.json()["id"]
+        
+        # 2. 明确传递空列表清空变量
+        resp = auth_client.put(
+            f"/api/ci/repository/{project_id}",
+            json={
+                "variable_overrides": [],
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        
+        # 3. 验证变量已清空
+        custom_vars = [v for v in data["variable_declarations"] if v["source"] == "repository_custom"]
+        assert len(custom_vars) == 0
+
 
 class TestProjectDelete:
     def test_deletes_project(self, auth_client, db_session, test_project):

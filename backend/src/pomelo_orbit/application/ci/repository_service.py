@@ -81,11 +81,18 @@ class RepositoryService:
         repository_id: str,
         name: str | None = None,
         repository_url: str | None = None,
-        variable_overrides: list[VariableDeclaration] | None = None,
+        variable_overrides: list[VariableDeclaration] | None = MISSING,  # type: ignore[assignment]
         git_credential_id: str | None = MISSING,  # type: ignore[assignment]
         default_branch: str | None = None,
     ) -> Repository:
-        """更新项目"""
+        """更新项目
+        
+        Args:
+            variable_overrides: 变量覆盖列表
+                - MISSING: 不更新（保持原值）
+                - None: 清空变量列表（转换为空列表）
+                - list: 更新为新值
+        """
         repository = self.get_repository(repository_id)
 
         # 验证凭据存在（如果要更新且非置空）
@@ -99,7 +106,11 @@ class RepositoryService:
         repository.update(
             name=name,
             repository_url=repository_url,
-            variable_overrides=self.variable_resolver.sanitize_variable_overrides(variable_overrides),
+            variable_overrides=(
+                self.variable_resolver.sanitize_variable_overrides(variable_overrides)
+                if variable_overrides is not MISSING  # type: ignore[comparison-overlap]
+                else MISSING  # type: ignore[arg-type]
+            ),
             git_credential_id=git_credential_id,
             default_branch=default_branch,
         )

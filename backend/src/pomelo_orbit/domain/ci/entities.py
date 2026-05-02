@@ -59,7 +59,7 @@ class Repository:
         self,
         name: str | None = None,
         repository_url: str | None = None,
-        variable_overrides: list[VariableDeclaration] | None = None,
+        variable_overrides: list[VariableDeclaration] | None = MISSING,  # type: ignore[assignment]  # MISSING 作哨兵，区分"未传"和"传了 None（置空）"
         git_credential_id: str | None = MISSING,  # type: ignore[assignment]  # MISSING 作哨兵，区分"未传"和"传了 None（置空）"
         default_branch: str | None = None,
     ) -> None:
@@ -67,8 +67,8 @@ class Repository:
             self.name = name
         if repository_url is not None:
             self.repository_url = repository_url
-        if variable_overrides is not None:
-            self.variable_overrides = variable_overrides
+        if variable_overrides is not MISSING:  # type: ignore[comparison-overlap]
+            self.variable_overrides = variable_overrides if variable_overrides is not None else []
         if git_credential_id is not MISSING:  # type: ignore[comparison-overlap]
             self.git_credential_id = git_credential_id
         if default_branch is not None:
@@ -149,9 +149,21 @@ class Credential:
         return self.encrypted_data
 
     def get_token(self) -> str:
-        if self.type != CredentialType.GIT_TOKEN:
+        if self.type not in (CredentialType.GIT_TOKEN, CredentialType.GITEE_TOKEN):
             raise ValueError(f"Credential type {self.type} has no token")
         return self.encrypted_data
+
+    def get_gitee_credentials(self) -> tuple[str, str]:
+        """获取 Gitee 凭据，返回 (username, token)"""
+        if self.type != CredentialType.GITEE_TOKEN:
+            raise ValueError(f"Credential type {self.type} is not gitee_token")
+        # encrypted_data 格式: username:token
+        if ":" not in self.encrypted_data:
+            raise ValueError("Gitee token must be in format 'username:token'")
+        username, token = self.encrypted_data.split(":", 1)
+        if not username or not token:
+            raise ValueError("Gitee token format invalid: username and token cannot be empty")
+        return username, token
 
     @staticmethod
     def create(name: str, type: CredentialType, encrypted_data: str) -> "Credential":

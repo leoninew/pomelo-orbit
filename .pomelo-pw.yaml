@@ -1,7 +1,7 @@
 name: pomelo-orbit-ui-review
 description: UI review for implemented features
 variables:
-  base_url: "http://localhost:9002"
+  base_url: "http://localhost:10002"
   username: "admin"
   password: "admin"
 

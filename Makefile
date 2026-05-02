@@ -45,8 +45,8 @@ install:
 	@echo "✓ 所有依赖安装完成"
 
 dev-backend:
-	@echo "启动后端服务器 (端口 9001)..."
-	cd backend && PYTHONUTF8=1 uv run python -m pomelo_orbit.main --port 9001 --reload
+	@echo "启动后端服务器 (端口 10001)..."
+	cd backend && PYTHONUTF8=1 uv run python -m pomelo_orbit.main --port 10001 --reload
 
 dev-frontend:
 	@echo "启动前端服务器 (端口 9002)..."

@@ -299,14 +299,14 @@ class PipelineExecutorImpl(PipelineExecutor):
 
     def _build_authenticated_url(self, repo_url: str, auth_part: str) -> str:
         """构造带认证信息的 HTTPS URL
-        
+
         Args:
             repo_url: 原始仓库 URL（git@ 或 https:// 格式）
             auth_part: 认证部分（token 或 username:token）
-            
+
         Returns:
             带认证信息的 HTTPS URL
-            
+
         Raises:
             ValueError: 不支持的 URL 格式
         """
@@ -314,10 +314,9 @@ class PipelineExecutorImpl(PipelineExecutor):
             without_prefix = repo_url[len("git@") :]
             host, path = without_prefix.split(":", 1)
             return f"https://{auth_part}@{host}/{path}"
-        elif repo_url.startswith("https://"):
+        if repo_url.startswith("https://"):
             return repo_url.replace("https://", f"https://{auth_part}@")
-        else:
-            raise ValueError(f"Unsupported repository URL format: {repo_url}")
+        raise ValueError(f"Unsupported repository URL format: {repo_url}")
 
     async def _cancel_remaining(
         self,

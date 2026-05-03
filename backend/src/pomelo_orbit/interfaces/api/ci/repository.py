@@ -117,14 +117,10 @@ def update_repository(
         name=data.name,
         repository_url=data.repository_url,
         variable_overrides=(
-            data.variable_overrides
-            if "variable_overrides" in data.model_fields_set
-            else MISSING  # type: ignore[arg-type]
+            data.variable_overrides if "variable_overrides" in data.model_fields_set else MISSING  # type: ignore[arg-type]
         ),
         git_credential_id=(
-            data.git_credential_id
-            if "git_credential_id" in data.model_fields_set
-            else MISSING  # type: ignore[arg-type]
+            data.git_credential_id if "git_credential_id" in data.model_fields_set else MISSING  # type: ignore[arg-type]
         ),
         default_branch=data.default_branch,
     )

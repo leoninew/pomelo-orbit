@@ -93,7 +93,7 @@ class TestProjectUpdate:
         )
         assert resp.status_code == 201
         project_id = resp.json()["id"]
-        
+
         # 2. 更新基本信息（不传 variable_overrides）
         resp = auth_client.put(
             f"/api/ci/repository/{project_id}",
@@ -106,7 +106,7 @@ class TestProjectUpdate:
         data = resp.json()
         assert data["name"] == "updated-name"
         assert data["repository_url"] == "https://github.com/test/updated.git"
-        
+
         # 3. 验证变量仍然存在
         custom_vars = [v for v in data["variable_declarations"] if v["source"] == "repository_custom"]
         assert len(custom_vars) == 2
@@ -130,7 +130,7 @@ class TestProjectUpdate:
         )
         assert resp.status_code == 201
         project_id = resp.json()["id"]
-        
+
         # 2. 明确传递空列表清空变量
         resp = auth_client.put(
             f"/api/ci/repository/{project_id}",
@@ -140,7 +140,7 @@ class TestProjectUpdate:
         )
         assert resp.status_code == 200
         data = resp.json()
-        
+
         # 3. 验证变量已清空
         custom_vars = [v for v in data["variable_declarations"] if v["source"] == "repository_custom"]
         assert len(custom_vars) == 0

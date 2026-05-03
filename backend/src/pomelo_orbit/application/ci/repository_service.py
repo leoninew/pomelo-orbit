@@ -86,7 +86,7 @@ class RepositoryService:
         default_branch: str | None = None,
     ) -> Repository:
         """更新项目
-        
+
         Args:
             variable_overrides: 变量覆盖列表
                 - MISSING: 不更新（保持原值）
@@ -109,7 +109,7 @@ class RepositoryService:
             variable_overrides=(
                 self.variable_resolver.sanitize_variable_overrides(variable_overrides)
                 if variable_overrides is not MISSING  # type: ignore[comparison-overlap]
-                else MISSING  # type: ignore[arg-type]
+                else MISSING
             ),
             git_credential_id=git_credential_id,
             default_branch=default_branch,

@@ -9,12 +9,13 @@ from pydantic import BaseModel
 
 class CredentialType(StrEnum):
     """凭据类型枚举
-    
+
     - GIT_SSH: Git SSH 私钥
     - GIT_TOKEN: Git Token（GitHub/GitLab，仅需 token）
     - GITEE_TOKEN: Gitee 私人令牌（需要 username:token 格式）
     - REGISTRY_TOKEN: 镜像仓库 Token
     """
+
     GIT_SSH = "git_ssh"
     GIT_TOKEN = "git_token"
     GITEE_TOKEN = "gitee_token"

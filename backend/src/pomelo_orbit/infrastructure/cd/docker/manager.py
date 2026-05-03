@@ -4,13 +4,12 @@ Docker 应用管理器
 """
 
 import asyncio
-import json
 import logging
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import TextIO, cast
+from typing import TextIO
 
 import yaml
 from dynaconf import Dynaconf
@@ -19,6 +18,7 @@ from jinja2 import BaseLoader, Environment, StrictUndefined, TemplateError, Unde
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.entities import ApplicationRoute, ApplicationServiceConfig
 from pomelo_orbit.infrastructure.config import get_project_root
+from pomelo_orbit.infrastructure.docker import detect_container_id, get_container_mount_source
 
 logger = logging.getLogger(__name__)
 
@@ -30,50 +30,6 @@ class ApplicationManagerImpl(ApplicationManager):
         self.settings = settings
 
     # ==================== 路径获取 ====================
-    def _detect_container_id(self) -> str | None:
-        # cgroup v1: /proc/self/cgroup 每行格式如 "12:devices:/docker/<64-hex-id>"
-        try:
-            cgroup = Path("/proc/self/cgroup")
-            if cgroup.is_file():
-                for line in cgroup.read_text().splitlines():
-                    if "docker" in line:
-                        for part in reversed(line.split("/")):
-                            if len(part) == 64 and all(c in "0123456789abcdef" for c in part):
-                                return part
-        except Exception:
-            pass
-
-        # cgroup v2: /proc/self/cgroup 只有 "0::/"，改从 /proc/self/mountinfo 提取
-        # 其中 /etc/hostname 挂载行包含 /data/docker/containers/<64-hex-id>/hostname
-        try:
-            mountinfo = Path("/proc/self/mountinfo")
-            if mountinfo.is_file():
-                for line in mountinfo.read_text().splitlines():
-                    if "/etc/hostname" in line:
-                        for part in line.split("/"):
-                            if len(part) == 64 and all(c in "0123456789abcdef" for c in part):
-                                return part
-        except Exception:
-            pass
-
-        logger.warning("Container ID auto-detection failed, falling back to local path")
-        return None
-
-    def _get_container_mount(self, container_id: str) -> str:
-        result = subprocess.run(
-            ["docker", "inspect", "--format", "{{json .Mounts}}", container_id],
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-        assert result.returncode == 0, "Auto-detect: docker inspect failed"
-        mounts = json.loads(result.stdout)
-        for mount in mounts:
-            if mount.get("Type") == "bind" and mount.get("Destination", "") == "/app/data":
-                source = mount.get("Source")
-                return cast("str", source)
-        raise RuntimeError("get container mount bind failed")
-
     def get_app_working_dir(self, application_code: str) -> Path:
         """获取运行时目录"""
         return get_project_root() / "data" / "cd" / application_code
@@ -82,12 +38,12 @@ class ApplicationManagerImpl(ApplicationManager):
     def _render_template(self, application_code: str, content: str) -> str:
         # physical_dir: {root} 的宿主机路径（data 目录的上级）
         # physical_app_dir: {root}/data/cd/{app_code} 的宿主机路径
-        container_id = self._detect_container_id()
+        container_id = detect_container_id()
         logger.debug(f"Rendering template, app={application_code}, container_id={container_id}")
 
         if container_id:
             # 容器内：挂载点是 {root}/data，往上一级得到 physical_dir
-            mount = Path(self._get_container_mount(container_id))
+            mount = Path(get_container_mount_source(container_id, "/app/data"))
             # pomelo-orbit 自举部署需要完整的宿主机路径配置
             physical_dir = str(mount.parent).replace("\\", "/")
             physical_app_dir = str(mount / "cd" / application_code).replace("\\", "/")
@@ -190,9 +146,7 @@ class ApplicationManagerImpl(ApplicationManager):
 
         return yaml.dump(data, allow_unicode=True, default_flow_style=False)
 
-    def _apply_service_configs(
-        self, compose_yaml: str, service_configs: list[ApplicationServiceConfig] | None
-    ) -> str:
+    def _apply_service_configs(self, compose_yaml: str, service_configs: list[ApplicationServiceConfig] | None) -> str:
         if not service_configs:
             return compose_yaml
 

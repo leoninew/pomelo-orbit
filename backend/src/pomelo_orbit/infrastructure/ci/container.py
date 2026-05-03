@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 import docker
 from docker.errors import ImageNotFound
 
+from pomelo_orbit.infrastructure.docker import PhysicalPathResolver
+
 logger = logging.getLogger(__name__)
 
 
@@ -25,6 +27,7 @@ class ContainerExecutor:
 
     def __init__(self):
         self._client = None
+        self._path_resolver = PhysicalPathResolver()
 
     @property
     def client(self):
@@ -62,10 +65,14 @@ class ContainerExecutor:
             ContainerExecutionError: 执行失败
         """
         try:
+            # 将容器内路径转换为宿主机物理路径
+            physical_workspace_path = self._path_resolver.convert_to_physical_path(workspace_path)
+            physical_artifacts_path = self._path_resolver.convert_to_physical_path(artifacts_path)
+
             # 构造卷挂载（使用 dict 格式，Docker SDK 正确处理 Windows 盘符路径）
             volume_binds = {
-                str(workspace_path): {"bind": "/workspace", "mode": "rw"},
-                str(artifacts_path): {"bind": "/artifacts", "mode": "rw"},
+                physical_workspace_path: {"bind": "/workspace", "mode": "rw"},
+                physical_artifacts_path: {"bind": "/artifacts", "mode": "rw"},
                 "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
             }
 

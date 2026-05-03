@@ -782,7 +782,13 @@ class TestPreviewComposeYaml:
             app_service.preview_compose_yaml("app-1")
 
     def test_preview_with_route_managed(
-        self, app_service, mock_app_repo, mock_config_file_repo, mock_app_service_config_repo, mock_app_route_repo, mock_app_manager
+        self,
+        app_service,
+        mock_app_repo,
+        mock_config_file_repo,
+        mock_app_service_config_repo,
+        mock_app_route_repo,
+        mock_app_manager,
     ):
         """route_managed=True 时应传入路由列表"""
         from pomelo_orbit.domain.cd.entities import ApplicationRoute

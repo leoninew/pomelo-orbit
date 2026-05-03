@@ -118,7 +118,9 @@ def _build_provider() -> Provider:
     # REQUEST scope — CD
     provider.provide(get_application_repo, scope=Scope.REQUEST, provides=ApplicationRepository)
     provider.provide(get_application_route_repo, scope=Scope.REQUEST, provides=ApplicationRouteRepository)
-    provider.provide(get_application_service_config_repo, scope=Scope.REQUEST, provides=ApplicationServiceConfigRepository)
+    provider.provide(
+        get_application_service_config_repo, scope=Scope.REQUEST, provides=ApplicationServiceConfigRepository
+    )
     provider.provide(get_config_file_repo, scope=Scope.REQUEST, provides=ConfigFileRepository)
     provider.provide(get_deployment_repo, scope=Scope.REQUEST, provides=DeploymentRepository)
     provider.provide(ApplicationService, scope=Scope.REQUEST)

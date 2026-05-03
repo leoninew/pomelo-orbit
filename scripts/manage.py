@@ -412,8 +412,12 @@ class Deployer:
         logger.info("\n=== 部署成功! ===\n")
         logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
 
-    def upgrade(self, image: str | None = None, skip_pull: bool = False):
+    def upgrade(self, image: str, skip_pull: bool = False):
         """更新部署：只更新镜像和 .env"""
+        if not image:
+            logger.error("upgrade 命令必须指定 --image 参数")
+            sys.exit(1)
+
         logger.info("=== Pomelo Orbit 更新部署 ===\n")
         logger.info(f"目标服务器: {self.config.ssh_target}")
         logger.info(f"部署目录: {self.config.remote_deploy_dir}\n")
@@ -433,12 +437,11 @@ class Deployer:
         self._docker_login()
 
         # 更新镜像
-        if image or self.config.image:
-            self._update_image(image or self.config.image)
+        self._update_image(image)
 
-        # 拉取镜像
+        # 检查镜像是否已存在，不存在才拉取
         if not skip_pull:
-            self._pull_image()
+            self._pull_image_if_needed(image)
 
         # 重启服务
         self._restart_service()
@@ -620,6 +623,25 @@ class Deployer:
         run_ssh_command(f"docker pull {image}", "拉取镜像")
         logger.info("镜像拉取完成\n")
 
+    def _pull_image_if_needed(self, image: str):
+        """检查镜像是否存在，不存在才拉取"""
+        logger.info("检查 Docker 镜像...")
+        logger.info(f"  镜像: {image}")
+        
+        # 检查镜像是否已存在
+        result = subprocess.run(
+            ["ssh", self.config.ssh_target, f"docker images -q {image}"],
+            capture_output=True,
+            text=True,
+        )
+        
+        if result.stdout.strip():
+            logger.info("  镜像已存在，跳过拉取\n")
+        else:
+            logger.info("  镜像不存在，开始拉取...")
+            run_ssh_command(f"docker pull {image}", "拉取镜像")
+            logger.info("镜像拉取完成\n")
+
     def _start_service(self):
         """启动服务"""
         logger.info("启动服务...")
@@ -682,7 +704,7 @@ def main():
 
     # upgrade 命令
     upgrade_parser = subparsers.add_parser("upgrade", help="更新已有环境")
-    upgrade_parser.add_argument("--image", help="指定 Docker 镜像")
+    upgrade_parser.add_argument("--image", required=True, help="指定 Docker 镜像（必填）")
     upgrade_parser.add_argument(
         "--skip-pull", action="store_true", help="跳过拉取镜像"
     )

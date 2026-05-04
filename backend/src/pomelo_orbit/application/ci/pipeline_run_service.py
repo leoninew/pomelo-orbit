@@ -380,7 +380,9 @@ class PipelineRunService:
             self.run_repo.commit()
             return
 
-        workspace_path, artifacts_path = create_workspace(repository.code, run.id)
+        # 创建工作目录
+        create_workspace(repository.code, run.id)
+
         context = ExecutionContext(
             run_id=run.id,
             repository_id=repository.id,
@@ -391,8 +393,6 @@ class PipelineRunService:
             repository_url=repository.repository_url,
             credential_id=repository.git_credential_id,
             variables=variables,
-            workspace_path=str(workspace_path),
-            artifacts_path=str(artifacts_path),
             retry_of=run.retry_of,
         )
 

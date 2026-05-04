@@ -20,8 +20,6 @@ class ExecutionContext:
         repository_url: str,
         credential_id: str | None,
         variables: dict[str, Any],
-        workspace_path: str,
-        artifacts_path: str,
         retry_of: str | None = None,
     ):
         self.run_id = run_id
@@ -33,8 +31,6 @@ class ExecutionContext:
         self.repository_url = repository_url
         self.credential_id = credential_id
         self.variables = variables
-        self.workspace_path = workspace_path
-        self.artifacts_path = artifacts_path
         self.retry_of = retry_of
         self.error_message: str | None = None  # 执行失败时的错误消息
 

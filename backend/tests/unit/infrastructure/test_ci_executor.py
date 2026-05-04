@@ -35,8 +35,6 @@ def make_context(run_id: str = "run-1", retry_of: str | None = None, variables: 
         project_code="project-1",
         repository_url="https://github.com/user/repo.git",
         credential_id=None,
-        workspace_path="/workspace",
-        artifacts_path="/artifacts",
         variables=variables or {},
         retry_of=retry_of,
     )
@@ -134,9 +132,15 @@ class TestPipelineExecutorImpl:
         artifact_repo = Mock()
         container_executor = AsyncMock()
         container_executor.run.return_value = (0, "Success")
-        # 创建真实文件，通过文件存在性检查
-        artifact_file = tmp_path / "output.txt"
+
+        # 创建真实文件在正确的 artifacts 目录
+        from pomelo_orbit.infrastructure.ci.workspace import get_artifacts_path
+
+        artifacts_path = get_artifacts_path("run-1")
+        artifacts_path.mkdir(parents=True, exist_ok=True)
+        artifact_file = artifacts_path / "output.txt"
         artifact_file.write_text("artifact content")
+
         s = StageDefinition(
             name="build",
             id="build",
@@ -154,14 +158,16 @@ class TestPipelineExecutorImpl:
             project_code="project-1",
             repository_url="https://github.com/user/repo.git",
             credential_id=None,
-            workspace_path="/workspace",
-            artifacts_path=str(tmp_path),
             variables={},
         )
         executor = make_executor(container_executor=container_executor, artifact_repo=artifact_repo)
         result = await executor.execute(context, [s])
         assert result is True
         assert artifact_repo.save.call_count == 1
+
+        # 清理测试文件
+        artifact_file.unlink()
+        artifacts_path.rmdir()
 
     @pytest.mark.asyncio
     async def test_environment_variables_passed_to_container(self):

@@ -54,8 +54,6 @@ class TestPipelineExecutorImpl:
             repository_url="https://github.com/test/repo",
             credential_id=None,
             variables={"key": "value"},
-            workspace_path="/tmp/workspace",
-            artifacts_path="/tmp/artifacts",
         )
 
     @pytest.mark.asyncio

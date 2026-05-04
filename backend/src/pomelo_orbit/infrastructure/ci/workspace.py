@@ -4,10 +4,25 @@ import shutil
 from pathlib import Path
 
 from pomelo_orbit.infrastructure.config import get_project_root
+from pomelo_orbit.infrastructure.docker import detect_container_id, get_container_mount_source
 
 
 def _ci_root() -> Path:
     return get_project_root() / "data" / "ci"
+
+
+def _get_physical_data_dir() -> Path:
+    """获取 data 目录的宿主机物理路径"""
+    container_id = detect_container_id()
+    if container_id:
+        try:
+            # 容器模式：获取 /app/data 的宿主机挂载源
+            mount_source = get_container_mount_source(container_id, "/app/data")
+            return Path(mount_source)
+        except RuntimeError as e:
+            raise RuntimeError(f"容器模式下无法解析物理数据目录: {e}。请确保容器运行时已挂载 /app/data 目录。") from e
+    # 本地模式：直接返回项目 data 目录
+    return get_project_root() / "data"
 
 
 def get_workspace_path(project_code: str) -> Path:
@@ -15,9 +30,19 @@ def get_workspace_path(project_code: str) -> Path:
     return _ci_root() / project_code / "workspace"
 
 
+def get_workspace_physical_path(project_code: str) -> Path:
+    """获取 workspace 的宿主机物理路径（用于 Docker 挂载）"""
+    return _get_physical_data_dir() / "ci" / project_code / "workspace"
+
+
 def get_artifacts_path(run_id: str) -> Path:
     """获取 artifacts 路径（按 run 隔离，挂载到容器 /artifacts）"""
     return _ci_root() / "runs" / run_id / "artifacts"
+
+
+def get_artifacts_physical_path(run_id: str) -> Path:
+    """获取 artifacts 的宿主机物理路径（用于 Docker 挂载）"""
+    return _get_physical_data_dir() / "ci" / "runs" / run_id / "artifacts"
 
 
 def get_stage_log_path(run_id: str, stage_run_id: str) -> Path:

@@ -195,7 +195,9 @@ const { status: modalStatus, execute: executeModal } = useStatusAsync();
 const repositories = ref<RepositoryListItem[]>([]);
 const credentials = ref<Credential[]>([]);
 const gitCredentials = computed(() =>
-	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token' || c.type === 'gitee_token')
+	credentials.value.filter(
+		(c) => c.type === 'git_ssh' || c.type === 'git_token' || c.type === 'gitee_token'
+	)
 );
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });

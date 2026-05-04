@@ -1,12 +1,12 @@
 """CI Container Executor 单元测试"""
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 from docker.errors import ImageNotFound
 
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutionError, ContainerExecutor
+from pomelo_orbit.infrastructure.ci.executor_impl import VolumeMount
 
 
 def make_mock_container(log_chunks: list[bytes], exit_code: int = 0) -> Mock:
@@ -24,9 +24,6 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_simple_command_success(self, mock_docker):
         """测试执行简单命令成功"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
         mock_client = Mock()
         mock_client.containers.run.return_value = make_mock_container([b"Build successful\n"])
         mock_docker.from_env.return_value = mock_client
@@ -36,10 +33,8 @@ class TestContainerExecutor:
         exit_code, logs = await executor.run(
             image="python:3.12",
             commands=["echo hello"],
-            volumes=None,
+            volumes=[],
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
         )
 
         assert exit_code == 0
@@ -59,10 +54,8 @@ class TestContainerExecutor:
         exit_code, _ = await executor.run(
             image="python:3.12",
             commands=["echo hello", "echo world"],
-            volumes=None,
+            volumes=[],
             environment=None,
-            workspace_path=Path("/tmp/workspace"),
-            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -83,10 +76,8 @@ class TestContainerExecutor:
         exit_code, _ = await executor.run(
             image="python:3.12",
             commands=["env"],
-            volumes=None,
+            volumes=[],
             environment=environment,
-            workspace_path=Path("/tmp/workspace"),
-            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -102,15 +93,16 @@ class TestContainerExecutor:
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
-        volumes = ["/host/cache:/cache", "/host/data:/data"]
+        volumes = [
+            VolumeMount(host_path="/host/cache", container_path="/cache", mode="rw"),
+            VolumeMount(host_path="/host/data", container_path="/data", mode="rw"),
+        ]
 
         exit_code, _ = await executor.run(
             image="python:3.12",
             commands=["ls /cache"],
             volumes=volumes,
             environment=None,
-            workspace_path=Path("/tmp/workspace"),
-            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -133,10 +125,8 @@ class TestContainerExecutor:
             await executor.run(
                 image="nonexistent:latest",
                 commands=["echo hello"],
-                volumes=None,
+                volumes=[],
                 environment=None,
-                workspace_path=Path("/tmp/workspace"),
-                artifacts_path=Path("/tmp/artifacts"),
             )
 
     @pytest.mark.asyncio
@@ -152,10 +142,8 @@ class TestContainerExecutor:
         exit_code, logs = await executor.run(
             image="python:3.12",
             commands=["exit 1"],
-            volumes=None,
+            volumes=[],
             environment=None,
-            workspace_path=Path("/tmp/workspace"),
-            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 1
@@ -165,31 +153,30 @@ class TestContainerExecutor:
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
     async def test_run_workspace_and_artifacts_mounted(self, mock_docker):
         """测试 workspace 和 artifacts 目录被正确挂载"""
-        workspace_path = Path("/tmp/workspace")
-        artifacts_path = Path("/tmp/artifacts")
-
         mock_client = Mock()
         mock_client.containers.run.return_value = make_mock_container([b"Mounted\n"])
         mock_docker.from_env.return_value = mock_client
 
         executor = ContainerExecutor()
+        volumes = [
+            VolumeMount(host_path="/host/workspace", container_path="/workspace", mode="rw"),
+            VolumeMount(host_path="/host/artifacts", container_path="/artifacts", mode="rw"),
+        ]
 
         exit_code, _ = await executor.run(
             image="python:3.12",
             commands=["ls"],
-            volumes=None,
+            volumes=volumes,
             environment=None,
-            workspace_path=workspace_path,
-            artifacts_path=artifacts_path,
         )
 
         assert exit_code == 0
         call_args = mock_client.containers.run.call_args
         volume_binds = call_args[1]["volumes"]
-        assert str(workspace_path) in volume_binds
-        assert volume_binds[str(workspace_path)]["bind"] == "/workspace"
-        assert str(artifacts_path) in volume_binds
-        assert volume_binds[str(artifacts_path)]["bind"] == "/artifacts"
+        assert "/host/workspace" in volume_binds
+        assert volume_binds["/host/workspace"]["bind"] == "/workspace"
+        assert "/host/artifacts" in volume_binds
+        assert volume_binds["/host/artifacts"]["bind"] == "/artifacts"
 
     @pytest.mark.asyncio
     @patch("pomelo_orbit.infrastructure.ci.container.docker")
@@ -204,10 +191,8 @@ class TestContainerExecutor:
         exit_code, _ = await executor.run(
             image="python:3.12",
             commands=["pwd"],
-            volumes=None,
+            volumes=[],
             environment=None,
-            workspace_path=Path("/tmp/workspace"),
-            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -228,10 +213,8 @@ class TestContainerExecutor:
         exit_code, _ = await executor.run(
             image="python:3.12",
             commands=["echo done"],
-            volumes=None,
+            volumes=[],
             environment=None,
-            workspace_path=Path("/tmp/workspace"),
-            artifacts_path=Path("/tmp/artifacts"),
         )
 
         assert exit_code == 0
@@ -251,8 +234,6 @@ class TestContainerExecutor:
             await executor.run(
                 image="python:3.12",
                 commands=["echo hello"],
-                volumes=None,
+                volumes=[],
                 environment=None,
-                workspace_path=Path("/tmp/workspace"),
-                artifacts_path=Path("/tmp/artifacts"),
             )

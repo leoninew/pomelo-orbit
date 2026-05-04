@@ -49,7 +49,7 @@ dev-backend:
 	cd backend && PYTHONUTF8=1 uv run python -m pomelo_orbit.main --port 10001 --reload
 
 dev-frontend:
-	@echo "启动前端服务器 (端口 9002)..."
+	@echo "启动前端服务器 (端口 10002)..."
 	cd frontend && yarn dev
 
 lint:

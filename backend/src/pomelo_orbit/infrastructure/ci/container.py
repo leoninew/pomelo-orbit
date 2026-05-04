@@ -4,16 +4,15 @@ import asyncio
 import logging
 import re
 from functools import partial
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from typing import TextIO
 
+    from pomelo_orbit.infrastructure.ci.executor_impl import VolumeMount
+
 import docker
 from docker.errors import ImageNotFound
-
-from pomelo_orbit.infrastructure.docker import PhysicalPathResolver
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,6 @@ class ContainerExecutor:
 
     def __init__(self):
         self._client = None
-        self._path_resolver = PhysicalPathResolver()
 
     @property
     def client(self):
@@ -39,12 +37,9 @@ class ContainerExecutor:
         self,
         image: str,
         commands: list[str] | None,
-        volumes: list[str] | None,
+        volumes: list["VolumeMount"],
         environment: dict[str, str] | None,
-        workspace_path: Path,
-        artifacts_path: Path,
         entrypoint: str = "sh",
-        extra_binds: dict[str, dict[str, str]] | None = None,
         log_file: "TextIO | None" = None,
     ) -> tuple[int, str]:
         """
@@ -53,10 +48,8 @@ class ContainerExecutor:
         Args:
             image: 镜像名称
             commands: 命令列表
-            volumes: 卷挂载列表（格式：host_path:container_path）
+            volumes: 卷挂载列表
             environment: 环境变量
-            workspace_path: workspace 路径
-            artifacts_path: artifacts 路径
 
         Returns:
             (exit_code, logs)
@@ -65,27 +58,11 @@ class ContainerExecutor:
             ContainerExecutionError: 执行失败
         """
         try:
-            # 将容器内路径转换为宿主机物理路径
-            physical_workspace_path = self._path_resolver.convert_to_physical_path(workspace_path)
-            physical_artifacts_path = self._path_resolver.convert_to_physical_path(artifacts_path)
-
-            # 构造卷挂载（使用 dict 格式，Docker SDK 正确处理 Windows 盘符路径）
-            volume_binds = {
-                physical_workspace_path: {"bind": "/workspace", "mode": "rw"},
-                physical_artifacts_path: {"bind": "/artifacts", "mode": "rw"},
-                "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
-            }
-
-            # 添加用户指定的卷
-            if volumes:
-                for vol in volumes:
-                    if ":" in vol:
-                        host_path, container_path = vol.split(":", 1)
-                        volume_binds[host_path] = {"bind": container_path, "mode": "rw"}
-
-            # 添加额外的 bind mounts（已是 dict 格式，避免 Windows 路径解析问题）
-            if extra_binds:
-                volume_binds.update(extra_binds)
+            # 构造卷挂载：将 VolumeMount 对象转换为 Docker API 格式
+            volume_binds: dict[str, dict[str, str]] = {}
+            for vol in volumes:
+                volume_binds.update(vol.to_docker_format())
+            volume_binds["/var/run/docker.sock"] = {"bind": "/var/run/docker.sock", "mode": "rw"}
 
             # 构造命令：用换行符拼接，保留注释和空行语义，sh -c 按行顺序执行
             command = None

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 from copy import copy
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,10 +21,30 @@ from pomelo_orbit.domain.ci.repositories import (
 from pomelo_orbit.domain.ci.value_objects import ArtifactType, CredentialType, StageDefinition
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.dependency_graph import CyclicDependencyError, DependencyGraph
-from pomelo_orbit.infrastructure.ci.workspace import get_secrets_path, get_stage_log_path
+from pomelo_orbit.infrastructure.ci.workspace import (
+    get_artifacts_path,
+    get_artifacts_physical_path,
+    get_secrets_path,
+    get_stage_log_path,
+    get_workspace_physical_path,
+)
 from pomelo_orbit.infrastructure.security import SecurityService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class VolumeMount:
+    """Docker 卷挂载配置"""
+
+    host_path: str
+    container_path: str
+    mode: str = "rw"
+
+    def to_docker_format(self) -> dict[str, dict[str, str]]:
+        """转换为 Docker API 所需的格式"""
+        return {self.host_path: {"bind": self.container_path, "mode": self.mode}}
+
 
 # 全局 task 注册表，用于支持真实取消。
 # 注意：此为进程级变量，仅在单进程/单 worker 部署下有效。
@@ -203,14 +224,27 @@ class PipelineExecutorImpl(PipelineExecutor):
         """普通容器执行：使用 context.variables 作为环境变量"""
         env = {k: str(v) for k, v in context.variables.items()}
 
+        # 构造 volumes：使用宿主机物理路径，确保子容器能正确挂载
+        # 容器模式下会自动转换为宿主机路径，本地模式下直接使用项目路径
+        volumes = [
+            VolumeMount(
+                host_path=str(get_workspace_physical_path(context.project_code)),
+                container_path="/workspace",
+                mode="rw",
+            ),
+            VolumeMount(
+                host_path=str(get_artifacts_physical_path(context.run_id)),
+                container_path="/artifacts",
+                mode="rw",
+            ),
+        ]
+
         commands = [line for line in stage.script.splitlines() if line.strip()]
         exit_code, output = await self.container_executor.run(
             image=stage.image,
             commands=commands,
             environment=env,
-            workspace_path=Path(context.workspace_path),
-            artifacts_path=Path(context.artifacts_path),
-            volumes=[],
+            volumes=volumes,
             log_file=log_file,
         )
         return exit_code, output
@@ -230,7 +264,7 @@ class PipelineExecutorImpl(PipelineExecutor):
         decrypted.encrypted_data = self.security_service.decrypt_value(credential.encrypted_data)
 
         env = {k: str(v) for k, v in context.variables.items()}
-        extra_binds: dict[str, dict[str, str]] = {}
+        extra_binds: list[VolumeMount] = []
         key_path: Path | None = None
 
         if decrypted.type == CredentialType.GIT_SSH:
@@ -244,7 +278,7 @@ class PipelineExecutorImpl(PipelineExecutor):
                 # chmod 失败时立即删除文件，避免以不安全权限留在磁盘
                 key_path.unlink(missing_ok=True)
                 raise
-            extra_binds[str(secrets_path)] = {"bind": "/run/secrets", "mode": "ro"}
+            extra_binds.append(VolumeMount(host_path=str(secrets_path), container_path="/run/secrets", mode="ro"))
             env["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
 
         elif decrypted.type == CredentialType.GIT_TOKEN:
@@ -279,15 +313,28 @@ class PipelineExecutorImpl(PipelineExecutor):
             commands.append("chmod 600 /run/secrets/id_rsa")
         commands.extend(script_lines)
 
+        # 构造 volumes：使用宿主机物理路径
+        volumes = [
+            VolumeMount(
+                host_path=str(get_workspace_physical_path(context.project_code)),
+                container_path="/workspace",
+                mode="rw",
+            ),
+            VolumeMount(
+                host_path=str(get_artifacts_physical_path(context.run_id)),
+                container_path="/artifacts",
+                mode="rw",
+            ),
+        ]
+        # 添加额外的挂载（如 SSH key）
+        volumes.extend(extra_binds)
+
         try:
             exit_code, output = await self.container_executor.run(
                 image=stage.image,
                 commands=commands,
                 environment=env,
-                workspace_path=Path(context.workspace_path),
-                artifacts_path=Path(context.artifacts_path),
-                volumes=[],
-                extra_binds=extra_binds,
+                volumes=volumes,
                 log_file=log_file,
             )
         finally:
@@ -338,9 +385,10 @@ class PipelineExecutorImpl(PipelineExecutor):
     def _save_artifacts(self, context: ExecutionContext, stage: StageDefinition, stage_name: str) -> None:
         if not stage.artifacts:
             return
+        artifacts_path = get_artifacts_path(context.run_id)
         for a in stage.artifacts:
             if a.type == ArtifactType.BINARY:
-                full_path = Path(context.artifacts_path) / a.path
+                full_path = artifacts_path / a.path
                 if not full_path.exists():
                     logger.warning(
                         f"Artifact file not found, skipping: run={context.run_id}, stage={stage_name}, path={full_path}"

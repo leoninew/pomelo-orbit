@@ -199,7 +199,11 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="serviceConfig in serviceConfigs" :key="serviceConfig.service_name" class="hover">
+							<tr
+								v-for="serviceConfig in serviceConfigs"
+								:key="serviceConfig.service_name"
+								class="hover"
+							>
 								<td class="text-sm">{{ serviceConfig.service_name }}</td>
 								<td class="text-sm">
 									<span v-if="getServiceDisplayImage(serviceConfig)" class="break-all">
@@ -221,7 +225,10 @@
 								</td>
 								<td>
 									<div class="flex items-center gap-3">
-										<button class="link link-primary" @click="openEditServiceConfigModal(serviceConfig)">
+										<button
+											class="link link-primary"
+											@click="openEditServiceConfigModal(serviceConfig)"
+										>
 											编辑
 										</button>
 										<button
@@ -245,7 +252,10 @@
 			<div class="card-body p-5">
 				<div class="flex items-center justify-between mb-4">
 					<h2 class="font-semibold">路由托管</h2>
-					<div class="tooltip tooltip-left" :data-tip="!application?.route_managed ? '请先在基本信息中启用路由托管' : undefined">
+					<div
+						class="tooltip tooltip-left"
+						:data-tip="!application?.route_managed ? '请先在基本信息中启用路由托管' : undefined"
+					>
 						<button
 							class="btn btn-sm btn-primary gap-1"
 							:disabled="!application?.route_managed"
@@ -287,7 +297,9 @@
 											class="link link-primary"
 											:class="{ 'opacity-30 pointer-events-none': !application?.route_managed }"
 											@click="openEditRouteModal(r)"
-										>编辑</button>
+										>
+											编辑
+										</button>
 										<button class="link link-error" @click="confirmDeleteRoute(r.id)">删除</button>
 									</div>
 								</td>
@@ -422,7 +434,9 @@
 						<legend class="fieldset-legend">路由托管</legend>
 						<label class="flex items-center gap-3 cursor-pointer">
 							<input v-model="editForm.route_managed" type="checkbox" class="toggle toggle-sm" />
-							<span class="text-sm text-base-content/70">启用后，部署时将自动生成 Traefik 路由配置</span>
+							<span class="text-sm text-base-content/70">
+								启用后，部署时将自动生成 Traefik 路由配置
+							</span>
 						</label>
 					</fieldset>
 				</div>
@@ -527,14 +541,20 @@
 					的镜像覆盖并回退到 compose 原值？
 				</p>
 				<div class="modal-action">
-					<button class="btn btn-error" :disabled="serviceConfigSaving" @click="executeResetServiceConfig">
+					<button
+						class="btn btn-error"
+						:disabled="serviceConfigSaving"
+						@click="executeResetServiceConfig"
+					>
 						<span v-if="serviceConfigSaving" class="loading loading-spinner loading-xs" />
 						删除
 					</button>
 					<button class="btn btn-ghost" @click="cancelResetServiceConfig">取消</button>
 				</div>
 			</div>
-			<form method="dialog" class="modal-backdrop"><button @click="cancelResetServiceConfig">close</button></form>
+			<form method="dialog" class="modal-backdrop">
+				<button @click="cancelResetServiceConfig">close</button>
+			</form>
 		</dialog>
 
 		<!-- Add/Edit route modal -->
@@ -566,11 +586,15 @@
 								<li v-for="s in composeServices" :key="s.service_name">
 									<a
 										class="text-xs px-3 py-1.5 rounded-none block truncate"
-										:class="{ 'bg-primary/10 font-medium': s.service_name === routeForm.service_name }"
+										:class="{
+											'bg-primary/10 font-medium': s.service_name === routeForm.service_name,
+										}"
 										@mousedown.prevent="selectComposeService(s)"
 									>
 										{{ s.service_name }}
-										<span class="text-base-content/40 ml-1">{{ s.default_domain }}:{{ s.default_port }}</span>
+										<span class="text-base-content/40 ml-1">
+											{{ s.default_domain }}:{{ s.default_port }}
+										</span>
 									</a>
 								</li>
 							</ul>
@@ -675,7 +699,18 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowLeft, ChevronDown, Download, Eye, FileX, Network, Package, Plus, Rocket, X } from 'lucide-vue-next';
+import {
+	ArrowLeft,
+	ChevronDown,
+	Download,
+	Eye,
+	FileX,
+	Network,
+	Package,
+	Plus,
+	Rocket,
+	X,
+} from 'lucide-vue-next';
 import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -760,8 +795,8 @@ const envs = computed(() =>
 const activeServiceConfig = computed(() =>
 	serviceConfigs.value.find((item) => item.service_name === selectedServiceName.value)
 );
-const currentServiceImage = computed(
-	() => (activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : '')
+const currentServiceImage = computed(() =>
+	activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : ''
 );
 const serviceConfigDirty = computed(
 	() => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
@@ -1037,8 +1072,14 @@ async function executeResetServiceConfig() {
 	}
 	try {
 		await executeServiceConfigSave(async () => {
-			const saved = await applicationApi.updateServiceConfig(applicationId, pendingDeleteServiceName.value, null);
-			const idx = serviceConfigs.value.findIndex((item) => item.service_name === saved.service_name);
+			const saved = await applicationApi.updateServiceConfig(
+				applicationId,
+				pendingDeleteServiceName.value,
+				null
+			);
+			const idx = serviceConfigs.value.findIndex(
+				(item) => item.service_name === saved.service_name
+			);
 			if (idx >= 0) {
 				serviceConfigs.value[idx] = saved;
 			} else {
@@ -1064,8 +1105,14 @@ async function saveServiceConfig() {
 	}
 	try {
 		await executeServiceConfigSave(async () => {
-			const saved = await applicationApi.updateServiceConfig(applicationId, active.service_name, serviceConfigForm.image);
-			const idx = serviceConfigs.value.findIndex((item) => item.service_name === saved.service_name);
+			const saved = await applicationApi.updateServiceConfig(
+				applicationId,
+				active.service_name,
+				serviceConfigForm.image
+			);
+			const idx = serviceConfigs.value.findIndex(
+				(item) => item.service_name === saved.service_name
+			);
 			if (idx >= 0) {
 				serviceConfigs.value[idx] = saved;
 			} else {

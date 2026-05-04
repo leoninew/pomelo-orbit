@@ -303,7 +303,9 @@ const templates = ref<PipelineTemplate[]>([]);
 const webhooks = ref<RepositoryWebhook[]>([]);
 const credentials = ref<Credential[]>([]);
 const gitCredentials = computed(() =>
-	credentials.value.filter((c) => c.type === 'git_ssh' || c.type === 'git_token' || c.type === 'gitee_token')
+	credentials.value.filter(
+		(c) => c.type === 'git_ssh' || c.type === 'git_token' || c.type === 'gitee_token'
+	)
 );
 
 const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();

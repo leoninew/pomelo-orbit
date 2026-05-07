@@ -1,0 +1,991 @@
+﻿
+<script setup lang="ts">
+import { ChevronDown, Plus, Search, X } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+// import { VueDraggable } from 'vue-draggable-plus';
+import { useRoute, useRouter } from 'vue-router';
+import {
+	ComboboxAnchor,
+	ComboboxCancel,
+	ComboboxContent,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxPortal,
+	ComboboxRoot,
+	ComboboxTrigger,
+	ComboboxEmpty,
+} from 'reka-ui';
+import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type {
+	BuildStage,
+	PipelineTemplate,
+	StageOrchestration,
+	VariableDeclaration,
+} from '@/types/ci/template';
+import type { Repository } from '@/types/ci/repository';
+import { detectCircularDependencies } from '@/utils/dag';
+import StageDAGView from './components/StageDAGView.vue';
+
+const route = useRoute();
+const router = useRouter();
+const templateId = computed(() => route.params.id as string);
+const toast = useToast();
+
+const { status, execute } = useStatusAsync();
+const { loading: saving, execute: executeSave } = useStatusAsync();
+const { loading: deleting, execute: executeDelete } = useStatusAsync();
+const { loading: running, execute: executeRun } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
+
+const template = ref<PipelineTemplate>();
+const sortableOrch = ref<StageOrchestration[]>([]);
+const declarations = ref<VariableDeclaration[]>([]);
+const stageCache = reactive<Record<string, BuildStage>>({});
+const viewMode = ref<'list' | 'dag'>('list');
+
+// Stage 搜索 - 使用 reka-ui Combobox
+const selectedStage = ref<BuildStage | null>(null);
+const stageSearchTerm = ref('');
+const stageOptions = ref<BuildStage[]>([]);
+
+const filteredStages = computed(() => {
+	const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
+	const filtered = stageOptions.value.filter((s) => !inOrch.has(s.id));
+	if (!stageSearchTerm.value) {return filtered;}
+	return filtered.filter((s) =>
+		s.name.toLowerCase().includes(stageSearchTerm.value.toLowerCase())
+	);
+});
+
+// 项目搜索 - 使用 reka-ui Combobox
+const selectedRepo = ref<Repository | null>(null);
+const repoSearchTerm = ref('');
+const repoOptions = ref<Repository[]>([]);
+
+// 已保存的快照，用于 dirty 检测
+const savedOrch = ref<string>('[]');
+const savedDeclarations = ref<string>('[]');
+
+const isDirty = computed(() => {
+	const orchStr = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
+	const declStr = JSON.stringify(declarations.value);
+	return orchStr !== savedOrch.value || declStr !== savedDeclarations.value;
+});
+
+const isEditInfoDialogOpen = ref(false);
+const isAddOrchDialogOpen = ref(false);
+const isEditOrchDialogOpen = ref(false);
+const isRunDialogOpen = ref(false);
+const isAddVarDialogOpen = ref(false);
+const isEditVarDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
+const isDeleteOrchDialogOpen = ref(false);
+const isDeleteVarDialogOpen = ref(false);
+
+const editForm = reactive({ name: '', description: '' });
+const addOrchForm = reactive({
+	stageId: '',
+	dependsOn: [] as string[],
+});
+const runForm = reactive({
+	repositoryId: '',
+	triggerRef: '',
+});
+const editOrchForm = reactive({
+	editingStageId: '',
+	dependsOn: [] as string[],
+});
+const varForm = reactive({
+	name: '',
+	value: '',
+	description: '',
+});
+const orchToDelete = ref(-1);
+const varToDelete = ref('');
+
+const editableOrchOptions = computed(() =>
+	sortableOrch.value.filter((o) => o.stage_id !== editOrchForm.editingStageId)
+);
+
+const selectedRepository = computed(() =>
+	repoOptions.value.find((r) => r.id === runForm.repositoryId)
+);
+
+const dagStages = computed(() =>
+	sortableOrch.value.map((orch) => {
+		const stage = stageCache[orch.stage_id];
+		return {
+			id: orch.stage_id,
+			name: stage?.name ?? orch.stage_id,
+			image: stage?.image ?? '',
+			script: stage?.script ?? '',
+			version: stage?.version ?? 1,
+			depends_on: orch.depends_on,
+		};
+	})
+);
+
+// 监听项目选择，自动填充默认分支
+watch(
+	() => runForm.repositoryId,
+	(newRepoId) => {
+		if (newRepoId) {
+			const repo = repoOptions.value.find((r) => r.id === newRepoId);
+			if (repo?.default_branch) {
+				runForm.triggerRef = repo.default_branch;
+			}
+		}
+	}
+);
+
+function applyTemplateState(tmpl: PipelineTemplate) {
+	template.value = tmpl;
+	sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
+	declarations.value = [...tmpl.variable_declarations];
+	// 更新已保存快照
+	savedOrch.value = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
+	savedDeclarations.value = JSON.stringify(declarations.value);
+	Object.keys(stageCache).forEach((key) => delete stageCache[key]);
+	tmpl.stages.forEach((stage) => (stageCache[stage.id] = stage));
+	Object.assign(editForm, {
+		name: tmpl.name,
+		description: tmpl.description ?? '',
+	});
+}
+
+async function fetchTemplate() {
+	try {
+		await execute(async () => {
+			const tmpl = await pipelineTemplateApi.get(templateId.value);
+			applyTemplateState(tmpl);
+		});
+	} catch {
+		toast.error('获取模板信息失败');
+		router.push('/ci/template');
+	}
+}
+
+async function searchStages() {
+	try {
+		const resp = await buildStageApi.list({
+			per_page: 100,
+		});
+		stageOptions.value = resp.items;
+	} catch (err: unknown) {
+		toast.error(err instanceof Error ? err.message : '获取 Stage 列表失败');
+	}
+}
+
+function onStageChange(stage: BuildStage | null) {
+	if (stage) {
+		addOrchForm.stageId = stage.id;
+		stageCache[stage.id] = stage;
+	} else {
+		addOrchForm.stageId = '';
+	}
+}
+
+async function syncDeclarations() {
+	try {
+		declarations.value = await pipelineTemplateApi.resolveVariables({
+			orchestration: sortableOrch.value.map((item, index) => ({
+				...item,
+				sort_order: index,
+			})),
+			variable_declarations: declarations.value,
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '同步变量失败');
+	}
+}
+
+function openEditInfoModal() {
+	Object.assign(editForm, {
+		name: template.value?.name ?? '',
+		description: template.value?.description ?? '',
+	});
+	isEditInfoDialogOpen.value = true;
+}
+
+function cancelEditInfo() {
+	Object.assign(editForm, {
+		name: template.value?.name ?? '',
+		description: template.value?.description ?? '',
+	});
+	isEditInfoDialogOpen.value = false;
+}
+
+async function handleEditInfoOk() {
+	if (!editForm.name.trim()) {
+		toast.error('模板名称不能为空');
+		return;
+	}
+
+	try {
+		await executeSave(async () => {
+			// 只保存基本信息，不传递 orchestration 和 variable_declarations
+			const data = await pipelineTemplateApi.update(templateId.value, {
+				name: editForm.name,
+				description: editForm.description,
+			});
+			applyTemplateState(data);
+			toast.success('保存成功');
+		});
+		isEditInfoDialogOpen.value = false;
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+async function handleSave() {
+	const orchForCheck = sortableOrch.value.map((o) => ({
+		name: o.stage_id,
+		depends_on: o.depends_on,
+	}));
+	const cycle = detectCircularDependencies(orchForCheck);
+	if (cycle) {
+		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+		return;
+	}
+
+	try {
+		await executeSave(async () => {
+			// 自动更新编排中的 stage_version
+			for (const orch of sortableOrch.value) {
+				const stage = stageCache[orch.stage_id];
+				if (stage && stage.version > orch.stage_version) {
+					orch.stage_version = stage.version;
+				}
+			}
+
+			const data = await pipelineTemplateApi.update(templateId.value, {
+				name: editForm.name,
+				description: editForm.description,
+				orchestration: sortableOrch.value.map((o, i) => ({
+					...o,
+					sort_order: i,
+				})),
+				variable_declarations: declarations.value,
+			});
+			applyTemplateState(data);
+			toast.success(`保存成功，快照 v${data.version}`);
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '保存失败');
+	}
+}
+
+async function handleDuplicate() {
+	try {
+		await executeDuplicate(async () => {
+			const newTemplate = await pipelineTemplateApi.duplicate(templateId.value);
+			toast.success('复制成功');
+			router.push(`/ci/template/${newTemplate.id}`);
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '复制失败');
+	}
+}
+
+function openDeleteModal() {
+	isDeleteDialogOpen.value = true;
+}
+
+async function handleDeleteOk() {
+	try {
+		await executeDelete(async () => {
+			await pipelineTemplateApi.delete(templateId.value);
+			toast.success('删除成功');
+			router.push('/ci/template');
+		});
+	} catch (e) {
+		toast.error(e instanceof Error ? e.message : '删除失败');
+	}
+}
+
+// ── 编排操作 ──────────────────────────────────────────────────────────────────
+
+async function openAddOrchModal() {
+	addOrchForm.stageId = '';
+	addOrchForm.dependsOn = [];
+	selectedStage.value = null;
+	stageSearchTerm.value = '';
+	isAddOrchDialogOpen.value = true;
+	await searchStages();
+}
+
+async function confirmAddOrch() {
+	if (!addOrchForm.stageId) {
+		return;
+	}
+	const stage =
+		stageOptions.value.find((s) => s.id === addOrchForm.stageId) ??
+		stageCache[addOrchForm.stageId];
+	if (!stage) {
+		return;
+	}
+	const newOrch: StageOrchestration = {
+		stage_id: addOrchForm.stageId,
+		stage_name: stage.name,
+		stage_version: stage.version,
+		depends_on: addOrchForm.dependsOn,
+		sort_order: sortableOrch.value.length,
+	};
+	const orchForCheck = [...sortableOrch.value, newOrch].map((o) => ({
+		name: o.stage_id,
+		depends_on: o.depends_on,
+	}));
+	const cycle = detectCircularDependencies(orchForCheck);
+	if (cycle) {
+		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+		return;
+	}
+	sortableOrch.value.push(newOrch);
+	stageCache[stage.id] = stage;
+	await syncDeclarations();
+	isAddOrchDialogOpen.value = false;
+}
+
+function confirmRemoveOrch(idx: number) {
+	orchToDelete.value = idx;
+	isDeleteOrchDialogOpen.value = true;
+}
+
+async function removeOrch() {
+	const idx = orchToDelete.value;
+	if (idx === -1) {
+		return;
+	}
+	const removed = sortableOrch.value[idx];
+	sortableOrch.value.splice(idx, 1);
+	for (const o of sortableOrch.value) {
+		o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
+	}
+	await syncDeclarations();
+	isDeleteOrchDialogOpen.value = false;
+	orchToDelete.value = -1;
+}
+
+function openEditOrchModal(idx: number) {
+	const orch = sortableOrch.value[idx];
+	if (!orch) {
+		return;
+	}
+	editOrchForm.editingStageId = orch.stage_id;
+	editOrchForm.dependsOn = [...orch.depends_on];
+	isEditOrchDialogOpen.value = true;
+}
+
+function confirmEditOrch() {
+	const orch = sortableOrch.value.find((o) => o.stage_id === editOrchForm.editingStageId);
+	if (!orch) {
+		return;
+	}
+	const orchForCheck = sortableOrch.value.map((o) => ({
+		name: o.stage_id,
+		depends_on: o.stage_id === editOrchForm.editingStageId ? editOrchForm.dependsOn : o.depends_on,
+	}));
+	const cycle = detectCircularDependencies(orchForCheck);
+	if (cycle) {
+		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+		return;
+	}
+	orch.depends_on = editOrchForm.dependsOn;
+	editOrchForm.editingStageId = '';
+	editOrchForm.dependsOn = [];
+	isEditOrchDialogOpen.value = false;
+}
+
+// ── 运行流水线 ──────────────────────────────────────────────────────────────────
+
+async function searchRepos() {
+	try {
+		const resp = await repositoryApi.list({
+			per_page: 100,
+		});
+		repoOptions.value = resp.items;
+	} catch (err: unknown) {
+		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+	}
+}
+
+function onRepoChange(repo: Repository | null) {
+	if (repo) {
+		runForm.repositoryId = repo.id;
+	} else {
+		runForm.repositoryId = '';
+	}
+}
+
+async function openRunModal() {
+	if (isDirty.value) {
+		toast.error('有未保存的变更，请先保存后再运行');
+		return;
+	}
+	runForm.repositoryId = '';
+	runForm.triggerRef = '';
+	selectedRepo.value = null;
+	repoSearchTerm.value = '';
+	await searchRepos();
+	isRunDialogOpen.value = true;
+}
+
+async function handleRunOk() {
+	if (!runForm.repositoryId) {
+		toast.error('请选择项目');
+		return;
+	}
+
+	try {
+		await executeRun(async () => {
+			const repo = selectedRepository.value;
+			const triggerRef = runForm.triggerRef || repo?.default_branch || 'main';
+			const run = await repositoryApi.trigger(runForm.repositoryId, {
+				template_id: templateId.value,
+				trigger_ref: triggerRef,
+				variables: {},
+			});
+			toast.success('触发成功');
+			isRunDialogOpen.value = false;
+			router.push(`/ci/run/${run.id}`);
+		});
+	} catch (error) {
+		toast.error(error instanceof Error ? error.message : '触发失败');
+	}
+}
+
+// ── 变量管理 ──────────────────────────────────────────────────────────────────
+
+function openAddVarModal() {
+	varForm.name = '';
+	varForm.value = '';
+	varForm.description = '';
+	isAddVarDialogOpen.value = true;
+}
+
+function handleAddVarOk() {
+	if (!varForm.name.trim()) {
+		toast.error('变量名不能为空');
+		return;
+	}
+
+	// 检查是否已存在
+	if (declarations.value.some((d) => d.name === varForm.name)) {
+		toast.error('变量名已存在');
+		return;
+	}
+
+	declarations.value.push({
+		name: varForm.name,
+		value: varForm.value || undefined,
+		description: varForm.description || undefined,
+		source: 'template_custom',
+		secret: false,
+	});
+
+	isAddVarDialogOpen.value = false;
+}
+
+function openEditVarModal(name: string) {
+	const decl = declarations.value.find((d) => d.name === name);
+	if (!decl) {
+		return;
+	}
+	varForm.name = decl.name;
+	varForm.value = String(decl.value ?? '');
+	varForm.description = decl.description ?? '';
+	isEditVarDialogOpen.value = true;
+}
+
+function handleEditVarOk() {
+	const decl = declarations.value.find((d) => d.name === varForm.name);
+	if (decl) {
+		decl.value = varForm.value || undefined;
+		decl.description = varForm.description || undefined;
+	}
+	isEditVarDialogOpen.value = false;
+}
+
+function confirmDeleteVariable(name: string) {
+	varToDelete.value = name;
+	isDeleteVarDialogOpen.value = true;
+}
+
+function deleteVariable() {
+	const name = varToDelete.value;
+	if (!name) {
+		return;
+	}
+	const idx = declarations.value.findIndex((d) => d.name === name);
+	if (idx !== -1) {
+		declarations.value.splice(idx, 1);
+	}
+	isDeleteVarDialogOpen.value = false;
+	varToDelete.value = '';
+}
+
+watch(templateId, fetchTemplate);
+onMounted(fetchTemplate);
+onUnmounted(() => {
+	// Cleanup if needed
+});
+</script>
+
+<template>
+	<div class="flex flex-col gap-4">
+		<div class="flex flex-wrap items-center justify-between gap-3">
+			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
+			<div class="flex flex-wrap items-center gap-2">
+					<button
+						v-if="template && isDirty"
+						:disabled="saving"
+						class="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+						@click="handleSave"
+					>
+						{{ saving ? '保存中...' : '保存' }}
+					</button>
+					<button
+						v-if="template"
+						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+						@click="openRunModal"
+					>
+						运行
+					</button>
+					<button
+						v-if="template"
+						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+						@click="openEditInfoModal"
+					>
+						编辑
+					</button>
+					<button
+						v-if="template"
+						:disabled="duplicating"
+						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+						@click="handleDuplicate"
+					>
+						{{ duplicating ? '复制中...' : '复制' }}
+					</button>
+					<button
+						v-if="template"
+						class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+						@click="openDeleteModal"
+					>
+						删除
+					</button>
+					<button
+						class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+						@click="router.push('/ci/template')"
+					>
+						返回
+					</button>
+			</div>
+		</div>
+
+		<!-- 加载状态 -->
+		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
+			<div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+		</div>
+
+		<!-- 内容 -->
+		<div v-else-if="template" class="flex flex-col gap-4">
+				<!-- 基本信息卡片 -->
+				<div class="rounded-lg border border-border bg-card shadow-sm">
+					<div class="border-b border-border px-5 py-4">
+						<h2 class="font-semibold text-foreground">基本信息</h2>
+					</div>
+					<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">模板名称</dt>
+							<dd class="text-foreground">{{ template.name }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
+							<dd class="text-foreground">v{{ template.version }}</dd>
+						</div>
+						<div class="flex gap-2 sm:col-span-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">描述</dt>
+							<dd class="text-foreground">{{ template.description || '无' }}</dd>
+						</div>
+					</dl>
+				</div>
+
+				<!-- Stage 编排 -->
+				<div class="rounded-lg border border-border bg-card shadow-sm">
+					<div class="flex items-center justify-between border-b border-border px-5 py-4">
+						<div class="flex items-center gap-4">
+							<h2 class="font-semibold text-foreground">Stage 编排</h2>
+							<div v-if="sortableOrch.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
+								<button
+									class="rounded px-3 py-1 text-xs font-medium transition-colors"
+									:class="viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+									@click="viewMode = 'list'"
+								>
+									列表
+								</button>
+								<button
+									class="rounded px-3 py-1 text-xs font-medium transition-colors"
+									:class="viewMode === 'dag' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+									@click="viewMode = 'dag'"
+								>
+									DAG
+								</button>
+							</div>
+						</div>
+						<button
+							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+							@click="openAddOrchModal"
+						>
+							<Plus class="h-4 w-4" />
+							添加 Stage
+						</button>
+					</div>
+					<div v-if="sortableOrch.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
+						暂无 Stage，点击上方按钮添加
+					</div>
+					
+					<!-- 列表视图 -->
+					<div v-else-if="viewMode === 'list'" class="divide-y divide-border">
+						<div
+							v-for="(orch, idx) in sortableOrch"
+							:key="orch.stage_id"
+							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
+						>
+							<div class="flex items-center gap-4">
+								<span class="text-sm text-muted-foreground">{{ idx + 1 }}</span>
+								<div>
+									<p class="text-sm text-foreground">{{ orch.stage_name }}</p>
+									<p class="text-xs text-muted-foreground">
+										v{{ orch.stage_version }}
+										<span v-if="orch.depends_on.length > 0">
+											· 依赖: {{ orch.depends_on.length }} 个
+										</span>
+									</p>
+								</div>
+							</div>
+							<div class="flex items-center gap-2">
+								<button
+									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
+									@click="openEditOrchModal(idx)"
+								>
+									编辑依赖
+								</button>
+								<button
+									class="rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+									@click="confirmRemoveOrch(idx)"
+								>
+									移除
+								</button>
+							</div>
+						</div>
+					</div>
+					
+					<!-- DAG 视图 -->
+					<div v-else-if="dagStages.length > 0" class="p-6">
+						<div class="h-[500px]">
+							<StageDAGView :stages="dagStages" />
+						</div>
+					</div>
+				</div>
+
+				<!-- 变量管理 -->
+				<div class="rounded-lg border border-border bg-card shadow-sm">
+					<div class="flex items-center justify-between border-b border-border px-5 py-4">
+						<h2 class="font-semibold text-foreground">变量</h2>
+						<button
+							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+							@click="openAddVarModal"
+						>
+							<Plus class="h-4 w-4" />
+							添加变量
+						</button>
+					</div>
+					<div v-if="declarations.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
+						暂无变量
+					</div>
+					<div v-else class="divide-y divide-border">
+						<div
+							v-for="decl in declarations"
+							:key="decl.name"
+							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
+						>
+							<div>
+								<p class="text-sm text-foreground">{{ decl.name }}</p>
+								<p class="text-xs text-muted-foreground">
+									{{ decl.description || '无描述' }}
+									<span v-if="decl.value"> · 默认值: {{ decl.value }}</span>
+								</p>
+							</div>
+							<div v-if="decl.source === 'template_custom'" class="flex items-center gap-2">
+								<button
+									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
+									@click="openEditVarModal(decl.name)"
+								>
+									编辑
+								</button>
+								<button
+									class="rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+									@click="confirmDeleteVariable(decl.name)"
+								>
+									删除
+								</button>
+							</div>
+						</div>
+					</div>
+				</div>
+		</div>
+
+		<AppDialog v-model:open="isEditInfoDialogOpen" title="编辑基本信息">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">模板名称</label>
+				<input
+					v-model="editForm.name"
+					type="text"
+					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+				/>
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">描述</label>
+				<textarea
+					v-model="editForm.description"
+					rows="3"
+					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+				></textarea>
+			</div>
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="cancelEditInfo">
+					取消
+				</button>
+				<button
+					:disabled="saving"
+					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					@click="handleEditInfoOk"
+				>
+					{{ saving ? '保存中...' : '保存' }}
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isAddOrchDialogOpen" title="添加 Stage">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">选择 Stage</label>
+				<ComboboxRoot
+					v-model="selectedStage"
+					:display-value="(s) => s?.name || ''"
+					@update:model-value="onStageChange"
+				>
+					<ComboboxAnchor class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+						<Search class="size-4 shrink-0 text-muted-foreground" />
+						<ComboboxInput v-model="stageSearchTerm" placeholder="搜索 Stage..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
+						<ComboboxCancel v-if="selectedStage" as-child>
+							<button class="text-muted-foreground transition-colors hover:text-foreground">
+								<X class="size-3.5" />
+							</button>
+						</ComboboxCancel>
+						<ComboboxTrigger as-child>
+							<button class="text-muted-foreground">
+								<ChevronDown class="size-4" />
+							</button>
+						</ComboboxTrigger>
+					</ComboboxAnchor>
+					<ComboboxPortal disabled>
+						<ComboboxContent position="popper" align="start" class="z-[60] max-h-64 w-[var(--reka-combobox-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover shadow-lg" :side-offset="4">
+							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">未找到 Stage</ComboboxEmpty>
+							<ComboboxItem
+								v-for="stage in filteredStages"
+								:key="stage.id"
+								:value="stage"
+								class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[highlighted]:bg-accent/50"
+							>
+								{{ stage.name }}
+							</ComboboxItem>
+						</ComboboxContent>
+					</ComboboxPortal>
+				</ComboboxRoot>
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">依赖 Stage（可选）</label>
+				<div class="space-y-2">
+					<label v-for="orch in sortableOrch" :key="orch.stage_id" class="flex items-center gap-2">
+						<input v-model="addOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="h-4 w-4 rounded border-input text-primary" />
+						<span class="text-sm text-foreground">{{ orch.stage_name }}</span>
+					</label>
+				</div>
+			</div>
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isAddOrchDialogOpen = false">
+					取消
+				</button>
+				<button
+					:disabled="!addOrchForm.stageId"
+					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					@click="confirmAddOrch"
+				>
+					添加
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isEditOrchDialogOpen" title="编辑依赖">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">依赖 Stage</label>
+				<div class="space-y-2">
+					<label v-for="orch in editableOrchOptions" :key="orch.stage_id" class="flex items-center gap-2">
+						<input v-model="editOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="h-4 w-4 rounded border-input text-primary" />
+						<span class="text-sm text-foreground">{{ orch.stage_name }}</span>
+					</label>
+				</div>
+			</div>
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isEditOrchDialogOpen = false">
+					取消
+				</button>
+				<button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" @click="confirmEditOrch">
+					保存
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isRunDialogOpen" title="运行流水线">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">选择项目</label>
+				<ComboboxRoot v-model="selectedRepo" :display-value="(r) => r?.name || ''" @update:model-value="onRepoChange">
+					<ComboboxAnchor class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+						<Search class="size-4 shrink-0 text-muted-foreground" />
+						<ComboboxInput v-model="repoSearchTerm" placeholder="搜索项目..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
+						<ComboboxCancel v-if="selectedRepo" as-child>
+							<button class="text-muted-foreground transition-colors hover:text-foreground">
+								<X class="size-3.5" />
+							</button>
+						</ComboboxCancel>
+						<ComboboxTrigger as-child>
+							<button class="text-muted-foreground">
+								<ChevronDown class="size-4" />
+							</button>
+						</ComboboxTrigger>
+					</ComboboxAnchor>
+					<ComboboxPortal disabled>
+						<ComboboxContent position="popper" align="start" class="z-[60] max-h-64 w-[var(--reka-combobox-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover shadow-lg" :side-offset="4">
+							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">未找到项目</ComboboxEmpty>
+							<ComboboxItem
+								v-for="repo in repoOptions"
+								:key="repo.id"
+								:value="repo"
+								class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[highlighted]:bg-accent/50"
+							>
+								{{ repo.name }}
+							</ComboboxItem>
+						</ComboboxContent>
+					</ComboboxPortal>
+				</ComboboxRoot>
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">触发分支</label>
+				<input
+					v-model="runForm.triggerRef"
+					type="text"
+					:placeholder="selectedRepository?.default_branch || 'main'"
+					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+				/>
+			</div>
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isRunDialogOpen = false">
+					取消
+				</button>
+				<button
+					:disabled="!runForm.repositoryId || running"
+					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					@click="handleRunOk"
+				>
+					{{ running ? '运行中...' : '运行' }}
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isAddVarDialogOpen" title="添加变量">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">变量名</label>
+				<input v-model="varForm.name" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">默认值</label>
+				<input v-model="varForm.value" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">描述</label>
+				<input v-model="varForm.description" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			</div>
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isAddVarDialogOpen = false">
+					取消
+				</button>
+				<button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" @click="handleAddVarOk">
+					添加
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isEditVarDialogOpen" title="编辑变量">
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">变量名</label>
+				<input v-model="varForm.name" type="text" disabled class="w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground" />
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">默认值</label>
+				<input v-model="varForm.value" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			</div>
+			<div>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">描述</label>
+				<input v-model="varForm.description" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			</div>
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isEditVarDialogOpen = false">
+					取消
+				</button>
+				<button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" @click="handleEditVarOk">
+					保存
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isDeleteDialogOpen" title="确认删除" description="确定要删除此模板吗？此操作不可恢复。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteDialogOpen = false">
+					取消
+				</button>
+				<button
+					:disabled="deleting"
+					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					@click="handleDeleteOk"
+				>
+					{{ deleting ? '删除中...' : '确认删除' }}
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isDeleteOrchDialogOpen" title="确认移除" description="确定要移除此 Stage 吗？" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteOrchDialogOpen = false">
+					取消
+				</button>
+				<button class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90" @click="removeOrch">
+					确认移除
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog v-model:open="isDeleteVarDialogOpen" title="确认删除" :description="'确定要删除变量 ' + varToDelete + ' 吗？'" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+			<template #footer>
+				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteVarDialogOpen = false">
+					取消
+				</button>
+				<button class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90" @click="deleteVariable">
+					确认删除
+				</button>
+			</template>
+		</AppDialog>
+	</div>
+</template>

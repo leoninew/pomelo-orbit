@@ -1,22 +1,29 @@
-name: pomelo-orbit-ui-review
-description: UI review for implemented features
+name: pomelo-orbit-ui-screenshots
+description: Generate screenshots for all routes to guide Reka UI migration
 variables:
   base_url: "http://localhost:10002"
   username: "admin"
   password: "admin"
 
 steps:
-  # 设置分辨率
+  # ========================================
+  # 初始化设置
+  # ========================================
   - type: set-viewport
     width: 1600
     height: 900
 
-  # 登录
+  # ========================================
+  # 登录流程
+  # ========================================
   - type: navigate
     url: "${base_url}/login"
 
   - type: wait
     selector: "input[type='text']"
+
+  - type: screenshot
+    file: "00-login.png"
 
   - type: fill
     selector: "input[type='text']"
@@ -30,27 +37,254 @@ steps:
     selector: "button[type='submit']"
 
   - type: wait
-    delay: 1000
+    delay: 1500
 
+  # ========================================
+  # 首页
+  # ========================================
   - type: screenshot
     file: "01-home.png"
 
-  # 应用列表（卡片视图）
+  # ========================================
+  # CD 模块 - 应用管理
+  # ========================================
   - type: navigate
-    url: "${base_url}/applications"
+    url: "${base_url}/cd/applications"
 
   - type: wait
-    selector: ".ant-card"
+    delay: 1000
 
   - type: screenshot
-    file: "02-applications-card.png"
+    file: "02-cd-applications-list.png"
 
-  # 切换到表格视图
-  - type: click
-    selector: ".ant-btn-group .ant-btn:last-child"
+  # 应用详情 - Traefik
+  - type: navigate
+    url: "${base_url}/cd/applications/01KKX2YNPF6VJ9N7QYCWG61KVM"
 
   - type: wait
-    selector: ".ant-table"
+    delay: 1000
 
   - type: screenshot
-    file: "03-applications-table.png"
+    file: "03-cd-application-detail-traefik.png"
+
+  # 应用详情 - FileBrowser
+  - type: navigate
+    url: "${base_url}/cd/applications/01KN8CG4A5S4VVH6NKNJF4F9NJ"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "04-cd-application-detail-filebrowser.png"
+
+  # ========================================
+  # CD 模块 - 部署记录
+  # ========================================
+  - type: navigate
+    url: "${base_url}/cd/deployments"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "05-cd-deployments-list.png"
+
+  # 部署详情
+  - type: navigate
+    url: "${base_url}/cd/deployments/01KPFJ9RM9XMJSEKTPR58BYG07"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "06-cd-deployment-detail.png"
+
+  # ========================================
+  # CD 模块 - 路由配置
+  # ========================================
+  - type: navigate
+    url: "${base_url}/cd/routes"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "07-cd-routes-list.png"
+
+  # 路由详情 - FileBrowser
+  - type: navigate
+    url: "${base_url}/cd/routes/01KPFJ8AVWJMF56QVRC84GJAVS"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "08-cd-route-detail.png"
+
+  # ========================================
+  # CD 模块 - Traefik HTTP Routers
+  # ========================================
+  - type: navigate
+    url: "${base_url}/cd/traefik-http-routers"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "09-cd-traefik-routers.png"
+
+  # ========================================
+  # CI 模块 - 代码仓库
+  # ========================================
+  - type: navigate
+    url: "${base_url}/ci/repository"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "10-ci-repository-list.png"
+
+  # 仓库详情 - golang/example
+  - type: navigate
+    url: "${base_url}/ci/repository/01KNNRBH52BQJYT9487B2H8N62"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "11-ci-repository-detail.png"
+
+  # ========================================
+  # CI 模块 - 构建阶段
+  # ========================================
+  - type: navigate
+    url: "${base_url}/ci/build-stage"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "12-ci-build-stage-list.png"
+
+  # 构建阶段详情 - git clone
+  - type: navigate
+    url: "${base_url}/ci/build-stage/01STAGE000000000000000CLONE"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "13-ci-build-stage-detail.png"
+
+  # ========================================
+  # CI 模块 - 流水线模板
+  # ========================================
+  - type: navigate
+    url: "${base_url}/ci/template"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "14-ci-template-list.png"
+
+  # 流水线模板详情 - Go 构建流水线
+  - type: navigate
+    url: "${base_url}/ci/template/01KNVEJPWVK757139NMNNNCEFE"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "15-ci-template-detail.png"
+
+  # 流水线快照详情
+  - type: navigate
+    url: "${base_url}/ci/snapshot/01KQKYKKFAF00N37MXH4GXHC8R"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "16-ci-snapshot-detail.png"
+
+  # ========================================
+  # CI 模块 - 流水线记录
+  # ========================================
+  - type: navigate
+    url: "${base_url}/ci/run"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "17-ci-run-list.png"
+
+  # 流水线运行详情
+  - type: navigate
+    url: "${base_url}/ci/run/01KQKYKKGTPMFBZF3XC9D0BETT"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "18-ci-run-detail.png"
+
+  # ========================================
+  # CI 模块 - 制品记录
+  # ========================================
+  - type: navigate
+    url: "${base_url}/ci/artifact"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "19-ci-artifact-list.png"
+
+  # ========================================
+  # CI 模块 - 凭据管理
+  # ========================================
+  - type: navigate
+    url: "${base_url}/ci/credential"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "20-ci-credential-list.png"
+
+  # 凭据详情 - github 凭据
+  - type: navigate
+    url: "${base_url}/ci/credential/01KQKXDRK7J9PNMJ2NKGBQG1WP"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "21-ci-credential-detail.png"
+
+  # ========================================
+  # 系统设置 - 登录历史
+  # ========================================
+  - type: navigate
+    url: "${base_url}/login-history"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "22-login-history.png"
+
+  # ========================================
+  # 系统设置 - 系统设置
+  # ========================================
+  - type: navigate
+    url: "${base_url}/settings"
+
+  - type: wait
+    delay: 1000
+
+  - type: screenshot
+    file: "23-settings.png"

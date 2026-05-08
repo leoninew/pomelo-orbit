@@ -8,7 +8,7 @@ import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import { useAuthStore } from '@/stores/auth';
 import type { DeploymentDetail } from '@/types/cd/deployment';
-import { isTerminalStatus } from '@/utils/status';
+import { formatDuration, isTerminalStatus } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import config from '@/config';
 
@@ -230,7 +230,7 @@ onUnmounted(stopLog);
 		<!-- 内容 -->
 		<div v-else-if="deployment" class="flex flex-col gap-4">
 				<!-- 基本信息卡片 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">基本信息</h2>
 					</div>
@@ -241,7 +241,14 @@ onUnmounted(stopLog);
 						</div>
 						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">应用</dt>
-							<dd class="text-foreground">{{ deployment.application_name }}</dd>
+							<dd>
+								<router-link
+									:to="`/cd/applications/${deployment.application_id}`"
+									class="text-primary hover:underline"
+								>
+									{{ deployment.application_name || deployment.application_id }}
+								</router-link>
+							</dd>
 						</div>
 						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
@@ -261,16 +268,40 @@ onUnmounted(stopLog);
 							</dd>
 						</div>
 						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
+							<dd class="text-foreground">{{ deployment.trigger_type }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">环境</dt>
+							<dd class="text-foreground">{{ deployment.environment || '—' }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">环境文件</dt>
+							<dd class="text-foreground">{{ deployment.env_file || '—' }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">耗时</dt>
+							<dd class="text-muted-foreground">{{ formatDuration(deployment.duration_ms) }}</dd>
+						</div>
+						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
 							<dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
 						</div>
-						<div v-if="deployment.started_at" class="flex gap-2">
+						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
 							<dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
 						</div>
-						<div v-if="deployment.finished_at" class="flex gap-2">
+						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">完成时间</dt>
 							<dd class="text-muted-foreground">{{ formatTime(deployment.finished_at) }}</dd>
+						</div>
+						<div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
+							<dd class="min-w-0 text-destructive">
+								<span class="block truncate" :title="deployment.error_message">
+									{{ deployment.error_message }}
+								</span>
+							</dd>
 						</div>
 					</dl>
 				</div>

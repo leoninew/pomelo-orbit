@@ -45,58 +45,64 @@ function canEdit(decl: VariableDeclaration) {
 		<div v-if="declarations.length === 0" class="px-5 py-10 text-center text-muted-foreground">
 			<p class="text-sm">暂无变量</p>
 		</div>
-		<table v-else class="w-full">
-			<thead class="border-b border-border bg-muted/30">
-				<tr class="text-muted-foreground">
-					<th class="px-4 py-3 text-left text-xs font-normal">变量名</th>
-					<th class="px-4 py-3 text-left text-xs font-normal">值</th>
-					<th class="px-4 py-3 text-left text-xs font-normal">来源</th>
-					<th v-if="!readonly" class="px-4 py-3 text-left text-xs font-normal">操作</th>
+		<table v-else class="app-table-detail">
+			<thead>
+				<tr>
+					<th>变量名</th>
+					<th>说明</th>
+					<th>变量值</th>
+					<th>来源</th>
+					<th v-if="!readonly">操作</th>
 				</tr>
 			</thead>
 			<tbody>
 				<tr
 					v-for="decl in declarations"
 					:key="decl.name"
-					class="border-b border-border transition-colors last:border-b-0 hover:bg-muted/30"
 				>
-					<td class="px-4 py-3 text-sm">
-						<span class="text-sm text-foreground">{{ decl.name }}</span>
+					<td>
+						<span class="text-foreground">{{ decl.name }}</span>
 					</td>
-					<td class="px-4 py-3 text-sm">
+					<td class="max-w-md truncate" :title="decl.description">
+						<span v-if="decl.description" class="text-muted-foreground">
+							{{ decl.description }}
+						</span>
+						<span v-else class="text-muted-foreground">—</span>
+					</td>
+					<td class="max-w-sm truncate" :title="String(effectiveValue(decl) ?? '')">
 						<span
 							v-if="hasDisplayValue(effectiveValue(decl))"
-							class="text-sm text-foreground"
+							class="text-foreground"
 						>
 							{{ effectiveValue(decl) }}
 						</span>
-						<span v-else class="text-sm text-muted-foreground italic">未设置</span>
+						<span v-else class="text-muted-foreground italic">未设置</span>
 					</td>
-					<td class="px-4 py-3 text-sm">
+					<td>
 						<span
-							class="inline-block px-2 py-0.5 text-sm rounded"
+							class="inline-block rounded px-2 py-0.5 text-sm"
 							:class="decl.source ? getSourceBadgeClass(decl.source) : 'border border-border bg-muted text-muted-foreground'"
 						>
 							{{ decl.source ? getSourceLabel(decl.source) : '未知' }}
 						</span>
 					</td>
-					<td v-if="!readonly" class="px-4 py-3 text-sm">
+					<td v-if="!readonly">
 						<div class="flex items-center gap-2">
 							<button
 								v-if="canEdit(decl)"
-								class="text-sm text-primary hover:underline"
+								class="text-primary hover:underline"
 								@click="emit('edit', decl.name)"
 							>
 								编辑
 							</button>
 							<button
 								v-if="canEdit(decl)"
-								class="text-sm text-destructive hover:underline"
+								class="text-destructive hover:underline"
 								@click="emit('delete', decl.name)"
 							>
 								删除
 							</button>
-							<span v-if="!canEdit(decl)" class="text-sm text-muted-foreground">—</span>
+							<span v-if="!canEdit(decl)" class="text-muted-foreground">—</span>
 						</div>
 					</td>
 				</tr>

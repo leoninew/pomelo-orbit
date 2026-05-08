@@ -20,6 +20,7 @@ import AppDialog from '@/components/AppDialog.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type {
+	ArtifactDeclaration,
 	BuildStage,
 	PipelineTemplate,
 	StageOrchestration,
@@ -28,6 +29,7 @@ import type {
 import type { Repository } from '@/types/ci/repository';
 import { detectCircularDependencies } from '@/utils/dag';
 import StageDAGView from './components/StageDAGView.vue';
+import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -73,6 +75,29 @@ const isDirty = computed(() => {
 	const orchStr = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
 	const declStr = JSON.stringify(declarations.value);
 	return orchStr !== savedOrch.value || declStr !== savedDeclarations.value;
+});
+
+const hasStageUpdates = computed(() =>
+	sortableOrch.value.some((orch) => {
+		const stage = stageCache[orch.stage_id];
+		return stage && stage.version > orch.stage_version;
+	})
+);
+
+const artifactDeclarations = computed(() => {
+	const result: ArtifactDeclaration[] = [];
+	for (const orch of sortableOrch.value) {
+		const stage = stageCache[orch.stage_id];
+		for (const artifact of stage?.artifacts ?? []) {
+			result.push({
+				stageName: stage?.name ?? orch.stage_name,
+				type: artifact.type,
+				name: artifact.name,
+				path: artifact.path,
+			});
+		}
+	}
+	return result;
 });
 
 const isEditInfoDialogOpen = ref(false);
@@ -439,10 +464,15 @@ async function handleRunOk() {
 		return;
 	}
 
+	const repo = selectedRepository.value;
+	if (!repo?.git_credential_id) {
+		toast.error('该项目未配置 Git 凭据');
+		return;
+	}
+
 	try {
 		await executeRun(async () => {
-			const repo = selectedRepository.value;
-			const triggerRef = runForm.triggerRef || repo?.default_branch || 'main';
+			const triggerRef = runForm.triggerRef || repo.default_branch || 'main';
 			const run = await repositoryApi.trigger(runForm.repositoryId, {
 				template_id: templateId.value,
 				trigger_ref: triggerRef,
@@ -540,12 +570,12 @@ onUnmounted(() => {
 			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
 					<button
-						v-if="template && isDirty"
+						v-if="template && (isDirty || hasStageUpdates)"
 						:disabled="saving"
 						class="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
 						@click="handleSave"
 					>
-						{{ saving ? '保存中...' : '保存' }}
+						{{ saving ? '保存中...' : hasStageUpdates && !isDirty ? '更新' : '保存' }}
 					</button>
 					<button
 						v-if="template"
@@ -593,7 +623,7 @@ onUnmounted(() => {
 		<!-- 内容 -->
 		<div v-else-if="template" class="flex flex-col gap-4">
 				<!-- 基本信息卡片 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">基本信息</h2>
 					</div>
@@ -614,10 +644,10 @@ onUnmounted(() => {
 				</div>
 
 				<!-- Stage 编排 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="flex items-center justify-between border-b border-border px-5 py-4">
 						<div class="flex items-center gap-4">
-							<h2 class="font-semibold text-foreground">Stage 编排</h2>
+							<h2 class="font-semibold text-foreground">阶段编排</h2>
 							<div v-if="sortableOrch.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
 								<button
 									class="rounded px-3 py-1 text-xs font-medium transition-colors"
@@ -640,47 +670,84 @@ onUnmounted(() => {
 							@click="openAddOrchModal"
 						>
 							<Plus class="h-4 w-4" />
-							添加 Stage
+							添加阶段
 						</button>
 					</div>
-					<div v-if="sortableOrch.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
-						暂无 Stage，点击上方按钮添加
-					</div>
-					
 					<!-- 列表视图 -->
-					<div v-else-if="viewMode === 'list'" class="divide-y divide-border">
-						<div
-							v-for="(orch, idx) in sortableOrch"
-							:key="orch.stage_id"
-							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-						>
-							<div class="flex items-center gap-4">
-								<span class="text-sm text-muted-foreground">{{ idx + 1 }}</span>
-								<div>
-									<p class="text-sm text-foreground">{{ orch.stage_name }}</p>
-									<p class="text-xs text-muted-foreground">
-										v{{ orch.stage_version }}
-										<span v-if="orch.depends_on.length > 0">
-											· 依赖: {{ orch.depends_on.length }} 个
-										</span>
-									</p>
-								</div>
-							</div>
-							<div class="flex items-center gap-2">
-								<button
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="openEditOrchModal(idx)"
+					<div v-if="viewMode === 'list'" class="overflow-x-auto">
+						<table class="app-table-detail min-w-[760px]">
+							<thead>
+								<tr>
+									<th>#</th>
+									<th>阶段</th>
+									<th>版本</th>
+									<th>依赖</th>
+									<th>制品</th>
+									<th>操作</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="sortableOrch.length === 0">
+									<td colspan="6" class="text-center text-muted-foreground">
+										暂无 Stage，点击上方按钮添加
+									</td>
+								</tr>
+								<tr
+									v-for="(orch, idx) in sortableOrch"
+									:key="orch.stage_id"
 								>
-									编辑依赖
-								</button>
-								<button
-									class="rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-									@click="confirmRemoveOrch(idx)"
-								>
-									移除
-								</button>
-							</div>
-						</div>
+									<td class="text-muted-foreground">{{ idx + 1 }}</td>
+									<td>
+										<div class="flex items-center gap-2">
+											<router-link
+												:to="`/ci/build-stage/${orch.stage_id}`"
+												class="text-primary hover:underline"
+											>
+												{{ stageCache[orch.stage_id]?.name ?? orch.stage_name }}
+											</router-link>
+											<span
+												v-if="stageCache[orch.stage_id] && stageCache[orch.stage_id].version > orch.stage_version"
+												class="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+											>
+												有更新
+											</span>
+										</div>
+									</td>
+									<td class="text-foreground">v{{ orch.stage_version }}</td>
+									<td>
+										<div v-if="orch.depends_on.length > 0" class="flex flex-wrap gap-1">
+											<span
+												v-for="depId in orch.depends_on"
+												:key="depId"
+												class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+											>
+												{{ stageCache[depId]?.name ?? depId }}
+											</span>
+										</div>
+										<span v-else class="text-muted-foreground">—</span>
+									</td>
+									<td class="text-foreground">
+										{{ stageCache[orch.stage_id]?.artifacts?.length ?? '—' }}
+									</td>
+									<td>
+										<div class="flex items-center gap-3">
+											<button
+												class="text-primary hover:underline"
+												@click="openEditOrchModal(idx)"
+											>
+												编辑
+											</button>
+											<button
+												class="text-destructive hover:underline"
+												@click="confirmRemoveOrch(idx)"
+											>
+												移除
+											</button>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
 					
 					<!-- DAG 视图 -->
@@ -691,10 +758,10 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<!-- 变量管理 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<!-- 变量声明 -->
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="flex items-center justify-between border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">变量</h2>
+						<h2 class="font-semibold text-foreground">变量声明</h2>
 						<button
 							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
 							@click="openAddVarModal"
@@ -703,37 +770,48 @@ onUnmounted(() => {
 							添加变量
 						</button>
 					</div>
-					<div v-if="declarations.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
-						暂无变量
+					<VariableDeclarationsTable
+						:declarations="declarations"
+						:readonly="false"
+						@edit="openEditVarModal"
+						@delete="confirmDeleteVariable"
+					/>
+				</div>
+
+				<!-- 制品声明 -->
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+					<div class="border-b border-border px-5 py-4">
+						<h2 class="font-semibold text-foreground">制品声明</h2>
 					</div>
-					<div v-else class="divide-y divide-border">
-						<div
-							v-for="decl in declarations"
-							:key="decl.name"
-							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-						>
-							<div>
-								<p class="text-sm text-foreground">{{ decl.name }}</p>
-								<p class="text-xs text-muted-foreground">
-									{{ decl.description || '无描述' }}
-									<span v-if="decl.value"> · 默认值: {{ decl.value }}</span>
-								</p>
-							</div>
-							<div v-if="decl.source === 'template_custom'" class="flex items-center gap-2">
-								<button
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="openEditVarModal(decl.name)"
+					<div v-if="artifactDeclarations.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
+						暂无制品
+					</div>
+					<div v-else class="overflow-x-auto">
+						<table class="app-table-detail min-w-[720px]">
+							<thead>
+								<tr>
+									<th>Stage</th>
+									<th>类型</th>
+									<th>名称</th>
+									<th>路径/镜像</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="(artifact, idx) in artifactDeclarations"
+									:key="idx"
 								>
-									编辑
-								</button>
-								<button
-									class="rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-									@click="confirmDeleteVariable(decl.name)"
-								>
-									删除
-								</button>
-							</div>
-						</div>
+									<td class="text-foreground">{{ artifact.stageName }}</td>
+									<td>
+										<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+											{{ artifact.type }}
+										</span>
+									</td>
+									<td class="text-foreground">{{ artifact.name }}</td>
+									<td class="text-muted-foreground">{{ artifact.path || '—' }}</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
 				</div>
 		</div>
@@ -774,7 +852,7 @@ onUnmounted(() => {
 				<label class="mb-1.5 block text-sm font-medium text-foreground">选择 Stage</label>
 				<ComboboxRoot
 					v-model="selectedStage"
-					:display-value="(s) => s?.name || ''"
+					:display-value="(s: BuildStage | null) => s?.name || ''"
 					@update:model-value="onStageChange"
 				>
 					<ComboboxAnchor class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
@@ -852,7 +930,7 @@ onUnmounted(() => {
 		<AppDialog v-model:open="isRunDialogOpen" title="运行流水线">
 			<div>
 				<label class="mb-1.5 block text-sm font-medium text-foreground">选择项目</label>
-				<ComboboxRoot v-model="selectedRepo" :display-value="(r) => r?.name || ''" @update:model-value="onRepoChange">
+				<ComboboxRoot v-model="selectedRepo" :display-value="(r: Repository | null) => r?.name || ''" @update:model-value="onRepoChange">
 					<ComboboxAnchor class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
 						<Search class="size-4 shrink-0 text-muted-foreground" />
 						<ComboboxInput v-model="repoSearchTerm" placeholder="搜索项目..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
@@ -881,6 +959,12 @@ onUnmounted(() => {
 						</ComboboxContent>
 					</ComboboxPortal>
 				</ComboboxRoot>
+				<p
+					v-if="selectedRepository && !selectedRepository.git_credential_id"
+					class="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+				>
+					该项目未配置 Git 凭据，请先在仓库详情配置后再运行。
+				</p>
 			</div>
 			<div>
 				<label class="mb-1.5 block text-sm font-medium text-foreground">触发分支</label>
@@ -896,7 +980,7 @@ onUnmounted(() => {
 					取消
 				</button>
 				<button
-					:disabled="!runForm.repositoryId || running"
+					:disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id || running"
 					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
 					@click="handleRunOk"
 				>
@@ -911,11 +995,11 @@ onUnmounted(() => {
 				<input v-model="varForm.name" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">默认值</label>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">变量值</label>
 				<input v-model="varForm.value" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">描述</label>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">说明</label>
 				<input v-model="varForm.description" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
 			</div>
 			<template #footer>
@@ -934,11 +1018,11 @@ onUnmounted(() => {
 				<input v-model="varForm.name" type="text" disabled class="w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground" />
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">默认值</label>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">变量值</label>
 				<input v-model="varForm.value" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">描述</label>
+				<label class="mb-1.5 block text-sm font-medium text-foreground">说明</label>
 				<input v-model="varForm.description" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
 			</div>
 			<template #footer>

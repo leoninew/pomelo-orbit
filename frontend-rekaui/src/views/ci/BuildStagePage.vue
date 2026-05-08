@@ -27,7 +27,7 @@ const { loading: operating, execute: executeOp } = useStatusAsync();
 const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
 const stages = ref<BuildStage[]>([]);
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 const searchText = ref('');
 const isModalOpen = ref(false);
@@ -148,45 +148,49 @@ onMounted(fetchStages);
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1120px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">镜像</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">版本</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">描述</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">更新时间</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">操作</th>
+							<th>名称</th>
+							<th>镜像</th>
+							<th>版本</th>
+							<th>制品</th>
+							<th>描述</th>
+							<th>创建时间</th>
+							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr v-for="s in stages" :key="s.id" class="transition-colors hover:bg-muted/30">
-						<td class="px-6 py-5 text-sm">
-							<router-link :to="`/ci/build-stage/${s.id}`" class="text-primary hover:underline">
-								{{ s.name }}
-							</router-link>
-						</td>
-						<td class="px-6 py-5 text-sm text-foreground">{{ s.image }}</td>
-						<td class="px-6 py-5 text-sm">
-							<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ s.version }}</span>
-						</td>
-						<td class="max-w-xs truncate px-6 py-5 text-sm text-muted-foreground">{{ s.description || '—' }}</td>
-						<td class="px-6 py-5 text-sm text-muted-foreground">{{ formatTime(s.updated_at) }}</td>
-						<td class="px-6 py-5 text-sm">
-							<router-link :to="`/ci/build-stage/${s.id}`" class="text-primary hover:underline">
-								查看
-							</router-link>
-							<button
-								class="text-primary hover:underline ml-3 disabled:opacity-50 disabled:cursor-not-allowed"
-								:disabled="duplicating"
-								@click="handleDuplicate(s.id)"
-							>
-								复制
-							</button>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+					<tbody>
+						<tr v-for="s in stages" :key="s.id">
+							<td>
+								<router-link :to="`/ci/build-stage/${s.id}`" class="text-primary hover:underline">
+									{{ s.name }}
+								</router-link>
+							</td>
+							<td class="max-w-64 truncate text-foreground" :title="s.image">{{ s.image }}</td>
+							<td>
+								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ s.version }}</span>
+							</td>
+							<td class="text-foreground">{{ s.artifacts?.length ?? 0 }}</td>
+							<td class="max-w-xs truncate text-muted-foreground" :title="s.description || undefined">
+								{{ s.description || '—' }}
+							</td>
+							<td class="text-muted-foreground">{{ formatTime(s.created_at) }}</td>
+							<td>
+								<router-link :to="`/ci/build-stage/${s.id}`" class="text-primary hover:underline">
+									查看
+								</router-link>
+								<button
+									class="ml-3 text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+									:disabled="duplicating"
+									@click="handleDuplicate(s.id)"
+								>
+									复制
+								</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
 			</div>
 		</div>
 

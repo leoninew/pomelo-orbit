@@ -250,25 +250,29 @@ onMounted(fetchCredentials)
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[880px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">类型</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">创建时间</th>
-							<th class="px-6 py-4 text-right text-xs font-normal text-muted-foreground">操作</th>
+							<th>名称</th>
+							<th>类型</th>
+							<th>创建时间</th>
+							<th class="text-right">操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr v-for="cred in credentials" :key="cred.id" class="transition-colors hover:bg-muted/30">
-							<td class="px-6 py-5 text-sm text-foreground">{{ cred.name }}</td>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="cred in credentials" :key="cred.id">
+							<td>
+								<router-link :to="`/ci/credential/${cred.id}`" class="text-primary hover:underline">
+									{{ cred.name }}
+								</router-link>
+							</td>
+							<td>
 								<span class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-sm text-blue-700">
 									{{ credentialTypeLabels[cred.type] || cred.type }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(cred.created_at) }}</td>
-							<td class="px-6 py-5 text-right text-sm">
+							<td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
+							<td class="text-right">
 								<button class="mr-3 text-primary hover:underline" @click="openEditModal(cred)">
 									编辑
 								</button>

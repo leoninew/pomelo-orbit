@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FilePen, Plus, X } from 'lucide-vue-next';
+import { Plus } from 'lucide-vue-next';
 // import { CodeEditor } from 'monaco-editor-vue3';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 // import { VueDraggable } from 'vue-draggable-plus';
@@ -31,7 +31,7 @@ const showScriptDrawer = ref(false);
 const scriptTemp = ref('');
 const artifactTypeOptions = [
 	{ value: 'docker_image', label: 'Docker 镜像' },
-	{ value: 'file', label: '文件' },
+	{ value: 'binary', label: '二进制文件' },
 ];
 const form = reactive({ name: '', image: '', description: '' });
 const artifactForm = reactive({
@@ -283,7 +283,7 @@ onMounted(fetchStage);
 		<!-- Content -->
 		<template v-else-if="stage">
 			<!-- Basic Info Card -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
@@ -305,6 +305,10 @@ onMounted(fetchStage);
 						<dd class="text-foreground">{{ stage.description || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
+						<dt class="text-muted-foreground w-24 shrink-0">创建时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
 						<dt class="text-muted-foreground w-24 shrink-0">更新时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
 					</div>
@@ -322,7 +326,10 @@ onMounted(fetchStage);
 						编辑
 					</button>
 				</div>
-				<pre class="overflow-x-auto bg-muted/30 p-5 text-xs font-mono text-foreground">{{ stage.script }}</pre>
+				<pre v-if="stage.script" class="overflow-x-auto bg-muted/30 p-5 text-xs font-mono text-foreground">{{ stage.script }}</pre>
+				<div v-else class="px-5 py-10 text-center text-muted-foreground">
+					<p class="text-sm">暂无脚本</p>
+				</div>
 			</div>
 
 			<!-- Artifacts Card -->
@@ -337,41 +344,56 @@ onMounted(fetchStage);
 						添加制品
 					</button>
 				</div>
-				<div v-if="sortableArtifacts.length === 0" class="px-5 py-10 text-center text-muted-foreground">
-					<p class="text-sm">暂无制品配置</p>
-				</div>
-				<div v-else class="divide-y divide-border">
-					<div
-						v-for="(artifact, idx) in sortableArtifacts"
-						:key="idx"
-						class="flex items-center gap-3 px-5 py-4 transition-colors hover:bg-muted/30"
-					>
-						<div class="flex-1 min-w-0">
-							<div class="flex items-center gap-2 mb-1">
-								<span class="text-sm text-foreground">{{ artifact.name }}</span>
-								<span class="px-2 py-0.5 text-xs bg-primary/10 text-primary rounded">
-									{{ artifact.type }}
-								</span>
-							</div>
-							<p class="text-sm text-muted-foreground truncate">{{ artifact.path }}</p>
-						</div>
-						<div class="flex items-center gap-2">
-							<button
-								class="p-1.5 hover:bg-muted rounded transition-colors"
-								@click="openEditArtifactModal(idx)"
+				<div class="overflow-x-auto">
+					<table class="app-table-detail min-w-[720px]">
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>类型</th>
+								<th>名称</th>
+								<th>路径/镜像</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="sortableArtifacts.length === 0">
+								<td colspan="5" class="text-center text-muted-foreground">
+									暂无制品配置
+								</td>
+							</tr>
+							<tr
+								v-for="(artifact, idx) in sortableArtifacts"
+								:key="idx"
 							>
-								<FilePen class="size-4 text-muted-foreground" />
-							</button>
-							<button
-								class="p-1.5 hover:bg-destructive/10 rounded transition-colors"
-								@click="confirmRemoveArtifact(idx)"
-							>
-								<X class="size-4 text-destructive" />
-							</button>
-						</div>
+								<td class="text-muted-foreground">{{ idx + 1 }}</td>
+								<td>
+									<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+										{{ artifact.type }}
+									</span>
+								</td>
+								<td class="text-foreground">{{ artifact.name }}</td>
+								<td class="text-muted-foreground">{{ artifact.path }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button
+											class="text-primary hover:underline"
+											@click="openEditArtifactModal(idx)"
+										>
+											编辑
+										</button>
+										<button
+											class="text-destructive hover:underline"
+											@click="confirmRemoveArtifact(idx)"
+										>
+											删除
+										</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 					</div>
 				</div>
-			</div>
 		</template>
 
 		<AppDialog v-model:open="isEditDialogOpen" title="编辑构建">
@@ -468,12 +490,12 @@ onMounted(fetchStage);
 					/>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">路径</label>
+					<label class="text-sm font-medium text-foreground">路径/镜像</label>
 					<input
 						v-model="artifactForm.path"
 						type="text"
 						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-						placeholder="例如: ./dist"
+						placeholder="例如: image:tag 或 ./dist"
 					/>
 				</div>
 			</div>

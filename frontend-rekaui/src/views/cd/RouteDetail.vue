@@ -242,7 +242,7 @@ onMounted(fetchRoute);
 		<!-- Content -->
 		<template v-else-if="routeData">
 			<!-- Basic Info Card -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
@@ -287,11 +287,15 @@ onMounted(fetchRoute);
 						<dt class="text-muted-foreground w-24 shrink-0">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.created_at) }}</dd>
 					</div>
+					<div class="flex gap-2">
+						<dt class="text-muted-foreground w-24 shrink-0">更新时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(routeData.updated_at) }}</dd>
+					</div>
 				</dl>
 			</div>
 
 			<!-- HTTPS Config Card -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">HTTPS 配置</h2>
 				</div>

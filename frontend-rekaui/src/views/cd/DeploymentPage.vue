@@ -16,9 +16,25 @@ const toast = useToast()
 const { status, execute } = useStatusAsync()
 
 const deployments = ref<Deployment[]>([])
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
 const searchText = ref('')
+
+function operationTypeLabel(type: string) {
+	const map: Record<string, string> = {
+		deploy: '部署',
+		stop: '停止',
+		restart: '重启'
+	}
+	return map[type] ?? type
+}
+
+function triggerTypeLabel(type: string) {
+	const map: Record<string, string> = {
+		manual: '手动'
+	}
+	return map[type] ?? type
+}
 
 async function fetchDeployments() {
 	try {
@@ -95,33 +111,37 @@ onMounted(fetchDeployments)
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border">
+				<table class="app-table-list min-w-[1200px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">应用</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">环境</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">状态</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">开始时间</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">耗时</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">操作</th>
+							<th>应用</th>
+							<th>操作类型</th>
+							<th>触发方式</th>
+							<th>环境</th>
+							<th>环境文件</th>
+							<th>状态</th>
+							<th>开始时间</th>
+							<th>耗时</th>
+							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr
-							v-for="deployment in deployments"
-							:key="deployment.id"
-							class="transition-colors hover:bg-muted/30"
-						>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="deployment in deployments" :key="deployment.id">
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/cd/applications/${deployment.application_id}`)"
 								>
-									{{ deployment.application_name }}
+									{{ deployment.application_name || deployment.application_id }}
 								</button>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ deployment.environment || '—' }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ operationTypeLabel(deployment.operation_type) }}</td>
+							<td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
+							<td class="text-foreground">{{ deployment.environment || '—' }}</td>
+							<td class="max-w-48 truncate text-foreground" :title="deployment.env_file || undefined">
+								{{ deployment.env_file || '—' }}
+							</td>
+							<td>
 								<span
 									class="inline-flex rounded-md px-2 py-0.5 text-sm"
 									:class="statusBadgeClass(deployment.status)"
@@ -129,9 +149,9 @@ onMounted(fetchDeployments)
 									{{ statusLabel(deployment.status) }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(deployment.started_at) }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatDuration(deployment.duration_ms) }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
+							<td class="text-foreground">{{ formatDuration(deployment.duration_ms) }}</td>
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/cd/deployments/${deployment.id}`)"

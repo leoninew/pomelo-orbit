@@ -195,37 +195,59 @@ onMounted(fetchTemplates)
 				<p class="mb-4 min-h-10 text-sm text-muted-foreground">
 					{{ tpl.description || '—' }}
 				</p>
+				<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+					<span class="rounded bg-muted px-2 py-0.5">v{{ tpl.version }}</span>
+					<span class="rounded bg-muted px-2 py-0.5">{{ tpl.orchestration.length }} 阶段</span>
+					<span class="rounded bg-muted px-2 py-0.5">{{ tpl.variable_declarations.length }} 变量</span>
+				</div>
 				<div class="text-sm text-muted-foreground">
-					{{ formatTime(tpl.created_at) }}
+					{{ formatTime(tpl.updated_at) }}
 				</div>
 			</div>
 		</div>
 
 		<div v-else class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 			<div class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1120px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">描述</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">创建时间</th>
-							<th class="px-6 py-4 text-right text-xs font-normal text-muted-foreground">操作</th>
+							<th>名称</th>
+							<th>版本</th>
+							<th>阶段</th>
+							<th>变量</th>
+							<th>描述</th>
+							<th>创建时间</th>
+							<th class="text-right">操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
+					<tbody>
 						<tr
 							v-for="tpl in templates"
 							:key="tpl.id"
-							class="cursor-pointer transition-colors hover:bg-muted/30"
+							class="cursor-pointer"
 							@click="router.push(`/ci/template/${tpl.id}`)"
 						>
-							<td class="px-6 py-5 text-sm text-foreground">{{ tpl.name }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ tpl.description || '—' }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(tpl.created_at) }}</td>
-							<td class="px-6 py-5 text-right text-sm">
+							<td class="text-foreground">{{ tpl.name }}</td>
+							<td>
+								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ tpl.version }}</span>
+							</td>
+							<td class="text-foreground">{{ tpl.orchestration.length }}</td>
+							<td class="text-foreground">{{ tpl.variable_declarations.length }}</td>
+							<td class="max-w-sm truncate text-foreground" :title="tpl.description || undefined">
+								{{ tpl.description || '—' }}
+							</td>
+							<td class="text-foreground">{{ formatTime(tpl.created_at) }}</td>
+							<td class="text-right">
+								<router-link
+									:to="`/ci/template/${tpl.id}`"
+									class="text-primary hover:underline"
+									@click.stop
+								>
+									查看
+								</router-link>
 								<button
 									:disabled="duplicating"
-									class="text-primary hover:underline disabled:opacity-50"
+									class="ml-3 text-primary hover:underline disabled:opacity-50"
 									@click.stop="handleDuplicate(tpl.id)"
 								>
 									复制

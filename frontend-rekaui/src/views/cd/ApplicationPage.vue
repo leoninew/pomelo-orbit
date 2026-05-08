@@ -17,7 +17,7 @@ const { status, execute } = useStatusAsync()
 
 const applications = ref<Application[]>([])
 const searchText = ref('')
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
 
 const badgeMap: Record<string, string> = {
@@ -106,23 +106,20 @@ onMounted(fetchApplications)
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border">
+				<table class="app-table-list min-w-[900px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">编码</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">状态</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">创建时间</th>
-							<th class="px-6 py-4 text-left text-sm font-medium text-foreground">操作</th>
+							<th>名称</th>
+							<th>编码</th>
+							<th>状态</th>
+							<th>路由管理</th>
+							<th>创建时间</th>
+							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr
-							v-for="app in applications"
-							:key="app.id"
-							class="transition-colors hover:bg-muted/30"
-						>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="app in applications" :key="app.id">
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/cd/applications/${app.id}`)"
@@ -130,8 +127,8 @@ onMounted(fetchApplications)
 									{{ app.name }}
 								</button>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ app.code }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ app.code }}</td>
+							<td>
 								<span
 									class="inline-flex rounded-md border px-2 py-0.5 text-sm"
 									:class="appBadgeClass(app.status)"
@@ -139,8 +136,9 @@ onMounted(fetchApplications)
 									{{ appStatusLabel(app.status) }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(app.created_at) }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ app.route_managed ? '启用' : '未启用' }}</td>
+							<td class="text-foreground">{{ formatTime(app.created_at) }}</td>
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/cd/applications/${app.id}`)"

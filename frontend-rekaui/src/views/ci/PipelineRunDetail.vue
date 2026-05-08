@@ -6,12 +6,13 @@ import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import AppDialog from '@/components/AppDialog.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
-import type { PipelineSnapshot } from '@/types/ci/snapshot';
+import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
 import type { PipelineRun } from '@/types/ci/run';
-import type { StageRun } from '@/types/ci/stage_run';
+import type { Artifact, StageRun } from '@/types/ci/stage_run';
 import { isTerminalStatus } from '@/utils/status';
 import { delayAsync, formatTime } from '@/utils/time';
 import StageDAGView from './components/StageDAGView.vue';
+import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -19,17 +20,34 @@ const runId = computed(() => route.params.id as string);
 const toast = useToast();
 
 const { loading, execute } = useStatusAsync();
+const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
 const { loading: retrying, execute: executeRetry } = useStatusAsync();
 const { loading: canceling, execute: executeCancel } = useStatusAsync();
 
 const run = ref<PipelineRun>();
 const snapshot = ref<PipelineSnapshot>();
+const artifacts = ref<Artifact[]>([]);
 const currentStageRun = ref<StageRun>();
 const showLogsDrawer = ref(false);
 const isCancelDialogOpen = ref(false);
 const stagesView = ref<'list' | 'dag'>('list');
 
+const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
 const stageRuns = computed(() => run.value?.stage_runs ?? []);
+const stageRunMap = computed<Record<string, StageRun>>(() => {
+	const map: Record<string, StageRun> = {};
+	for (const sr of stageRuns.value) {
+		map[sr.stage_id] = sr;
+	}
+	return map;
+});
+const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
+	const map: Record<string, SnapshotStage> = {};
+	for (const stage of snapshot.value?.stages_snapshot ?? []) {
+		map[stage.id] = stage;
+	}
+	return map;
+});
 
 // 日志 drawer 状态
 const logsText = ref('');
@@ -98,6 +116,13 @@ function openLogDrawer(sr: StageRun) {
 	startLogPolling(sr.id);
 }
 
+function openStageLog(stageId: string) {
+	const stageRun = stageRunMap.value[stageId];
+	if (stageRun) {
+		openLogDrawer(stageRun);
+	}
+}
+
 function closeLogDrawer() {
 	showLogsDrawer.value = false;
 	logPollAbort?.abort();
@@ -142,9 +167,10 @@ function scrollToBottom() {
 
 async function fetchRun() {
 	try {
-		await execute(async () => {
+		return await execute(async () => {
 			const data = await pipelineRunApi.get(runId.value);
 			run.value = data;
+			return data;
 		});
 	} catch {
 		toast.error('获取 Run 信息失败');
@@ -158,6 +184,16 @@ async function fetchSnapshot(snapshotId: string) {
 		snapshot.value = data;
 	} catch {
 		// snapshot 加载失败不影响主流程
+	}
+}
+
+async function fetchArtifacts() {
+	try {
+		await executeArtifacts(async () => {
+			artifacts.value = await pipelineRunApi.listArtifacts(runId.value);
+		});
+	} catch {
+		// artifact 加载失败不影响主流程
 	}
 }
 
@@ -179,7 +215,10 @@ async function handleCancel() {
 			await pipelineRunApi.cancel(runId.value);
 			toast.success('已取消');
 			isCancelDialogOpen.value = false;
-			await fetchRun();
+			const currentRun = await fetchRun();
+			if (currentRun && isTerminalStatus(currentRun.status)) {
+				await fetchArtifacts();
+			}
 		});
 	} catch (error) {
 		toast.error(error instanceof Error ? error.message : '取消失败');
@@ -195,6 +234,7 @@ async function startPolling() {
 			run.value = await pipelineRunApi.get(runId.value);
 			if (isTerminalStatus(run.value.status)) {
 				isPolling.value = false;
+				void fetchArtifacts();
 				break;
 			}
 		} catch {
@@ -222,12 +262,15 @@ async function init() {
 	stopPolling();
 	run.value = undefined;
 	snapshot.value = undefined;
-	await fetchRun();
-	if (run.value?.snapshot_id) {
-		await fetchSnapshot(run.value.snapshot_id);
+	artifacts.value = [];
+	const currentRun = await fetchRun();
+	if (currentRun?.snapshot_id) {
+		await fetchSnapshot(currentRun.snapshot_id);
 	}
-	if (run.value && !isTerminalStatus(run.value.status)) {
+	if (currentRun && !isTerminalStatus(currentRun.status)) {
 		startPolling();
+	} else if (currentRun) {
+		await fetchArtifacts();
 	}
 }
 
@@ -288,7 +331,7 @@ onUnmounted(() => {
 		<!-- 内容 -->
 		<div v-else-if="run" class="flex flex-col gap-4">
 				<!-- 基本信息卡片 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">基本信息</h2>
 					</div>
@@ -342,21 +385,59 @@ onUnmounted(() => {
 								</router-link>
 							</dd>
 						</div>
-						<div v-if="run.created_at" class="flex gap-2">
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">快照</dt>
+							<dd>
+								<router-link
+									v-if="run.snapshot_id"
+									:to="`/ci/snapshot/${run.snapshot_id}`"
+									class="text-primary hover:underline"
+								>
+									查看
+								</router-link>
+								<span v-else class="text-muted-foreground">—</span>
+							</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">重试自</dt>
+							<dd>
+								<router-link
+									v-if="run.retry_of"
+									:to="`/ci/run/${run.retry_of}`"
+									class="text-primary hover:underline"
+								>
+									查看
+								</router-link>
+								<span v-else class="text-muted-foreground">—</span>
+							</dd>
+						</div>
+						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
 							<dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
 						</div>
-						<div v-if="run.started_at" class="flex gap-2">
+						<div class="flex gap-2">
 							<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
+							<dd class="text-muted-foreground">{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">结束时间</dt>
+							<dd class="text-muted-foreground">{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd>
+						</div>
+						<div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
+							<dd class="min-w-0 text-destructive">
+								<span class="block truncate" :title="run.error_message">
+									{{ run.error_message }}
+								</span>
+							</dd>
 						</div>
 					</dl>
 				</div>
 
 				<!-- Stage 列表 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="flex items-center justify-between border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">Stage 执行</h2>
+						<h2 class="font-semibold text-foreground">阶段编排</h2>
 						<div v-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
 							<button
 								class="rounded px-3 py-1 text-xs font-medium transition-colors"
@@ -376,33 +457,92 @@ onUnmounted(() => {
 					</div>
 					
 					<!-- 列表视图 -->
-					<div v-if="stagesView === 'list'" class="divide-y divide-border">
-						<div
-							v-for="sr in stageRuns"
-							:key="sr.id"
-							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-						>
-							<div class="flex items-center gap-4">
-								<span
-									class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-									:class="getStageStatusBadge(sr.status)"
-								>
-									{{ getStageStatusText(sr.status) }}
-								</span>
-								<div>
-									<p class="text-sm text-foreground">{{ sr.stage_name }}</p>
-									<p v-if="sr.started_at" class="text-xs text-muted-foreground">
-										{{ formatTime(sr.started_at) }}
-									</p>
-								</div>
-							</div>
-							<button
-								v-if="sr.status !== 'waiting_to_run'"
-								class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-								@click="openLogDrawer(sr)"
-							>
-								查看日志
-							</button>
+					<div v-if="stagesView === 'list'">
+						<div class="overflow-x-auto">
+							<table class="app-table-detail min-w-[960px]">
+								<thead>
+									<tr>
+										<th>#</th>
+										<th>阶段</th>
+										<th>版本</th>
+										<th>依赖</th>
+										<th>制品</th>
+										<th>状态</th>
+										<th>错误信息</th>
+										<th>操作</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr v-if="run.snapshot_id && !snapshot">
+										<td colspan="8" class="text-center text-muted-foreground">
+											<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+										</td>
+									</tr>
+									<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
+										<td colspan="8" class="text-center text-muted-foreground">
+											暂无阶段记录
+										</td>
+									</tr>
+									<tr
+										v-for="(stage, index) in snapshot?.stages_snapshot ?? []"
+										:key="stage.id"
+									>
+										<td class="text-muted-foreground">{{ index + 1 }}</td>
+										<td>
+											<router-link
+												:to="`/ci/build-stage/${stage.id}`"
+												class="text-primary hover:underline"
+											>
+												{{ stage.name }}
+											</router-link>
+										</td>
+										<td class="text-foreground">v{{ stage.version }}</td>
+										<td>
+											<div v-if="stage.depends_on.length" class="flex flex-wrap gap-1">
+												<span
+													v-for="depId in stage.depends_on"
+													:key="depId"
+													class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+												>
+													{{ snapshotStageMap[depId]?.name ?? depId }}
+												</span>
+											</div>
+											<span v-else class="text-muted-foreground">—</span>
+										</td>
+										<td class="text-foreground">
+											{{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
+										</td>
+										<td>
+											<span
+												class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
+												:class="getStageStatusBadge(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
+											>
+												{{ getStageStatusText(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
+											</span>
+										</td>
+										<td class="max-w-xs">
+											<span
+												v-if="stageRunMap[stage.id]?.error_message"
+												class="block truncate text-destructive"
+												:title="stageRunMap[stage.id]?.error_message"
+											>
+												{{ stageRunMap[stage.id]?.error_message }}
+											</span>
+											<span v-else class="text-muted-foreground">—</span>
+										</td>
+										<td>
+											<button
+												v-if="stageRunMap[stage.id]"
+												class="text-primary hover:underline"
+												@click="openStageLog(stage.id)"
+											>
+												查看日志
+											</button>
+											<span v-else class="text-muted-foreground">—</span>
+										</td>
+									</tr>
+								</tbody>
+							</table>
 						</div>
 					</div>
 					
@@ -416,6 +556,61 @@ onUnmounted(() => {
 								@view-stage="openLogDrawer"
 							/>
 						</div>
+					</div>
+				</div>
+
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+					<div class="border-b border-border px-5 py-4">
+						<h2 class="font-semibold text-foreground">变量快照</h2>
+					</div>
+					<VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
+				</div>
+
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+					<div class="border-b border-border px-5 py-4">
+						<h2 class="font-semibold text-foreground">制品</h2>
+					</div>
+					<div v-if="artifactsLoading" class="flex justify-center py-16">
+						<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+					</div>
+					<div v-else-if="!isTerminalStatus(run.status)" class="text-center py-16 text-muted-foreground">
+						<p class="text-sm">运行完成后展示</p>
+					</div>
+					<div v-else-if="artifacts.length === 0" class="text-center py-16 text-muted-foreground">
+						<p class="text-sm">暂无制品</p>
+					</div>
+					<div v-else class="overflow-x-auto">
+						<table class="app-table-detail min-w-[760px]">
+							<thead>
+								<tr>
+									<th>阶段</th>
+									<th>类型</th>
+									<th>名称</th>
+									<th>路径</th>
+									<th>创建时间</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr
+									v-for="artifact in artifacts"
+									:key="artifact.id"
+								>
+									<td class="text-foreground">{{ artifact.stage_name }}</td>
+									<td>
+										<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+											{{ artifact.type }}
+										</span>
+									</td>
+									<td class="text-foreground">{{ artifact.name }}</td>
+									<td class="max-w-md truncate text-muted-foreground">
+										{{ artifact.path || '—' }}
+									</td>
+									<td class="text-muted-foreground">
+										{{ formatTime(artifact.created_at) }}
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
 				</div>
 		</div>

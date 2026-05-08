@@ -638,7 +638,7 @@ onMounted(async () => {
 		<!-- 内容 -->
 		<div v-else-if="application" class="flex flex-col gap-4">
 				<!-- 基本信息卡片 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">基本信息</h2>
 					</div>
@@ -670,11 +670,19 @@ onMounted(async () => {
 							<dt class="w-24 shrink-0 text-muted-foreground">路由管理</dt>
 							<dd class="text-foreground">{{ application.route_managed ? '已启用' : '未启用' }}</dd>
 						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+							<dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
+						</div>
+						<div class="flex gap-2">
+							<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+							<dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
+						</div>
 					</dl>
 				</div>
 
 				<!-- 配置文件 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="flex items-center justify-between border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">配置文件</h2>
 						<button
@@ -685,92 +693,135 @@ onMounted(async () => {
 							添加文件
 						</button>
 					</div>
-					<div v-if="fileListLoading" class="flex items-center justify-center py-12">
-						<div class="h-6 w-6 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
-					</div>
-					<div v-else-if="files.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
-						暂无配置文件
-					</div>
-					<div v-else class="divide-y divide-border">
-						<div
-							v-for="file in files"
-							:key="file.id"
-							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-						>
-							<div>
-								<p class="text-sm text-foreground">{{ file.path }}</p>
-								<p class="text-xs text-muted-foreground">{{ formatTime(file.updated_at) }}</p>
-							</div>
-							<div class="flex items-center gap-2">
-								<button
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="openFileDrawer(file.id, false)"
+					<div class="overflow-x-auto">
+						<table class="app-table-detail min-w-[760px]">
+							<thead>
+								<tr>
+									<th>文件路径</th>
+									<th>创建时间</th>
+									<th>操作</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="fileListLoading">
+									<td colspan="3" class="text-center text-muted-foreground">
+										<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+									</td>
+								</tr>
+								<tr v-else-if="files.length === 0">
+									<td colspan="3" class="text-center text-muted-foreground">
+										暂无配置文件
+									</td>
+								</tr>
+								<tr
+									v-for="file in files"
+									:key="file.id"
 								>
-									<Eye class="inline h-3 w-3" />
-									查看
-								</button>
-								<button
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="openFileDrawer(file.id, true)"
-								>
-									编辑
-								</button>
-								<button
-									class="rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-									@click="confirmDeleteFile(file.id)"
-								>
-									删除
-								</button>
-							</div>
-						</div>
+									<td class="max-w-md truncate text-foreground" :title="file.path">
+										{{ file.path }}
+									</td>
+									<td class="text-muted-foreground">{{ formatTime(file.created_at) }}</td>
+									<td>
+										<div class="flex items-center gap-3">
+											<button
+												class="inline-flex items-center gap-1 text-primary hover:underline"
+												@click="openFileDrawer(file.id, false)"
+											>
+												<Eye class="h-3 w-3" />
+												查看
+											</button>
+											<button
+												class="text-primary hover:underline"
+												@click="openFileDrawer(file.id, true)"
+											>
+												编辑
+											</button>
+											<button
+												class="text-destructive hover:underline"
+												@click="confirmDeleteFile(file.id)"
+											>
+												删除
+											</button>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
 				</div>
 
 				<!-- 服务配置 -->
-				<div class="rounded-lg border border-border bg-card shadow-sm">
+				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">服务配置</h2>
 					</div>
-					<div v-if="serviceConfigListLoading" class="flex items-center justify-center py-12">
-						<div class="h-6 w-6 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
-					</div>
-					<div v-else-if="serviceConfigError" class="px-5 py-12 text-center text-sm text-destructive">
-						{{ serviceConfigError }}
-					</div>
-					<div v-else-if="serviceConfigs.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
-						暂无服务配置
-					</div>
-					<div v-else class="divide-y divide-border">
-						<div
-							v-for="config in serviceConfigs"
-							:key="config.service_name"
-							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-						>
-							<div>
-								<p class="text-sm text-foreground">{{ config.service_name }}</p>
-								<p class="text-xs text-muted-foreground">{{ getServiceDisplayImage(config) }}</p>
-							</div>
-							<div class="flex items-center gap-2">
-								<button
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="openEditServiceConfigModal(config)"
+					<div class="overflow-x-auto">
+						<table class="app-table-detail min-w-[960px]">
+							<thead>
+								<tr>
+									<th>服务</th>
+									<th>默认域名</th>
+									<th>默认端口</th>
+									<th>基础镜像</th>
+									<th>当前镜像</th>
+									<th>操作</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="serviceConfigListLoading">
+									<td colspan="6" class="text-center text-muted-foreground">
+										<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+									</td>
+								</tr>
+								<tr v-else-if="serviceConfigError">
+									<td colspan="6" class="text-center text-destructive">
+										{{ serviceConfigError }}
+									</td>
+								</tr>
+								<tr v-else-if="serviceConfigs.length === 0">
+									<td colspan="6" class="text-center text-muted-foreground">
+										暂无服务配置
+									</td>
+								</tr>
+								<tr
+									v-for="config in serviceConfigs"
+									:key="config.service_name"
 								>
-									编辑镜像
-								</button>
-								<button
-									v-if="canResetServiceConfig(config)"
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="confirmResetServiceConfig(config)"
-								>
-									重置
-								</button>
-							</div>
-						</div>
+									<td class="text-foreground">{{ config.service_name }}</td>
+									<td class="text-muted-foreground">{{ config.default_domain }}</td>
+									<td class="text-muted-foreground">{{ config.default_port }}</td>
+									<td class="max-w-xs truncate text-muted-foreground" :title="config.base_image ?? ''">
+										{{ config.base_image || '—' }}
+									</td>
+									<td class="max-w-xs truncate text-foreground" :title="getServiceDisplayImage(config)">
+										{{ getServiceDisplayImage(config) || '—' }}
+									</td>
+									<td>
+										<div class="flex items-center gap-3">
+											<button
+												class="text-primary hover:underline"
+												@click="openEditServiceConfigModal(config)"
+											>
+												编辑
+											</button>
+											<button
+												v-if="canResetServiceConfig(config)"
+												class="text-destructive hover:underline"
+												@click="confirmResetServiceConfig(config)"
+											>
+												重置
+											</button>
+											<span v-else class="text-muted-foreground">—</span>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
 				</div>
 
 				<!-- 路由配置 -->
-				<div v-if="application.route_managed" class="rounded-lg border border-border bg-card shadow-sm">
+				<div v-if="application.route_managed" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 					<div class="flex items-center justify-between border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">路由配置</h2>
 						<button
@@ -781,37 +832,55 @@ onMounted(async () => {
 							添加路由
 						</button>
 					</div>
-					<div v-if="routeListLoading" class="flex items-center justify-center py-12">
-						<div class="h-6 w-6 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
-					</div>
-					<div v-else-if="appRoutes.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
-						暂无路由配置
-					</div>
-					<div v-else class="divide-y divide-border">
-						<div
-							v-for="r in appRoutes"
-							:key="r.id"
-							class="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/30"
-						>
-							<div>
-								<p class="text-sm text-foreground">{{ r.domain }}</p>
-								<p class="text-xs text-muted-foreground">{{ r.service_name }}:{{ r.port }}</p>
-							</div>
-							<div class="flex items-center gap-2">
-								<button
-									class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/50"
-									@click="openEditRouteModal(r)"
+					<div class="overflow-x-auto">
+						<table class="app-table-detail min-w-[760px]">
+							<thead>
+								<tr>
+									<th>域名</th>
+									<th>服务</th>
+									<th>端口</th>
+									<th>创建时间</th>
+									<th>操作</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr v-if="routeListLoading">
+									<td colspan="5" class="text-center text-muted-foreground">
+										<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+									</td>
+								</tr>
+								<tr v-else-if="appRoutes.length === 0">
+									<td colspan="5" class="text-center text-muted-foreground">
+										暂无路由配置
+									</td>
+								</tr>
+								<tr
+									v-for="r in appRoutes"
+									:key="r.id"
 								>
-									编辑
-								</button>
-								<button
-									class="rounded-md border border-destructive bg-background px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-									@click="confirmDeleteRoute(r.id)"
-								>
-									删除
-								</button>
-							</div>
-						</div>
+									<td class="text-foreground">{{ r.domain }}</td>
+									<td class="text-muted-foreground">{{ r.service_name }}</td>
+									<td class="text-muted-foreground">{{ r.port }}</td>
+									<td class="text-muted-foreground">{{ formatTime(r.created_at) }}</td>
+									<td>
+										<div class="flex items-center gap-3">
+											<button
+												class="text-primary hover:underline"
+												@click="openEditRouteModal(r)"
+											>
+												编辑
+											</button>
+											<button
+												class="text-destructive hover:underline"
+												@click="confirmDeleteRoute(r.id)"
+											>
+												删除
+											</button>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
 					</div>
 				</div>
 		</div>

@@ -11,7 +11,7 @@ import type { Repository } from '@/types/ci/repository'
 import type { PipelineRun } from '@/types/ci/run'
 import type { PipelineTemplate } from '@/types/ci/template'
 import { statusBadgeClass, statusLabel } from '@/utils/status'
-import { formatTime } from '@/utils/time'
+import { formatTime, formatDuration } from '@/utils/time'
 import { ToolbarRoot } from 'reka-ui'
 
 const route = useRoute()
@@ -22,9 +22,17 @@ const { status, error, execute } = useStatusAsync()
 const runs = ref<PipelineRun[]>([])
 const repositories = ref<Repository[]>([])
 const templates = ref<PipelineTemplate[]>([])
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
 const query = reactive({ repository_id: '', template_id: '' })
+
+function triggerLabel(trigger: string) {
+	const map: Record<string, string> = {
+		manual: '手动',
+		webhook: 'Webhook'
+	}
+	return map[trigger] ?? trigger
+}
 
 const repositoryOptions = computed(() =>
 	repositories.value.map((repo) => ({
@@ -179,24 +187,24 @@ onMounted(async () => {
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1440px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">仓库</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">模板</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">分支/标签</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">状态</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">创建时间</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">操作</th>
+							<th>仓库</th>
+							<th>模板</th>
+							<th>版本</th>
+							<th>触发方式</th>
+							<th>触发 Ref</th>
+							<th>状态</th>
+							<th>错误信息</th>
+							<th>开始时间</th>
+							<th>耗时</th>
+							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr
-							v-for="run in runs"
-							:key="run.id"
-							class="transition-colors hover:bg-muted/30"
-						>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="run in runs" :key="run.id">
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/ci/repository/${run.repository_id}`)"
@@ -204,9 +212,19 @@ onMounted(async () => {
 									{{ run.repository_name }}
 								</button>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ run.template_name }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ run.trigger_ref }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td>
+								<router-link :to="`/ci/template/${run.template_id}`" class="text-primary hover:underline">
+									{{ run.template_name }}
+								</router-link>
+							</td>
+							<td>
+								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ run.template_version }}</span>
+							</td>
+							<td class="text-foreground">{{ triggerLabel(run.trigger) }}</td>
+							<td class="max-w-44 truncate text-foreground" :title="run.trigger_ref">
+								{{ run.trigger_ref }}
+							</td>
+							<td>
 								<span
 									class="inline-flex rounded-md px-2 py-0.5 text-sm"
 									:class="statusBadgeClass(run.status)"
@@ -214,8 +232,12 @@ onMounted(async () => {
 									{{ statusLabel(run.status) }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(run.created_at) }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="max-w-xs truncate text-foreground" :title="run.error_message || undefined">
+								{{ run.error_message || '—' }}
+							</td>
+							<td class="text-foreground">{{ formatTime(run.started_at) }}</td>
+							<td class="text-foreground">{{ formatDuration(run.started_at, run.finished_at) }}</td>
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/ci/run/${run.id}`)"

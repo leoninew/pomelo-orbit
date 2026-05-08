@@ -19,6 +19,7 @@ import ListPagination from '@/components/ListPagination.vue';
 import SearchControl from '@/components/SearchControl.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 
 const toast = useToast();
 const { status, error, execute } = useStatusAsync();
@@ -74,9 +75,22 @@ function validate() {
 async function fetchData() {
 	try {
 		await execute(async () => {
-			const res = await routeApi.list(1, 100);
-			routes.value = res.items;
-			pagination.total = res.total;
+			const pageSize = 100;
+			const firstPage = await routeApi.list(1, pageSize);
+			const allRoutes = [...firstPage.items];
+			let page = 2;
+
+			while (allRoutes.length < firstPage.total) {
+				const nextPage = await routeApi.list(page, pageSize);
+				if (nextPage.items.length === 0) {
+					break;
+				}
+				allRoutes.push(...nextPage.items);
+				page += 1;
+			}
+
+			routes.value = allRoutes;
+			pagination.total = allRoutes.length;
 		});
 	} catch {
 		toast.error('获取路由失败');
@@ -203,54 +217,56 @@ onMounted(fetchData);
 				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1180px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">域名</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">路径前缀</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">目标地址</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">状态</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">协议</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">操作</th>
+							<th>名称</th>
+							<th>域名</th>
+							<th>路径前缀</th>
+							<th>目标地址</th>
+							<th>状态</th>
+							<th>协议</th>
+							<th>创建时间</th>
+							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr v-for="r in paginatedRoutes" :key="r.id" class="transition-colors hover:bg-muted/30">
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="r in paginatedRoutes" :key="r.id">
+							<td>
 								<router-link :to="`/cd/routes/${r.id}`" class="text-primary hover:underline">
 									{{ r.name }}
 								</router-link>
 							</td>
-							<td class="px-6 py-5 text-sm">
+							<td>
 								<a
 									:href="`${r.https_enabled ? 'https' : 'http'}://${r.domain}`"
 									target="_blank"
-									class="text-primary hover:underline flex items-center gap-1"
+									class="flex items-center gap-1 text-primary hover:underline"
 								>
 									{{ r.domain }}
 									<ExternalLink class="size-3" />
 								</a>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ r.path_prefix }}</td>
-							<td class="px-6 py-5 text-sm text-foreground max-w-48 truncate">{{ r.target_url }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ r.path_prefix }}</td>
+							<td class="max-w-48 truncate text-foreground" :title="r.target_url">{{ r.target_url }}</td>
+							<td>
 								<span
-									class="inline-block px-2 py-0.5 text-sm rounded border"
+									class="inline-block rounded border px-2 py-0.5 text-sm"
 									:class="r.enabled ? 'bg-green-50 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'"
 								>
 									{{ r.enabled ? '启用' : '停用' }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm">
+							<td>
 								<span
-									class="inline-block px-2 py-0.5 text-sm rounded border"
+									class="inline-block rounded border px-2 py-0.5 text-sm"
 									:class="r.https_enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-muted text-muted-foreground border-border'"
 								>
 									{{ r.https_enabled ? 'HTTPS' : 'HTTP' }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ formatTime(r.created_at) }}</td>
+							<td>
 								<div class="flex items-center gap-2">
 									<router-link :to="`/cd/routes/${r.id}`" class="text-primary hover:underline">查看</router-link>
 									<button v-if="!r.enabled" class="text-green-600 hover:underline" @click="handleEnable(r.id)">

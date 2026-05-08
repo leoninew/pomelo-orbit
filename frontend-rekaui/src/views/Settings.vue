@@ -35,110 +35,102 @@
 			</div>
 		</div>
 		<div v-else class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-			<table class="w-full">
-				<thead class="border-b border-border bg-muted/30">
-					<tr>
-						<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">
-							配置项
-						</th>
-						<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">
-							当前值
-						</th>
-						<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">
-							默认值
-						</th>
-						<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">
-							更新时间
-						</th>
-						<th class="px-6 py-4 text-right text-xs font-normal text-muted-foreground">
-							操作
-						</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-border">
-					<tr v-for="item in filteredConfig" :key="item.key" class="transition-colors hover:bg-muted/30">
-						<td class="px-6 py-5 text-sm">
-							<div class="text-foreground">{{ item.key }}</div>
-							<div v-if="item.description" class="text-xs text-muted-foreground mt-1">{{ item.description }}</div>
-						</td>
-						<td class="px-6 py-5 text-sm">
-							<!-- Editing Mode -->
-							<div v-if="editingKey === item.key">
-								<!-- Boolean -->
-								<SelectControl
-									v-if="typeof item.default === 'boolean'"
-									v-model="editingBoolStr"
-									:options="booleanOptions"
-									width-class="w-28"
-								/>
-								<!-- Select -->
-								<SelectControl
-									v-else-if="selectOptions[item.key]"
-									v-model="editingStr"
-									:options="getSettingOptions(item.key)"
-									width-class="w-40"
-								/>
-								<!-- Text -->
-								<input
-									v-else
-									v-model="editingStr"
-									:type="secretKeys.has(item.key) ? 'password' : 'text'"
-									:placeholder="secretKeys.has(item.key) ? '留空表示不修改' : ''"
-									class="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-								/>
-							</div>
-							<!-- Display Mode -->
-							<div v-else class="text-foreground">
-								<span v-if="secretKeys.has(item.key)">••••••••</span>
-								<span v-else-if="typeof item.value === 'boolean'">
-									{{ item.value ? 'true' : 'false' }}
+			<div class="overflow-x-auto">
+				<table class="app-table-list min-w-[1120px]">
+					<thead>
+						<tr>
+							<th>配置项</th>
+							<th>当前值</th>
+							<th>默认值</th>
+							<th>更新时间</th>
+							<th class="text-right">操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="item in filteredConfig" :key="item.key">
+							<td>
+								<div class="text-foreground">{{ item.key }}</div>
+								<div v-if="item.description" class="mt-1 text-xs text-muted-foreground">{{ item.description }}</div>
+							</td>
+							<td>
+								<!-- Editing Mode -->
+								<div v-if="editingKey === item.key">
+									<!-- Boolean -->
+									<SelectControl
+										v-if="typeof item.default === 'boolean'"
+										v-model="editingBoolStr"
+										:options="booleanOptions"
+										width-class="w-28"
+									/>
+									<!-- Select -->
+									<SelectControl
+										v-else-if="selectOptions[item.key]"
+										v-model="editingStr"
+										:options="getSettingOptions(item.key)"
+										width-class="w-40"
+									/>
+									<!-- Text -->
+									<input
+										v-else
+										v-model="editingStr"
+										:type="secretKeys.has(item.key) ? 'password' : 'text'"
+										:placeholder="secretKeys.has(item.key) ? '留空表示不修改' : ''"
+										class="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+									/>
+								</div>
+								<!-- Display Mode -->
+								<div v-else class="text-foreground">
+									<span v-if="secretKeys.has(item.key)">••••••••</span>
+									<span v-else-if="typeof item.value === 'boolean'">
+										{{ item.value ? 'true' : 'false' }}
+									</span>
+									<span v-else>{{ item.value || '-' }}</span>
+								</div>
+							</td>
+							<td class="text-muted-foreground">
+								<span v-if="typeof item.default === 'boolean'">
+									{{ item.default ? 'true' : 'false' }}
 								</span>
-								<span v-else>{{ item.value || '-' }}</span>
-							</div>
-						</td>
-						<td class="px-6 py-5 text-sm text-muted-foreground">
-							<span v-if="typeof item.default === 'boolean'">
-								{{ item.default ? 'true' : 'false' }}
-							</span>
-							<span v-else>{{ item.default || '-' }}</span>
-						</td>
-						<td class="px-6 py-5 text-sm text-muted-foreground">
-							{{ item.updated_at ? formatTime(item.updated_at) : '-' }}
-						</td>
-						<td class="px-6 py-5 text-sm">
-							<div v-if="editingKey === item.key" class="flex justify-end gap-2">
-								<button
-									:disabled="operating"
-									class="text-primary hover:underline disabled:opacity-50"
-									@click="handleSave(item)"
-								>
-									保存
-								</button>
-								<button
-									class="text-muted-foreground hover:text-foreground"
-									@click="cancelEdit"
-								>
-									取消
-								</button>
-							</div>
-							<div v-else class="flex justify-end gap-2">
-								<button
-									class="text-primary hover:underline"
-									@click="startEdit(item)"
-								>
-									编辑
-								</button>
-								<button
-									class="text-muted-foreground hover:text-foreground"
-									@click="confirmReset(item.key)"
-								>
-									重置
-								</button>
-							</div>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+								<span v-else>{{ item.default || '-' }}</span>
+							</td>
+							<td class="text-muted-foreground">
+								{{ item.updated_at ? formatTime(item.updated_at) : '-' }}
+							</td>
+							<td>
+								<div v-if="editingKey === item.key" class="flex justify-end gap-2">
+									<button
+										:disabled="operating"
+										class="text-primary hover:underline disabled:opacity-50"
+										@click="handleSave(item)"
+									>
+										保存
+									</button>
+									<button
+										class="text-muted-foreground hover:text-foreground"
+										@click="cancelEdit"
+									>
+										取消
+									</button>
+								</div>
+								<div v-else class="flex justify-end gap-2">
+									<button
+										class="text-primary hover:underline"
+										@click="startEdit(item)"
+									>
+										编辑
+									</button>
+									<button
+										class="text-muted-foreground hover:text-foreground"
+										@click="confirmReset(item.key)"
+									>
+										重置
+									</button>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 
 		<!-- Change Password Modal -->

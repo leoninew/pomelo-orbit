@@ -55,3 +55,45 @@ export function getTodayStart(): Dayjs {
 export function delayAsync(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * 计算耗时 - 返回人类可读的耗时字符串
+ * @param startTime 开始时间 (UTC ISO 8601)
+ * @param endTime 结束时间 (UTC ISO 8601)
+ * @returns 耗时字符串，如 "2分30秒"、"1小时5分"、"—"
+ */
+export function formatDuration(startTime?: string | null, endTime?: string | null): string {
+	if (!startTime || !endTime) {
+		return '—';
+	}
+	
+	const start = dayjs.utc(startTime);
+	const end = dayjs.utc(endTime);
+	const diffMs = end.diff(start);
+	
+	if (diffMs < 0) {
+		return '—';
+	}
+	
+	const seconds = Math.floor(diffMs / 1000);
+	const minutes = Math.floor(seconds / 60);
+	const hours = Math.floor(minutes / 60);
+	const days = Math.floor(hours / 24);
+	
+	if (days > 0) {
+		const remainHours = hours % 24;
+		return remainHours > 0 ? `${days}天${remainHours}小时` : `${days}天`;
+	}
+	
+	if (hours > 0) {
+		const remainMinutes = minutes % 60;
+		return remainMinutes > 0 ? `${hours}小时${remainMinutes}分` : `${hours}小时`;
+	}
+	
+	if (minutes > 0) {
+		const remainSeconds = seconds % 60;
+		return remainSeconds > 0 ? `${minutes}分${remainSeconds}秒` : `${minutes}分`;
+	}
+	
+	return `${seconds}秒`;
+}

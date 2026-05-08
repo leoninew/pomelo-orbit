@@ -69,7 +69,7 @@ onMounted(fetchSnapshot);
 			</div>
 
 			<!-- 基本信息 -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
@@ -79,11 +79,22 @@ onMounted(fetchSnapshot);
 						<dd class="min-w-0 text-foreground">{{ snapshot.id }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">模板名称</dt>
-						<dd class="text-foreground">{{ snapshot.template_name }}</dd>
+						<dt class="w-24 shrink-0 text-muted-foreground">模板</dt>
+						<dd>
+							<router-link
+								:to="`/ci/template/${snapshot.template_id}`"
+								class="text-primary hover:underline"
+							>
+								{{ snapshot.template_name }}
+							</router-link>
+						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">快照版本</dt>
+						<dd class="text-foreground">v{{ snapshot.version }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">模板版本</dt>
 						<dd class="text-foreground">v{{ snapshot.template_version }}</dd>
 					</div>
 					<div class="flex gap-2">
@@ -94,7 +105,7 @@ onMounted(fetchSnapshot);
 			</div>
 
 			<!-- Stage 快照 -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="flex items-center justify-between border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">Stage 快照</h2>
 					<div v-if="snapshot.stages_snapshot.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
@@ -116,62 +127,57 @@ onMounted(fetchSnapshot);
 				</div>
 
 				<!-- 列表视图 -->
-				<div v-if="stagesView === 'list'">
-					<div v-if="snapshot.stages_snapshot.length === 0" class="px-6 py-12 text-center text-sm text-muted-foreground">
-						暂无 Stage
-					</div>
-					<div v-else class="overflow-x-auto">
-						<table class="w-full">
-							<thead class="border-b border-border bg-muted/30">
+				<div v-if="stagesView === 'list'" class="overflow-x-auto">
+						<table class="app-table-detail min-w-[760px]">
+							<thead>
 								<tr>
-									<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">#</th>
-									<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">Stage 名称</th>
-									<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">版本</th>
-									<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">镜像</th>
-									<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">依赖</th>
-									<th class="px-6 py-3 text-center text-xs font-normal text-muted-foreground">制品</th>
+									<th>#</th>
+									<th>阶段</th>
+									<th>版本</th>
+									<th>镜像</th>
+									<th>依赖</th>
+									<th>制品</th>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-border">
+							<tbody>
+								<tr v-if="snapshot.stages_snapshot.length === 0">
+									<td colspan="6" class="text-center text-muted-foreground">
+										暂无 Stage
+									</td>
+								</tr>
 								<tr
 									v-for="(stage, idx) in snapshot.stages_snapshot"
 									:key="stage.id"
-									class="transition-colors hover:bg-muted/30"
 								>
-									<td class="px-6 py-4 text-sm text-muted-foreground">{{ idx + 1 }}</td>
-									<td class="px-6 py-4 text-sm">
+									<td class="text-muted-foreground">{{ idx + 1 }}</td>
+									<td>
 										<router-link
 											:to="`/ci/build-stage/${stage.id}`"
-											class="text-sm text-primary transition-colors hover:text-primary/80"
+											class="text-primary hover:underline"
 										>
 											{{ stage.name }}
 										</router-link>
 									</td>
-									<td class="px-6 py-4 text-sm">
-										<span class="inline-block rounded-full border border-border bg-muted/30 px-2 py-0.5 text-sm text-foreground">
-											v{{ stage.version }}
-										</span>
-									</td>
-									<td class="px-6 py-4 text-sm text-muted-foreground">{{ stage.image }}</td>
-									<td class="px-6 py-4 text-sm">
+									<td class="text-foreground">v{{ stage.version }}</td>
+									<td class="text-muted-foreground">{{ stage.image }}</td>
+									<td>
 										<div v-if="stage.depends_on.length > 0" class="flex flex-wrap gap-1">
 											<span
 												v-for="depId in stage.depends_on"
 												:key="depId"
-												class="inline-block rounded border border-border bg-muted/30 px-2 py-0.5 text-sm text-foreground"
+												class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
 											>
 												{{ snapshotStageMap[depId]?.name ?? depId }}
 											</span>
 										</div>
-										<span v-else class="text-sm text-muted-foreground">—</span>
+										<span v-else class="text-muted-foreground">—</span>
 									</td>
-									<td class="px-6 py-4 text-center text-sm text-muted-foreground">
-										{{ stage.artifacts?.length ?? 0 }}
+									<td class="text-foreground">
+										{{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
 									</td>
 								</tr>
 							</tbody>
 						</table>
-					</div>
 				</div>
 
 				<!-- DAG 视图 -->
@@ -183,7 +189,7 @@ onMounted(fetchSnapshot);
 			</div>
 
 			<!-- 变量声明 -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">变量声明</h2>
 				</div>
@@ -195,7 +201,7 @@ onMounted(fetchSnapshot);
 			</div>
 
 			<!-- 制品声明 -->
-			<div class="rounded-lg border border-border bg-card shadow-sm">
+			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 				<div class="border-b border-border px-5 py-4">
 					<h2 class="font-semibold text-foreground">制品声明</h2>
 				</div>
@@ -203,29 +209,28 @@ onMounted(fetchSnapshot);
 					暂无制品
 				</div>
 				<div v-else class="overflow-x-auto">
-					<table class="w-full">
-						<thead class="border-b border-border bg-muted/30">
+					<table class="app-table-detail min-w-[720px]">
+						<thead>
 							<tr>
-								<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">Stage</th>
-								<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">类型</th>
-								<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">名称</th>
-								<th class="px-6 py-3 text-left text-xs font-normal text-muted-foreground">路径</th>
+								<th>Stage</th>
+								<th>类型</th>
+								<th>名称</th>
+								<th>路径/镜像</th>
 							</tr>
 						</thead>
-						<tbody class="divide-y divide-border">
+						<tbody>
 							<tr
 								v-for="(artifact, idx) in artifactDeclarations"
 								:key="idx"
-								class="transition-colors hover:bg-muted/30"
 							>
-								<td class="px-6 py-4 text-sm text-foreground">{{ artifact.stageName }}</td>
-								<td class="px-6 py-4 text-sm">
-									<span class="inline-block rounded-full border border-border bg-primary/10 px-2 py-0.5 text-xs text-primary">
+								<td class="text-foreground">{{ artifact.stageName }}</td>
+								<td>
+									<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 										{{ artifact.type }}
 									</span>
 								</td>
-								<td class="px-6 py-4 text-sm text-foreground">{{ artifact.name }}</td>
-								<td class="px-6 py-4 text-sm text-muted-foreground">{{ artifact.path }}</td>
+								<td class="text-foreground">{{ artifact.name }}</td>
+								<td class="text-muted-foreground">{{ artifact.path }}</td>
 							</tr>
 						</tbody>
 					</table>

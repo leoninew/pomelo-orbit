@@ -102,53 +102,53 @@ onMounted(fetchRoutes);
 				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1100px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">提供者</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">状态</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">规则</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">服务</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">入口点</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">协议</th>
+							<th>名称</th>
+							<th>提供者</th>
+							<th>状态</th>
+							<th>规则</th>
+							<th>服务</th>
+							<th>入口点</th>
+							<th>协议</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr v-for="r in filteredRoutes" :key="r.name" class="transition-colors hover:bg-muted/30">
-							<td class="px-6 py-5 text-sm text-foreground">{{ r.name }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ r.provider }}</td>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="r in filteredRoutes" :key="r.name">
+							<td class="max-w-48 truncate text-foreground" :title="r.name">{{ r.name }}</td>
+							<td class="text-foreground">{{ r.provider }}</td>
+							<td>
 								<span
-									class="inline-block px-2 py-0.5 text-sm rounded border"
+									class="inline-block rounded border px-2 py-0.5 text-sm"
 									:class="r.status === 'enabled' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'"
 								>
 									{{ r.status }}
 								</span>
 							</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="max-w-80 truncate" :title="r.rule">
 								<a
 									v-if="buildRouteUrl(r.rule, r.tls)"
 									:href="buildRouteUrl(r.rule, r.tls)!"
 									target="_blank"
-									class="text-primary hover:underline flex items-center gap-1"
+									class="flex items-center gap-1 text-primary hover:underline"
 								>
-									{{ r.rule }}
+									<span class="truncate">{{ r.rule }}</span>
 									<ExternalLink class="size-3" />
 								</a>
-								<span v-else class="text-foreground">{{ r.rule }}</span>
+								<span v-else class="block truncate text-foreground">{{ r.rule }}</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ r.service }}</td>
-							<td class="px-6 py-5 text-sm">
-								<div class="flex flex-wrap gap-1">
-									<span v-for="ep in r.entrypoints" :key="ep" class="inline-block px-2 py-0.5 text-sm bg-muted text-muted-foreground rounded">
+							<td class="max-w-56 truncate text-foreground" :title="r.service">{{ r.service }}</td>
+							<td>
+								<div class="flex max-w-56 flex-nowrap gap-1 overflow-hidden" :title="r.entrypoints.join(', ')">
+									<span v-for="ep in r.entrypoints" :key="ep" class="inline-block shrink-0 rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">
 										{{ ep }}
 									</span>
 								</div>
 							</td>
-							<td class="px-6 py-5 text-sm">
+							<td>
 								<span
-									class="inline-block px-2 py-0.5 text-sm rounded border"
+									class="inline-block rounded border px-2 py-0.5 text-sm"
 									:class="r.tls ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-muted text-muted-foreground border-border'"
 								>
 									{{ r.tls ? 'HTTPS' : 'HTTP' }}

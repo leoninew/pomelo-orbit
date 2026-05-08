@@ -169,65 +169,82 @@ async function confirmDelete() {
 		</div>
 
 		<!-- Webhook List -->
-		<div v-if="webhooks.length === 0" class="px-5 py-10 text-center">
-			<p class="text-sm text-muted-foreground">暂无 Webhook 配置</p>
-		</div>
-		<div v-else class="divide-y divide-border">
-			<div
-				v-for="wh in webhooks"
-				:key="wh.id"
-				class="px-5 py-4 transition-colors hover:bg-muted/30"
-			>
-				<div class="flex items-start justify-between gap-4">
-					<div class="flex-1 min-w-0">
-						<div class="flex items-center gap-2 mb-2">
-							<h4 class="font-medium text-foreground">{{ wh.name }}</h4>
-							<span
-								class="inline-block px-2 py-0.5 text-xs rounded border"
-								:class="wh.enabled ? 'bg-green-50 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'"
+		<div class="overflow-x-auto">
+			<table class="app-table-detail min-w-[960px]">
+				<thead>
+					<tr>
+						<th>名称</th>
+						<th>模板</th>
+						<th>分支过滤</th>
+						<th>Webhook URL</th>
+						<th>状态</th>
+						<th>操作</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr v-if="webhooks.length === 0">
+						<td colspan="6" class="text-center text-muted-foreground">
+							暂无 Webhook 配置
+						</td>
+					</tr>
+					<tr
+						v-for="wh in webhooks"
+						:key="wh.id"
+					>
+						<td class="text-foreground">{{ wh.name }}</td>
+						<td>
+							<router-link
+								:to="`/ci/template/${wh.template_id}`"
+								class="text-primary hover:underline"
 							>
-								{{ wh.enabled ? '启用' : '停用' }}
-							</span>
-						</div>
-						<div class="space-y-1 text-sm">
-							<div class="flex items-center gap-2">
-								<span class="text-muted-foreground">模板:</span>
-								<span class="text-foreground">{{ getTemplateName(wh.template_id) }}</span>
-							</div>
-							<div v-if="wh.branch_filter" class="flex items-center gap-2">
-								<span class="text-muted-foreground">分支过滤:</span>
-								<span class="text-sm text-foreground">{{ wh.branch_filter }}</span>
-							</div>
-							<div class="flex items-center gap-2">
-								<span class="text-muted-foreground">URL:</span>
-								<span class="truncate rounded bg-muted/50 px-2 py-0.5 text-xs text-foreground">
+								{{ getTemplateName(wh.template_id) }}
+							</router-link>
+						</td>
+						<td>
+							<span v-if="wh.branch_filter" class="text-foreground">{{ wh.branch_filter }}</span>
+							<span v-else class="text-destructive">拒绝所有分支</span>
+						</td>
+						<td>
+							<div class="flex min-w-0 items-center gap-2">
+								<span class="max-w-72 truncate rounded bg-muted px-2 py-0.5 text-xs text-foreground">
 									{{ webhookUrl(wh.id) }}
 								</span>
 								<button
-									class="p-1 hover:bg-muted rounded transition-colors"
+									class="rounded p-1 transition-colors hover:bg-muted"
+									title="复制 URL"
 									@click="copyUrl(wh.id)"
 								>
 									<Copy class="size-3.5 text-muted-foreground" />
 								</button>
 							</div>
-						</div>
-					</div>
-					<div class="flex items-center gap-2">
-						<button
-							class="px-3 py-1.5 text-sm text-foreground bg-background border border-input rounded-md hover:bg-muted/50 transition-colors"
-							@click="openEditModal(wh)"
-						>
-							编辑
-						</button>
-						<button
-							class="px-3 py-1.5 text-sm text-destructive bg-background border border-destructive/50 rounded-md hover:bg-destructive/10 transition-colors"
-							@click="handleDelete(wh)"
-						>
-							删除
-						</button>
-					</div>
-				</div>
-			</div>
+						</td>
+						<td>
+							<span
+								class="inline-block rounded border px-2 py-0.5 text-xs"
+								:class="wh.enabled ? 'border-green-200 bg-green-50 text-green-700' : 'border-border bg-muted text-muted-foreground'"
+							>
+								{{ wh.enabled ? '启用' : '停用' }}
+							</span>
+						</td>
+						<td>
+							<div class="flex items-center gap-3">
+								<button
+									class="text-primary hover:underline"
+									@click="openEditModal(wh)"
+								>
+									编辑
+								</button>
+								<button
+									class="text-destructive hover:underline"
+									@click="handleDelete(wh)"
+								>
+									删除
+								</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</div>
 
 		<DialogRoot v-model:open="isDialogOpen">

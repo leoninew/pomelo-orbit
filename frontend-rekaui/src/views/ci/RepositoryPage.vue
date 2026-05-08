@@ -176,24 +176,21 @@ onMounted(fetchProjects)
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1120px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">编码</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">地址</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">Git 凭据</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">创建时间</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">操作</th>
+							<th>名称</th>
+							<th>编码</th>
+							<th>默认分支</th>
+							<th>地址</th>
+							<th>Git 凭据</th>
+							<th>创建时间</th>
+							<th>操作</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr
-							v-for="p in repositories"
-							:key="p.id"
-							class="transition-colors hover:bg-muted/30"
-						>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="p in repositories" :key="p.id">
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/ci/repository/${p.id}`)"
@@ -201,14 +198,24 @@ onMounted(fetchProjects)
 									{{ p.name }}
 								</button>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ p.code }}</td>
-							<td class="max-w-md truncate px-6 py-5 text-sm text-foreground">{{ p.repository_url }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">
-								<span v-if="p.git_credential_id">已配置</span>
+							<td class="text-foreground">{{ p.code }}</td>
+							<td class="text-foreground">{{ p.default_branch || '—' }}</td>
+							<td class="max-w-md truncate text-foreground" :title="p.repository_url">
+								{{ p.repository_url }}
+							</td>
+							<td class="text-foreground">
+								<router-link
+									v-if="p.git_credential_id"
+									:to="`/ci/credential/${p.git_credential_id}`"
+									class="text-primary hover:underline"
+								>
+									已配置
+								</router-link>
+								<span v-else-if="p.has_credential">已配置</span>
 								<span v-else class="text-muted-foreground">—</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(p.created_at) }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ formatTime(p.created_at) }}</td>
+							<td>
 								<button
 									class="text-primary hover:underline"
 									@click="router.push(`/ci/repository/${p.id}`)"

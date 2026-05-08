@@ -144,33 +144,34 @@ onMounted(refresh)
 				<div v-else-if="recentRuns.length === 0" class="text-center py-16 text-muted-foreground">
 					<p class="text-sm">暂无构建记录</p>
 				</div>
-				<div v-else>
-					<div class="hidden grid-cols-[minmax(0,1fr)_140px_80px] border-b border-border px-5 py-3 text-xs text-muted-foreground sm:grid">
-						<span>仓库</span>
-						<span>创建时间</span>
-						<span class="text-right">状态</span>
-					</div>
-					<div class="divide-y divide-border">
-						<button
-							v-for="run in recentRuns"
-							:key="run.id"
-							class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_140px_80px]"
-							@click="router.push(`/ci/run/${run.id}`)"
-						>
-							<span class="min-w-0">
-								<span class="block truncate text-sm font-medium text-foreground">
+				<div v-else class="overflow-x-auto">
+					<table class="app-table-list min-w-[520px]">
+						<thead>
+							<tr>
+								<th>仓库</th>
+								<th>创建时间</th>
+								<th class="text-right">状态</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="run in recentRuns"
+								:key="run.id"
+								class="cursor-pointer"
+								@click="router.push(`/ci/run/${run.id}`)"
+							>
+								<td class="max-w-56 truncate text-foreground" :title="run.repository_name || run.repository_id">
 									{{ run.repository_name || run.repository_id }}
-								</span>
-								<span class="mt-1 block text-xs text-muted-foreground sm:hidden">
-									{{ formatTime(run.created_at) }}
-								</span>
-							</span>
-							<span class="hidden text-sm text-muted-foreground sm:block">{{ formatTime(run.created_at) }}</span>
-							<span class="justify-self-end rounded px-2 py-1 text-xs" :class="statusBadgeClass(run.status)">
-								{{ statusLabel(run.status) }}
-							</span>
-						</button>
-					</div>
+								</td>
+								<td class="text-muted-foreground">{{ formatTime(run.created_at) }}</td>
+								<td class="text-right">
+									<span class="inline-flex rounded px-2 py-1 text-xs" :class="statusBadgeClass(run.status)">
+										{{ statusLabel(run.status) }}
+									</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</section>
 
@@ -191,33 +192,34 @@ onMounted(refresh)
 				<div v-else-if="recentDeploys.length === 0" class="text-center py-16 text-muted-foreground">
 					<p class="text-sm">暂无部署记录</p>
 				</div>
-				<div v-else>
-					<div class="hidden grid-cols-[minmax(0,1fr)_140px_80px] border-b border-border px-5 py-3 text-xs text-muted-foreground sm:grid">
-						<span>应用</span>
-						<span>开始时间</span>
-						<span class="text-right">状态</span>
-					</div>
-					<div class="divide-y divide-border">
-						<button
-							v-for="deployment in recentDeploys"
-							:key="deployment.id"
-							class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_140px_80px]"
-							@click="router.push(`/cd/deployments/${deployment.id}`)"
-						>
-							<span class="min-w-0">
-								<span class="block truncate text-sm font-medium text-foreground">
+				<div v-else class="overflow-x-auto">
+					<table class="app-table-list min-w-[520px]">
+						<thead>
+							<tr>
+								<th>应用</th>
+								<th>开始时间</th>
+								<th class="text-right">状态</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+								v-for="deployment in recentDeploys"
+								:key="deployment.id"
+								class="cursor-pointer"
+								@click="router.push(`/cd/deployments/${deployment.id}`)"
+							>
+								<td class="max-w-56 truncate text-foreground" :title="deployment.application_name || deployment.application_id">
 									{{ deployment.application_name || deployment.application_id }}
-								</span>
-								<span class="mt-1 block text-xs text-muted-foreground sm:hidden">
-									{{ formatTime(deployment.started_at) }}
-								</span>
-							</span>
-							<span class="hidden text-sm text-muted-foreground sm:block">{{ formatTime(deployment.started_at) }}</span>
-							<span class="justify-self-end rounded px-2 py-1 text-xs" :class="statusBadgeClass(deployment.status)">
-								{{ statusLabel(deployment.status) }}
-							</span>
-						</button>
-					</div>
+								</td>
+								<td class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</td>
+								<td class="text-right">
+									<span class="inline-flex rounded px-2 py-1 text-xs" :class="statusBadgeClass(deployment.status)">
+										{{ statusLabel(deployment.status) }}
+									</span>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</section>
 		</div>

@@ -21,21 +21,23 @@
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[920px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">登录时间</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">IP 地址</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">用户代理</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">状态</th>
+							<th>登录时间</th>
+							<th>IP 地址</th>
+							<th>用户代理</th>
+							<th>状态</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr v-for="record in history" :key="record.id" class="transition-colors hover:bg-muted/30">
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(record.login_at) }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ record.ip_address }}</td>
-							<td class="px-6 py-5 text-sm text-foreground max-w-md truncate">{{ record.user_agent }}</td>
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="record in history" :key="record.id">
+							<td class="text-foreground">{{ formatTime(record.login_at) }}</td>
+							<td class="text-foreground">{{ record.ip_address }}</td>
+							<td class="max-w-md truncate text-foreground" :title="record.user_agent || undefined">
+								{{ record.user_agent || '-' }}
+							</td>
+							<td>
 								<span
 									:class="[
 										'inline-flex rounded-md border px-2 py-0.5 text-sm',

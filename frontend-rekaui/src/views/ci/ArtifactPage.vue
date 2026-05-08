@@ -15,13 +15,21 @@ import { formatTime } from '@/utils/time';
 const { status, error, execute } = useStatusAsync();
 const toast = useToast();
 const artifacts = ref<Artifact[]>([]);
-const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
 const query = reactive({ search: '', repository_id: '', template_id: '' });
 
 const repoOptions = ref<Repository[]>([]);
 const templateOptions = ref<PipelineTemplate[]>([]);
+
+function artifactTypeLabel(type: Artifact['type']) {
+	const map: Record<Artifact['type'], string> = {
+		docker_image: 'Docker 镜像',
+		binary: '二进制文件',
+	};
+	return map[type] ?? type;
+}
 
 const repoSelectOptions = computed(() =>
 	repoOptions.value.map((repo) => ({
@@ -145,22 +153,22 @@ onMounted(async () => {
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
-					<thead class="border-b border-border bg-muted/30">
+				<table class="app-table-list min-w-[1240px]">
+					<thead>
 						<tr>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">项目</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">模板</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">类型</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">Stage</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">路径/镜像</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">时间</th>
-							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">运行记录</th>
+							<th>项目</th>
+							<th>模板</th>
+							<th>名称</th>
+							<th>类型</th>
+							<th>Stage</th>
+							<th>路径/镜像</th>
+							<th>创建时间</th>
+							<th>运行记录</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-border">
-						<tr v-for="a in artifacts" :key="a.id" class="transition-colors hover:bg-muted/30">
-							<td class="px-6 py-5 text-sm">
+					<tbody>
+						<tr v-for="a in artifacts" :key="a.id">
+							<td>
 								<router-link
 									:to="`/ci/repository/${a.repository_id}`"
 									class="text-primary hover:underline"
@@ -168,19 +176,21 @@ onMounted(async () => {
 									{{ a.repository_name }}
 								</router-link>
 							</td>
-							<td class="px-6 py-5 text-sm">
+							<td>
 								<router-link :to="`/ci/template/${a.template_id}`" class="text-primary hover:underline">
 									{{ a.template_name }}
 								</router-link>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ a.name }}</td>
-							<td class="px-6 py-5 text-sm">
-								<span class="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-sm text-secondary-foreground">{{ a.type }}</span>
+							<td class="max-w-48 truncate text-foreground" :title="a.name">{{ a.name }}</td>
+							<td>
+								<span class="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-sm text-secondary-foreground">{{ artifactTypeLabel(a.type) }}</span>
 							</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ a.stage_name }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ a.path ?? '—' }}</td>
-							<td class="px-6 py-5 text-sm text-foreground">{{ formatTime(a.created_at) }}</td>
-							<td class="px-6 py-5 text-sm">
+							<td class="text-foreground">{{ a.stage_name }}</td>
+							<td class="max-w-sm truncate text-foreground" :title="a.path || undefined">
+								{{ a.path ?? '—' }}
+							</td>
+							<td class="text-foreground">{{ formatTime(a.created_at) }}</td>
+							<td>
 								<router-link :to="`/ci/run/${a.pipeline_run_id}`" class="text-primary hover:underline">
 									查看
 								</router-link>

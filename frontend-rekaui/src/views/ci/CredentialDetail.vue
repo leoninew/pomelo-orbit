@@ -1,110 +1,3 @@
-<script setup lang="ts">
-import { Download } from 'lucide-vue-next';
-import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { credentialApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { Credential } from '@/types/ci/credential';
-import { credentialTypeLabels } from '@/types/ci/credential';
-import { formatTime } from '@/utils/time';
-
-const props = defineProps<{ id: string }>();
-const $router = useRouter();
-const toast = useToast();
-const { loading, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const credential = ref<Credential>();
-const isEditModalOpen = ref(false);
-const isDeleteModalOpen = ref(false);
-const form = reactive({ name: '', data: '' });
-const errors = reactive({ name: '' });
-
-async function fetchCredential() {
-	try {
-		await execute(async () => {
-			credential.value = await credentialApi.get(props.id);
-		});
-	} catch {
-		toast.error('获取凭据详情失败');
-	}
-}
-
-function openEditModal() {
-	Object.assign(form, { name: credential.value?.name ?? '', data: '' });
-	Object.assign(errors, { name: '' });
-	isEditModalOpen.value = true;
-}
-
-async function handleEditOk() {
-	errors.name = form.name.trim() ? '' : '请输入凭据名称';
-	if (errors.name) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await credentialApi.update(props.id, {
-				name: form.name,
-				...(form.data ? { data: form.data } : {}),
-			});
-			toast.success('更新成功');
-			isEditModalOpen.value = false;
-			fetchCredential();
-		});
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '操作失败');
-	}
-}
-
-function openDeleteModal() {
-	isDeleteModalOpen.value = true;
-}
-
-async function handleDelete() {
-	try {
-		await executeOp(async () => {
-			await credentialApi.delete(props.id);
-			toast.success('删除成功');
-			$router.push('/ci/credential');
-		});
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '删除失败');
-	}
-}
-
-async function handleExport() {
-	try {
-		const data = await credentialApi.exportCredential(props.id);
-		const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${credential.value?.name ?? 'credential'}.json`;
-		a.click();
-		URL.revokeObjectURL(url);
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '导出失败');
-	}
-}
-
-function getDataPlaceholder(type: string) {
-	if (type === 'git_ssh') {
-		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
-	}
-	if (type === 'git_token') {
-		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
-	}
-	if (type === 'gitee_token') {
-		return 'your_username:your_gitee_token';
-	}
-	return 'registry_token_here';
-}
-
-onMounted(fetchCredential);
-</script>
-
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
@@ -237,3 +130,110 @@ onMounted(fetchCredential);
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Download } from 'lucide-vue-next';
+	import { onMounted, reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { credentialApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { Credential } from '@/types/ci/credential';
+	import { credentialTypeLabels } from '@/types/ci/credential';
+	import { formatTime } from '@/utils/time';
+
+	const props = defineProps<{ id: string }>();
+	const $router = useRouter();
+	const toast = useToast();
+	const { loading, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const credential = ref<Credential>();
+	const isEditModalOpen = ref(false);
+	const isDeleteModalOpen = ref(false);
+	const form = reactive({ name: '', data: '' });
+	const errors = reactive({ name: '' });
+
+	async function fetchCredential() {
+		try {
+			await execute(async () => {
+				credential.value = await credentialApi.get(props.id);
+			});
+		} catch {
+			toast.error('获取凭据详情失败');
+		}
+	}
+
+	function openEditModal() {
+		Object.assign(form, { name: credential.value?.name ?? '', data: '' });
+		Object.assign(errors, { name: '' });
+		isEditModalOpen.value = true;
+	}
+
+	async function handleEditOk() {
+		errors.name = form.name.trim() ? '' : '请输入凭据名称';
+		if (errors.name) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await credentialApi.update(props.id, {
+					name: form.name,
+					...(form.data ? { data: form.data } : {}),
+				});
+				toast.success('更新成功');
+				isEditModalOpen.value = false;
+				fetchCredential();
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '操作失败');
+		}
+	}
+
+	function openDeleteModal() {
+		isDeleteModalOpen.value = true;
+	}
+
+	async function handleDelete() {
+		try {
+			await executeOp(async () => {
+				await credentialApi.delete(props.id);
+				toast.success('删除成功');
+				$router.push('/ci/credential');
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '删除失败');
+		}
+	}
+
+	async function handleExport() {
+		try {
+			const data = await credentialApi.exportCredential(props.id);
+			const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${credential.value?.name ?? 'credential'}.json`;
+			a.click();
+			URL.revokeObjectURL(url);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '导出失败');
+		}
+	}
+
+	function getDataPlaceholder(type: string) {
+		if (type === 'git_ssh') {
+			return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
+		}
+		if (type === 'git_token') {
+			return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+		}
+		if (type === 'gitee_token') {
+			return 'your_username:your_gitee_token';
+		}
+		return 'registry_token_here';
+	}
+
+	onMounted(fetchCredential);
+</script>

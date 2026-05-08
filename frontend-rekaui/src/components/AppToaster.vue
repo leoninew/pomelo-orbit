@@ -1,55 +1,3 @@
-<script setup lang="ts">
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-vue-next';
-import {
-	ToastClose,
-	ToastDescription,
-	ToastProvider,
-	ToastRoot,
-	ToastTitle,
-	ToastViewport,
-} from 'reka-ui';
-import type { Component } from 'vue';
-import { useToast, type ToastType } from '@/composables/useToast';
-
-const { toasts, remove } = useToast();
-
-const toastConfig: Record<
-	ToastType,
-	{
-		title: string
-		icon: Component
-		className: string
-	}
-> = {
-	success: {
-		title: '成功',
-		icon: CheckCircle2,
-		className: 'border-green-200 bg-green-50 text-green-800',
-	},
-	error: {
-		title: '错误',
-		icon: AlertCircle,
-		className: 'border-red-200 bg-red-50 text-red-800',
-	},
-	warning: {
-		title: '提醒',
-		icon: AlertTriangle,
-		className: 'border-amber-200 bg-amber-50 text-amber-800',
-	},
-	info: {
-		title: '通知',
-		icon: Info,
-		className: 'border-blue-200 bg-blue-50 text-blue-800',
-	},
-};
-
-function handleOpenChange(id: number, open: boolean) {
-	if (!open) {
-		remove(id);
-	}
-}
-</script>
-
 <template>
 	<ToastProvider label="通知" swipe-direction="right" :duration="3000">
 		<ToastRoot
@@ -84,3 +32,55 @@ function handleOpenChange(id: number, open: boolean) {
 		/>
 	</ToastProvider>
 </template>
+
+<script setup lang="ts">
+	import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-vue-next';
+	import {
+		ToastClose,
+		ToastDescription,
+		ToastProvider,
+		ToastRoot,
+		ToastTitle,
+		ToastViewport,
+	} from 'reka-ui';
+	import type { Component } from 'vue';
+	import { useToast, type ToastType } from '@/composables/useToast';
+
+	const { toasts, remove } = useToast();
+
+	const toastConfig: Record<
+		ToastType,
+		{
+			title: string
+			icon: Component
+			className: string
+		}
+	> = {
+		success: {
+			title: '成功',
+			icon: CheckCircle2,
+			className: 'border-green-200 bg-green-50 text-green-800',
+		},
+		error: {
+			title: '错误',
+			icon: AlertCircle,
+			className: 'border-red-200 bg-red-50 text-red-800',
+		},
+		warning: {
+			title: '提醒',
+			icon: AlertTriangle,
+			className: 'border-amber-200 bg-amber-50 text-amber-800',
+		},
+		info: {
+			title: '通知',
+			icon: Info,
+			className: 'border-blue-200 bg-blue-50 text-blue-800',
+		},
+	};
+
+	function handleOpenChange(id: number, open: boolean) {
+		if (!open) {
+			remove(id);
+		}
+	}
+</script>

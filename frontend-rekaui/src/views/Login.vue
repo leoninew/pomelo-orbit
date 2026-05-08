@@ -1,51 +1,3 @@
-<script setup lang="ts">
-import { Eye, EyeOff } from 'lucide-vue-next';
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import { useToast } from '@/composables/useToast';
-
-const router = useRouter();
-const authStore = useAuthStore();
-const toast = useToast();
-
-const form = reactive({
-	username: '',
-	password: '',
-});
-
-const errors = reactive({
-	username: '',
-	password: '',
-});
-
-const showPassword = ref(false);
-const loading = ref(false);
-
-function validate() {
-	errors.username = form.username.trim() ? '' : '请输入用户名';
-	errors.password = form.password.trim() ? '' : '请输入密码';
-	return !errors.username && !errors.password;
-}
-
-async function handleLogin() {
-	if (!validate()) {
-		return;
-	}
-
-	loading.value = true;
-	try {
-		await authStore.login(form.username, form.password);
-		toast.success('登录成功');
-		router.push('/');
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '登录失败');
-	} finally {
-		loading.value = false;
-	}
-}
-</script>
-
 <template>
 	<div
 		class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4"
@@ -113,3 +65,51 @@ async function handleLogin() {
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Eye, EyeOff } from 'lucide-vue-next';
+	import { reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { useAuthStore } from '@/stores/auth';
+	import { useToast } from '@/composables/useToast';
+
+	const router = useRouter();
+	const authStore = useAuthStore();
+	const toast = useToast();
+
+	const form = reactive({
+		username: '',
+		password: '',
+	});
+
+	const errors = reactive({
+		username: '',
+		password: '',
+	});
+
+	const showPassword = ref(false);
+	const loading = ref(false);
+
+	function validate() {
+		errors.username = form.username.trim() ? '' : '请输入用户名';
+		errors.password = form.password.trim() ? '' : '请输入密码';
+		return !errors.username && !errors.password;
+	}
+
+	async function handleLogin() {
+		if (!validate()) {
+			return;
+		}
+
+		loading.value = true;
+		try {
+			await authStore.login(form.username, form.password);
+			toast.success('登录成功');
+			router.push('/');
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '登录失败');
+		} finally {
+			loading.value = false;
+		}
+	}
+</script>

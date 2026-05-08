@@ -1,172 +1,3 @@
-<script setup lang="ts">
-import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
-import type { Route } from '@/api/cd/route';
-import { routeApi } from '@/api/cd/route';
-import AppDialog from '@/components/AppDialog.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
-
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const routes = ref<Route[]>([]);
-const searchText = ref('');
-const isCreateDialogOpen = ref(false);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-
-const filteredRoutes = computed(() => {
-	if (!searchText.value.trim()) {
-		return routes.value;
-	}
-	const search = searchText.value.toLowerCase();
-	return routes.value.filter(
-		(route) =>
-			route.name.toLowerCase().includes(search) ||
-			route.domain.toLowerCase().includes(search) ||
-			route.target_url.toLowerCase().includes(search)
-	);
-});
-
-const paginatedRoutes = computed(() => {
-	const start = (pagination.current - 1) * pagination.pageSize;
-	const end = start + pagination.pageSize;
-	return filteredRoutes.value.slice(start, end);
-});
-
-const displayTotal = computed(() => filteredRoutes.value.length);
-const totalPages = computed(() => Math.ceil(displayTotal.value / pagination.pageSize));
-
-const form = reactive({
-	name: '',
-	domain: '',
-	path_prefix: '/',
-	target_url: 'http://',
-	enabled: false,
-});
-const errors = reactive({ name: '', domain: '', target_url: '' });
-
-function validate() {
-	errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name)
-		? ''
-		: '必须以小写字母开头，只能包含小写字母、数字、点号、下划线和连字符';
-	errors.domain = form.domain.trim() ? '' : '请输入域名';
-	errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
-		? ''
-		: '格式应为 http://host:port';
-	return !errors.name && !errors.domain && !errors.target_url;
-}
-
-async function fetchData() {
-	try {
-		await execute(async () => {
-			const pageSize = 100;
-			const firstPage = await routeApi.list(1, pageSize);
-			const allRoutes = [...firstPage.items];
-			let page = 2;
-
-			while (allRoutes.length < firstPage.total) {
-				const nextPage = await routeApi.list(page, pageSize);
-				if (nextPage.items.length === 0) {
-					break;
-				}
-				allRoutes.push(...nextPage.items);
-				page += 1;
-			}
-
-			routes.value = allRoutes;
-			pagination.total = allRoutes.length;
-		});
-	} catch {
-		toast.error('获取路由失败');
-	}
-}
-
-function handleSearch() {
-	pagination.current = 1;
-}
-
-function goPage(page: number) {
-	pagination.current = page;
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-}
-
-function openCreateModal() {
-	Object.assign(form, {
-		name: '',
-		domain: '',
-		path_prefix: '/',
-		target_url: 'http://',
-		enabled: false,
-	});
-	Object.assign(errors, { name: '', domain: '', target_url: '' });
-	isCreateDialogOpen.value = true;
-}
-
-async function handleSave() {
-	if (!validate()) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await routeApi.create(form);
-			toast.success('添加成功');
-			isCreateDialogOpen.value = false;
-			fetchData();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '保存失败');
-	}
-}
-
-async function handleEnable(id: string) {
-	try {
-		await executeOp(async () => {
-			await routeApi.enable(id);
-			toast.success('启用成功');
-			fetchData();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '启用失败');
-	}
-}
-
-async function handleDisable(id: string) {
-	try {
-		await executeOp(async () => {
-			await routeApi.disable(id);
-			toast.success('停用成功');
-			fetchData();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '停用失败');
-	}
-}
-
-async function handleSync() {
-	try {
-		await executeOp(async () => {
-			await routeApi.sync();
-			toast.success('同步成功');
-			fetchData();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '同步失败');
-	}
-}
-
-onMounted(fetchData);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="overflow-x-auto" aria-label="路由工具栏">
@@ -368,3 +199,172 @@ onMounted(fetchData);
 		</template>
 	</AppDialog>
 </template>
+
+<script setup lang="ts">
+	import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
+	import type { Route } from '@/api/cd/route';
+	import { routeApi } from '@/api/cd/route';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import { formatTime } from '@/utils/time';
+
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const routes = ref<Route[]>([]);
+	const searchText = ref('');
+	const isCreateDialogOpen = ref(false);
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+
+	const filteredRoutes = computed(() => {
+		if (!searchText.value.trim()) {
+			return routes.value;
+		}
+		const search = searchText.value.toLowerCase();
+		return routes.value.filter(
+			(route) =>
+				route.name.toLowerCase().includes(search) ||
+				route.domain.toLowerCase().includes(search) ||
+				route.target_url.toLowerCase().includes(search)
+		);
+	});
+
+	const paginatedRoutes = computed(() => {
+		const start = (pagination.current - 1) * pagination.pageSize;
+		const end = start + pagination.pageSize;
+		return filteredRoutes.value.slice(start, end);
+	});
+
+	const displayTotal = computed(() => filteredRoutes.value.length);
+	const totalPages = computed(() => Math.ceil(displayTotal.value / pagination.pageSize));
+
+	const form = reactive({
+		name: '',
+		domain: '',
+		path_prefix: '/',
+		target_url: 'http://',
+		enabled: false,
+	});
+	const errors = reactive({ name: '', domain: '', target_url: '' });
+
+	function validate() {
+		errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name)
+			? ''
+			: '必须以小写字母开头，只能包含小写字母、数字、点号、下划线和连字符';
+		errors.domain = form.domain.trim() ? '' : '请输入域名';
+		errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
+			? ''
+			: '格式应为 http://host:port';
+		return !errors.name && !errors.domain && !errors.target_url;
+	}
+
+	async function fetchData() {
+		try {
+			await execute(async () => {
+				const pageSize = 100;
+				const firstPage = await routeApi.list(1, pageSize);
+				const allRoutes = [...firstPage.items];
+				let page = 2;
+
+				while (allRoutes.length < firstPage.total) {
+					const nextPage = await routeApi.list(page, pageSize);
+					if (nextPage.items.length === 0) {
+						break;
+					}
+					allRoutes.push(...nextPage.items);
+					page += 1;
+				}
+
+				routes.value = allRoutes;
+				pagination.total = allRoutes.length;
+			});
+		} catch {
+			toast.error('获取路由失败');
+		}
+	}
+
+	function handleSearch() {
+		pagination.current = 1;
+	}
+
+	function goPage(page: number) {
+		pagination.current = page;
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+	}
+
+	function openCreateModal() {
+		Object.assign(form, {
+			name: '',
+			domain: '',
+			path_prefix: '/',
+			target_url: 'http://',
+			enabled: false,
+		});
+		Object.assign(errors, { name: '', domain: '', target_url: '' });
+		isCreateDialogOpen.value = true;
+	}
+
+	async function handleSave() {
+		if (!validate()) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await routeApi.create(form);
+				toast.success('添加成功');
+				isCreateDialogOpen.value = false;
+				fetchData();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '保存失败');
+		}
+	}
+
+	async function handleEnable(id: string) {
+		try {
+			await executeOp(async () => {
+				await routeApi.enable(id);
+				toast.success('启用成功');
+				fetchData();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '启用失败');
+		}
+	}
+
+	async function handleDisable(id: string) {
+		try {
+			await executeOp(async () => {
+				await routeApi.disable(id);
+				toast.success('停用成功');
+				fetchData();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '停用失败');
+		}
+	}
+
+	async function handleSync() {
+		try {
+			await executeOp(async () => {
+				await routeApi.sync();
+				toast.success('同步成功');
+				fetchData();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '同步失败');
+		}
+	}
+
+	onMounted(fetchData);
+</script>

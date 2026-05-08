@@ -1,34 +1,3 @@
-<script setup lang="ts">
-import { computed } from 'vue';
-import type { SnapshotStage } from '@/types/ci/snapshot';
-import { statusColor, statusLabel } from '@/utils/status';
-import type { TaskStatus } from '@/types/common';
-
-interface Props {
-	data: {
-		stage: SnapshotStage
-		status?: TaskStatus
-		readonly?: boolean
-		selected?: boolean
-	}
-}
-
-const props = defineProps<Props>();
-
-const emit = defineEmits(['click']);
-
-const stage = computed(() => props.data.stage);
-const status = computed(() => props.data.status);
-
-const statusText = computed(() => statusLabel(status.value ?? ''));
-const textColor = computed(() => statusColor(status.value));
-const isRunning = computed(() => status.value === 'running');
-
-function handleClick() {
-	emit('click');
-}
-</script>
-
 <template>
 	<div
 		class="min-w-[160px] cursor-pointer rounded-lg border-2 bg-card p-3 shadow-sm transition-all hover:shadow-md"
@@ -53,3 +22,34 @@ function handleClick() {
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { computed } from 'vue';
+	import type { SnapshotStage } from '@/types/ci/snapshot';
+	import { statusColor, statusLabel } from '@/utils/status';
+	import type { TaskStatus } from '@/types/common';
+
+	interface Props {
+		data: {
+			stage: SnapshotStage
+			status?: TaskStatus
+			readonly?: boolean
+			selected?: boolean
+		}
+	}
+
+	const props = defineProps<Props>();
+
+	const emit = defineEmits(['click']);
+
+	const stage = computed(() => props.data.stage);
+	const status = computed(() => props.data.status);
+
+	const statusText = computed(() => statusLabel(status.value ?? ''));
+	const textColor = computed(() => statusColor(status.value));
+	const isRunning = computed(() => status.value === 'running');
+
+	function handleClick() {
+		emit('click');
+	}
+</script>

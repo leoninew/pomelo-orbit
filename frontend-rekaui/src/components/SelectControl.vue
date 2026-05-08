@@ -1,45 +1,3 @@
-<script setup lang="ts">
-import { Check, ChevronDown } from 'lucide-vue-next';
-import {
-	SelectContent,
-	SelectItem,
-	SelectItemIndicator,
-	SelectItemText,
-	SelectPortal,
-	SelectRoot,
-	SelectTrigger,
-	SelectValue,
-	SelectViewport,
-} from 'reka-ui';
-
-export type SelectOptionValue = string | number;
-
-export interface SelectOption {
-	value: SelectOptionValue
-	label: string
-	disabled?: boolean
-}
-
-withDefaults(
-	defineProps<{
-		modelValue?: SelectOptionValue
-		options: SelectOption[]
-		placeholder?: string
-		disabled?: boolean
-		widthClass?: string
-	}>(),
-	{
-		placeholder: '请选择',
-		disabled: false,
-		widthClass: 'w-full',
-	}
-);
-
-const emit = defineEmits<{
-	'update:modelValue': [value: SelectOptionValue]
-}>();
-</script>
-
 <template>
 	<SelectRoot
 		:model-value="modelValue"
@@ -75,3 +33,45 @@ const emit = defineEmits<{
 		</SelectPortal>
 	</SelectRoot>
 </template>
+
+<script setup lang="ts">
+	import { Check, ChevronDown } from 'lucide-vue-next';
+	import {
+		SelectContent,
+		SelectItem,
+		SelectItemIndicator,
+		SelectItemText,
+		SelectPortal,
+		SelectRoot,
+		SelectTrigger,
+		SelectValue,
+		SelectViewport,
+	} from 'reka-ui';
+
+	export type SelectOptionValue = string | number;
+
+	export interface SelectOption {
+		value: SelectOptionValue
+		label: string
+		disabled?: boolean
+	}
+
+	withDefaults(
+		defineProps<{
+			modelValue?: SelectOptionValue
+			options: SelectOption[]
+			placeholder?: string
+			disabled?: boolean
+			widthClass?: string
+		}>(),
+		{
+			placeholder: '请选择',
+			disabled: false,
+			widthClass: 'w-full',
+		}
+	);
+
+	const emit = defineEmits<{
+		'update:modelValue': [value: SelectOptionValue]
+	}>();
+</script>

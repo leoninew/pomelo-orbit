@@ -67,53 +67,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { authApi } from '@/api/auth';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { LoginHistory } from '@/types/auth';
-import { formatTime } from '@/utils/time';
-import { ToolbarRoot } from 'reka-ui';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { authApi } from '@/api/auth';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { LoginHistory } from '@/types/auth';
+	import { formatTime } from '@/utils/time';
+	import { ToolbarRoot } from 'reka-ui';
 
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const history = ref<LoginHistory[]>([]);
-const searchText = ref('');
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const history = ref<LoginHistory[]>([]);
+	const searchText = ref('');
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
-async function fetchHistory() {
-	try {
-		await execute(async () => {
-			const res = await authApi.listLoginHistory({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: searchText.value || undefined,
+	async function fetchHistory() {
+		try {
+			await execute(async () => {
+				const res = await authApi.listLoginHistory({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+				});
+				history.value = res.items;
+				pagination.total = res.total;
 			});
-			history.value = res.items;
-			pagination.total = res.total;
-		});
-	} catch {
-		toast.error('获取登录历史失败');
+		} catch {
+			toast.error('获取登录历史失败');
+		}
 	}
-}
 
-function handleSearch() {
-	pagination.current = 1;
-	fetchHistory();
-}
-function goPage(p: number) {
-	pagination.current = p;
-	fetchHistory();
-}
+	function handleSearch() {
+		pagination.current = 1;
+		fetchHistory();
+	}
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchHistory();
+	}
 
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchHistory();
-}
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchHistory();
+	}
 
-onMounted(fetchHistory);
+	onMounted(fetchHistory);
 </script>

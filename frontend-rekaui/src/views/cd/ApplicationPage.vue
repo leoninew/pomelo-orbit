@@ -1,243 +1,3 @@
-<script setup lang="ts">
-import { Plus, Upload } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { applicationApi } from '@/api/cd/application';
-import AppDialog from '@/components/AppDialog.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type {
-	Application,
-	ApplicationFormState,
-	ApplicationImportReq,
-	ApplicationImportState,
-} from '@/types/cd/application';
-import { appStatusLabel } from '@/utils/status';
-import { formatTime } from '@/utils/time';
-import { ToolbarRoot } from 'reka-ui';
-import ApplicationFormFields from './ApplicationFormFields.vue';
-
-const router = useRouter();
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const applications = ref<Application[]>([]);
-const searchText = ref('');
-const isCreateDialogOpen = ref(false);
-const isImportDialogOpen = ref(false);
-const fileInput = ref<HTMLInputElement>();
-const operatingAppId = ref<string | null>(null);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-const form = reactive<ApplicationFormState>({
-	name: '',
-	code: '',
-	image_pull_policy: 'missing',
-	route_managed: false,
-});
-const formErrors = reactive({ name: '', code: '' });
-const importForm = reactive<ApplicationImportState>({
-	version: undefined,
-	name: '',
-	code: '',
-	image_pull_policy: 'missing',
-	route_managed: false,
-	config_files: [],
-	service_configs: [],
-	routes: [],
-});
-const importErrors = reactive({ name: '', code: '' });
-const importSummary = computed(() =>
-	[
-		`配置文件 ${importForm.config_files.length}`,
-		`服务配置 ${importForm.service_configs.length}`,
-		`路由 ${importForm.routes.length}`,
-	].join(' / ')
-);
-
-const badgeMap: Record<string, string> = {
-	deployed: 'border-green-200 bg-green-50 text-green-700',
-	deploy_failed: 'border-red-200 bg-red-50 text-red-700',
-	deploying: 'border-blue-200 bg-blue-50 text-blue-700',
-	undeployed: 'border-border bg-muted text-muted-foreground',
-};
-
-function appBadgeClass(s: string) {
-	return badgeMap[s] ?? 'border-border bg-muted text-muted-foreground';
-}
-
-async function fetchApplications() {
-	try {
-		await execute(async () => {
-			const res = await applicationApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: searchText.value || undefined,
-			});
-			applications.value = res.items;
-			pagination.total = res.total;
-		});
-	} catch {
-		toast.error('获取应用列表失败');
-	}
-}
-
-function handleSearch() {
-	pagination.current = 1;
-	fetchApplications();
-}
-
-function goPage(p: number) {
-	pagination.current = p;
-	fetchApplications();
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchApplications();
-}
-
-function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
-	errors.name = target.name.trim() ? '' : '请输入应用名称';
-	errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
-		? ''
-		: '必须以小写字母开头，只能包含小写字母、数字和连字符';
-	return !errors.name && !errors.code;
-}
-
-function resetForm(target: ApplicationFormState) {
-	Object.assign(target, {
-		name: '',
-		code: '',
-		image_pull_policy: 'missing',
-		route_managed: false,
-	});
-}
-
-function openCreateDialog() {
-	resetForm(form);
-	Object.assign(formErrors, { name: '', code: '' });
-	isCreateDialogOpen.value = true;
-}
-
-async function handleCreateOk() {
-	if (!validateForm(form, formErrors)) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await applicationApi.create({
-				name: form.name,
-				code: form.code,
-				image_pull_policy: form.image_pull_policy,
-				route_managed: form.route_managed,
-			});
-			toast.success('创建成功');
-			isCreateDialogOpen.value = false;
-			await fetchApplications();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '创建失败');
-	}
-}
-
-function triggerImport() {
-	fileInput.value?.click();
-}
-
-async function handleFileImport(event: Event) {
-	const target = event.target as HTMLInputElement;
-	const file = target.files?.[0];
-	if (!file) {
-		return;
-	}
-	try {
-		const data = JSON.parse(await file.text()) as ApplicationImportReq;
-		if (!data.name || !data.code) {
-			toast.error('文件格式错误：缺少必填字段 name 或 code');
-			return;
-		}
-		Object.assign(importForm, {
-			version: data.version,
-			name: data.name,
-			code: data.code,
-			image_pull_policy: data.image_pull_policy,
-			route_managed: data.route_managed,
-			config_files: data.config_files ?? [],
-			service_configs: data.service_configs ?? [],
-			routes: data.routes ?? [],
-		});
-		Object.assign(importErrors, { name: '', code: '' });
-		isImportDialogOpen.value = true;
-	} catch {
-		toast.error('解析文件失败');
-	} finally {
-		target.value = '';
-	}
-}
-
-async function handleImportOk() {
-	if (!validateForm(importForm, importErrors)) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await applicationApi.importApplication({
-				version: importForm.version,
-				name: importForm.name,
-				code: importForm.code,
-				image_pull_policy: importForm.image_pull_policy,
-				route_managed: importForm.route_managed,
-				config_files: importForm.config_files,
-				service_configs: importForm.service_configs,
-				routes: importForm.routes,
-			});
-			toast.success('导入成功');
-			isImportDialogOpen.value = false;
-			await fetchApplications();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '导入失败');
-	}
-}
-
-async function handleDeploy(app: Application) {
-	operatingAppId.value = app.id;
-	try {
-		await executeOp(async () => {
-			const { deployment_id } = await applicationApi.deploy(app.id);
-			toast.success(`${app.name} 部署已触发`);
-			router.push(`/cd/deployments/${deployment_id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '部署失败');
-	} finally {
-		operatingAppId.value = null;
-	}
-}
-
-async function handleStop(app: Application) {
-	operatingAppId.value = app.id;
-	try {
-		await executeOp(async () => {
-			const { deployment_id } = await applicationApi.stop(app.id);
-			toast.success(`${app.name} 停止已触发`);
-			router.push(`/cd/deployments/${deployment_id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '停止失败');
-	} finally {
-		operatingAppId.value = null;
-	}
-}
-
-onMounted(fetchApplications);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="overflow-x-auto" aria-label="应用工具栏">
@@ -392,3 +152,243 @@ onMounted(fetchApplications);
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Plus, Upload } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { applicationApi } from '@/api/cd/application';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type {
+		Application,
+		ApplicationFormState,
+		ApplicationImportReq,
+		ApplicationImportState,
+	} from '@/types/cd/application';
+	import { appStatusLabel } from '@/utils/status';
+	import { formatTime } from '@/utils/time';
+	import { ToolbarRoot } from 'reka-ui';
+	import ApplicationFormFields from './ApplicationFormFields.vue';
+
+	const router = useRouter();
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const applications = ref<Application[]>([]);
+	const searchText = ref('');
+	const isCreateDialogOpen = ref(false);
+	const isImportDialogOpen = ref(false);
+	const fileInput = ref<HTMLInputElement>();
+	const operatingAppId = ref<string | null>(null);
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+	const form = reactive<ApplicationFormState>({
+		name: '',
+		code: '',
+		image_pull_policy: 'missing',
+		route_managed: false,
+	});
+	const formErrors = reactive({ name: '', code: '' });
+	const importForm = reactive<ApplicationImportState>({
+		version: undefined,
+		name: '',
+		code: '',
+		image_pull_policy: 'missing',
+		route_managed: false,
+		config_files: [],
+		service_configs: [],
+		routes: [],
+	});
+	const importErrors = reactive({ name: '', code: '' });
+	const importSummary = computed(() =>
+		[
+			`配置文件 ${importForm.config_files.length}`,
+			`服务配置 ${importForm.service_configs.length}`,
+			`路由 ${importForm.routes.length}`,
+		].join(' / ')
+	);
+
+	const badgeMap: Record<string, string> = {
+		deployed: 'border-green-200 bg-green-50 text-green-700',
+		deploy_failed: 'border-red-200 bg-red-50 text-red-700',
+		deploying: 'border-blue-200 bg-blue-50 text-blue-700',
+		undeployed: 'border-border bg-muted text-muted-foreground',
+	};
+
+	function appBadgeClass(s: string) {
+		return badgeMap[s] ?? 'border-border bg-muted text-muted-foreground';
+	}
+
+	async function fetchApplications() {
+		try {
+			await execute(async () => {
+				const res = await applicationApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+				});
+				applications.value = res.items;
+				pagination.total = res.total;
+			});
+		} catch {
+			toast.error('获取应用列表失败');
+		}
+	}
+
+	function handleSearch() {
+		pagination.current = 1;
+		fetchApplications();
+	}
+
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchApplications();
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchApplications();
+	}
+
+	function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
+		errors.name = target.name.trim() ? '' : '请输入应用名称';
+		errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
+			? ''
+			: '必须以小写字母开头，只能包含小写字母、数字和连字符';
+		return !errors.name && !errors.code;
+	}
+
+	function resetForm(target: ApplicationFormState) {
+		Object.assign(target, {
+			name: '',
+			code: '',
+			image_pull_policy: 'missing',
+			route_managed: false,
+		});
+	}
+
+	function openCreateDialog() {
+		resetForm(form);
+		Object.assign(formErrors, { name: '', code: '' });
+		isCreateDialogOpen.value = true;
+	}
+
+	async function handleCreateOk() {
+		if (!validateForm(form, formErrors)) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await applicationApi.create({
+					name: form.name,
+					code: form.code,
+					image_pull_policy: form.image_pull_policy,
+					route_managed: form.route_managed,
+				});
+				toast.success('创建成功');
+				isCreateDialogOpen.value = false;
+				await fetchApplications();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '创建失败');
+		}
+	}
+
+	function triggerImport() {
+		fileInput.value?.click();
+	}
+
+	async function handleFileImport(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const file = target.files?.[0];
+		if (!file) {
+			return;
+		}
+		try {
+			const data = JSON.parse(await file.text()) as ApplicationImportReq;
+			if (!data.name || !data.code) {
+				toast.error('文件格式错误：缺少必填字段 name 或 code');
+				return;
+			}
+			Object.assign(importForm, {
+				version: data.version,
+				name: data.name,
+				code: data.code,
+				image_pull_policy: data.image_pull_policy,
+				route_managed: data.route_managed,
+				config_files: data.config_files ?? [],
+				service_configs: data.service_configs ?? [],
+				routes: data.routes ?? [],
+			});
+			Object.assign(importErrors, { name: '', code: '' });
+			isImportDialogOpen.value = true;
+		} catch {
+			toast.error('解析文件失败');
+		} finally {
+			target.value = '';
+		}
+	}
+
+	async function handleImportOk() {
+		if (!validateForm(importForm, importErrors)) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await applicationApi.importApplication({
+					version: importForm.version,
+					name: importForm.name,
+					code: importForm.code,
+					image_pull_policy: importForm.image_pull_policy,
+					route_managed: importForm.route_managed,
+					config_files: importForm.config_files,
+					service_configs: importForm.service_configs,
+					routes: importForm.routes,
+				});
+				toast.success('导入成功');
+				isImportDialogOpen.value = false;
+				await fetchApplications();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '导入失败');
+		}
+	}
+
+	async function handleDeploy(app: Application) {
+		operatingAppId.value = app.id;
+		try {
+			await executeOp(async () => {
+				const { deployment_id } = await applicationApi.deploy(app.id);
+				toast.success(`${app.name} 部署已触发`);
+				router.push(`/cd/deployments/${deployment_id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '部署失败');
+		} finally {
+			operatingAppId.value = null;
+		}
+	}
+
+	async function handleStop(app: Application) {
+		operatingAppId.value = app.id;
+		try {
+			await executeOp(async () => {
+				const { deployment_id } = await applicationApi.stop(app.id);
+				toast.success(`${app.name} 停止已触发`);
+				router.push(`/cd/deployments/${deployment_id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '停止失败');
+		} finally {
+			operatingAppId.value = null;
+		}
+	}
+
+	onMounted(fetchApplications);
+</script>

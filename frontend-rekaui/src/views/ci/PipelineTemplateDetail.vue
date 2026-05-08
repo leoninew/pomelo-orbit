@@ -1,552 +1,4 @@
-﻿<script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-// import { VueDraggable } from 'vue-draggable-plus';
-import { useRoute, useRouter } from 'vue-router';
-import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type {
-	ArtifactDeclaration,
-	BuildStage,
-	PipelineTemplate,
-	StageOrchestration,
-	VariableDeclaration,
-} from '@/types/ci/template';
-import type { Repository } from '@/types/ci/repository';
-import { detectCircularDependencies } from '@/utils/dag';
-import StageDAGView from './components/StageDAGView.vue';
-import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
-
-const route = useRoute();
-const router = useRouter();
-const templateId = computed(() => route.params.id as string);
-const toast = useToast();
-
-const { status, execute } = useStatusAsync();
-const { loading: saving, execute: executeSave } = useStatusAsync();
-const { loading: deleting, execute: executeDelete } = useStatusAsync();
-const { loading: running, execute: executeRun } = useStatusAsync();
-const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
-
-const template = ref<PipelineTemplate>();
-const sortableOrch = ref<StageOrchestration[]>([]);
-const declarations = ref<VariableDeclaration[]>([]);
-const stageCache = reactive<Record<string, BuildStage>>({});
-const viewMode = ref<'list' | 'dag'>('list');
-
-const stageOptions = ref<BuildStage[]>([]);
-
-const stageSelectOptions = computed(() => {
-	const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
-	return stageOptions.value
-		.filter((stage) => !inOrch.has(stage.id))
-		.map((stage) => ({
-			value: stage.id,
-			label: stage.name,
-			description: `v${stage.version} · ${stage.image}`,
-		}));
-});
-
-const repoOptions = ref<Repository[]>([]);
-const repoSelectOptions = computed(() =>
-	repoOptions.value.map((repo) => ({
-		value: repo.id,
-		label: repo.name,
-		description: repo.git_credential_id ? repo.repository_url : '未配置 Git 凭据',
-	}))
-);
-
-// 已保存的快照，用于 dirty 检测
-const savedOrch = ref<string>('[]');
-const savedDeclarations = ref<string>('[]');
-
-const isDirty = computed(() => {
-	const orchStr = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
-	const declStr = JSON.stringify(declarations.value);
-	return orchStr !== savedOrch.value || declStr !== savedDeclarations.value;
-});
-
-const hasStageUpdates = computed(() =>
-	sortableOrch.value.some((orch) => {
-		const stage = stageCache[orch.stage_id];
-		return stage && stage.version > orch.stage_version;
-	})
-);
-
-const artifactDeclarations = computed(() => {
-	const result: ArtifactDeclaration[] = [];
-	for (const orch of sortableOrch.value) {
-		const stage = stageCache[orch.stage_id];
-		for (const artifact of stage?.artifacts ?? []) {
-			result.push({
-				stageName: stage?.name ?? orch.stage_name,
-				type: artifact.type,
-				name: artifact.name,
-				path: artifact.path,
-			});
-		}
-	}
-	return result;
-});
-
-const isEditInfoDialogOpen = ref(false);
-const isAddOrchDialogOpen = ref(false);
-const isEditOrchDialogOpen = ref(false);
-const isRunDialogOpen = ref(false);
-const isAddVarDialogOpen = ref(false);
-const isEditVarDialogOpen = ref(false);
-const isDeleteDialogOpen = ref(false);
-const isDeleteOrchDialogOpen = ref(false);
-const isDeleteVarDialogOpen = ref(false);
-
-const editForm = reactive({ name: '', description: '' });
-const addOrchForm = reactive({
-	stageId: '',
-	dependsOn: [] as string[],
-});
-const runForm = reactive({
-	repositoryId: '',
-	triggerRef: '',
-});
-const editOrchForm = reactive({
-	editingStageId: '',
-	dependsOn: [] as string[],
-});
-const varForm = reactive({
-	name: '',
-	value: '',
-	description: '',
-});
-const orchToDelete = ref(-1);
-const varToDelete = ref('');
-
-const editableOrchOptions = computed(() =>
-	sortableOrch.value.filter((o) => o.stage_id !== editOrchForm.editingStageId)
-);
-
-const selectedRepository = computed(() =>
-	repoOptions.value.find((r) => r.id === runForm.repositoryId)
-);
-
-const dagStages = computed(() =>
-	sortableOrch.value.map((orch) => {
-		const stage = stageCache[orch.stage_id];
-		return {
-			id: orch.stage_id,
-			name: stage?.name ?? orch.stage_id,
-			image: stage?.image ?? '',
-			script: stage?.script ?? '',
-			version: stage?.version ?? 1,
-			depends_on: orch.depends_on,
-		};
-	})
-);
-
-// 监听项目选择，自动填充默认分支
-watch(
-	() => runForm.repositoryId,
-	(newRepoId) => {
-		if (newRepoId) {
-			const repo = repoOptions.value.find((r) => r.id === newRepoId);
-			if (repo?.default_branch) {
-				runForm.triggerRef = repo.default_branch;
-			}
-		}
-	}
-);
-
-function applyTemplateState(tmpl: PipelineTemplate) {
-	template.value = tmpl;
-	sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
-	declarations.value = [...tmpl.variable_declarations];
-	// 更新已保存快照
-	savedOrch.value = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
-	savedDeclarations.value = JSON.stringify(declarations.value);
-	Object.keys(stageCache).forEach((key) => delete stageCache[key]);
-	tmpl.stages.forEach((stage) => (stageCache[stage.id] = stage));
-	Object.assign(editForm, {
-		name: tmpl.name,
-		description: tmpl.description ?? '',
-	});
-}
-
-async function fetchTemplate() {
-	try {
-		await execute(async () => {
-			const tmpl = await pipelineTemplateApi.get(templateId.value);
-			applyTemplateState(tmpl);
-		});
-	} catch {
-		toast.error('获取模板信息失败');
-		router.push('/ci/template');
-	}
-}
-
-async function searchStages() {
-	try {
-		const resp = await buildStageApi.list({
-			per_page: 100,
-		});
-		stageOptions.value = resp.items;
-	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取 Stage 列表失败');
-	}
-}
-
-function handleStageSelection(value: ComboboxOptionValue) {
-	addOrchForm.stageId = String(value || '');
-	const stage = stageOptions.value.find((item) => item.id === addOrchForm.stageId);
-	if (stage) {
-		stageCache[stage.id] = stage;
-	}
-}
-
-async function syncDeclarations() {
-	try {
-		declarations.value = await pipelineTemplateApi.resolveVariables({
-			orchestration: sortableOrch.value.map((item, index) => ({
-				...item,
-				sort_order: index,
-			})),
-			variable_declarations: declarations.value,
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '同步变量失败');
-	}
-}
-
-function openEditInfoModal() {
-	Object.assign(editForm, {
-		name: template.value?.name ?? '',
-		description: template.value?.description ?? '',
-	});
-	isEditInfoDialogOpen.value = true;
-}
-
-function cancelEditInfo() {
-	Object.assign(editForm, {
-		name: template.value?.name ?? '',
-		description: template.value?.description ?? '',
-	});
-	isEditInfoDialogOpen.value = false;
-}
-
-async function handleEditInfoOk() {
-	if (!editForm.name.trim()) {
-		toast.error('模板名称不能为空');
-		return;
-	}
-
-	try {
-		await executeSave(async () => {
-			// 只保存基本信息，不传递 orchestration 和 variable_declarations
-			const data = await pipelineTemplateApi.update(templateId.value, {
-				name: editForm.name,
-				description: editForm.description,
-			});
-			applyTemplateState(data);
-			toast.success('保存成功');
-		});
-		isEditInfoDialogOpen.value = false;
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
-async function handleSave() {
-	const orchForCheck = sortableOrch.value.map((o) => ({
-		name: o.stage_id,
-		depends_on: o.depends_on,
-	}));
-	const cycle = detectCircularDependencies(orchForCheck);
-	if (cycle) {
-		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
-		return;
-	}
-
-	try {
-		await executeSave(async () => {
-			// 自动更新编排中的 stage_version
-			for (const orch of sortableOrch.value) {
-				const stage = stageCache[orch.stage_id];
-				if (stage && stage.version > orch.stage_version) {
-					orch.stage_version = stage.version;
-				}
-			}
-
-			const data = await pipelineTemplateApi.update(templateId.value, {
-				name: editForm.name,
-				description: editForm.description,
-				orchestration: sortableOrch.value.map((o, i) => ({
-					...o,
-					sort_order: i,
-				})),
-				variable_declarations: declarations.value,
-			});
-			applyTemplateState(data);
-			toast.success(`保存成功，快照 v${data.version}`);
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
-async function handleDuplicate() {
-	try {
-		await executeDuplicate(async () => {
-			const newTemplate = await pipelineTemplateApi.duplicate(templateId.value);
-			toast.success('复制成功');
-			router.push(`/ci/template/${newTemplate.id}`);
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '复制失败');
-	}
-}
-
-function openDeleteModal() {
-	isDeleteDialogOpen.value = true;
-}
-
-async function handleDeleteOk() {
-	try {
-		await executeDelete(async () => {
-			await pipelineTemplateApi.delete(templateId.value);
-			toast.success('删除成功');
-			router.push('/ci/template');
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '删除失败');
-	}
-}
-
-// ── 编排操作 ──────────────────────────────────────────────────────────────────
-
-async function openAddOrchModal() {
-	addOrchForm.stageId = '';
-	addOrchForm.dependsOn = [];
-	isAddOrchDialogOpen.value = true;
-	await searchStages();
-}
-
-async function confirmAddOrch() {
-	if (!addOrchForm.stageId) {
-		return;
-	}
-	const stage =
-		stageOptions.value.find((s) => s.id === addOrchForm.stageId) ?? stageCache[addOrchForm.stageId];
-	if (!stage) {
-		return;
-	}
-	const newOrch: StageOrchestration = {
-		stage_id: addOrchForm.stageId,
-		stage_name: stage.name,
-		stage_version: stage.version,
-		depends_on: addOrchForm.dependsOn,
-		sort_order: sortableOrch.value.length,
-	};
-	const orchForCheck = [...sortableOrch.value, newOrch].map((o) => ({
-		name: o.stage_id,
-		depends_on: o.depends_on,
-	}));
-	const cycle = detectCircularDependencies(orchForCheck);
-	if (cycle) {
-		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
-		return;
-	}
-	sortableOrch.value.push(newOrch);
-	stageCache[stage.id] = stage;
-	await syncDeclarations();
-	isAddOrchDialogOpen.value = false;
-}
-
-function confirmRemoveOrch(idx: number) {
-	orchToDelete.value = idx;
-	isDeleteOrchDialogOpen.value = true;
-}
-
-async function removeOrch() {
-	const idx = orchToDelete.value;
-	if (idx === -1) {
-		return;
-	}
-	const removed = sortableOrch.value[idx];
-	sortableOrch.value.splice(idx, 1);
-	for (const o of sortableOrch.value) {
-		o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
-	}
-	await syncDeclarations();
-	isDeleteOrchDialogOpen.value = false;
-	orchToDelete.value = -1;
-}
-
-function openEditOrchModal(idx: number) {
-	const orch = sortableOrch.value[idx];
-	if (!orch) {
-		return;
-	}
-	editOrchForm.editingStageId = orch.stage_id;
-	editOrchForm.dependsOn = [...orch.depends_on];
-	isEditOrchDialogOpen.value = true;
-}
-
-function confirmEditOrch() {
-	const orch = sortableOrch.value.find((o) => o.stage_id === editOrchForm.editingStageId);
-	if (!orch) {
-		return;
-	}
-	const orchForCheck = sortableOrch.value.map((o) => ({
-		name: o.stage_id,
-		depends_on: o.stage_id === editOrchForm.editingStageId ? editOrchForm.dependsOn : o.depends_on,
-	}));
-	const cycle = detectCircularDependencies(orchForCheck);
-	if (cycle) {
-		toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
-		return;
-	}
-	orch.depends_on = editOrchForm.dependsOn;
-	editOrchForm.editingStageId = '';
-	editOrchForm.dependsOn = [];
-	isEditOrchDialogOpen.value = false;
-}
-
-// ── 运行流水线 ──────────────────────────────────────────────────────────────────
-
-async function searchRepos() {
-	try {
-		const resp = await repositoryApi.list({
-			per_page: 100,
-		});
-		repoOptions.value = resp.items;
-	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
-	}
-}
-
-function handleRepoSelection(value: ComboboxOptionValue) {
-	runForm.repositoryId = String(value || '');
-}
-
-async function openRunModal() {
-	if (isDirty.value) {
-		toast.error('有未保存的变更，请先保存后再运行');
-		return;
-	}
-	runForm.repositoryId = '';
-	runForm.triggerRef = '';
-	await searchRepos();
-	isRunDialogOpen.value = true;
-}
-
-async function handleRunOk() {
-	if (!runForm.repositoryId) {
-		toast.error('请选择项目');
-		return;
-	}
-
-	const repo = selectedRepository.value;
-	if (!repo?.git_credential_id) {
-		toast.error('该项目未配置 Git 凭据');
-		return;
-	}
-
-	try {
-		await executeRun(async () => {
-			const triggerRef = runForm.triggerRef || repo.default_branch || 'main';
-			const run = await repositoryApi.trigger(runForm.repositoryId, {
-				template_id: templateId.value,
-				trigger_ref: triggerRef,
-				variables: {},
-			});
-			toast.success('触发成功');
-			isRunDialogOpen.value = false;
-			router.push(`/ci/run/${run.id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '触发失败');
-	}
-}
-
-// ── 变量管理 ──────────────────────────────────────────────────────────────────
-
-function openAddVarModal() {
-	varForm.name = '';
-	varForm.value = '';
-	varForm.description = '';
-	isAddVarDialogOpen.value = true;
-}
-
-function handleAddVarOk() {
-	if (!varForm.name.trim()) {
-		toast.error('变量名不能为空');
-		return;
-	}
-
-	// 检查是否已存在
-	if (declarations.value.some((d) => d.name === varForm.name)) {
-		toast.error('变量名已存在');
-		return;
-	}
-
-	declarations.value.push({
-		name: varForm.name,
-		value: varForm.value || undefined,
-		description: varForm.description || undefined,
-		source: 'template_custom',
-		secret: false,
-	});
-
-	isAddVarDialogOpen.value = false;
-}
-
-function openEditVarModal(name: string) {
-	const decl = declarations.value.find((d) => d.name === name);
-	if (!decl) {
-		return;
-	}
-	varForm.name = decl.name;
-	varForm.value = String(decl.value ?? '');
-	varForm.description = decl.description ?? '';
-	isEditVarDialogOpen.value = true;
-}
-
-function handleEditVarOk() {
-	const decl = declarations.value.find((d) => d.name === varForm.name);
-	if (decl) {
-		decl.value = varForm.value || undefined;
-		decl.description = varForm.description || undefined;
-	}
-	isEditVarDialogOpen.value = false;
-}
-
-function confirmDeleteVariable(name: string) {
-	varToDelete.value = name;
-	isDeleteVarDialogOpen.value = true;
-}
-
-function deleteVariable() {
-	const name = varToDelete.value;
-	if (!name) {
-		return;
-	}
-	const idx = declarations.value.findIndex((d) => d.name === name);
-	if (idx !== -1) {
-		declarations.value.splice(idx, 1);
-	}
-	isDeleteVarDialogOpen.value = false;
-	varToDelete.value = '';
-}
-
-watch(templateId, fetchTemplate);
-onMounted(fetchTemplate);
-onUnmounted(() => {
-	// Cleanup if needed
-});
-</script>
-
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
@@ -673,7 +125,7 @@ onUnmounted(() => {
 										<span
 											v-if="
 												stageCache[orch.stage_id] &&
-												stageCache[orch.stage_id].version > orch.stage_version
+													stageCache[orch.stage_id].version > orch.stage_version
 											"
 											class="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
 										>
@@ -986,3 +438,553 @@ onUnmounted(() => {
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Plus } from 'lucide-vue-next';
+	import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+	// import { VueDraggable } from 'vue-draggable-plus';
+	import { useRoute, useRouter } from 'vue-router';
+	import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type {
+		ArtifactDeclaration,
+		BuildStage,
+		PipelineTemplate,
+		StageOrchestration,
+		VariableDeclaration,
+	} from '@/types/ci/template';
+	import type { Repository } from '@/types/ci/repository';
+	import { detectCircularDependencies } from '@/utils/dag';
+	import StageDAGView from './components/StageDAGView.vue';
+	import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+
+	const route = useRoute();
+	const router = useRouter();
+	const templateId = computed(() => route.params.id as string);
+	const toast = useToast();
+
+	const { status, execute } = useStatusAsync();
+	const { loading: saving, execute: executeSave } = useStatusAsync();
+	const { loading: deleting, execute: executeDelete } = useStatusAsync();
+	const { loading: running, execute: executeRun } = useStatusAsync();
+	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
+
+	const template = ref<PipelineTemplate>();
+	const sortableOrch = ref<StageOrchestration[]>([]);
+	const declarations = ref<VariableDeclaration[]>([]);
+	const stageCache = reactive<Record<string, BuildStage>>({});
+	const viewMode = ref<'list' | 'dag'>('list');
+
+	const stageOptions = ref<BuildStage[]>([]);
+
+	const stageSelectOptions = computed(() => {
+		const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
+		return stageOptions.value
+			.filter((stage) => !inOrch.has(stage.id))
+			.map((stage) => ({
+				value: stage.id,
+				label: stage.name,
+				description: `v${stage.version} · ${stage.image}`,
+			}));
+	});
+
+	const repoOptions = ref<Repository[]>([]);
+	const repoSelectOptions = computed(() =>
+		repoOptions.value.map((repo) => ({
+			value: repo.id,
+			label: repo.name,
+			description: repo.git_credential_id ? repo.repository_url : '未配置 Git 凭据',
+		}))
+	);
+
+	// 已保存的快照，用于 dirty 检测
+	const savedOrch = ref<string>('[]');
+	const savedDeclarations = ref<string>('[]');
+
+	const isDirty = computed(() => {
+		const orchStr = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
+		const declStr = JSON.stringify(declarations.value);
+		return orchStr !== savedOrch.value || declStr !== savedDeclarations.value;
+	});
+
+	const hasStageUpdates = computed(() =>
+		sortableOrch.value.some((orch) => {
+			const stage = stageCache[orch.stage_id];
+			return stage && stage.version > orch.stage_version;
+		})
+	);
+
+	const artifactDeclarations = computed(() => {
+		const result: ArtifactDeclaration[] = [];
+		for (const orch of sortableOrch.value) {
+			const stage = stageCache[orch.stage_id];
+			for (const artifact of stage?.artifacts ?? []) {
+				result.push({
+					stageName: stage?.name ?? orch.stage_name,
+					type: artifact.type,
+					name: artifact.name,
+					path: artifact.path,
+				});
+			}
+		}
+		return result;
+	});
+
+	const isEditInfoDialogOpen = ref(false);
+	const isAddOrchDialogOpen = ref(false);
+	const isEditOrchDialogOpen = ref(false);
+	const isRunDialogOpen = ref(false);
+	const isAddVarDialogOpen = ref(false);
+	const isEditVarDialogOpen = ref(false);
+	const isDeleteDialogOpen = ref(false);
+	const isDeleteOrchDialogOpen = ref(false);
+	const isDeleteVarDialogOpen = ref(false);
+
+	const editForm = reactive({ name: '', description: '' });
+	const addOrchForm = reactive({
+		stageId: '',
+		dependsOn: [] as string[],
+	});
+	const runForm = reactive({
+		repositoryId: '',
+		triggerRef: '',
+	});
+	const editOrchForm = reactive({
+		editingStageId: '',
+		dependsOn: [] as string[],
+	});
+	const varForm = reactive({
+		name: '',
+		value: '',
+		description: '',
+	});
+	const orchToDelete = ref(-1);
+	const varToDelete = ref('');
+
+	const editableOrchOptions = computed(() =>
+		sortableOrch.value.filter((o) => o.stage_id !== editOrchForm.editingStageId)
+	);
+
+	const selectedRepository = computed(() =>
+		repoOptions.value.find((r) => r.id === runForm.repositoryId)
+	);
+
+	const dagStages = computed(() =>
+		sortableOrch.value.map((orch) => {
+			const stage = stageCache[orch.stage_id];
+			return {
+				id: orch.stage_id,
+				name: stage?.name ?? orch.stage_id,
+				image: stage?.image ?? '',
+				script: stage?.script ?? '',
+				version: stage?.version ?? 1,
+				depends_on: orch.depends_on,
+			};
+		})
+	);
+
+	// 监听项目选择，自动填充默认分支
+	watch(
+		() => runForm.repositoryId,
+		(newRepoId) => {
+			if (newRepoId) {
+				const repo = repoOptions.value.find((r) => r.id === newRepoId);
+				if (repo?.default_branch) {
+					runForm.triggerRef = repo.default_branch;
+				}
+			}
+		}
+	);
+
+	function applyTemplateState(tmpl: PipelineTemplate) {
+		template.value = tmpl;
+		sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
+		declarations.value = [...tmpl.variable_declarations];
+		// 更新已保存快照
+		savedOrch.value = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
+		savedDeclarations.value = JSON.stringify(declarations.value);
+		Object.keys(stageCache).forEach((key) => delete stageCache[key]);
+		tmpl.stages.forEach((stage) => (stageCache[stage.id] = stage));
+		Object.assign(editForm, {
+			name: tmpl.name,
+			description: tmpl.description ?? '',
+		});
+	}
+
+	async function fetchTemplate() {
+		try {
+			await execute(async () => {
+				const tmpl = await pipelineTemplateApi.get(templateId.value);
+				applyTemplateState(tmpl);
+			});
+		} catch {
+			toast.error('获取模板信息失败');
+			router.push('/ci/template');
+		}
+	}
+
+	async function searchStages() {
+		try {
+			const resp = await buildStageApi.list({
+				per_page: 100,
+			});
+			stageOptions.value = resp.items;
+		} catch (err: unknown) {
+			toast.error(err instanceof Error ? err.message : '获取 Stage 列表失败');
+		}
+	}
+
+	function handleStageSelection(value: ComboboxOptionValue) {
+		addOrchForm.stageId = String(value || '');
+		const stage = stageOptions.value.find((item) => item.id === addOrchForm.stageId);
+		if (stage) {
+			stageCache[stage.id] = stage;
+		}
+	}
+
+	async function syncDeclarations() {
+		try {
+			declarations.value = await pipelineTemplateApi.resolveVariables({
+				orchestration: sortableOrch.value.map((item, index) => ({
+					...item,
+					sort_order: index,
+				})),
+				variable_declarations: declarations.value,
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '同步变量失败');
+		}
+	}
+
+	function openEditInfoModal() {
+		Object.assign(editForm, {
+			name: template.value?.name ?? '',
+			description: template.value?.description ?? '',
+		});
+		isEditInfoDialogOpen.value = true;
+	}
+
+	function cancelEditInfo() {
+		Object.assign(editForm, {
+			name: template.value?.name ?? '',
+			description: template.value?.description ?? '',
+		});
+		isEditInfoDialogOpen.value = false;
+	}
+
+	async function handleEditInfoOk() {
+		if (!editForm.name.trim()) {
+			toast.error('模板名称不能为空');
+			return;
+		}
+
+		try {
+			await executeSave(async () => {
+				// 只保存基本信息，不传递 orchestration 和 variable_declarations
+				const data = await pipelineTemplateApi.update(templateId.value, {
+					name: editForm.name,
+					description: editForm.description,
+				});
+				applyTemplateState(data);
+				toast.success('保存成功');
+			});
+			isEditInfoDialogOpen.value = false;
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '保存失败');
+		}
+	}
+
+	async function handleSave() {
+		const orchForCheck = sortableOrch.value.map((o) => ({
+			name: o.stage_id,
+			depends_on: o.depends_on,
+		}));
+		const cycle = detectCircularDependencies(orchForCheck);
+		if (cycle) {
+			toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+			return;
+		}
+
+		try {
+			await executeSave(async () => {
+				// 自动更新编排中的 stage_version
+				for (const orch of sortableOrch.value) {
+					const stage = stageCache[orch.stage_id];
+					if (stage && stage.version > orch.stage_version) {
+						orch.stage_version = stage.version;
+					}
+				}
+
+				const data = await pipelineTemplateApi.update(templateId.value, {
+					name: editForm.name,
+					description: editForm.description,
+					orchestration: sortableOrch.value.map((o, i) => ({
+						...o,
+						sort_order: i,
+					})),
+					variable_declarations: declarations.value,
+				});
+				applyTemplateState(data);
+				toast.success(`保存成功，快照 v${data.version}`);
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '保存失败');
+		}
+	}
+
+	async function handleDuplicate() {
+		try {
+			await executeDuplicate(async () => {
+				const newTemplate = await pipelineTemplateApi.duplicate(templateId.value);
+				toast.success('复制成功');
+				router.push(`/ci/template/${newTemplate.id}`);
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '复制失败');
+		}
+	}
+
+	function openDeleteModal() {
+		isDeleteDialogOpen.value = true;
+	}
+
+	async function handleDeleteOk() {
+		try {
+			await executeDelete(async () => {
+				await pipelineTemplateApi.delete(templateId.value);
+				toast.success('删除成功');
+				router.push('/ci/template');
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '删除失败');
+		}
+	}
+
+	// ── 编排操作 ──────────────────────────────────────────────────────────────────
+
+	async function openAddOrchModal() {
+		addOrchForm.stageId = '';
+		addOrchForm.dependsOn = [];
+		isAddOrchDialogOpen.value = true;
+		await searchStages();
+	}
+
+	async function confirmAddOrch() {
+		if (!addOrchForm.stageId) {
+			return;
+		}
+		const stage =
+			stageOptions.value.find((s) => s.id === addOrchForm.stageId) ??
+			stageCache[addOrchForm.stageId];
+		if (!stage) {
+			return;
+		}
+		const newOrch: StageOrchestration = {
+			stage_id: addOrchForm.stageId,
+			stage_name: stage.name,
+			stage_version: stage.version,
+			depends_on: addOrchForm.dependsOn,
+			sort_order: sortableOrch.value.length,
+		};
+		const orchForCheck = [...sortableOrch.value, newOrch].map((o) => ({
+			name: o.stage_id,
+			depends_on: o.depends_on,
+		}));
+		const cycle = detectCircularDependencies(orchForCheck);
+		if (cycle) {
+			toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+			return;
+		}
+		sortableOrch.value.push(newOrch);
+		stageCache[stage.id] = stage;
+		await syncDeclarations();
+		isAddOrchDialogOpen.value = false;
+	}
+
+	function confirmRemoveOrch(idx: number) {
+		orchToDelete.value = idx;
+		isDeleteOrchDialogOpen.value = true;
+	}
+
+	async function removeOrch() {
+		const idx = orchToDelete.value;
+		if (idx === -1) {
+			return;
+		}
+		const removed = sortableOrch.value[idx];
+		sortableOrch.value.splice(idx, 1);
+		for (const o of sortableOrch.value) {
+			o.depends_on = o.depends_on.filter((depId) => depId !== removed.stage_id);
+		}
+		await syncDeclarations();
+		isDeleteOrchDialogOpen.value = false;
+		orchToDelete.value = -1;
+	}
+
+	function openEditOrchModal(idx: number) {
+		const orch = sortableOrch.value[idx];
+		if (!orch) {
+			return;
+		}
+		editOrchForm.editingStageId = orch.stage_id;
+		editOrchForm.dependsOn = [...orch.depends_on];
+		isEditOrchDialogOpen.value = true;
+	}
+
+	function confirmEditOrch() {
+		const orch = sortableOrch.value.find((o) => o.stage_id === editOrchForm.editingStageId);
+		if (!orch) {
+			return;
+		}
+		const orchForCheck = sortableOrch.value.map((o) => ({
+			name: o.stage_id,
+			depends_on:
+				o.stage_id === editOrchForm.editingStageId ? editOrchForm.dependsOn : o.depends_on,
+		}));
+		const cycle = detectCircularDependencies(orchForCheck);
+		if (cycle) {
+			toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+			return;
+		}
+		orch.depends_on = editOrchForm.dependsOn;
+		editOrchForm.editingStageId = '';
+		editOrchForm.dependsOn = [];
+		isEditOrchDialogOpen.value = false;
+	}
+
+	// ── 运行流水线 ──────────────────────────────────────────────────────────────────
+
+	async function searchRepos() {
+		try {
+			const resp = await repositoryApi.list({
+				per_page: 100,
+			});
+			repoOptions.value = resp.items;
+		} catch (err: unknown) {
+			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+		}
+	}
+
+	function handleRepoSelection(value: ComboboxOptionValue) {
+		runForm.repositoryId = String(value || '');
+	}
+
+	async function openRunModal() {
+		if (isDirty.value) {
+			toast.error('有未保存的变更，请先保存后再运行');
+			return;
+		}
+		runForm.repositoryId = '';
+		runForm.triggerRef = '';
+		await searchRepos();
+		isRunDialogOpen.value = true;
+	}
+
+	async function handleRunOk() {
+		if (!runForm.repositoryId) {
+			toast.error('请选择项目');
+			return;
+		}
+
+		const repo = selectedRepository.value;
+		if (!repo?.git_credential_id) {
+			toast.error('该项目未配置 Git 凭据');
+			return;
+		}
+
+		try {
+			await executeRun(async () => {
+				const triggerRef = runForm.triggerRef || repo.default_branch || 'main';
+				const run = await repositoryApi.trigger(runForm.repositoryId, {
+					template_id: templateId.value,
+					trigger_ref: triggerRef,
+					variables: {},
+				});
+				toast.success('触发成功');
+				isRunDialogOpen.value = false;
+				router.push(`/ci/run/${run.id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '触发失败');
+		}
+	}
+
+	// ── 变量管理 ──────────────────────────────────────────────────────────────────
+
+	function openAddVarModal() {
+		varForm.name = '';
+		varForm.value = '';
+		varForm.description = '';
+		isAddVarDialogOpen.value = true;
+	}
+
+	function handleAddVarOk() {
+		if (!varForm.name.trim()) {
+			toast.error('变量名不能为空');
+			return;
+		}
+
+		// 检查是否已存在
+		if (declarations.value.some((d) => d.name === varForm.name)) {
+			toast.error('变量名已存在');
+			return;
+		}
+
+		declarations.value.push({
+			name: varForm.name,
+			value: varForm.value || undefined,
+			description: varForm.description || undefined,
+			source: 'template_custom',
+			secret: false,
+		});
+
+		isAddVarDialogOpen.value = false;
+	}
+
+	function openEditVarModal(name: string) {
+		const decl = declarations.value.find((d) => d.name === name);
+		if (!decl) {
+			return;
+		}
+		varForm.name = decl.name;
+		varForm.value = String(decl.value ?? '');
+		varForm.description = decl.description ?? '';
+		isEditVarDialogOpen.value = true;
+	}
+
+	function handleEditVarOk() {
+		const decl = declarations.value.find((d) => d.name === varForm.name);
+		if (decl) {
+			decl.value = varForm.value || undefined;
+			decl.description = varForm.description || undefined;
+		}
+		isEditVarDialogOpen.value = false;
+	}
+
+	function confirmDeleteVariable(name: string) {
+		varToDelete.value = name;
+		isDeleteVarDialogOpen.value = true;
+	}
+
+	function deleteVariable() {
+		const name = varToDelete.value;
+		if (!name) {
+			return;
+		}
+		const idx = declarations.value.findIndex((d) => d.name === name);
+		if (idx !== -1) {
+			declarations.value.splice(idx, 1);
+		}
+		isDeleteVarDialogOpen.value = false;
+		varToDelete.value = '';
+	}
+
+	watch(templateId, fetchTemplate);
+	onMounted(fetchTemplate);
+	onUnmounted(() => {
+		// Cleanup if needed
+	});
+</script>

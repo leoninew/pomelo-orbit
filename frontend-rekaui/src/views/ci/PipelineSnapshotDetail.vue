@@ -1,57 +1,4 @@
-﻿<script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { pipelineTemplateApi } from '@/api/ci';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
-import type { ArtifactDeclaration } from '@/types/ci/template';
-import { formatTime } from '@/utils/time';
-import StageDAGView from './components/StageDAGView.vue';
-import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
-
-const route = useRoute();
-const router = useRouter();
-const snapshotId = route.params.id as string;
-const toast = useToast();
-
-const { status, execute } = useStatusAsync();
-const snapshot = ref<PipelineSnapshot>();
-const stagesView = ref<'list' | 'dag'>('list');
-
-const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
-	const map: Record<string, SnapshotStage> = {};
-	for (const s of snapshot.value?.stages_snapshot ?? []) {
-		map[s.id] = s;
-	}
-	return map;
-});
-
-const artifactDeclarations = computed(() => {
-	const result: ArtifactDeclaration[] = [];
-	for (const s of snapshot.value?.stages_snapshot ?? []) {
-		for (const a of s.artifacts ?? []) {
-			result.push({ stageName: s.name, type: a.type, name: a.name, path: a.path });
-		}
-	}
-	return result;
-});
-
-async function fetchSnapshot() {
-	try {
-		await execute(async () => {
-			snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
-		});
-	} catch {
-		toast.error('获取快照信息失败');
-		router.push('/ci/template');
-	}
-}
-
-onMounted(fetchSnapshot);
-</script>
-
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
 			<div
@@ -240,3 +187,56 @@ onMounted(fetchSnapshot);
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { computed, onMounted, ref } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import { pipelineTemplateApi } from '@/api/ci';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
+	import type { ArtifactDeclaration } from '@/types/ci/template';
+	import { formatTime } from '@/utils/time';
+	import StageDAGView from './components/StageDAGView.vue';
+	import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+
+	const route = useRoute();
+	const router = useRouter();
+	const snapshotId = route.params.id as string;
+	const toast = useToast();
+
+	const { status, execute } = useStatusAsync();
+	const snapshot = ref<PipelineSnapshot>();
+	const stagesView = ref<'list' | 'dag'>('list');
+
+	const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
+		const map: Record<string, SnapshotStage> = {};
+		for (const s of snapshot.value?.stages_snapshot ?? []) {
+			map[s.id] = s;
+		}
+		return map;
+	});
+
+	const artifactDeclarations = computed(() => {
+		const result: ArtifactDeclaration[] = [];
+		for (const s of snapshot.value?.stages_snapshot ?? []) {
+			for (const a of s.artifacts ?? []) {
+				result.push({ stageName: s.name, type: a.type, name: a.name, path: a.path });
+			}
+		}
+		return result;
+	});
+
+	async function fetchSnapshot() {
+		try {
+			await execute(async () => {
+				snapshot.value = await pipelineTemplateApi.getSnapshot(snapshotId);
+			});
+		} catch {
+			toast.error('获取快照信息失败');
+			router.push('/ci/template');
+		}
+	}
+
+	onMounted(fetchSnapshot);
+</script>

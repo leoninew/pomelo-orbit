@@ -197,169 +197,171 @@
 </template>
 
 <script setup lang="ts">
-import { Key } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { ToolbarRoot } from 'reka-ui';
-import { settingApi } from '@/api/settings';
-import AppDialog from '@/components/AppDialog.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import SelectControl from '@/components/SelectControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import { useAuthStore } from '@/stores/auth';
-import type { ConfigItemResp, SystemConfigResp } from '@/types/cd/settings';
-import { formatTime } from '@/utils/time';
+	import { Key } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { ToolbarRoot } from 'reka-ui';
+	import { settingApi } from '@/api/settings';
+	import AppDialog from '@/components/AppDialog.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import SelectControl from '@/components/SelectControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import { useAuthStore } from '@/stores/auth';
+	import type { ConfigItemResp, SystemConfigResp } from '@/types/cd/settings';
+	import { formatTime } from '@/utils/time';
 
-const authStore = useAuthStore();
-const toast = useToast();
+	const authStore = useAuthStore();
+	const toast = useToast();
 
-const config = ref<SystemConfigResp>();
-const searchText = ref('');
-const { loading: configLoading, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
-const needsRestart = ref(false);
+	const config = ref<SystemConfigResp>();
+	const searchText = ref('');
+	const { loading: configLoading, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+	const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
+	const needsRestart = ref(false);
 
-const filteredConfig = computed(() => {
-	if (!config.value?.items) {
-		return [];
+	const filteredConfig = computed(() => {
+		if (!config.value?.items) {
+			return [];
+		}
+		if (!searchText.value.trim()) {
+			return config.value.items;
+		}
+		const search = searchText.value.toLowerCase();
+		return config.value.items.filter(
+			(item) =>
+				item.key.toLowerCase().includes(search) || item.description?.toLowerCase().includes(search)
+		);
+	});
+
+	const selectOptions: Record<string, string[]> = {
+		cert__letsencrypt__challenge: ['http', 'dns'],
+	};
+	const booleanOptions = [
+		{ value: 'true', label: 'true' },
+		{ value: 'false', label: 'false' },
+	];
+	const secretKeys = new Set(['jwt__secret_key']);
+
+	const editingKey = ref<string>();
+	const editingStr = ref('');
+	const editingBoolStr = ref('false');
+
+	const passwordModalOpen = ref(false);
+	const passwordForm = reactive({
+		old_password: '',
+		new_password: '',
+		confirm_password: '',
+	});
+
+	function getSettingOptions(key: string) {
+		return (selectOptions[key] ?? []).map((option) => ({
+			value: option,
+			label: option,
+		}));
 	}
-	if (!searchText.value.trim()) {
-		return config.value.items;
-	}
-	const search = searchText.value.toLowerCase();
-	return config.value.items.filter(
-		(item) =>
-			item.key.toLowerCase().includes(search) || item.description?.toLowerCase().includes(search)
-	);
-});
+	const passwordErrors = reactive({
+		old_password: '',
+		new_password: '',
+		confirm_password: '',
+	});
 
-const selectOptions: Record<string, string[]> = {
-	cert__letsencrypt__challenge: ['http', 'dns'],
-};
-const booleanOptions = [
-	{ value: 'true', label: 'true' },
-	{ value: 'false', label: 'false' },
-];
-const secretKeys = new Set(['jwt__secret_key']);
-
-const editingKey = ref<string>();
-const editingStr = ref('');
-const editingBoolStr = ref('false');
-
-const passwordModalOpen = ref(false);
-const passwordForm = reactive({
-	old_password: '',
-	new_password: '',
-	confirm_password: '',
-});
-
-function getSettingOptions(key: string) {
-	return (selectOptions[key] ?? []).map((option) => ({
-		value: option,
-		label: option,
-	}));
-}
-const passwordErrors = reactive({
-	old_password: '',
-	new_password: '',
-	confirm_password: '',
-});
-
-async function fetchConfig() {
-	try {
-		await execute(async () => {
-			config.value = await settingApi.getConfig();
-		});
-	} catch {
-		toast.error('加载配置失败');
-	}
-}
-
-function startEdit(record: ConfigItemResp) {
-	editingKey.value = record.key;
-	if (typeof record.default === 'boolean') {
-		editingBoolStr.value = String(record.value);
-	} else {
-		editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
-	}
-}
-
-function cancelEdit() {
-	editingKey.value = undefined;
-}
-
-async function handleSave(record: ConfigItemResp) {
-	if (secretKeys.has(record.key) && !editingStr.value) {
-		cancelEdit();
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			const value =
-				typeof record.default === 'boolean' ? editingBoolStr.value === 'true' : editingStr.value;
-			config.value = await settingApi.updateConfig({ key: record.key, value });
-			needsRestart.value = true;
-			editingKey.value = undefined;
-			toast.warning('已保存，请重启服务以生效');
-		});
-	} catch {
-		toast.error('保存失败');
-	}
-}
-
-const resetModalOpen = ref(false);
-const pendingResetKey = ref('');
-
-function confirmReset(key: string) {
-	pendingResetKey.value = key;
-	resetModalOpen.value = true;
-}
-
-async function handleReset() {
-	try {
-		await executeOp(async () => {
-			config.value = await settingApi.resetConfig({
-				keys: [pendingResetKey.value],
+	async function fetchConfig() {
+		try {
+			await execute(async () => {
+				config.value = await settingApi.getConfig();
 			});
-			needsRestart.value = true;
-			resetModalOpen.value = false;
-			toast.warning('已重置，请重启服务以生效');
-		});
-	} catch {
-		toast.error('重置失败');
+		} catch {
+			toast.error('加载配置失败');
+		}
 	}
-}
 
-function validatePassword() {
-	passwordErrors.old_password = passwordForm.old_password ? '' : '请输入当前密码';
-	passwordErrors.new_password = passwordForm.new_password.length >= 6 ? '' : '密码至少 6 位';
-	passwordErrors.confirm_password =
-		passwordForm.confirm_password === passwordForm.new_password ? '' : '两次输入的密码不一致';
-	return (
-		!passwordErrors.old_password && !passwordErrors.new_password && !passwordErrors.confirm_password
-	);
-}
-
-async function handleChangePassword() {
-	if (!validatePassword()) {
-		return;
+	function startEdit(record: ConfigItemResp) {
+		editingKey.value = record.key;
+		if (typeof record.default === 'boolean') {
+			editingBoolStr.value = String(record.value);
+		} else {
+			editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
+		}
 	}
-	try {
-		await executeChangePassword(async () => {
-			await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
-			toast.success('密码修改成功');
-			passwordModalOpen.value = false;
-			Object.assign(passwordForm, {
-				old_password: '',
-				new_password: '',
-				confirm_password: '',
+
+	function cancelEdit() {
+		editingKey.value = undefined;
+	}
+
+	async function handleSave(record: ConfigItemResp) {
+		if (secretKeys.has(record.key) && !editingStr.value) {
+			cancelEdit();
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				const value =
+					typeof record.default === 'boolean' ? editingBoolStr.value === 'true' : editingStr.value;
+				config.value = await settingApi.updateConfig({ key: record.key, value });
+				needsRestart.value = true;
+				editingKey.value = undefined;
+				toast.warning('已保存，请重启服务以生效');
 			});
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '密码修改失败');
+		} catch {
+			toast.error('保存失败');
+		}
 	}
-}
 
-onMounted(fetchConfig);
+	const resetModalOpen = ref(false);
+	const pendingResetKey = ref('');
+
+	function confirmReset(key: string) {
+		pendingResetKey.value = key;
+		resetModalOpen.value = true;
+	}
+
+	async function handleReset() {
+		try {
+			await executeOp(async () => {
+				config.value = await settingApi.resetConfig({
+					keys: [pendingResetKey.value],
+				});
+				needsRestart.value = true;
+				resetModalOpen.value = false;
+				toast.warning('已重置，请重启服务以生效');
+			});
+		} catch {
+			toast.error('重置失败');
+		}
+	}
+
+	function validatePassword() {
+		passwordErrors.old_password = passwordForm.old_password ? '' : '请输入当前密码';
+		passwordErrors.new_password = passwordForm.new_password.length >= 6 ? '' : '密码至少 6 位';
+		passwordErrors.confirm_password =
+			passwordForm.confirm_password === passwordForm.new_password ? '' : '两次输入的密码不一致';
+		return (
+			!passwordErrors.old_password &&
+			!passwordErrors.new_password &&
+			!passwordErrors.confirm_password
+		);
+	}
+
+	async function handleChangePassword() {
+		if (!validatePassword()) {
+			return;
+		}
+		try {
+			await executeChangePassword(async () => {
+				await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
+				toast.success('密码修改成功');
+				passwordModalOpen.value = false;
+				Object.assign(passwordForm, {
+					old_password: '',
+					new_password: '',
+					confirm_password: '',
+				});
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '密码修改失败');
+		}
+	}
+
+	onMounted(fetchConfig);
 </script>

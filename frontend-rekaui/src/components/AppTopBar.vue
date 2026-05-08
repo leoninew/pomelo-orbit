@@ -1,43 +1,3 @@
-<script setup lang="ts">
-import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Search } from 'lucide-vue-next';
-import { computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
-import { useAuthStore } from '@/stores/auth';
-import {
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuPortal,
-	DropdownMenuRoot,
-	DropdownMenuTrigger,
-	NavigationMenuItem,
-	NavigationMenuLink,
-	NavigationMenuList,
-	NavigationMenuRoot,
-	ToolbarButton,
-	ToolbarRoot,
-} from 'reka-ui';
-
-const props = defineProps<{
-	currentModule: PrimaryNavigationKey | null
-}>();
-
-const router = useRouter();
-const authStore = useAuthStore();
-
-const userName = computed(() => authStore.user?.username || 'admin');
-const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
-
-function isActive(moduleKey: PrimaryNavigationKey) {
-	return props.currentModule === moduleKey;
-}
-
-async function handleLogout() {
-	await authStore.logout();
-	router.push('/login');
-}
-</script>
-
 <template>
 	<header
 		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-card px-3 shadow-sm md:h-20"
@@ -133,3 +93,43 @@ async function handleLogout() {
 		</DropdownMenuRoot>
 	</header>
 </template>
+
+<script setup lang="ts">
+	import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Search } from 'lucide-vue-next';
+	import { computed } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
+	import { useAuthStore } from '@/stores/auth';
+	import {
+		DropdownMenuContent,
+		DropdownMenuItem,
+		DropdownMenuPortal,
+		DropdownMenuRoot,
+		DropdownMenuTrigger,
+		NavigationMenuItem,
+		NavigationMenuLink,
+		NavigationMenuList,
+		NavigationMenuRoot,
+		ToolbarButton,
+		ToolbarRoot,
+	} from 'reka-ui';
+
+	const props = defineProps<{
+		currentModule: PrimaryNavigationKey | null
+	}>();
+
+	const router = useRouter();
+	const authStore = useAuthStore();
+
+	const userName = computed(() => authStore.user?.username || 'admin');
+	const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
+
+	function isActive(moduleKey: PrimaryNavigationKey) {
+		return props.currentModule === moduleKey;
+	}
+
+	async function handleLogout() {
+		await authStore.logout();
+		router.push('/login');
+	}
+</script>

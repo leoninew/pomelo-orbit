@@ -1,31 +1,3 @@
-<script setup lang="ts">
-import { Search, X } from 'lucide-vue-next';
-
-withDefaults(
-	defineProps<{
-		modelValue: string
-		placeholder?: string
-		disabled?: boolean
-		loading?: boolean
-	}>(),
-	{
-		placeholder: '搜索',
-		disabled: false,
-		loading: false,
-	}
-);
-
-const emit = defineEmits<{
-	'update:modelValue': [value: string]
-	search: []
-}>();
-
-function clearSearch() {
-	emit('update:modelValue', '');
-	emit('search');
-}
-</script>
-
 <template>
 	<div class="flex w-full min-w-0 max-w-md items-center">
 		<div class="relative min-w-0 flex-1">
@@ -64,3 +36,31 @@ function clearSearch() {
 		</button>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Search, X } from 'lucide-vue-next';
+
+	withDefaults(
+		defineProps<{
+			modelValue: string
+			placeholder?: string
+			disabled?: boolean
+			loading?: boolean
+		}>(),
+		{
+			placeholder: '搜索',
+			disabled: false,
+			loading: false,
+		}
+	);
+
+	const emit = defineEmits<{
+		'update:modelValue': [value: string]
+		search: []
+	}>();
+
+	function clearSearch() {
+		emit('update:modelValue', '');
+		emit('search');
+	}
+</script>

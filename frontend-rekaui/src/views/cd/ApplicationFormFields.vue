@@ -1,30 +1,3 @@
-<script setup lang="ts">
-import SelectControl from '@/components/SelectControl.vue';
-import type { ApplicationFormState } from '@/types/cd/application';
-
-const props = defineProps<{
-	form: ApplicationFormState
-	errors: { name: string; code: string }
-}>();
-
-const emit = defineEmits<{
-	'update:form': [value: ApplicationFormState]
-}>();
-
-function updateField<K extends keyof ApplicationFormState>(
-	field: K,
-	value: ApplicationFormState[K]
-) {
-	emit('update:form', { ...props.form, [field]: value });
-}
-
-const imagePullPolicyOptions = [
-	{ value: 'missing', label: '缺失时拉取 (missing)' },
-	{ value: 'always', label: '总是拉取 (always)' },
-	{ value: 'never', label: '从不拉取 (never)' },
-];
-</script>
-
 <template>
 	<div class="space-y-4">
 		<!-- 应用名称 -->
@@ -87,3 +60,30 @@ const imagePullPolicyOptions = [
 		<p class="text-xs text-muted-foreground">启用后可为应用配置 HTTP 路由，自动生成 Traefik 配置</p>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import SelectControl from '@/components/SelectControl.vue';
+	import type { ApplicationFormState } from '@/types/cd/application';
+
+	const props = defineProps<{
+		form: ApplicationFormState
+		errors: { name: string; code: string }
+	}>();
+
+	const emit = defineEmits<{
+		'update:form': [value: ApplicationFormState]
+	}>();
+
+	function updateField<K extends keyof ApplicationFormState>(
+		field: K,
+		value: ApplicationFormState[K]
+	) {
+		emit('update:form', { ...props.form, [field]: value });
+	}
+
+	const imagePullPolicyOptions = [
+		{ value: 'missing', label: '缺失时拉取 (missing)' },
+		{ value: 'always', label: '总是拉取 (always)' },
+		{ value: 'never', label: '从不拉取 (never)' },
+	];
+</script>

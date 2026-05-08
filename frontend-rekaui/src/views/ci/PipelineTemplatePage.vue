@@ -1,110 +1,3 @@
-<script setup lang="ts">
-import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { pipelineTemplateApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { PipelineTemplate } from '@/types/ci/template';
-import { formatTime } from '@/utils/time';
-import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
-
-const router = useRouter();
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
-
-const templates = ref<PipelineTemplate[]>([]);
-const viewMode = ref<'card' | 'table'>('table');
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-const searchText = ref('');
-const showCreateDialog = ref(false);
-
-const form = reactive({ name: '', description: '' });
-const errors = reactive({ name: '' });
-
-async function fetchTemplates() {
-	try {
-		await execute(async () => {
-			const res = await pipelineTemplateApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: searchText.value || undefined,
-			});
-			templates.value = res.items;
-			pagination.total = res.total;
-		});
-	} catch {
-		toast.error('获取模板列表失败');
-	}
-}
-
-function handleSearch() {
-	if (status.value === 'loading') {
-		return;
-	}
-	pagination.current = 1;
-	fetchTemplates();
-}
-
-function goPage(p: number) {
-	pagination.current = p;
-	fetchTemplates();
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchTemplates();
-}
-
-function openCreateModal() {
-	Object.assign(form, { name: '', description: '' });
-	Object.assign(errors, { name: '' });
-	showCreateDialog.value = true;
-}
-
-async function handleCreateOk() {
-	errors.name = form.name.trim() ? '' : '请输入模板名称';
-	if (errors.name) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			const tpl = await pipelineTemplateApi.create({
-				name: form.name,
-				description: form.description || undefined,
-				variable_declarations: [],
-			});
-			toast.success('创建成功');
-			showCreateDialog.value = false;
-			router.push(`/ci/template/${tpl.id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '创建失败');
-	}
-}
-
-async function handleDuplicate(id: string) {
-	try {
-		await executeDuplicate(async () => {
-			const newTemplate = await pipelineTemplateApi.duplicate(id);
-			toast.success('复制成功');
-			router.push(`/ci/template/${newTemplate.id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '复制失败');
-	}
-}
-
-onMounted(fetchTemplates);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="flex flex-wrap items-center justify-between gap-3" aria-label="模板工具栏">
@@ -303,3 +196,110 @@ onMounted(fetchTemplates);
 		</template>
 	</AppDialog>
 </template>
+
+<script setup lang="ts">
+	import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { pipelineTemplateApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { PipelineTemplate } from '@/types/ci/template';
+	import { formatTime } from '@/utils/time';
+	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
+
+	const router = useRouter();
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
+
+	const templates = ref<PipelineTemplate[]>([]);
+	const viewMode = ref<'card' | 'table'>('table');
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+	const searchText = ref('');
+	const showCreateDialog = ref(false);
+
+	const form = reactive({ name: '', description: '' });
+	const errors = reactive({ name: '' });
+
+	async function fetchTemplates() {
+		try {
+			await execute(async () => {
+				const res = await pipelineTemplateApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+				});
+				templates.value = res.items;
+				pagination.total = res.total;
+			});
+		} catch {
+			toast.error('获取模板列表失败');
+		}
+	}
+
+	function handleSearch() {
+		if (status.value === 'loading') {
+			return;
+		}
+		pagination.current = 1;
+		fetchTemplates();
+	}
+
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchTemplates();
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchTemplates();
+	}
+
+	function openCreateModal() {
+		Object.assign(form, { name: '', description: '' });
+		Object.assign(errors, { name: '' });
+		showCreateDialog.value = true;
+	}
+
+	async function handleCreateOk() {
+		errors.name = form.name.trim() ? '' : '请输入模板名称';
+		if (errors.name) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				const tpl = await pipelineTemplateApi.create({
+					name: form.name,
+					description: form.description || undefined,
+					variable_declarations: [],
+				});
+				toast.success('创建成功');
+				showCreateDialog.value = false;
+				router.push(`/ci/template/${tpl.id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '创建失败');
+		}
+	}
+
+	async function handleDuplicate(id: string) {
+		try {
+			await executeDuplicate(async () => {
+				const newTemplate = await pipelineTemplateApi.duplicate(id);
+				toast.success('复制成功');
+				router.push(`/ci/template/${newTemplate.id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '复制失败');
+		}
+	}
+
+	onMounted(fetchTemplates);
+</script>

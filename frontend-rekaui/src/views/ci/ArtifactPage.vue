@@ -1,119 +1,3 @@
-<script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { ToolbarRoot } from 'reka-ui';
-import { artifactApi, repositoryApi, pipelineTemplateApi } from '@/api/ci';
-import ComboboxSelect from '@/components/ComboboxSelect.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { Artifact } from '@/types/ci/stage_run';
-import type { Repository } from '@/types/ci/repository';
-import type { PipelineTemplate } from '@/types/ci/template';
-import { formatTime } from '@/utils/time';
-
-const { status, error, execute } = useStatusAsync();
-const toast = useToast();
-const artifacts = ref<Artifact[]>([]);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-
-const query = reactive({ search: '', repository_id: '', template_id: '' });
-
-const repoOptions = ref<Repository[]>([]);
-const templateOptions = ref<PipelineTemplate[]>([]);
-
-function artifactTypeLabel(type: Artifact['type']) {
-	const map: Record<Artifact['type'], string> = {
-		docker_image: 'Docker 镜像',
-		binary: '二进制文件',
-	};
-	return map[type] ?? type;
-}
-
-const repoSelectOptions = computed(() =>
-	repoOptions.value.map((repo) => ({
-		value: repo.id,
-		label: repo.name,
-		description: repo.repository_url,
-	}))
-);
-
-const templateSelectOptions = computed(() =>
-	templateOptions.value.map((template) => ({
-		value: template.id,
-		label: template.name,
-		description: `v${template.version}`,
-	}))
-);
-
-async function loadRepos() {
-	try {
-		const resp = await repositoryApi.list({ per_page: 100 });
-		repoOptions.value = resp.items;
-	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
-	}
-}
-
-async function loadTemplates() {
-	try {
-		const resp = await pipelineTemplateApi.list({ per_page: 100 });
-		templateOptions.value = resp.items;
-	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取模板列表失败');
-	}
-}
-
-function handleRepositoryChange(value: string | number | boolean) {
-	query.repository_id = String(value || '');
-}
-
-function handleTemplateChange(value: string | number | boolean) {
-	query.template_id = String(value || '');
-}
-
-function handleSearch() {
-	pagination.current = 1;
-	fetchArtifacts();
-}
-
-async function fetchArtifacts() {
-	try {
-		await execute(async () => {
-			const resp = await artifactApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: query.search || undefined,
-				repository_id: query.repository_id || undefined,
-				template_id: query.template_id || undefined,
-			});
-			artifacts.value = resp.items;
-			pagination.total = resp.total;
-		});
-	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取制品列表失败');
-	}
-}
-
-function goPage(p: number) {
-	pagination.current = p;
-	fetchArtifacts();
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchArtifacts();
-}
-
-onMounted(async () => {
-	fetchArtifacts();
-	await loadRepos();
-	await loadTemplates();
-});
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="overflow-x-auto" aria-label="制品工具栏">
@@ -239,3 +123,119 @@ onMounted(async () => {
 		/>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { ToolbarRoot } from 'reka-ui';
+	import { artifactApi, repositoryApi, pipelineTemplateApi } from '@/api/ci';
+	import ComboboxSelect from '@/components/ComboboxSelect.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { Artifact } from '@/types/ci/stage_run';
+	import type { Repository } from '@/types/ci/repository';
+	import type { PipelineTemplate } from '@/types/ci/template';
+	import { formatTime } from '@/utils/time';
+
+	const { status, error, execute } = useStatusAsync();
+	const toast = useToast();
+	const artifacts = ref<Artifact[]>([]);
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+
+	const query = reactive({ search: '', repository_id: '', template_id: '' });
+
+	const repoOptions = ref<Repository[]>([]);
+	const templateOptions = ref<PipelineTemplate[]>([]);
+
+	function artifactTypeLabel(type: Artifact['type']) {
+		const map: Record<Artifact['type'], string> = {
+			docker_image: 'Docker 镜像',
+			binary: '二进制文件',
+		};
+		return map[type] ?? type;
+	}
+
+	const repoSelectOptions = computed(() =>
+		repoOptions.value.map((repo) => ({
+			value: repo.id,
+			label: repo.name,
+			description: repo.repository_url,
+		}))
+	);
+
+	const templateSelectOptions = computed(() =>
+		templateOptions.value.map((template) => ({
+			value: template.id,
+			label: template.name,
+			description: `v${template.version}`,
+		}))
+	);
+
+	async function loadRepos() {
+		try {
+			const resp = await repositoryApi.list({ per_page: 100 });
+			repoOptions.value = resp.items;
+		} catch (err: unknown) {
+			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+		}
+	}
+
+	async function loadTemplates() {
+		try {
+			const resp = await pipelineTemplateApi.list({ per_page: 100 });
+			templateOptions.value = resp.items;
+		} catch (err: unknown) {
+			toast.error(err instanceof Error ? err.message : '获取模板列表失败');
+		}
+	}
+
+	function handleRepositoryChange(value: string | number | boolean) {
+		query.repository_id = String(value || '');
+	}
+
+	function handleTemplateChange(value: string | number | boolean) {
+		query.template_id = String(value || '');
+	}
+
+	function handleSearch() {
+		pagination.current = 1;
+		fetchArtifacts();
+	}
+
+	async function fetchArtifacts() {
+		try {
+			await execute(async () => {
+				const resp = await artifactApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: query.search || undefined,
+					repository_id: query.repository_id || undefined,
+					template_id: query.template_id || undefined,
+				});
+				artifacts.value = resp.items;
+				pagination.total = resp.total;
+			});
+		} catch (err: unknown) {
+			toast.error(err instanceof Error ? err.message : '获取制品列表失败');
+		}
+	}
+
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchArtifacts();
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchArtifacts();
+	}
+
+	onMounted(async () => {
+		fetchArtifacts();
+		await loadRepos();
+		await loadTemplates();
+	});
+</script>

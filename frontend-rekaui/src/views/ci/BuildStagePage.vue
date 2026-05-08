@@ -1,116 +1,3 @@
-<script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { ToolbarRoot } from 'reka-ui';
-import { buildStageApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { BuildStage } from '@/types/ci/template';
-import { formatTime } from '@/utils/time';
-
-const router = useRouter();
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
-
-const stages = ref<BuildStage[]>([]);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-const searchText = ref('');
-const isModalOpen = ref(false);
-
-const form = reactive({ name: '', image: '', script: '', description: '' });
-const errors = reactive({ name: '', image: '', script: '' });
-
-function validate() {
-	errors.name = form.name.trim() ? '' : '请输入名称';
-	errors.image = form.image.trim() ? '' : '请输入镜像';
-	errors.script = form.script.trim() ? '' : '请输入脚本';
-	return !errors.name && !errors.image && !errors.script;
-}
-
-async function fetchStages() {
-	try {
-		await execute(async () => {
-			const res = await buildStageApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: searchText.value || undefined,
-			});
-			stages.value = res.items;
-			pagination.total = res.total;
-		});
-	} catch {
-		toast.error('获取 Stage 列表失败');
-	}
-}
-
-function handleSearch() {
-	if (status.value === 'loading') {
-		return;
-	}
-	pagination.current = 1;
-	fetchStages();
-}
-
-function goPage(p: number) {
-	pagination.current = p;
-	fetchStages();
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchStages();
-}
-
-function openCreateModal() {
-	Object.assign(form, { name: '', image: '', script: '', description: '' });
-	Object.assign(errors, { name: '', image: '', script: '' });
-	isModalOpen.value = true;
-}
-
-async function handleModalOk() {
-	if (!validate()) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await buildStageApi.create({
-				name: form.name,
-				image: form.image,
-				script: form.script,
-				description: form.description,
-			});
-			toast.success('创建成功');
-			isModalOpen.value = false;
-			fetchStages();
-		});
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '操作失败');
-	}
-}
-
-async function handleDuplicate(id: string) {
-	try {
-		await executeDuplicate(async () => {
-			const newStage = await buildStageApi.duplicate(id);
-			toast.success('复制成功');
-			router.push(`/ci/build-stage/${newStage.id}`);
-		});
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '复制失败');
-	}
-}
-
-onMounted(fetchStages);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="构建阶段工具栏">
@@ -261,3 +148,116 @@ onMounted(fetchStages);
 		</template>
 	</AppDialog>
 </template>
+
+<script setup lang="ts">
+	import { Plus } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { ToolbarRoot } from 'reka-ui';
+	import { buildStageApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { BuildStage } from '@/types/ci/template';
+	import { formatTime } from '@/utils/time';
+
+	const router = useRouter();
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
+
+	const stages = ref<BuildStage[]>([]);
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+	const searchText = ref('');
+	const isModalOpen = ref(false);
+
+	const form = reactive({ name: '', image: '', script: '', description: '' });
+	const errors = reactive({ name: '', image: '', script: '' });
+
+	function validate() {
+		errors.name = form.name.trim() ? '' : '请输入名称';
+		errors.image = form.image.trim() ? '' : '请输入镜像';
+		errors.script = form.script.trim() ? '' : '请输入脚本';
+		return !errors.name && !errors.image && !errors.script;
+	}
+
+	async function fetchStages() {
+		try {
+			await execute(async () => {
+				const res = await buildStageApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+				});
+				stages.value = res.items;
+				pagination.total = res.total;
+			});
+		} catch {
+			toast.error('获取 Stage 列表失败');
+		}
+	}
+
+	function handleSearch() {
+		if (status.value === 'loading') {
+			return;
+		}
+		pagination.current = 1;
+		fetchStages();
+	}
+
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchStages();
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchStages();
+	}
+
+	function openCreateModal() {
+		Object.assign(form, { name: '', image: '', script: '', description: '' });
+		Object.assign(errors, { name: '', image: '', script: '' });
+		isModalOpen.value = true;
+	}
+
+	async function handleModalOk() {
+		if (!validate()) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await buildStageApi.create({
+					name: form.name,
+					image: form.image,
+					script: form.script,
+					description: form.description,
+				});
+				toast.success('创建成功');
+				isModalOpen.value = false;
+				fetchStages();
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '操作失败');
+		}
+	}
+
+	async function handleDuplicate(id: string) {
+		try {
+			await executeDuplicate(async () => {
+				const newStage = await buildStageApi.duplicate(id);
+				toast.success('复制成功');
+				router.push(`/ci/build-stage/${newStage.id}`);
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '复制失败');
+		}
+	}
+
+	onMounted(fetchStages);
+</script>

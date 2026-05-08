@@ -1,189 +1,3 @@
-<script setup lang="ts">
-import { ExternalLink } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import type { Route } from '@/api/cd/route';
-import { routeApi } from '@/api/cd/route';
-import AppDialog from '@/components/AppDialog.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import { formatTime } from '@/utils/time';
-
-const currentRoute = useRoute();
-const router = useRouter();
-const routeId = currentRoute.params.id as string;
-const toast = useToast();
-
-const { loading: basicInfoLoading, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const routeData = ref<Route>();
-const isEditDialogOpen = ref(false);
-const isDeleteDialogOpen = ref(false);
-
-const form = reactive({
-	name: '',
-	domain: '',
-	path_prefix: '/',
-	target_url: '',
-	enabled: false,
-});
-const errors = reactive({ domain: '', target_url: '' });
-
-const canUseLetsencrypt = computed(() => {
-	if (!routeData.value) {
-		return false;
-	}
-	const d = routeData.value.domain;
-	return (
-		d !== 'localhost' &&
-		!d.endsWith('.localhost') &&
-		!d.endsWith('.lvh.me') &&
-		!/^\d+\.\d+\.\d+\.\d+$/.test(d)
-	);
-});
-
-async function fetchRoute() {
-	try {
-		await execute(async () => {
-			const data = await routeApi.get(routeId);
-			routeData.value = data;
-			Object.assign(form, {
-				name: data.name,
-				domain: data.domain,
-				path_prefix: data.path_prefix,
-				target_url: data.target_url,
-				enabled: data.enabled,
-			});
-		});
-	} catch {
-		toast.error('获取路由详情失败');
-		router.push('/cd/routes');
-	}
-}
-
-function openEditModal() {
-	Object.assign(errors, { domain: '', target_url: '' });
-	isEditDialogOpen.value = true;
-}
-
-async function handleSave() {
-	errors.domain = form.domain.trim() ? '' : '请输入域名';
-	errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
-		? ''
-		: '格式应为 http://host:port';
-	if (errors.domain || errors.target_url) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			const updateData = {
-				domain: form.domain,
-				path_prefix: form.path_prefix,
-				target_url: form.target_url,
-				enabled: form.enabled,
-			};
-			await routeApi.update(routeId, updateData);
-			toast.success('更新成功');
-			isEditDialogOpen.value = false;
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败');
-	}
-}
-
-async function handleEnable() {
-	try {
-		await executeOp(async () => {
-			await routeApi.enable(routeId);
-			toast.success('路由已启用');
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '启用失败');
-	}
-}
-
-async function handleDisable() {
-	try {
-		await executeOp(async () => {
-			await routeApi.disable(routeId);
-			toast.success('路由已停用');
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '停用失败');
-	}
-}
-
-async function handleDelete() {
-	try {
-		await executeOp(async () => {
-			await routeApi.delete(routeId);
-			toast.success('删除成功');
-			router.push('/cd/routes');
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-async function handleCertUpload(event: Event) {
-	const file = (event.target as HTMLInputElement).files?.[0];
-	if (!file) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await routeApi.uploadCert(routeId, file);
-			toast.success('证书上传成功，HTTPS 已启用');
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '证书上传失败');
-	}
-}
-
-async function handleDisableHttps() {
-	try {
-		await executeOp(async () => {
-			await routeApi.disableHttps(routeId);
-			toast.success('HTTPS 已禁用');
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '操作失败');
-	}
-}
-
-async function handleEnableLetsencrypt() {
-	try {
-		await executeOp(async () => {
-			await routeApi.enableLetsencrypt(routeId);
-			toast.success("Let's Encrypt 证书已启用");
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '操作失败');
-	}
-}
-
-async function handleEnableMkcert() {
-	try {
-		await executeOp(async () => {
-			await routeApi.enableMkcert(routeId);
-			toast.success('mkcert 证书已生成并启用');
-			fetchRoute();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '操作失败');
-	}
-}
-
-onMounted(fetchRoute);
-</script>
-
 <template>
 	<div class="flex flex-col gap-4">
 		<!-- Header -->
@@ -403,3 +217,189 @@ onMounted(fetchRoute);
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { ExternalLink } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import type { Route } from '@/api/cd/route';
+	import { routeApi } from '@/api/cd/route';
+	import AppDialog from '@/components/AppDialog.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import { formatTime } from '@/utils/time';
+
+	const currentRoute = useRoute();
+	const router = useRouter();
+	const routeId = currentRoute.params.id as string;
+	const toast = useToast();
+
+	const { loading: basicInfoLoading, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const routeData = ref<Route>();
+	const isEditDialogOpen = ref(false);
+	const isDeleteDialogOpen = ref(false);
+
+	const form = reactive({
+		name: '',
+		domain: '',
+		path_prefix: '/',
+		target_url: '',
+		enabled: false,
+	});
+	const errors = reactive({ domain: '', target_url: '' });
+
+	const canUseLetsencrypt = computed(() => {
+		if (!routeData.value) {
+			return false;
+		}
+		const d = routeData.value.domain;
+		return (
+			d !== 'localhost' &&
+			!d.endsWith('.localhost') &&
+			!d.endsWith('.lvh.me') &&
+			!/^\d+\.\d+\.\d+\.\d+$/.test(d)
+		);
+	});
+
+	async function fetchRoute() {
+		try {
+			await execute(async () => {
+				const data = await routeApi.get(routeId);
+				routeData.value = data;
+				Object.assign(form, {
+					name: data.name,
+					domain: data.domain,
+					path_prefix: data.path_prefix,
+					target_url: data.target_url,
+					enabled: data.enabled,
+				});
+			});
+		} catch {
+			toast.error('获取路由详情失败');
+			router.push('/cd/routes');
+		}
+	}
+
+	function openEditModal() {
+		Object.assign(errors, { domain: '', target_url: '' });
+		isEditDialogOpen.value = true;
+	}
+
+	async function handleSave() {
+		errors.domain = form.domain.trim() ? '' : '请输入域名';
+		errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
+			? ''
+			: '格式应为 http://host:port';
+		if (errors.domain || errors.target_url) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				const updateData = {
+					domain: form.domain,
+					path_prefix: form.path_prefix,
+					target_url: form.target_url,
+					enabled: form.enabled,
+				};
+				await routeApi.update(routeId, updateData);
+				toast.success('更新成功');
+				isEditDialogOpen.value = false;
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '更新失败');
+		}
+	}
+
+	async function handleEnable() {
+		try {
+			await executeOp(async () => {
+				await routeApi.enable(routeId);
+				toast.success('路由已启用');
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '启用失败');
+		}
+	}
+
+	async function handleDisable() {
+		try {
+			await executeOp(async () => {
+				await routeApi.disable(routeId);
+				toast.success('路由已停用');
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '停用失败');
+		}
+	}
+
+	async function handleDelete() {
+		try {
+			await executeOp(async () => {
+				await routeApi.delete(routeId);
+				toast.success('删除成功');
+				router.push('/cd/routes');
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '删除失败');
+		}
+	}
+
+	async function handleCertUpload(event: Event) {
+		const file = (event.target as HTMLInputElement).files?.[0];
+		if (!file) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await routeApi.uploadCert(routeId, file);
+				toast.success('证书上传成功，HTTPS 已启用');
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '证书上传失败');
+		}
+	}
+
+	async function handleDisableHttps() {
+		try {
+			await executeOp(async () => {
+				await routeApi.disableHttps(routeId);
+				toast.success('HTTPS 已禁用');
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '操作失败');
+		}
+	}
+
+	async function handleEnableLetsencrypt() {
+		try {
+			await executeOp(async () => {
+				await routeApi.enableLetsencrypt(routeId);
+				toast.success("Let's Encrypt 证书已启用");
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '操作失败');
+		}
+	}
+
+	async function handleEnableMkcert() {
+		try {
+			await executeOp(async () => {
+				await routeApi.enableMkcert(routeId);
+				toast.success('mkcert 证书已生成并启用');
+				fetchRoute();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '操作失败');
+		}
+	}
+
+	onMounted(fetchRoute);
+</script>

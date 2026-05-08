@@ -1,606 +1,3 @@
-<script setup lang="ts">
-import { ChevronDown, Download, Eye, Plus, Search, X } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import {
-	ComboboxAnchor,
-	ComboboxCancel,
-	ComboboxContent,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxPortal,
-	ComboboxRoot,
-	ComboboxTrigger,
-	ComboboxEmpty,
-} from 'reka-ui';
-import { applicationApi } from '@/api/cd/application';
-import { deploymentApi } from '@/api/cd/deployments';
-import AppDialog from '@/components/AppDialog.vue';
-import AppDrawer from '@/components/AppDrawer.vue';
-import SelectControl from '@/components/SelectControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type {
-	Application,
-	ApplicationRoute,
-	ApplicationServiceConfig,
-	ComposeServiceResp,
-	ConfigFile,
-} from '@/types/cd/application';
-import { delayAsync, formatTime } from '@/utils/time';
-
-const route = useRoute();
-const router = useRouter();
-const applicationId = route.params.id as string;
-const toast = useToast();
-
-const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
-const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
-const { loading: routeListLoading, execute: executeRouteList } = useStatusAsync();
-const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
-const { loading: serviceConfigListLoading, execute: executeServiceConfigList } = useStatusAsync();
-const { loading: serviceConfigSaving, execute: executeServiceConfigSave } = useStatusAsync();
-
-const application = ref<Application>();
-const files = ref<ConfigFile[]>([]);
-const appRoutes = ref<ApplicationRoute[]>([]);
-const composeServices = ref<ComposeServiceResp[]>([]);
-const serviceConfigs = ref<ApplicationServiceConfig[]>([]);
-const selectedServiceName = ref('');
-const serviceConfigError = ref('');
-
-const isEditDialogOpen = ref(false);
-const isDeleteDialogOpen = ref(false);
-const isDeleteFileDialogOpen = ref(false);
-const isServiceConfigDialogOpen = ref(false);
-const isDeleteServiceConfigDialogOpen = ref(false);
-const isRouteDialogOpen = ref(false);
-const isDeleteRouteDialogOpen = ref(false);
-const pendingDeleteFileId = ref('');
-const pendingDeleteServiceName = ref('');
-const pendingDeleteRouteId = ref('');
-const editingRouteId = ref('');
-const deleteDir = ref(false);
-
-const routeForm = reactive({ service_name: '', domain: '', port: 80 });
-const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
-const selectedService = ref<ComposeServiceResp | null>(null);
-const serviceSearchTerm = ref('');
-const serviceConfigForm = reactive({ image: '' });
-
-const fileDrawerVisible = ref(false);
-const currentFileId = ref('');
-const currentFilePath = ref('');
-const currentFileContent = ref('');
-const isEditingInDrawer = ref(false);
-
-const editForm = reactive({
-	name: '',
-	code: '',
-	image_pull_policy: 'missing',
-	route_managed: false,
-});
-const editErrors = reactive({ name: '' });
-const imagePullPolicyOptions = [
-	{ value: 'missing', label: '缺失时拉取 (missing)' },
-	{ value: 'always', label: '总是拉取 (always)' },
-	{ value: 'never', label: '从不拉取 (never)' },
-];
-
-const envs = computed(() =>
-	files.value.filter((f) => f.path.match(/^\.env(\..+)?$/)).map((f) => f.path)
-);
-const activeServiceConfig = computed(() =>
-	serviceConfigs.value.find((item) => item.service_name === selectedServiceName.value)
-);
-const currentServiceImage = computed(() =>
-	activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : ''
-);
-
-const filteredServices = computed(() => {
-	if (!serviceSearchTerm.value) {
-		return composeServices.value;
-	}
-	return composeServices.value.filter((s) =>
-		s.service_name.toLowerCase().includes(serviceSearchTerm.value.toLowerCase())
-	);
-});
-const serviceConfigDirty = computed(
-	() => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
-);
-
-const statusBadgeClass = computed(() => {
-	const status = application.value?.status;
-	if (!status) {
-		return 'bg-muted/50 text-muted-foreground';
-	}
-	const map: Record<string, string> = {
-		deployed: 'bg-green-50 text-green-700 border-green-200',
-		deploy_failed: 'bg-red-50 text-red-700 border-red-200',
-		deploying: 'bg-blue-50 text-blue-700 border-blue-200',
-		undeployed: 'bg-muted/50 text-muted-foreground',
-	};
-	return map[status] || 'bg-muted/50 text-muted-foreground';
-});
-
-const statusText = computed(() => {
-	const status = application.value?.status;
-	if (!status) {
-		return '';
-	}
-	const map: Record<string, string> = {
-		deployed: '已部署',
-		deploy_failed: '部署失败',
-		deploying: '部署中',
-		undeployed: '未部署',
-	};
-	return map[status] || status;
-});
-
-async function fetchApplication() {
-	try {
-		await executeBasicInfo(async () => {
-			const data = await applicationApi.get(applicationId);
-			application.value = data;
-			Object.assign(editForm, {
-				name: data.name,
-				code: data.code,
-				image_pull_policy: data.image_pull_policy,
-				route_managed: data.route_managed,
-			});
-		});
-		if (application.value?.status === 'deploying') {
-			pollActiveDeployment();
-		}
-	} catch {
-		toast.error('获取应用信息失败');
-		router.push('/cd/applications');
-	}
-}
-
-async function pollActiveDeployment() {
-	try {
-		const resp = await deploymentApi.list({
-			application_id: applicationId,
-			per_page: 1,
-		});
-		const latest = resp.items[0];
-		if (!latest) {
-			return;
-		}
-		while (true) {
-			await delayAsync(3000);
-			try {
-				const detail = await deploymentApi.get(latest.id);
-				if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-					if (application.value) {
-						application.value.status =
-							detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
-					}
-					break;
-				}
-			} catch {
-				break;
-			}
-		}
-	} catch {
-		/* silent */
-	}
-}
-
-async function handleDeploy() {
-	try {
-		await executeOp(async () => {
-			const defaultEnv = envs.value.includes('.env') ? '.env' : undefined;
-			const res = await applicationApi.deploy(applicationId, undefined, defaultEnv);
-			toast.success(`部署已触发`);
-			router.push(`/cd/deployments/${res.deployment_id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '触发部署失败');
-	}
-}
-
-async function handleExport() {
-	try {
-		const data = await applicationApi.exportApplication(applicationId);
-		const blob = new Blob([JSON.stringify(data, null, 2)], {
-			type: 'application/json',
-		});
-		const url = URL.createObjectURL(blob);
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = `${data.code || 'application'}.json`;
-		a.click();
-		URL.revokeObjectURL(url);
-		toast.success('导出成功');
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '导出失败');
-	}
-}
-
-function openEditModal() {
-	editErrors.name = '';
-	if (application.value) {
-		Object.assign(editForm, {
-			name: application.value.name,
-			code: application.value.code,
-			image_pull_policy: application.value.image_pull_policy,
-			route_managed: application.value.route_managed,
-		});
-	}
-	isEditDialogOpen.value = true;
-}
-
-async function handleEditOk() {
-	editErrors.name = editForm.name.trim() ? '' : '请输入应用名称';
-	if (editErrors.name) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await applicationApi.update(applicationId, {
-				name: editForm.name,
-				image_pull_policy: editForm.image_pull_policy,
-				route_managed: editForm.route_managed,
-			});
-			toast.success('更新成功');
-			isEditDialogOpen.value = false;
-			await fetchApplication();
-			if (application.value?.route_managed) {
-				await loadRoutes();
-			} else {
-				appRoutes.value = [];
-			}
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败');
-	}
-}
-
-function openDeleteModal() {
-	deleteDir.value = false;
-	isDeleteDialogOpen.value = true;
-}
-
-async function handleDeleteOk() {
-	try {
-		await executeOp(async () => {
-			await applicationApi.delete(applicationId, deleteDir.value);
-			toast.success('删除成功');
-			router.push('/cd/applications');
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-async function loadFiles() {
-	try {
-		await executeFileList(async () => {
-			files.value = await applicationApi.listFiles(applicationId);
-		});
-	} catch {
-		toast.error('加载配置文件失败');
-	}
-}
-
-async function loadServiceConfigs() {
-	serviceConfigError.value = '';
-	try {
-		await executeServiceConfigList(async () => {
-			serviceConfigs.value = await applicationApi.listServiceConfigs(applicationId);
-		});
-	} catch (error) {
-		serviceConfigs.value = [];
-		serviceConfigError.value = error instanceof Error ? error.message : '加载 service 配置失败';
-	}
-}
-
-function getServiceDisplayImage(serviceConfig: ApplicationServiceConfig) {
-	return serviceConfig.image?.trim() || serviceConfig.base_image || '';
-}
-
-function canResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
-	return Boolean(serviceConfig.image?.trim());
-}
-
-function openEditServiceConfigModal(serviceConfig: ApplicationServiceConfig) {
-	selectedServiceName.value = serviceConfig.service_name;
-	serviceConfigForm.image = getServiceDisplayImage(serviceConfig);
-	isServiceConfigDialogOpen.value = true;
-}
-
-function confirmResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
-	if (!canResetServiceConfig(serviceConfig)) {
-		return;
-	}
-	pendingDeleteServiceName.value = serviceConfig.service_name;
-	isDeleteServiceConfigDialogOpen.value = true;
-}
-
-function cancelResetServiceConfig() {
-	pendingDeleteServiceName.value = '';
-	isDeleteServiceConfigDialogOpen.value = false;
-}
-
-async function executeResetServiceConfig() {
-	if (!pendingDeleteServiceName.value) {
-		return;
-	}
-	try {
-		await executeServiceConfigSave(async () => {
-			const saved = await applicationApi.updateServiceConfig(
-				applicationId,
-				pendingDeleteServiceName.value,
-				null
-			);
-			const idx = serviceConfigs.value.findIndex(
-				(item) => item.service_name === saved.service_name
-			);
-			if (idx >= 0) {
-				serviceConfigs.value[idx] = saved;
-			} else {
-				serviceConfigs.value.push(saved);
-			}
-			if (selectedServiceName.value === saved.service_name) {
-				serviceConfigForm.image = getServiceDisplayImage(saved);
-				isServiceConfigDialogOpen.value = false;
-			}
-			isDeleteServiceConfigDialogOpen.value = false;
-			pendingDeleteServiceName.value = '';
-			toast.success('服务镜像已重置');
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '重置服务镜像失败');
-	}
-}
-
-async function saveServiceConfig() {
-	const active = activeServiceConfig.value;
-	if (!active || !serviceConfigDirty.value) {
-		return;
-	}
-	try {
-		await executeServiceConfigSave(async () => {
-			const saved = await applicationApi.updateServiceConfig(
-				applicationId,
-				active.service_name,
-				serviceConfigForm.image
-			);
-			const idx = serviceConfigs.value.findIndex(
-				(item) => item.service_name === saved.service_name
-			);
-			if (idx >= 0) {
-				serviceConfigs.value[idx] = saved;
-			} else {
-				serviceConfigs.value.push(saved);
-			}
-			selectedServiceName.value = saved.service_name;
-			serviceConfigForm.image = getServiceDisplayImage(saved);
-			isServiceConfigDialogOpen.value = false;
-			toast.success('服务镜像保存成功');
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '保存服务镜像失败');
-	}
-}
-
-async function openFileDrawer(fileId: string, isEdit = false) {
-	currentFileId.value = fileId;
-	isEditingInDrawer.value = isEdit;
-	currentFileContent.value = '';
-	currentFilePath.value = '';
-	fileDrawerVisible.value = true;
-	try {
-		await executeFileContent(async () => {
-			const result = await applicationApi.readFile(applicationId, fileId);
-			currentFileContent.value = result.content ?? '';
-			currentFilePath.value = result.path || '';
-		});
-	} catch {
-		toast.error('加载文件内容失败');
-	}
-}
-
-function openAddFileDrawer() {
-	currentFileId.value = '';
-	currentFilePath.value = '';
-	currentFileContent.value = '';
-	isEditingInDrawer.value = true;
-	fileDrawerVisible.value = true;
-}
-
-function handleDrawerClose() {
-	fileDrawerVisible.value = false;
-	isEditingInDrawer.value = false;
-}
-
-function handleFileDrawerOpenChange(open: boolean) {
-	fileDrawerVisible.value = open;
-	if (!open) {
-		isEditingInDrawer.value = false;
-	}
-}
-
-async function saveCurrentFile() {
-	if (!currentFilePath.value.trim()) {
-		toast.error('请输入文件路径');
-		return;
-	}
-	const lowerPath = currentFilePath.value.toLowerCase();
-	const content =
-		lowerPath.endsWith('.sh') || lowerPath.endsWith('.bash')
-			? currentFileContent.value.replace(/\r\n/g, '\n')
-			: currentFileContent.value;
-	try {
-		await executeFileContent(async () => {
-			if (currentFileId.value) {
-				const updated = await applicationApi.writeFile(
-					applicationId,
-					currentFileId.value,
-					currentFilePath.value,
-					content
-				);
-				const idx = files.value.findIndex((f) => f.id === currentFileId.value);
-				if (idx >= 0) {
-					files.value[idx] = updated;
-				}
-				toast.success('保存成功');
-			} else {
-				await applicationApi.createFile(applicationId, currentFilePath.value, content);
-				toast.success('添加成功');
-			}
-			fileDrawerVisible.value = false;
-			isEditingInDrawer.value = false;
-			await loadFiles();
-			await loadServiceConfigs();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '保存失败');
-	}
-}
-
-function confirmDeleteFile(fileId: string) {
-	pendingDeleteFileId.value = fileId;
-	isDeleteFileDialogOpen.value = true;
-}
-
-async function executeDeleteFile() {
-	try {
-		await executeFileList(async () => {
-			await applicationApi.deleteFile(applicationId, pendingDeleteFileId.value);
-			toast.success('删除成功');
-			isDeleteFileDialogOpen.value = false;
-			await loadFiles();
-			await loadServiceConfigs();
-		});
-	} catch {
-		toast.error('删除失败');
-	}
-}
-
-// ── Route management ──
-
-async function loadRoutes() {
-	try {
-		await executeRouteList(async () => {
-			appRoutes.value = await applicationApi.listRoutes(applicationId);
-		});
-	} catch {
-		toast.error('加载路由配置失败');
-	}
-}
-
-async function loadComposeServices() {
-	composeServices.value = [];
-	try {
-		composeServices.value = await applicationApi.listComposeServices(applicationId);
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '解析 docker-compose 失败，无法配置路由');
-	}
-}
-
-function onServiceChange(service: ComposeServiceResp | null) {
-	if (service) {
-		routeForm.service_name = service.service_name;
-		routeForm.domain = service.default_domain;
-		routeForm.port = service.default_port;
-	} else {
-		routeForm.service_name = '';
-	}
-}
-
-async function openAddRouteModal() {
-	editingRouteId.value = '';
-	Object.assign(routeForm, { service_name: '', domain: '', port: 80 });
-	Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
-	selectedService.value = null;
-	serviceSearchTerm.value = '';
-	await loadComposeServices();
-	if (composeServices.value.length === 0) {
-		return;
-	}
-	isRouteDialogOpen.value = true;
-}
-
-async function openEditRouteModal(r: ApplicationRoute) {
-	editingRouteId.value = r.id;
-	Object.assign(routeForm, { service_name: r.service_name, domain: r.domain, port: r.port });
-	Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
-	await loadComposeServices();
-	if (composeServices.value.length === 0) {
-		return;
-	}
-	// 设置选中的服务
-	selectedService.value =
-		composeServices.value.find((s) => s.service_name === r.service_name) || null;
-	serviceSearchTerm.value = '';
-	isRouteDialogOpen.value = true;
-}
-
-function validateRouteForm() {
-	routeFormErrors.service_name = routeForm.service_name ? '' : '请选择 service';
-	routeFormErrors.domain = routeForm.domain.trim() ? '' : '请输入域名';
-	routeFormErrors.port = routeForm.port >= 1 && routeForm.port <= 65535 ? '' : '端口范围 1-65535';
-	return !routeFormErrors.service_name && !routeFormErrors.domain && !routeFormErrors.port;
-}
-
-async function handleRouteOk() {
-	if (!validateRouteForm()) {
-		return;
-	}
-	try {
-		await executeRoute(async () => {
-			const data = {
-				service_name: routeForm.service_name,
-				domain: routeForm.domain,
-				port: routeForm.port,
-			};
-			if (editingRouteId.value) {
-				await applicationApi.updateRoute(applicationId, editingRouteId.value, data);
-			} else {
-				await applicationApi.createRoute(applicationId, data);
-			}
-			toast.success('保存成功');
-			isRouteDialogOpen.value = false;
-			await loadRoutes();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '保存失败');
-	}
-}
-
-function confirmDeleteRoute(routeId: string) {
-	pendingDeleteRouteId.value = routeId;
-	isDeleteRouteDialogOpen.value = true;
-}
-
-async function executeDeleteRoute() {
-	try {
-		await executeRoute(async () => {
-			await applicationApi.deleteRoute(applicationId, pendingDeleteRouteId.value);
-			toast.success('删除成功');
-			isDeleteRouteDialogOpen.value = false;
-			await loadRoutes();
-		});
-	} catch {
-		toast.error('删除失败');
-	}
-}
-
-onMounted(async () => {
-	await fetchApplication();
-	await loadFiles();
-	await loadServiceConfigs();
-	if (application.value?.route_managed) {
-		await loadRoutes();
-	}
-});
-</script>
-
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
@@ -882,7 +279,7 @@ onMounted(async () => {
 			<pre
 				v-else
 				class="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-sm text-foreground"
-				>{{ currentFileContent }}</pre
+			>{{ currentFileContent }}</pre
 			>
 			<template v-if="isEditingInDrawer" #footer>
 				<button class="app-button" @click="handleDrawerClose">取消</button>
@@ -1124,3 +521,608 @@ onMounted(async () => {
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { ChevronDown, Download, Eye, Plus, Search, X } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import {
+		ComboboxAnchor,
+		ComboboxCancel,
+		ComboboxContent,
+		ComboboxInput,
+		ComboboxItem,
+		ComboboxPortal,
+		ComboboxRoot,
+		ComboboxTrigger,
+		ComboboxEmpty,
+	} from 'reka-ui';
+	import { applicationApi } from '@/api/cd/application';
+	import { deploymentApi } from '@/api/cd/deployments';
+	import AppDialog from '@/components/AppDialog.vue';
+	import AppDrawer from '@/components/AppDrawer.vue';
+	import SelectControl from '@/components/SelectControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type {
+		Application,
+		ApplicationRoute,
+		ApplicationServiceConfig,
+		ComposeServiceResp,
+		ConfigFile,
+	} from '@/types/cd/application';
+	import { delayAsync, formatTime } from '@/utils/time';
+
+	const route = useRoute();
+	const router = useRouter();
+	const applicationId = route.params.id as string;
+	const toast = useToast();
+
+	const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+	const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
+	const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
+	const { loading: routeListLoading, execute: executeRouteList } = useStatusAsync();
+	const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
+	const { loading: serviceConfigListLoading, execute: executeServiceConfigList } = useStatusAsync();
+	const { loading: serviceConfigSaving, execute: executeServiceConfigSave } = useStatusAsync();
+
+	const application = ref<Application>();
+	const files = ref<ConfigFile[]>([]);
+	const appRoutes = ref<ApplicationRoute[]>([]);
+	const composeServices = ref<ComposeServiceResp[]>([]);
+	const serviceConfigs = ref<ApplicationServiceConfig[]>([]);
+	const selectedServiceName = ref('');
+	const serviceConfigError = ref('');
+
+	const isEditDialogOpen = ref(false);
+	const isDeleteDialogOpen = ref(false);
+	const isDeleteFileDialogOpen = ref(false);
+	const isServiceConfigDialogOpen = ref(false);
+	const isDeleteServiceConfigDialogOpen = ref(false);
+	const isRouteDialogOpen = ref(false);
+	const isDeleteRouteDialogOpen = ref(false);
+	const pendingDeleteFileId = ref('');
+	const pendingDeleteServiceName = ref('');
+	const pendingDeleteRouteId = ref('');
+	const editingRouteId = ref('');
+	const deleteDir = ref(false);
+
+	const routeForm = reactive({ service_name: '', domain: '', port: 80 });
+	const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
+	const selectedService = ref<ComposeServiceResp | null>(null);
+	const serviceSearchTerm = ref('');
+	const serviceConfigForm = reactive({ image: '' });
+
+	const fileDrawerVisible = ref(false);
+	const currentFileId = ref('');
+	const currentFilePath = ref('');
+	const currentFileContent = ref('');
+	const isEditingInDrawer = ref(false);
+
+	const editForm = reactive({
+		name: '',
+		code: '',
+		image_pull_policy: 'missing',
+		route_managed: false,
+	});
+	const editErrors = reactive({ name: '' });
+	const imagePullPolicyOptions = [
+		{ value: 'missing', label: '缺失时拉取 (missing)' },
+		{ value: 'always', label: '总是拉取 (always)' },
+		{ value: 'never', label: '从不拉取 (never)' },
+	];
+
+	const envs = computed(() =>
+		files.value.filter((f) => f.path.match(/^\.env(\..+)?$/)).map((f) => f.path)
+	);
+	const activeServiceConfig = computed(() =>
+		serviceConfigs.value.find((item) => item.service_name === selectedServiceName.value)
+	);
+	const currentServiceImage = computed(() =>
+		activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : ''
+	);
+
+	const filteredServices = computed(() => {
+		if (!serviceSearchTerm.value) {
+			return composeServices.value;
+		}
+		return composeServices.value.filter((s) =>
+			s.service_name.toLowerCase().includes(serviceSearchTerm.value.toLowerCase())
+		);
+	});
+	const serviceConfigDirty = computed(
+		() => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
+	);
+
+	const statusBadgeClass = computed(() => {
+		const status = application.value?.status;
+		if (!status) {
+			return 'bg-muted/50 text-muted-foreground';
+		}
+		const map: Record<string, string> = {
+			deployed: 'bg-green-50 text-green-700 border-green-200',
+			deploy_failed: 'bg-red-50 text-red-700 border-red-200',
+			deploying: 'bg-blue-50 text-blue-700 border-blue-200',
+			undeployed: 'bg-muted/50 text-muted-foreground',
+		};
+		return map[status] || 'bg-muted/50 text-muted-foreground';
+	});
+
+	const statusText = computed(() => {
+		const status = application.value?.status;
+		if (!status) {
+			return '';
+		}
+		const map: Record<string, string> = {
+			deployed: '已部署',
+			deploy_failed: '部署失败',
+			deploying: '部署中',
+			undeployed: '未部署',
+		};
+		return map[status] || status;
+	});
+
+	async function fetchApplication() {
+		try {
+			await executeBasicInfo(async () => {
+				const data = await applicationApi.get(applicationId);
+				application.value = data;
+				Object.assign(editForm, {
+					name: data.name,
+					code: data.code,
+					image_pull_policy: data.image_pull_policy,
+					route_managed: data.route_managed,
+				});
+			});
+			if (application.value?.status === 'deploying') {
+				pollActiveDeployment();
+			}
+		} catch {
+			toast.error('获取应用信息失败');
+			router.push('/cd/applications');
+		}
+	}
+
+	async function pollActiveDeployment() {
+		try {
+			const resp = await deploymentApi.list({
+				application_id: applicationId,
+				per_page: 1,
+			});
+			const latest = resp.items[0];
+			if (!latest) {
+				return;
+			}
+			while (true) {
+				await delayAsync(3000);
+				try {
+					const detail = await deploymentApi.get(latest.id);
+					if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
+						if (application.value) {
+							application.value.status =
+								detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
+						}
+						break;
+					}
+				} catch {
+					break;
+				}
+			}
+		} catch {
+			/* silent */
+		}
+	}
+
+	async function handleDeploy() {
+		try {
+			await executeOp(async () => {
+				const defaultEnv = envs.value.includes('.env') ? '.env' : undefined;
+				const res = await applicationApi.deploy(applicationId, undefined, defaultEnv);
+				toast.success(`部署已触发`);
+				router.push(`/cd/deployments/${res.deployment_id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '触发部署失败');
+		}
+	}
+
+	async function handleExport() {
+		try {
+			const data = await applicationApi.exportApplication(applicationId);
+			const blob = new Blob([JSON.stringify(data, null, 2)], {
+				type: 'application/json',
+			});
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = `${data.code || 'application'}.json`;
+			a.click();
+			URL.revokeObjectURL(url);
+			toast.success('导出成功');
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '导出失败');
+		}
+	}
+
+	function openEditModal() {
+		editErrors.name = '';
+		if (application.value) {
+			Object.assign(editForm, {
+				name: application.value.name,
+				code: application.value.code,
+				image_pull_policy: application.value.image_pull_policy,
+				route_managed: application.value.route_managed,
+			});
+		}
+		isEditDialogOpen.value = true;
+	}
+
+	async function handleEditOk() {
+		editErrors.name = editForm.name.trim() ? '' : '请输入应用名称';
+		if (editErrors.name) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await applicationApi.update(applicationId, {
+					name: editForm.name,
+					image_pull_policy: editForm.image_pull_policy,
+					route_managed: editForm.route_managed,
+				});
+				toast.success('更新成功');
+				isEditDialogOpen.value = false;
+				await fetchApplication();
+				if (application.value?.route_managed) {
+					await loadRoutes();
+				} else {
+					appRoutes.value = [];
+				}
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '更新失败');
+		}
+	}
+
+	function openDeleteModal() {
+		deleteDir.value = false;
+		isDeleteDialogOpen.value = true;
+	}
+
+	async function handleDeleteOk() {
+		try {
+			await executeOp(async () => {
+				await applicationApi.delete(applicationId, deleteDir.value);
+				toast.success('删除成功');
+				router.push('/cd/applications');
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '删除失败');
+		}
+	}
+
+	async function loadFiles() {
+		try {
+			await executeFileList(async () => {
+				files.value = await applicationApi.listFiles(applicationId);
+			});
+		} catch {
+			toast.error('加载配置文件失败');
+		}
+	}
+
+	async function loadServiceConfigs() {
+		serviceConfigError.value = '';
+		try {
+			await executeServiceConfigList(async () => {
+				serviceConfigs.value = await applicationApi.listServiceConfigs(applicationId);
+			});
+		} catch (error) {
+			serviceConfigs.value = [];
+			serviceConfigError.value = error instanceof Error ? error.message : '加载 service 配置失败';
+		}
+	}
+
+	function getServiceDisplayImage(serviceConfig: ApplicationServiceConfig) {
+		return serviceConfig.image?.trim() || serviceConfig.base_image || '';
+	}
+
+	function canResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
+		return Boolean(serviceConfig.image?.trim());
+	}
+
+	function openEditServiceConfigModal(serviceConfig: ApplicationServiceConfig) {
+		selectedServiceName.value = serviceConfig.service_name;
+		serviceConfigForm.image = getServiceDisplayImage(serviceConfig);
+		isServiceConfigDialogOpen.value = true;
+	}
+
+	function confirmResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
+		if (!canResetServiceConfig(serviceConfig)) {
+			return;
+		}
+		pendingDeleteServiceName.value = serviceConfig.service_name;
+		isDeleteServiceConfigDialogOpen.value = true;
+	}
+
+	function cancelResetServiceConfig() {
+		pendingDeleteServiceName.value = '';
+		isDeleteServiceConfigDialogOpen.value = false;
+	}
+
+	async function executeResetServiceConfig() {
+		if (!pendingDeleteServiceName.value) {
+			return;
+		}
+		try {
+			await executeServiceConfigSave(async () => {
+				const saved = await applicationApi.updateServiceConfig(
+					applicationId,
+					pendingDeleteServiceName.value,
+					null
+				);
+				const idx = serviceConfigs.value.findIndex(
+					(item) => item.service_name === saved.service_name
+				);
+				if (idx >= 0) {
+					serviceConfigs.value[idx] = saved;
+				} else {
+					serviceConfigs.value.push(saved);
+				}
+				if (selectedServiceName.value === saved.service_name) {
+					serviceConfigForm.image = getServiceDisplayImage(saved);
+					isServiceConfigDialogOpen.value = false;
+				}
+				isDeleteServiceConfigDialogOpen.value = false;
+				pendingDeleteServiceName.value = '';
+				toast.success('服务镜像已重置');
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '重置服务镜像失败');
+		}
+	}
+
+	async function saveServiceConfig() {
+		const active = activeServiceConfig.value;
+		if (!active || !serviceConfigDirty.value) {
+			return;
+		}
+		try {
+			await executeServiceConfigSave(async () => {
+				const saved = await applicationApi.updateServiceConfig(
+					applicationId,
+					active.service_name,
+					serviceConfigForm.image
+				);
+				const idx = serviceConfigs.value.findIndex(
+					(item) => item.service_name === saved.service_name
+				);
+				if (idx >= 0) {
+					serviceConfigs.value[idx] = saved;
+				} else {
+					serviceConfigs.value.push(saved);
+				}
+				selectedServiceName.value = saved.service_name;
+				serviceConfigForm.image = getServiceDisplayImage(saved);
+				isServiceConfigDialogOpen.value = false;
+				toast.success('服务镜像保存成功');
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '保存服务镜像失败');
+		}
+	}
+
+	async function openFileDrawer(fileId: string, isEdit = false) {
+		currentFileId.value = fileId;
+		isEditingInDrawer.value = isEdit;
+		currentFileContent.value = '';
+		currentFilePath.value = '';
+		fileDrawerVisible.value = true;
+		try {
+			await executeFileContent(async () => {
+				const result = await applicationApi.readFile(applicationId, fileId);
+				currentFileContent.value = result.content ?? '';
+				currentFilePath.value = result.path || '';
+			});
+		} catch {
+			toast.error('加载文件内容失败');
+		}
+	}
+
+	function openAddFileDrawer() {
+		currentFileId.value = '';
+		currentFilePath.value = '';
+		currentFileContent.value = '';
+		isEditingInDrawer.value = true;
+		fileDrawerVisible.value = true;
+	}
+
+	function handleDrawerClose() {
+		fileDrawerVisible.value = false;
+		isEditingInDrawer.value = false;
+	}
+
+	function handleFileDrawerOpenChange(open: boolean) {
+		fileDrawerVisible.value = open;
+		if (!open) {
+			isEditingInDrawer.value = false;
+		}
+	}
+
+	async function saveCurrentFile() {
+		if (!currentFilePath.value.trim()) {
+			toast.error('请输入文件路径');
+			return;
+		}
+		const lowerPath = currentFilePath.value.toLowerCase();
+		const content =
+			lowerPath.endsWith('.sh') || lowerPath.endsWith('.bash')
+				? currentFileContent.value.replace(/\r\n/g, '\n')
+				: currentFileContent.value;
+		try {
+			await executeFileContent(async () => {
+				if (currentFileId.value) {
+					const updated = await applicationApi.writeFile(
+						applicationId,
+						currentFileId.value,
+						currentFilePath.value,
+						content
+					);
+					const idx = files.value.findIndex((f) => f.id === currentFileId.value);
+					if (idx >= 0) {
+						files.value[idx] = updated;
+					}
+					toast.success('保存成功');
+				} else {
+					await applicationApi.createFile(applicationId, currentFilePath.value, content);
+					toast.success('添加成功');
+				}
+				fileDrawerVisible.value = false;
+				isEditingInDrawer.value = false;
+				await loadFiles();
+				await loadServiceConfigs();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '保存失败');
+		}
+	}
+
+	function confirmDeleteFile(fileId: string) {
+		pendingDeleteFileId.value = fileId;
+		isDeleteFileDialogOpen.value = true;
+	}
+
+	async function executeDeleteFile() {
+		try {
+			await executeFileList(async () => {
+				await applicationApi.deleteFile(applicationId, pendingDeleteFileId.value);
+				toast.success('删除成功');
+				isDeleteFileDialogOpen.value = false;
+				await loadFiles();
+				await loadServiceConfigs();
+			});
+		} catch {
+			toast.error('删除失败');
+		}
+	}
+
+	// ── Route management ──
+
+	async function loadRoutes() {
+		try {
+			await executeRouteList(async () => {
+				appRoutes.value = await applicationApi.listRoutes(applicationId);
+			});
+		} catch {
+			toast.error('加载路由配置失败');
+		}
+	}
+
+	async function loadComposeServices() {
+		composeServices.value = [];
+		try {
+			composeServices.value = await applicationApi.listComposeServices(applicationId);
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : '解析 docker-compose 失败，无法配置路由'
+			);
+		}
+	}
+
+	function onServiceChange(service: ComposeServiceResp | null) {
+		if (service) {
+			routeForm.service_name = service.service_name;
+			routeForm.domain = service.default_domain;
+			routeForm.port = service.default_port;
+		} else {
+			routeForm.service_name = '';
+		}
+	}
+
+	async function openAddRouteModal() {
+		editingRouteId.value = '';
+		Object.assign(routeForm, { service_name: '', domain: '', port: 80 });
+		Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
+		selectedService.value = null;
+		serviceSearchTerm.value = '';
+		await loadComposeServices();
+		if (composeServices.value.length === 0) {
+			return;
+		}
+		isRouteDialogOpen.value = true;
+	}
+
+	async function openEditRouteModal(r: ApplicationRoute) {
+		editingRouteId.value = r.id;
+		Object.assign(routeForm, { service_name: r.service_name, domain: r.domain, port: r.port });
+		Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
+		await loadComposeServices();
+		if (composeServices.value.length === 0) {
+			return;
+		}
+		// 设置选中的服务
+		selectedService.value =
+			composeServices.value.find((s) => s.service_name === r.service_name) || null;
+		serviceSearchTerm.value = '';
+		isRouteDialogOpen.value = true;
+	}
+
+	function validateRouteForm() {
+		routeFormErrors.service_name = routeForm.service_name ? '' : '请选择 service';
+		routeFormErrors.domain = routeForm.domain.trim() ? '' : '请输入域名';
+		routeFormErrors.port = routeForm.port >= 1 && routeForm.port <= 65535 ? '' : '端口范围 1-65535';
+		return !routeFormErrors.service_name && !routeFormErrors.domain && !routeFormErrors.port;
+	}
+
+	async function handleRouteOk() {
+		if (!validateRouteForm()) {
+			return;
+		}
+		try {
+			await executeRoute(async () => {
+				const data = {
+					service_name: routeForm.service_name,
+					domain: routeForm.domain,
+					port: routeForm.port,
+				};
+				if (editingRouteId.value) {
+					await applicationApi.updateRoute(applicationId, editingRouteId.value, data);
+				} else {
+					await applicationApi.createRoute(applicationId, data);
+				}
+				toast.success('保存成功');
+				isRouteDialogOpen.value = false;
+				await loadRoutes();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '保存失败');
+		}
+	}
+
+	function confirmDeleteRoute(routeId: string) {
+		pendingDeleteRouteId.value = routeId;
+		isDeleteRouteDialogOpen.value = true;
+	}
+
+	async function executeDeleteRoute() {
+		try {
+			await executeRoute(async () => {
+				await applicationApi.deleteRoute(applicationId, pendingDeleteRouteId.value);
+				toast.success('删除成功');
+				isDeleteRouteDialogOpen.value = false;
+				await loadRoutes();
+			});
+		} catch {
+			toast.error('删除失败');
+		}
+	}
+
+	onMounted(async () => {
+		await fetchApplication();
+		await loadFiles();
+		await loadServiceConfigs();
+		if (application.value?.route_managed) {
+			await loadRoutes();
+		}
+	});
+</script>

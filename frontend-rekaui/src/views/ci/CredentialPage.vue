@@ -1,209 +1,3 @@
-<script setup lang="ts">
-import { Plus, Upload } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { credentialApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import SelectControl from '@/components/SelectControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { Credential, CredentialImportReq } from '@/types/ci/credential';
-import { credentialTypeLabels } from '@/types/ci/credential';
-import { formatTime } from '@/utils/time';
-import { ToolbarRoot } from 'reka-ui';
-
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const credentials = ref<Credential[]>([]);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-const searchText = ref('');
-
-const fileInput = ref<HTMLInputElement>();
-const showCredentialDialog = ref(false);
-const showDeleteDialog = ref(false);
-const showImportDialog = ref(false);
-const isEditing = ref(false);
-const currentId = ref('');
-const pendingDeleteId = ref('');
-
-const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
-const credentialTypeOptions = [
-	{ value: 'git_ssh', label: 'Git SSH 密钥' },
-	{ value: 'git_token', label: 'Git Token' },
-	{ value: 'gitee_token', label: 'Gitee Token' },
-];
-const errors = reactive({ name: '', data: '' });
-const importForm = reactive({ name: '', type: 'git_ssh' as string, data: '' });
-const importErrors = reactive({ name: '', data: '' });
-
-function validate() {
-	errors.name = form.name.trim() ? '' : '请输入凭据名称';
-	errors.data = !isEditing.value && !form.data.trim() ? '请输入凭据内容' : '';
-	return !errors.name && !errors.data;
-}
-
-async function fetchCredentials() {
-	try {
-		await execute(async () => {
-			const res = await credentialApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: searchText.value || undefined,
-			});
-			credentials.value = res.items;
-			pagination.total = res.total;
-		});
-	} catch {
-		toast.error('获取凭据列表失败');
-	}
-}
-
-function handleSearch() {
-	pagination.current = 1;
-	fetchCredentials();
-}
-
-function goPage(p: number) {
-	pagination.current = p;
-	fetchCredentials();
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchCredentials();
-}
-
-function openCreateModal() {
-	isEditing.value = false;
-	currentId.value = '';
-	Object.assign(form, { name: '', type: 'git_ssh', data: '' });
-	Object.assign(errors, { name: '', data: '' });
-	showCredentialDialog.value = true;
-}
-
-function openEditModal(record: Credential) {
-	isEditing.value = true;
-	currentId.value = record.id;
-	Object.assign(form, { name: record.name, type: record.type, data: '' });
-	Object.assign(errors, { name: '', data: '' });
-	showCredentialDialog.value = true;
-}
-
-async function handleModalOk() {
-	if (!validate()) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			if (isEditing.value) {
-				await credentialApi.update(currentId.value, {
-					name: form.name,
-					...(form.data ? { data: form.data } : {}),
-				});
-				toast.success('更新成功');
-			} else {
-				await credentialApi.create({
-					name: form.name,
-					type: form.type,
-					data: form.data,
-				});
-				toast.success('创建成功');
-			}
-			showCredentialDialog.value = false;
-			fetchCredentials();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '操作失败');
-	}
-}
-
-function confirmDelete(id: string) {
-	pendingDeleteId.value = id;
-	showDeleteDialog.value = true;
-}
-
-async function handleDelete() {
-	try {
-		await executeOp(async () => {
-			await credentialApi.delete(pendingDeleteId.value);
-			toast.success('删除成功');
-			showDeleteDialog.value = false;
-			fetchCredentials();
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-function getDataPlaceholder(type: string) {
-	if (type === 'git_ssh') {
-		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
-	}
-	if (type === 'git_token') {
-		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
-	}
-	if (type === 'gitee_token') {
-		return 'your_username:your_gitee_token';
-	}
-	return 'registry_token_here';
-}
-
-function triggerImport() {
-	fileInput.value?.click();
-}
-
-async function handleFileImport(event: Event) {
-	const target = event.target as HTMLInputElement;
-	const file = target.files?.[0];
-	if (!file) {
-		return;
-	}
-	try {
-		const data = JSON.parse(await file.text()) as CredentialImportReq;
-		Object.assign(importForm, {
-			name: data.name || '',
-			type: data.type || 'git_ssh',
-			data: data.data || '',
-		});
-		Object.assign(importErrors, { name: '', data: '' });
-		showImportDialog.value = true;
-	} catch {
-		toast.error('解析文件失败');
-	} finally {
-		target.value = '';
-	}
-}
-
-async function handleImportOk() {
-	importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称';
-	importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容';
-	if (importErrors.name || importErrors.data) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			await credentialApi.importCredential({
-				name: importForm.name,
-				type: importForm.type as CredentialImportReq['type'],
-				data: importForm.data,
-			});
-			toast.success('导入成功');
-			showImportDialog.value = false;
-			fetchCredentials();
-		});
-	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '导入失败');
-	}
-}
-
-onMounted(fetchCredentials);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="flex items-center justify-between gap-3" aria-label="凭据工具栏">
@@ -401,3 +195,209 @@ onMounted(fetchCredentials);
 		</template>
 	</AppDialog>
 </template>
+
+<script setup lang="ts">
+	import { Plus, Upload } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { credentialApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import SelectControl from '@/components/SelectControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { Credential, CredentialImportReq } from '@/types/ci/credential';
+	import { credentialTypeLabels } from '@/types/ci/credential';
+	import { formatTime } from '@/utils/time';
+	import { ToolbarRoot } from 'reka-ui';
+
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const credentials = ref<Credential[]>([]);
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+	const searchText = ref('');
+
+	const fileInput = ref<HTMLInputElement>();
+	const showCredentialDialog = ref(false);
+	const showDeleteDialog = ref(false);
+	const showImportDialog = ref(false);
+	const isEditing = ref(false);
+	const currentId = ref('');
+	const pendingDeleteId = ref('');
+
+	const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+	const credentialTypeOptions = [
+		{ value: 'git_ssh', label: 'Git SSH 密钥' },
+		{ value: 'git_token', label: 'Git Token' },
+		{ value: 'gitee_token', label: 'Gitee Token' },
+	];
+	const errors = reactive({ name: '', data: '' });
+	const importForm = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+	const importErrors = reactive({ name: '', data: '' });
+
+	function validate() {
+		errors.name = form.name.trim() ? '' : '请输入凭据名称';
+		errors.data = !isEditing.value && !form.data.trim() ? '请输入凭据内容' : '';
+		return !errors.name && !errors.data;
+	}
+
+	async function fetchCredentials() {
+		try {
+			await execute(async () => {
+				const res = await credentialApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+				});
+				credentials.value = res.items;
+				pagination.total = res.total;
+			});
+		} catch {
+			toast.error('获取凭据列表失败');
+		}
+	}
+
+	function handleSearch() {
+		pagination.current = 1;
+		fetchCredentials();
+	}
+
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchCredentials();
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchCredentials();
+	}
+
+	function openCreateModal() {
+		isEditing.value = false;
+		currentId.value = '';
+		Object.assign(form, { name: '', type: 'git_ssh', data: '' });
+		Object.assign(errors, { name: '', data: '' });
+		showCredentialDialog.value = true;
+	}
+
+	function openEditModal(record: Credential) {
+		isEditing.value = true;
+		currentId.value = record.id;
+		Object.assign(form, { name: record.name, type: record.type, data: '' });
+		Object.assign(errors, { name: '', data: '' });
+		showCredentialDialog.value = true;
+	}
+
+	async function handleModalOk() {
+		if (!validate()) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				if (isEditing.value) {
+					await credentialApi.update(currentId.value, {
+						name: form.name,
+						...(form.data ? { data: form.data } : {}),
+					});
+					toast.success('更新成功');
+				} else {
+					await credentialApi.create({
+						name: form.name,
+						type: form.type,
+						data: form.data,
+					});
+					toast.success('创建成功');
+				}
+				showCredentialDialog.value = false;
+				fetchCredentials();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '操作失败');
+		}
+	}
+
+	function confirmDelete(id: string) {
+		pendingDeleteId.value = id;
+		showDeleteDialog.value = true;
+	}
+
+	async function handleDelete() {
+		try {
+			await executeOp(async () => {
+				await credentialApi.delete(pendingDeleteId.value);
+				toast.success('删除成功');
+				showDeleteDialog.value = false;
+				fetchCredentials();
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '删除失败');
+		}
+	}
+
+	function getDataPlaceholder(type: string) {
+		if (type === 'git_ssh') {
+			return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
+		}
+		if (type === 'git_token') {
+			return 'ghp_xxxxxxxxxxxxxxxxxxxx';
+		}
+		if (type === 'gitee_token') {
+			return 'your_username:your_gitee_token';
+		}
+		return 'registry_token_here';
+	}
+
+	function triggerImport() {
+		fileInput.value?.click();
+	}
+
+	async function handleFileImport(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const file = target.files?.[0];
+		if (!file) {
+			return;
+		}
+		try {
+			const data = JSON.parse(await file.text()) as CredentialImportReq;
+			Object.assign(importForm, {
+				name: data.name || '',
+				type: data.type || 'git_ssh',
+				data: data.data || '',
+			});
+			Object.assign(importErrors, { name: '', data: '' });
+			showImportDialog.value = true;
+		} catch {
+			toast.error('解析文件失败');
+		} finally {
+			target.value = '';
+		}
+	}
+
+	async function handleImportOk() {
+		importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称';
+		importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容';
+		if (importErrors.name || importErrors.data) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await credentialApi.importCredential({
+					name: importForm.name,
+					type: importForm.type as CredentialImportReq['type'],
+					data: importForm.data,
+				});
+				toast.success('导入成功');
+				showImportDialog.value = false;
+				fetchCredentials();
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : '导入失败');
+		}
+	}
+
+	onMounted(fetchCredentials);
+</script>

@@ -1,64 +1,3 @@
-<script setup lang="ts">
-import { Check, ChevronDown, X } from 'lucide-vue-next';
-import { computed } from 'vue';
-import {
-	ComboboxAnchor,
-	ComboboxContent,
-	ComboboxEmpty,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxItemIndicator,
-	ComboboxPortal,
-	ComboboxRoot,
-	ComboboxTrigger,
-} from 'reka-ui';
-
-export type ComboboxOptionValue = string | number;
-
-export interface ComboboxOption {
-	value: ComboboxOptionValue
-	label: string
-	description?: string
-	disabled?: boolean
-}
-
-const props = withDefaults(
-	defineProps<{
-		modelValue?: ComboboxOptionValue
-		options: ComboboxOption[]
-		placeholder?: string
-		disabled?: boolean
-		emptyText?: string
-		portal?: boolean
-		widthClass?: string
-		openOnFocus?: boolean
-	}>(),
-	{
-		placeholder: '请选择',
-		disabled: false,
-		emptyText: '暂无数据',
-		portal: true,
-		widthClass: 'w-full',
-		openOnFocus: true,
-	}
-);
-
-const emit = defineEmits<{
-	'update:modelValue': [value: ComboboxOptionValue]
-}>();
-
-const selectableOptions = computed(() => props.options.filter((item) => item.value !== ''));
-
-function displayValue(value: unknown) {
-	const option = selectableOptions.value.find((item) => item.value === value);
-	return option?.label ?? '';
-}
-
-function hasValue(value: unknown) {
-	return value !== undefined && value !== null && value !== '';
-}
-</script>
-
 <template>
 	<ComboboxRoot
 		:model-value="modelValue"
@@ -129,3 +68,64 @@ function hasValue(value: unknown) {
 		</ComboboxPortal>
 	</ComboboxRoot>
 </template>
+
+<script setup lang="ts">
+	import { Check, ChevronDown, X } from 'lucide-vue-next';
+	import { computed } from 'vue';
+	import {
+		ComboboxAnchor,
+		ComboboxContent,
+		ComboboxEmpty,
+		ComboboxInput,
+		ComboboxItem,
+		ComboboxItemIndicator,
+		ComboboxPortal,
+		ComboboxRoot,
+		ComboboxTrigger,
+	} from 'reka-ui';
+
+	export type ComboboxOptionValue = string | number;
+
+	export interface ComboboxOption {
+		value: ComboboxOptionValue
+		label: string
+		description?: string
+		disabled?: boolean
+	}
+
+	const props = withDefaults(
+		defineProps<{
+			modelValue?: ComboboxOptionValue
+			options: ComboboxOption[]
+			placeholder?: string
+			disabled?: boolean
+			emptyText?: string
+			portal?: boolean
+			widthClass?: string
+			openOnFocus?: boolean
+		}>(),
+		{
+			placeholder: '请选择',
+			disabled: false,
+			emptyText: '暂无数据',
+			portal: true,
+			widthClass: 'w-full',
+			openOnFocus: true,
+		}
+	);
+
+	const emit = defineEmits<{
+		'update:modelValue': [value: ComboboxOptionValue]
+	}>();
+
+	const selectableOptions = computed(() => props.options.filter((item) => item.value !== ''));
+
+	function displayValue(value: unknown) {
+		const option = selectableOptions.value.find((item) => item.value === value);
+		return option?.label ?? '';
+	}
+
+	function hasValue(value: unknown) {
+		return value !== undefined && value !== null && value !== '';
+	}
+</script>

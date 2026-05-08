@@ -1,28 +1,3 @@
-<script setup lang="ts">
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
-import { useRoute } from 'vue-router';
-import AppToaster from '@/components/AppToaster.vue';
-import AppTopBar from '@/components/AppTopBar.vue';
-import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
-
-const route = useRoute();
-
-const collapsed = ref(false);
-const currentScope = computed(() => getNavigationScope(route.path));
-const selectedKey = computed(() => (route.meta.menuKey as string) ?? '');
-const currentPrimaryModule = computed(() => getPrimaryNavigationKey(route.path));
-
-const sidebarItems = computed(() => {
-	if (!currentScope.value) {
-		return [];
-	}
-	return secondaryNavigation[currentScope.value] ?? [];
-});
-
-const isLoginPage = computed(() => route.name === 'Login');
-</script>
-
 <template>
 	<div class="min-h-screen bg-muted/30 text-foreground md:h-screen">
 		<!-- Login page: no layout -->
@@ -82,3 +57,28 @@ const isLoginPage = computed(() => route.name === 'Login');
 		<AppToaster />
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
+	import { computed, ref } from 'vue';
+	import { useRoute } from 'vue-router';
+	import AppToaster from '@/components/AppToaster.vue';
+	import AppTopBar from '@/components/AppTopBar.vue';
+	import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
+
+	const route = useRoute();
+
+	const collapsed = ref(false);
+	const currentScope = computed(() => getNavigationScope(route.path));
+	const selectedKey = computed(() => (route.meta.menuKey as string) ?? '');
+	const currentPrimaryModule = computed(() => getPrimaryNavigationKey(route.path));
+
+	const sidebarItems = computed(() => {
+		if (!currentScope.value) {
+			return [];
+		}
+		return secondaryNavigation[currentScope.value] ?? [];
+	});
+
+	const isLoginPage = computed(() => route.name === 'Login');
+</script>

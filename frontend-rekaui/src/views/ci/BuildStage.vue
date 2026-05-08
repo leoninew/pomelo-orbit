@@ -1,239 +1,3 @@
-<script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
-// import { CodeEditor } from 'monaco-editor-vue3';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-// import { VueDraggable } from 'vue-draggable-plus';
-import { useRoute, useRouter } from 'vue-router';
-import { buildStageApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import AppDrawer from '@/components/AppDrawer.vue';
-import SelectControl from '@/components/SelectControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { ArtifactConfig, ArtifactType, BuildStage } from '@/types/ci/template';
-import { formatTime } from '@/utils/time';
-
-const route = useRoute();
-const router = useRouter();
-const stageId = computed(() => route.params.id as string);
-const toast = useToast();
-
-const { status, execute } = useStatusAsync();
-const { loading: saving, execute: executeSave } = useStatusAsync();
-const { loading: deleting, execute: executeDelete } = useStatusAsync();
-const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
-
-const stage = ref<BuildStage>();
-const isDeleteDialogOpen = ref(false);
-const isEditDialogOpen = ref(false);
-const isArtifactDialogOpen = ref(false);
-const isDeleteArtifactDialogOpen = ref(false);
-const showScriptDrawer = ref(false);
-const scriptTemp = ref('');
-const artifactTypeOptions = [
-	{ value: 'docker_image', label: 'Docker 镜像' },
-	{ value: 'binary', label: '二进制文件' },
-];
-const form = reactive({ name: '', image: '', description: '' });
-const artifactForm = reactive({
-	isEdit: false,
-	order: -1,
-	type: 'docker_image' as ArtifactType,
-	name: '',
-	path: '',
-});
-const sortableArtifacts = ref<ArtifactConfig[]>([]);
-const artifactToDelete = ref(-1);
-
-async function fetchStage() {
-	try {
-		await execute(async () => {
-			stage.value = await buildStageApi.get(stageId.value);
-			sortableArtifacts.value = stage.value.artifacts ? [...stage.value.artifacts] : [];
-		});
-	} catch {
-		toast.error('获取 Stage 失败');
-		router.push('/ci/build-stage');
-	}
-}
-
-function openEditModal() {
-	if (!stage.value) {
-		return;
-	}
-	Object.assign(form, {
-		name: stage.value.name,
-		image: stage.value.image,
-		description: stage.value.description,
-	});
-	isEditDialogOpen.value = true;
-}
-
-function openScriptDrawer() {
-	scriptTemp.value = stage.value?.script ?? '';
-	showScriptDrawer.value = true;
-}
-
-function closeScriptDrawer() {
-	showScriptDrawer.value = false;
-}
-
-async function confirmScript() {
-	try {
-		await executeSave(async () => {
-			const updated = await buildStageApi.update(stageId.value, {
-				script: scriptTemp.value,
-			});
-			stage.value = updated;
-			showScriptDrawer.value = false;
-			toast.success('脚本已保存');
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
-async function handleSave() {
-	try {
-		await executeSave(async () => {
-			const updated = await buildStageApi.update(stageId.value, {
-				name: form.name,
-				image: form.image,
-				description: form.description,
-			});
-			stage.value = updated;
-			toast.success('更新成功');
-			isEditDialogOpen.value = false;
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
-function openAddArtifactModal() {
-	Object.assign(artifactForm, {
-		isEdit: false,
-		order: -1,
-		type: 'docker_image',
-		name: '',
-		path: '',
-	});
-	isArtifactDialogOpen.value = true;
-}
-
-function openEditArtifactModal(idx: number) {
-	const artifact = sortableArtifacts.value[idx];
-	if (!artifact) {
-		return;
-	}
-	Object.assign(artifactForm, {
-		isEdit: true,
-		order: idx,
-		type: artifact.type,
-		name: artifact.name,
-		path: artifact.path,
-	});
-	isArtifactDialogOpen.value = true;
-}
-
-function confirmRemoveArtifact(idx: number) {
-	artifactToDelete.value = idx;
-	isDeleteArtifactDialogOpen.value = true;
-}
-
-async function removeArtifact() {
-	const idx = artifactToDelete.value;
-	if (idx === -1) {
-		return;
-	}
-
-	sortableArtifacts.value.splice(idx, 1);
-
-	try {
-		await executeSave(async () => {
-			stage.value = await buildStageApi.update(stageId.value, {
-				artifacts: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [],
-			});
-			toast.success('删除成功');
-			isDeleteArtifactDialogOpen.value = false;
-			artifactToDelete.value = -1;
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '删除失败');
-	}
-}
-
-async function handleSaveArtifact() {
-	if (!artifactForm.name.trim() || !artifactForm.path.trim()) {
-		toast.error('名称和路径不能为空');
-		return;
-	}
-
-	if (artifactForm.isEdit) {
-		// 编辑模式
-		sortableArtifacts.value[artifactForm.order] = {
-			type: artifactForm.type,
-			name: artifactForm.name,
-			path: artifactForm.path,
-		};
-	} else {
-		// 添加模式 - 检查名称是否重复
-		if (sortableArtifacts.value.some((a) => a.name === artifactForm.name)) {
-			toast.error('制品名称已存在');
-			return;
-		}
-		sortableArtifacts.value.push({
-			type: artifactForm.type,
-			name: artifactForm.name,
-			path: artifactForm.path,
-		});
-	}
-
-	try {
-		await executeSave(async () => {
-			stage.value = await buildStageApi.update(stageId.value, {
-				artifacts: sortableArtifacts.value,
-			});
-			toast.success(artifactForm.isEdit ? '更新成功' : '添加成功');
-			isArtifactDialogOpen.value = false;
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	}
-}
-
-function openDeleteModal() {
-	isDeleteDialogOpen.value = true;
-}
-
-async function handleDuplicate() {
-	try {
-		await executeDuplicate(async () => {
-			const newStage = await buildStageApi.duplicate(stageId.value);
-			toast.success('复制成功');
-			router.push(`/ci/build-stage/${newStage.id}`);
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '复制失败');
-	}
-}
-
-async function handleDelete() {
-	try {
-		await executeDelete(async () => {
-			await buildStageApi.delete(stageId.value);
-			toast.success('删除成功');
-			router.push('/ci/build-stage');
-		});
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '删除失败');
-	}
-}
-
-watch(stageId, fetchStage);
-onMounted(fetchStage);
-</script>
-
 <template>
 	<div class="flex flex-col gap-4">
 		<!-- Header -->
@@ -316,7 +80,7 @@ onMounted(fetchStage);
 				<pre
 					v-if="stage.script"
 					class="overflow-x-auto bg-muted/30 p-5 text-xs font-mono text-foreground"
-					>{{ stage.script }}</pre
+				>{{ stage.script }}</pre
 				>
 				<div v-else class="px-5 py-10 text-center text-muted-foreground">
 					<p class="text-sm">暂无脚本</p>
@@ -511,3 +275,239 @@ onMounted(fetchStage);
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Plus } from 'lucide-vue-next';
+	// import { CodeEditor } from 'monaco-editor-vue3';
+	import { computed, onMounted, reactive, ref, watch } from 'vue';
+	// import { VueDraggable } from 'vue-draggable-plus';
+	import { useRoute, useRouter } from 'vue-router';
+	import { buildStageApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import AppDrawer from '@/components/AppDrawer.vue';
+	import SelectControl from '@/components/SelectControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { ArtifactConfig, ArtifactType, BuildStage } from '@/types/ci/template';
+	import { formatTime } from '@/utils/time';
+
+	const route = useRoute();
+	const router = useRouter();
+	const stageId = computed(() => route.params.id as string);
+	const toast = useToast();
+
+	const { status, execute } = useStatusAsync();
+	const { loading: saving, execute: executeSave } = useStatusAsync();
+	const { loading: deleting, execute: executeDelete } = useStatusAsync();
+	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
+
+	const stage = ref<BuildStage>();
+	const isDeleteDialogOpen = ref(false);
+	const isEditDialogOpen = ref(false);
+	const isArtifactDialogOpen = ref(false);
+	const isDeleteArtifactDialogOpen = ref(false);
+	const showScriptDrawer = ref(false);
+	const scriptTemp = ref('');
+	const artifactTypeOptions = [
+		{ value: 'docker_image', label: 'Docker 镜像' },
+		{ value: 'binary', label: '二进制文件' },
+	];
+	const form = reactive({ name: '', image: '', description: '' });
+	const artifactForm = reactive({
+		isEdit: false,
+		order: -1,
+		type: 'docker_image' as ArtifactType,
+		name: '',
+		path: '',
+	});
+	const sortableArtifacts = ref<ArtifactConfig[]>([]);
+	const artifactToDelete = ref(-1);
+
+	async function fetchStage() {
+		try {
+			await execute(async () => {
+				stage.value = await buildStageApi.get(stageId.value);
+				sortableArtifacts.value = stage.value.artifacts ? [...stage.value.artifacts] : [];
+			});
+		} catch {
+			toast.error('获取 Stage 失败');
+			router.push('/ci/build-stage');
+		}
+	}
+
+	function openEditModal() {
+		if (!stage.value) {
+			return;
+		}
+		Object.assign(form, {
+			name: stage.value.name,
+			image: stage.value.image,
+			description: stage.value.description,
+		});
+		isEditDialogOpen.value = true;
+	}
+
+	function openScriptDrawer() {
+		scriptTemp.value = stage.value?.script ?? '';
+		showScriptDrawer.value = true;
+	}
+
+	function closeScriptDrawer() {
+		showScriptDrawer.value = false;
+	}
+
+	async function confirmScript() {
+		try {
+			await executeSave(async () => {
+				const updated = await buildStageApi.update(stageId.value, {
+					script: scriptTemp.value,
+				});
+				stage.value = updated;
+				showScriptDrawer.value = false;
+				toast.success('脚本已保存');
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '保存失败');
+		}
+	}
+
+	async function handleSave() {
+		try {
+			await executeSave(async () => {
+				const updated = await buildStageApi.update(stageId.value, {
+					name: form.name,
+					image: form.image,
+					description: form.description,
+				});
+				stage.value = updated;
+				toast.success('更新成功');
+				isEditDialogOpen.value = false;
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '保存失败');
+		}
+	}
+
+	function openAddArtifactModal() {
+		Object.assign(artifactForm, {
+			isEdit: false,
+			order: -1,
+			type: 'docker_image',
+			name: '',
+			path: '',
+		});
+		isArtifactDialogOpen.value = true;
+	}
+
+	function openEditArtifactModal(idx: number) {
+		const artifact = sortableArtifacts.value[idx];
+		if (!artifact) {
+			return;
+		}
+		Object.assign(artifactForm, {
+			isEdit: true,
+			order: idx,
+			type: artifact.type,
+			name: artifact.name,
+			path: artifact.path,
+		});
+		isArtifactDialogOpen.value = true;
+	}
+
+	function confirmRemoveArtifact(idx: number) {
+		artifactToDelete.value = idx;
+		isDeleteArtifactDialogOpen.value = true;
+	}
+
+	async function removeArtifact() {
+		const idx = artifactToDelete.value;
+		if (idx === -1) {
+			return;
+		}
+
+		sortableArtifacts.value.splice(idx, 1);
+
+		try {
+			await executeSave(async () => {
+				stage.value = await buildStageApi.update(stageId.value, {
+					artifacts: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [],
+				});
+				toast.success('删除成功');
+				isDeleteArtifactDialogOpen.value = false;
+				artifactToDelete.value = -1;
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '删除失败');
+		}
+	}
+
+	async function handleSaveArtifact() {
+		if (!artifactForm.name.trim() || !artifactForm.path.trim()) {
+			toast.error('名称和路径不能为空');
+			return;
+		}
+
+		if (artifactForm.isEdit) {
+			// 编辑模式
+			sortableArtifacts.value[artifactForm.order] = {
+				type: artifactForm.type,
+				name: artifactForm.name,
+				path: artifactForm.path,
+			};
+		} else {
+			// 添加模式 - 检查名称是否重复
+			if (sortableArtifacts.value.some((a) => a.name === artifactForm.name)) {
+				toast.error('制品名称已存在');
+				return;
+			}
+			sortableArtifacts.value.push({
+				type: artifactForm.type,
+				name: artifactForm.name,
+				path: artifactForm.path,
+			});
+		}
+
+		try {
+			await executeSave(async () => {
+				stage.value = await buildStageApi.update(stageId.value, {
+					artifacts: sortableArtifacts.value,
+				});
+				toast.success(artifactForm.isEdit ? '更新成功' : '添加成功');
+				isArtifactDialogOpen.value = false;
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '保存失败');
+		}
+	}
+
+	function openDeleteModal() {
+		isDeleteDialogOpen.value = true;
+	}
+
+	async function handleDuplicate() {
+		try {
+			await executeDuplicate(async () => {
+				const newStage = await buildStageApi.duplicate(stageId.value);
+				toast.success('复制成功');
+				router.push(`/ci/build-stage/${newStage.id}`);
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '复制失败');
+		}
+	}
+
+	async function handleDelete() {
+		try {
+			await executeDelete(async () => {
+				await buildStageApi.delete(stageId.value);
+				toast.success('删除成功');
+				router.push('/ci/build-stage');
+			});
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '删除失败');
+		}
+	}
+
+	watch(stageId, fetchStage);
+	onMounted(fetchStage);
+</script>

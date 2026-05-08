@@ -1,110 +1,3 @@
-<script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { deploymentApi } from '@/api/cd/deployments';
-import AppDialog from '@/components/AppDialog.vue';
-import ListPagination from '@/components/ListPagination.vue';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { Deployment } from '@/types/cd/deployment';
-import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
-import { formatTime } from '@/utils/time';
-import { ToolbarRoot } from 'reka-ui';
-
-const router = useRouter();
-const route = useRoute();
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const deployments = ref<Deployment[]>([]);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-const searchText = ref('');
-const applicationId = ref<string | undefined>(route.query.application_id as string | undefined);
-const isCancelDialogOpen = ref(false);
-const deploymentToCancel = ref<Deployment | null>(null);
-
-function operationTypeLabel(type: string) {
-	const map: Record<string, string> = {
-		deploy: '部署',
-		stop: '停止',
-		restart: '重启',
-	};
-	return map[type] ?? type;
-}
-
-function triggerTypeLabel(type: string) {
-	const map: Record<string, string> = {
-		manual: '手动',
-	};
-	return map[type] ?? type;
-}
-
-async function fetchDeployments() {
-	try {
-		await execute(async () => {
-			const res = await deploymentApi.list({
-				page: pagination.current,
-				per_page: pagination.pageSize,
-				search: searchText.value || undefined,
-				application_id: applicationId.value,
-			});
-			deployments.value = res.items;
-			pagination.total = res.total;
-		});
-	} catch {
-		toast.error('获取部署记录失败');
-	}
-}
-
-function handleSearch() {
-	pagination.current = 1;
-	fetchDeployments();
-}
-
-function goPage(p: number) {
-	pagination.current = p;
-	fetchDeployments();
-}
-
-function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize;
-	pagination.current = 1;
-	fetchDeployments();
-}
-
-function isCancelable(deployment: Deployment) {
-	return ['running', 'waiting_to_run'].includes(deployment.status);
-}
-
-function openCancelDialog(deployment: Deployment) {
-	deploymentToCancel.value = deployment;
-	isCancelDialogOpen.value = true;
-}
-
-async function handleCancelOk() {
-	if (!deploymentToCancel.value) {
-		return;
-	}
-	const target = deploymentToCancel.value;
-	try {
-		await executeOp(async () => {
-			await deploymentApi.cancel(target.id);
-			toast.success('已取消部署');
-			isCancelDialogOpen.value = false;
-			deploymentToCancel.value = null;
-			await fetchDeployments();
-		});
-	} catch {
-		toast.error('取消失败');
-	}
-}
-
-onMounted(fetchDeployments);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="overflow-x-auto" aria-label="部署记录工具栏">
@@ -227,3 +120,110 @@ onMounted(fetchDeployments);
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import { deploymentApi } from '@/api/cd/deployments';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ListPagination from '@/components/ListPagination.vue';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { Deployment } from '@/types/cd/deployment';
+	import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
+	import { formatTime } from '@/utils/time';
+	import { ToolbarRoot } from 'reka-ui';
+
+	const router = useRouter();
+	const route = useRoute();
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const deployments = ref<Deployment[]>([]);
+	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+	const searchText = ref('');
+	const applicationId = ref<string | undefined>(route.query.application_id as string | undefined);
+	const isCancelDialogOpen = ref(false);
+	const deploymentToCancel = ref<Deployment | null>(null);
+
+	function operationTypeLabel(type: string) {
+		const map: Record<string, string> = {
+			deploy: '部署',
+			stop: '停止',
+			restart: '重启',
+		};
+		return map[type] ?? type;
+	}
+
+	function triggerTypeLabel(type: string) {
+		const map: Record<string, string> = {
+			manual: '手动',
+		};
+		return map[type] ?? type;
+	}
+
+	async function fetchDeployments() {
+		try {
+			await execute(async () => {
+				const res = await deploymentApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+					application_id: applicationId.value,
+				});
+				deployments.value = res.items;
+				pagination.total = res.total;
+			});
+		} catch {
+			toast.error('获取部署记录失败');
+		}
+	}
+
+	function handleSearch() {
+		pagination.current = 1;
+		fetchDeployments();
+	}
+
+	function goPage(p: number) {
+		pagination.current = p;
+		fetchDeployments();
+	}
+
+	function handlePageSizeChange(pageSize: number) {
+		pagination.pageSize = pageSize;
+		pagination.current = 1;
+		fetchDeployments();
+	}
+
+	function isCancelable(deployment: Deployment) {
+		return ['running', 'waiting_to_run'].includes(deployment.status);
+	}
+
+	function openCancelDialog(deployment: Deployment) {
+		deploymentToCancel.value = deployment;
+		isCancelDialogOpen.value = true;
+	}
+
+	async function handleCancelOk() {
+		if (!deploymentToCancel.value) {
+			return;
+		}
+		const target = deploymentToCancel.value;
+		try {
+			await executeOp(async () => {
+				await deploymentApi.cancel(target.id);
+				toast.success('已取消部署');
+				isCancelDialogOpen.value = false;
+				deploymentToCancel.value = null;
+				await fetchDeployments();
+			});
+		} catch {
+			toast.error('取消失败');
+		}
+	}
+
+	onMounted(fetchDeployments);
+</script>

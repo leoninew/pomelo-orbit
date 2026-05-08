@@ -1,326 +1,3 @@
-<script setup lang="ts">
-import { Play, Plus, Trash2 } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import ComboboxSelect from '@/components/ComboboxSelect.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { Credential } from '@/types/ci/credential';
-import { credentialTypeLabels } from '@/types/ci/credential';
-import type { Repository } from '@/types/ci/repository';
-import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
-import type { RepositoryWebhook } from '@/types/ci/webhook';
-import { formatTime } from '@/utils/time';
-import TriggerModal from './components/TriggerModal.vue';
-import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
-import WebhookList from './components/WebhookList.vue';
-
-const route = useRoute();
-const router = useRouter();
-const repositoryId = route.params.id as string;
-const toast = useToast();
-
-const { status, execute } = useStatusAsync();
-const { loading: operating, execute: executeOp } = useStatusAsync();
-
-const repository = ref<Repository>();
-const templates = ref<PipelineTemplate[]>([]);
-const webhooks = ref<RepositoryWebhook[]>([]);
-const credentials = ref<Credential[]>([]);
-
-const isEditDialogOpen = ref(false);
-const isDeleteDialogOpen = ref(false);
-const isAddVariableDialogOpen = ref(false);
-const isEditVariableDialogOpen = ref(false);
-const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
-
-const editForm = reactive({
-	name: '',
-	repository_url: '',
-	git_credential_id: '',
-	default_branch: 'master',
-});
-const editErrors = reactive({
-	name: '',
-	repository_url: '',
-});
-const variableForm = reactive({
-	name: '',
-	value: '',
-	description: '',
-});
-const variableErrors = reactive({
-	name: '',
-});
-const editingVariableName = ref('');
-
-const gitCredentials = computed(() =>
-	credentials.value.filter(
-		(credential) =>
-			credential.type === 'git_ssh' ||
-			credential.type === 'git_token' ||
-			credential.type === 'gitee_token'
-	)
-);
-const gitCredentialOptions = computed(() =>
-	gitCredentials.value.map((credential) => ({
-		value: credential.id,
-		label: credential.name,
-		description: credentialTypeLabels[credential.type] ?? credential.type,
-	}))
-);
-const repositoryVariables = computed(() => repository.value?.variable_declarations ?? []);
-const repositoryCustomVariables = computed(() =>
-	repositoryVariables.value.filter((variable) => variable.source === 'repository_custom')
-);
-const repositoryVariableRows = computed(() =>
-	repositoryVariables.value.map((variable) => ({
-		...variable,
-		editable: variable.source === 'repository_custom',
-	}))
-);
-
-function normalizeValue(value: unknown) {
-	return value == null ? '' : String(value);
-}
-
-function resetEditForm() {
-	if (!repository.value) {
-		return;
-	}
-	Object.assign(editForm, {
-		name: repository.value.name,
-		repository_url: repository.value.repository_url,
-		git_credential_id: repository.value.git_credential_id ?? '',
-		default_branch: repository.value.default_branch || 'master',
-	});
-	Object.assign(editErrors, { name: '', repository_url: '' });
-}
-
-function validateEditForm() {
-	editErrors.name = editForm.name.trim() ? '' : '请输入名称';
-	editErrors.repository_url = editForm.repository_url.trim() ? '' : '请输入仓库地址';
-	return !editErrors.name && !editErrors.repository_url;
-}
-
-function variableOverridesWith(nextVariable?: VariableDeclaration) {
-	const next = repositoryCustomVariables.value.filter(
-		(variable) => variable.name !== nextVariable?.name
-	);
-	return nextVariable ? [...next, nextVariable] : next;
-}
-
-async function fetchRepository() {
-	try {
-		await execute(async () => {
-			repository.value = await repositoryApi.get(repositoryId);
-			resetEditForm();
-		});
-	} catch {
-		toast.error('获取代码仓库信息失败');
-		router.push('/ci/repository');
-	}
-}
-
-async function fetchTemplates() {
-	try {
-		const res = await pipelineTemplateApi.list({ per_page: 100 });
-		templates.value = res.items;
-	} catch {
-		toast.error('获取模板列表失败');
-	}
-}
-
-async function fetchWebhooks() {
-	try {
-		webhooks.value = await webhookApi.list(repositoryId);
-	} catch {
-		toast.error('获取 Webhook 列表失败');
-	}
-}
-
-async function fetchCredentials() {
-	try {
-		const res = await credentialApi.list({ per_page: 100 });
-		credentials.value = res.items;
-	} catch {
-		toast.error('获取凭据列表失败');
-	}
-}
-
-async function openTriggerModal() {
-	if (!repository.value?.git_credential_id) {
-		toast.error('请先配置 Git 凭据后再触发流水线');
-		return;
-	}
-	await fetchTemplates();
-	triggerModalRef.value?.open();
-}
-
-async function handleTrigger(data: {
-	template_id: string
-	trigger_ref: string
-	variables: Record<string, string>
-}) {
-	try {
-		await executeOp(async () => {
-			const run = await repositoryApi.trigger(repositoryId, data);
-			toast.success('触发成功');
-			router.push(`/ci/run/${run.id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '触发失败');
-	}
-}
-
-async function openEditDialog() {
-	resetEditForm();
-	await fetchCredentials();
-	isEditDialogOpen.value = true;
-}
-
-async function handleEditOk() {
-	if (!validateEditForm()) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			const updated = await repositoryApi.update(repositoryId, {
-				name: editForm.name,
-				repository_url: editForm.repository_url,
-				git_credential_id: editForm.git_credential_id || null,
-				default_branch: editForm.default_branch || 'master',
-			});
-			repository.value = updated;
-			resetEditForm();
-			toast.success('更新成功');
-			isEditDialogOpen.value = false;
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败');
-	}
-}
-
-function openDeleteDialog() {
-	isDeleteDialogOpen.value = true;
-}
-
-async function handleDeleteOk() {
-	try {
-		await executeOp(async () => {
-			await repositoryApi.delete(repositoryId);
-			toast.success('删除成功');
-			router.push('/ci/repository');
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-function openAddVariableDialog() {
-	Object.assign(variableForm, { name: '', value: '', description: '' });
-	Object.assign(variableErrors, { name: '' });
-	isAddVariableDialogOpen.value = true;
-}
-
-function openEditVariableDialog(name: string) {
-	const variable = repositoryCustomVariables.value.find((item) => item.name === name);
-	if (!variable) {
-		return;
-	}
-	editingVariableName.value = variable.name;
-	Object.assign(variableForm, {
-		name: variable.name,
-		value: normalizeValue(variable.value ?? variable.default),
-		description: variable.description ?? '',
-	});
-	Object.assign(variableErrors, { name: '' });
-	isEditVariableDialogOpen.value = true;
-}
-
-async function handleAddVariableOk() {
-	variableErrors.name = '';
-	if (!variableForm.name.trim()) {
-		variableErrors.name = '请输入变量名';
-		return;
-	}
-	if (repositoryVariables.value.some((variable) => variable.name === variableForm.name.trim())) {
-		variableErrors.name = '变量名已存在';
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			const nextVariable: VariableDeclaration = {
-				name: variableForm.name.trim(),
-				value: variableForm.value,
-				description: variableForm.description.trim() || undefined,
-				secret: false,
-				source: 'repository_custom',
-			};
-			const updated = await repositoryApi.update(repositoryId, {
-				variable_overrides: variableOverridesWith(nextVariable),
-			});
-			repository.value = updated;
-			toast.success('添加成功');
-			isAddVariableDialogOpen.value = false;
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '添加失败');
-	}
-}
-
-async function handleEditVariableOk() {
-	if (!editingVariableName.value) {
-		return;
-	}
-	try {
-		await executeOp(async () => {
-			const current = repositoryCustomVariables.value.find(
-				(variable) => variable.name === editingVariableName.value
-			);
-			if (!current) {
-				return;
-			}
-			const updated = await repositoryApi.update(repositoryId, {
-				variable_overrides: variableOverridesWith({
-					...current,
-					value: variableForm.value,
-					description: variableForm.description.trim() || undefined,
-				}),
-			});
-			repository.value = updated;
-			toast.success('更新成功');
-			isEditVariableDialogOpen.value = false;
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败');
-	}
-}
-
-async function deleteVariable(name: string) {
-	try {
-		await executeOp(async () => {
-			const updated = await repositoryApi.update(repositoryId, {
-				variable_overrides: repositoryCustomVariables.value.filter(
-					(variable) => variable.name !== name
-				),
-			});
-			repository.value = updated;
-			toast.success('删除成功');
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
-	}
-}
-
-onMounted(async () => {
-	await fetchRepository();
-	await Promise.all([fetchTemplates(), fetchWebhooks()]);
-});
-</script>
-
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
@@ -621,3 +298,326 @@ onMounted(async () => {
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Play, Plus, Trash2 } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import ComboboxSelect from '@/components/ComboboxSelect.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { Credential } from '@/types/ci/credential';
+	import { credentialTypeLabels } from '@/types/ci/credential';
+	import type { Repository } from '@/types/ci/repository';
+	import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
+	import type { RepositoryWebhook } from '@/types/ci/webhook';
+	import { formatTime } from '@/utils/time';
+	import TriggerModal from './components/TriggerModal.vue';
+	import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+	import WebhookList from './components/WebhookList.vue';
+
+	const route = useRoute();
+	const router = useRouter();
+	const repositoryId = route.params.id as string;
+	const toast = useToast();
+
+	const { status, execute } = useStatusAsync();
+	const { loading: operating, execute: executeOp } = useStatusAsync();
+
+	const repository = ref<Repository>();
+	const templates = ref<PipelineTemplate[]>([]);
+	const webhooks = ref<RepositoryWebhook[]>([]);
+	const credentials = ref<Credential[]>([]);
+
+	const isEditDialogOpen = ref(false);
+	const isDeleteDialogOpen = ref(false);
+	const isAddVariableDialogOpen = ref(false);
+	const isEditVariableDialogOpen = ref(false);
+	const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
+
+	const editForm = reactive({
+		name: '',
+		repository_url: '',
+		git_credential_id: '',
+		default_branch: 'master',
+	});
+	const editErrors = reactive({
+		name: '',
+		repository_url: '',
+	});
+	const variableForm = reactive({
+		name: '',
+		value: '',
+		description: '',
+	});
+	const variableErrors = reactive({
+		name: '',
+	});
+	const editingVariableName = ref('');
+
+	const gitCredentials = computed(() =>
+		credentials.value.filter(
+			(credential) =>
+				credential.type === 'git_ssh' ||
+				credential.type === 'git_token' ||
+				credential.type === 'gitee_token'
+		)
+	);
+	const gitCredentialOptions = computed(() =>
+		gitCredentials.value.map((credential) => ({
+			value: credential.id,
+			label: credential.name,
+			description: credentialTypeLabels[credential.type] ?? credential.type,
+		}))
+	);
+	const repositoryVariables = computed(() => repository.value?.variable_declarations ?? []);
+	const repositoryCustomVariables = computed(() =>
+		repositoryVariables.value.filter((variable) => variable.source === 'repository_custom')
+	);
+	const repositoryVariableRows = computed(() =>
+		repositoryVariables.value.map((variable) => ({
+			...variable,
+			editable: variable.source === 'repository_custom',
+		}))
+	);
+
+	function normalizeValue(value: unknown) {
+		return value == null ? '' : String(value);
+	}
+
+	function resetEditForm() {
+		if (!repository.value) {
+			return;
+		}
+		Object.assign(editForm, {
+			name: repository.value.name,
+			repository_url: repository.value.repository_url,
+			git_credential_id: repository.value.git_credential_id ?? '',
+			default_branch: repository.value.default_branch || 'master',
+		});
+		Object.assign(editErrors, { name: '', repository_url: '' });
+	}
+
+	function validateEditForm() {
+		editErrors.name = editForm.name.trim() ? '' : '请输入名称';
+		editErrors.repository_url = editForm.repository_url.trim() ? '' : '请输入仓库地址';
+		return !editErrors.name && !editErrors.repository_url;
+	}
+
+	function variableOverridesWith(nextVariable?: VariableDeclaration) {
+		const next = repositoryCustomVariables.value.filter(
+			(variable) => variable.name !== nextVariable?.name
+		);
+		return nextVariable ? [...next, nextVariable] : next;
+	}
+
+	async function fetchRepository() {
+		try {
+			await execute(async () => {
+				repository.value = await repositoryApi.get(repositoryId);
+				resetEditForm();
+			});
+		} catch {
+			toast.error('获取代码仓库信息失败');
+			router.push('/ci/repository');
+		}
+	}
+
+	async function fetchTemplates() {
+		try {
+			const res = await pipelineTemplateApi.list({ per_page: 100 });
+			templates.value = res.items;
+		} catch {
+			toast.error('获取模板列表失败');
+		}
+	}
+
+	async function fetchWebhooks() {
+		try {
+			webhooks.value = await webhookApi.list(repositoryId);
+		} catch {
+			toast.error('获取 Webhook 列表失败');
+		}
+	}
+
+	async function fetchCredentials() {
+		try {
+			const res = await credentialApi.list({ per_page: 100 });
+			credentials.value = res.items;
+		} catch {
+			toast.error('获取凭据列表失败');
+		}
+	}
+
+	async function openTriggerModal() {
+		if (!repository.value?.git_credential_id) {
+			toast.error('请先配置 Git 凭据后再触发流水线');
+			return;
+		}
+		await fetchTemplates();
+		triggerModalRef.value?.open();
+	}
+
+	async function handleTrigger(data: {
+		template_id: string
+		trigger_ref: string
+		variables: Record<string, string>
+	}) {
+		try {
+			await executeOp(async () => {
+				const run = await repositoryApi.trigger(repositoryId, data);
+				toast.success('触发成功');
+				router.push(`/ci/run/${run.id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '触发失败');
+		}
+	}
+
+	async function openEditDialog() {
+		resetEditForm();
+		await fetchCredentials();
+		isEditDialogOpen.value = true;
+	}
+
+	async function handleEditOk() {
+		if (!validateEditForm()) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				const updated = await repositoryApi.update(repositoryId, {
+					name: editForm.name,
+					repository_url: editForm.repository_url,
+					git_credential_id: editForm.git_credential_id || null,
+					default_branch: editForm.default_branch || 'master',
+				});
+				repository.value = updated;
+				resetEditForm();
+				toast.success('更新成功');
+				isEditDialogOpen.value = false;
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '更新失败');
+		}
+	}
+
+	function openDeleteDialog() {
+		isDeleteDialogOpen.value = true;
+	}
+
+	async function handleDeleteOk() {
+		try {
+			await executeOp(async () => {
+				await repositoryApi.delete(repositoryId);
+				toast.success('删除成功');
+				router.push('/ci/repository');
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '删除失败');
+		}
+	}
+
+	function openAddVariableDialog() {
+		Object.assign(variableForm, { name: '', value: '', description: '' });
+		Object.assign(variableErrors, { name: '' });
+		isAddVariableDialogOpen.value = true;
+	}
+
+	function openEditVariableDialog(name: string) {
+		const variable = repositoryCustomVariables.value.find((item) => item.name === name);
+		if (!variable) {
+			return;
+		}
+		editingVariableName.value = variable.name;
+		Object.assign(variableForm, {
+			name: variable.name,
+			value: normalizeValue(variable.value ?? variable.default),
+			description: variable.description ?? '',
+		});
+		Object.assign(variableErrors, { name: '' });
+		isEditVariableDialogOpen.value = true;
+	}
+
+	async function handleAddVariableOk() {
+		variableErrors.name = '';
+		if (!variableForm.name.trim()) {
+			variableErrors.name = '请输入变量名';
+			return;
+		}
+		if (repositoryVariables.value.some((variable) => variable.name === variableForm.name.trim())) {
+			variableErrors.name = '变量名已存在';
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				const nextVariable: VariableDeclaration = {
+					name: variableForm.name.trim(),
+					value: variableForm.value,
+					description: variableForm.description.trim() || undefined,
+					secret: false,
+					source: 'repository_custom',
+				};
+				const updated = await repositoryApi.update(repositoryId, {
+					variable_overrides: variableOverridesWith(nextVariable),
+				});
+				repository.value = updated;
+				toast.success('添加成功');
+				isAddVariableDialogOpen.value = false;
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '添加失败');
+		}
+	}
+
+	async function handleEditVariableOk() {
+		if (!editingVariableName.value) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				const current = repositoryCustomVariables.value.find(
+					(variable) => variable.name === editingVariableName.value
+				);
+				if (!current) {
+					return;
+				}
+				const updated = await repositoryApi.update(repositoryId, {
+					variable_overrides: variableOverridesWith({
+						...current,
+						value: variableForm.value,
+						description: variableForm.description.trim() || undefined,
+					}),
+				});
+				repository.value = updated;
+				toast.success('更新成功');
+				isEditVariableDialogOpen.value = false;
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '更新失败');
+		}
+	}
+
+	async function deleteVariable(name: string) {
+		try {
+			await executeOp(async () => {
+				const updated = await repositoryApi.update(repositoryId, {
+					variable_overrides: repositoryCustomVariables.value.filter(
+						(variable) => variable.name !== name
+					),
+				});
+				repository.value = updated;
+				toast.success('删除成功');
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '删除失败');
+		}
+	}
+
+	onMounted(async () => {
+		await fetchRepository();
+		await Promise.all([fetchTemplates(), fetchWebhooks()]);
+	});
+</script>

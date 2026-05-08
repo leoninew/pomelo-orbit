@@ -1,94 +1,3 @@
-<script setup lang="ts">
-import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
-import { computed, onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { applicationApi } from '@/api/cd/application';
-import { deploymentApi } from '@/api/cd/deployments';
-import { pipelineRunApi, repositoryApi } from '@/api/ci';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { Deployment } from '@/types/cd/deployment';
-import type { PipelineRun } from '@/types/ci/run';
-import { statusBadgeClass, statusLabel } from '@/utils/status';
-import { formatTime, getTodayStart } from '@/utils/time';
-import { ToolbarRoot } from 'reka-ui';
-
-const router = useRouter();
-const toast = useToast();
-const { status, execute } = useStatusAsync();
-
-const ciStats = reactive({ projectCount: 0, todayRuns: 0 });
-const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 });
-const recentRuns = ref<PipelineRun[]>([]);
-const recentDeploys = ref<Deployment[]>([]);
-
-const overviewCards = computed(() => [
-	{
-		label: '代码仓库',
-		value: ciStats.projectCount,
-		description: '已接入 CI 项目',
-		path: '/ci/repository',
-		icon: FolderGit2,
-	},
-	{
-		label: '今日构建',
-		value: ciStats.todayRuns,
-		description: '今日触发流水线',
-		path: '/ci/run',
-		icon: Play,
-	},
-	{
-		label: '应用管理',
-		value: cdStats.applicationCount,
-		description: '已接入 CD 应用',
-		path: '/cd/applications',
-		icon: LayoutGrid,
-	},
-	{
-		label: '今日部署',
-		value: cdStats.todayDeploys,
-		description: '今日部署任务',
-		path: '/cd/deployments',
-		icon: Rocket,
-	},
-]);
-
-async function refresh() {
-	try {
-		await execute(async () => {
-			const todayStart = getTodayStart();
-			const todayEnd = todayStart.add(1, 'day');
-
-			const ciProjectsRes = await repositoryApi.list({ per_page: 1 });
-			const ciRunsRes = await pipelineRunApi.list({ per_page: 5 });
-
-			const cdAppsRes = await applicationApi.list({ per_page: 1 });
-			const cdTodayRes = await deploymentApi.list({
-				per_page: 100,
-				date_from: todayStart.toISOString(),
-				date_to: todayEnd.toISOString(),
-			});
-			const cdRecentRes = await deploymentApi.list({ per_page: 5 });
-
-			ciStats.projectCount = ciProjectsRes.total;
-			ciStats.todayRuns = ciRunsRes.items.filter((r) => {
-				const createdAt = new Date(r.created_at);
-				return createdAt >= todayStart.toDate() && createdAt < todayEnd.toDate();
-			}).length;
-			recentRuns.value = ciRunsRes.items;
-
-			cdStats.applicationCount = cdAppsRes.total;
-			cdStats.todayDeploys = cdTodayRes.total;
-			recentDeploys.value = cdRecentRes.items;
-		});
-	} catch {
-		toast.error('获取数据失败');
-	}
-}
-
-onMounted(refresh);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot
@@ -246,3 +155,94 @@ onMounted(refresh);
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
+	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
+	import { applicationApi } from '@/api/cd/application';
+	import { deploymentApi } from '@/api/cd/deployments';
+	import { pipelineRunApi, repositoryApi } from '@/api/ci';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { Deployment } from '@/types/cd/deployment';
+	import type { PipelineRun } from '@/types/ci/run';
+	import { statusBadgeClass, statusLabel } from '@/utils/status';
+	import { formatTime, getTodayStart } from '@/utils/time';
+	import { ToolbarRoot } from 'reka-ui';
+
+	const router = useRouter();
+	const toast = useToast();
+	const { status, execute } = useStatusAsync();
+
+	const ciStats = reactive({ projectCount: 0, todayRuns: 0 });
+	const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 });
+	const recentRuns = ref<PipelineRun[]>([]);
+	const recentDeploys = ref<Deployment[]>([]);
+
+	const overviewCards = computed(() => [
+		{
+			label: '代码仓库',
+			value: ciStats.projectCount,
+			description: '已接入 CI 项目',
+			path: '/ci/repository',
+			icon: FolderGit2,
+		},
+		{
+			label: '今日构建',
+			value: ciStats.todayRuns,
+			description: '今日触发流水线',
+			path: '/ci/run',
+			icon: Play,
+		},
+		{
+			label: '应用管理',
+			value: cdStats.applicationCount,
+			description: '已接入 CD 应用',
+			path: '/cd/applications',
+			icon: LayoutGrid,
+		},
+		{
+			label: '今日部署',
+			value: cdStats.todayDeploys,
+			description: '今日部署任务',
+			path: '/cd/deployments',
+			icon: Rocket,
+		},
+	]);
+
+	async function refresh() {
+		try {
+			await execute(async () => {
+				const todayStart = getTodayStart();
+				const todayEnd = todayStart.add(1, 'day');
+
+				const ciProjectsRes = await repositoryApi.list({ per_page: 1 });
+				const ciRunsRes = await pipelineRunApi.list({ per_page: 5 });
+
+				const cdAppsRes = await applicationApi.list({ per_page: 1 });
+				const cdTodayRes = await deploymentApi.list({
+					per_page: 100,
+					date_from: todayStart.toISOString(),
+					date_to: todayEnd.toISOString(),
+				});
+				const cdRecentRes = await deploymentApi.list({ per_page: 5 });
+
+				ciStats.projectCount = ciProjectsRes.total;
+				ciStats.todayRuns = ciRunsRes.items.filter((r) => {
+					const createdAt = new Date(r.created_at);
+					return createdAt >= todayStart.toDate() && createdAt < todayEnd.toDate();
+				}).length;
+				recentRuns.value = ciRunsRes.items;
+
+				cdStats.applicationCount = cdAppsRes.total;
+				cdStats.todayDeploys = cdTodayRes.total;
+				recentDeploys.value = cdRecentRes.items;
+			});
+		} catch {
+			toast.error('获取数据失败');
+		}
+	}
+
+	onMounted(refresh);
+</script>

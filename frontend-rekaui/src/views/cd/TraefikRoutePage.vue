@@ -1,70 +1,3 @@
-<script setup lang="ts">
-import { ExternalLink, RefreshCw } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
-import { ToolbarRoot } from 'reka-ui';
-import type { TraefikRouter } from '@/api/cd/traefik-route';
-import { traefikRouteApi } from '@/api/cd/traefik-route';
-import SearchControl from '@/components/SearchControl.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-
-const toast = useToast();
-const { status, error, execute } = useStatusAsync();
-const routes = ref<TraefikRouter[]>([]);
-const searchText = ref('');
-
-const filteredRoutes = computed(() => {
-	if (!searchText.value.trim()) {
-		return routes.value;
-	}
-	const search = searchText.value.toLowerCase();
-	return routes.value.filter(
-		(r) =>
-			r.name.toLowerCase().includes(search) ||
-			r.rule.toLowerCase().includes(search) ||
-			r.service.toLowerCase().includes(search) ||
-			r.provider.toLowerCase().includes(search)
-	);
-});
-
-async function fetchRoutes() {
-	try {
-		await execute(async () => {
-			const data = await traefikRouteApi.list();
-			routes.value = data.items;
-		});
-	} catch {
-		// error state handled by useStatusAsync
-	}
-}
-
-function handleSearch() {
-	// 前端搜索，无需额外操作
-}
-
-function buildRouteUrl(rule: string, tls: boolean): string | null {
-	const match = rule.match(/Host\(`([^`]+)`\)/);
-	if (!match) {
-		return null;
-	}
-	return `${tls ? 'https' : 'http'}://${match[1]}`;
-}
-
-async function openDashboard() {
-	try {
-		const config = await traefikRouteApi.getConfig();
-		window.open(
-			`${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
-			'_blank'
-		);
-	} catch {
-		toast.error('打开 Dashboard 失败');
-	}
-}
-
-onMounted(fetchRoutes);
-</script>
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="overflow-x-auto" aria-label="Traefik 工具栏">
@@ -181,3 +114,70 @@ onMounted(fetchRoutes);
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { ExternalLink, RefreshCw } from 'lucide-vue-next';
+	import { computed, onMounted, ref } from 'vue';
+	import { ToolbarRoot } from 'reka-ui';
+	import type { TraefikRouter } from '@/api/cd/traefik-route';
+	import { traefikRouteApi } from '@/api/cd/traefik-route';
+	import SearchControl from '@/components/SearchControl.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+
+	const toast = useToast();
+	const { status, error, execute } = useStatusAsync();
+	const routes = ref<TraefikRouter[]>([]);
+	const searchText = ref('');
+
+	const filteredRoutes = computed(() => {
+		if (!searchText.value.trim()) {
+			return routes.value;
+		}
+		const search = searchText.value.toLowerCase();
+		return routes.value.filter(
+			(r) =>
+				r.name.toLowerCase().includes(search) ||
+				r.rule.toLowerCase().includes(search) ||
+				r.service.toLowerCase().includes(search) ||
+				r.provider.toLowerCase().includes(search)
+		);
+	});
+
+	async function fetchRoutes() {
+		try {
+			await execute(async () => {
+				const data = await traefikRouteApi.list();
+				routes.value = data.items;
+			});
+		} catch {
+			// error state handled by useStatusAsync
+		}
+	}
+
+	function handleSearch() {
+		// 前端搜索，无需额外操作
+	}
+
+	function buildRouteUrl(rule: string, tls: boolean): string | null {
+		const match = rule.match(/Host\(`([^`]+)`\)/);
+		if (!match) {
+			return null;
+		}
+		return `${tls ? 'https' : 'http'}://${match[1]}`;
+	}
+
+	async function openDashboard() {
+		try {
+			const config = await traefikRouteApi.getConfig();
+			window.open(
+				`${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
+				'_blank'
+			);
+		} catch {
+			toast.error('打开 Dashboard 失败');
+		}
+	}
+
+	onMounted(fetchRoutes);
+</script>

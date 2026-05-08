@@ -1,41 +1,3 @@
-<script setup lang="ts">
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
-import { computed } from 'vue';
-import SelectControl from '@/components/SelectControl.vue';
-
-const props = withDefaults(
-	defineProps<{
-		current: number
-		pageSize: number
-		total: number
-		totalPages: number
-		pageSizeOptions?: number[]
-	}>(),
-	{
-		pageSizeOptions: () => [10, 20, 50],
-	}
-);
-
-const emit = defineEmits<{
-	'change-page': [page: number]
-	'change-page-size': [pageSize: number]
-}>();
-
-function goPage(page: number) {
-	if (page < 1 || page > props.totalPages || page === props.current) {
-		return;
-	}
-	emit('change-page', page);
-}
-
-const pageSizeSelectOptions = computed(() =>
-	props.pageSizeOptions.map((size) => ({
-		value: size,
-		label: `${size} 条/页`,
-	}))
-);
-</script>
-
 <template>
 	<div v-if="totalPages > 0" class="rounded-lg border border-border bg-card px-6 py-4 shadow-sm">
 		<div class="flex items-center justify-between">
@@ -78,3 +40,41 @@ const pageSizeSelectOptions = computed(() =>
 		</div>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+	import { computed } from 'vue';
+	import SelectControl from '@/components/SelectControl.vue';
+
+	const props = withDefaults(
+		defineProps<{
+			current: number
+			pageSize: number
+			total: number
+			totalPages: number
+			pageSizeOptions?: number[]
+		}>(),
+		{
+			pageSizeOptions: () => [10, 20, 50],
+		}
+	);
+
+	const emit = defineEmits<{
+		'change-page': [page: number]
+		'change-page-size': [pageSize: number]
+	}>();
+
+	function goPage(page: number) {
+		if (page < 1 || page > props.totalPages || page === props.current) {
+			return;
+		}
+		emit('change-page', page);
+	}
+
+	const pageSizeSelectOptions = computed(() =>
+		props.pageSizeOptions.map((size) => ({
+			value: size,
+			label: `${size} 条/页`,
+		}))
+	);
+</script>

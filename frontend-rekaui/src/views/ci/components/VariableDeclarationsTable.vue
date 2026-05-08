@@ -1,45 +1,3 @@
-<script setup lang="ts">
-import type { VariableDeclaration } from '@/types/ci/template';
-import { getSourceBadgeClass, getSourceLabel, isVariableEditable } from '@/utils/variableSource';
-
-withDefaults(
-	defineProps<{
-		declarations: VariableDeclaration[]
-		readonly?: boolean
-	}>(),
-	{
-		readonly: false,
-	}
-);
-
-const emit = defineEmits<{
-	(e: 'edit', name: string): void
-	(e: 'delete', name: string): void
-}>();
-
-function hasDisplayValue(value: unknown) {
-	if (value === null || value === undefined) {
-		return false;
-	}
-	if (typeof value === 'string') {
-		return value.trim().length > 0;
-	}
-	return true;
-}
-
-function effectiveValue(decl: VariableDeclaration) {
-	return decl.value ?? decl.default;
-}
-
-function canEdit(decl: VariableDeclaration) {
-	// 优先使用后端明确设置的 editable 字段，回退到 source 推断
-	if (decl.editable !== undefined) {
-		return decl.editable;
-	}
-	return decl.source ? isVariableEditable(decl.source) : false;
-}
-</script>
-
 <template>
 	<div class="overflow-hidden">
 		<div v-if="declarations.length === 0" class="px-5 py-10 text-center text-muted-foreground">
@@ -104,3 +62,45 @@ function canEdit(decl: VariableDeclaration) {
 		</table>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import type { VariableDeclaration } from '@/types/ci/template';
+	import { getSourceBadgeClass, getSourceLabel, isVariableEditable } from '@/utils/variableSource';
+
+	withDefaults(
+		defineProps<{
+			declarations: VariableDeclaration[]
+			readonly?: boolean
+		}>(),
+		{
+			readonly: false,
+		}
+	);
+
+	const emit = defineEmits<{
+		(e: 'edit', name: string): void
+		(e: 'delete', name: string): void
+	}>();
+
+	function hasDisplayValue(value: unknown) {
+		if (value === null || value === undefined) {
+			return false;
+		}
+		if (typeof value === 'string') {
+			return value.trim().length > 0;
+		}
+		return true;
+	}
+
+	function effectiveValue(decl: VariableDeclaration) {
+		return decl.value ?? decl.default;
+	}
+
+	function canEdit(decl: VariableDeclaration) {
+		// 优先使用后端明确设置的 editable 字段，回退到 source 推断
+		if (decl.editable !== undefined) {
+			return decl.editable;
+		}
+		return decl.source ? isVariableEditable(decl.source) : false;
+	}
+</script>

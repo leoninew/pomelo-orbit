@@ -1,127 +1,3 @@
-<script setup lang="ts">
-import { Plus, X } from 'lucide-vue-next';
-// import { CodeEditor } from 'monaco-editor-vue3';
-import { reactive, ref, watch } from 'vue';
-import { buildStageApi } from '@/api/ci';
-import AppDrawer from '@/components/AppDrawer.vue';
-import SelectControl from '@/components/SelectControl.vue';
-import { useToast } from '@/composables/useToast';
-import type { ArtifactConfig, BuildStage } from '@/types/ci/template';
-
-const props = defineProps<{
-	open: boolean
-	editingStage?: BuildStage // undefined = 新建
-}>();
-
-const emit = defineEmits<{
-	close: []
-	saved: [stage: BuildStage]
-}>();
-
-const toast = useToast();
-const saving = ref(false);
-const scriptDrawerVisible = ref(false);
-const scriptTemp = ref('');
-const artifactTypeOptions = [
-	{ value: 'docker_image', label: 'Docker 镜像' },
-	{ value: 'binary', label: '二进制文件' },
-];
-
-const form = reactive({
-	name: '',
-	image: '',
-	description: '',
-	script: '',
-	artifacts: [] as ArtifactConfig[],
-});
-
-watch(
-	() => props.open,
-	(val) => {
-		if (!val) {
-			return;
-		}
-		scriptDrawerVisible.value = false;
-		if (props.editingStage) {
-			const s = props.editingStage;
-			Object.assign(form, {
-				name: s.name,
-				image: s.image,
-				description: s.description,
-				script: s.script,
-				artifacts: s.artifacts ? JSON.parse(JSON.stringify(s.artifacts)) : [],
-			});
-		} else {
-			Object.assign(form, {
-				name: '',
-				image: '',
-				description: '',
-				script: '',
-				artifacts: [],
-			});
-		}
-	}
-);
-
-function openScriptDrawer() {
-	scriptTemp.value = form.script;
-	scriptDrawerVisible.value = true;
-}
-function closeScriptDrawer() {
-	scriptDrawerVisible.value = false;
-}
-function confirmScript() {
-	form.script = scriptTemp.value;
-	scriptDrawerVisible.value = false;
-}
-
-function handleClose() {
-	emit('close');
-}
-
-async function handleSave() {
-	if (!form.name.trim()) {
-		toast.error('请输入 Stage 名称');
-		return;
-	}
-	if (!form.image.trim()) {
-		toast.error('请输入执行镜像');
-		return;
-	}
-	if (!form.script.trim()) {
-		toast.error('请输入脚本');
-		return;
-	}
-
-	saving.value = true;
-	try {
-		const payload = {
-			name: form.name.trim(),
-			image: form.image.trim(),
-			script: form.script.trim(),
-			artifacts: form.artifacts.length > 0 ? form.artifacts : undefined,
-			description: form.description,
-		};
-		const stage = props.editingStage
-			? await buildStageApi.update(props.editingStage.id, payload)
-			: await buildStageApi.create(payload);
-		toast.success(props.editingStage ? '更新成功' : '创建成功');
-		emit('saved', stage);
-	} catch (e) {
-		toast.error(e instanceof Error ? e.message : '保存失败');
-	} finally {
-		saving.value = false;
-	}
-}
-
-function addArtifact() {
-	form.artifacts.push({ type: 'docker_image', path: '', name: '' });
-}
-function removeArtifact(idx: number) {
-	form.artifacts.splice(idx, 1);
-}
-</script>
-
 <template>
 	<!-- Stage 编辑抽屉 -->
 	<AppDrawer
@@ -259,3 +135,127 @@ function removeArtifact(idx: number) {
 		</template>
 	</AppDrawer>
 </template>
+
+<script setup lang="ts">
+	import { Plus, X } from 'lucide-vue-next';
+	// import { CodeEditor } from 'monaco-editor-vue3';
+	import { reactive, ref, watch } from 'vue';
+	import { buildStageApi } from '@/api/ci';
+	import AppDrawer from '@/components/AppDrawer.vue';
+	import SelectControl from '@/components/SelectControl.vue';
+	import { useToast } from '@/composables/useToast';
+	import type { ArtifactConfig, BuildStage } from '@/types/ci/template';
+
+	const props = defineProps<{
+		open: boolean
+		editingStage?: BuildStage // undefined = 新建
+	}>();
+
+	const emit = defineEmits<{
+		close: []
+		saved: [stage: BuildStage]
+	}>();
+
+	const toast = useToast();
+	const saving = ref(false);
+	const scriptDrawerVisible = ref(false);
+	const scriptTemp = ref('');
+	const artifactTypeOptions = [
+		{ value: 'docker_image', label: 'Docker 镜像' },
+		{ value: 'binary', label: '二进制文件' },
+	];
+
+	const form = reactive({
+		name: '',
+		image: '',
+		description: '',
+		script: '',
+		artifacts: [] as ArtifactConfig[],
+	});
+
+	watch(
+		() => props.open,
+		(val) => {
+			if (!val) {
+				return;
+			}
+			scriptDrawerVisible.value = false;
+			if (props.editingStage) {
+				const s = props.editingStage;
+				Object.assign(form, {
+					name: s.name,
+					image: s.image,
+					description: s.description,
+					script: s.script,
+					artifacts: s.artifacts ? JSON.parse(JSON.stringify(s.artifacts)) : [],
+				});
+			} else {
+				Object.assign(form, {
+					name: '',
+					image: '',
+					description: '',
+					script: '',
+					artifacts: [],
+				});
+			}
+		}
+	);
+
+	function openScriptDrawer() {
+		scriptTemp.value = form.script;
+		scriptDrawerVisible.value = true;
+	}
+	function closeScriptDrawer() {
+		scriptDrawerVisible.value = false;
+	}
+	function confirmScript() {
+		form.script = scriptTemp.value;
+		scriptDrawerVisible.value = false;
+	}
+
+	function handleClose() {
+		emit('close');
+	}
+
+	async function handleSave() {
+		if (!form.name.trim()) {
+			toast.error('请输入 Stage 名称');
+			return;
+		}
+		if (!form.image.trim()) {
+			toast.error('请输入执行镜像');
+			return;
+		}
+		if (!form.script.trim()) {
+			toast.error('请输入脚本');
+			return;
+		}
+
+		saving.value = true;
+		try {
+			const payload = {
+				name: form.name.trim(),
+				image: form.image.trim(),
+				script: form.script.trim(),
+				artifacts: form.artifacts.length > 0 ? form.artifacts : undefined,
+				description: form.description,
+			};
+			const stage = props.editingStage
+				? await buildStageApi.update(props.editingStage.id, payload)
+				: await buildStageApi.create(payload);
+			toast.success(props.editingStage ? '更新成功' : '创建成功');
+			emit('saved', stage);
+		} catch (e) {
+			toast.error(e instanceof Error ? e.message : '保存失败');
+		} finally {
+			saving.value = false;
+		}
+	}
+
+	function addArtifact() {
+		form.artifacts.push({ type: 'docker_image', path: '', name: '' });
+	}
+	function removeArtifact(idx: number) {
+		form.artifacts.splice(idx, 1);
+	}
+</script>

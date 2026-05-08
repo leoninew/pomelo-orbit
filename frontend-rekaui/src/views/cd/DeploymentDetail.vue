@@ -1,228 +1,3 @@
-<script setup lang="ts">
-import { Loader2, RefreshCw } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { deploymentApi } from '@/api/cd/deployments';
-import AppDialog from '@/components/AppDialog.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import { useAuthStore } from '@/stores/auth';
-import type { DeploymentDetail } from '@/types/cd/deployment';
-import { formatDuration, isTerminalStatus } from '@/utils/status';
-import { delayAsync, formatTime } from '@/utils/time';
-import config from '@/config';
-
-const route = useRoute();
-const router = useRouter();
-const deploymentId = route.params.id as string;
-const toast = useToast();
-const { status, execute } = useStatusAsync();
-const authStore = useAuthStore();
-
-const deployment = ref<DeploymentDetail>();
-const logText = ref('');
-const logOffset = ref(0);
-const logContainerRef = ref<HTMLElement>();
-const isCancelDialogOpen = ref(false);
-const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
-let logAbort: AbortController | null = null;
-
-const statusBadgeClass = computed(() => {
-	const s = deployment.value?.status;
-	if (!s) {
-		return 'bg-muted/50 text-muted-foreground';
-	}
-	const map: Record<string, string> = {
-		waiting_to_run: 'bg-muted/50 text-muted-foreground',
-		running: 'bg-blue-50 text-blue-700 border-blue-200',
-		ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
-		faulted: 'bg-red-50 text-red-700 border-red-200',
-		canceled: 'bg-gray-50 text-gray-700 border-gray-200',
-	};
-	return map[s] || 'bg-muted/50 text-muted-foreground';
-});
-
-const statusLabel = computed(() => {
-	const s = deployment.value?.status;
-	if (!s) {
-		return '';
-	}
-	const map: Record<string, string> = {
-		waiting_to_run: '等待运行',
-		running: '运行中',
-		ran_to_completion: '成功',
-		faulted: '失败',
-		canceled: '已取消',
-	};
-	return map[s] || s;
-});
-
-async function fetchDeployment() {
-	try {
-		await execute(async () => {
-			const data = await deploymentApi.get(deploymentId);
-			deployment.value = data;
-		});
-	} catch {
-		toast.error('获取部署详情失败');
-		router.push('/cd/deployments');
-	}
-}
-
-async function fetchLogs() {
-	try {
-		const data = await deploymentApi.getLogs(deploymentId, logOffset.value);
-		if (data.logs) {
-			logText.value += data.logs;
-			logOffset.value = data.offset;
-		}
-		if (data.is_complete) {
-			logAbort?.abort();
-			logStatus.value = logText.value ? 'done' : 'empty';
-			deployment.value = await deploymentApi.get(deploymentId);
-		} else {
-			logStatus.value = 'streaming';
-		}
-	} catch (error) {
-		console.error('获取日志失败:', error);
-		logStatus.value = 'error';
-	}
-}
-
-function startLogPolling() {
-	logAbort = new AbortController();
-	const signal = logAbort.signal;
-	(async () => {
-		await fetchLogs();
-		while (!signal.aborted) {
-			if (deployment.value && isTerminalStatus(deployment.value.status)) {
-				break;
-			}
-			await delayAsync(2000);
-			if (signal.aborted) {
-				break;
-			}
-			try {
-				await fetchLogs();
-			} catch {
-				logStatus.value = 'error';
-				break;
-			}
-		}
-	})();
-}
-
-function stopLog() {
-	logAbort?.abort();
-	logAbort = null;
-}
-
-async function startLogStream(refreshOnComplete = true) {
-	logAbort = new AbortController();
-	const signal = logAbort.signal;
-	let reader: ReadableStreamDefaultReader<string> | null = null;
-
-	try {
-		const response = await deploymentApi.streamLogs(deploymentId, authStore.token, signal);
-		if (!response.body) {
-			logStatus.value = logText.value ? 'done' : 'empty';
-			return;
-		}
-
-		reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-		let buffer = '';
-		logStatus.value = 'streaming';
-
-		while (!signal.aborted) {
-			const { done, value } = await reader.read();
-			if (done) {
-				break;
-			}
-
-			buffer += value;
-			const parts = buffer.split('\n\n');
-			buffer = parts.pop() ?? '';
-
-			for (const part of parts) {
-				if (part.startsWith('event: complete')) {
-					logStatus.value = logText.value ? 'done' : 'empty';
-					if (refreshOnComplete) {
-						deployment.value = await deploymentApi.get(deploymentId);
-					}
-					return;
-				}
-				const dataLine = part.split('\n').find((l) => l.startsWith('data: '));
-				if (dataLine) {
-					const payload = JSON.parse(dataLine.slice(6));
-					if (payload.logs) {
-						logText.value += payload.logs;
-						scrollToBottom();
-					}
-				}
-			}
-		}
-		logStatus.value = logText.value ? 'done' : 'empty';
-	} catch (error) {
-		if (!signal.aborted) {
-			console.error('日志流读取失败:', error);
-			logStatus.value = 'error';
-		}
-	} finally {
-		if (reader) {
-			try {
-				await reader.cancel();
-			} catch {
-				// ignore cleanup errors
-			}
-		}
-	}
-}
-
-async function handleCancel() {
-	try {
-		await deploymentApi.cancel(deploymentId);
-		toast.success('已取消部署');
-		stopLog();
-		deployment.value = await deploymentApi.get(deploymentId);
-		isCancelDialogOpen.value = false;
-	} catch {
-		toast.error('取消失败');
-	}
-}
-
-async function refreshDeployment() {
-	await fetchDeployment();
-	scrollToBottom();
-}
-
-function scrollToBottom() {
-	if (logContainerRef.value) {
-		logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
-	}
-}
-
-onMounted(async () => {
-	await fetchDeployment();
-	if (!deployment.value) {
-		return;
-	}
-	if (config.features.sseDeploymentLog) {
-		if (isTerminalStatus(deployment.value.status)) {
-			startLogStream(false);
-		} else {
-			startLogStream();
-		}
-	} else {
-		if (isTerminalStatus(deployment.value.status)) {
-			await fetchLogs();
-		} else {
-			startLogPolling();
-		}
-	}
-});
-onUnmounted(stopLog);
-</script>
-
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
@@ -372,3 +147,228 @@ onUnmounted(stopLog);
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Loader2, RefreshCw } from 'lucide-vue-next';
+	import { computed, onMounted, onUnmounted, ref } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import { deploymentApi } from '@/api/cd/deployments';
+	import AppDialog from '@/components/AppDialog.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import { useAuthStore } from '@/stores/auth';
+	import type { DeploymentDetail } from '@/types/cd/deployment';
+	import { formatDuration, isTerminalStatus } from '@/utils/status';
+	import { delayAsync, formatTime } from '@/utils/time';
+	import config from '@/config';
+
+	const route = useRoute();
+	const router = useRouter();
+	const deploymentId = route.params.id as string;
+	const toast = useToast();
+	const { status, execute } = useStatusAsync();
+	const authStore = useAuthStore();
+
+	const deployment = ref<DeploymentDetail>();
+	const logText = ref('');
+	const logOffset = ref(0);
+	const logContainerRef = ref<HTMLElement>();
+	const isCancelDialogOpen = ref(false);
+	const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
+	let logAbort: AbortController | null = null;
+
+	const statusBadgeClass = computed(() => {
+		const s = deployment.value?.status;
+		if (!s) {
+			return 'bg-muted/50 text-muted-foreground';
+		}
+		const map: Record<string, string> = {
+			waiting_to_run: 'bg-muted/50 text-muted-foreground',
+			running: 'bg-blue-50 text-blue-700 border-blue-200',
+			ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
+			faulted: 'bg-red-50 text-red-700 border-red-200',
+			canceled: 'bg-gray-50 text-gray-700 border-gray-200',
+		};
+		return map[s] || 'bg-muted/50 text-muted-foreground';
+	});
+
+	const statusLabel = computed(() => {
+		const s = deployment.value?.status;
+		if (!s) {
+			return '';
+		}
+		const map: Record<string, string> = {
+			waiting_to_run: '等待运行',
+			running: '运行中',
+			ran_to_completion: '成功',
+			faulted: '失败',
+			canceled: '已取消',
+		};
+		return map[s] || s;
+	});
+
+	async function fetchDeployment() {
+		try {
+			await execute(async () => {
+				const data = await deploymentApi.get(deploymentId);
+				deployment.value = data;
+			});
+		} catch {
+			toast.error('获取部署详情失败');
+			router.push('/cd/deployments');
+		}
+	}
+
+	async function fetchLogs() {
+		try {
+			const data = await deploymentApi.getLogs(deploymentId, logOffset.value);
+			if (data.logs) {
+				logText.value += data.logs;
+				logOffset.value = data.offset;
+			}
+			if (data.is_complete) {
+				logAbort?.abort();
+				logStatus.value = logText.value ? 'done' : 'empty';
+				deployment.value = await deploymentApi.get(deploymentId);
+			} else {
+				logStatus.value = 'streaming';
+			}
+		} catch (error) {
+			console.error('获取日志失败:', error);
+			logStatus.value = 'error';
+		}
+	}
+
+	function startLogPolling() {
+		logAbort = new AbortController();
+		const signal = logAbort.signal;
+		(async () => {
+			await fetchLogs();
+			while (!signal.aborted) {
+				if (deployment.value && isTerminalStatus(deployment.value.status)) {
+					break;
+				}
+				await delayAsync(2000);
+				if (signal.aborted) {
+					break;
+				}
+				try {
+					await fetchLogs();
+				} catch {
+					logStatus.value = 'error';
+					break;
+				}
+			}
+		})();
+	}
+
+	function stopLog() {
+		logAbort?.abort();
+		logAbort = null;
+	}
+
+	async function startLogStream(refreshOnComplete = true) {
+		logAbort = new AbortController();
+		const signal = logAbort.signal;
+		let reader: ReadableStreamDefaultReader<string> | null = null;
+
+		try {
+			const response = await deploymentApi.streamLogs(deploymentId, authStore.token, signal);
+			if (!response.body) {
+				logStatus.value = logText.value ? 'done' : 'empty';
+				return;
+			}
+
+			reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+			let buffer = '';
+			logStatus.value = 'streaming';
+
+			while (!signal.aborted) {
+				const { done, value } = await reader.read();
+				if (done) {
+					break;
+				}
+
+				buffer += value;
+				const parts = buffer.split('\n\n');
+				buffer = parts.pop() ?? '';
+
+				for (const part of parts) {
+					if (part.startsWith('event: complete')) {
+						logStatus.value = logText.value ? 'done' : 'empty';
+						if (refreshOnComplete) {
+							deployment.value = await deploymentApi.get(deploymentId);
+						}
+						return;
+					}
+					const dataLine = part.split('\n').find((l) => l.startsWith('data: '));
+					if (dataLine) {
+						const payload = JSON.parse(dataLine.slice(6));
+						if (payload.logs) {
+							logText.value += payload.logs;
+							scrollToBottom();
+						}
+					}
+				}
+			}
+			logStatus.value = logText.value ? 'done' : 'empty';
+		} catch (error) {
+			if (!signal.aborted) {
+				console.error('日志流读取失败:', error);
+				logStatus.value = 'error';
+			}
+		} finally {
+			if (reader) {
+				try {
+					await reader.cancel();
+				} catch {
+					// ignore cleanup errors
+				}
+			}
+		}
+	}
+
+	async function handleCancel() {
+		try {
+			await deploymentApi.cancel(deploymentId);
+			toast.success('已取消部署');
+			stopLog();
+			deployment.value = await deploymentApi.get(deploymentId);
+			isCancelDialogOpen.value = false;
+		} catch {
+			toast.error('取消失败');
+		}
+	}
+
+	async function refreshDeployment() {
+		await fetchDeployment();
+		scrollToBottom();
+	}
+
+	function scrollToBottom() {
+		if (logContainerRef.value) {
+			logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
+		}
+	}
+
+	onMounted(async () => {
+		await fetchDeployment();
+		if (!deployment.value) {
+			return;
+		}
+		if (config.features.sseDeploymentLog) {
+			if (isTerminalStatus(deployment.value.status)) {
+				startLogStream(false);
+			} else {
+				startLogStream();
+			}
+		} else {
+			if (isTerminalStatus(deployment.value.status)) {
+				await fetchLogs();
+			} else {
+				startLogPolling();
+			}
+		}
+	});
+	onUnmounted(stopLog);
+</script>

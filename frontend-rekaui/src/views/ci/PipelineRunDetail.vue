@@ -1,314 +1,4 @@
-﻿<script setup lang="ts">
-import { Loader2 } from 'lucide-vue-next';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
-import AppDialog from '@/components/AppDialog.vue';
-import AppDrawer from '@/components/AppDrawer.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
-import type { PipelineRun } from '@/types/ci/run';
-import type { Artifact, StageRun } from '@/types/ci/stage_run';
-import { isTerminalStatus } from '@/utils/status';
-import { delayAsync, formatTime } from '@/utils/time';
-import StageDAGView from './components/StageDAGView.vue';
-import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
-
-const route = useRoute();
-const router = useRouter();
-const runId = computed(() => route.params.id as string);
-const toast = useToast();
-
-const { loading, execute } = useStatusAsync();
-const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
-const { loading: retrying, execute: executeRetry } = useStatusAsync();
-const { loading: canceling, execute: executeCancel } = useStatusAsync();
-
-const run = ref<PipelineRun>();
-const snapshot = ref<PipelineSnapshot>();
-const artifacts = ref<Artifact[]>([]);
-const currentStageRun = ref<StageRun>();
-const showLogsDrawer = ref(false);
-const isCancelDialogOpen = ref(false);
-const stagesView = ref<'list' | 'dag'>('list');
-
-const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
-const stageRuns = computed(() => run.value?.stage_runs ?? []);
-const stageRunMap = computed<Record<string, StageRun>>(() => {
-	const map: Record<string, StageRun> = {};
-	for (const sr of stageRuns.value) {
-		map[sr.stage_id] = sr;
-	}
-	return map;
-});
-const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
-	const map: Record<string, SnapshotStage> = {};
-	for (const stage of snapshot.value?.stages_snapshot ?? []) {
-		map[stage.id] = stage;
-	}
-	return map;
-});
-
-// 日志 drawer 状态
-const logsText = ref('');
-const logsLoading = ref(false);
-const logContainer = ref<HTMLDivElement>();
-let logPollAbort: AbortController | null = null;
-
-let pollAbort: AbortController | null = null;
-const isPolling = ref(false);
-
-const statusBadgeClass = computed(() => {
-	const status = run.value?.status;
-	if (!status) {
-		return 'bg-muted/50 text-muted-foreground';
-	}
-	const map: Record<string, string> = {
-		waiting_to_run: 'bg-muted/50 text-muted-foreground',
-		running: 'bg-blue-50 text-blue-700 border-blue-200',
-		ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
-		faulted: 'bg-red-50 text-red-700 border-red-200',
-		canceled: 'bg-gray-50 text-gray-700 border-gray-200',
-	};
-	return map[status] || 'bg-muted/50 text-muted-foreground';
-});
-
-const statusText = computed(() => {
-	const status = run.value?.status;
-	if (!status) {
-		return '';
-	}
-	const map: Record<string, string> = {
-		waiting_to_run: '等待运行',
-		running: '运行中',
-		ran_to_completion: '成功',
-		faulted: '失败',
-		canceled: '已取消',
-	};
-	return map[status] || status;
-});
-
-function getStageStatusBadge(status: string) {
-	const map: Record<string, string> = {
-		waiting_to_run: 'bg-muted/50 text-muted-foreground',
-		running: 'bg-blue-50 text-blue-700 border-blue-200',
-		ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
-		faulted: 'bg-red-50 text-red-700 border-red-200',
-		canceled: 'bg-gray-50 text-gray-700 border-gray-200',
-		skipped: 'bg-gray-50 text-gray-600 border-gray-200',
-	};
-	return map[status] || 'bg-muted/50 text-muted-foreground';
-}
-
-function getStageStatusText(status: string) {
-	const map: Record<string, string> = {
-		waiting_to_run: '等待',
-		running: '运行中',
-		ran_to_completion: '成功',
-		faulted: '失败',
-		canceled: '已取消',
-		skipped: '跳过',
-	};
-	return map[status] || status;
-}
-
-function openLogDrawer(sr: StageRun) {
-	logPollAbort?.abort();
-	currentStageRun.value = sr;
-	logsText.value = '';
-	showLogsDrawer.value = true;
-	startLogPolling(sr.id);
-}
-
-function openStageLog(stageId: string) {
-	const stageRun = stageRunMap.value[stageId];
-	if (stageRun) {
-		openLogDrawer(stageRun);
-	}
-}
-
-function closeLogDrawer() {
-	showLogsDrawer.value = false;
-	logPollAbort?.abort();
-	logPollAbort = null;
-}
-
-function handleLogDrawerOpenChange(open: boolean) {
-	if (open) {
-		showLogsDrawer.value = true;
-		return;
-	}
-	closeLogDrawer();
-}
-
-async function startLogPolling(stageRunId: string) {
-	logPollAbort = new AbortController();
-	const signal = logPollAbort.signal;
-	logsLoading.value = true;
-	let offset = 0;
-
-	while (!signal.aborted) {
-		try {
-			const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset);
-			if (currentStageRun.value?.id !== stageRunId) {
-				break;
-			}
-			if (resp.logs) {
-				logsText.value += resp.logs;
-				offset = resp.offset;
-				await nextTick();
-				scrollToBottom();
-			}
-			logsLoading.value = false;
-			if (resp.is_complete) {
-				break;
-			}
-		} catch {
-			logsLoading.value = false;
-			break;
-		}
-		await delayAsync(1500);
-	}
-}
-
-function scrollToBottom() {
-	if (logContainer.value) {
-		logContainer.value.scrollTop = logContainer.value.scrollHeight;
-	}
-}
-
-async function fetchRun() {
-	try {
-		return await execute(async () => {
-			const data = await pipelineRunApi.get(runId.value);
-			run.value = data;
-			return data;
-		});
-	} catch {
-		toast.error('获取 Run 信息失败');
-		router.push('/ci/run');
-	}
-}
-
-async function fetchSnapshot(snapshotId: string) {
-	try {
-		const data = await pipelineTemplateApi.getSnapshot(snapshotId);
-		snapshot.value = data;
-	} catch {
-		// snapshot 加载失败不影响主流程
-	}
-}
-
-async function fetchArtifacts() {
-	try {
-		await executeArtifacts(async () => {
-			artifacts.value = await pipelineRunApi.listArtifacts(runId.value);
-		});
-	} catch {
-		// artifact 加载失败不影响主流程
-	}
-}
-
-async function handleRetry() {
-	try {
-		await executeRetry(async () => {
-			const newRun = await pipelineRunApi.retry(runId.value);
-			toast.success('重试成功');
-			router.push(`/ci/run/${newRun.id}`);
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '重试失败');
-	}
-}
-
-async function handleCancel() {
-	try {
-		await executeCancel(async () => {
-			await pipelineRunApi.cancel(runId.value);
-			toast.success('已取消');
-			isCancelDialogOpen.value = false;
-			const currentRun = await fetchRun();
-			if (currentRun && isTerminalStatus(currentRun.status)) {
-				await fetchArtifacts();
-			}
-		});
-	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '取消失败');
-	}
-}
-
-async function startPolling() {
-	pollAbort = new AbortController();
-	const signal = pollAbort.signal;
-	isPolling.value = true;
-	while (!signal.aborted) {
-		try {
-			run.value = await pipelineRunApi.get(runId.value);
-			if (isTerminalStatus(run.value.status)) {
-				isPolling.value = false;
-				void fetchArtifacts();
-				break;
-			}
-		} catch {
-			// 网络抖动时静默重试，不中断轮询
-		}
-		await delayAsync(2000);
-	}
-}
-
-function stopPolling() {
-	pollAbort?.abort();
-	pollAbort = null;
-	isPolling.value = false;
-}
-
-function togglePolling() {
-	if (isPolling.value) {
-		stopPolling();
-	} else {
-		startPolling();
-	}
-}
-
-function resetState() {
-	stopPolling();
-	run.value = undefined;
-	snapshot.value = undefined;
-	artifacts.value = [];
-}
-
-async function handleRunStatus(currentRun: PipelineRun | undefined) {
-	if (!currentRun) {
-		return;
-	}
-	if (isTerminalStatus(currentRun.status)) {
-		await fetchArtifacts();
-	} else {
-		startPolling();
-	}
-}
-
-async function init() {
-	resetState();
-	const currentRun = await fetchRun();
-	if (currentRun?.snapshot_id) {
-		await fetchSnapshot(currentRun.snapshot_id);
-	}
-	await handleRunStatus(currentRun);
-}
-
-watch(runId, init);
-
-onMounted(init);
-
-onUnmounted(() => {
-	stopPolling();
-	logPollAbort?.abort();
-});
-</script>
-
-<template>
+﻿<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">流水线详情</h1>
@@ -688,3 +378,313 @@ onUnmounted(() => {
 		</AppDialog>
 	</div>
 </template>
+
+<script setup lang="ts">
+	import { Loader2 } from 'lucide-vue-next';
+	import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+	import { useRoute, useRouter } from 'vue-router';
+	import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
+	import AppDialog from '@/components/AppDialog.vue';
+	import AppDrawer from '@/components/AppDrawer.vue';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
+	import { useToast } from '@/composables/useToast';
+	import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
+	import type { PipelineRun } from '@/types/ci/run';
+	import type { Artifact, StageRun } from '@/types/ci/stage_run';
+	import { isTerminalStatus } from '@/utils/status';
+	import { delayAsync, formatTime } from '@/utils/time';
+	import StageDAGView from './components/StageDAGView.vue';
+	import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+
+	const route = useRoute();
+	const router = useRouter();
+	const runId = computed(() => route.params.id as string);
+	const toast = useToast();
+
+	const { loading, execute } = useStatusAsync();
+	const { loading: artifactsLoading, execute: executeArtifacts } = useStatusAsync();
+	const { loading: retrying, execute: executeRetry } = useStatusAsync();
+	const { loading: canceling, execute: executeCancel } = useStatusAsync();
+
+	const run = ref<PipelineRun>();
+	const snapshot = ref<PipelineSnapshot>();
+	const artifacts = ref<Artifact[]>([]);
+	const currentStageRun = ref<StageRun>();
+	const showLogsDrawer = ref(false);
+	const isCancelDialogOpen = ref(false);
+	const stagesView = ref<'list' | 'dag'>('list');
+
+	const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
+	const stageRuns = computed(() => run.value?.stage_runs ?? []);
+	const stageRunMap = computed<Record<string, StageRun>>(() => {
+		const map: Record<string, StageRun> = {};
+		for (const sr of stageRuns.value) {
+			map[sr.stage_id] = sr;
+		}
+		return map;
+	});
+	const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
+		const map: Record<string, SnapshotStage> = {};
+		for (const stage of snapshot.value?.stages_snapshot ?? []) {
+			map[stage.id] = stage;
+		}
+		return map;
+	});
+
+	// 日志 drawer 状态
+	const logsText = ref('');
+	const logsLoading = ref(false);
+	const logContainer = ref<HTMLDivElement>();
+	let logPollAbort: AbortController | null = null;
+
+	let pollAbort: AbortController | null = null;
+	const isPolling = ref(false);
+
+	const statusBadgeClass = computed(() => {
+		const status = run.value?.status;
+		if (!status) {
+			return 'bg-muted/50 text-muted-foreground';
+		}
+		const map: Record<string, string> = {
+			waiting_to_run: 'bg-muted/50 text-muted-foreground',
+			running: 'bg-blue-50 text-blue-700 border-blue-200',
+			ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
+			faulted: 'bg-red-50 text-red-700 border-red-200',
+			canceled: 'bg-gray-50 text-gray-700 border-gray-200',
+		};
+		return map[status] || 'bg-muted/50 text-muted-foreground';
+	});
+
+	const statusText = computed(() => {
+		const status = run.value?.status;
+		if (!status) {
+			return '';
+		}
+		const map: Record<string, string> = {
+			waiting_to_run: '等待运行',
+			running: '运行中',
+			ran_to_completion: '成功',
+			faulted: '失败',
+			canceled: '已取消',
+		};
+		return map[status] || status;
+	});
+
+	function getStageStatusBadge(status: string) {
+		const map: Record<string, string> = {
+			waiting_to_run: 'bg-muted/50 text-muted-foreground',
+			running: 'bg-blue-50 text-blue-700 border-blue-200',
+			ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
+			faulted: 'bg-red-50 text-red-700 border-red-200',
+			canceled: 'bg-gray-50 text-gray-700 border-gray-200',
+			skipped: 'bg-gray-50 text-gray-600 border-gray-200',
+		};
+		return map[status] || 'bg-muted/50 text-muted-foreground';
+	}
+
+	function getStageStatusText(status: string) {
+		const map: Record<string, string> = {
+			waiting_to_run: '等待',
+			running: '运行中',
+			ran_to_completion: '成功',
+			faulted: '失败',
+			canceled: '已取消',
+			skipped: '跳过',
+		};
+		return map[status] || status;
+	}
+
+	function openLogDrawer(sr: StageRun) {
+		logPollAbort?.abort();
+		currentStageRun.value = sr;
+		logsText.value = '';
+		showLogsDrawer.value = true;
+		startLogPolling(sr.id);
+	}
+
+	function openStageLog(stageId: string) {
+		const stageRun = stageRunMap.value[stageId];
+		if (stageRun) {
+			openLogDrawer(stageRun);
+		}
+	}
+
+	function closeLogDrawer() {
+		showLogsDrawer.value = false;
+		logPollAbort?.abort();
+		logPollAbort = null;
+	}
+
+	function handleLogDrawerOpenChange(open: boolean) {
+		if (open) {
+			showLogsDrawer.value = true;
+			return;
+		}
+		closeLogDrawer();
+	}
+
+	async function startLogPolling(stageRunId: string) {
+		logPollAbort = new AbortController();
+		const signal = logPollAbort.signal;
+		logsLoading.value = true;
+		let offset = 0;
+
+		while (!signal.aborted) {
+			try {
+				const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset);
+				if (currentStageRun.value?.id !== stageRunId) {
+					break;
+				}
+				if (resp.logs) {
+					logsText.value += resp.logs;
+					offset = resp.offset;
+					await nextTick();
+					scrollToBottom();
+				}
+				logsLoading.value = false;
+				if (resp.is_complete) {
+					break;
+				}
+			} catch {
+				logsLoading.value = false;
+				break;
+			}
+			await delayAsync(1500);
+		}
+	}
+
+	function scrollToBottom() {
+		if (logContainer.value) {
+			logContainer.value.scrollTop = logContainer.value.scrollHeight;
+		}
+	}
+
+	async function fetchRun() {
+		try {
+			return await execute(async () => {
+				const data = await pipelineRunApi.get(runId.value);
+				run.value = data;
+				return data;
+			});
+		} catch {
+			toast.error('获取 Run 信息失败');
+			router.push('/ci/run');
+		}
+	}
+
+	async function fetchSnapshot(snapshotId: string) {
+		try {
+			const data = await pipelineTemplateApi.getSnapshot(snapshotId);
+			snapshot.value = data;
+		} catch {
+			// snapshot 加载失败不影响主流程
+		}
+	}
+
+	async function fetchArtifacts() {
+		try {
+			await executeArtifacts(async () => {
+				artifacts.value = await pipelineRunApi.listArtifacts(runId.value);
+			});
+		} catch {
+			// artifact 加载失败不影响主流程
+		}
+	}
+
+	async function handleRetry() {
+		try {
+			await executeRetry(async () => {
+				const newRun = await pipelineRunApi.retry(runId.value);
+				toast.success('重试成功');
+				router.push(`/ci/run/${newRun.id}`);
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '重试失败');
+		}
+	}
+
+	async function handleCancel() {
+		try {
+			await executeCancel(async () => {
+				await pipelineRunApi.cancel(runId.value);
+				toast.success('已取消');
+				isCancelDialogOpen.value = false;
+				const currentRun = await fetchRun();
+				if (currentRun && isTerminalStatus(currentRun.status)) {
+					await fetchArtifacts();
+				}
+			});
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : '取消失败');
+		}
+	}
+
+	async function startPolling() {
+		pollAbort = new AbortController();
+		const signal = pollAbort.signal;
+		isPolling.value = true;
+		while (!signal.aborted) {
+			try {
+				run.value = await pipelineRunApi.get(runId.value);
+				if (isTerminalStatus(run.value.status)) {
+					isPolling.value = false;
+					void fetchArtifacts();
+					break;
+				}
+			} catch {
+				// 网络抖动时静默重试，不中断轮询
+			}
+			await delayAsync(2000);
+		}
+	}
+
+	function stopPolling() {
+		pollAbort?.abort();
+		pollAbort = null;
+		isPolling.value = false;
+	}
+
+	function togglePolling() {
+		if (isPolling.value) {
+			stopPolling();
+		} else {
+			startPolling();
+		}
+	}
+
+	function resetState() {
+		stopPolling();
+		run.value = undefined;
+		snapshot.value = undefined;
+		artifacts.value = [];
+	}
+
+	async function handleRunStatus(currentRun: PipelineRun | undefined) {
+		if (!currentRun) {
+			return;
+		}
+		if (isTerminalStatus(currentRun.status)) {
+			await fetchArtifacts();
+		} else {
+			startPolling();
+		}
+	}
+
+	async function init() {
+		resetState();
+		const currentRun = await fetchRun();
+		if (currentRun?.snapshot_id) {
+			await fetchSnapshot(currentRun.snapshot_id);
+		}
+		await handleRunStatus(currentRun);
+	}
+
+	watch(runId, init);
+
+	onMounted(init);
+
+	onUnmounted(() => {
+		stopPolling();
+		logPollAbort?.abort();
+	});
+</script>

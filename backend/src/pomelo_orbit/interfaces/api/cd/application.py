@@ -32,7 +32,7 @@ from pomelo_orbit.interfaces.api.cd.dto.application import (
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
-router = APIRouter(prefix="/applications", tags=["application"])
+router = APIRouter(prefix="/application", tags=["application"])
 
 
 @router.get("", response_model=PaginatedResp[ApplicationResp])

@@ -14,17 +14,17 @@ export const deploymentApi = {
 		date_from?: string
 		date_to?: string
 	}): Promise<PaginatedResp<Deployment>> {
-		return request.get('/api/cd/deployments', { params });
+		return request.get('/api/cd/deployment', { params });
 	},
 
 	// 获取部署记录详情
 	get(id: string): Promise<DeploymentDetail> {
-		return request.get(`/api/cd/deployments/${id}`);
+		return request.get(`/api/cd/deployment/${id}`);
 	},
 
 	// 取消部署
 	cancel(id: string): Promise<void> {
-		return request.post(`/api/cd/deployments/${id}/cancel`);
+		return request.post(`/api/cd/deployment/${id}/cancel`);
 	},
 
 	// 获取部署日志（增量读取，回退用）
@@ -37,14 +37,14 @@ export const deploymentApi = {
 		is_complete: boolean
 		status: string
 	}> {
-		return request.get(`/api/cd/deployments/${id}/logs`, {
+		return request.get(`/api/cd/deployment/${id}/logs`, {
 			params: { offset },
 		});
 	},
 
 	// SSE 流式获取部署日志
 	streamLogs(id: string, token: string | null, signal?: AbortSignal): Promise<Response> {
-		return fetch(`/api/cd/deployments/${id}/stream-log`, {
+		return fetch(`/api/cd/deployment/${id}/stream-log`, {
 			headers: token ? { Authorization: `Bearer ${token}` } : {},
 			signal,
 		});

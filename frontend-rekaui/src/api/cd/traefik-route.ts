@@ -22,9 +22,9 @@ export interface TraefikConfig {
 
 export const traefikRouteApi = {
 	list(): Promise<TraefikRouteListResp> {
-		return request.get('/api/cd/traefik-routes');
+		return request.get('/api/cd/traefik-route');
 	},
 	getConfig(): Promise<TraefikConfig> {
-		return request.get('/api/cd/traefik-routes/config');
+		return request.get('/api/cd/traefik-route/config');
 	},
 };

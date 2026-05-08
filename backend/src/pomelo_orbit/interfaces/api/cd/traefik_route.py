@@ -12,7 +12,7 @@ from pomelo_orbit.application.cd.traefik_service import TraefikService
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/traefik-routes", tags=["traefik-route"])
+router = APIRouter(prefix="/traefik-route", tags=["traefik-route"])
 
 
 @router.get("/config", response_model=TraefikConfigResp)

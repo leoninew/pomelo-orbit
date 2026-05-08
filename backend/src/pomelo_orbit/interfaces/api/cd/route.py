@@ -14,7 +14,7 @@ from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/routes", tags=["route"])
+router = APIRouter(prefix="/route", tags=["route"])
 
 
 @router.get("", response_model=PaginatedResp[RouteResp])

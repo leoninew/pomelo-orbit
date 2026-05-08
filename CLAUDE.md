@@ -81,18 +81,19 @@ API 文件:      repository.py
 **统一使用单数形式**，不使用复数
 
 ```
-✅ /api/credential
-✅ /api/repository
-✅ /api/template
-✅ /api/run
-✅ /api/snapshot
-✅ /api/build-stage
-✅ /api/webhook
+✅ /api/ci/credential
+✅ /api/ci/repository
+✅ /api/ci/template
+✅ /api/ci/run
+✅ /api/ci/build-stage
+✅ /api/cd/application
+✅ /api/cd/deployment
+✅ /api/cd/route
+✅ /api/cd/traefik-route
 
-❌ /api/credentials
-❌ /api/projects
-❌ /api/templates
-❌ /api/runs
+❌ /api/cd/applications
+❌ /api/cd/deployments
+❌ /api/cd/routes
 ```
 
 #### 后端 API 文件命名
@@ -198,13 +199,15 @@ project_name: str  # 应该是 repository_name
 
 #### Vue 组件命名
 
-PascalCase，按功能命名，不加 Page/Detail 后缀
+PascalCase，路由页面使用 `Page`/`Detail` 后缀，子组件按功能命名
 
 ```
-✅ AdminContentManagement.vue
-✅ AdminContentEditor.vue
+✅ ApplicationPage.vue       （列表页）
+✅ ApplicationDetail.vue     （详情页）
+✅ ApplicationFormFields.vue （子组件）
+✅ TriggerModal.vue          （弹窗子组件）
 ✅ Login.vue
-✅ Register.vue
+✅ Home.vue
 ```
 ```
 
@@ -679,16 +682,19 @@ const session = ref<TypingSession | null>(null)
 </template>
 ```
 
-**模态窗命名**：变量统一使用 `show` 前缀
+**模态窗命名**：变量统一使用 `is` 前缀 + 功能描述 + `DialogOpen` 或 `ModalOpen` 后缀
 
 ```typescript
 // ✅ 正确
-const showCreateModal = ref(false)
-const showEditModal = ref(false)
+const isCreateDialogOpen = ref(false)
+const isEditDialogOpen = ref(false)
+const isDeleteDialogOpen = ref(false)
+const isEditModalOpen = ref(false)
 
 // ❌ 错误
 const modalVisible = ref(false)
 const visible = ref(false)
+const showCreateModal = ref(false)
 ```
 
 #### API 客户端

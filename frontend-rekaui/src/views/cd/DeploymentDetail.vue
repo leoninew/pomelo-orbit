@@ -16,7 +16,7 @@ const route = useRoute();
 const router = useRouter();
 const deploymentId = route.params.id as string;
 const toast = useToast();
-const { loading, execute } = useStatusAsync();
+const { status, execute } = useStatusAsync();
 const authStore = useAuthStore();
 
 const deployment = ref<DeploymentDetail>();
@@ -24,11 +24,14 @@ const logText = ref('');
 const logOffset = ref(0);
 const logContainerRef = ref<HTMLElement>();
 const isCancelDialogOpen = ref(false);
+const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
 let logAbort: AbortController | null = null;
 
 const statusBadgeClass = computed(() => {
-	const status = deployment.value?.status;
-	if (!status) {return 'bg-muted/50 text-muted-foreground';}
+	const s = deployment.value?.status;
+	if (!s) {
+		return 'bg-muted/50 text-muted-foreground';
+	}
 	const map: Record<string, string> = {
 		waiting_to_run: 'bg-muted/50 text-muted-foreground',
 		running: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -36,12 +39,14 @@ const statusBadgeClass = computed(() => {
 		faulted: 'bg-red-50 text-red-700 border-red-200',
 		canceled: 'bg-gray-50 text-gray-700 border-gray-200',
 	};
-	return map[status] || 'bg-muted/50 text-muted-foreground';
+	return map[s] || 'bg-muted/50 text-muted-foreground';
 });
 
 const statusLabel = computed(() => {
-	const status = deployment.value?.status;
-	if (!status) {return '';}
+	const s = deployment.value?.status;
+	if (!s) {
+		return '';
+	}
 	const map: Record<string, string> = {
 		waiting_to_run: '等待运行',
 		running: '运行中',
@@ -49,7 +54,7 @@ const statusLabel = computed(() => {
 		faulted: '失败',
 		canceled: '已取消',
 	};
-	return map[status] || status;
+	return map[s] || s;
 });
 
 async function fetchDeployment() {
@@ -73,10 +78,14 @@ async function fetchLogs() {
 		}
 		if (data.is_complete) {
 			logAbort?.abort();
+			logStatus.value = logText.value ? 'done' : 'empty';
 			deployment.value = await deploymentApi.get(deploymentId);
+		} else {
+			logStatus.value = 'streaming';
 		}
 	} catch (error) {
 		console.error('获取日志失败:', error);
+		logStatus.value = 'error';
 	}
 }
 
@@ -93,7 +102,12 @@ function startLogPolling() {
 			if (signal.aborted) {
 				break;
 			}
-			await fetchLogs();
+			try {
+				await fetchLogs();
+			} catch {
+				logStatus.value = 'error';
+				break;
+			}
 		}
 	})();
 }
@@ -106,15 +120,18 @@ function stopLog() {
 async function startLogStream(refreshOnComplete = true) {
 	logAbort = new AbortController();
 	const signal = logAbort.signal;
+	let reader: ReadableStreamDefaultReader<string> | null = null;
 
 	try {
 		const response = await deploymentApi.streamLogs(deploymentId, authStore.token, signal);
 		if (!response.body) {
+			logStatus.value = logText.value ? 'done' : 'empty';
 			return;
 		}
 
-		const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+		reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
 		let buffer = '';
+		logStatus.value = 'streaming';
 
 		while (!signal.aborted) {
 			const { done, value } = await reader.read();
@@ -128,6 +145,7 @@ async function startLogStream(refreshOnComplete = true) {
 
 			for (const part of parts) {
 				if (part.startsWith('event: complete')) {
+					logStatus.value = logText.value ? 'done' : 'empty';
 					if (refreshOnComplete) {
 						deployment.value = await deploymentApi.get(deploymentId);
 					}
@@ -143,9 +161,19 @@ async function startLogStream(refreshOnComplete = true) {
 				}
 			}
 		}
+		logStatus.value = logText.value ? 'done' : 'empty';
 	} catch (error) {
 		if (!signal.aborted) {
 			console.error('日志流读取失败:', error);
+			logStatus.value = 'error';
+		}
+	} finally {
+		if (reader) {
+			try {
+				await reader.cancel();
+			} catch {
+				// ignore cleanup errors
+			}
 		}
 	}
 }
@@ -207,24 +235,16 @@ onUnmounted(stopLog);
 				>
 					取消部署
 				</button>
-				<button
-					class="app-icon-button"
-					@click="refreshDeployment"
-				>
+				<button class="app-icon-button" @click="refreshDeployment">
 					<RefreshCw class="h-4 w-4" />
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.push('/cd/deployments')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/cd/deployments')">返回</button>
 			</div>
 		</div>
 
 		<!-- 加载状态 -->
-		<div v-if="loading" class="flex items-center justify-center py-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
+			<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 		</div>
 
 		<!-- 内容 -->
@@ -242,10 +262,7 @@ onUnmounted(stopLog);
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">应用</dt>
 						<dd>
-							<router-link
-								:to="`/cd/applications/${deployment.application_id}`"
-								class="app-link"
-							>
+							<router-link :to="`/cd/application/${deployment.application_id}`" class="app-link">
 								{{ deployment.application_name || deployment.application_id }}
 							</router-link>
 						</dd>
@@ -264,7 +281,13 @@ onUnmounted(stopLog);
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">操作类型</dt>
 						<dd class="text-foreground">
-							{{ deployment.operation_type === 'deploy' ? '部署' : deployment.operation_type === 'stop' ? '停止' : '重启' }}
+							{{
+								deployment.operation_type === 'deploy'
+									? '部署'
+									: deployment.operation_type === 'stop'
+										? '停止'
+										: '重启'
+							}}
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -318,8 +341,17 @@ onUnmounted(stopLog);
 					<pre v-if="logText" class="whitespace-pre-wrap">{{ logText }}</pre>
 					<div v-else class="flex h-full items-center justify-center text-muted-foreground">
 						<div class="text-center">
-							<Loader2 class="mx-auto h-8 w-8 animate-spin" />
-							<p class="mt-2">加载日志中...</p>
+							<Loader2
+								v-if="logStatus === 'loading' || logStatus === 'streaming'"
+								class="mx-auto h-8 w-8 animate-spin"
+							/>
+							<p v-if="logStatus === 'loading'" class="mt-2 text-sm">加载日志中...</p>
+							<p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">日志流传输中...</p>
+							<p v-else-if="logStatus === 'empty'" class="text-sm">暂无日志输出</p>
+							<div v-else-if="logStatus === 'error'">
+								<p class="text-sm text-destructive">日志加载失败</p>
+								<button class="app-link mt-2 text-sm" @click="refreshDeployment">重试</button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -334,20 +366,8 @@ onUnmounted(stopLog);
 			body-class="hidden"
 		>
 			<template #footer>
-				<button
-					type="button"
-					class="app-button"
-					@click="isCancelDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					type="button"
-					class="app-button-destructive"
-					@click="handleCancel"
-				>
-					确认取消
-				</button>
+				<button type="button" class="app-button" @click="isCancelDialogOpen = false">取消</button>
+				<button type="button" class="app-button-destructive" @click="handleCancel">确认取消</button>
 			</template>
 		</AppDialog>
 	</div>

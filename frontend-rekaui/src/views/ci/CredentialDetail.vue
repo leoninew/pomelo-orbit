@@ -135,12 +135,7 @@ onMounted(fetchCredential);
 				>
 					删除
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="$router.push('/ci/credential')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="$router.push('/ci/credential')">返回</button>
 			</div>
 		</div>
 
@@ -150,9 +145,14 @@ onMounted(fetchCredential);
 			</div>
 
 			<div v-if="loading" class="flex justify-center px-5 py-10">
-				<span class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+				<span
+					class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
+				/>
 			</div>
-			<dl v-else-if="credential" class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+			<dl
+				v-else-if="credential"
+				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
+			>
 				<div class="flex gap-2">
 					<dt class="w-24 shrink-0 text-muted-foreground">凭据名称</dt>
 					<dd class="text-foreground">{{ credential.name }}</dd>
@@ -176,7 +176,11 @@ onMounted(fetchCredential);
 			</dl>
 		</div>
 
-		<AppDialog v-model:open="isEditModalOpen" title="编辑凭据" description="更新凭据名称，凭据内容留空时不会修改。">
+		<AppDialog
+			v-model:open="isEditModalOpen"
+			title="编辑凭据"
+			description="更新凭据名称，凭据内容留空时不会修改。"
+		>
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-col gap-1.5">
 					<label class="app-field-label">凭据名称</label>
@@ -202,15 +206,12 @@ onMounted(fetchCredential);
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditModalOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleEditOk"
-				>
-					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+				<button class="app-button" @click="isEditModalOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleEditOk">
+					<span
+						v-if="operating"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+					/>
 					保存
 				</button>
 			</template>
@@ -224,15 +225,12 @@ onMounted(fetchCredential);
 			body-class="hidden"
 		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteModalOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-destructive"
-					:disabled="operating"
-					@click="handleDelete"
-				>
-					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
+				<button class="app-button" @click="isDeleteModalOpen = false">取消</button>
+				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">
+					<span
+						v-if="operating"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
+					/>
 					删除
 				</button>
 			</template>

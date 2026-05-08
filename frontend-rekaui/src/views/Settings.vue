@@ -1,16 +1,8 @@
-
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="系统设置工具栏">
-			<SearchControl
-				v-model="searchText"
-				placeholder="搜索配置项"
-				:loading="configLoading"
-			/>
-			<button
-				class="app-button-primary px-5"
-				@click="passwordModalOpen = true"
-			>
+			<SearchControl v-model="searchText" placeholder="搜索配置项" :loading="configLoading" />
+			<button class="app-button-primary px-5" @click="passwordModalOpen = true">
 				<Key class="size-4" />
 				修改密码
 			</button>
@@ -18,9 +10,7 @@
 
 		<!-- Restart Warning -->
 		<div v-if="needsRestart" class="app-tip border-amber-200 bg-amber-50">
-			<p class="text-sm text-amber-800">
-				⚠️ 配置已更新，请重启服务以使更改生效
-			</p>
+			<p class="text-sm text-amber-800">⚠️ 配置已更新，请重启服务以使更改生效</p>
 		</div>
 
 		<!-- Config Table -->
@@ -50,7 +40,9 @@
 						<tr v-for="item in filteredConfig" :key="item.key">
 							<td>
 								<div class="text-foreground">{{ item.key }}</div>
-								<div v-if="item.description" class="mt-1 text-xs text-muted-foreground">{{ item.description }}</div>
+								<div v-if="item.description" class="mt-1 text-xs text-muted-foreground">
+									{{ item.description }}
+								</div>
 							</td>
 							<td>
 								<!-- Editing Mode -->
@@ -98,27 +90,15 @@
 							</td>
 							<td>
 								<div v-if="editingKey === item.key" class="flex justify-end gap-2">
-									<button
-										:disabled="operating"
-										class="app-link"
-										@click="handleSave(item)"
-									>
+									<button :disabled="operating" class="app-link" @click="handleSave(item)">
 										保存
 									</button>
-									<button
-										class="text-muted-foreground hover:text-foreground"
-										@click="cancelEdit"
-									>
+									<button class="text-muted-foreground hover:text-foreground" @click="cancelEdit">
 										取消
 									</button>
 								</div>
 								<div v-else class="flex justify-end gap-2">
-									<button
-										class="app-link"
-										@click="startEdit(item)"
-									>
-										编辑
-									</button>
+									<button class="app-link" @click="startEdit(item)">编辑</button>
 									<button
 										class="text-muted-foreground hover:text-foreground"
 										@click="confirmReset(item.key)"
@@ -133,7 +113,11 @@
 			</div>
 		</div>
 
-		<AppDialog v-model:open="passwordModalOpen" title="修改密码" description="请输入当前密码和新密码。">
+		<AppDialog
+			v-model:open="passwordModalOpen"
+			title="修改密码"
+			description="请输入当前密码和新密码。"
+		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">当前密码</label>
@@ -176,9 +160,7 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="passwordModalOpen = false">
-					取消
-				</button>
+				<button class="app-button" @click="passwordModalOpen = false">取消</button>
 				<button
 					class="app-button-primary"
 					:disabled="passwordLoading"
@@ -201,14 +183,8 @@
 			body-class="hidden"
 		>
 			<template #footer>
-				<button class="app-button" @click="resetModalOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleReset"
-				>
+				<button class="app-button" @click="resetModalOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleReset">
 					<span
 						v-if="operating"
 						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
@@ -254,8 +230,7 @@ const filteredConfig = computed(() => {
 	const search = searchText.value.toLowerCase();
 	return config.value.items.filter(
 		(item) =>
-			item.key.toLowerCase().includes(search) ||
-			item.description?.toLowerCase().includes(search)
+			item.key.toLowerCase().includes(search) || item.description?.toLowerCase().includes(search)
 	);
 });
 
@@ -321,7 +296,8 @@ async function handleSave(record: ConfigItemResp) {
 	}
 	try {
 		await executeOp(async () => {
-			const value = typeof record.default === 'boolean' ? editingBoolStr.value === 'true' : editingStr.value;
+			const value =
+				typeof record.default === 'boolean' ? editingBoolStr.value === 'true' : editingStr.value;
 			config.value = await settingApi.updateConfig({ key: record.key, value });
 			needsRestart.value = true;
 			editingKey.value = undefined;

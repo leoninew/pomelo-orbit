@@ -56,10 +56,7 @@ function canEdit(decl: VariableDeclaration) {
 				</tr>
 			</thead>
 			<tbody>
-				<tr
-					v-for="decl in declarations"
-					:key="decl.name"
-				>
+				<tr v-for="decl in declarations" :key="decl.name">
 					<td>
 						<span class="text-foreground">{{ decl.name }}</span>
 					</td>
@@ -70,10 +67,7 @@ function canEdit(decl: VariableDeclaration) {
 						<span v-else class="text-muted-foreground">—</span>
 					</td>
 					<td class="max-w-sm truncate" :title="String(effectiveValue(decl) ?? '')">
-						<span
-							v-if="hasDisplayValue(effectiveValue(decl))"
-							class="text-foreground"
-						>
+						<span v-if="hasDisplayValue(effectiveValue(decl))" class="text-foreground">
 							{{ effectiveValue(decl) }}
 						</span>
 						<span v-else class="text-muted-foreground italic">未设置</span>
@@ -81,18 +75,18 @@ function canEdit(decl: VariableDeclaration) {
 					<td>
 						<span
 							class="inline-block rounded px-2 py-0.5 text-sm"
-							:class="decl.source ? getSourceBadgeClass(decl.source) : 'border border-border bg-muted text-muted-foreground'"
+							:class="
+								decl.source
+									? getSourceBadgeClass(decl.source)
+									: 'border border-border bg-muted text-muted-foreground'
+							"
 						>
 							{{ decl.source ? getSourceLabel(decl.source) : '未知' }}
 						</span>
 					</td>
 					<td v-if="!readonly">
 						<div class="flex items-center gap-2">
-							<button
-								v-if="canEdit(decl)"
-								class="app-link"
-								@click="emit('edit', decl.name)"
-							>
+							<button v-if="canEdit(decl)" class="app-link" @click="emit('edit', decl.name)">
 								编辑
 							</button>
 							<button

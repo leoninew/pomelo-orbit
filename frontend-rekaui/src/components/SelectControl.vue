@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, ChevronDown } from 'lucide-vue-next'
+import { Check, ChevronDown } from 'lucide-vue-next';
 import {
 	SelectContent,
 	SelectItem,
@@ -9,10 +9,10 @@ import {
 	SelectRoot,
 	SelectTrigger,
 	SelectValue,
-	SelectViewport
-} from 'reka-ui'
+	SelectViewport,
+} from 'reka-ui';
 
-export type SelectOptionValue = string | number
+export type SelectOptionValue = string | number;
 
 export interface SelectOption {
 	value: SelectOptionValue
@@ -31,13 +31,13 @@ withDefaults(
 	{
 		placeholder: '请选择',
 		disabled: false,
-		widthClass: 'w-full'
+		widthClass: 'w-full',
 	}
-)
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: SelectOptionValue]
-}>()
+}>();
 </script>
 
 <template>
@@ -46,10 +46,7 @@ const emit = defineEmits<{
 		:disabled="disabled"
 		@update:model-value="emit('update:modelValue', $event as SelectOptionValue)"
 	>
-		<SelectTrigger
-			class="app-select-trigger"
-			:class="widthClass"
-		>
+		<SelectTrigger class="app-select-trigger" :class="widthClass">
 			<SelectValue :placeholder="placeholder" />
 			<ChevronDown class="size-4 shrink-0 text-muted-foreground" />
 		</SelectTrigger>

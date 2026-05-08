@@ -1,60 +1,60 @@
 <script setup lang="ts">
-import { Play, Plus, Trash2 } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci'
-import AppDialog from '@/components/AppDialog.vue'
-import ComboboxSelect from '@/components/ComboboxSelect.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { Credential } from '@/types/ci/credential'
-import { credentialTypeLabels } from '@/types/ci/credential'
-import type { Repository } from '@/types/ci/repository'
-import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template'
-import type { RepositoryWebhook } from '@/types/ci/webhook'
-import { formatTime } from '@/utils/time'
-import TriggerModal from './components/TriggerModal.vue'
-import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue'
-import WebhookList from './components/WebhookList.vue'
+import { Play, Plus, Trash2 } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
+import ComboboxSelect from '@/components/ComboboxSelect.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { Credential } from '@/types/ci/credential';
+import { credentialTypeLabels } from '@/types/ci/credential';
+import type { Repository } from '@/types/ci/repository';
+import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
+import type { RepositoryWebhook } from '@/types/ci/webhook';
+import { formatTime } from '@/utils/time';
+import TriggerModal from './components/TriggerModal.vue';
+import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+import WebhookList from './components/WebhookList.vue';
 
-const route = useRoute()
-const router = useRouter()
-const repositoryId = route.params.id as string
-const toast = useToast()
+const route = useRoute();
+const router = useRouter();
+const repositoryId = route.params.id as string;
+const toast = useToast();
 
-const { status, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
+const { status, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
 
-const repository = ref<Repository>()
-const templates = ref<PipelineTemplate[]>([])
-const webhooks = ref<RepositoryWebhook[]>([])
-const credentials = ref<Credential[]>([])
+const repository = ref<Repository>();
+const templates = ref<PipelineTemplate[]>([]);
+const webhooks = ref<RepositoryWebhook[]>([]);
+const credentials = ref<Credential[]>([]);
 
-const isEditDialogOpen = ref(false)
-const isDeleteDialogOpen = ref(false)
-const isAddVariableDialogOpen = ref(false)
-const isEditVariableDialogOpen = ref(false)
-const triggerModalRef = ref<InstanceType<typeof TriggerModal>>()
+const isEditDialogOpen = ref(false);
+const isDeleteDialogOpen = ref(false);
+const isAddVariableDialogOpen = ref(false);
+const isEditVariableDialogOpen = ref(false);
+const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
 
 const editForm = reactive({
 	name: '',
 	repository_url: '',
 	git_credential_id: '',
-	default_branch: 'master'
-})
+	default_branch: 'master',
+});
 const editErrors = reactive({
 	name: '',
-	repository_url: ''
-})
+	repository_url: '',
+});
 const variableForm = reactive({
 	name: '',
 	value: '',
-	description: ''
-})
+	description: '',
+});
 const variableErrors = reactive({
-	name: ''
-})
-const editingVariableName = ref('')
+	name: '',
+});
+const editingVariableName = ref('');
 
 const gitCredentials = computed(() =>
 	credentials.value.filter(
@@ -63,100 +63,100 @@ const gitCredentials = computed(() =>
 			credential.type === 'git_token' ||
 			credential.type === 'gitee_token'
 	)
-)
+);
 const gitCredentialOptions = computed(() =>
 	gitCredentials.value.map((credential) => ({
 		value: credential.id,
 		label: credential.name,
-		description: credentialTypeLabels[credential.type] ?? credential.type
+		description: credentialTypeLabels[credential.type] ?? credential.type,
 	}))
-)
-const repositoryVariables = computed(() => repository.value?.variable_declarations ?? [])
+);
+const repositoryVariables = computed(() => repository.value?.variable_declarations ?? []);
 const repositoryCustomVariables = computed(() =>
 	repositoryVariables.value.filter((variable) => variable.source === 'repository_custom')
-)
+);
 const repositoryVariableRows = computed(() =>
 	repositoryVariables.value.map((variable) => ({
 		...variable,
-		editable: variable.source === 'repository_custom'
+		editable: variable.source === 'repository_custom',
 	}))
-)
+);
 
 function normalizeValue(value: unknown) {
-	return value == null ? '' : String(value)
+	return value == null ? '' : String(value);
 }
 
 function resetEditForm() {
 	if (!repository.value) {
-		return
+		return;
 	}
 	Object.assign(editForm, {
 		name: repository.value.name,
 		repository_url: repository.value.repository_url,
 		git_credential_id: repository.value.git_credential_id ?? '',
-		default_branch: repository.value.default_branch || 'master'
-	})
-	Object.assign(editErrors, { name: '', repository_url: '' })
+		default_branch: repository.value.default_branch || 'master',
+	});
+	Object.assign(editErrors, { name: '', repository_url: '' });
 }
 
 function validateEditForm() {
-	editErrors.name = editForm.name.trim() ? '' : '请输入名称'
-	editErrors.repository_url = editForm.repository_url.trim() ? '' : '请输入仓库地址'
-	return !editErrors.name && !editErrors.repository_url
+	editErrors.name = editForm.name.trim() ? '' : '请输入名称';
+	editErrors.repository_url = editForm.repository_url.trim() ? '' : '请输入仓库地址';
+	return !editErrors.name && !editErrors.repository_url;
 }
 
 function variableOverridesWith(nextVariable?: VariableDeclaration) {
 	const next = repositoryCustomVariables.value.filter(
 		(variable) => variable.name !== nextVariable?.name
-	)
-	return nextVariable ? [...next, nextVariable] : next
+	);
+	return nextVariable ? [...next, nextVariable] : next;
 }
 
 async function fetchRepository() {
 	try {
 		await execute(async () => {
-			repository.value = await repositoryApi.get(repositoryId)
-			resetEditForm()
-		})
+			repository.value = await repositoryApi.get(repositoryId);
+			resetEditForm();
+		});
 	} catch {
-		toast.error('获取代码仓库信息失败')
-		router.push('/ci/repository')
+		toast.error('获取代码仓库信息失败');
+		router.push('/ci/repository');
 	}
 }
 
 async function fetchTemplates() {
 	try {
-		const res = await pipelineTemplateApi.list({ per_page: 100 })
-		templates.value = res.items
+		const res = await pipelineTemplateApi.list({ per_page: 100 });
+		templates.value = res.items;
 	} catch {
-		toast.error('获取模板列表失败')
+		toast.error('获取模板列表失败');
 	}
 }
 
 async function fetchWebhooks() {
 	try {
-		webhooks.value = await webhookApi.list(repositoryId)
+		webhooks.value = await webhookApi.list(repositoryId);
 	} catch {
-		toast.error('获取 Webhook 列表失败')
+		toast.error('获取 Webhook 列表失败');
 	}
 }
 
 async function fetchCredentials() {
 	try {
-		const res = await credentialApi.list({ per_page: 100 })
-		credentials.value = res.items
+		const res = await credentialApi.list({ per_page: 100 });
+		credentials.value = res.items;
 	} catch {
-		toast.error('获取凭据列表失败')
+		toast.error('获取凭据列表失败');
 	}
 }
 
 async function openTriggerModal() {
 	if (!repository.value?.git_credential_id) {
-		toast.error('请先配置 Git 凭据后再触发流水线')
-		return
+		toast.error('请先配置 Git 凭据后再触发流水线');
+		return;
 	}
-	await fetchTemplates()
-	triggerModalRef.value?.open()
+	await fetchTemplates();
+	triggerModalRef.value?.open();
 }
 
 async function handleTrigger(data: {
@@ -166,24 +166,24 @@ async function handleTrigger(data: {
 }) {
 	try {
 		await executeOp(async () => {
-			const run = await repositoryApi.trigger(repositoryId, data)
-			toast.success('触发成功')
-			router.push(`/ci/run/${run.id}`)
-		})
+			const run = await repositoryApi.trigger(repositoryId, data);
+			toast.success('触发成功');
+			router.push(`/ci/run/${run.id}`);
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '触发失败')
+		toast.error(error instanceof Error ? error.message : '触发失败');
 	}
 }
 
 async function openEditDialog() {
-	resetEditForm()
-	await fetchCredentials()
-	isEditDialogOpen.value = true
+	resetEditForm();
+	await fetchCredentials();
+	isEditDialogOpen.value = true;
 }
 
 async function handleEditOk() {
 	if (!validateEditForm()) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
@@ -191,64 +191,64 @@ async function handleEditOk() {
 				name: editForm.name,
 				repository_url: editForm.repository_url,
 				git_credential_id: editForm.git_credential_id || null,
-				default_branch: editForm.default_branch || 'master'
-			})
-			repository.value = updated
-			resetEditForm()
-			toast.success('更新成功')
-			isEditDialogOpen.value = false
-		})
+				default_branch: editForm.default_branch || 'master',
+			});
+			repository.value = updated;
+			resetEditForm();
+			toast.success('更新成功');
+			isEditDialogOpen.value = false;
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败')
+		toast.error(error instanceof Error ? error.message : '更新失败');
 	}
 }
 
 function openDeleteDialog() {
-	isDeleteDialogOpen.value = true
+	isDeleteDialogOpen.value = true;
 }
 
 async function handleDeleteOk() {
 	try {
 		await executeOp(async () => {
-			await repositoryApi.delete(repositoryId)
-			toast.success('删除成功')
-			router.push('/ci/repository')
-		})
+			await repositoryApi.delete(repositoryId);
+			toast.success('删除成功');
+			router.push('/ci/repository');
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败')
+		toast.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 
 function openAddVariableDialog() {
-	Object.assign(variableForm, { name: '', value: '', description: '' })
-	Object.assign(variableErrors, { name: '' })
-	isAddVariableDialogOpen.value = true
+	Object.assign(variableForm, { name: '', value: '', description: '' });
+	Object.assign(variableErrors, { name: '' });
+	isAddVariableDialogOpen.value = true;
 }
 
 function openEditVariableDialog(name: string) {
-	const variable = repositoryCustomVariables.value.find((item) => item.name === name)
+	const variable = repositoryCustomVariables.value.find((item) => item.name === name);
 	if (!variable) {
-		return
+		return;
 	}
-	editingVariableName.value = variable.name
+	editingVariableName.value = variable.name;
 	Object.assign(variableForm, {
 		name: variable.name,
 		value: normalizeValue(variable.value ?? variable.default),
-		description: variable.description ?? ''
-	})
-	Object.assign(variableErrors, { name: '' })
-	isEditVariableDialogOpen.value = true
+		description: variable.description ?? '',
+	});
+	Object.assign(variableErrors, { name: '' });
+	isEditVariableDialogOpen.value = true;
 }
 
 async function handleAddVariableOk() {
-	variableErrors.name = ''
+	variableErrors.name = '';
 	if (!variableForm.name.trim()) {
-		variableErrors.name = '请输入变量名'
-		return
+		variableErrors.name = '请输入变量名';
+		return;
 	}
 	if (repositoryVariables.value.some((variable) => variable.name === variableForm.name.trim())) {
-		variableErrors.name = '变量名已存在'
-		return
+		variableErrors.name = '变量名已存在';
+		return;
 	}
 	try {
 		await executeOp(async () => {
@@ -257,45 +257,45 @@ async function handleAddVariableOk() {
 				value: variableForm.value,
 				description: variableForm.description.trim() || undefined,
 				secret: false,
-				source: 'repository_custom'
-			}
+				source: 'repository_custom',
+			};
 			const updated = await repositoryApi.update(repositoryId, {
-				variable_overrides: variableOverridesWith(nextVariable)
-			})
-			repository.value = updated
-			toast.success('添加成功')
-			isAddVariableDialogOpen.value = false
-		})
+				variable_overrides: variableOverridesWith(nextVariable),
+			});
+			repository.value = updated;
+			toast.success('添加成功');
+			isAddVariableDialogOpen.value = false;
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '添加失败')
+		toast.error(error instanceof Error ? error.message : '添加失败');
 	}
 }
 
 async function handleEditVariableOk() {
 	if (!editingVariableName.value) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
 			const current = repositoryCustomVariables.value.find(
 				(variable) => variable.name === editingVariableName.value
-			)
+			);
 			if (!current) {
-				return
+				return;
 			}
 			const updated = await repositoryApi.update(repositoryId, {
 				variable_overrides: variableOverridesWith({
 					...current,
 					value: variableForm.value,
-					description: variableForm.description.trim() || undefined
-				})
-			})
-			repository.value = updated
-			toast.success('更新成功')
-			isEditVariableDialogOpen.value = false
-		})
+					description: variableForm.description.trim() || undefined,
+				}),
+			});
+			repository.value = updated;
+			toast.success('更新成功');
+			isEditVariableDialogOpen.value = false;
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '更新失败')
+		toast.error(error instanceof Error ? error.message : '更新失败');
 	}
 }
 
@@ -305,20 +305,20 @@ async function deleteVariable(name: string) {
 			const updated = await repositoryApi.update(repositoryId, {
 				variable_overrides: repositoryCustomVariables.value.filter(
 					(variable) => variable.name !== name
-				)
-			})
-			repository.value = updated
-			toast.success('删除成功')
-		})
+				),
+			});
+			repository.value = updated;
+			toast.success('删除成功');
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败')
+		toast.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 
 onMounted(async () => {
-	await fetchRepository()
-	await Promise.all([fetchTemplates(), fetchWebhooks()])
-})
+	await fetchRepository();
+	await Promise.all([fetchTemplates(), fetchWebhooks()]);
+});
 </script>
 
 <template>
@@ -358,17 +358,14 @@ onMounted(async () => {
 					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.push('/ci/repository')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/repository')">返回</button>
 			</div>
 		</div>
 
 		<div v-if="status === 'loading'" class="flex justify-center py-12">
-			<span class="inline-block size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+			<span
+				class="inline-block size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+			/>
 		</div>
 
 		<template v-else-if="repository">
@@ -428,10 +425,7 @@ onMounted(async () => {
 			<div class="app-surface">
 				<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
 					<h2 class="font-semibold text-foreground">变量配置</h2>
-					<button
-						class="app-button-primary h-9 px-3"
-						@click="openAddVariableDialog"
-					>
+					<button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
 						<Plus class="size-4" />
 						添加自定义变量
 					</button>
@@ -480,12 +474,7 @@ onMounted(async () => {
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">编码</label>
-					<input
-						:value="repository?.code"
-						type="text"
-						disabled
-						class="app-input"
-					/>
+					<input :value="repository?.code" type="text" disabled class="app-input" />
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">仓库地址</label>
@@ -518,14 +507,8 @@ onMounted(async () => {
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleEditOk"
-				>
+				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleEditOk">
 					<span
 						v-if="operating"
 						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
@@ -543,14 +526,8 @@ onMounted(async () => {
 			body-class="hidden"
 		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-destructive"
-					:disabled="operating"
-					@click="handleDeleteOk"
-				>
+				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
 					<span
 						v-if="operating"
 						class="size-4 animate-spin rounded-full border-2 border-destructive-foreground border-t-transparent"
@@ -582,11 +559,7 @@ onMounted(async () => {
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">变量值</label>
-					<input
-						v-model="variableForm.value"
-						type="text"
-						class="app-input"
-					/>
+					<input v-model="variableForm.value" type="text" class="app-input" />
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">说明</label>
@@ -599,14 +572,8 @@ onMounted(async () => {
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isAddVariableDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleAddVariableOk"
-				>
+				<button class="app-button" @click="isAddVariableDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleAddVariableOk">
 					<span
 						v-if="operating"
 						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
@@ -625,20 +592,11 @@ onMounted(async () => {
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">变量名</label>
-					<input
-						:value="editingVariableName"
-						type="text"
-						disabled
-						class="app-input"
-					/>
+					<input :value="editingVariableName" type="text" disabled class="app-input" />
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">变量值</label>
-					<input
-						v-model="variableForm.value"
-						type="text"
-						class="app-input"
-					/>
+					<input v-model="variableForm.value" type="text" class="app-input" />
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">说明</label>
@@ -651,14 +609,8 @@ onMounted(async () => {
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditVariableDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleEditVariableOk"
-				>
+				<button class="app-button" @click="isEditVariableDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleEditVariableOk">
 					<span
 						v-if="operating"
 						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"

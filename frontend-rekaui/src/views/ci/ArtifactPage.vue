@@ -200,15 +200,22 @@ onMounted(async () => {
 							</td>
 							<td class="overflow-hidden truncate text-foreground" :title="a.name">{{ a.name }}</td>
 							<td>
-								<span class="inline-flex items-center whitespace-nowrap rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+								<span
+									class="inline-flex items-center whitespace-nowrap rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+								>
 									{{ artifactTypeLabel(a.type) }}
 								</span>
 							</td>
-							<td class="overflow-hidden truncate text-foreground" :title="a.stage_name">{{ a.stage_name }}</td>
+							<td class="overflow-hidden truncate text-foreground" :title="a.stage_name">
+								{{ a.stage_name }}
+							</td>
 							<td class="overflow-hidden truncate text-foreground" :title="a.path || undefined">
 								{{ a.path ?? '—' }}
 							</td>
-							<td class="overflow-hidden truncate text-foreground" :title="formatTime(a.created_at)">
+							<td
+								class="overflow-hidden truncate text-foreground"
+								:title="formatTime(a.created_at)"
+							>
 								{{ formatTime(a.created_at) }}
 							</td>
 							<td>
@@ -221,7 +228,7 @@ onMounted(async () => {
 				</table>
 			</div>
 		</div>
-		
+
 		<ListPagination
 			:current="pagination.current"
 			:page-size="pagination.pageSize"

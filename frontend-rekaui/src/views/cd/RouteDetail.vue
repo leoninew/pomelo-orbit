@@ -1,5 +1,3 @@
-
-
 <script setup lang="ts">
 import { ExternalLink } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -210,13 +208,7 @@ onMounted(fetchRoute);
 				>
 					停用
 				</button>
-				<button
-					v-if="routeData"
-					class="app-button h-9 px-3"
-					@click="openEditModal"
-				>
-					编辑
-				</button>
+				<button v-if="routeData" class="app-button h-9 px-3" @click="openEditModal">编辑</button>
 				<button
 					v-if="routeData"
 					class="app-button-danger h-9 px-3"
@@ -225,18 +217,15 @@ onMounted(fetchRoute);
 				>
 					删除
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.push('/cd/routes')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/cd/routes')">返回</button>
 			</div>
 		</div>
 
 		<!-- Loading State -->
 		<div v-if="basicInfoLoading" class="flex justify-center py-12">
-			<span class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+			<span
+				class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
+			/>
 		</div>
 
 		<!-- Content -->
@@ -277,7 +266,11 @@ onMounted(fetchRoute);
 						<dd>
 							<span
 								class="inline-block rounded border px-2 py-0.5 text-xs"
-								:class="routeData.enabled ? 'bg-green-50 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'"
+								:class="
+									routeData.enabled
+										? 'bg-green-50 text-green-700 border-green-200'
+										: 'bg-muted text-muted-foreground border-border'
+								"
 							>
 								{{ routeData.enabled ? '启用' : '停用' }}
 							</span>
@@ -309,7 +302,11 @@ onMounted(fetchRoute);
 						</div>
 						<span
 							class="inline-block rounded border px-2 py-0.5 text-xs"
-							:class="routeData.https_enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-muted text-muted-foreground border-border'"
+							:class="
+								routeData.https_enabled
+									? 'bg-blue-50 text-blue-700 border-blue-200'
+									: 'bg-muted text-muted-foreground border-border'
+							"
 						>
 							{{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
 						</span>
@@ -325,32 +322,19 @@ onMounted(fetchRoute);
 							<p class="text-sm text-foreground">Let's Encrypt 自动证书</p>
 							<p class="text-sm text-muted-foreground">自动申请并续期免费 SSL 证书</p>
 						</button>
-						<button
-							class="app-action-item"
-							:disabled="operating"
-							@click="handleEnableMkcert"
-						>
+						<button class="app-action-item" :disabled="operating" @click="handleEnableMkcert">
 							<p class="text-sm text-foreground">mkcert 本地证书</p>
 							<p class="text-sm text-muted-foreground">生成本地开发用的自签名证书</p>
 						</button>
 						<label class="app-action-item cursor-pointer">
 							<p class="text-sm text-foreground">上传自定义证书</p>
 							<p class="text-sm text-muted-foreground">上传 .pem 格式的证书文件</p>
-							<input
-								type="file"
-								accept=".pem"
-								class="hidden"
-								@change="handleCertUpload"
-							/>
+							<input type="file" accept=".pem" class="hidden" @change="handleCertUpload" />
 						</label>
 					</div>
 
 					<div v-else class="flex justify-end">
-						<button
-							class="app-button-danger"
-							:disabled="operating"
-							@click="handleDisableHttps"
-						>
+						<button class="app-button-danger" :disabled="operating" @click="handleDisableHttps">
 							禁用 HTTPS
 						</button>
 					</div>
@@ -373,12 +357,7 @@ onMounted(fetchRoute);
 				</div>
 				<div class="flex flex-col gap-1.5">
 					<label class="app-field-label">路径前缀</label>
-					<input
-						v-model="form.path_prefix"
-						type="text"
-						class="app-input"
-						placeholder="/"
-					/>
+					<input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
 				</div>
 				<div class="flex flex-col gap-1.5">
 					<label class="app-field-label">目标地址</label>
@@ -393,18 +372,12 @@ onMounted(fetchRoute);
 				</div>
 			</div>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="isEditDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleSave"
-				>
-					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleSave">
+					<span
+						v-if="operating"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+					/>
 					保存
 				</button>
 			</template>
@@ -418,18 +391,12 @@ onMounted(fetchRoute);
 			body-class="hidden"
 		>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="isDeleteDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-destructive"
-					:disabled="operating"
-					@click="handleDelete"
-				>
-					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
+				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">
+					<span
+						v-if="operating"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
+					/>
 					删除
 				</button>
 			</template>

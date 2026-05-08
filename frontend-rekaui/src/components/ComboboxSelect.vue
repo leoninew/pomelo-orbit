@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Check, ChevronDown, X } from 'lucide-vue-next'
-import { computed } from 'vue'
+import { Check, ChevronDown, X } from 'lucide-vue-next';
+import { computed } from 'vue';
 import {
 	ComboboxAnchor,
 	ComboboxContent,
@@ -10,10 +10,10 @@ import {
 	ComboboxItemIndicator,
 	ComboboxPortal,
 	ComboboxRoot,
-	ComboboxTrigger
-} from 'reka-ui'
+	ComboboxTrigger,
+} from 'reka-ui';
 
-export type ComboboxOptionValue = string | number
+export type ComboboxOptionValue = string | number;
 
 export interface ComboboxOption {
 	value: ComboboxOptionValue
@@ -31,29 +31,31 @@ const props = withDefaults(
 		emptyText?: string
 		portal?: boolean
 		widthClass?: string
+		openOnFocus?: boolean
 	}>(),
 	{
 		placeholder: '请选择',
 		disabled: false,
 		emptyText: '暂无数据',
 		portal: true,
-		widthClass: 'w-full'
+		widthClass: 'w-full',
+		openOnFocus: true,
 	}
-)
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ComboboxOptionValue]
-}>()
+}>();
 
-const selectableOptions = computed(() => props.options.filter((item) => item.value !== ''))
+const selectableOptions = computed(() => props.options.filter((item) => item.value !== ''));
 
 function displayValue(value: unknown) {
-	const option = selectableOptions.value.find((item) => item.value === value)
-	return option?.label ?? ''
+	const option = selectableOptions.value.find((item) => item.value === value);
+	return option?.label ?? '';
 }
 
 function hasValue(value: unknown) {
-	return value !== undefined && value !== null && value !== ''
+	return value !== undefined && value !== null && value !== '';
 }
 </script>
 
@@ -62,7 +64,7 @@ function hasValue(value: unknown) {
 		:model-value="modelValue"
 		:disabled="disabled"
 		open-on-click
-		open-on-focus
+		:open-on-focus="openOnFocus"
 		@update:model-value="emit('update:modelValue', $event as ComboboxOptionValue)"
 	>
 		<ComboboxAnchor

@@ -244,13 +244,7 @@ onMounted(fetchStage);
 				</div>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
-				<button
-					v-if="stage"
-					class="app-button h-9 px-3"
-					@click="openEditModal"
-				>
-					编辑
-				</button>
+				<button v-if="stage" class="app-button h-9 px-3" @click="openEditModal">编辑</button>
 				<button
 					v-if="stage"
 					class="app-button h-9 px-3"
@@ -267,18 +261,15 @@ onMounted(fetchStage);
 				>
 					删除
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.push('/ci/build-stage')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/build-stage')">返回</button>
 			</div>
 		</div>
 
 		<!-- Loading State -->
 		<div v-if="status === 'loading'" class="flex justify-center py-12">
-			<span class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+			<span
+				class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
+			/>
 		</div>
 
 		<!-- Content -->
@@ -320,14 +311,13 @@ onMounted(fetchStage);
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">执行脚本</h2>
-					<button
-						class="app-button h-8 px-3"
-						@click="openScriptDrawer"
-					>
-						编辑
-					</button>
+					<button class="app-button h-8 px-3" @click="openScriptDrawer">编辑</button>
 				</div>
-				<pre v-if="stage.script" class="overflow-x-auto bg-muted/30 p-5 text-xs font-mono text-foreground">{{ stage.script }}</pre>
+				<pre
+					v-if="stage.script"
+					class="overflow-x-auto bg-muted/30 p-5 text-xs font-mono text-foreground"
+					>{{ stage.script }}</pre
+				>
 				<div v-else class="px-5 py-10 text-center text-muted-foreground">
 					<p class="text-sm">暂无脚本</p>
 				</div>
@@ -337,10 +327,7 @@ onMounted(fetchStage);
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">制品配置</h2>
-					<button
-						class="app-button-primary h-9 px-3"
-						@click="openAddArtifactModal"
-					>
+					<button class="app-button-primary h-9 px-3" @click="openAddArtifactModal">
 						<Plus class="size-4" />
 						添加制品
 					</button>
@@ -358,17 +345,14 @@ onMounted(fetchStage);
 						</thead>
 						<tbody>
 							<tr v-if="sortableArtifacts.length === 0">
-								<td colspan="5" class="text-center text-muted-foreground">
-									暂无制品配置
-								</td>
+								<td colspan="5" class="text-center text-muted-foreground">暂无制品配置</td>
 							</tr>
-							<tr
-								v-for="(artifact, idx) in sortableArtifacts"
-								:key="idx"
-							>
+							<tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
 								<td class="text-muted-foreground">{{ idx + 1 }}</td>
 								<td>
-									<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+									<span
+										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+									>
 										{{ artifact.type }}
 									</span>
 								</td>
@@ -376,16 +360,8 @@ onMounted(fetchStage);
 								<td class="text-muted-foreground">{{ artifact.path }}</td>
 								<td>
 									<div class="flex items-center gap-3">
-										<button
-											class="app-link"
-											@click="openEditArtifactModal(idx)"
-										>
-											编辑
-										</button>
-										<button
-											class="app-link-danger"
-											@click="confirmRemoveArtifact(idx)"
-										>
+										<button class="app-link" @click="openEditArtifactModal(idx)">编辑</button>
+										<button class="app-link-danger" @click="confirmRemoveArtifact(idx)">
 											删除
 										</button>
 									</div>
@@ -393,50 +369,36 @@ onMounted(fetchStage);
 							</tr>
 						</tbody>
 					</table>
-					</div>
 				</div>
+			</div>
 		</template>
 
-		<AppDialog v-model:open="isEditDialogOpen" title="编辑构建" description="更新构建阶段基本信息。">
+		<AppDialog
+			v-model:open="isEditDialogOpen"
+			title="编辑构建"
+			description="更新构建阶段基本信息。"
+		>
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-col gap-1.5">
 					<label class="app-field-label">名称</label>
-					<input
-						v-model="form.name"
-						type="text"
-						class="app-input"
-					/>
+					<input v-model="form.name" type="text" class="app-input" />
 				</div>
 				<div class="flex flex-col gap-1.5">
 					<label class="app-field-label">镜像</label>
-					<input
-						v-model="form.image"
-						type="text"
-						class="app-input"
-					/>
+					<input v-model="form.image" type="text" class="app-input" />
 				</div>
 				<div class="flex flex-col gap-1.5">
 					<label class="app-field-label">描述</label>
-					<input
-						v-model="form.description"
-						type="text"
-						class="app-input"
-					/>
+					<input v-model="form.description" type="text" class="app-input" />
 				</div>
 			</div>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="isEditDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="saving"
-					@click="handleSave"
-				>
-					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="saving" @click="handleSave">
+					<span
+						v-if="saving"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+					/>
 					保存
 				</button>
 			</template>
@@ -454,18 +416,12 @@ onMounted(fetchStage);
 				placeholder="输入执行脚本..."
 			/>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="closeScriptDrawer"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="saving"
-					@click="confirmScript"
-				>
-					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+				<button class="app-button" @click="closeScriptDrawer">取消</button>
+				<button class="app-button-primary" :disabled="saving" @click="confirmScript">
+					<span
+						v-if="saving"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+					/>
 					保存
 				</button>
 			</template>
@@ -505,18 +461,12 @@ onMounted(fetchStage);
 				</div>
 			</div>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="isArtifactDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="saving"
-					@click="handleSaveArtifact"
-				>
-					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+				<button class="app-button" @click="isArtifactDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="saving" @click="handleSaveArtifact">
+					<span
+						v-if="saving"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+					/>
 					保存
 				</button>
 			</template>
@@ -530,18 +480,12 @@ onMounted(fetchStage);
 			body-class="hidden"
 		>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="isDeleteArtifactDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-destructive"
-					:disabled="saving"
-					@click="removeArtifact"
-				>
-					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
+				<button class="app-button" @click="isDeleteArtifactDialogOpen = false">取消</button>
+				<button class="app-button-destructive" :disabled="saving" @click="removeArtifact">
+					<span
+						v-if="saving"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
+					/>
 					删除
 				</button>
 			</template>
@@ -555,18 +499,12 @@ onMounted(fetchStage);
 			body-class="hidden"
 		>
 			<template #footer>
-				<button
-					class="app-button"
-					@click="isDeleteDialogOpen = false"
-				>
-					取消
-				</button>
-				<button
-					class="app-button-destructive"
-					:disabled="deleting"
-					@click="handleDelete"
-				>
-					<span v-if="deleting" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
+				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button-destructive" :disabled="deleting" @click="handleDelete">
+					<span
+						v-if="deleting"
+						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
+					/>
 					删除
 				</button>
 			</template>

@@ -46,11 +46,7 @@ const contentA11yAttrs = computed(() =>
 			<DialogOverlay class="app-dialog-overlay" />
 			<DialogContent
 				v-bind="contentA11yAttrs"
-				:class="[
-					'app-dialog-content',
-					widthClass,
-					contentClass,
-				]"
+				:class="['app-dialog-content', widthClass, contentClass]"
 			>
 				<div class="border-b border-border px-6 py-4">
 					<DialogTitle class="text-lg font-semibold text-foreground">

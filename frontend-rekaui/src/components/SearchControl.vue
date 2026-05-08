@@ -1,25 +1,28 @@
 <script setup lang="ts">
-import { Search, X } from 'lucide-vue-next'
+import { Search, X } from 'lucide-vue-next';
 
-withDefaults(defineProps<{
-	modelValue: string
-	placeholder?: string
-	disabled?: boolean
-	loading?: boolean
-}>(), {
-	placeholder: '搜索',
-	disabled: false,
-	loading: false
-})
+withDefaults(
+	defineProps<{
+		modelValue: string
+		placeholder?: string
+		disabled?: boolean
+		loading?: boolean
+	}>(),
+	{
+		placeholder: '搜索',
+		disabled: false,
+		loading: false,
+	}
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string]
 	search: []
-}>()
+}>();
 
 function clearSearch() {
-	emit('update:modelValue', '')
-	emit('search')
+	emit('update:modelValue', '');
+	emit('search');
 }
 </script>
 

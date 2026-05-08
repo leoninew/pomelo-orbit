@@ -1,53 +1,53 @@
 <script setup lang="ts">
-import { Search } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { pipelineRunApi, pipelineTemplateApi, repositoryApi } from '@/api/ci'
-import ComboboxSelect from '@/components/ComboboxSelect.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { Repository } from '@/types/ci/repository'
-import type { PipelineRun } from '@/types/ci/run'
-import type { PipelineTemplate } from '@/types/ci/template'
-import { statusBadgeClass, statusLabel } from '@/utils/status'
-import { formatTime, formatDuration } from '@/utils/time'
-import { ToolbarRoot } from 'reka-ui'
+import { Search } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { pipelineRunApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
+import ComboboxSelect from '@/components/ComboboxSelect.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { Repository } from '@/types/ci/repository';
+import type { PipelineRun } from '@/types/ci/run';
+import type { PipelineTemplate } from '@/types/ci/template';
+import { statusBadgeClass, statusLabel } from '@/utils/status';
+import { formatTime, formatDuration } from '@/utils/time';
+import { ToolbarRoot } from 'reka-ui';
 
-const route = useRoute()
-const router = useRouter()
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
+const route = useRoute();
+const router = useRouter();
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
 
-const runs = ref<PipelineRun[]>([])
-const repositories = ref<Repository[]>([])
-const templates = ref<PipelineTemplate[]>([])
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
-const query = reactive({ repository_id: '', template_id: '' })
+const runs = ref<PipelineRun[]>([]);
+const repositories = ref<Repository[]>([]);
+const templates = ref<PipelineTemplate[]>([]);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const query = reactive({ repository_id: '', template_id: '' });
 
 function triggerLabel(trigger: string) {
 	const map: Record<string, string> = {
 		manual: '手动',
-		webhook: 'Webhook'
-	}
-	return map[trigger] ?? trigger
+		webhook: 'Webhook',
+	};
+	return map[trigger] ?? trigger;
 }
 
 const repositoryOptions = computed(() =>
 	repositories.value.map((repo) => ({
 		value: repo.id,
 		label: repo.name,
-		description: repo.repository_url
+		description: repo.repository_url,
 	}))
-)
+);
 const templateOptions = computed(() =>
 	templates.value.map((template) => ({
 		value: template.id,
 		label: template.name,
-		description: `v${template.version}`
+		description: `v${template.version}`,
 	}))
-)
+);
 
 async function fetchRuns() {
 	try {
@@ -56,41 +56,41 @@ async function fetchRuns() {
 				page: pagination.current,
 				per_page: pagination.pageSize,
 				repository_id: query.repository_id || undefined,
-				template_id: query.template_id || undefined
-			})
-			runs.value = res.items
-			pagination.total = res.total
-		})
+				template_id: query.template_id || undefined,
+			});
+			runs.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取流水线记录失败')
+		toast.error('获取流水线记录失败');
 	}
 }
 
 async function loadRepositories() {
 	try {
-		const res = await repositoryApi.list({ per_page: 100 })
-		repositories.value = res.items
+		const res = await repositoryApi.list({ per_page: 100 });
+		repositories.value = res.items;
 	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取项目列表失败')
+		toast.error(err instanceof Error ? err.message : '获取项目列表失败');
 	}
 }
 
 async function loadTemplates() {
 	try {
-		const res = await pipelineTemplateApi.list({ per_page: 100 })
-		templates.value = res.items
+		const res = await pipelineTemplateApi.list({ per_page: 100 });
+		templates.value = res.items;
 	} catch (err: unknown) {
-		toast.error(err instanceof Error ? err.message : '获取模板列表失败')
+		toast.error(err instanceof Error ? err.message : '获取模板列表失败');
 	}
 }
 
 async function ensureRepositoryOption(id: string) {
 	if (!id || repositories.value.some((repo) => repo.id === id)) {
-		return
+		return;
 	}
 	try {
-		const repo = await repositoryApi.get(id)
-		repositories.value = [repo, ...repositories.value]
+		const repo = await repositoryApi.get(id);
+		repositories.value = [repo, ...repositories.value];
 	} catch {
 		// The filter still works by id; missing display text should not block the page.
 	}
@@ -98,50 +98,53 @@ async function ensureRepositoryOption(id: string) {
 
 async function ensureTemplateOption(id: string) {
 	if (!id || templates.value.some((template) => template.id === id)) {
-		return
+		return;
 	}
 	try {
-		const template = await pipelineTemplateApi.get(id)
-		templates.value = [template, ...templates.value]
+		const template = await pipelineTemplateApi.get(id);
+		templates.value = [template, ...templates.value];
 	} catch {
 		// The filter still works by id; missing display text should not block the page.
 	}
 }
 
 function handleRepositoryChange(value: string | number | boolean) {
-	query.repository_id = String(value || '')
+	query.repository_id = String(value || '');
 }
 
 function handleTemplateChange(value: string | number | boolean) {
-	query.template_id = String(value || '')
+	query.template_id = String(value || '');
 }
 
 function handleSearch() {
-	pagination.current = 1
-	fetchRuns()
+	pagination.current = 1;
+	fetchRuns();
 }
 
 function goPage(p: number) {
-	pagination.current = p
-	fetchRuns()
+	pagination.current = p;
+	fetchRuns();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchRuns()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchRuns();
 }
 
 onMounted(async () => {
-	const repositoryId = route.query.repository_id as string | undefined
-	const templateId = route.query.template_id as string | undefined
-	query.repository_id = repositoryId ?? ''
-	query.template_id = templateId ?? ''
+	const repositoryId = route.query.repository_id as string | undefined;
+	const templateId = route.query.template_id as string | undefined;
+	query.repository_id = repositoryId ?? '';
+	query.template_id = templateId ?? '';
 
-	await Promise.all([loadRepositories(), loadTemplates()])
-	await Promise.all([ensureRepositoryOption(query.repository_id), ensureTemplateOption(query.template_id)])
-	fetchRuns()
-})
+	await Promise.all([loadRepositories(), loadTemplates()]);
+	await Promise.all([
+		ensureRepositoryOption(query.repository_id),
+		ensureTemplateOption(query.template_id),
+	]);
+	fetchRuns();
+});
 </script>
 
 <template>
@@ -236,7 +239,11 @@ onMounted(async () => {
 								</router-link>
 							</td>
 							<td>
-								<span class="inline-block whitespace-nowrap rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ run.template_version }}</span>
+								<span
+									class="inline-block whitespace-nowrap rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
+								>
+									v{{ run.template_version }}
+								</span>
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ triggerLabel(run.trigger) }}</td>
 							<td class="overflow-hidden truncate text-foreground" :title="run.trigger_ref">
@@ -250,13 +257,21 @@ onMounted(async () => {
 									{{ statusLabel(run.status) }}
 								</span>
 							</td>
-							<td class="overflow-hidden truncate text-foreground" :title="run.error_message || undefined">
+							<td
+								class="overflow-hidden truncate text-foreground"
+								:title="run.error_message || undefined"
+							>
 								{{ run.error_message || '—' }}
 							</td>
-							<td class="overflow-hidden truncate text-foreground" :title="formatTime(run.started_at)">
+							<td
+								class="overflow-hidden truncate text-foreground"
+								:title="formatTime(run.started_at)"
+							>
 								{{ formatTime(run.started_at) }}
 							</td>
-							<td class="whitespace-nowrap text-foreground">{{ formatDuration(run.started_at, run.finished_at) }}</td>
+							<td class="whitespace-nowrap text-foreground">
+								{{ formatDuration(run.started_at, run.finished_at) }}
+							</td>
 							<td>
 								<button
 									class="app-link whitespace-nowrap"

@@ -197,9 +197,10 @@
   - `TraefikRoutePage.vue` 已使用 `app-surface`、共享按钮、`app-link` 和列表页表格，主要剩余是接口错误态显式展示、列表列宽继续收敛，以及 `/api/cd/traefik-routes` 500 时避免表现成普通空数据。
   - 持续部署列表页已进入第二轮：应用列表和部署记录列表已补内容，路由和 Traefik 列表进入复查阶段。
 - 本阶段下一步：
-  - 先处理 `TraefikRoutePage.vue` 的错误态和列宽。
-  - 再处理 `RoutePage.vue` 的工具条和表单提示。
-  - 处理后补一次 `pomelo-pw` 轻量验证，并继续保留 `pageSize: 10`。
+  - ✅ 已完成 `TraefikRoutePage.vue` 的错误态和列宽优化。
+  - ✅ 已完成 `RoutePage.vue` 的列宽优化（目标地址列使用 `max-w-0` 配合 colgroup）。
+  - ✅ 已完成 `DeploymentDetail.vue` 日志状态区分（loading/streaming/empty/done/error）。
+  - ✅ 已验证 `ComboboxSelect` 的 `openOnFocus` 配置在所有 Dialog 首控件场景已正确设置为 `false`。
 
 ## 后续队列
 
@@ -210,7 +211,7 @@
   - 原始输入框迁移到 `app-input` / `app-textarea`。
   - 错误态统一使用 `app-input-error` 与 `app-field-error`。
   - 下拉框优先使用 `SelectControl` / `ComboboxSelect`。
-  - 观察项：`ComboboxSelect` 当前 `open-on-focus` 会在 Dialog 自动聚焦首个控件时展开下拉，后续统一评估是否改为仅点击/输入展开，或支持按场景关闭自动展开。
+  - ✅ 观察项已解决：`ComboboxSelect` 已支持 `openOnFocus` prop，所有 Dialog 首控件场景已正确设置为 `false`。
 - 链接和操作：
   - 主链接统一使用 `app-link`。
   - 危险操作统一使用危险链接或危险按钮样式。
@@ -269,3 +270,67 @@
   4. 最后清 StageEdit.vue、PipelineRunDetail.vue 这类残留样式债。
 
   当前阶段完成标准：CD 列表页都有一致的 toolbar、表格、loading/error/empty 状态，分页保持 10，并用 pomelo-pw 轻量验证 /cd/routes、/cd/traefik-http-routers、/cd/deployments。
+
+
+## 2026-05-08 更新
+
+### P0 和 P1 优先级工作已完成
+
+**P0 完成项**：
+- ✅ TraefikRoutePage.vue
+  - 补充显式错误态，区分错误信息和提示文本
+  - 表格列宽优化，使用 colgroup 和 max-w-0 确保长文本稳定截断
+  - 表格最小宽度从 960px 调整为 1080px，列宽比例优化
+- ✅ RoutePage.vue
+  - 工具条已是单行横向滚动范式
+  - 添加路由弹窗已使用 app-tip 提供输入提示
+  - 表格目标地址列使用 max-w-0 配合 colgroup 避免撑开
+  - 表格最小宽度从 1180px 调整为 1200px，使用 colgroup 精确控制列宽
+
+**P1 完成项**：
+- ✅ DeploymentDetail.vue
+  - 日志状态区分：loading（加载中）、streaming（流传输中）、empty（无日志）、done（完成）、error（失败）
+  - fetchLogs 和 startLogStream 函数都正确处理空日志情况
+- ✅ ComboboxSelect.vue
+  - 已有 openOnFocus prop，默认 true
+  - 所有 Dialog 首控件场景已正确设置 :open-on-focus="false"
+  - 验证场景：TriggerModal、PipelineTemplateDetail（添加 Stage、运行流水线）
+
+**P2 完成项**：
+- ✅ StageEdit.vue
+  - 从手写抽屉迁移到 AppDrawer
+  - 输入框统一到 app-input / app-textarea
+  - 按钮统一到 app-button / app-button-primary
+  - 脚本编辑抽屉也迁移到 AppDrawer
+  - label 统一到 app-field-label
+- ✅ PipelineRunDetail.vue
+  - 顶部操作按钮统一到 app-button / app-button-primary / app-button-destructive
+  - 取消确认弹窗按钮统一到共享样式
+  - 所有 section header 统一到 app-section-header
+- ✅ Home.vue
+  - 概览卡片外壳统一到 app-surface
+  - 刷新按钮统一到 app-button
+  - 最近构建/部署区块统一到 app-surface / app-section-header
+  - "查看全部"链接统一到 app-link
+- ✅ Login.vue
+  - 登录卡片外壳统一到 app-surface
+  - 输入框统一到 app-input，错误态使用 app-input-error
+  - label 统一到 app-field-label
+  - 错误提示统一到 app-field-error
+  - 登录按钮统一到 app-button-primary
+
+**验证通过**：
+- ✅ yarn lint --fix - 无错误
+- ✅ git diff --check - 无空白字符问题
+
+**当前阶段完成标准达成**：
+✅ CD 列表页都有一致的 toolbar、表格、loading/error/empty 状态，分页保持 10。
+✅ P2 低风险一致性收口工作全部完成。
+
+**Reka UI 风格一致性推进项目完成**：
+所有计划内的页面和组件已完成统一，包括：
+- 表格体系（列表页 app-table-list、详情页 app-table-detail）
+- 共享组件（AppDialog、AppDrawer、AppToaster、SearchControl、SelectControl、ComboboxSelect）
+- 共享样式类（app-surface、app-input、app-textarea、app-button、app-link、app-tip 等）
+- 所有 CI/CD 页面的弹窗、表单、按钮、链接、输入框统一
+- 首页和登录页的样式统一

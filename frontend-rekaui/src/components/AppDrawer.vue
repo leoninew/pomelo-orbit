@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { X } from 'lucide-vue-next'
-import { computed, useSlots } from 'vue'
+import { X } from 'lucide-vue-next';
+import { computed, useSlots } from 'vue';
 import {
 	DialogClose,
 	DialogContent,
@@ -8,8 +8,8 @@ import {
 	DialogOverlay,
 	DialogPortal,
 	DialogRoot,
-	DialogTitle
-} from 'reka-ui'
+	DialogTitle,
+} from 'reka-ui';
 
 const props = withDefaults(
 	defineProps<{
@@ -24,22 +24,22 @@ const props = withDefaults(
 		description: '',
 		widthClass: 'w-[min(720px,100vw)]',
 		bodyClass: 'min-h-0 flex-1 overflow-y-auto px-6 py-4',
-		contentClass: ''
+		contentClass: '',
 	}
-)
+);
 
 const emit = defineEmits<{
 	'update:open': [open: boolean]
-}>()
+}>();
 
-const slots = useSlots()
+const slots = useSlots();
 const openModel = computed({
 	get: () => props.open,
-	set: (value) => emit('update:open', value)
-})
+	set: (value) => emit('update:open', value),
+});
 const contentA11yAttrs = computed(() =>
 	props.description || slots.description ? {} : { 'aria-describedby': undefined }
-)
+);
 </script>
 
 <template>
@@ -48,11 +48,7 @@ const contentA11yAttrs = computed(() =>
 			<DialogOverlay class="app-dialog-overlay" />
 			<DialogContent
 				v-bind="contentA11yAttrs"
-				:class="[
-					'app-drawer-content',
-					widthClass,
-					contentClass
-				]"
+				:class="['app-drawer-content', widthClass, contentClass]"
 			>
 				<div class="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
 					<div class="min-w-0">

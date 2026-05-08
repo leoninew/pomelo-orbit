@@ -1,103 +1,103 @@
 <script setup lang="ts">
-import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui'
-import type { Route } from '@/api/cd/route'
-import { routeApi } from '@/api/cd/route'
-import AppDialog from '@/components/AppDialog.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import { formatTime } from '@/utils/time'
+import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
+import type { Route } from '@/api/cd/route';
+import { routeApi } from '@/api/cd/route';
+import AppDialog from '@/components/AppDialog.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import { formatTime } from '@/utils/time';
 
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
 
-const routes = ref<Route[]>([])
-const searchText = ref('')
-const isCreateModalOpen = ref(false)
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
+const routes = ref<Route[]>([]);
+const searchText = ref('');
+const isCreateDialogOpen = ref(false);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 
 const filteredRoutes = computed(() => {
 	if (!searchText.value.trim()) {
-		return routes.value
+		return routes.value;
 	}
-	const search = searchText.value.toLowerCase()
+	const search = searchText.value.toLowerCase();
 	return routes.value.filter(
 		(route) =>
 			route.name.toLowerCase().includes(search) ||
 			route.domain.toLowerCase().includes(search) ||
 			route.target_url.toLowerCase().includes(search)
-	)
-})
+	);
+});
 
 const paginatedRoutes = computed(() => {
-	const start = (pagination.current - 1) * pagination.pageSize
-	const end = start + pagination.pageSize
-	return filteredRoutes.value.slice(start, end)
-})
+	const start = (pagination.current - 1) * pagination.pageSize;
+	const end = start + pagination.pageSize;
+	return filteredRoutes.value.slice(start, end);
+});
 
-const displayTotal = computed(() => filteredRoutes.value.length)
-const totalPages = computed(() => Math.ceil(displayTotal.value / pagination.pageSize))
+const displayTotal = computed(() => filteredRoutes.value.length);
+const totalPages = computed(() => Math.ceil(displayTotal.value / pagination.pageSize));
 
 const form = reactive({
 	name: '',
 	domain: '',
 	path_prefix: '/',
 	target_url: 'http://',
-	enabled: false
-})
-const errors = reactive({ name: '', domain: '', target_url: '' })
+	enabled: false,
+});
+const errors = reactive({ name: '', domain: '', target_url: '' });
 
 function validate() {
 	errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name)
 		? ''
-		: '必须以小写字母开头，只能包含小写字母、数字、点号、下划线和连字符'
-	errors.domain = form.domain.trim() ? '' : '请输入域名'
+		: '必须以小写字母开头，只能包含小写字母、数字、点号、下划线和连字符';
+	errors.domain = form.domain.trim() ? '' : '请输入域名';
 	errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
 		? ''
-		: '格式应为 http://host:port'
-	return !errors.name && !errors.domain && !errors.target_url
+		: '格式应为 http://host:port';
+	return !errors.name && !errors.domain && !errors.target_url;
 }
 
 async function fetchData() {
 	try {
 		await execute(async () => {
-			const pageSize = 100
-			const firstPage = await routeApi.list(1, pageSize)
-			const allRoutes = [...firstPage.items]
-			let page = 2
+			const pageSize = 100;
+			const firstPage = await routeApi.list(1, pageSize);
+			const allRoutes = [...firstPage.items];
+			let page = 2;
 
 			while (allRoutes.length < firstPage.total) {
-				const nextPage = await routeApi.list(page, pageSize)
+				const nextPage = await routeApi.list(page, pageSize);
 				if (nextPage.items.length === 0) {
-					break
+					break;
 				}
-				allRoutes.push(...nextPage.items)
-				page += 1
+				allRoutes.push(...nextPage.items);
+				page += 1;
 			}
 
-			routes.value = allRoutes
-			pagination.total = allRoutes.length
-		})
+			routes.value = allRoutes;
+			pagination.total = allRoutes.length;
+		});
 	} catch {
-		toast.error('获取路由失败')
+		toast.error('获取路由失败');
 	}
 }
 
 function handleSearch() {
-	pagination.current = 1
+	pagination.current = 1;
 }
 
 function goPage(page: number) {
-	pagination.current = page
+	pagination.current = page;
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
 }
 
 function openCreateModal() {
@@ -106,89 +106,83 @@ function openCreateModal() {
 		domain: '',
 		path_prefix: '/',
 		target_url: 'http://',
-		enabled: false
-	})
-	Object.assign(errors, { name: '', domain: '', target_url: '' })
-	isCreateModalOpen.value = true
+		enabled: false,
+	});
+	Object.assign(errors, { name: '', domain: '', target_url: '' });
+	isCreateDialogOpen.value = true;
 }
 
 async function handleSave() {
 	if (!validate()) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
-			await routeApi.create(form)
-			toast.success('添加成功')
-			isCreateModalOpen.value = false
-			fetchData()
-		})
+			await routeApi.create(form);
+			toast.success('添加成功');
+			isCreateDialogOpen.value = false;
+			fetchData();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '保存失败')
+		toast.error(error instanceof Error ? error.message : '保存失败');
 	}
 }
 
 async function handleEnable(id: string) {
 	try {
 		await executeOp(async () => {
-			await routeApi.enable(id)
-			toast.success('启用成功')
-			fetchData()
-		})
+			await routeApi.enable(id);
+			toast.success('启用成功');
+			fetchData();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '启用失败')
+		toast.error(error instanceof Error ? error.message : '启用失败');
 	}
 }
 
 async function handleDisable(id: string) {
 	try {
 		await executeOp(async () => {
-			await routeApi.disable(id)
-			toast.success('停用成功')
-			fetchData()
-		})
+			await routeApi.disable(id);
+			toast.success('停用成功');
+			fetchData();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '停用失败')
+		toast.error(error instanceof Error ? error.message : '停用失败');
 	}
 }
 
 async function handleSync() {
 	try {
 		await executeOp(async () => {
-			await routeApi.sync()
-			toast.success('同步成功')
-			fetchData()
-		})
+			await routeApi.sync();
+			toast.success('同步成功');
+			fetchData();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '同步失败')
+		toast.error(error instanceof Error ? error.message : '同步失败');
 	}
 }
 
-onMounted(fetchData)
+onMounted(fetchData);
 </script>
 
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="路由工具栏">
-			<SearchControl
-				v-model="searchText"
-				placeholder="搜索名称/域名/目标地址"
-				:loading="status === 'loading'"
-				@search="handleSearch"
-			/>
-			<div class="flex items-center gap-3">
-				<button
-					class="app-button-primary px-5"
-					@click="openCreateModal"
-				>
+		<ToolbarRoot class="overflow-x-auto" aria-label="路由工具栏">
+			<div class="flex min-w-max items-center gap-3">
+				<SearchControl
+					v-model="searchText"
+					class="shrink-0"
+					placeholder="搜索名称/域名/目标地址"
+					:loading="status === 'loading'"
+					@search="handleSearch"
+				/>
+				<button class="app-button-primary px-5" @click="openCreateModal">
 					<Plus class="size-4" />
 					添加路由
 				</button>
-				<button
-					class="app-button px-5"
-					:disabled="operating"
-					@click="handleSync"
-				>
+				<button class="app-button px-5" :disabled="operating" @click="handleSync">
 					<RefreshCw class="size-4" :class="{ 'animate-spin': operating }" />
 					同步全部
 				</button>
@@ -200,13 +194,23 @@ onMounted(fetchData)
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error }}</p>
+				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
 			<div v-else-if="paginatedRoutes.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1180px]">
+				<table class="app-table-list min-w-[1200px]">
+					<colgroup>
+						<col class="w-[14%]" />
+						<col class="w-[16%]" />
+						<col class="w-[10%]" />
+						<col class="w-[20%]" />
+						<col class="w-[8%]" />
+						<col class="w-[8%]" />
+						<col class="w-[14%]" />
+						<col class="w-[10%]" />
+					</colgroup>
 					<thead>
 						<tr>
 							<th>名称</th>
@@ -237,13 +241,17 @@ onMounted(fetchData)
 								</a>
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ route.path_prefix }}</td>
-							<td class="max-w-48 truncate text-foreground" :title="route.target_url">
+							<td class="max-w-0 truncate text-foreground" :title="route.target_url">
 								{{ route.target_url }}
 							</td>
 							<td>
 								<span
 									class="inline-block rounded border px-2 py-0.5 text-sm"
-									:class="route.enabled ? 'bg-green-50 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'"
+									:class="
+										route.enabled
+											? 'bg-green-50 text-green-700 border-green-200'
+											: 'bg-muted text-muted-foreground border-border'
+									"
 								>
 									{{ route.enabled ? '启用' : '停用' }}
 								</span>
@@ -251,7 +259,11 @@ onMounted(fetchData)
 							<td>
 								<span
 									class="inline-block rounded border px-2 py-0.5 text-sm"
-									:class="route.https_enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-muted text-muted-foreground border-border'"
+									:class="
+										route.https_enabled
+											? 'bg-blue-50 text-blue-700 border-blue-200'
+											: 'bg-muted text-muted-foreground border-border'
+									"
 								>
 									{{ route.https_enabled ? 'HTTPS' : 'HTTP' }}
 								</span>
@@ -259,9 +271,7 @@ onMounted(fetchData)
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
 							<td class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
-									<router-link :to="`/cd/routes/${route.id}`" class="app-link">
-										查看
-									</router-link>
+									<router-link :to="`/cd/routes/${route.id}`" class="app-link">查看</router-link>
 									<button
 										v-if="!route.enabled"
 										class="app-link-success"
@@ -269,11 +279,7 @@ onMounted(fetchData)
 									>
 										启用
 									</button>
-									<button
-										v-else
-										class="app-link-warning"
-										@click="handleDisable(route.id)"
-									>
+									<button v-else class="app-link-warning" @click="handleDisable(route.id)">
 										停用
 									</button>
 								</div>
@@ -295,7 +301,7 @@ onMounted(fetchData)
 	</div>
 
 	<AppDialog
-		v-model:open="isCreateModalOpen"
+		v-model:open="isCreateDialogOpen"
 		title="添加路由"
 		description="创建一个可同步到 Traefik 的 HTTP 路由。"
 	>
@@ -310,6 +316,7 @@ onMounted(fetchData)
 					placeholder="example-route"
 				/>
 				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+				<p v-else class="app-tip">小写字母开头，可含数字、点号、下划线和连字符</p>
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">域名</label>
@@ -324,12 +331,8 @@ onMounted(fetchData)
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">路径前缀</label>
-				<input
-					v-model="form.path_prefix"
-					type="text"
-					class="app-input"
-					placeholder="/"
-				/>
+				<input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
+				<p class="app-tip">匹配以该前缀开头的请求路径，默认 /</p>
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">目标地址</label>
@@ -343,12 +346,10 @@ onMounted(fetchData)
 				<p v-if="errors.target_url" class="app-field-error text-xs">
 					{{ errors.target_url }}
 				</p>
+				<p v-else class="app-tip">格式：http://host:port，例如 http://127.0.0.1:8080</p>
 			</div>
 			<label class="flex cursor-pointer items-center gap-3">
-				<SwitchRoot
-					v-model:checked="form.enabled"
-					class="app-switch-root"
-				>
+				<SwitchRoot v-model:checked="form.enabled" class="app-switch-root">
 					<SwitchThumb class="app-switch-thumb" />
 				</SwitchRoot>
 				<span class="text-sm text-foreground">启用</span>
@@ -356,14 +357,8 @@ onMounted(fetchData)
 		</div>
 
 		<template #footer>
-			<button class="app-button" @click="isCreateModalOpen = false">
-				取消
-			</button>
-			<button
-				class="app-button-primary"
-				:disabled="operating"
-				@click="handleSave"
-			>
+			<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleSave">
 				<span
 					v-if="operating"
 					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"

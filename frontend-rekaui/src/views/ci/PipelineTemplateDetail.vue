@@ -1,5 +1,4 @@
-﻿
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 // import { VueDraggable } from 'vue-draggable-plus';
@@ -337,8 +336,7 @@ async function confirmAddOrch() {
 		return;
 	}
 	const stage =
-		stageOptions.value.find((s) => s.id === addOrchForm.stageId) ??
-		stageCache[addOrchForm.stageId];
+		stageOptions.value.find((s) => s.id === addOrchForm.stageId) ?? stageCache[addOrchForm.stageId];
 	if (!stage) {
 		return;
 	}
@@ -561,20 +559,8 @@ onUnmounted(() => {
 				>
 					{{ saving ? '保存中...' : hasStageUpdates && !isDirty ? '更新' : '保存' }}
 				</button>
-				<button
-					v-if="template"
-					class="app-button h-9 px-3"
-					@click="openRunModal"
-				>
-					运行
-				</button>
-				<button
-					v-if="template"
-					class="app-button h-9 px-3"
-					@click="openEditInfoModal"
-				>
-					编辑
-				</button>
+				<button v-if="template" class="app-button h-9 px-3" @click="openRunModal">运行</button>
+				<button v-if="template" class="app-button h-9 px-3" @click="openEditInfoModal">编辑</button>
 				<button
 					v-if="template"
 					:disabled="duplicating"
@@ -583,221 +569,208 @@ onUnmounted(() => {
 				>
 					{{ duplicating ? '复制中...' : '复制' }}
 				</button>
-				<button
-					v-if="template"
-					class="app-button-danger h-9 px-3"
-					@click="openDeleteModal"
-				>
+				<button v-if="template" class="app-button-danger h-9 px-3" @click="openDeleteModal">
 					删除
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.push('/ci/template')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/template')">返回</button>
 			</div>
 		</div>
 
 		<!-- 加载状态 -->
 		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+			<div
+				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+			></div>
 		</div>
 
 		<!-- 内容 -->
 		<div v-else-if="template" class="flex flex-col gap-4">
-				<!-- 基本信息卡片 -->
-				<div class="app-surface">
-					<div class="app-section-header">
-						<h2 class="font-semibold text-foreground">基本信息</h2>
-					</div>
-					<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">模板名称</dt>
-							<dd class="text-foreground">{{ template.name }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
-							<dd class="text-foreground">v{{ template.version }}</dd>
-						</div>
-						<div class="flex gap-2 sm:col-span-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">描述</dt>
-							<dd class="text-foreground">{{ template.description || '无' }}</dd>
-						</div>
-					</dl>
+			<!-- 基本信息卡片 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
+				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">模板名称</dt>
+						<dd class="text-foreground">{{ template.name }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
+						<dd class="text-foreground">v{{ template.version }}</dd>
+					</div>
+					<div class="flex gap-2 sm:col-span-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">描述</dt>
+						<dd class="text-foreground">{{ template.description || '无' }}</dd>
+					</div>
+				</dl>
+			</div>
 
-				<!-- Stage 编排 -->
-				<div class="app-surface">
-					<div class="app-section-header flex items-center justify-between">
-						<div class="flex items-center gap-4">
-							<h2 class="font-semibold text-foreground">阶段编排</h2>
-							<div v-if="sortableOrch.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
-								<button
-									class="rounded px-3 py-1 text-xs font-medium transition-colors"
-									:class="viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
-									@click="viewMode = 'list'"
-								>
-									列表
-								</button>
-								<button
-									class="rounded px-3 py-1 text-xs font-medium transition-colors"
-									:class="viewMode === 'dag' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
-									@click="viewMode = 'dag'"
-								>
-									DAG
-								</button>
-							</div>
-						</div>
-						<button
-							class="app-button-primary h-9 px-3"
-							@click="openAddOrchModal"
+			<!-- Stage 编排 -->
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
+					<div class="flex items-center gap-4">
+						<h2 class="font-semibold text-foreground">阶段编排</h2>
+						<div
+							v-if="sortableOrch.length > 0"
+							class="flex gap-1 rounded-md border border-border bg-background p-1"
 						>
-							<Plus class="h-4 w-4" />
-							添加阶段
-						</button>
-					</div>
-					<!-- 列表视图 -->
-					<div v-if="viewMode === 'list'" class="overflow-x-auto">
-						<table class="app-table-detail min-w-[760px]">
-							<thead>
-								<tr>
-									<th>#</th>
-									<th>阶段</th>
-									<th>版本</th>
-									<th>依赖</th>
-									<th>制品</th>
-									<th>操作</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-if="sortableOrch.length === 0">
-									<td colspan="6" class="text-center text-muted-foreground">
-										暂无 Stage，点击上方按钮添加
-									</td>
-								</tr>
-								<tr
-									v-for="(orch, idx) in sortableOrch"
-									:key="orch.stage_id"
-								>
-									<td class="text-muted-foreground">{{ idx + 1 }}</td>
-									<td>
-										<div class="flex items-center gap-2">
-											<router-link
-												:to="`/ci/build-stage/${orch.stage_id}`"
-												class="app-link"
-											>
-												{{ stageCache[orch.stage_id]?.name ?? orch.stage_name }}
-											</router-link>
-											<span
-												v-if="stageCache[orch.stage_id] && stageCache[orch.stage_id].version > orch.stage_version"
-												class="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
-											>
-												有更新
-											</span>
-										</div>
-									</td>
-									<td class="text-foreground">v{{ orch.stage_version }}</td>
-									<td>
-										<div v-if="orch.depends_on.length > 0" class="flex flex-wrap gap-1">
-											<span
-												v-for="depId in orch.depends_on"
-												:key="depId"
-												class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-											>
-												{{ stageCache[depId]?.name ?? depId }}
-											</span>
-										</div>
-										<span v-else class="text-muted-foreground">—</span>
-									</td>
-									<td class="text-foreground">
-										{{ stageCache[orch.stage_id]?.artifacts?.length ?? '—' }}
-									</td>
-									<td>
-										<div class="flex items-center gap-3">
-											<button
-												class="app-link"
-												@click="openEditOrchModal(idx)"
-											>
-												编辑
-											</button>
-											<button
-												class="app-link-danger"
-												@click="confirmRemoveOrch(idx)"
-											>
-												移除
-											</button>
-										</div>
-									</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-					
-					<!-- DAG 视图 -->
-					<div v-else-if="dagStages.length > 0" class="p-6">
-						<div class="h-[500px]">
-							<StageDAGView :stages="dagStages" />
+							<button
+								class="rounded px-3 py-1 text-xs font-medium transition-colors"
+								:class="
+									viewMode === 'list'
+										? 'bg-primary text-primary-foreground'
+										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+								"
+								@click="viewMode = 'list'"
+							>
+								列表
+							</button>
+							<button
+								class="rounded px-3 py-1 text-xs font-medium transition-colors"
+								:class="
+									viewMode === 'dag'
+										? 'bg-primary text-primary-foreground'
+										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+								"
+								@click="viewMode = 'dag'"
+							>
+								DAG
+							</button>
 						</div>
 					</div>
+					<button class="app-button-primary h-9 px-3" @click="openAddOrchModal">
+						<Plus class="h-4 w-4" />
+						添加阶段
+					</button>
 				</div>
-
-				<!-- 变量声明 -->
-				<div class="app-surface">
-					<div class="app-section-header flex items-center justify-between">
-						<h2 class="font-semibold text-foreground">变量声明</h2>
-						<button
-							class="app-button-primary h-9 px-3"
-							@click="openAddVarModal"
-						>
-							<Plus class="h-4 w-4" />
-							添加变量
-						</button>
-					</div>
-					<VariableDeclarationsTable
-						:declarations="declarations"
-						:readonly="false"
-						@edit="openEditVarModal"
-						@delete="confirmDeleteVariable"
-					/>
-				</div>
-
-				<!-- 制品声明 -->
-				<div class="app-surface">
-					<div class="app-section-header">
-						<h2 class="font-semibold text-foreground">制品声明</h2>
-					</div>
-					<div v-if="artifactDeclarations.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
-						暂无制品
-					</div>
-					<div v-else class="overflow-x-auto">
-						<table class="app-table-detail min-w-[720px]">
-							<thead>
-								<tr>
-									<th>Stage</th>
-									<th>类型</th>
-									<th>名称</th>
-									<th>路径/镜像</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr
-									v-for="(artifact, idx) in artifactDeclarations"
-									:key="idx"
-								>
-									<td class="text-foreground">{{ artifact.stageName }}</td>
-									<td>
-										<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-											{{ artifact.type }}
+				<!-- 列表视图 -->
+				<div v-if="viewMode === 'list'" class="overflow-x-auto">
+					<table class="app-table-detail min-w-[760px]">
+						<thead>
+							<tr>
+								<th>#</th>
+								<th>阶段</th>
+								<th>版本</th>
+								<th>依赖</th>
+								<th>制品</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="sortableOrch.length === 0">
+								<td colspan="6" class="text-center text-muted-foreground">
+									暂无 Stage，点击上方按钮添加
+								</td>
+							</tr>
+							<tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_id">
+								<td class="text-muted-foreground">{{ idx + 1 }}</td>
+								<td>
+									<div class="flex items-center gap-2">
+										<router-link :to="`/ci/build-stage/${orch.stage_id}`" class="app-link">
+											{{ stageCache[orch.stage_id]?.name ?? orch.stage_name }}
+										</router-link>
+										<span
+											v-if="
+												stageCache[orch.stage_id] &&
+												stageCache[orch.stage_id].version > orch.stage_version
+											"
+											class="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+										>
+											有更新
 										</span>
-									</td>
-									<td class="text-foreground">{{ artifact.name }}</td>
-									<td class="text-muted-foreground">{{ artifact.path || '—' }}</td>
-								</tr>
-							</tbody>
-						</table>
+									</div>
+								</td>
+								<td class="text-foreground">v{{ orch.stage_version }}</td>
+								<td>
+									<div v-if="orch.depends_on.length > 0" class="flex flex-wrap gap-1">
+										<span
+											v-for="depId in orch.depends_on"
+											:key="depId"
+											class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+										>
+											{{ stageCache[depId]?.name ?? depId }}
+										</span>
+									</div>
+									<span v-else class="text-muted-foreground">—</span>
+								</td>
+								<td class="text-foreground">
+									{{ stageCache[orch.stage_id]?.artifacts?.length ?? '—' }}
+								</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="app-link" @click="openEditOrchModal(idx)">编辑</button>
+										<button class="app-link-danger" @click="confirmRemoveOrch(idx)">移除</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+
+				<!-- DAG 视图 -->
+				<div v-else-if="dagStages.length > 0" class="p-6">
+					<div class="h-[500px]">
+						<StageDAGView :stages="dagStages" />
 					</div>
 				</div>
+			</div>
+
+			<!-- 变量声明 -->
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
+					<h2 class="font-semibold text-foreground">变量声明</h2>
+					<button class="app-button-primary h-9 px-3" @click="openAddVarModal">
+						<Plus class="h-4 w-4" />
+						添加变量
+					</button>
+				</div>
+				<VariableDeclarationsTable
+					:declarations="declarations"
+					:readonly="false"
+					@edit="openEditVarModal"
+					@delete="confirmDeleteVariable"
+				/>
+			</div>
+
+			<!-- 制品声明 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">制品声明</h2>
+				</div>
+				<div
+					v-if="artifactDeclarations.length === 0"
+					class="px-5 py-12 text-center text-sm text-muted-foreground"
+				>
+					暂无制品
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="app-table-detail min-w-[720px]">
+						<thead>
+							<tr>
+								<th>Stage</th>
+								<th>类型</th>
+								<th>名称</th>
+								<th>路径/镜像</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
+								<td class="text-foreground">{{ artifact.stageName }}</td>
+								<td>
+									<span
+										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+									>
+										{{ artifact.type }}
+									</span>
+								</td>
+								<td class="text-foreground">{{ artifact.name }}</td>
+								<td class="text-muted-foreground">{{ artifact.path || '—' }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
 		</div>
 
 		<AppDialog
@@ -807,29 +780,15 @@ onUnmounted(() => {
 		>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">模板名称</label>
-				<input
-					v-model="editForm.name"
-					type="text"
-					class="app-input"
-				/>
+				<input v-model="editForm.name" type="text" class="app-input" />
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">描述</label>
-				<textarea
-					v-model="editForm.description"
-					rows="3"
-					class="app-textarea"
-				></textarea>
+				<textarea v-model="editForm.description" rows="3" class="app-textarea"></textarea>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="cancelEditInfo">
-					取消
-				</button>
-				<button
-					:disabled="saving"
-					class="app-button-primary"
-					@click="handleEditInfoOk"
-				>
+				<button class="app-button" @click="cancelEditInfo">取消</button>
+				<button :disabled="saving" class="app-button-primary" @click="handleEditInfoOk">
 					{{ saving ? '保存中...' : '保存' }}
 				</button>
 			</template>
@@ -842,6 +801,7 @@ onUnmounted(() => {
 					:model-value="addOrchForm.stageId"
 					:options="stageSelectOptions"
 					:portal="false"
+					:open-on-focus="false"
 					placeholder="搜索 Stage..."
 					empty-text="未找到 Stage"
 					@update:model-value="handleStageSelection"
@@ -851,20 +811,19 @@ onUnmounted(() => {
 				<label class="app-field-label block">依赖 Stage（可选）</label>
 				<div class="space-y-2">
 					<label v-for="orch in sortableOrch" :key="orch.stage_id" class="flex items-center gap-2">
-						<input v-model="addOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="app-checkbox" />
+						<input
+							v-model="addOrchForm.dependsOn"
+							:value="orch.stage_id"
+							type="checkbox"
+							class="app-checkbox"
+						/>
 						<span class="text-sm text-foreground">{{ orch.stage_name }}</span>
 					</label>
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isAddOrchDialogOpen = false">
-					取消
-				</button>
-				<button
-					:disabled="!addOrchForm.stageId"
-					class="app-button-primary"
-					@click="confirmAddOrch"
-				>
+				<button class="app-button" @click="isAddOrchDialogOpen = false">取消</button>
+				<button :disabled="!addOrchForm.stageId" class="app-button-primary" @click="confirmAddOrch">
 					添加
 				</button>
 			</template>
@@ -874,19 +833,24 @@ onUnmounted(() => {
 			<div class="space-y-1.5">
 				<label class="app-field-label block">依赖 Stage</label>
 				<div class="space-y-2">
-					<label v-for="orch in editableOrchOptions" :key="orch.stage_id" class="flex items-center gap-2">
-						<input v-model="editOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="app-checkbox" />
+					<label
+						v-for="orch in editableOrchOptions"
+						:key="orch.stage_id"
+						class="flex items-center gap-2"
+					>
+						<input
+							v-model="editOrchForm.dependsOn"
+							:value="orch.stage_id"
+							type="checkbox"
+							class="app-checkbox"
+						/>
 						<span class="text-sm text-foreground">{{ orch.stage_name }}</span>
 					</label>
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditOrchDialogOpen = false">
-					取消
-				</button>
-				<button class="app-button-primary" @click="confirmEditOrch">
-					保存
-				</button>
+				<button class="app-button" @click="isEditOrchDialogOpen = false">取消</button>
+				<button class="app-button-primary" @click="confirmEditOrch">保存</button>
 			</template>
 		</AppDialog>
 
@@ -901,6 +865,7 @@ onUnmounted(() => {
 					:model-value="runForm.repositoryId"
 					:options="repoSelectOptions"
 					:portal="false"
+					:open-on-focus="false"
 					placeholder="搜索项目..."
 					empty-text="未找到项目"
 					@update:model-value="handleRepoSelection"
@@ -922,9 +887,7 @@ onUnmounted(() => {
 				/>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isRunDialogOpen = false">
-					取消
-				</button>
+				<button class="app-button" @click="isRunDialogOpen = false">取消</button>
 				<button
 					:disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id || running"
 					class="app-button-primary"
@@ -953,12 +916,8 @@ onUnmounted(() => {
 				<input v-model="varForm.description" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isAddVarDialogOpen = false">
-					取消
-				</button>
-				<button class="app-button-primary" @click="handleAddVarOk">
-					添加
-				</button>
+				<button class="app-button" @click="isAddVarDialogOpen = false">取消</button>
+				<button class="app-button-primary" @click="handleAddVarOk">添加</button>
 			</template>
 		</AppDialog>
 
@@ -980,49 +939,49 @@ onUnmounted(() => {
 				<input v-model="varForm.description" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditVarDialogOpen = false">
-					取消
-				</button>
-				<button class="app-button-primary" @click="handleEditVarOk">
-					保存
-				</button>
+				<button class="app-button" @click="isEditVarDialogOpen = false">取消</button>
+				<button class="app-button-primary" @click="handleEditVarOk">保存</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteDialogOpen" title="确认删除" description="确定要删除此模板吗？此操作不可恢复。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+		<AppDialog
+			v-model:open="isDeleteDialogOpen"
+			title="确认删除"
+			description="确定要删除此模板吗？此操作不可恢复。"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">
-					取消
-				</button>
-				<button
-					:disabled="deleting"
-					class="app-button-destructive"
-					@click="handleDeleteOk"
-				>
+				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button :disabled="deleting" class="app-button-destructive" @click="handleDeleteOk">
 					{{ deleting ? '删除中...' : '确认删除' }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteOrchDialogOpen" title="确认移除" description="确定要移除此 Stage 吗？" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+		<AppDialog
+			v-model:open="isDeleteOrchDialogOpen"
+			title="确认移除"
+			description="确定要移除此 Stage 吗？"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteOrchDialogOpen = false">
-					取消
-				</button>
-				<button class="app-button-destructive" @click="removeOrch">
-					确认移除
-				</button>
+				<button class="app-button" @click="isDeleteOrchDialogOpen = false">取消</button>
+				<button class="app-button-destructive" @click="removeOrch">确认移除</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteVarDialogOpen" title="确认删除" :description="'确定要删除变量 ' + varToDelete + ' 吗？'" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+		<AppDialog
+			v-model:open="isDeleteVarDialogOpen"
+			title="确认删除"
+			:description="'确定要删除变量 ' + varToDelete + ' 吗？'"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteVarDialogOpen = false">
-					取消
-				</button>
-				<button class="app-button-destructive" @click="deleteVariable">
-					确认删除
-				</button>
+				<button class="app-button" @click="isDeleteVarDialogOpen = false">取消</button>
+				<button class="app-button-destructive" @click="deleteVariable">确认删除</button>
 			</template>
 		</AppDialog>
 	</div>

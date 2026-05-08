@@ -1,25 +1,28 @@
 <script setup lang="ts">
-import SelectControl from '@/components/SelectControl.vue'
-import type { ApplicationFormState } from '@/types/cd/application'
+import SelectControl from '@/components/SelectControl.vue';
+import type { ApplicationFormState } from '@/types/cd/application';
 
 const props = defineProps<{
 	form: ApplicationFormState
 	errors: { name: string; code: string }
-}>()
+}>();
 
 const emit = defineEmits<{
 	'update:form': [value: ApplicationFormState]
-}>()
+}>();
 
-function updateField<K extends keyof ApplicationFormState>(field: K, value: ApplicationFormState[K]) {
-	emit('update:form', { ...props.form, [field]: value })
+function updateField<K extends keyof ApplicationFormState>(
+	field: K,
+	value: ApplicationFormState[K]
+) {
+	emit('update:form', { ...props.form, [field]: value });
 }
 
 const imagePullPolicyOptions = [
 	{ value: 'missing', label: '缺失时拉取 (missing)' },
 	{ value: 'always', label: '总是拉取 (always)' },
-	{ value: 'never', label: '从不拉取 (never)' }
-]
+	{ value: 'never', label: '从不拉取 (never)' },
+];
 </script>
 
 <template>
@@ -56,9 +59,7 @@ const imagePullPolicyOptions = [
 				@input="updateField('code', ($event.target as HTMLInputElement).value)"
 			/>
 			<p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
-			<p class="mt-1 text-xs text-muted-foreground">
-				应用代码用于生成工作目录，创建后不可修改
-			</p>
+			<p class="mt-1 text-xs text-muted-foreground">应用代码用于生成工作目录，创建后不可修改</p>
 		</div>
 
 		<!-- 镜像拉取策略 -->
@@ -81,12 +82,8 @@ const imagePullPolicyOptions = [
 				class="app-checkbox"
 				@change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
 			/>
-			<label for="route_managed" class="text-sm font-medium text-foreground">
-				启用路由管理
-			</label>
+			<label for="route_managed" class="text-sm font-medium text-foreground">启用路由管理</label>
 		</div>
-		<p class="text-xs text-muted-foreground">
-			启用后可为应用配置 HTTP 路由，自动生成 Traefik 配置
-		</p>
+		<p class="text-xs text-muted-foreground">启用后可为应用配置 HTTP 路由，自动生成 Traefik 配置</p>
 	</div>
 </template>

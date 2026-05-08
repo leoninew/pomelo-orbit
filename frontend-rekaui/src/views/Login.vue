@@ -47,60 +47,65 @@ async function handleLogin() {
 </script>
 
 <template>
-	<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+	<div
+		class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4"
+	>
 		<div class="w-full max-w-md">
-			<div class="bg-card rounded-lg border border-border shadow-lg p-8">
+			<div class="app-surface rounded-lg p-8">
 				<div class="text-center mb-8">
 					<h1 class="text-3xl font-bold text-foreground mb-2">Pomelo Orbit</h1>
 					<p class="text-muted-foreground">持续集成与持续部署平台</p>
 				</div>
 
 				<form class="space-y-4" @submit.prevent="handleLogin">
-					<div class="space-y-2">
-						<label for="username" class="text-sm font-medium text-foreground">用户名</label>
+					<div class="space-y-1.5">
+						<label for="username" class="app-field-label block">用户名</label>
 						<input
 							id="username"
 							v-model="form.username"
 							type="text"
-							class="w-full px-3 py-2 bg-background border rounded-md text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-							:class="errors.username ? 'border-destructive' : 'border-input'"
+							class="app-input"
+							:class="errors.username ? 'app-input-error' : ''"
 							placeholder="请输入用户名"
 							@input="errors.username = ''"
 						/>
-						<p v-if="errors.username" class="text-xs text-destructive">{{ errors.username }}</p>
+						<p v-if="errors.username" class="app-field-error text-xs">{{ errors.username }}</p>
 					</div>
 
-					<div class="space-y-2">
-						<label for="password" class="text-sm font-medium text-foreground">密码</label>
+					<div class="space-y-1.5">
+						<label for="password" class="app-field-label block">密码</label>
 						<div class="relative">
 							<input
 								id="password"
 								v-model="form.password"
 								:type="showPassword ? 'text' : 'password'"
-								class="w-full px-3 py-2 pr-10 bg-background border rounded-md text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="errors.password ? 'border-destructive' : 'border-input'"
+								class="app-input pr-10"
+								:class="errors.password ? 'app-input-error' : ''"
 								placeholder="请输入密码"
 								@input="errors.password = ''"
 								@keydown.enter="handleLogin"
 							/>
 							<button
 								type="button"
-								class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+								class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
 								@click="showPassword = !showPassword"
 							>
 								<Eye v-if="!showPassword" class="size-4" />
 								<EyeOff v-else class="size-4" />
 							</button>
 						</div>
-						<p v-if="errors.password" class="text-xs text-destructive">{{ errors.password }}</p>
+						<p v-if="errors.password" class="app-field-error text-xs">{{ errors.password }}</p>
 					</div>
 
 					<button
 						type="submit"
-						class="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+						class="app-button-primary flex w-full items-center justify-center gap-2"
 						:disabled="loading"
 					>
-						<span v-if="loading" class="inline-block size-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+						<span
+							v-if="loading"
+							class="inline-block size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
+						/>
 						{{ loading ? '登录中...' : '登录' }}
 					</button>
 				</form>

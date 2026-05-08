@@ -1,49 +1,49 @@
 <script setup lang="ts">
-import { Plus, Upload } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { credentialApi } from '@/api/ci'
-import AppDialog from '@/components/AppDialog.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import SelectControl from '@/components/SelectControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { Credential, CredentialImportReq } from '@/types/ci/credential'
-import { credentialTypeLabels } from '@/types/ci/credential'
-import { formatTime } from '@/utils/time'
-import { ToolbarRoot } from 'reka-ui'
+import { Plus, Upload } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { credentialApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import SelectControl from '@/components/SelectControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { Credential, CredentialImportReq } from '@/types/ci/credential';
+import { credentialTypeLabels } from '@/types/ci/credential';
+import { formatTime } from '@/utils/time';
+import { ToolbarRoot } from 'reka-ui';
 
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
 
-const credentials = ref<Credential[]>([])
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
-const searchText = ref('')
+const credentials = ref<Credential[]>([]);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
 
-const fileInput = ref<HTMLInputElement>()
-const showCredentialDialog = ref(false)
-const showDeleteDialog = ref(false)
-const showImportDialog = ref(false)
-const isEditing = ref(false)
-const currentId = ref('')
-const pendingDeleteId = ref('')
+const fileInput = ref<HTMLInputElement>();
+const showCredentialDialog = ref(false);
+const showDeleteDialog = ref(false);
+const showImportDialog = ref(false);
+const isEditing = ref(false);
+const currentId = ref('');
+const pendingDeleteId = ref('');
 
-const form = reactive({ name: '', type: 'git_ssh' as string, data: '' })
+const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
 const credentialTypeOptions = [
 	{ value: 'git_ssh', label: 'Git SSH 密钥' },
 	{ value: 'git_token', label: 'Git Token' },
 	{ value: 'gitee_token', label: 'Gitee Token' },
-]
-const errors = reactive({ name: '', data: '' })
-const importForm = reactive({ name: '', type: 'git_ssh' as string, data: '' })
-const importErrors = reactive({ name: '', data: '' })
+];
+const errors = reactive({ name: '', data: '' });
+const importForm = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+const importErrors = reactive({ name: '', data: '' });
 
 function validate() {
-	errors.name = form.name.trim() ? '' : '请输入凭据名称'
-	errors.data = !isEditing.value && !form.data.trim() ? '请输入凭据内容' : ''
-	return !errors.name && !errors.data
+	errors.name = form.name.trim() ? '' : '请输入凭据名称';
+	errors.data = !isEditing.value && !form.data.trim() ? '请输入凭据内容' : '';
+	return !errors.name && !errors.data;
 }
 
 async function fetchCredentials() {
@@ -52,156 +52,156 @@ async function fetchCredentials() {
 			const res = await credentialApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				search: searchText.value || undefined
-			})
-			credentials.value = res.items
-			pagination.total = res.total
-		})
+				search: searchText.value || undefined,
+			});
+			credentials.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取凭据列表失败')
+		toast.error('获取凭据列表失败');
 	}
 }
 
 function handleSearch() {
-	pagination.current = 1
-	fetchCredentials()
+	pagination.current = 1;
+	fetchCredentials();
 }
 
 function goPage(p: number) {
-	pagination.current = p
-	fetchCredentials()
+	pagination.current = p;
+	fetchCredentials();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchCredentials()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchCredentials();
 }
 
 function openCreateModal() {
-	isEditing.value = false
-	currentId.value = ''
-	Object.assign(form, { name: '', type: 'git_ssh', data: '' })
-	Object.assign(errors, { name: '', data: '' })
-	showCredentialDialog.value = true
+	isEditing.value = false;
+	currentId.value = '';
+	Object.assign(form, { name: '', type: 'git_ssh', data: '' });
+	Object.assign(errors, { name: '', data: '' });
+	showCredentialDialog.value = true;
 }
 
 function openEditModal(record: Credential) {
-	isEditing.value = true
-	currentId.value = record.id
-	Object.assign(form, { name: record.name, type: record.type, data: '' })
-	Object.assign(errors, { name: '', data: '' })
-	showCredentialDialog.value = true
+	isEditing.value = true;
+	currentId.value = record.id;
+	Object.assign(form, { name: record.name, type: record.type, data: '' });
+	Object.assign(errors, { name: '', data: '' });
+	showCredentialDialog.value = true;
 }
 
 async function handleModalOk() {
 	if (!validate()) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
 			if (isEditing.value) {
 				await credentialApi.update(currentId.value, {
 					name: form.name,
-					...(form.data ? { data: form.data } : {})
-				})
-				toast.success('更新成功')
+					...(form.data ? { data: form.data } : {}),
+				});
+				toast.success('更新成功');
 			} else {
 				await credentialApi.create({
 					name: form.name,
 					type: form.type,
-					data: form.data
-				})
-				toast.success('创建成功')
+					data: form.data,
+				});
+				toast.success('创建成功');
 			}
-			showCredentialDialog.value = false
-			fetchCredentials()
-		})
+			showCredentialDialog.value = false;
+			fetchCredentials();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '操作失败')
+		toast.error(error instanceof Error ? error.message : '操作失败');
 	}
 }
 
 function confirmDelete(id: string) {
-	pendingDeleteId.value = id
-	showDeleteDialog.value = true
+	pendingDeleteId.value = id;
+	showDeleteDialog.value = true;
 }
 
 async function handleDelete() {
 	try {
 		await executeOp(async () => {
-			await credentialApi.delete(pendingDeleteId.value)
-			toast.success('删除成功')
-			showDeleteDialog.value = false
-			fetchCredentials()
-		})
+			await credentialApi.delete(pendingDeleteId.value);
+			toast.success('删除成功');
+			showDeleteDialog.value = false;
+			fetchCredentials();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败')
+		toast.error(error instanceof Error ? error.message : '删除失败');
 	}
 }
 
 function getDataPlaceholder(type: string) {
 	if (type === 'git_ssh') {
-		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...'
+		return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
 	}
 	if (type === 'git_token') {
-		return 'ghp_xxxxxxxxxxxxxxxxxxxx'
+		return 'ghp_xxxxxxxxxxxxxxxxxxxx';
 	}
 	if (type === 'gitee_token') {
-		return 'your_username:your_gitee_token'
+		return 'your_username:your_gitee_token';
 	}
-	return 'registry_token_here'
+	return 'registry_token_here';
 }
 
 function triggerImport() {
-	fileInput.value?.click()
+	fileInput.value?.click();
 }
 
 async function handleFileImport(event: Event) {
-	const target = event.target as HTMLInputElement
-	const file = target.files?.[0]
+	const target = event.target as HTMLInputElement;
+	const file = target.files?.[0];
 	if (!file) {
-		return
+		return;
 	}
 	try {
-		const data = JSON.parse(await file.text()) as CredentialImportReq
+		const data = JSON.parse(await file.text()) as CredentialImportReq;
 		Object.assign(importForm, {
 			name: data.name || '',
 			type: data.type || 'git_ssh',
-			data: data.data || ''
-		})
-		Object.assign(importErrors, { name: '', data: '' })
-		showImportDialog.value = true
+			data: data.data || '',
+		});
+		Object.assign(importErrors, { name: '', data: '' });
+		showImportDialog.value = true;
 	} catch {
-		toast.error('解析文件失败')
+		toast.error('解析文件失败');
 	} finally {
-		target.value = ''
+		target.value = '';
 	}
 }
 
 async function handleImportOk() {
-	importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称'
-	importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容'
+	importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称';
+	importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容';
 	if (importErrors.name || importErrors.data) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
 			await credentialApi.importCredential({
 				name: importForm.name,
 				type: importForm.type as CredentialImportReq['type'],
-				data: importForm.data
-			})
-			toast.success('导入成功')
-			showImportDialog.value = false
-			fetchCredentials()
-		})
+				data: importForm.data,
+			});
+			toast.success('导入成功');
+			showImportDialog.value = false;
+			fetchCredentials();
+		});
 	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '导入失败')
+		toast.error(err instanceof Error ? err.message : '导入失败');
 	}
 }
 
-onMounted(fetchCredentials)
+onMounted(fetchCredentials);
 </script>
 
 <template>
@@ -214,17 +214,11 @@ onMounted(fetchCredentials)
 				@search="handleSearch"
 			/>
 			<div class="flex items-center gap-3">
-				<button
-					class="app-button px-5"
-					@click="triggerImport"
-				>
+				<button class="app-button px-5" @click="triggerImport">
 					<Upload class="size-4" />
 					导入
 				</button>
-				<button
-					class="app-button-primary px-5"
-					@click="openCreateModal"
-				>
+				<button class="app-button-primary px-5" @click="openCreateModal">
 					<Plus class="size-4" />
 					新建凭据
 				</button>
@@ -259,18 +253,16 @@ onMounted(fetchCredentials)
 								</router-link>
 							</td>
 							<td>
-								<span class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-sm text-blue-700">
+								<span
+									class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-sm text-blue-700"
+								>
 									{{ credentialTypeLabels[cred.type] || cred.type }}
 								</span>
 							</td>
 							<td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
 							<td class="text-right">
-								<button class="app-link mr-3" @click="openEditModal(cred)">
-									编辑
-								</button>
-								<button class="app-link-danger" @click="confirmDelete(cred.id)">
-									删除
-								</button>
+								<button class="app-link mr-3" @click="openEditModal(cred)">编辑</button>
+								<button class="app-link-danger" @click="confirmDelete(cred.id)">删除</button>
 							</td>
 						</tr>
 					</tbody>
@@ -293,7 +285,9 @@ onMounted(fetchCredentials)
 	<AppDialog
 		v-model:open="showCredentialDialog"
 		:title="isEditing ? '编辑凭据' : '新建凭据'"
-		:description="isEditing ? '更新凭据名称，凭据内容留空时不会修改。' : '创建可用于 Git 或镜像仓库访问的凭据。'"
+		:description="
+			isEditing ? '更新凭据名称，凭据内容留空时不会修改。' : '创建可用于 Git 或镜像仓库访问的凭据。'
+		"
 		width-class="w-[min(600px,calc(100vw-32px))]"
 	>
 		<div class="space-y-4">
@@ -332,14 +326,8 @@ onMounted(fetchCredentials)
 			</div>
 		</div>
 		<template #footer>
-			<button class="app-button" @click="showCredentialDialog = false">
-				取消
-			</button>
-			<button
-				class="app-button-primary"
-				:disabled="operating"
-				@click="handleModalOk"
-			>
+			<button class="app-button" @click="showCredentialDialog = false">取消</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">
 				<span
 					v-if="operating"
 					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
@@ -357,14 +345,8 @@ onMounted(fetchCredentials)
 		body-class="hidden"
 	>
 		<template #footer>
-			<button class="app-button" @click="showDeleteDialog = false">
-				取消
-			</button>
-			<button
-				class="app-button-destructive"
-				:disabled="operating"
-				@click="handleDelete"
-			>
+			<button class="app-button" @click="showDeleteDialog = false">取消</button>
+			<button class="app-button-destructive" :disabled="operating" @click="handleDelete">
 				删除
 			</button>
 		</template>
@@ -408,14 +390,8 @@ onMounted(fetchCredentials)
 			</div>
 		</div>
 		<template #footer>
-			<button class="app-button" @click="showImportDialog = false">
-				取消
-			</button>
-			<button
-				class="app-button-primary"
-				:disabled="operating"
-				@click="handleImportOk"
-			>
+			<button class="app-button" @click="showImportDialog = false">取消</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleImportOk">
 				<span
 					v-if="operating"
 					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"

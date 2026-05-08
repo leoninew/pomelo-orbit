@@ -32,10 +32,7 @@ function handleClick() {
 <template>
 	<div
 		class="min-w-[160px] cursor-pointer rounded-lg border-2 bg-card p-3 shadow-sm transition-all hover:shadow-md"
-		:class="[
-			data.selected ? 'border-primary' : 'border-border',
-			isRunning ? 'animate-pulse' : ''
-		]"
+		:class="[data.selected ? 'border-primary' : 'border-border', isRunning ? 'animate-pulse' : '']"
 		@click="handleClick"
 	>
 		<div class="space-y-2">

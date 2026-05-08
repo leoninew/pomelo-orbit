@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { deploymentApi } from '@/api/cd/deployments'
-import AppDialog from '@/components/AppDialog.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { Deployment } from '@/types/cd/deployment'
-import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status'
-import { formatTime } from '@/utils/time'
-import { ToolbarRoot } from 'reka-ui'
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { deploymentApi } from '@/api/cd/deployments';
+import AppDialog from '@/components/AppDialog.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { Deployment } from '@/types/cd/deployment';
+import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
+import { formatTime } from '@/utils/time';
+import { ToolbarRoot } from 'reka-ui';
 
-const router = useRouter()
-const route = useRoute()
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
+const router = useRouter();
+const route = useRoute();
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
 
-const deployments = ref<Deployment[]>([])
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
-const searchText = ref('')
-const applicationId = ref<string | undefined>(route.query.application_id as string | undefined)
-const isCancelDialogOpen = ref(false)
-const deploymentToCancel = ref<Deployment | null>(null)
+const deployments = ref<Deployment[]>([]);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
+const applicationId = ref<string | undefined>(route.query.application_id as string | undefined);
+const isCancelDialogOpen = ref(false);
+const deploymentToCancel = ref<Deployment | null>(null);
 
 function operationTypeLabel(type: string) {
 	const map: Record<string, string> = {
 		deploy: '部署',
 		stop: '停止',
-		restart: '重启'
-	}
-	return map[type] ?? type
+		restart: '重启',
+	};
+	return map[type] ?? type;
 }
 
 function triggerTypeLabel(type: string) {
 	const map: Record<string, string> = {
-		manual: '手动'
-	}
-	return map[type] ?? type
+		manual: '手动',
+	};
+	return map[type] ?? type;
 }
 
 async function fetchDeployments() {
@@ -49,60 +49,60 @@ async function fetchDeployments() {
 				page: pagination.current,
 				per_page: pagination.pageSize,
 				search: searchText.value || undefined,
-				application_id: applicationId.value
-			})
-			deployments.value = res.items
-			pagination.total = res.total
-		})
+				application_id: applicationId.value,
+			});
+			deployments.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取部署记录失败')
+		toast.error('获取部署记录失败');
 	}
 }
 
 function handleSearch() {
-	pagination.current = 1
-	fetchDeployments()
+	pagination.current = 1;
+	fetchDeployments();
 }
 
 function goPage(p: number) {
-	pagination.current = p
-	fetchDeployments()
+	pagination.current = p;
+	fetchDeployments();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchDeployments()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchDeployments();
 }
 
 function isCancelable(deployment: Deployment) {
-	return ['running', 'waiting_to_run'].includes(deployment.status)
+	return ['running', 'waiting_to_run'].includes(deployment.status);
 }
 
 function openCancelDialog(deployment: Deployment) {
-	deploymentToCancel.value = deployment
-	isCancelDialogOpen.value = true
+	deploymentToCancel.value = deployment;
+	isCancelDialogOpen.value = true;
 }
 
 async function handleCancelOk() {
 	if (!deploymentToCancel.value) {
-		return
+		return;
 	}
-	const target = deploymentToCancel.value
+	const target = deploymentToCancel.value;
 	try {
 		await executeOp(async () => {
-			await deploymentApi.cancel(target.id)
-			toast.success('已取消部署')
-			isCancelDialogOpen.value = false
-			deploymentToCancel.value = null
-			await fetchDeployments()
-		})
+			await deploymentApi.cancel(target.id);
+			toast.success('已取消部署');
+			isCancelDialogOpen.value = false;
+			deploymentToCancel.value = null;
+			await fetchDeployments();
+		});
 	} catch {
-		toast.error('取消失败')
+		toast.error('取消失败');
 	}
 }
 
-onMounted(fetchDeployments)
+onMounted(fetchDeployments);
 </script>
 
 <template>
@@ -159,7 +159,10 @@ onMounted(fetchDeployments)
 							<td class="text-foreground">{{ operationTypeLabel(deployment.operation_type) }}</td>
 							<td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
 							<td class="text-foreground">{{ deployment.environment || '—' }}</td>
-							<td class="max-w-48 truncate text-foreground" :title="deployment.env_file || undefined">
+							<td
+								class="max-w-48 truncate text-foreground"
+								:title="deployment.env_file || undefined"
+							>
 								{{ deployment.env_file || '—' }}
 							</td>
 							<td>
@@ -170,17 +173,17 @@ onMounted(fetchDeployments)
 									{{ statusLabel(deployment.status) }}
 								</span>
 							</td>
-							<td class="max-w-56 truncate text-destructive" :title="deployment.error_message || undefined">
+							<td
+								class="max-w-56 truncate text-destructive"
+								:title="deployment.error_message || undefined"
+							>
 								{{ deployment.error_message || '—' }}
 							</td>
 							<td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
 							<td class="text-foreground">{{ formatDuration(deployment.duration_ms) }}</td>
 							<td>
 								<div class="flex items-center gap-3">
-									<button
-										class="app-link"
-										@click="router.push(`/cd/deployments/${deployment.id}`)"
-									>
+									<button class="app-link" @click="router.push(`/cd/deployments/${deployment.id}`)">
 										查看
 									</button>
 									<button
@@ -216,14 +219,8 @@ onMounted(fetchDeployments)
 			body-class="hidden"
 		>
 			<template #footer>
-				<button class="app-button" @click="isCancelDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-destructive"
-					:disabled="operating"
-					@click="handleCancelOk"
-				>
+				<button class="app-button" @click="isCancelDialogOpen = false">取消</button>
+				<button class="app-button-destructive" :disabled="operating" @click="handleCancelOk">
 					{{ operating ? '取消中...' : '确认取消' }}
 				</button>
 			</template>

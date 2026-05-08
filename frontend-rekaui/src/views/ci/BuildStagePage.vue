@@ -1,37 +1,37 @@
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { ToolbarRoot } from 'reka-ui'
-import { buildStageApi } from '@/api/ci'
-import AppDialog from '@/components/AppDialog.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { BuildStage } from '@/types/ci/template'
-import { formatTime } from '@/utils/time'
+import { Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { ToolbarRoot } from 'reka-ui';
+import { buildStageApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { BuildStage } from '@/types/ci/template';
+import { formatTime } from '@/utils/time';
 
-const router = useRouter()
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
-const { loading: duplicating, execute: executeDuplicate } = useStatusAsync()
+const router = useRouter();
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-const stages = ref<BuildStage[]>([])
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
-const searchText = ref('')
-const isModalOpen = ref(false)
+const stages = ref<BuildStage[]>([]);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
+const isModalOpen = ref(false);
 
-const form = reactive({ name: '', image: '', script: '', description: '' })
-const errors = reactive({ name: '', image: '', script: '' })
+const form = reactive({ name: '', image: '', script: '', description: '' });
+const errors = reactive({ name: '', image: '', script: '' });
 
 function validate() {
-	errors.name = form.name.trim() ? '' : '请输入名称'
-	errors.image = form.image.trim() ? '' : '请输入镜像'
-	errors.script = form.script.trim() ? '' : '请输入脚本'
-	return !errors.name && !errors.image && !errors.script
+	errors.name = form.name.trim() ? '' : '请输入名称';
+	errors.image = form.image.trim() ? '' : '请输入镜像';
+	errors.script = form.script.trim() ? '' : '请输入脚本';
+	return !errors.name && !errors.image && !errors.script;
 }
 
 async function fetchStages() {
@@ -40,44 +40,44 @@ async function fetchStages() {
 			const res = await buildStageApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				search: searchText.value || undefined
-			})
-			stages.value = res.items
-			pagination.total = res.total
-		})
+				search: searchText.value || undefined,
+			});
+			stages.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取 Stage 列表失败')
+		toast.error('获取 Stage 列表失败');
 	}
 }
 
 function handleSearch() {
 	if (status.value === 'loading') {
-		return
+		return;
 	}
-	pagination.current = 1
-	fetchStages()
+	pagination.current = 1;
+	fetchStages();
 }
 
 function goPage(p: number) {
-	pagination.current = p
-	fetchStages()
+	pagination.current = p;
+	fetchStages();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchStages()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchStages();
 }
 
 function openCreateModal() {
-	Object.assign(form, { name: '', image: '', script: '', description: '' })
-	Object.assign(errors, { name: '', image: '', script: '' })
-	isModalOpen.value = true
+	Object.assign(form, { name: '', image: '', script: '', description: '' });
+	Object.assign(errors, { name: '', image: '', script: '' });
+	isModalOpen.value = true;
 }
 
 async function handleModalOk() {
 	if (!validate()) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
@@ -85,30 +85,30 @@ async function handleModalOk() {
 				name: form.name,
 				image: form.image,
 				script: form.script,
-				description: form.description
-			})
-			toast.success('创建成功')
-			isModalOpen.value = false
-			fetchStages()
-		})
+				description: form.description,
+			});
+			toast.success('创建成功');
+			isModalOpen.value = false;
+			fetchStages();
+		});
 	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '操作失败')
+		toast.error(err instanceof Error ? err.message : '操作失败');
 	}
 }
 
 async function handleDuplicate(id: string) {
 	try {
 		await executeDuplicate(async () => {
-			const newStage = await buildStageApi.duplicate(id)
-			toast.success('复制成功')
-			router.push(`/ci/build-stage/${newStage.id}`)
-		})
+			const newStage = await buildStageApi.duplicate(id);
+			toast.success('复制成功');
+			router.push(`/ci/build-stage/${newStage.id}`);
+		});
 	} catch (err) {
-		toast.error(err instanceof Error ? err.message : '复制失败')
+		toast.error(err instanceof Error ? err.message : '复制失败');
 	}
 }
 
-onMounted(fetchStages)
+onMounted(fetchStages);
 </script>
 
 <template>
@@ -120,10 +120,7 @@ onMounted(fetchStages)
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
-			<button
-				class="app-button-primary px-5"
-				@click="openCreateModal"
-			>
+			<button class="app-button-primary px-5" @click="openCreateModal">
 				<Plus class="size-4" />
 				新建构建
 			</button>
@@ -159,21 +156,28 @@ onMounted(fetchStages)
 									{{ stage.name }}
 								</router-link>
 							</td>
-							<td class="max-w-64 truncate text-foreground" :title="stage.image">{{ stage.image }}</td>
+							<td class="max-w-64 truncate text-foreground" :title="stage.image">
+								{{ stage.image }}
+							</td>
 							<td>
-								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">
+								<span
+									class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
+								>
 									v{{ stage.version }}
 								</span>
 							</td>
 							<td class="text-foreground">{{ stage.artifacts?.length ?? 0 }}</td>
-							<td class="max-w-xs truncate text-muted-foreground" :title="stage.description || undefined">
+							<td
+								class="max-w-xs truncate text-muted-foreground"
+								:title="stage.description || undefined"
+							>
 								{{ stage.description || '—' }}
 							</td>
-							<td class="whitespace-nowrap text-muted-foreground">{{ formatTime(stage.created_at) }}</td>
+							<td class="whitespace-nowrap text-muted-foreground">
+								{{ formatTime(stage.created_at) }}
+							</td>
 							<td class="whitespace-nowrap">
-								<router-link :to="`/ci/build-stage/${stage.id}`" class="app-link">
-									查看
-								</router-link>
+								<router-link :to="`/ci/build-stage/${stage.id}`" class="app-link">查看</router-link>
 								<button
 									class="app-link ml-3"
 									:disabled="duplicating"
@@ -241,24 +245,13 @@ onMounted(fetchStages)
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">描述（可选）</label>
-				<input
-					v-model="form.description"
-					type="text"
-					class="app-input"
-					placeholder="简短描述"
-				/>
+				<input v-model="form.description" type="text" class="app-input" placeholder="简短描述" />
 			</div>
 		</div>
 
 		<template #footer>
-			<button class="app-button" @click="isModalOpen = false">
-				取消
-			</button>
-			<button
-				class="app-button-primary"
-				:disabled="operating"
-				@click="handleModalOk"
-			>
+			<button class="app-button" @click="isModalOpen = false">取消</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">
 				<span
 					v-if="operating"
 					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"

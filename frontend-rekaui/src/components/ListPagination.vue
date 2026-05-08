@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { computed } from 'vue'
-import SelectControl from '@/components/SelectControl.vue'
+import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { computed } from 'vue';
+import SelectControl from '@/components/SelectControl.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -12,28 +12,28 @@ const props = withDefaults(
 		pageSizeOptions?: number[]
 	}>(),
 	{
-		pageSizeOptions: () => [10, 20, 50]
+		pageSizeOptions: () => [10, 20, 50],
 	}
-)
+);
 
 const emit = defineEmits<{
 	'change-page': [page: number]
 	'change-page-size': [pageSize: number]
-}>()
+}>();
 
 function goPage(page: number) {
 	if (page < 1 || page > props.totalPages || page === props.current) {
-		return
+		return;
 	}
-	emit('change-page', page)
+	emit('change-page', page);
 }
 
 const pageSizeSelectOptions = computed(() =>
 	props.pageSizeOptions.map((size) => ({
 		value: size,
-		label: `${size} 条/页`
+		label: `${size} 条/页`,
 	}))
-)
+);
 </script>
 
 <template>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Search } from 'lucide-vue-next'
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation'
-import { useAuthStore } from '@/stores/auth'
+import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Search } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
+import { useAuthStore } from '@/stores/auth';
 import {
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -15,31 +15,33 @@ import {
 	NavigationMenuList,
 	NavigationMenuRoot,
 	ToolbarButton,
-	ToolbarRoot
-} from 'reka-ui'
+	ToolbarRoot,
+} from 'reka-ui';
 
 const props = defineProps<{
 	currentModule: PrimaryNavigationKey | null
-}>()
+}>();
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const userName = computed(() => authStore.user?.username || 'admin')
-const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase())
+const userName = computed(() => authStore.user?.username || 'admin');
+const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
 
 function isActive(moduleKey: PrimaryNavigationKey) {
-	return props.currentModule === moduleKey
+	return props.currentModule === moduleKey;
 }
 
 async function handleLogout() {
-	await authStore.logout()
-	router.push('/login')
+	await authStore.logout();
+	router.push('/login');
 }
 </script>
 
 <template>
-	<header class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-card px-3 shadow-sm md:h-20">
+	<header
+		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-card px-3 shadow-sm md:h-20"
+	>
 		<RouterLink
 			to="/"
 			class="flex h-16 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
@@ -105,7 +107,9 @@ async function handleLogout() {
 				class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
 				aria-label="用户菜单"
 			>
-				<span class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+				<span
+					class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
+				>
 					{{ userInitial }}
 				</span>
 				<span class="hidden text-sm lg:inline">{{ userName }}</span>

@@ -61,7 +61,9 @@ const isPolling = ref(false);
 
 const statusBadgeClass = computed(() => {
 	const status = run.value?.status;
-	if (!status) {return 'bg-muted/50 text-muted-foreground';}
+	if (!status) {
+		return 'bg-muted/50 text-muted-foreground';
+	}
 	const map: Record<string, string> = {
 		waiting_to_run: 'bg-muted/50 text-muted-foreground',
 		running: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -74,7 +76,9 @@ const statusBadgeClass = computed(() => {
 
 const statusText = computed(() => {
 	const status = run.value?.status;
-	if (!status) {return '';}
+	if (!status) {
+		return '';
+	}
 	const map: Record<string, string> = {
 		waiting_to_run: '等待运行',
 		running: '运行中',
@@ -267,20 +271,31 @@ function togglePolling() {
 	}
 }
 
-async function init() {
+function resetState() {
 	stopPolling();
 	run.value = undefined;
 	snapshot.value = undefined;
 	artifacts.value = [];
+}
+
+async function handleRunStatus(currentRun: PipelineRun | undefined) {
+	if (!currentRun) {
+		return;
+	}
+	if (isTerminalStatus(currentRun.status)) {
+		await fetchArtifacts();
+	} else {
+		startPolling();
+	}
+}
+
+async function init() {
+	resetState();
 	const currentRun = await fetchRun();
 	if (currentRun?.snapshot_id) {
 		await fetchSnapshot(currentRun.snapshot_id);
 	}
-	if (currentRun && !isTerminalStatus(currentRun.status)) {
-		startPolling();
-	} else if (currentRun) {
-		await fetchArtifacts();
-	}
+	await handleRunStatus(currentRun);
 }
 
 watch(runId, init);
@@ -298,330 +313,337 @@ onUnmounted(() => {
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">流水线详情</h1>
 			<div class="flex flex-wrap items-center gap-2">
-					<button
-						v-if="run?.status === 'faulted'"
-						:disabled="retrying"
-						class="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						@click="handleRetry"
-					>
-						{{ retrying ? '重试中...' : '重试' }}
-					</button>
-					<button
-						v-if="run?.status === 'waiting_to_run' || run?.status === 'running'"
-						:disabled="canceling"
-						class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
-						@click="isCancelDialogOpen = true"
-					>
-						取消
-					</button>
-					<button
-						v-if="run && !isTerminalStatus(run.status)"
-						class="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-muted/50"
-						:class="isPolling ? 'text-primary' : 'text-muted-foreground'"
-						@click="togglePolling"
-					>
-						<Loader2 class="h-4 w-4" :class="isPolling ? 'animate-spin' : ''" />
-						{{ isPolling ? '自动刷新中' : '已暂停刷新' }}
-					</button>
-					<button
-						class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="router.push('/ci/run')"
-					>
-						返回
-					</button>
+				<button
+					v-if="run?.status === 'faulted'"
+					:disabled="retrying"
+					class="app-button-primary h-9 px-3"
+					@click="handleRetry"
+				>
+					{{ retrying ? '重试中...' : '重试' }}
+				</button>
+				<button
+					v-if="run?.status === 'waiting_to_run' || run?.status === 'running'"
+					:disabled="canceling"
+					class="app-button-destructive h-9 px-3"
+					@click="isCancelDialogOpen = true"
+				>
+					取消
+				</button>
+				<button
+					v-if="run && !isTerminalStatus(run.status)"
+					class="app-button inline-flex h-9 items-center gap-2 px-3"
+					:class="isPolling ? 'text-primary' : ''"
+					@click="togglePolling"
+				>
+					<Loader2 class="h-4 w-4" :class="isPolling ? 'animate-spin' : ''" />
+					{{ isPolling ? '自动刷新中' : '已暂停刷新' }}
+				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/run')">返回</button>
 			</div>
 		</div>
 
 		<!-- 加载状态 -->
 		<div v-if="loading" class="flex items-center justify-center py-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+			<div
+				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+			></div>
 		</div>
 
 		<!-- 内容 -->
 		<div v-else-if="run" class="flex flex-col gap-4">
-				<!-- 基本信息卡片 -->
-				<div class="app-surface">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">基本信息</h2>
-					</div>
-					<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">运行 ID</dt>
-							<dd class="min-w-0 text-foreground">{{ runId }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
-							<dd>
-								<span
-									class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-									:class="statusBadgeClass"
-								>
-									{{ statusText }}
-								</span>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">代码仓库</dt>
-							<dd>
-								<router-link
-									:to="`/ci/repository/${run.repository_id}`"
-									class="app-link"
-								>
-									{{ run.repository_name }}
-								</router-link>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
-							<dd>
-								<span class="inline-block rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground">
-									{{ run.trigger }}
-								</span>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">触发分支</dt>
-							<dd class="text-foreground">{{ run.trigger_ref }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">模板</dt>
-							<dd>
-								<router-link
-									:to="`/ci/template/${run.template_id}`"
-									class="app-link"
-								>
-									{{ run.template_name }} v{{ run.template_version }}
-								</router-link>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">快照</dt>
-							<dd>
-								<router-link
-									v-if="run.snapshot_id"
-									:to="`/ci/snapshot/${run.snapshot_id}`"
-									class="app-link"
-								>
-									查看
-								</router-link>
-								<span v-else class="text-muted-foreground">—</span>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">重试自</dt>
-							<dd>
-								<router-link
-									v-if="run.retry_of"
-									:to="`/ci/run/${run.retry_of}`"
-									class="app-link"
-								>
-									查看
-								</router-link>
-								<span v-else class="text-muted-foreground">—</span>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
-							<dd class="text-muted-foreground">{{ run.started_at ? formatTime(run.started_at) : '—' }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">结束时间</dt>
-							<dd class="text-muted-foreground">{{ run.finished_at ? formatTime(run.finished_at) : '—' }}</dd>
-						</div>
-						<div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
-							<dd class="min-w-0 text-destructive">
-								<span class="block truncate" :title="run.error_message">
-									{{ run.error_message }}
-								</span>
-							</dd>
-						</div>
-					</dl>
+			<!-- 基本信息卡片 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
-
-				<!-- Stage 列表 -->
-				<div class="app-surface">
-					<div class="flex items-center justify-between border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">阶段编排</h2>
-						<div v-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
-							<button
-								class="rounded px-3 py-1 text-xs font-medium transition-colors"
-								:class="stagesView === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
-								@click="stagesView = 'list'"
+				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">运行 ID</dt>
+						<dd class="min-w-0 text-foreground">{{ runId }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dd>
+							<span
+								class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
+								:class="statusBadgeClass"
 							>
-								列表
-							</button>
-							<button
-								class="rounded px-3 py-1 text-xs font-medium transition-colors"
-								:class="stagesView === 'dag' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
-								@click="stagesView = 'dag'"
+								{{ statusText }}
+							</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">代码仓库</dt>
+						<dd>
+							<router-link :to="`/ci/repository/${run.repository_id}`" class="app-link">
+								{{ run.repository_name }}
+							</router-link>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
+						<dd>
+							<span
+								class="inline-block rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground"
 							>
-								DAG
-							</button>
-						</div>
+								{{ run.trigger }}
+							</span>
+						</dd>
 					</div>
-					
-					<!-- 列表视图 -->
-					<div v-if="stagesView === 'list'">
-						<div class="overflow-x-auto">
-							<table class="app-table-detail min-w-[960px]">
-								<thead>
-									<tr>
-										<th>#</th>
-										<th>阶段</th>
-										<th>版本</th>
-										<th>依赖</th>
-										<th>制品</th>
-										<th>状态</th>
-										<th>错误信息</th>
-										<th>操作</th>
-									</tr>
-								</thead>
-								<tbody>
-									<tr v-if="run.snapshot_id && !snapshot">
-										<td colspan="8" class="text-center text-muted-foreground">
-											<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-										</td>
-									</tr>
-									<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
-										<td colspan="8" class="text-center text-muted-foreground">
-											暂无阶段记录
-										</td>
-									</tr>
-									<tr
-										v-for="(stage, index) in snapshot?.stages_snapshot ?? []"
-										:key="stage.id"
-									>
-										<td class="text-muted-foreground">{{ index + 1 }}</td>
-										<td>
-											<router-link
-												:to="`/ci/build-stage/${stage.id}`"
-												class="app-link"
-											>
-												{{ stage.name }}
-											</router-link>
-										</td>
-										<td class="text-foreground">v{{ stage.version }}</td>
-										<td>
-											<div v-if="stage.depends_on.length" class="flex flex-wrap gap-1">
-												<span
-													v-for="depId in stage.depends_on"
-													:key="depId"
-													class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-												>
-													{{ snapshotStageMap[depId]?.name ?? depId }}
-												</span>
-											</div>
-											<span v-else class="text-muted-foreground">—</span>
-										</td>
-										<td class="text-foreground">
-											{{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
-										</td>
-										<td>
-											<span
-												class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-												:class="getStageStatusBadge(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
-											>
-												{{ getStageStatusText(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
-											</span>
-										</td>
-										<td class="max-w-xs">
-											<span
-												v-if="stageRunMap[stage.id]?.error_message"
-												class="block truncate text-destructive"
-												:title="stageRunMap[stage.id]?.error_message"
-											>
-												{{ stageRunMap[stage.id]?.error_message }}
-											</span>
-											<span v-else class="text-muted-foreground">—</span>
-										</td>
-										<td>
-											<button
-												v-if="stageRunMap[stage.id]"
-												class="app-link"
-												@click="openStageLog(stage.id)"
-											>
-												查看日志
-											</button>
-											<span v-else class="text-muted-foreground">—</span>
-										</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">触发分支</dt>
+						<dd class="text-foreground">{{ run.trigger_ref }}</dd>
 					</div>
-					
-					<!-- DAG 视图 -->
-					<div v-else-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0" class="p-6">
-						<div class="h-[500px]">
-							<StageDAGView
-								:stages="snapshot.stages_snapshot"
-								:stage-runs="stageRuns"
-								:animated="true"
-								@view-stage="openLogDrawer"
-							/>
-						</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">模板</dt>
+						<dd>
+							<router-link :to="`/ci/template/${run.template_id}`" class="app-link">
+								{{ run.template_name }} v{{ run.template_version }}
+							</router-link>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">快照</dt>
+						<dd>
+							<router-link
+								v-if="run.snapshot_id"
+								:to="`/ci/snapshot/${run.snapshot_id}`"
+								class="app-link"
+							>
+								查看
+							</router-link>
+							<span v-else class="text-muted-foreground">—</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">重试自</dt>
+						<dd>
+							<router-link v-if="run.retry_of" :to="`/ci/run/${run.retry_of}`" class="app-link">
+								查看
+							</router-link>
+							<span v-else class="text-muted-foreground">—</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
+						<dd class="text-muted-foreground">
+							{{ run.started_at ? formatTime(run.started_at) : '—' }}
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">结束时间</dt>
+						<dd class="text-muted-foreground">
+							{{ run.finished_at ? formatTime(run.finished_at) : '—' }}
+						</dd>
+					</div>
+					<div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
+						<dd class="min-w-0 text-destructive">
+							<span class="block truncate" :title="run.error_message">
+								{{ run.error_message }}
+							</span>
+						</dd>
+					</div>
+				</dl>
+			</div>
+
+			<!-- Stage 列表 -->
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
+					<h2 class="font-semibold text-foreground">阶段编排</h2>
+					<div
+						v-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0"
+						class="flex gap-1 rounded-md border border-border bg-background p-1"
+					>
+						<button
+							class="rounded px-3 py-1 text-xs font-medium transition-colors"
+							:class="
+								stagesView === 'list'
+									? 'bg-primary text-primary-foreground'
+									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+							"
+							@click="stagesView = 'list'"
+						>
+							列表
+						</button>
+						<button
+							class="rounded px-3 py-1 text-xs font-medium transition-colors"
+							:class="
+								stagesView === 'dag'
+									? 'bg-primary text-primary-foreground'
+									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+							"
+							@click="stagesView = 'dag'"
+						>
+							DAG
+						</button>
 					</div>
 				</div>
 
-				<div class="app-surface">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">变量快照</h2>
-					</div>
-					<VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
-				</div>
-
-				<div class="app-surface">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">制品</h2>
-					</div>
-					<div v-if="artifactsLoading" class="flex justify-center py-16">
-						<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-					</div>
-					<div v-else-if="!isTerminalStatus(run.status)" class="text-center py-16 text-muted-foreground">
-						<p class="text-sm">运行完成后展示</p>
-					</div>
-					<div v-else-if="artifacts.length === 0" class="text-center py-16 text-muted-foreground">
-						<p class="text-sm">暂无制品</p>
-					</div>
-					<div v-else class="overflow-x-auto">
-						<table class="app-table-detail min-w-[760px]">
+				<!-- 列表视图 -->
+				<div v-if="stagesView === 'list'">
+					<div class="overflow-x-auto">
+						<table class="app-table-detail min-w-[960px]">
 							<thead>
 								<tr>
+									<th>#</th>
 									<th>阶段</th>
-									<th>类型</th>
-									<th>名称</th>
-									<th>路径</th>
-									<th>创建时间</th>
+									<th>版本</th>
+									<th>依赖</th>
+									<th>制品</th>
+									<th>状态</th>
+									<th>错误信息</th>
+									<th>操作</th>
 								</tr>
 							</thead>
 							<tbody>
-								<tr
-									v-for="artifact in artifacts"
-									:key="artifact.id"
-								>
-									<td class="text-foreground">{{ artifact.stage_name }}</td>
+								<tr v-if="run.snapshot_id && !snapshot">
+									<td colspan="8" class="text-center text-muted-foreground">
+										<span
+											class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
+										/>
+									</td>
+								</tr>
+								<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
+									<td colspan="8" class="text-center text-muted-foreground">暂无阶段记录</td>
+								</tr>
+								<tr v-for="(stage, index) in snapshot?.stages_snapshot ?? []" :key="stage.id">
+									<td class="text-muted-foreground">{{ index + 1 }}</td>
 									<td>
-										<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-											{{ artifact.type }}
+										<router-link :to="`/ci/build-stage/${stage.id}`" class="app-link">
+											{{ stage.name }}
+										</router-link>
+									</td>
+									<td class="text-foreground">v{{ stage.version }}</td>
+									<td>
+										<div v-if="stage.depends_on.length" class="flex flex-wrap gap-1">
+											<span
+												v-for="depId in stage.depends_on"
+												:key="depId"
+												class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+											>
+												{{ snapshotStageMap[depId]?.name ?? depId }}
+											</span>
+										</div>
+										<span v-else class="text-muted-foreground">—</span>
+									</td>
+									<td class="text-foreground">
+										{{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
+									</td>
+									<td>
+										<span
+											class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
+											:class="
+												getStageStatusBadge(stageRunMap[stage.id]?.status ?? 'waiting_to_run')
+											"
+										>
+											{{ getStageStatusText(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
 										</span>
 									</td>
-									<td class="text-foreground">{{ artifact.name }}</td>
-									<td class="max-w-md truncate text-muted-foreground">
-										{{ artifact.path || '—' }}
+									<td class="max-w-xs">
+										<span
+											v-if="stageRunMap[stage.id]?.error_message"
+											class="block truncate text-destructive"
+											:title="stageRunMap[stage.id]?.error_message"
+										>
+											{{ stageRunMap[stage.id]?.error_message }}
+										</span>
+										<span v-else class="text-muted-foreground">—</span>
 									</td>
-									<td class="text-muted-foreground">
-										{{ formatTime(artifact.created_at) }}
+									<td>
+										<button
+											v-if="stageRunMap[stage.id]"
+											class="app-link"
+											@click="openStageLog(stage.id)"
+										>
+											查看日志
+										</button>
+										<span v-else class="text-muted-foreground">—</span>
 									</td>
 								</tr>
 							</tbody>
 						</table>
 					</div>
 				</div>
+
+				<!-- DAG 视图 -->
+				<div
+					v-else-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0"
+					class="p-6"
+				>
+					<div class="h-[500px]">
+						<StageDAGView
+							:stages="snapshot.stages_snapshot"
+							:stage-runs="stageRuns"
+							:animated="true"
+							@view-stage="openLogDrawer"
+						/>
+					</div>
+				</div>
+			</div>
+
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">变量快照</h2>
+				</div>
+				<VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
+			</div>
+
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">制品</h2>
+				</div>
+				<div v-if="artifactsLoading" class="flex justify-center py-16">
+					<div
+						class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+					/>
+				</div>
+				<div
+					v-else-if="!isTerminalStatus(run.status)"
+					class="text-center py-16 text-muted-foreground"
+				>
+					<p class="text-sm">运行完成后展示</p>
+				</div>
+				<div v-else-if="artifacts.length === 0" class="text-center py-16 text-muted-foreground">
+					<p class="text-sm">暂无制品</p>
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="app-table-detail min-w-[760px]">
+						<thead>
+							<tr>
+								<th>阶段</th>
+								<th>类型</th>
+								<th>名称</th>
+								<th>路径</th>
+								<th>创建时间</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="artifact in artifacts" :key="artifact.id">
+								<td class="text-foreground">{{ artifact.stage_name }}</td>
+								<td>
+									<span
+										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+									>
+										{{ artifact.type }}
+									</span>
+								</td>
+								<td class="text-foreground">{{ artifact.name }}</td>
+								<td class="max-w-md truncate text-muted-foreground">
+									{{ artifact.path || '—' }}
+								</td>
+								<td class="text-muted-foreground">
+									{{ formatTime(artifact.created_at) }}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
 		</div>
 
 		<AppDrawer
@@ -653,17 +675,11 @@ onUnmounted(() => {
 			body-class="hidden"
 		>
 			<template #footer>
-				<button
-					type="button"
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-					@click="isCancelDialogOpen = false"
-				>
-					取消
-				</button>
+				<button type="button" class="app-button" @click="isCancelDialogOpen = false">取消</button>
 				<button
 					type="button"
 					:disabled="canceling"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					@click="handleCancel"
 				>
 					{{ canceling ? '取消中...' : '确认取消' }}

@@ -1,39 +1,44 @@
 <script setup lang="ts">
-import { Plus, Upload } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { applicationApi } from '@/api/cd/application'
-import AppDialog from '@/components/AppDialog.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { Application, ApplicationFormState, ApplicationImportReq, ApplicationImportState } from '@/types/cd/application'
-import { appStatusLabel } from '@/utils/status'
-import { formatTime } from '@/utils/time'
-import { ToolbarRoot } from 'reka-ui'
-import ApplicationFormFields from './ApplicationFormFields.vue'
+import { Plus, Upload } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { applicationApi } from '@/api/cd/application';
+import AppDialog from '@/components/AppDialog.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type {
+	Application,
+	ApplicationFormState,
+	ApplicationImportReq,
+	ApplicationImportState,
+} from '@/types/cd/application';
+import { appStatusLabel } from '@/utils/status';
+import { formatTime } from '@/utils/time';
+import { ToolbarRoot } from 'reka-ui';
+import ApplicationFormFields from './ApplicationFormFields.vue';
 
-const router = useRouter()
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
+const router = useRouter();
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
 
-const applications = ref<Application[]>([])
-const searchText = ref('')
-const isCreateDialogOpen = ref(false)
-const isImportDialogOpen = ref(false)
-const fileInput = ref<HTMLInputElement>()
-const operatingAppId = ref<string | null>(null)
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
+const applications = ref<Application[]>([]);
+const searchText = ref('');
+const isCreateDialogOpen = ref(false);
+const isImportDialogOpen = ref(false);
+const fileInput = ref<HTMLInputElement>();
+const operatingAppId = ref<string | null>(null);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 const form = reactive<ApplicationFormState>({
 	name: '',
 	code: '',
 	image_pull_policy: 'missing',
-	route_managed: false
-})
-const formErrors = reactive({ name: '', code: '' })
+	route_managed: false,
+});
+const formErrors = reactive({ name: '', code: '' });
 const importForm = reactive<ApplicationImportState>({
 	version: undefined,
 	name: '',
@@ -42,24 +47,26 @@ const importForm = reactive<ApplicationImportState>({
 	route_managed: false,
 	config_files: [],
 	service_configs: [],
-	routes: []
-})
-const importErrors = reactive({ name: '', code: '' })
-const importSummary = computed(() => [
-	`配置文件 ${importForm.config_files.length}`,
-	`服务配置 ${importForm.service_configs.length}`,
-	`路由 ${importForm.routes.length}`
-].join(' / '))
+	routes: [],
+});
+const importErrors = reactive({ name: '', code: '' });
+const importSummary = computed(() =>
+	[
+		`配置文件 ${importForm.config_files.length}`,
+		`服务配置 ${importForm.service_configs.length}`,
+		`路由 ${importForm.routes.length}`,
+	].join(' / ')
+);
 
 const badgeMap: Record<string, string> = {
 	deployed: 'border-green-200 bg-green-50 text-green-700',
 	deploy_failed: 'border-red-200 bg-red-50 text-red-700',
 	deploying: 'border-blue-200 bg-blue-50 text-blue-700',
-	undeployed: 'border-border bg-muted text-muted-foreground'
-}
+	undeployed: 'border-border bg-muted text-muted-foreground',
+};
 
 function appBadgeClass(s: string) {
-	return badgeMap[s] ?? 'border-border bg-muted text-muted-foreground'
+	return badgeMap[s] ?? 'border-border bg-muted text-muted-foreground';
 }
 
 async function fetchApplications() {
@@ -68,38 +75,38 @@ async function fetchApplications() {
 			const res = await applicationApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				search: searchText.value || undefined
-			})
-			applications.value = res.items
-			pagination.total = res.total
-		})
+				search: searchText.value || undefined,
+			});
+			applications.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取应用列表失败')
+		toast.error('获取应用列表失败');
 	}
 }
 
 function handleSearch() {
-	pagination.current = 1
-	fetchApplications()
+	pagination.current = 1;
+	fetchApplications();
 }
 
 function goPage(p: number) {
-	pagination.current = p
-	fetchApplications()
+	pagination.current = p;
+	fetchApplications();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchApplications()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchApplications();
 }
 
 function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
-	errors.name = target.name.trim() ? '' : '请输入应用名称'
+	errors.name = target.name.trim() ? '' : '请输入应用名称';
 	errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
 		? ''
-		: '必须以小写字母开头，只能包含小写字母、数字和连字符'
-	return !errors.name && !errors.code
+		: '必须以小写字母开头，只能包含小写字母、数字和连字符';
+	return !errors.name && !errors.code;
 }
 
 function resetForm(target: ApplicationFormState) {
@@ -107,19 +114,19 @@ function resetForm(target: ApplicationFormState) {
 		name: '',
 		code: '',
 		image_pull_policy: 'missing',
-		route_managed: false
-	})
+		route_managed: false,
+	});
 }
 
 function openCreateDialog() {
-	resetForm(form)
-	Object.assign(formErrors, { name: '', code: '' })
-	isCreateDialogOpen.value = true
+	resetForm(form);
+	Object.assign(formErrors, { name: '', code: '' });
+	isCreateDialogOpen.value = true;
 }
 
 async function handleCreateOk() {
 	if (!validateForm(form, formErrors)) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
@@ -127,32 +134,32 @@ async function handleCreateOk() {
 				name: form.name,
 				code: form.code,
 				image_pull_policy: form.image_pull_policy,
-				route_managed: form.route_managed
-			})
-			toast.success('创建成功')
-			isCreateDialogOpen.value = false
-			await fetchApplications()
-		})
+				route_managed: form.route_managed,
+			});
+			toast.success('创建成功');
+			isCreateDialogOpen.value = false;
+			await fetchApplications();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '创建失败')
+		toast.error(error instanceof Error ? error.message : '创建失败');
 	}
 }
 
 function triggerImport() {
-	fileInput.value?.click()
+	fileInput.value?.click();
 }
 
 async function handleFileImport(event: Event) {
-	const target = event.target as HTMLInputElement
-	const file = target.files?.[0]
+	const target = event.target as HTMLInputElement;
+	const file = target.files?.[0];
 	if (!file) {
-		return
+		return;
 	}
 	try {
-		const data = JSON.parse(await file.text()) as ApplicationImportReq
+		const data = JSON.parse(await file.text()) as ApplicationImportReq;
 		if (!data.name || !data.code) {
-			toast.error('文件格式错误：缺少必填字段 name 或 code')
-			return
+			toast.error('文件格式错误：缺少必填字段 name 或 code');
+			return;
 		}
 		Object.assign(importForm, {
 			version: data.version,
@@ -162,20 +169,20 @@ async function handleFileImport(event: Event) {
 			route_managed: data.route_managed,
 			config_files: data.config_files ?? [],
 			service_configs: data.service_configs ?? [],
-			routes: data.routes ?? []
-		})
-		Object.assign(importErrors, { name: '', code: '' })
-		isImportDialogOpen.value = true
+			routes: data.routes ?? [],
+		});
+		Object.assign(importErrors, { name: '', code: '' });
+		isImportDialogOpen.value = true;
 	} catch {
-		toast.error('解析文件失败')
+		toast.error('解析文件失败');
 	} finally {
-		target.value = ''
+		target.value = '';
 	}
 }
 
 async function handleImportOk() {
 	if (!validateForm(importForm, importErrors)) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
@@ -187,48 +194,48 @@ async function handleImportOk() {
 				route_managed: importForm.route_managed,
 				config_files: importForm.config_files,
 				service_configs: importForm.service_configs,
-				routes: importForm.routes
-			})
-			toast.success('导入成功')
-			isImportDialogOpen.value = false
-			await fetchApplications()
-		})
+				routes: importForm.routes,
+			});
+			toast.success('导入成功');
+			isImportDialogOpen.value = false;
+			await fetchApplications();
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '导入失败')
+		toast.error(error instanceof Error ? error.message : '导入失败');
 	}
 }
 
 async function handleDeploy(app: Application) {
-	operatingAppId.value = app.id
+	operatingAppId.value = app.id;
 	try {
 		await executeOp(async () => {
-			const { deployment_id } = await applicationApi.deploy(app.id)
-			toast.success(`${app.name} 部署已触发`)
-			router.push(`/cd/deployments/${deployment_id}`)
-		})
+			const { deployment_id } = await applicationApi.deploy(app.id);
+			toast.success(`${app.name} 部署已触发`);
+			router.push(`/cd/deployments/${deployment_id}`);
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '部署失败')
+		toast.error(error instanceof Error ? error.message : '部署失败');
 	} finally {
-		operatingAppId.value = null
+		operatingAppId.value = null;
 	}
 }
 
 async function handleStop(app: Application) {
-	operatingAppId.value = app.id
+	operatingAppId.value = app.id;
 	try {
 		await executeOp(async () => {
-			const { deployment_id } = await applicationApi.stop(app.id)
-			toast.success(`${app.name} 停止已触发`)
-			router.push(`/cd/deployments/${deployment_id}`)
-		})
+			const { deployment_id } = await applicationApi.stop(app.id);
+			toast.success(`${app.name} 停止已触发`);
+			router.push(`/cd/deployments/${deployment_id}`);
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '停止失败')
+		toast.error(error instanceof Error ? error.message : '停止失败');
 	} finally {
-		operatingAppId.value = null
+		operatingAppId.value = null;
 	}
 }
 
-onMounted(fetchApplications)
+onMounted(fetchApplications);
 </script>
 
 <template>
@@ -250,10 +257,7 @@ onMounted(fetchApplications)
 					<Plus class="size-4" />
 					新建应用
 				</button>
-				<button
-					class="app-button h-10 px-4"
-					@click="triggerImport"
-				>
+				<button class="app-button h-10 px-4" @click="triggerImport">
 					<Upload class="size-4" />
 					导入
 				</button>
@@ -294,10 +298,7 @@ onMounted(fetchApplications)
 					<tbody>
 						<tr v-for="app in applications" :key="app.id">
 							<td>
-								<button
-									class="app-link"
-									@click="router.push(`/cd/applications/${app.id}`)"
-								>
+								<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
 									{{ app.name }}
 								</button>
 							</td>
@@ -315,10 +316,7 @@ onMounted(fetchApplications)
 							<td class="text-foreground">{{ formatTime(app.created_at) }}</td>
 							<td>
 								<div class="flex items-center gap-3">
-									<button
-										class="app-link"
-										@click="router.push(`/cd/applications/${app.id}`)"
-									>
+									<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
 										查看
 									</button>
 									<button
@@ -365,14 +363,8 @@ onMounted(fetchApplications)
 				@update:form="Object.assign(form, $event)"
 			/>
 			<template #footer>
-				<button class="app-button" @click="isCreateDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleCreateOk"
-				>
+				<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
 					{{ operating ? '保存中...' : '保存' }}
 				</button>
 			</template>
@@ -392,14 +384,8 @@ onMounted(fetchApplications)
 				{{ importSummary }}
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isImportDialogOpen = false">
-					取消
-				</button>
-				<button
-					class="app-button-primary"
-					:disabled="operating"
-					@click="handleImportOk"
-				>
+				<button class="app-button" @click="isImportDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleImportOk">
 					{{ operating ? '导入中...' : '导入' }}
 				</button>
 			</template>

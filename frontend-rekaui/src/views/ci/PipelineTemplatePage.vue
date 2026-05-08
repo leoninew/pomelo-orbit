@@ -1,36 +1,32 @@
 <script setup lang="ts">
-import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { pipelineTemplateApi } from '@/api/ci'
-import AppDialog from '@/components/AppDialog.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { PipelineTemplate } from '@/types/ci/template'
-import { formatTime } from '@/utils/time'
-import {
-	ToggleGroupItem,
-	ToggleGroupRoot,
-	ToolbarRoot
-} from 'reka-ui'
+import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { pipelineTemplateApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { PipelineTemplate } from '@/types/ci/template';
+import { formatTime } from '@/utils/time';
+import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
-const router = useRouter()
-const toast = useToast()
-const { status, error, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
-const { loading: duplicating, execute: executeDuplicate } = useStatusAsync()
+const router = useRouter();
+const toast = useToast();
+const { status, error, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
+const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-const templates = ref<PipelineTemplate[]>([])
-const viewMode = ref<'card' | 'table'>('table')
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
-const searchText = ref('')
-const showCreateDialog = ref(false)
+const templates = ref<PipelineTemplate[]>([]);
+const viewMode = ref<'card' | 'table'>('table');
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
+const showCreateDialog = ref(false);
 
-const form = reactive({ name: '', description: '' })
-const errors = reactive({ name: '' })
+const form = reactive({ name: '', description: '' });
+const errors = reactive({ name: '' });
 
 async function fetchTemplates() {
 	try {
@@ -38,75 +34,75 @@ async function fetchTemplates() {
 			const res = await pipelineTemplateApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				search: searchText.value || undefined
-			})
-			templates.value = res.items
-			pagination.total = res.total
-		})
+				search: searchText.value || undefined,
+			});
+			templates.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取模板列表失败')
+		toast.error('获取模板列表失败');
 	}
 }
 
 function handleSearch() {
 	if (status.value === 'loading') {
-		return
+		return;
 	}
-	pagination.current = 1
-	fetchTemplates()
+	pagination.current = 1;
+	fetchTemplates();
 }
 
 function goPage(p: number) {
-	pagination.current = p
-	fetchTemplates()
+	pagination.current = p;
+	fetchTemplates();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchTemplates()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchTemplates();
 }
 
 function openCreateModal() {
-	Object.assign(form, { name: '', description: '' })
-	Object.assign(errors, { name: '' })
-	showCreateDialog.value = true
+	Object.assign(form, { name: '', description: '' });
+	Object.assign(errors, { name: '' });
+	showCreateDialog.value = true;
 }
 
 async function handleCreateOk() {
-	errors.name = form.name.trim() ? '' : '请输入模板名称'
+	errors.name = form.name.trim() ? '' : '请输入模板名称';
 	if (errors.name) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
 			const tpl = await pipelineTemplateApi.create({
 				name: form.name,
 				description: form.description || undefined,
-				variable_declarations: []
-			})
-			toast.success('创建成功')
-			showCreateDialog.value = false
-			router.push(`/ci/template/${tpl.id}`)
-		})
+				variable_declarations: [],
+			});
+			toast.success('创建成功');
+			showCreateDialog.value = false;
+			router.push(`/ci/template/${tpl.id}`);
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '创建失败')
+		toast.error(error instanceof Error ? error.message : '创建失败');
 	}
 }
 
 async function handleDuplicate(id: string) {
 	try {
 		await executeDuplicate(async () => {
-			const newTemplate = await pipelineTemplateApi.duplicate(id)
-			toast.success('复制成功')
-			router.push(`/ci/template/${newTemplate.id}`)
-		})
+			const newTemplate = await pipelineTemplateApi.duplicate(id);
+			toast.success('复制成功');
+			router.push(`/ci/template/${newTemplate.id}`);
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '复制失败')
+		toast.error(error instanceof Error ? error.message : '复制失败');
 	}
 }
 
-onMounted(fetchTemplates)
+onMounted(fetchTemplates);
 </script>
 
 <template>
@@ -140,10 +136,7 @@ onMounted(fetchTemplates)
 						<List class="size-4" />
 					</ToggleGroupItem>
 				</ToggleGroupRoot>
-				<button
-					class="app-button-primary px-5"
-					@click="openCreateModal"
-				>
+				<button class="app-button-primary px-5" @click="openCreateModal">
 					<Plus class="size-4" />
 					新建模板
 				</button>
@@ -169,7 +162,10 @@ onMounted(fetchTemplates)
 			</div>
 		</div>
 
-		<div v-else-if="viewMode === 'card'" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+		<div
+			v-else-if="viewMode === 'card'"
+			class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+		>
 			<div
 				v-for="tpl in templates"
 				:key="tpl.id"
@@ -194,7 +190,9 @@ onMounted(fetchTemplates)
 				<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
 					<span class="rounded bg-muted px-2 py-0.5">v{{ tpl.version }}</span>
 					<span class="rounded bg-muted px-2 py-0.5">{{ tpl.orchestration.length }} 阶段</span>
-					<span class="rounded bg-muted px-2 py-0.5">{{ tpl.variable_declarations.length }} 变量</span>
+					<span class="rounded bg-muted px-2 py-0.5">
+						{{ tpl.variable_declarations.length }} 变量
+					</span>
 				</div>
 				<div class="text-sm text-muted-foreground">
 					{{ formatTime(tpl.updated_at) }}
@@ -225,7 +223,11 @@ onMounted(fetchTemplates)
 						>
 							<td class="max-w-64 truncate text-foreground" :title="tpl.name">{{ tpl.name }}</td>
 							<td>
-								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ tpl.version }}</span>
+								<span
+									class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
+								>
+									v{{ tpl.version }}
+								</span>
 							</td>
 							<td class="text-foreground">{{ tpl.orchestration.length }}</td>
 							<td class="text-foreground">{{ tpl.variable_declarations.length }}</td>
@@ -234,11 +236,7 @@ onMounted(fetchTemplates)
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
 							<td class="text-right">
-								<router-link
-									:to="`/ci/template/${tpl.id}`"
-									class="app-link"
-									@click.stop
-								>
+								<router-link :to="`/ci/template/${tpl.id}`" class="app-link" @click.stop>
 									查看
 								</router-link>
 								<button
@@ -294,14 +292,8 @@ onMounted(fetchTemplates)
 			</div>
 		</div>
 		<template #footer>
-			<button class="app-button" @click="showCreateDialog = false">
-				取消
-			</button>
-			<button
-				class="app-button-primary"
-				:disabled="operating"
-				@click="handleCreateOk"
-			>
+			<button class="app-button" @click="showCreateDialog = false">取消</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
 				<span
 					v-if="operating"
 					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"

@@ -100,7 +100,9 @@ const currentServiceImage = computed(() =>
 );
 
 const filteredServices = computed(() => {
-	if (!serviceSearchTerm.value) {return composeServices.value;}
+	if (!serviceSearchTerm.value) {
+		return composeServices.value;
+	}
 	return composeServices.value.filter((s) =>
 		s.service_name.toLowerCase().includes(serviceSearchTerm.value.toLowerCase())
 	);
@@ -111,7 +113,9 @@ const serviceConfigDirty = computed(
 
 const statusBadgeClass = computed(() => {
 	const status = application.value?.status;
-	if (!status) {return 'bg-muted/50 text-muted-foreground';}
+	if (!status) {
+		return 'bg-muted/50 text-muted-foreground';
+	}
 	const map: Record<string, string> = {
 		deployed: 'bg-green-50 text-green-700 border-green-200',
 		deploy_failed: 'bg-red-50 text-red-700 border-red-200',
@@ -123,7 +127,9 @@ const statusBadgeClass = computed(() => {
 
 const statusText = computed(() => {
 	const status = application.value?.status;
-	if (!status) {return '';}
+	if (!status) {
+		return '';
+	}
 	const map: Record<string, string> = {
 		deployed: '已部署',
 		deploy_failed: '部署失败',
@@ -529,7 +535,8 @@ async function openEditRouteModal(r: ApplicationRoute) {
 		return;
 	}
 	// 设置选中的服务
-	selectedService.value = composeServices.value.find(s => s.service_name === r.service_name) || null;
+	selectedService.value =
+		composeServices.value.find((s) => s.service_name === r.service_name) || null;
 	serviceSearchTerm.value = '';
 	isRouteDialogOpen.value = true;
 }
@@ -607,40 +614,23 @@ onMounted(async () => {
 				>
 					{{ operating ? '部署中...' : '部署' }}
 				</button>
-				<button
-					v-if="application"
-					class="app-button h-9 px-3"
-					@click="handleExport"
-				>
+				<button v-if="application" class="app-button h-9 px-3" @click="handleExport">
 					<Download class="size-4" />
 					导出
 				</button>
-				<button
-					v-if="application"
-					class="app-button h-9 px-3"
-					@click="openEditModal"
-				>
-					编辑
-				</button>
-				<button
-					v-if="application"
-					class="app-button-danger h-9 px-3"
-					@click="openDeleteModal"
-				>
+				<button v-if="application" class="app-button h-9 px-3" @click="openEditModal">编辑</button>
+				<button v-if="application" class="app-button-danger h-9 px-3" @click="openDeleteModal">
 					删除
 				</button>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.push('/cd/applications')"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.push('/cd/applications')">返回</button>
 			</div>
 		</div>
 
 		<!-- 加载状态 -->
 		<div v-if="basicInfoLoading" class="flex items-center justify-center py-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+			<div
+				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+			></div>
 		</div>
 
 		<!-- 内容 -->
@@ -693,10 +683,7 @@ onMounted(async () => {
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">配置文件</h2>
-					<button
-						class="app-button-primary h-9 px-3"
-						@click="openAddFileDrawer"
-					>
+					<button class="app-button-primary h-9 px-3" @click="openAddFileDrawer">
 						<Plus class="h-4 w-4" />
 						添加文件
 					</button>
@@ -713,18 +700,15 @@ onMounted(async () => {
 						<tbody>
 							<tr v-if="fileListLoading">
 								<td colspan="3" class="text-center text-muted-foreground">
-									<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+									<span
+										class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
+									/>
 								</td>
 							</tr>
 							<tr v-else-if="files.length === 0">
-								<td colspan="3" class="text-center text-muted-foreground">
-									暂无配置文件
-								</td>
+								<td colspan="3" class="text-center text-muted-foreground">暂无配置文件</td>
 							</tr>
-							<tr
-								v-for="file in files"
-								:key="file.id"
-							>
+							<tr v-for="file in files" :key="file.id">
 								<td class="max-w-md truncate text-foreground" :title="file.path">
 									{{ file.path }}
 								</td>
@@ -738,16 +722,8 @@ onMounted(async () => {
 											<Eye class="h-3 w-3" />
 											查看
 										</button>
-										<button
-											class="app-link"
-											@click="openFileDrawer(file.id, true)"
-										>
-											编辑
-										</button>
-										<button
-											class="app-link-danger"
-											@click="confirmDeleteFile(file.id)"
-										>
+										<button class="app-link" @click="openFileDrawer(file.id, true)">编辑</button>
+										<button class="app-link-danger" @click="confirmDeleteFile(file.id)">
 											删除
 										</button>
 									</div>
@@ -765,66 +741,66 @@ onMounted(async () => {
 				</div>
 				<div class="overflow-x-auto">
 					<table class="app-table-detail min-w-[960px]">
-							<thead>
-								<tr>
-									<th>服务</th>
-									<th>默认域名</th>
-									<th>默认端口</th>
-									<th>基础镜像</th>
-									<th>当前镜像</th>
-									<th>操作</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-if="serviceConfigListLoading">
-									<td colspan="6" class="text-center text-muted-foreground">
-										<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-									</td>
-								</tr>
-								<tr v-else-if="serviceConfigError">
-									<td colspan="6" class="text-center text-destructive">
-										{{ serviceConfigError }}
-									</td>
-								</tr>
-								<tr v-else-if="serviceConfigs.length === 0">
-									<td colspan="6" class="text-center text-muted-foreground">
-										暂无服务配置
-									</td>
-								</tr>
-								<tr
-									v-for="config in serviceConfigs"
-									:key="config.service_name"
+						<thead>
+							<tr>
+								<th>服务</th>
+								<th>默认域名</th>
+								<th>默认端口</th>
+								<th>基础镜像</th>
+								<th>当前镜像</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="serviceConfigListLoading">
+								<td colspan="6" class="text-center text-muted-foreground">
+									<span
+										class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
+									/>
+								</td>
+							</tr>
+							<tr v-else-if="serviceConfigError">
+								<td colspan="6" class="text-center text-destructive">
+									{{ serviceConfigError }}
+								</td>
+							</tr>
+							<tr v-else-if="serviceConfigs.length === 0">
+								<td colspan="6" class="text-center text-muted-foreground">暂无服务配置</td>
+							</tr>
+							<tr v-for="config in serviceConfigs" :key="config.service_name">
+								<td class="text-foreground">{{ config.service_name }}</td>
+								<td class="text-muted-foreground">{{ config.default_domain }}</td>
+								<td class="text-muted-foreground">{{ config.default_port }}</td>
+								<td
+									class="max-w-xs truncate text-muted-foreground"
+									:title="config.base_image ?? ''"
 								>
-									<td class="text-foreground">{{ config.service_name }}</td>
-									<td class="text-muted-foreground">{{ config.default_domain }}</td>
-									<td class="text-muted-foreground">{{ config.default_port }}</td>
-									<td class="max-w-xs truncate text-muted-foreground" :title="config.base_image ?? ''">
-										{{ config.base_image || '—' }}
-									</td>
-									<td class="max-w-xs truncate text-foreground" :title="getServiceDisplayImage(config)">
-										{{ getServiceDisplayImage(config) || '—' }}
-									</td>
-									<td>
-										<div class="flex items-center gap-3">
-											<button
-												class="app-link"
-												@click="openEditServiceConfigModal(config)"
-											>
-												编辑
-											</button>
-											<button
-												v-if="canResetServiceConfig(config)"
-												class="app-link-danger"
-												@click="confirmResetServiceConfig(config)"
-											>
-												重置
-											</button>
-											<span v-else class="text-muted-foreground">—</span>
-										</div>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+									{{ config.base_image || '—' }}
+								</td>
+								<td
+									class="max-w-xs truncate text-foreground"
+									:title="getServiceDisplayImage(config)"
+								>
+									{{ getServiceDisplayImage(config) || '—' }}
+								</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="app-link" @click="openEditServiceConfigModal(config)">
+											编辑
+										</button>
+										<button
+											v-if="canResetServiceConfig(config)"
+											class="app-link-danger"
+											@click="confirmResetServiceConfig(config)"
+										>
+											重置
+										</button>
+										<span v-else class="text-muted-foreground">—</span>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</div>
 
@@ -832,63 +808,47 @@ onMounted(async () => {
 			<div v-if="application.route_managed" class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">路由配置</h2>
-					<button
-						class="app-button-primary h-9 px-3"
-						@click="openAddRouteModal"
-					>
+					<button class="app-button-primary h-9 px-3" @click="openAddRouteModal">
 						<Plus class="h-4 w-4" />
 						添加路由
 					</button>
 				</div>
 				<div class="overflow-x-auto">
 					<table class="app-table-detail min-w-[760px]">
-							<thead>
-								<tr>
-									<th>域名</th>
-									<th>服务</th>
-									<th>端口</th>
-									<th>创建时间</th>
-									<th>操作</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-if="routeListLoading">
-									<td colspan="5" class="text-center text-muted-foreground">
-										<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-									</td>
-								</tr>
-								<tr v-else-if="appRoutes.length === 0">
-									<td colspan="5" class="text-center text-muted-foreground">
-										暂无路由配置
-									</td>
-								</tr>
-								<tr
-									v-for="r in appRoutes"
-									:key="r.id"
-								>
-									<td class="text-foreground">{{ r.domain }}</td>
-									<td class="text-muted-foreground">{{ r.service_name }}</td>
-									<td class="text-muted-foreground">{{ r.port }}</td>
-									<td class="text-muted-foreground">{{ formatTime(r.created_at) }}</td>
-									<td>
-										<div class="flex items-center gap-3">
-											<button
-												class="app-link"
-												@click="openEditRouteModal(r)"
-											>
-												编辑
-											</button>
-											<button
-												class="app-link-danger"
-												@click="confirmDeleteRoute(r.id)"
-											>
-												删除
-											</button>
-										</div>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+						<thead>
+							<tr>
+								<th>域名</th>
+								<th>服务</th>
+								<th>端口</th>
+								<th>创建时间</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="routeListLoading">
+								<td colspan="5" class="text-center text-muted-foreground">
+									<span
+										class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
+									/>
+								</td>
+							</tr>
+							<tr v-else-if="appRoutes.length === 0">
+								<td colspan="5" class="text-center text-muted-foreground">暂无路由配置</td>
+							</tr>
+							<tr v-for="r in appRoutes" :key="r.id">
+								<td class="text-foreground">{{ r.domain }}</td>
+								<td class="text-muted-foreground">{{ r.service_name }}</td>
+								<td class="text-muted-foreground">{{ r.port }}</td>
+								<td class="text-muted-foreground">{{ formatTime(r.created_at) }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="app-link" @click="openEditRouteModal(r)">编辑</button>
+										<button class="app-link-danger" @click="confirmDeleteRoute(r.id)">删除</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
 			</div>
 		</div>
@@ -919,16 +879,14 @@ onMounted(async () => {
 					></textarea>
 				</div>
 			</div>
-			<pre v-else class="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-sm text-foreground">{{ currentFileContent }}</pre>
+			<pre
+				v-else
+				class="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-sm text-foreground"
+				>{{ currentFileContent }}</pre
+			>
 			<template v-if="isEditingInDrawer" #footer>
-				<button class="app-button" @click="handleDrawerClose">
-					取消
-				</button>
-				<button
-					:disabled="fileContentLoading"
-					class="app-button-primary"
-					@click="saveCurrentFile"
-				>
+				<button class="app-button" @click="handleDrawerClose">取消</button>
+				<button :disabled="fileContentLoading" class="app-button-primary" @click="saveCurrentFile">
 					{{ fileContentLoading ? '保存中...' : '保存' }}
 				</button>
 			</template>
@@ -937,7 +895,8 @@ onMounted(async () => {
 		<AppDialog v-model:open="isEditDialogOpen" title="编辑应用">
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					应用名称 <span class="text-destructive">*</span>
+					应用名称
+					<span class="text-destructive">*</span>
 				</label>
 				<input
 					v-model="editForm.name"
@@ -949,12 +908,7 @@ onMounted(async () => {
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">应用代码</label>
-				<input
-					v-model="editForm.code"
-					type="text"
-					disabled
-					class="app-input"
-				/>
+				<input v-model="editForm.code" type="text" disabled class="app-input" />
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">镜像拉取策略</label>
@@ -965,43 +919,40 @@ onMounted(async () => {
 				<span class="text-sm font-medium text-foreground">启用路由管理</span>
 			</label>
 			<template #footer>
-				<button class="app-button" @click="isEditDialogOpen = false">
-					取消
-				</button>
-				<button
-					:disabled="operating"
-					class="app-button-primary"
-					@click="handleEditOk"
-				>
+				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
+				<button :disabled="operating" class="app-button-primary" @click="handleEditOk">
 					{{ operating ? '保存中...' : '保存' }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteDialogOpen" title="确认删除" description="确定要删除此应用吗？此操作不可恢复。" width-class="w-[min(420px,calc(100vw-32px))]">
+		<AppDialog
+			v-model:open="isDeleteDialogOpen"
+			title="确认删除"
+			description="确定要删除此应用吗？此操作不可恢复。"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+		>
 			<label class="flex items-center gap-2">
 				<input v-model="deleteDir" type="checkbox" class="app-checkbox" />
 				<span class="text-sm text-foreground">同时删除工作目录</span>
 			</label>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">
-					取消
-				</button>
-				<button
-					:disabled="operating"
-					class="app-button-destructive"
-					@click="handleDeleteOk"
-				>
+				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button :disabled="operating" class="app-button-destructive" @click="handleDeleteOk">
 					{{ operating ? '删除中...' : '删除' }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteFileDialogOpen" title="确认删除" description="确定要删除这个配置文件吗？此操作无法撤销。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+		<AppDialog
+			v-model:open="isDeleteFileDialogOpen"
+			title="确认删除"
+			description="确定要删除这个配置文件吗？此操作无法撤销。"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteFileDialogOpen = false">
-					取消
-				</button>
+				<button class="app-button" @click="isDeleteFileDialogOpen = false">取消</button>
 				<button
 					:disabled="fileListLoading"
 					class="app-button-destructive"
@@ -1019,16 +970,10 @@ onMounted(async () => {
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">镜像</label>
-				<input
-					v-model="serviceConfigForm.image"
-					type="text"
-					class="app-input"
-				/>
+				<input v-model="serviceConfigForm.image" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isServiceConfigDialogOpen = false">
-					取消
-				</button>
+				<button class="app-button" @click="isServiceConfigDialogOpen = false">取消</button>
 				<button
 					:disabled="!serviceConfigDirty || serviceConfigSaving"
 					class="app-button-primary"
@@ -1039,11 +984,15 @@ onMounted(async () => {
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteServiceConfigDialogOpen" title="确认重置" description="确定要重置此服务镜像配置吗？" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+		<AppDialog
+			v-model:open="isDeleteServiceConfigDialogOpen"
+			title="确认重置"
+			description="确定要重置此服务镜像配置吗？"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
 			<template #footer>
-				<button class="app-button" @click="cancelResetServiceConfig">
-					取消
-				</button>
+				<button class="app-button" @click="cancelResetServiceConfig">取消</button>
 				<button
 					:disabled="serviceConfigSaving"
 					class="app-button-destructive"
@@ -1057,17 +1006,29 @@ onMounted(async () => {
 		<AppDialog v-model:open="isRouteDialogOpen" :title="editingRouteId ? '编辑路由' : '添加路由'">
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					选择服务 <span class="text-destructive">*</span>
+					选择服务
+					<span class="text-destructive">*</span>
 				</label>
-				<ComboboxRoot v-model="selectedService" :display-value="(s: ComposeServiceResp | null) => s?.service_name || ''" @update:model-value="onServiceChange">
+				<ComboboxRoot
+					v-model="selectedService"
+					:display-value="(s: ComposeServiceResp | null) => s?.service_name || ''"
+					@update:model-value="onServiceChange"
+				>
 					<ComboboxAnchor
 						class="app-combobox-anchor"
 						:class="routeFormErrors.service_name ? 'app-input-error' : ''"
 					>
 						<Search class="size-4 shrink-0 text-muted-foreground" />
-						<ComboboxInput v-model="serviceSearchTerm" placeholder="搜索服务..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
+						<ComboboxInput
+							v-model="serviceSearchTerm"
+							placeholder="搜索服务..."
+							class="grow bg-transparent outline-none placeholder:text-muted-foreground"
+						/>
 						<ComboboxCancel v-if="selectedService" as-child>
-							<button class="text-muted-foreground transition-colors hover:text-foreground" aria-label="清除服务">
+							<button
+								class="text-muted-foreground transition-colors hover:text-foreground"
+								aria-label="清除服务"
+							>
 								<X class="size-3.5" />
 							</button>
 						</ComboboxCancel>
@@ -1078,8 +1039,15 @@ onMounted(async () => {
 						</ComboboxTrigger>
 					</ComboboxAnchor>
 					<ComboboxPortal disabled>
-						<ComboboxContent position="popper" align="start" class="app-popover-content w-[var(--reka-combobox-trigger-width)]" :side-offset="4">
-							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">未找到服务</ComboboxEmpty>
+						<ComboboxContent
+							position="popper"
+							align="start"
+							class="app-popover-content w-[var(--reka-combobox-trigger-width)]"
+							:side-offset="4"
+						>
+							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">
+								未找到服务
+							</ComboboxEmpty>
 							<ComboboxItem
 								v-for="service in filteredServices"
 								:key="service.service_name"
@@ -1087,16 +1055,21 @@ onMounted(async () => {
 								class="app-option-item flex-col items-start"
 							>
 								<span class="text-sm text-foreground">{{ service.service_name }}</span>
-								<span class="text-xs text-muted-foreground">{{ service.default_domain }}:{{ service.default_port }}</span>
+								<span class="text-xs text-muted-foreground">
+									{{ service.default_domain }}:{{ service.default_port }}
+								</span>
 							</ComboboxItem>
 						</ComboboxContent>
 					</ComboboxPortal>
 				</ComboboxRoot>
-				<p v-if="routeFormErrors.service_name" class="app-field-error mt-1 text-xs">{{ routeFormErrors.service_name }}</p>
+				<p v-if="routeFormErrors.service_name" class="app-field-error mt-1 text-xs">
+					{{ routeFormErrors.service_name }}
+				</p>
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					域名 <span class="text-destructive">*</span>
+					域名
+					<span class="text-destructive">*</span>
 				</label>
 				<input
 					v-model="routeForm.domain"
@@ -1105,11 +1078,14 @@ onMounted(async () => {
 					class="app-input"
 					:class="routeFormErrors.domain ? 'app-input-error' : ''"
 				/>
-				<p v-if="routeFormErrors.domain" class="app-field-error mt-1 text-xs">{{ routeFormErrors.domain }}</p>
+				<p v-if="routeFormErrors.domain" class="app-field-error mt-1 text-xs">
+					{{ routeFormErrors.domain }}
+				</p>
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					端口 <span class="text-destructive">*</span>
+					端口
+					<span class="text-destructive">*</span>
 				</label>
 				<input
 					v-model.number="routeForm.port"
@@ -1120,32 +1096,28 @@ onMounted(async () => {
 					class="app-input"
 					:class="routeFormErrors.port ? 'app-input-error' : ''"
 				/>
-				<p v-if="routeFormErrors.port" class="app-field-error mt-1 text-xs">{{ routeFormErrors.port }}</p>
+				<p v-if="routeFormErrors.port" class="app-field-error mt-1 text-xs">
+					{{ routeFormErrors.port }}
+				</p>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isRouteDialogOpen = false">
-					取消
-				</button>
-				<button
-					:disabled="routeLoading"
-					class="app-button-primary"
-					@click="handleRouteOk"
-				>
+				<button class="app-button" @click="isRouteDialogOpen = false">取消</button>
+				<button :disabled="routeLoading" class="app-button-primary" @click="handleRouteOk">
 					{{ routeLoading ? '保存中...' : '保存' }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeleteRouteDialogOpen" title="确认删除" description="确定要删除这个路由配置吗？此操作无法撤销。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
+		<AppDialog
+			v-model:open="isDeleteRouteDialogOpen"
+			title="确认删除"
+			description="确定要删除这个路由配置吗？此操作无法撤销。"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
 			<template #footer>
-				<button class="app-button" @click="isDeleteRouteDialogOpen = false">
-					取消
-				</button>
-				<button
-					:disabled="routeLoading"
-					class="app-button-destructive"
-					@click="executeDeleteRoute"
-				>
+				<button class="app-button" @click="isDeleteRouteDialogOpen = false">取消</button>
+				<button :disabled="routeLoading" class="app-button-destructive" @click="executeDeleteRoute">
 					{{ routeLoading ? '删除中...' : '删除' }}
 				</button>
 			</template>

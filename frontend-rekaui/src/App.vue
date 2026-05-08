@@ -1,29 +1,26 @@
 <script setup lang="ts">
-import {
-	PanelLeftClose,
-	PanelLeftOpen
-} from 'lucide-vue-next'
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import AppToaster from '@/components/AppToaster.vue'
-import AppTopBar from '@/components/AppTopBar.vue'
-import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import AppToaster from '@/components/AppToaster.vue';
+import AppTopBar from '@/components/AppTopBar.vue';
+import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
 
-const route = useRoute()
+const route = useRoute();
 
-const collapsed = ref(false)
-const currentScope = computed(() => getNavigationScope(route.path))
-const selectedKey = computed(() => (route.meta.menuKey as string) ?? '')
-const currentPrimaryModule = computed(() => getPrimaryNavigationKey(route.path))
+const collapsed = ref(false);
+const currentScope = computed(() => getNavigationScope(route.path));
+const selectedKey = computed(() => (route.meta.menuKey as string) ?? '');
+const currentPrimaryModule = computed(() => getPrimaryNavigationKey(route.path));
 
 const sidebarItems = computed(() => {
 	if (!currentScope.value) {
-		return []
+		return [];
 	}
-	return secondaryNavigation[currentScope.value] ?? []
-})
+	return secondaryNavigation[currentScope.value] ?? [];
+});
 
-const isLoginPage = computed(() => route.name === 'Login')
+const isLoginPage = computed(() => route.name === 'Login');
 </script>
 
 <template>
@@ -57,7 +54,9 @@ const isLoginPage = computed(() => route.name === 'Login')
 								:title="collapsed ? item.label : undefined"
 							>
 								<component :is="item.icon" class="size-4 shrink-0" />
-								<span v-if="!collapsed" class="max-w-28 truncate md:max-w-none">{{ item.label }}</span>
+								<span v-if="!collapsed" class="max-w-28 truncate md:max-w-none">
+									{{ item.label }}
+								</span>
 							</RouterLink>
 						</div>
 					</nav>
@@ -72,7 +71,9 @@ const isLoginPage = computed(() => route.name === 'Login')
 				</aside>
 
 				<!-- Main content -->
-				<main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-background p-4 shadow-sm md:p-6">
+				<main
+					class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-background p-4 shadow-sm md:p-6"
+				>
 					<RouterView />
 				</main>
 			</div>

@@ -54,18 +54,15 @@ onMounted(fetchSnapshot);
 <template>
 	<div class="flex flex-col gap-4">
 		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
-			<div class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+			<div
+				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
+			></div>
 		</div>
 
 		<div v-else-if="snapshot" class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<h1 class="text-xl font-semibold text-foreground">快照详情</h1>
-				<button
-					class="app-button h-9 px-4"
-					@click="router.back()"
-				>
-					返回
-				</button>
+				<button class="app-button h-9 px-4" @click="router.back()">返回</button>
 			</div>
 
 			<!-- 基本信息 -->
@@ -81,10 +78,7 @@ onMounted(fetchSnapshot);
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">模板</dt>
 						<dd>
-							<router-link
-								:to="`/ci/template/${snapshot.template_id}`"
-								class="app-link"
-							>
+							<router-link :to="`/ci/template/${snapshot.template_id}`" class="app-link">
 								{{ snapshot.template_name }}
 							</router-link>
 						</dd>
@@ -109,17 +103,28 @@ onMounted(fetchSnapshot);
 				<div class="app-section-header flex items-center justify-between">
 					<div class="flex items-center gap-4">
 						<h2 class="font-semibold text-foreground">Stage 快照</h2>
-						<div v-if="snapshot.stages_snapshot.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
+						<div
+							v-if="snapshot.stages_snapshot.length > 0"
+							class="flex gap-1 rounded-md border border-border bg-background p-1"
+						>
 							<button
 								class="rounded px-3 py-1 text-xs font-medium transition-colors"
-								:class="stagesView === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+								:class="
+									stagesView === 'list'
+										? 'bg-primary text-primary-foreground'
+										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+								"
 								@click="stagesView = 'list'"
 							>
 								列表
 							</button>
 							<button
 								class="rounded px-3 py-1 text-xs font-medium transition-colors"
-								:class="stagesView === 'dag' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'"
+								:class="
+									stagesView === 'dag'
+										? 'bg-primary text-primary-foreground'
+										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+								"
 								@click="stagesView = 'dag'"
 							>
 								DAG
@@ -143,20 +148,12 @@ onMounted(fetchSnapshot);
 						</thead>
 						<tbody>
 							<tr v-if="snapshot.stages_snapshot.length === 0">
-								<td colspan="6" class="text-center text-muted-foreground">
-									暂无 Stage
-								</td>
+								<td colspan="6" class="text-center text-muted-foreground">暂无 Stage</td>
 							</tr>
-							<tr
-								v-for="(stage, idx) in snapshot.stages_snapshot"
-								:key="stage.id"
-							>
+							<tr v-for="(stage, idx) in snapshot.stages_snapshot" :key="stage.id">
 								<td class="text-muted-foreground">{{ idx + 1 }}</td>
 								<td>
-									<router-link
-										:to="`/ci/build-stage/${stage.id}`"
-										class="app-link"
-									>
+									<router-link :to="`/ci/build-stage/${stage.id}`" class="app-link">
 										{{ stage.name }}
 									</router-link>
 								</td>
@@ -207,7 +204,10 @@ onMounted(fetchSnapshot);
 				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">制品声明</h2>
 				</div>
-				<div v-if="artifactDeclarations.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
+				<div
+					v-if="artifactDeclarations.length === 0"
+					class="px-5 py-12 text-center text-sm text-muted-foreground"
+				>
 					暂无制品
 				</div>
 				<div v-else class="overflow-x-auto">
@@ -221,13 +221,12 @@ onMounted(fetchSnapshot);
 							</tr>
 						</thead>
 						<tbody>
-							<tr
-								v-for="(artifact, idx) in artifactDeclarations"
-								:key="idx"
-							>
+							<tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
 								<td class="text-foreground">{{ artifact.stageName }}</td>
 								<td>
-									<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+									<span
+										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+									>
 										{{ artifact.type }}
 									</span>
 								</td>

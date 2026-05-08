@@ -66,34 +66,34 @@ export function formatDuration(startTime?: string | null, endTime?: string | nul
 	if (!startTime || !endTime) {
 		return '—';
 	}
-	
+
 	const start = dayjs.utc(startTime);
 	const end = dayjs.utc(endTime);
 	const diffMs = end.diff(start);
-	
+
 	if (diffMs < 0) {
 		return '—';
 	}
-	
+
 	const seconds = Math.floor(diffMs / 1000);
 	const minutes = Math.floor(seconds / 60);
 	const hours = Math.floor(minutes / 60);
 	const days = Math.floor(hours / 24);
-	
+
 	if (days > 0) {
 		const remainHours = hours % 24;
 		return remainHours > 0 ? `${days}天${remainHours}小时` : `${days}天`;
 	}
-	
+
 	if (hours > 0) {
 		const remainMinutes = minutes % 60;
 		return remainMinutes > 0 ? `${hours}小时${remainMinutes}分` : `${hours}小时`;
 	}
-	
+
 	if (minutes > 0) {
 		const remainSeconds = seconds % 60;
 		return remainSeconds > 0 ? `${minutes}分${remainSeconds}秒` : `${minutes}分`;
 	}
-	
+
 	return `${seconds}秒`;
 }

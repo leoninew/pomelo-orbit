@@ -1,60 +1,60 @@
 ﻿<script setup lang="ts">
-import { Plus } from 'lucide-vue-next'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { credentialApi, repositoryApi } from '@/api/ci'
-import AppDialog from '@/components/AppDialog.vue'
-import ComboboxSelect from '@/components/ComboboxSelect.vue'
-import ListPagination from '@/components/ListPagination.vue'
-import SearchControl from '@/components/SearchControl.vue'
-import { useStatusAsync } from '@/composables/useStatusAsync'
-import { useToast } from '@/composables/useToast'
-import type { Credential } from '@/types/ci/credential'
-import type { RepositoryListItem } from '@/types/ci/repository'
-import { formatTime } from '@/utils/time'
-import { ToolbarRoot } from 'reka-ui'
+import { Plus } from 'lucide-vue-next';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { credentialApi, repositoryApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
+import ComboboxSelect from '@/components/ComboboxSelect.vue';
+import ListPagination from '@/components/ListPagination.vue';
+import SearchControl from '@/components/SearchControl.vue';
+import { useStatusAsync } from '@/composables/useStatusAsync';
+import { useToast } from '@/composables/useToast';
+import type { Credential } from '@/types/ci/credential';
+import type { RepositoryListItem } from '@/types/ci/repository';
+import { formatTime } from '@/utils/time';
+import { ToolbarRoot } from 'reka-ui';
 
-const router = useRouter()
-const toast = useToast()
-const { status, execute } = useStatusAsync()
-const { loading: operating, execute: executeOp } = useStatusAsync()
-const { status: modalStatus, execute: executeModal } = useStatusAsync()
+const router = useRouter();
+const toast = useToast();
+const { status, execute } = useStatusAsync();
+const { loading: operating, execute: executeOp } = useStatusAsync();
+const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
-const repositories = ref<RepositoryListItem[]>([])
-const credentials = ref<Credential[]>([])
+const repositories = ref<RepositoryListItem[]>([]);
+const credentials = ref<Credential[]>([]);
 const gitCredentials = computed(() =>
 	credentials.value.filter(
 		(c) => c.type === 'git_ssh' || c.type === 'git_token' || c.type === 'gitee_token'
 	)
-)
+);
 const gitCredentialOptions = computed(() =>
 	gitCredentials.value.map((cred) => ({
 		value: cred.id,
-		label: cred.name
+		label: cred.name,
 	}))
-)
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
-const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
-const searchText = ref('')
-const showCreateModal = ref(false)
+);
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+const searchText = ref('');
+const showCreateModal = ref(false);
 
 const form = reactive({
 	name: '',
 	code: '',
 	repository_url: '',
-	git_credential_id: ''
-})
+	git_credential_id: '',
+});
 const errors = reactive({
 	name: '',
 	code: '',
-	repository_url: ''
-})
+	repository_url: '',
+});
 
 function validate() {
-	errors.name = form.name.trim() ? '' : '请输入名称'
-	errors.code = /^[a-z0-9-]+$/.test(form.code.trim()) ? '' : '编码只能包含小写字母、数字和连字符'
-	errors.repository_url = form.repository_url.trim() ? '' : '请输入仓库地址'
-	return !errors.name && !errors.code && !errors.repository_url
+	errors.name = form.name.trim() ? '' : '请输入名称';
+	errors.code = /^[a-z0-9-]+$/.test(form.code.trim()) ? '' : '编码只能包含小写字母、数字和连字符';
+	errors.repository_url = form.repository_url.trim() ? '' : '请输入仓库地址';
+	return !errors.name && !errors.code && !errors.repository_url;
 }
 
 async function fetchProjects() {
@@ -63,33 +63,33 @@ async function fetchProjects() {
 			const res = await repositoryApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				search: searchText.value || undefined
-			})
-			repositories.value = res.items
-			pagination.total = res.total
-		})
+				search: searchText.value || undefined,
+			});
+			repositories.value = res.items;
+			pagination.total = res.total;
+		});
 	} catch {
-		toast.error('获取项目列表失败')
+		toast.error('获取项目列表失败');
 	}
 }
 
 function handleSearch() {
-	pagination.current = 1
-	fetchProjects()
+	pagination.current = 1;
+	fetchProjects();
 }
 
 function goPage(p: number) {
 	if (p < 1 || p > totalPages.value || p === pagination.current) {
-		return
+		return;
 	}
-	pagination.current = p
-	fetchProjects()
+	pagination.current = p;
+	fetchProjects();
 }
 
 function handlePageSizeChange(pageSize: number) {
-	pagination.pageSize = pageSize
-	pagination.current = 1
-	fetchProjects()
+	pagination.pageSize = pageSize;
+	pagination.current = 1;
+	fetchProjects();
 }
 
 async function openCreateModal() {
@@ -97,23 +97,23 @@ async function openCreateModal() {
 		name: '',
 		code: '',
 		repository_url: '',
-		git_credential_id: ''
-	})
-	Object.assign(errors, { name: '', code: '', repository_url: '' })
-	showCreateModal.value = true
+		git_credential_id: '',
+	});
+	Object.assign(errors, { name: '', code: '', repository_url: '' });
+	showCreateModal.value = true;
 	try {
 		await executeModal(async () => {
-			const credRes = await credentialApi.list({ per_page: 100 })
-			credentials.value = credRes.items
-		})
+			const credRes = await credentialApi.list({ per_page: 100 });
+			credentials.value = credRes.items;
+		});
 	} catch {
-		toast.error('加载表单数据失败')
+		toast.error('加载表单数据失败');
 	}
 }
 
 async function handleCreateOk() {
 	if (!validate()) {
-		return
+		return;
 	}
 	try {
 		await executeOp(async () => {
@@ -121,18 +121,18 @@ async function handleCreateOk() {
 				name: form.name,
 				code: form.code,
 				repository_url: form.repository_url,
-				git_credential_id: form.git_credential_id || undefined
-			})
-			toast.success('创建成功')
-			showCreateModal.value = false
-			router.push(`/ci/repository/${repository.id}`)
-		})
+				git_credential_id: form.git_credential_id || undefined,
+			});
+			toast.success('创建成功');
+			showCreateModal.value = false;
+			router.push(`/ci/repository/${repository.id}`);
+		});
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '创建失败')
+		toast.error(error instanceof Error ? error.message : '创建失败');
 	}
 }
 
-onMounted(fetchProjects)
+onMounted(fetchProjects);
 </script>
 
 <template>
@@ -144,10 +144,7 @@ onMounted(fetchProjects)
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
-			<button
-				class="app-button-primary px-5"
-				@click="openCreateModal"
-			>
+			<button class="app-button-primary px-5" @click="openCreateModal">
 				<Plus class="size-4" />
 				新建仓库
 			</button>
@@ -202,10 +199,7 @@ onMounted(fetchProjects)
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(p.created_at) }}</td>
 							<td class="whitespace-nowrap">
-								<button
-									class="app-link"
-									@click="router.push(`/ci/repository/${p.id}`)"
-								>
+								<button class="app-link" @click="router.push(`/ci/repository/${p.id}`)">
 									查看
 								</button>
 							</td>
@@ -284,9 +278,7 @@ onMounted(fetchProjects)
 		</div>
 
 		<template #footer>
-			<button class="app-button" @click="showCreateModal = false">
-				取消
-			</button>
+			<button class="app-button" @click="showCreateModal = false">取消</button>
 			<button
 				class="app-button-primary"
 				:disabled="operating || modalStatus === 'loading'"

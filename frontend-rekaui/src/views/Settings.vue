@@ -8,7 +8,7 @@
 				:loading="configLoading"
 			/>
 			<button
-				class="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+				class="app-button-primary px-5"
 				@click="passwordModalOpen = true"
 			>
 				<Key class="size-4" />
@@ -17,24 +17,24 @@
 		</ToolbarRoot>
 
 		<!-- Restart Warning -->
-		<div v-if="needsRestart" class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+		<div v-if="needsRestart" class="app-tip border-amber-200 bg-amber-50">
 			<p class="text-sm text-amber-800">
 				⚠️ 配置已更新，请重启服务以使更改生效
 			</p>
 		</div>
 
 		<!-- Config Table -->
-		<div v-if="configLoading" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-if="configLoading" class="app-surface">
 			<div class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
 		</div>
-		<div v-else-if="filteredConfig.length === 0" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-else-if="filteredConfig.length === 0" class="app-surface">
 			<div class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">{{ searchText ? '未找到匹配的配置项' : '暂无配置' }}</p>
 			</div>
 		</div>
-		<div v-else class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-else class="app-surface">
 			<div class="overflow-x-auto">
 				<table class="app-table-list min-w-[1120px]">
 					<thead>
@@ -75,7 +75,7 @@
 										v-model="editingStr"
 										:type="secretKeys.has(item.key) ? 'password' : 'text'"
 										:placeholder="secretKeys.has(item.key) ? '留空表示不修改' : ''"
-										class="h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+										class="app-input h-9"
 									/>
 								</div>
 								<!-- Display Mode -->
@@ -100,7 +100,7 @@
 								<div v-if="editingKey === item.key" class="flex justify-end gap-2">
 									<button
 										:disabled="operating"
-										class="text-primary hover:underline disabled:opacity-50"
+										class="app-link"
 										@click="handleSave(item)"
 									>
 										保存
@@ -114,7 +114,7 @@
 								</div>
 								<div v-else class="flex justify-end gap-2">
 									<button
-										class="text-primary hover:underline"
+										class="app-link"
 										@click="startEdit(item)"
 									>
 										编辑
@@ -133,140 +133,99 @@
 			</div>
 		</div>
 
-		<!-- Change Password Modal -->
-		<DialogRoot v-model:open="passwordModalOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog v-model:open="passwordModalOpen" title="修改密码" description="请输入当前密码和新密码。">
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">当前密码</label>
+					<input
+						v-model="passwordForm.old_password"
+						type="password"
+						placeholder="输入当前密码"
+						class="app-input"
+						:class="passwordErrors.old_password ? 'app-input-error' : ''"
+					/>
+					<p v-if="passwordErrors.old_password" class="app-field-error text-xs">
+						{{ passwordErrors.old_password }}
+					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">新密码</label>
+					<input
+						v-model="passwordForm.new_password"
+						type="password"
+						placeholder="输入新密码（至少 6 位）"
+						class="app-input"
+						:class="passwordErrors.new_password ? 'app-input-error' : ''"
+					/>
+					<p v-if="passwordErrors.new_password" class="app-field-error text-xs">
+						{{ passwordErrors.new_password }}
+					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">确认新密码</label>
+					<input
+						v-model="passwordForm.confirm_password"
+						type="password"
+						placeholder="再次输入新密码"
+						class="app-input"
+						:class="passwordErrors.confirm_password ? 'app-input-error' : ''"
+					/>
+					<p v-if="passwordErrors.confirm_password" class="app-field-error text-xs">
+						{{ passwordErrors.confirm_password }}
+					</p>
+				</div>
+			</div>
+			<template #footer>
+				<button class="app-button" @click="passwordModalOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="passwordLoading"
+					@click="handleChangePassword"
 				>
-					<div class="mb-5 space-y-1">
-						<DialogTitle class="text-lg font-semibold text-foreground">修改密码</DialogTitle>
-						<DialogDescription class="text-sm text-muted-foreground">
-							请输入当前密码和新密码。
-						</DialogDescription>
-					</div>
+					<span
+						v-if="passwordLoading"
+						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+					/>
+					修改密码
+				</button>
+			</template>
+		</AppDialog>
 
-					<div class="space-y-4">
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">当前密码</label>
-							<input
-								v-model="passwordForm.old_password"
-								type="password"
-								placeholder="输入当前密码"
-								class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="passwordErrors.old_password ? 'border-destructive' : 'border-input'"
-							/>
-							<p v-if="passwordErrors.old_password" class="text-xs text-destructive">
-								{{ passwordErrors.old_password }}
-							</p>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">新密码</label>
-							<input
-								v-model="passwordForm.new_password"
-								type="password"
-								placeholder="输入新密码（至少 6 位）"
-								class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="passwordErrors.new_password ? 'border-destructive' : 'border-input'"
-							/>
-							<p v-if="passwordErrors.new_password" class="text-xs text-destructive">
-								{{ passwordErrors.new_password }}
-							</p>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">确认新密码</label>
-							<input
-								v-model="passwordForm.confirm_password"
-								type="password"
-								placeholder="再次输入新密码"
-								class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="passwordErrors.confirm_password ? 'border-destructive' : 'border-input'"
-							/>
-							<p v-if="passwordErrors.confirm_password" class="text-xs text-destructive">
-								{{ passwordErrors.confirm_password }}
-							</p>
-						</div>
-					</div>
-
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="passwordLoading"
-							@click="handleChangePassword"
-						>
-							<span
-								v-if="passwordLoading"
-								class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-							/>
-							修改密码
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
-
-		<!-- Reset Confirmation -->
-		<DialogRoot v-model:open="resetModalOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 w-[min(400px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="resetModalOpen"
+			title="确认重置"
+			description="确定要将此配置项重置为默认值吗？"
+			width-class="w-[min(400px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
+			<template #footer>
+				<button class="app-button" @click="resetModalOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating"
+					@click="handleReset"
 				>
-					<div class="mb-5 space-y-1">
-						<DialogTitle class="text-lg font-semibold text-foreground">确认重置</DialogTitle>
-						<DialogDescription class="text-sm text-muted-foreground">
-							确定要将此配置项重置为默认值吗？
-						</DialogDescription>
-					</div>
-
-					<div class="flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="handleReset"
-						>
-							<span
-								v-if="operating"
-								class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-							/>
-							重置
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+					/>
+					重置
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { Key } from 'lucide-vue-next';
 import { computed, onMounted, reactive, ref } from 'vue';
-import {
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogOverlay,
-	DialogPortal,
-	DialogRoot,
-	DialogTitle,
-	ToolbarRoot,
-} from 'reka-ui';
+import { ToolbarRoot } from 'reka-ui';
 import { settingApi } from '@/api/settings';
+import AppDialog from '@/components/AppDialog.vue';
 import SearchControl from '@/components/SearchControl.vue';
 import SelectControl from '@/components/SelectControl.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';

@@ -62,6 +62,122 @@
 }
 
 @layer components {
+  .app-surface {
+    @apply overflow-hidden rounded-lg border border-border bg-card shadow-sm;
+  }
+
+  .app-section-header {
+    @apply border-b border-border px-5 py-4;
+  }
+
+  .app-field-label {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  .app-field-error {
+    @apply text-sm text-destructive;
+  }
+
+  .app-input {
+    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+  }
+
+  .app-input-error {
+    @apply border-destructive focus:border-destructive focus:ring-destructive/20;
+  }
+
+  .app-input-search {
+    @apply h-10 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+  }
+
+  .app-textarea {
+    @apply min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+  }
+
+  .app-button {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-button-sm {
+    @apply h-9 px-3;
+  }
+
+  .app-button-primary {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-button-danger {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/50 bg-background px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-button-destructive {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-icon-button {
+    @apply inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-link {
+    @apply text-primary underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .app-link-danger {
+    @apply text-destructive underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .app-link-success {
+    @apply text-green-600 underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .app-link-warning {
+    @apply text-amber-600 underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .app-select-trigger {
+    @apply flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .app-switch-root {
+    @apply relative h-6 w-11 cursor-pointer rounded-full bg-input outline-none transition-colors focus:ring-2 focus:ring-ring/20 data-[state=checked]:bg-primary disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .app-switch-thumb {
+    @apply block size-5 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform duration-100 data-[state=checked]:translate-x-[22px];
+  }
+
+  .app-combobox-anchor {
+    @apply flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20;
+  }
+
+  .app-popover-content {
+    @apply z-[60] max-h-64 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none;
+  }
+
+  .app-option-item {
+    @apply flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50;
+  }
+
+  .app-tip {
+    @apply rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
+  }
+
+  .app-dialog-overlay {
+    @apply fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow;
+  }
+
+  .app-dialog-content {
+    @apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card shadow-xl outline-none data-[state=open]:animate-contentShow;
+  }
+
+  .app-drawer-content {
+    @apply fixed bottom-0 right-0 top-0 z-50 flex max-h-screen max-w-full flex-col border-l border-border bg-card shadow-xl outline-none;
+  }
+
+  .app-toast-root {
+    @apply flex w-full items-start gap-3 rounded-lg border px-4 py-3 shadow-lg outline-none;
+  }
+
   .app-table-list {
     @apply w-full;
   }
@@ -71,7 +187,7 @@
   }
 
   .app-table-list th {
-    @apply h-11 px-6 py-3 text-left align-middle text-xs font-normal text-muted-foreground;
+    @apply h-11 whitespace-nowrap px-6 py-3 text-left align-middle text-xs font-normal text-muted-foreground;
   }
 
   .app-table-list tbody {
@@ -109,4 +225,84 @@
   .app-table-detail td {
     @apply h-11 whitespace-nowrap px-5 py-2 align-middle text-sm;
   }
+}
+
+@keyframes app-drawer-slide-in {
+  from {
+    opacity: 0.8;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes app-drawer-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0.8;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes app-toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 1rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes app-toast-hide {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes app-toast-swipe-out {
+  from {
+    transform: translateX(var(--reka-toast-swipe-end-x));
+  }
+  to {
+    transform: translateX(calc(100% + 1rem));
+  }
+}
+
+.app-drawer-content[data-state='open'] {
+  animation: app-drawer-slide-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-drawer-content[data-state='closed'] {
+  animation: app-drawer-slide-out 120ms ease-in;
+}
+
+.app-toast-root[data-state='open'] {
+  animation: app-toast-slide-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-toast-root[data-state='closed'] {
+  animation: app-toast-hide 100ms ease-in;
+}
+
+.app-toast-root[data-swipe='move'] {
+  transform: translateX(var(--reka-toast-swipe-move-x));
+}
+
+.app-toast-root[data-swipe='cancel'] {
+  transform: translateX(0);
+  transition: transform 200ms ease-out;
+}
+
+.app-toast-root[data-swipe='end'] {
+  animation: app-toast-swipe-out 100ms ease-out;
 }

@@ -90,14 +90,14 @@ function canEdit(decl: VariableDeclaration) {
 						<div class="flex items-center gap-2">
 							<button
 								v-if="canEdit(decl)"
-								class="text-primary hover:underline"
+								class="app-link"
 								@click="emit('edit', decl.name)"
 							>
 								编辑
 							</button>
 							<button
 								v-if="canEdit(decl)"
-								class="text-destructive hover:underline"
+								class="app-link-danger"
 								@click="emit('delete', decl.name)"
 							>
 								删除

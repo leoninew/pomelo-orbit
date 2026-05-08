@@ -31,7 +31,8 @@ function clearSearch() {
 				:value="modelValue"
 				type="text"
 				:placeholder="placeholder"
-				class="h-10 w-full rounded-l-md border border-r-0 border-input bg-background py-2 pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+				class="app-input-search rounded-r-none border-r-0"
+				:disabled="disabled || loading"
 				@input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
 				@keydown.enter="emit('search')"
 			/>
@@ -39,7 +40,8 @@ function clearSearch() {
 				v-if="modelValue"
 				type="button"
 				aria-label="清空搜索"
-				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+				:disabled="disabled || loading"
 				@click="clearSearch"
 			>
 				<X class="size-4" />
@@ -47,7 +49,7 @@ function clearSearch() {
 		</div>
 		<button
 			type="button"
-			class="flex h-10 min-w-20 items-center justify-center rounded-r-md border border-primary bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+			class="app-button-primary min-w-20 rounded-l-none px-5"
 			:disabled="disabled || loading"
 			@click="emit('search')"
 		>

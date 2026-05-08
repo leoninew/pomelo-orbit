@@ -1,30 +1,33 @@
-import { ref } from 'vue';
+import { ref } from 'vue'
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info'
 
-interface Toast {
+export interface Toast {
 	id: number
 	type: ToastType
 	text: string
+	duration: number
 }
 
 // Global singleton state shared across all composable instances
-const toasts = ref<Toast[]>([]);
+const toasts = ref<Toast[]>([])
 
 export function useToast() {
 	function show(type: ToastType, text: string, duration = 3000) {
-		const id = Date.now() + Math.random();
-		toasts.value.push({ id, type, text });
-		setTimeout(() => {
-			toasts.value = toasts.value.filter((t) => t.id !== id);
-		}, duration);
+		const id = Date.now() + Math.random()
+		toasts.value.push({ id, type, text, duration })
+	}
+
+	function remove(id: number) {
+		toasts.value = toasts.value.filter((toast) => toast.id !== id)
 	}
 
 	return {
 		toasts,
-		success: (text: string) => show('success', text),
-		error: (text: string) => show('error', text),
-		warning: (text: string) => show('warning', text),
-		info: (text: string) => show('info', text),
-	};
+		remove,
+		success: (text: string, duration?: number) => show('success', text, duration),
+		error: (text: string, duration?: number) => show('error', text, duration),
+		warning: (text: string, duration?: number) => show('warning', text, duration),
+		info: (text: string, duration?: number) => show('info', text, duration)
+	}
 }

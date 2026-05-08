@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Search, X } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { deploymentApi } from '@/api/cd/deployments'
 import ListPagination from '@/components/ListPagination.vue'
+import SearchControl from '@/components/SearchControl.vue'
 import { useStatusAsync } from '@/composables/useStatusAsync'
 import { useToast } from '@/composables/useToast'
 import type { Deployment } from '@/types/cd/deployment'
@@ -74,36 +74,16 @@ onMounted(fetchDeployments)
 <template>
 	<div class="space-y-6">
 		<ToolbarRoot class="flex items-center gap-6" aria-label="部署记录工具栏">
-			<div class="flex items-center gap-2">
-				<div class="relative">
-					<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-					<input
-						v-model="searchText"
-						type="text"
-						placeholder="搜索应用/环境"
-						class="h-10 w-80 rounded-l-md border border-r-0 border-input bg-background py-2 pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-						@keydown.enter="handleSearch"
-					/>
-					<button
-						v-if="searchText"
-						class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
-						@click="searchText = ''; handleSearch()"
-					>
-						<X class="size-4" />
-					</button>
-				</div>
-				<button
-					class="h-10 rounded-r-md border border-border bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
-					:disabled="status === 'loading'"
-					@click="handleSearch"
-				>
-					搜索
-				</button>
-			</div>
+			<SearchControl
+				v-model="searchText"
+				placeholder="搜索应用/环境"
+				:loading="status === 'loading'"
+				@search="handleSearch"
+			/>
 		</ToolbarRoot>
 
 		<!-- Table Card -->
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div class="app-surface">
 			<div v-if="status === 'loading'" class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
@@ -129,7 +109,7 @@ onMounted(fetchDeployments)
 						<tr v-for="deployment in deployments" :key="deployment.id">
 							<td>
 								<button
-									class="text-primary hover:underline"
+									class="app-link"
 									@click="router.push(`/cd/applications/${deployment.application_id}`)"
 								>
 									{{ deployment.application_name || deployment.application_id }}
@@ -153,7 +133,7 @@ onMounted(fetchDeployments)
 							<td class="text-foreground">{{ formatDuration(deployment.duration_ms) }}</td>
 							<td>
 								<button
-									class="text-primary hover:underline"
+									class="app-link"
 									@click="router.push(`/cd/deployments/${deployment.id}`)"
 								>
 									查看

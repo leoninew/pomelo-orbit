@@ -47,7 +47,7 @@ const emit = defineEmits<{
 		@update:model-value="emit('update:modelValue', $event as SelectOptionValue)"
 	>
 		<SelectTrigger
-			class="flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60"
+			class="app-select-trigger"
 			:class="widthClass"
 		>
 			<SelectValue :placeholder="placeholder" />
@@ -56,7 +56,7 @@ const emit = defineEmits<{
 		<SelectPortal>
 			<SelectContent
 				position="popper"
-				class="z-[60] max-h-64 min-w-[var(--reka-select-trigger-width)] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+				class="app-popover-content min-w-[var(--reka-select-trigger-width)] overflow-hidden"
 				:side-offset="4"
 			>
 				<SelectViewport>
@@ -66,7 +66,7 @@ const emit = defineEmits<{
 						:value="option.value"
 						:text-value="option.label"
 						:disabled="option.disabled"
-						class="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50"
+						class="app-option-item"
 					>
 						<SelectItemText>{{ option.label }}</SelectItemText>
 						<SelectItemIndicator>

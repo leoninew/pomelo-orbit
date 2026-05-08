@@ -2,6 +2,7 @@
 import { Plus, Upload } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { credentialApi } from '@/api/ci'
+import AppDialog from '@/components/AppDialog.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import SearchControl from '@/components/SearchControl.vue'
 import SelectControl from '@/components/SelectControl.vue'
@@ -10,16 +11,7 @@ import { useToast } from '@/composables/useToast'
 import type { Credential, CredentialImportReq } from '@/types/ci/credential'
 import { credentialTypeLabels } from '@/types/ci/credential'
 import { formatTime } from '@/utils/time'
-import {
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogOverlay,
-	DialogPortal,
-	DialogRoot,
-	DialogTitle,
-	ToolbarRoot
-} from 'reka-ui'
+import { ToolbarRoot } from 'reka-ui'
 
 const toast = useToast()
 const { status, error, execute } = useStatusAsync()
@@ -223,14 +215,14 @@ onMounted(fetchCredentials)
 			/>
 			<div class="flex items-center gap-3">
 				<button
-					class="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button px-5"
 					@click="triggerImport"
 				>
 					<Upload class="size-4" />
 					导入
 				</button>
 				<button
-					class="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+					class="app-button-primary px-5"
 					@click="openCreateModal"
 				>
 					<Plus class="size-4" />
@@ -239,7 +231,7 @@ onMounted(fetchCredentials)
 			</div>
 		</ToolbarRoot>
 
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div class="app-surface">
 			<div v-if="status === 'loading'" class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
@@ -262,7 +254,7 @@ onMounted(fetchCredentials)
 					<tbody>
 						<tr v-for="cred in credentials" :key="cred.id">
 							<td>
-								<router-link :to="`/ci/credential/${cred.id}`" class="text-primary hover:underline">
+								<router-link :to="`/ci/credential/${cred.id}`" class="app-link">
 									{{ cred.name }}
 								</router-link>
 							</td>
@@ -273,10 +265,10 @@ onMounted(fetchCredentials)
 							</td>
 							<td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
 							<td class="text-right">
-								<button class="mr-3 text-primary hover:underline" @click="openEditModal(cred)">
+								<button class="app-link mr-3" @click="openEditModal(cred)">
 									编辑
 								</button>
-								<button class="text-destructive hover:underline" @click="confirmDelete(cred.id)">
+								<button class="app-link-danger" @click="confirmDelete(cred.id)">
 									删除
 								</button>
 							</td>
@@ -298,171 +290,138 @@ onMounted(fetchCredentials)
 		<input ref="fileInput" type="file" accept=".json" class="hidden" @change="handleFileImport" />
 	</div>
 
-	<DialogRoot v-model:open="showCredentialDialog">
-		<DialogPortal>
-			<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-			<DialogContent
-				class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(600px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+	<AppDialog
+		v-model:open="showCredentialDialog"
+		:title="isEditing ? '编辑凭据' : '新建凭据'"
+		:description="isEditing ? '更新凭据名称，凭据内容留空时不会修改。' : '创建可用于 Git 或镜像仓库访问的凭据。'"
+		width-class="w-[min(600px,calc(100vw-32px))]"
+	>
+		<div class="space-y-4">
+			<div class="space-y-1.5">
+				<label class="app-field-label block">凭据名称</label>
+				<input
+					v-model="form.name"
+					type="text"
+					placeholder="输入凭据名称"
+					class="app-input"
+					:class="errors.name ? 'app-input-error' : ''"
+				/>
+				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">凭据类型</label>
+				<SelectControl
+					v-model="form.type"
+					:options="credentialTypeOptions"
+					:disabled="isEditing"
+					placeholder="选择凭据类型"
+				/>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">
+					凭据内容 {{ isEditing ? '（留空表示不修改）' : '' }}
+				</label>
+				<textarea
+					v-model="form.data"
+					rows="8"
+					:placeholder="getDataPlaceholder(form.type)"
+					class="app-textarea font-mono"
+					:class="errors.data ? 'app-input-error' : ''"
+				/>
+				<p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
+			</div>
+		</div>
+		<template #footer>
+			<button class="app-button" @click="showCredentialDialog = false">
+				取消
+			</button>
+			<button
+				class="app-button-primary"
+				:disabled="operating"
+				@click="handleModalOk"
 			>
-				<div class="mb-5 space-y-1">
-					<DialogTitle class="text-lg font-semibold text-foreground">
-						{{ isEditing ? '编辑凭据' : '新建凭据' }}
-					</DialogTitle>
-					<DialogDescription class="text-sm text-muted-foreground">
-						{{ isEditing ? '更新凭据名称，凭据内容留空时不会修改。' : '创建可用于 Git 或镜像仓库访问的凭据。' }}
-					</DialogDescription>
-				</div>
+				<span
+					v-if="operating"
+					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+				/>
+				保存
+			</button>
+		</template>
+	</AppDialog>
 
-				<div class="space-y-4">
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">凭据名称</label>
-						<input
-							v-model="form.name"
-							type="text"
-							placeholder="输入凭据名称"
-							class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							:class="errors.name ? 'border-destructive' : 'border-input'"
-						/>
-						<p v-if="errors.name" class="text-xs text-destructive">{{ errors.name }}</p>
-					</div>
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">凭据类型</label>
-						<SelectControl
-							v-model="form.type"
-							:options="credentialTypeOptions"
-							:disabled="isEditing"
-							placeholder="选择凭据类型"
-						/>
-					</div>
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">
-							凭据内容 {{ isEditing ? '（留空表示不修改）' : '' }}
-						</label>
-						<textarea
-							v-model="form.data"
-							rows="8"
-							:placeholder="getDataPlaceholder(form.type)"
-							class="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							:class="errors.data ? 'border-destructive' : 'border-input'"
-						/>
-						<p v-if="errors.data" class="text-xs text-destructive">{{ errors.data }}</p>
-					</div>
-				</div>
-
-				<div class="mt-6 flex justify-end gap-2">
-					<DialogClose as-child>
-						<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50">
-							取消
-						</button>
-					</DialogClose>
-					<button
-						class="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						:disabled="operating"
-						@click="handleModalOk"
-					>
-						<span
-							v-if="operating"
-							class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-						/>
-						保存
-					</button>
-				</div>
-			</DialogContent>
-		</DialogPortal>
-	</DialogRoot>
-
-	<DialogRoot v-model:open="showDeleteDialog">
-		<DialogPortal>
-			<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-			<DialogContent
-				class="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+	<AppDialog
+		v-model:open="showDeleteDialog"
+		title="确认删除"
+		description="确定要删除这个凭据吗？此操作不可恢复。"
+		width-class="w-[min(420px,calc(100vw-32px))]"
+		body-class="hidden"
+	>
+		<template #footer>
+			<button class="app-button" @click="showDeleteDialog = false">
+				取消
+			</button>
+			<button
+				class="app-button-destructive"
+				:disabled="operating"
+				@click="handleDelete"
 			>
-				<div class="space-y-2">
-					<DialogTitle class="text-lg font-semibold text-foreground">确认删除</DialogTitle>
-					<DialogDescription class="text-sm text-muted-foreground">
-						确定要删除这个凭据吗？此操作不可恢复。
-					</DialogDescription>
-				</div>
-				<div class="mt-6 flex justify-end gap-2">
-					<DialogClose as-child>
-						<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50">
-							取消
-						</button>
-					</DialogClose>
-					<button
-						class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
-						:disabled="operating"
-						@click="handleDelete"
-					>
-						删除
-					</button>
-				</div>
-			</DialogContent>
-		</DialogPortal>
-	</DialogRoot>
+				删除
+			</button>
+		</template>
+	</AppDialog>
 
-	<DialogRoot v-model:open="showImportDialog">
-		<DialogPortal>
-			<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-			<DialogContent
-				class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(600px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+	<AppDialog
+		v-model:open="showImportDialog"
+		title="导入凭据"
+		description="确认导入文件中的凭据信息。"
+		width-class="w-[min(600px,calc(100vw-32px))]"
+	>
+		<div class="space-y-4">
+			<div class="space-y-1.5">
+				<label class="app-field-label block">凭据名称</label>
+				<input
+					v-model="importForm.name"
+					type="text"
+					placeholder="输入凭据名称"
+					class="app-input"
+					:class="importErrors.name ? 'app-input-error' : ''"
+				/>
+				<p v-if="importErrors.name" class="app-field-error text-xs">{{ importErrors.name }}</p>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">凭据类型</label>
+				<SelectControl
+					v-model="importForm.type"
+					:options="credentialTypeOptions"
+					placeholder="选择凭据类型"
+				/>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">凭据内容</label>
+				<textarea
+					v-model="importForm.data"
+					rows="8"
+					class="app-textarea font-mono"
+					:class="importErrors.data ? 'app-input-error' : ''"
+				/>
+				<p v-if="importErrors.data" class="app-field-error text-xs">{{ importErrors.data }}</p>
+			</div>
+		</div>
+		<template #footer>
+			<button class="app-button" @click="showImportDialog = false">
+				取消
+			</button>
+			<button
+				class="app-button-primary"
+				:disabled="operating"
+				@click="handleImportOk"
 			>
-				<div class="mb-5 space-y-1">
-					<DialogTitle class="text-lg font-semibold text-foreground">导入凭据</DialogTitle>
-					<DialogDescription class="text-sm text-muted-foreground">
-						确认导入文件中的凭据信息。
-					</DialogDescription>
-				</div>
-				<div class="space-y-4">
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">凭据名称</label>
-						<input
-							v-model="importForm.name"
-							type="text"
-							placeholder="输入凭据名称"
-							class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							:class="importErrors.name ? 'border-destructive' : 'border-input'"
-						/>
-						<p v-if="importErrors.name" class="text-xs text-destructive">{{ importErrors.name }}</p>
-					</div>
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">凭据类型</label>
-						<SelectControl
-							v-model="importForm.type"
-							:options="credentialTypeOptions"
-							placeholder="选择凭据类型"
-						/>
-					</div>
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">凭据内容</label>
-						<textarea
-							v-model="importForm.data"
-							rows="8"
-							class="w-full rounded-md border bg-background px-3 py-2 font-mono text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-							:class="importErrors.data ? 'border-destructive' : 'border-input'"
-						/>
-						<p v-if="importErrors.data" class="text-xs text-destructive">{{ importErrors.data }}</p>
-					</div>
-				</div>
-				<div class="mt-6 flex justify-end gap-2">
-					<DialogClose as-child>
-						<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50">
-							取消
-						</button>
-					</DialogClose>
-					<button
-						class="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						:disabled="operating"
-						@click="handleImportOk"
-					>
-						<span
-							v-if="operating"
-							class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-						/>
-						导入
-					</button>
-				</div>
-			</DialogContent>
-		</DialogPortal>
-	</DialogRoot>
+				<span
+					v-if="operating"
+					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+				/>
+				导入
+			</button>
+		</template>
+	</AppDialog>
 </template>

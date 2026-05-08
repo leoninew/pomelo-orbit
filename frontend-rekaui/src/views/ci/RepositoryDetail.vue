@@ -3,6 +3,7 @@ import { Play, Plus, Trash2 } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci'
+import AppDialog from '@/components/AppDialog.vue'
 import ComboboxSelect from '@/components/ComboboxSelect.vue'
 import { useStatusAsync } from '@/composables/useStatusAsync'
 import { useToast } from '@/composables/useToast'
@@ -12,15 +13,6 @@ import type { Repository } from '@/types/ci/repository'
 import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template'
 import type { RepositoryWebhook } from '@/types/ci/webhook'
 import { formatTime } from '@/utils/time'
-import {
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogOverlay,
-	DialogPortal,
-	DialogRoot,
-	DialogTitle
-} from 'reka-ui'
 import TriggerModal from './components/TriggerModal.vue'
 import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue'
 import WebhookList from './components/WebhookList.vue'
@@ -59,6 +51,9 @@ const variableForm = reactive({
 	value: '',
 	description: ''
 })
+const variableErrors = reactive({
+	name: ''
+})
 const editingVariableName = ref('')
 
 const gitCredentials = computed(() =>
@@ -79,6 +74,12 @@ const gitCredentialOptions = computed(() =>
 const repositoryVariables = computed(() => repository.value?.variable_declarations ?? [])
 const repositoryCustomVariables = computed(() =>
 	repositoryVariables.value.filter((variable) => variable.source === 'repository_custom')
+)
+const repositoryVariableRows = computed(() =>
+	repositoryVariables.value.map((variable) => ({
+		...variable,
+		editable: variable.source === 'repository_custom'
+	}))
 )
 
 function normalizeValue(value: unknown) {
@@ -220,6 +221,7 @@ async function handleDeleteOk() {
 
 function openAddVariableDialog() {
 	Object.assign(variableForm, { name: '', value: '', description: '' })
+	Object.assign(variableErrors, { name: '' })
 	isAddVariableDialogOpen.value = true
 }
 
@@ -234,16 +236,18 @@ function openEditVariableDialog(name: string) {
 		value: normalizeValue(variable.value ?? variable.default),
 		description: variable.description ?? ''
 	})
+	Object.assign(variableErrors, { name: '' })
 	isEditVariableDialogOpen.value = true
 }
 
 async function handleAddVariableOk() {
+	variableErrors.name = ''
 	if (!variableForm.name.trim()) {
-		toast.error('请输入变量名')
+		variableErrors.name = '请输入变量名'
 		return
 	}
 	if (repositoryVariables.value.some((variable) => variable.name === variableForm.name.trim())) {
-		toast.error('变量名已存在')
+		variableErrors.name = '变量名已存在'
 		return
 	}
 	try {
@@ -330,7 +334,7 @@ onMounted(async () => {
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="repository"
-					class="inline-flex h-9 items-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary h-9 px-3"
 					:disabled="operating"
 					@click="openTriggerModal"
 				>
@@ -339,7 +343,7 @@ onMounted(async () => {
 				</button>
 				<button
 					v-if="repository"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="openEditDialog"
 				>
@@ -347,7 +351,7 @@ onMounted(async () => {
 				</button>
 				<button
 					v-if="repository"
-					class="inline-flex h-9 items-center gap-2 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-danger h-9 px-3"
 					:disabled="operating"
 					@click="openDeleteDialog"
 				>
@@ -355,7 +359,7 @@ onMounted(async () => {
 					删除
 				</button>
 				<button
-					class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-4"
 					@click="router.push('/ci/repository')"
 				>
 					返回
@@ -368,12 +372,12 @@ onMounted(async () => {
 		</div>
 
 		<template v-else-if="repository">
-			<div class="rounded-lg border border-border bg-card shadow-sm">
-				<div class="flex items-center justify-between border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
 					<router-link
 						:to="`/ci/run?repository_id=${repository.id}`"
-						class="text-sm font-medium text-primary hover:underline"
+						class="app-link text-sm font-medium"
 					>
 						查看流水线记录
 					</router-link>
@@ -403,7 +407,7 @@ onMounted(async () => {
 							<router-link
 								v-if="repository.git_credential_id"
 								:to="`/ci/credential/${repository.git_credential_id}`"
-								class="text-primary hover:underline"
+								class="app-link"
 							>
 								{{ repository.git_credential_name || repository.git_credential_id }}
 							</router-link>
@@ -421,11 +425,11 @@ onMounted(async () => {
 				</dl>
 			</div>
 
-			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-				<div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
 					<h2 class="font-semibold text-foreground">变量配置</h2>
 					<button
-						class="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+						class="app-button-primary h-9 px-3"
 						@click="openAddVariableDialog"
 					>
 						<Plus class="size-4" />
@@ -433,7 +437,7 @@ onMounted(async () => {
 					</button>
 				</div>
 				<VariableDeclarationsTable
-					:declarations="repositoryVariables"
+					:declarations="repositoryVariableRows"
 					:readonly="false"
 					@edit="openEditVariableDialog"
 					@delete="deleteVariable"
@@ -458,236 +462,210 @@ onMounted(async () => {
 			@trigger="handleTrigger"
 		/>
 
-		<DialogRoot v-model:open="isEditDialogOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="isEditDialogOpen"
+			title="编辑仓库"
+			description="更新仓库地址、默认分支和 Git 凭据配置。"
+		>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">名称</label>
+					<input
+						v-model="editForm.name"
+						type="text"
+						class="app-input"
+						:class="editErrors.name ? 'app-input-error' : ''"
+					/>
+					<p v-if="editErrors.name" class="app-field-error text-xs">{{ editErrors.name }}</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">编码</label>
+					<input
+						:value="repository?.code"
+						type="text"
+						disabled
+						class="app-input"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">仓库地址</label>
+					<input
+						v-model="editForm.repository_url"
+						type="text"
+						class="app-input"
+						:class="editErrors.repository_url ? 'app-input-error' : ''"
+					/>
+					<p v-if="editErrors.repository_url" class="app-field-error text-xs">
+						{{ editErrors.repository_url }}
+					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">Git 凭据</label>
+					<ComboboxSelect
+						v-model="editForm.git_credential_id"
+						:options="gitCredentialOptions"
+						placeholder="不使用凭据"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">默认分支</label>
+					<input
+						v-model="editForm.default_branch"
+						type="text"
+						placeholder="master"
+						class="app-input"
+					/>
+				</div>
+			</div>
+			<template #footer>
+				<button class="app-button" @click="isEditDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating"
+					@click="handleEditOk"
 				>
-					<DialogTitle class="text-lg font-semibold text-foreground">编辑仓库</DialogTitle>
-					<DialogDescription class="mt-1 text-sm text-muted-foreground">
-						更新仓库地址、默认分支和 Git 凭据配置。
-					</DialogDescription>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+					/>
+					保存
+				</button>
+			</template>
+		</AppDialog>
 
-					<div class="mt-5 space-y-4">
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">名称</label>
-							<input
-								v-model="editForm.name"
-								type="text"
-								class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="editErrors.name ? 'border-destructive' : 'border-input'"
-							/>
-							<p v-if="editErrors.name" class="text-xs text-destructive">{{ editErrors.name }}</p>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">编码</label>
-							<input
-								:value="repository?.code"
-								type="text"
-								disabled
-								class="w-full cursor-not-allowed rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground outline-none"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">仓库地址</label>
-							<input
-								v-model="editForm.repository_url"
-								type="text"
-								class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="editErrors.repository_url ? 'border-destructive' : 'border-input'"
-							/>
-							<p v-if="editErrors.repository_url" class="text-xs text-destructive">
-								{{ editErrors.repository_url }}
-							</p>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">Git 凭据</label>
-							<ComboboxSelect
-								v-model="editForm.git_credential_id"
-								:options="gitCredentialOptions"
-								placeholder="不使用凭据"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">默认分支</label>
-							<input
-								v-model="editForm.default_branch"
-								type="text"
-								placeholder="master"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							/>
-						</div>
-					</div>
-
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="handleEditOk"
-						>
-							<span
-								v-if="operating"
-								class="size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-							/>
-							保存
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
-
-		<DialogRoot v-model:open="isDeleteDialogOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="isDeleteDialogOpen"
+			title="删除仓库"
+			:description="`确定要删除仓库「${repository?.name ?? ''}」吗？此操作不可撤销。`"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
+			<template #footer>
+				<button class="app-button" @click="isDeleteDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-destructive"
+					:disabled="operating"
+					@click="handleDeleteOk"
 				>
-					<DialogTitle class="text-lg font-semibold text-foreground">删除仓库</DialogTitle>
-					<DialogDescription class="mt-2 text-sm text-muted-foreground">
-						确定要删除仓库「{{ repository?.name }}」吗？此操作不可撤销。
-					</DialogDescription>
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="handleDeleteOk"
-						>
-							<span
-								v-if="operating"
-								class="size-4 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
-							/>
-							删除
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-destructive-foreground border-t-transparent"
+					/>
+					删除
+				</button>
+			</template>
+		</AppDialog>
 
-		<DialogRoot v-model:open="isAddVariableDialogOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="isAddVariableDialogOpen"
+			title="添加变量"
+			description="添加仓库自定义变量。"
+			width-class="w-[min(480px,calc(100vw-32px))]"
+		>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">变量名</label>
+					<input
+						v-model="variableForm.name"
+						type="text"
+						placeholder="例如: DEPLOY_ENV"
+						class="app-input"
+						:class="variableErrors.name ? 'app-input-error' : ''"
+					/>
+					<p v-if="variableErrors.name" class="app-field-error text-xs">
+						{{ variableErrors.name }}
+					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">变量值</label>
+					<input
+						v-model="variableForm.value"
+						type="text"
+						class="app-input"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">说明</label>
+					<input
+						v-model="variableForm.description"
+						type="text"
+						placeholder="可选"
+						class="app-input"
+					/>
+				</div>
+			</div>
+			<template #footer>
+				<button class="app-button" @click="isAddVariableDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating"
+					@click="handleAddVariableOk"
 				>
-					<DialogTitle class="text-lg font-semibold text-foreground">添加变量</DialogTitle>
-					<DialogDescription class="sr-only">添加仓库自定义变量</DialogDescription>
-					<div class="mt-5 space-y-4">
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">变量名</label>
-							<input
-								v-model="variableForm.name"
-								type="text"
-								placeholder="例如: DEPLOY_ENV"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">变量值</label>
-							<input
-								v-model="variableForm.value"
-								type="text"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">说明</label>
-							<input
-								v-model="variableForm.description"
-								type="text"
-								placeholder="可选"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							/>
-						</div>
-					</div>
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="handleAddVariableOk"
-						>
-							保存
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+					/>
+					保存
+				</button>
+			</template>
+		</AppDialog>
 
-		<DialogRoot v-model:open="isEditVariableDialogOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 w-[min(480px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="isEditVariableDialogOpen"
+			title="编辑变量"
+			description="编辑仓库自定义变量。"
+			width-class="w-[min(480px,calc(100vw-32px))]"
+		>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">变量名</label>
+					<input
+						:value="editingVariableName"
+						type="text"
+						disabled
+						class="app-input"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">变量值</label>
+					<input
+						v-model="variableForm.value"
+						type="text"
+						class="app-input"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">说明</label>
+					<input
+						v-model="variableForm.description"
+						type="text"
+						placeholder="可选"
+						class="app-input"
+					/>
+				</div>
+			</div>
+			<template #footer>
+				<button class="app-button" @click="isEditVariableDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating"
+					@click="handleEditVariableOk"
 				>
-					<DialogTitle class="text-lg font-semibold text-foreground">编辑变量</DialogTitle>
-					<DialogDescription class="sr-only">编辑仓库自定义变量</DialogDescription>
-					<div class="mt-5 space-y-4">
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">变量名</label>
-							<input
-								:value="editingVariableName"
-								type="text"
-								disabled
-								class="w-full cursor-not-allowed rounded-md border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground outline-none"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">变量值</label>
-							<input
-								v-model="variableForm.value"
-								type="text"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<label class="block text-sm font-medium text-foreground">说明</label>
-							<input
-								v-model="variableForm.description"
-								type="text"
-								placeholder="可选"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							/>
-						</div>
-					</div>
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="handleEditVariableOk"
-						>
-							保存
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+					/>
+					保存
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>

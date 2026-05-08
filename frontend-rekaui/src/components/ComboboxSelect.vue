@@ -66,7 +66,7 @@ function hasValue(value: unknown) {
 		@update:model-value="emit('update:modelValue', $event as ComboboxOptionValue)"
 	>
 		<ComboboxAnchor
-			class="flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20"
+			class="app-combobox-anchor"
 			:class="[widthClass, disabled ? 'cursor-not-allowed opacity-60' : '']"
 		>
 			<ComboboxInput
@@ -99,7 +99,7 @@ function hasValue(value: unknown) {
 			<ComboboxContent
 				position="popper"
 				align="start"
-				class="z-[60] max-h-64 w-[var(--reka-combobox-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
+				class="app-popover-content w-[var(--reka-combobox-trigger-width)] overflow-y-auto"
 				:side-offset="4"
 			>
 				<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">
@@ -111,7 +111,7 @@ function hasValue(value: unknown) {
 					:value="option.value"
 					:text-value="option.label"
 					:disabled="option.disabled"
-					class="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50"
+					class="app-option-item"
 				>
 					<span class="min-w-0">
 						<span class="block truncate">{{ option.label }}</span>

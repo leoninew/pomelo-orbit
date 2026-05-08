@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, useSlots } from 'vue';
+import { X } from 'lucide-vue-next'
+import { computed, useSlots } from 'vue'
 import {
+	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogOverlay,
 	DialogPortal,
 	DialogRoot,
-	DialogTitle,
-} from 'reka-ui';
+	DialogTitle
+} from 'reka-ui'
 
 const props = withDefaults(
 	defineProps<{
@@ -20,24 +22,24 @@ const props = withDefaults(
 	}>(),
 	{
 		description: '',
-		widthClass: 'w-[min(520px,calc(100vw-32px))]',
-		bodyClass: 'space-y-4 px-6 py-4',
-		contentClass: '',
+		widthClass: 'w-[min(720px,100vw)]',
+		bodyClass: 'min-h-0 flex-1 overflow-y-auto px-6 py-4',
+		contentClass: ''
 	}
-);
+)
 
 const emit = defineEmits<{
 	'update:open': [open: boolean]
-}>();
+}>()
 
-const slots = useSlots();
+const slots = useSlots()
 const openModel = computed({
 	get: () => props.open,
-	set: (value) => emit('update:open', value),
-});
+	set: (value) => emit('update:open', value)
+})
 const contentA11yAttrs = computed(() =>
 	props.description || slots.description ? {} : { 'aria-describedby': undefined }
-);
+)
 </script>
 
 <template>
@@ -47,19 +49,26 @@ const contentA11yAttrs = computed(() =>
 			<DialogContent
 				v-bind="contentA11yAttrs"
 				:class="[
-					'app-dialog-content',
+					'app-drawer-content',
 					widthClass,
-					contentClass,
+					contentClass
 				]"
 			>
-				<div class="border-b border-border px-6 py-4">
-					<DialogTitle class="text-lg font-semibold text-foreground">
-						{{ title }}
-					</DialogTitle>
-					<DialogDescription v-if="description" class="mt-1 text-sm text-muted-foreground">
-						{{ description }}
-					</DialogDescription>
-					<slot name="description" />
+				<div class="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
+					<div class="min-w-0">
+						<DialogTitle class="text-lg font-semibold text-foreground">
+							{{ title }}
+						</DialogTitle>
+						<DialogDescription v-if="description" class="mt-1 text-sm text-muted-foreground">
+							{{ description }}
+						</DialogDescription>
+						<slot name="description" />
+					</div>
+					<DialogClose as-child>
+						<button type="button" class="app-icon-button shrink-0" aria-label="关闭抽屉">
+							<X class="size-4" />
+						</button>
+					</DialogClose>
 				</div>
 				<div :class="bodyClass">
 					<slot />

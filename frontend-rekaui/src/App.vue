@@ -5,12 +5,11 @@ import {
 } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import AppToaster from '@/components/AppToaster.vue'
 import AppTopBar from '@/components/AppTopBar.vue'
-import { useToast } from '@/composables/useToast'
 import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation'
 
 const route = useRoute()
-const { toasts } = useToast()
 
 const collapsed = ref(false)
 const currentScope = computed(() => getNavigationScope(route.path))
@@ -79,21 +78,6 @@ const isLoginPage = computed(() => route.name === 'Login')
 			</div>
 		</div>
 
-		<!-- Toast notifications -->
-		<div class="fixed bottom-4 left-4 right-4 z-50 space-y-2 md:left-auto md:right-4">
-			<div
-				v-for="t in toasts"
-				:key="t.id"
-				class="w-full rounded-lg px-4 py-3 text-white shadow-lg animate-slideIn md:min-w-64"
-				:class="{
-					'bg-green-500': t.type === 'success',
-					'bg-destructive': t.type === 'error',
-					'bg-yellow-500': t.type === 'warning',
-					'bg-primary': t.type === 'info'
-				}"
-			>
-				{{ t.text }}
-			</div>
-		</div>
+		<AppToaster />
 	</div>
 </template>

@@ -1,9 +1,10 @@
 ﻿<script setup lang="ts">
-import { Loader2, X } from 'lucide-vue-next';
+import { Loader2 } from 'lucide-vue-next';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 import AppDialog from '@/components/AppDialog.vue';
+import AppDrawer from '@/components/AppDrawer.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
@@ -127,6 +128,14 @@ function closeLogDrawer() {
 	showLogsDrawer.value = false;
 	logPollAbort?.abort();
 	logPollAbort = null;
+}
+
+function handleLogDrawerOpenChange(open: boolean) {
+	if (open) {
+		showLogsDrawer.value = true;
+		return;
+	}
+	closeLogDrawer();
 }
 
 async function startLogPolling(stageRunId: string) {
@@ -331,7 +340,7 @@ onUnmounted(() => {
 		<!-- 内容 -->
 		<div v-else-if="run" class="flex flex-col gap-4">
 				<!-- 基本信息卡片 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+				<div class="app-surface">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">基本信息</h2>
 					</div>
@@ -356,7 +365,7 @@ onUnmounted(() => {
 							<dd>
 								<router-link
 									:to="`/ci/repository/${run.repository_id}`"
-									class="text-primary hover:underline"
+									class="app-link"
 								>
 									{{ run.repository_name }}
 								</router-link>
@@ -379,7 +388,7 @@ onUnmounted(() => {
 							<dd>
 								<router-link
 									:to="`/ci/template/${run.template_id}`"
-									class="text-primary hover:underline"
+									class="app-link"
 								>
 									{{ run.template_name }} v{{ run.template_version }}
 								</router-link>
@@ -391,7 +400,7 @@ onUnmounted(() => {
 								<router-link
 									v-if="run.snapshot_id"
 									:to="`/ci/snapshot/${run.snapshot_id}`"
-									class="text-primary hover:underline"
+									class="app-link"
 								>
 									查看
 								</router-link>
@@ -404,7 +413,7 @@ onUnmounted(() => {
 								<router-link
 									v-if="run.retry_of"
 									:to="`/ci/run/${run.retry_of}`"
-									class="text-primary hover:underline"
+									class="app-link"
 								>
 									查看
 								</router-link>
@@ -435,7 +444,7 @@ onUnmounted(() => {
 				</div>
 
 				<!-- Stage 列表 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+				<div class="app-surface">
 					<div class="flex items-center justify-between border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">阶段编排</h2>
 						<div v-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
@@ -491,7 +500,7 @@ onUnmounted(() => {
 										<td>
 											<router-link
 												:to="`/ci/build-stage/${stage.id}`"
-												class="text-primary hover:underline"
+												class="app-link"
 											>
 												{{ stage.name }}
 											</router-link>
@@ -533,7 +542,7 @@ onUnmounted(() => {
 										<td>
 											<button
 												v-if="stageRunMap[stage.id]"
-												class="text-primary hover:underline"
+												class="app-link"
 												@click="openStageLog(stage.id)"
 											>
 												查看日志
@@ -559,14 +568,14 @@ onUnmounted(() => {
 					</div>
 				</div>
 
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+				<div class="app-surface">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">变量快照</h2>
 					</div>
 					<VariableDeclarationsTable :declarations="runVariableDeclarations" :readonly="true" />
 				</div>
 
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+				<div class="app-surface">
 					<div class="border-b border-border px-5 py-4">
 						<h2 class="font-semibold text-foreground">制品</h2>
 					</div>
@@ -615,38 +624,26 @@ onUnmounted(() => {
 				</div>
 		</div>
 
-		<!-- 日志抽屉 -->
-		<div
-			v-if="showLogsDrawer"
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-			@click.self="closeLogDrawer"
+		<AppDrawer
+			:open="showLogsDrawer"
+			:title="`${currentStageRun?.stage_name ?? ''} - 日志`"
+			width-class="w-[min(960px,100vw)]"
+			body-class="min-h-0 flex-1 overflow-hidden p-0"
+			@update:open="handleLogDrawerOpenChange"
 		>
-			<div class="relative h-[80vh] w-[90vw] max-w-5xl rounded-lg border border-border bg-card">
-				<div class="flex items-center justify-between border-b border-border px-6 py-4">
-					<h3 class="text-lg font-semibold text-foreground">
-						{{ currentStageRun?.stage_name }} - 日志
-					</h3>
-					<button
-						class="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-						@click="closeLogDrawer"
-					>
-						<X class="h-5 w-5" />
-					</button>
-				</div>
-				<div
-					ref="logContainer"
-					class="h-[calc(80vh-4rem)] overflow-y-auto bg-muted/30 p-4 font-mono text-xs text-foreground"
-				>
-					<pre v-if="logsText" class="whitespace-pre-wrap">{{ logsText }}</pre>
-					<div v-else class="flex h-full items-center justify-center text-muted-foreground">
-						<div class="text-center">
-							<Loader2 class="mx-auto h-8 w-8 animate-spin" />
-							<p class="mt-2">加载日志中...</p>
-						</div>
+			<div
+				ref="logContainer"
+				class="h-full overflow-y-auto bg-muted/30 p-4 font-mono text-xs text-foreground"
+			>
+				<pre v-if="logsText" class="whitespace-pre-wrap">{{ logsText }}</pre>
+				<div v-else class="flex h-full items-center justify-center text-muted-foreground">
+					<div class="text-center">
+						<Loader2 class="mx-auto h-8 w-8 animate-spin" />
+						<p class="mt-2">加载日志中...</p>
 					</div>
 				</div>
 			</div>
-		</div>
+		</AppDrawer>
 
 		<AppDialog
 			v-model:open="isCancelDialogOpen"

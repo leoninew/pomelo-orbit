@@ -1,106 +1,107 @@
-﻿<script setup lang="ts">
-import { Copy, Plus } from 'lucide-vue-next';
-import { computed, reactive, ref } from 'vue';
-import {
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogOverlay,
-	DialogPortal,
-	DialogRoot,
-	DialogTitle,
-} from 'reka-ui';
-import { webhookApi } from '@/api/ci';
-import ComboboxSelect from '@/components/ComboboxSelect.vue';
-import { useStatusAsync } from '@/composables/useStatusAsync';
-import { useToast } from '@/composables/useToast';
-import type { PipelineTemplate } from '@/types/ci/template';
-import type { RepositoryWebhook } from '@/types/ci/webhook';
+<script setup lang="ts">
+import { Copy, Plus } from 'lucide-vue-next'
+import { computed, reactive, ref } from 'vue'
+import { webhookApi } from '@/api/ci'
+import AppDialog from '@/components/AppDialog.vue'
+import ComboboxSelect from '@/components/ComboboxSelect.vue'
+import { useStatusAsync } from '@/composables/useStatusAsync'
+import { useToast } from '@/composables/useToast'
+import type { PipelineTemplate } from '@/types/ci/template'
+import type { RepositoryWebhook } from '@/types/ci/webhook'
 
 const props = defineProps<{
 	repositoryId: string
 	webhooks: RepositoryWebhook[]
 	templates: PipelineTemplate[]
-}>();
+}>()
 
 const emit = defineEmits<{
 	refresh: []
-}>();
+}>()
 
-const toast = useToast();
-const { loading: operating, execute: executeOp } = useStatusAsync();
+const toast = useToast()
+const { loading: operating, execute: executeOp } = useStatusAsync()
 
-const isDialogOpen = ref(false);
-const isDeleteDialogOpen = ref(false);
-const editingWebhook = ref<RepositoryWebhook>();
-const deletingWebhook = ref<RepositoryWebhook>();
+const isDialogOpen = ref(false)
+const isDeleteDialogOpen = ref(false)
+const editingWebhook = ref<RepositoryWebhook>()
+const deletingWebhook = ref<RepositoryWebhook>()
 
 const form = reactive({
 	name: '',
 	template_id: '',
 	branch_filter: '',
 	secret: '',
-	enabled: true,
-});
+	enabled: true
+})
+const errors = reactive({
+	name: '',
+	template_id: '',
+	secret: ''
+})
 const templateOptions = computed(() =>
 	props.templates.map((template) => ({
 		value: template.id,
-		label: template.name,
+		label: template.name
 	}))
-);
+)
 
 const getTemplateName = (templateId: string) => {
-	const tpl = props.templates.find((t) => t.id === templateId);
-	return tpl?.name || templateId;
-};
+	const tpl = props.templates.find((t) => t.id === templateId)
+	return tpl?.name || templateId
+}
 
-const webhookUrl = (webhookId: string) => `${window.location.origin}/api/webhooks/${webhookId}`;
+const webhookUrl = (webhookId: string) => `${window.location.origin}/api/webhooks/${webhookId}`
 
 async function copyUrl(webhookId: string) {
 	try {
-		await navigator.clipboard.writeText(webhookUrl(webhookId));
-		toast.success('URL 已复制');
+		await navigator.clipboard.writeText(webhookUrl(webhookId))
+		toast.success('URL 已复制')
 	} catch {
-		toast.error('复制失败，请手动复制');
+		toast.error('复制失败，请手动复制')
 	}
 }
 
+function resetErrors() {
+	Object.assign(errors, { name: '', template_id: '', secret: '' })
+}
+
 function openCreateModal() {
-	editingWebhook.value = undefined;
+	editingWebhook.value = undefined
 	Object.assign(form, {
 		name: '',
 		template_id: '',
 		branch_filter: '',
 		secret: '',
-		enabled: true,
-	});
-	isDialogOpen.value = true;
+		enabled: true
+	})
+	resetErrors()
+	isDialogOpen.value = true
 }
 
 function openEditModal(wh: RepositoryWebhook) {
-	editingWebhook.value = wh;
+	editingWebhook.value = wh
 	Object.assign(form, {
 		name: wh.name,
 		template_id: wh.template_id,
 		branch_filter: wh.branch_filter || '',
 		secret: '',
-		enabled: wh.enabled,
-	});
-	isDialogOpen.value = true;
+		enabled: wh.enabled
+	})
+	resetErrors()
+	isDialogOpen.value = true
+}
+
+function validateForm() {
+	errors.name = form.name.trim() ? '' : '请输入名称'
+	errors.template_id = form.template_id ? '' : '请选择模板'
+	errors.secret = !editingWebhook.value && !form.secret ? '请输入签名密钥' : ''
+	return !errors.name && !errors.template_id && !errors.secret
 }
 
 async function handleOk() {
-	if (!form.name.trim()) {
-		toast.error('请输入名称');
-		return;
-	}
-	if (!form.template_id) {
-		toast.error('请选择模板');
-		return;
-	}
-	if (!editingWebhook.value && !form.secret) {
-		toast.error('请输入签名密钥');
-		return;
+	if (!validateForm()) {
+		return
 	}
 
 	try {
@@ -111,56 +112,56 @@ async function handleOk() {
 					template_id: form.template_id,
 					branch_filter: form.branch_filter || null,
 					secret: form.secret || undefined,
-					enabled: form.enabled,
-				});
-				toast.success('更新成功');
+					enabled: form.enabled
+				})
+				toast.success('更新成功')
 			} else {
 				await webhookApi.create(props.repositoryId, {
 					name: form.name,
 					template_id: form.template_id,
 					secret: form.secret,
-					branch_filter: form.branch_filter || null,
-				});
-				toast.success('创建成功');
+					branch_filter: form.branch_filter || null
+				})
+				toast.success('创建成功')
 			}
-			isDialogOpen.value = false;
-			emit('refresh');
-		});
+			isDialogOpen.value = false
+			emit('refresh')
+		})
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '操作失败');
+		toast.error(error instanceof Error ? error.message : '操作失败')
 	}
 }
 
 function handleDelete(wh: RepositoryWebhook) {
-	deletingWebhook.value = wh;
-	isDeleteDialogOpen.value = true;
+	deletingWebhook.value = wh
+	isDeleteDialogOpen.value = true
 }
 
 async function confirmDelete() {
 	if (!deletingWebhook.value) {
-		return;
+		return
 	}
 
+	const webhookId = deletingWebhook.value.id
 	try {
 		await executeOp(async () => {
-			await webhookApi.delete(props.repositoryId, deletingWebhook.value?.id ?? '');
-			toast.success('删除成功');
-			isDeleteDialogOpen.value = false;
-			emit('refresh');
-		});
+			await webhookApi.delete(props.repositoryId, webhookId)
+			toast.success('删除成功')
+			isDeleteDialogOpen.value = false
+			emit('refresh')
+		})
 	} catch (error) {
-		toast.error(error instanceof Error ? error.message : '删除失败');
+		toast.error(error instanceof Error ? error.message : '删除失败')
 	}
 }
 </script>
 
 <template>
-	<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-		<!-- Header -->
-		<div class="flex items-center justify-between border-b border-border px-5 py-4">
+	<div class="app-surface">
+		<div class="app-section-header flex items-center justify-between">
 			<h3 class="font-semibold text-foreground">Webhook 配置</h3>
 			<button
-				class="h-8 px-3 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 flex items-center gap-1.5 transition-colors"
+				class="app-button-primary h-9 px-3"
 				@click="openCreateModal"
 			>
 				<Plus class="size-4" />
@@ -168,7 +169,6 @@ async function confirmDelete() {
 			</button>
 		</div>
 
-		<!-- Webhook List -->
 		<div class="overflow-x-auto">
 			<table class="app-table-detail min-w-[960px]">
 				<thead>
@@ -195,7 +195,7 @@ async function confirmDelete() {
 						<td>
 							<router-link
 								:to="`/ci/template/${wh.template_id}`"
-								class="text-primary hover:underline"
+								class="app-link"
 							>
 								{{ getTemplateName(wh.template_id) }}
 							</router-link>
@@ -210,11 +210,11 @@ async function confirmDelete() {
 									{{ webhookUrl(wh.id) }}
 								</span>
 								<button
-									class="rounded p-1 transition-colors hover:bg-muted"
+									class="app-icon-button size-7"
 									title="复制 URL"
 									@click="copyUrl(wh.id)"
 								>
-									<Copy class="size-3.5 text-muted-foreground" />
+									<Copy class="size-3.5" />
 								</button>
 							</div>
 						</td>
@@ -229,13 +229,13 @@ async function confirmDelete() {
 						<td>
 							<div class="flex items-center gap-3">
 								<button
-									class="text-primary hover:underline"
+									class="app-link"
 									@click="openEditModal(wh)"
 								>
 									编辑
 								</button>
 								<button
-									class="text-destructive hover:underline"
+									class="app-link-danger"
 									@click="handleDelete(wh)"
 								>
 									删除
@@ -247,117 +247,110 @@ async function confirmDelete() {
 			</table>
 		</div>
 
-		<DialogRoot v-model:open="isDialogOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="isDialogOpen"
+			:title="editingWebhook ? '编辑 Webhook' : '添加 Webhook'"
+			description="配置仓库 Webhook。"
+		>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">名称</label>
+					<input
+						v-model="form.name"
+						type="text"
+						class="app-input"
+						:class="errors.name ? 'app-input-error' : ''"
+						placeholder="例如: main-branch-webhook"
+					/>
+					<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">流水线模板</label>
+					<ComboboxSelect
+						v-model="form.template_id"
+						:options="templateOptions"
+						placeholder="请选择模板"
+					/>
+					<p v-if="errors.template_id" class="app-field-error text-xs">
+						{{ errors.template_id }}
+					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">
+						分支过滤
+						<span class="font-normal text-muted-foreground">（可选，支持正则）</span>
+					</label>
+					<input
+						v-model="form.branch_filter"
+						type="text"
+						class="app-input"
+						placeholder="例如: ^main$"
+					/>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">
+						签名密钥
+						<span v-if="editingWebhook" class="font-normal text-muted-foreground">（留空则不修改）</span>
+					</label>
+					<input
+						v-model="form.secret"
+						type="password"
+						class="app-input"
+						:class="errors.secret ? 'app-input-error' : ''"
+						placeholder="用于验证 Webhook 请求"
+					/>
+					<p v-if="errors.secret" class="app-field-error text-xs">{{ errors.secret }}</p>
+				</div>
+				<label v-if="editingWebhook" class="flex cursor-pointer items-center gap-2">
+					<input
+						v-model="form.enabled"
+						type="checkbox"
+						class="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/20"
+					/>
+					<span class="text-sm text-foreground">启用</span>
+				</label>
+			</div>
+			<template #footer>
+				<button class="app-button" @click="isDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating"
+					@click="handleOk"
 				>
-					<DialogTitle class="text-lg font-semibold text-foreground">
-						{{ editingWebhook ? '编辑 Webhook' : '添加 Webhook' }}
-					</DialogTitle>
-					<DialogDescription class="sr-only">配置仓库 Webhook</DialogDescription>
-					<div class="mt-5 flex flex-col gap-3">
-						<div class="flex flex-col gap-1.5">
-							<label class="text-sm font-medium text-foreground">名称</label>
-							<input
-								v-model="form.name"
-								type="text"
-								class="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								placeholder="例如: main-branch-webhook"
-							/>
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<label class="text-sm font-medium text-foreground">流水线模板</label>
-							<ComboboxSelect
-								v-model="form.template_id"
-								:options="templateOptions"
-								placeholder="请选择模板"
-							/>
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<label class="text-sm font-medium text-foreground">
-								分支过滤
-								<span class="font-normal text-muted-foreground">（可选，支持正则）</span>
-							</label>
-							<input
-								v-model="form.branch_filter"
-								type="text"
-								class="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								placeholder="例如: ^main$"
-							/>
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<label class="text-sm font-medium text-foreground">
-								签名密钥
-								<span v-if="editingWebhook" class="font-normal text-muted-foreground">（留空则不修改）</span>
-							</label>
-							<input
-								v-model="form.secret"
-								type="password"
-								class="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								placeholder="用于验证 Webhook 请求"
-							/>
-						</div>
-						<label v-if="editingWebhook" class="flex cursor-pointer items-center gap-2">
-							<input
-								v-model="form.enabled"
-								type="checkbox"
-								class="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/20"
-							/>
-							<span class="text-sm text-foreground">启用</span>
-						</label>
-					</div>
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="handleOk"
-						>
-							<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
-							保存
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+					/>
+					保存
+				</button>
+			</template>
+		</AppDialog>
 
-		<DialogRoot v-model:open="isDeleteDialogOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-				<DialogContent
-					class="fixed left-1/2 top-1/2 z-50 w-[min(420px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+		<AppDialog
+			v-model:open="isDeleteDialogOpen"
+			title="删除 Webhook"
+			description="确定删除此 Webhook？此操作不可撤销。"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
+			<template #footer>
+				<button class="app-button" @click="isDeleteDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-destructive"
+					:disabled="operating"
+					@click="confirmDelete"
 				>
-					<DialogTitle class="text-lg font-semibold text-foreground">删除 Webhook</DialogTitle>
-					<DialogDescription class="mt-2 text-sm text-muted-foreground">
-						确定删除此 Webhook？此操作不可撤销。
-					</DialogDescription>
-					<div class="mt-6 flex justify-end gap-2">
-						<DialogClose as-child>
-							<button
-								class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-							>
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="flex items-center gap-1.5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
-							:disabled="operating"
-							@click="confirmDelete"
-						>
-							<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
-							删除
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+					<span
+						v-if="operating"
+						class="size-4 animate-spin rounded-full border-2 border-destructive-foreground border-t-transparent"
+					/>
+					删除
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>

@@ -24,14 +24,14 @@ function clearSearch() {
 </script>
 
 <template>
-	<div class="flex items-center">
-		<div class="relative">
+	<div class="flex w-full min-w-0 max-w-md items-center">
+		<div class="relative min-w-0 flex-1">
 			<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
 			<input
 				:value="modelValue"
 				type="text"
 				:placeholder="placeholder"
-				class="h-10 w-80 rounded-l-md border border-r-0 border-input bg-background py-2 pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
+				class="h-10 w-full rounded-l-md border border-r-0 border-input bg-background py-2 pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
 				@input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
 				@keydown.enter="emit('search')"
 			/>

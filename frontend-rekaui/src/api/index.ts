@@ -1,10 +1,11 @@
-export { applicationApi } from './application';
+export { applicationApi, deploymentApi, routeApi, traefikRouteApi } from './cd';
 export { authApi } from './auth';
 export {
+	artifactApi,
+	buildStageApi,
 	credentialApi,
-	jobApi,
 	pipelineRunApi,
 	pipelineTemplateApi,
 	repositoryApi,
 } from './ci/index';
-export { deploymentApi } from './deployments';
+export { settingApi } from './settings';

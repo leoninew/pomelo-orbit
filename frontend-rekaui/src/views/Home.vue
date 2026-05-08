@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { RefreshCw } from 'lucide-vue-next'
-import { onMounted, reactive, ref } from 'vue'
+import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { applicationApi } from '@/api/cd/application'
 import { deploymentApi } from '@/api/cd/deployments'
@@ -11,6 +11,7 @@ import type { Deployment } from '@/types/cd/deployment'
 import type { PipelineRun } from '@/types/ci/run'
 import { statusBadgeClass, statusLabel } from '@/utils/status'
 import { formatTime, getTodayStart } from '@/utils/time'
+import { ToolbarRoot } from 'reka-ui'
 
 const router = useRouter()
 const toast = useToast()
@@ -20,6 +21,37 @@ const ciStats = reactive({ projectCount: 0, todayRuns: 0 })
 const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 })
 const recentRuns = ref<PipelineRun[]>([])
 const recentDeploys = ref<Deployment[]>([])
+
+const overviewCards = computed(() => [
+	{
+		label: '代码仓库',
+		value: ciStats.projectCount,
+		description: '已接入 CI 项目',
+		path: '/ci/repository',
+		icon: FolderGit2
+	},
+	{
+		label: '今日构建',
+		value: ciStats.todayRuns,
+		description: '今日触发流水线',
+		path: '/ci/run',
+		icon: Play
+	},
+	{
+		label: '应用管理',
+		value: cdStats.applicationCount,
+		description: '已接入 CD 应用',
+		path: '/cd/applications',
+		icon: LayoutGrid
+	},
+	{
+		label: '今日部署',
+		value: cdStats.todayDeploys,
+		description: '今日部署任务',
+		path: '/cd/deployments',
+		icon: Rocket
+	}
+])
 
 async function refresh() {
 	try {
@@ -59,130 +91,135 @@ onMounted(refresh)
 
 <template>
 	<div class="space-y-6">
-		<!-- Header -->
-		<div class="flex items-center justify-between">
-			<div>
-				<h1 class="text-2xl font-semibold text-foreground">欢迎使用 Pomelo Orbit</h1>
-				<p class="text-sm text-muted-foreground mt-1">持续集成与持续部署平台</p>
+		<ToolbarRoot class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" aria-label="概览工具栏">
+			<div class="space-y-1">
+				<h1 class="text-xl font-semibold text-foreground">项目概览</h1>
+				<p class="text-sm text-muted-foreground">CI/CD 今日运行与最近活动</p>
 			</div>
 			<button
-				class="px-4 py-2 bg-background border border-input rounded-lg hover:bg-muted/50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+				class="inline-flex h-10 items-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
 				:disabled="status === 'loading'"
 				@click="refresh"
 			>
-				<RefreshCw class="w-4 h-4" :class="{ 'animate-spin': status === 'loading' }" />
+				<RefreshCw class="size-4" :class="{ 'animate-spin': status === 'loading' }" />
 				刷新
 			</button>
-		</div>
+		</ToolbarRoot>
 
-		<!-- Stats Cards -->
-		<div class="grid grid-cols-4 gap-4">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 			<button
-				class="bg-card p-6 rounded-lg border border-border hover:shadow-md transition-shadow text-left"
-				@click="router.push('/ci/repository')"
+				v-for="card in overviewCards"
+				:key="card.label"
+				class="rounded-lg border border-border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/30"
+				@click="router.push(card.path)"
 			>
-				<p class="text-sm text-muted-foreground mb-2">CI 项目</p>
-				<p class="text-3xl font-bold text-foreground">{{ ciStats.projectCount }}</p>
-			</button>
-
-			<button
-				class="bg-card p-6 rounded-lg border border-border hover:shadow-md transition-shadow text-left"
-				@click="router.push('/ci/run')"
-			>
-				<p class="text-sm text-muted-foreground mb-2">今日构建</p>
-				<p class="text-3xl font-bold text-foreground">{{ ciStats.todayRuns }}</p>
-			</button>
-
-			<button
-				class="bg-card p-6 rounded-lg border border-border hover:shadow-md transition-shadow text-left"
-				@click="router.push('/cd/applications')"
-			>
-				<p class="text-sm text-muted-foreground mb-2">CD 应用</p>
-				<p class="text-3xl font-bold text-foreground">{{ cdStats.applicationCount }}</p>
-			</button>
-
-			<button
-				class="bg-card p-6 rounded-lg border border-border hover:shadow-md transition-shadow text-left"
-				@click="router.push('/cd/deployments')"
-			>
-				<p class="text-sm text-muted-foreground mb-2">今日部署</p>
-				<p class="text-3xl font-bold text-foreground">{{ cdStats.todayDeploys }}</p>
-			</button>
-		</div>
-
-		<!-- Recent Activity -->
-		<div class="grid grid-cols-2 gap-6">
-			<!-- CI Builds -->
-			<div class="bg-card rounded-lg border border-border">
-				<div class="p-4 border-b border-border">
-					<h2 class="font-semibold text-foreground">最近构建</h2>
+				<div class="flex items-start justify-between gap-4">
+					<div class="min-w-0">
+						<p class="text-sm text-muted-foreground">{{ card.label }}</p>
+						<p class="mt-3 text-2xl font-semibold text-foreground">{{ card.value }}</p>
+						<p class="mt-1 text-xs text-muted-foreground">{{ card.description }}</p>
+					</div>
+					<span class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+						<component :is="card.icon" class="size-4" />
+					</span>
 				</div>
-				<div class="p-4">
-					<div v-if="status === 'loading'" class="flex justify-center py-12">
-						<div class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+			</button>
+		</div>
+
+		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+			<section class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+				<div class="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
+					<h2 class="text-sm font-semibold text-foreground">最近构建</h2>
+					<button
+						class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+						@click="router.push('/ci/run')"
+					>
+						查看全部
+						<ArrowRight class="size-4" />
+					</button>
+				</div>
+				<div v-if="status === 'loading'" class="flex justify-center py-16">
+					<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+				</div>
+				<div v-else-if="recentRuns.length === 0" class="text-center py-16 text-muted-foreground">
+					<p class="text-sm">暂无构建记录</p>
+				</div>
+				<div v-else>
+					<div class="hidden grid-cols-[minmax(0,1fr)_140px_80px] border-b border-border px-5 py-3 text-xs text-muted-foreground sm:grid">
+						<span>仓库</span>
+						<span>创建时间</span>
+						<span class="text-right">状态</span>
 					</div>
-					<div v-else-if="recentRuns.length === 0" class="text-center py-12 text-muted-foreground">
-						<p class="text-sm">暂无构建记录</p>
-					</div>
-					<div v-else class="space-y-3">
-						<div
+					<div class="divide-y divide-border">
+						<button
 							v-for="run in recentRuns"
 							:key="run.id"
-							class="flex items-center justify-between py-2 cursor-pointer hover:bg-muted/50 px-2 rounded transition-colors"
+							class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_140px_80px]"
 							@click="router.push(`/ci/run/${run.id}`)"
 						>
-							<div class="flex-1 min-w-0">
-								<p class="font-medium text-foreground truncate">
+							<span class="min-w-0">
+								<span class="block truncate text-sm font-medium text-foreground">
 									{{ run.repository_name || run.repository_id }}
-								</p>
-								<p class="text-sm text-muted-foreground">{{ formatTime(run.created_at) }}</p>
-							</div>
-							<span
-								class="px-2 py-1 text-xs rounded"
-								:class="statusBadgeClass(run.status)"
-							>
+								</span>
+								<span class="mt-1 block text-xs text-muted-foreground sm:hidden">
+									{{ formatTime(run.created_at) }}
+								</span>
+							</span>
+							<span class="hidden text-sm text-muted-foreground sm:block">{{ formatTime(run.created_at) }}</span>
+							<span class="justify-self-end rounded px-2 py-1 text-xs" :class="statusBadgeClass(run.status)">
 								{{ statusLabel(run.status) }}
 							</span>
-						</div>
+						</button>
 					</div>
 				</div>
-			</div>
+			</section>
 
-			<!-- CD Deployments -->
-			<div class="bg-card rounded-lg border border-border">
-				<div class="p-4 border-b border-border">
-					<h2 class="font-semibold text-foreground">最近部署</h2>
+			<section class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+				<div class="flex items-center justify-between border-b border-border bg-muted/30 px-5 py-4">
+					<h2 class="text-sm font-semibold text-foreground">最近部署</h2>
+					<button
+						class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+						@click="router.push('/cd/deployments')"
+					>
+						查看全部
+						<ArrowRight class="size-4" />
+					</button>
 				</div>
-				<div class="p-4">
-					<div v-if="status === 'loading'" class="flex justify-center py-12">
-						<div class="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+				<div v-if="status === 'loading'" class="flex justify-center py-16">
+					<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+				</div>
+				<div v-else-if="recentDeploys.length === 0" class="text-center py-16 text-muted-foreground">
+					<p class="text-sm">暂无部署记录</p>
+				</div>
+				<div v-else>
+					<div class="hidden grid-cols-[minmax(0,1fr)_140px_80px] border-b border-border px-5 py-3 text-xs text-muted-foreground sm:grid">
+						<span>应用</span>
+						<span>开始时间</span>
+						<span class="text-right">状态</span>
 					</div>
-					<div v-else-if="recentDeploys.length === 0" class="text-center py-12 text-muted-foreground">
-						<p class="text-sm">暂无部署记录</p>
-					</div>
-					<div v-else class="space-y-3">
-						<div
+					<div class="divide-y divide-border">
+						<button
 							v-for="deployment in recentDeploys"
 							:key="deployment.id"
-							class="flex items-center justify-between py-2 cursor-pointer hover:bg-muted/50 px-2 rounded transition-colors"
+							class="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/30 sm:grid-cols-[minmax(0,1fr)_140px_80px]"
 							@click="router.push(`/cd/deployments/${deployment.id}`)"
 						>
-							<div class="flex-1 min-w-0">
-								<p class="font-medium text-foreground truncate">
+							<span class="min-w-0">
+								<span class="block truncate text-sm font-medium text-foreground">
 									{{ deployment.application_name || deployment.application_id }}
-								</p>
-								<p class="text-sm text-muted-foreground">{{ formatTime(deployment.started_at) }}</p>
-							</div>
-							<span
-								class="px-2 py-1 text-xs rounded"
-								:class="statusBadgeClass(deployment.status)"
-							>
+								</span>
+								<span class="mt-1 block text-xs text-muted-foreground sm:hidden">
+									{{ formatTime(deployment.started_at) }}
+								</span>
+							</span>
+							<span class="hidden text-sm text-muted-foreground sm:block">{{ formatTime(deployment.started_at) }}</span>
+							<span class="justify-self-end rounded px-2 py-1 text-xs" :class="statusBadgeClass(deployment.status)">
 								{{ statusLabel(deployment.status) }}
 							</span>
-						</div>
+						</button>
 					</div>
 				</div>
-			</div>
+			</section>
 		</div>
 	</div>
 </template>

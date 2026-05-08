@@ -39,31 +39,31 @@ async function handleLogout() {
 </script>
 
 <template>
-	<header class="flex h-20 shrink-0 items-center rounded-lg border border-border bg-card px-3 shadow-sm">
+	<header class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-card px-3 shadow-sm md:h-20">
 		<RouterLink
 			to="/"
-			class="flex h-full w-60 shrink-0 items-center gap-3 rounded-md px-3 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20"
+			class="flex h-16 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
 			aria-label="Pomelo Orbit 首页"
 		>
 			<span class="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
 				<Code2 class="size-5" />
 			</span>
-			<span class="text-base font-semibold tracking-normal">Pomelo Orbit</span>
+			<span class="hidden text-base font-semibold tracking-normal sm:inline">Pomelo Orbit</span>
 		</RouterLink>
 
 		<NavigationMenuRoot
 			:model-value="currentModule ?? undefined"
-			class="flex h-full min-w-0"
+			class="flex h-16 min-w-0 flex-1 overflow-x-auto md:h-full md:flex-none"
 			aria-label="一级模块导航"
 			:delay-duration="100"
 			:skip-delay-duration="200"
 		>
-			<NavigationMenuList class="flex h-full items-stretch gap-0">
+			<NavigationMenuList class="flex h-full min-w-max items-stretch gap-0">
 				<NavigationMenuItem v-for="item in primaryNavigation" :key="item.key" :value="item.key">
 					<NavigationMenuLink as-child :active="isActive(item.key)">
 						<RouterLink
 							:to="item.path"
-							class="flex h-full min-w-28 items-center justify-center border-b-2 px-5 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20"
+							class="flex h-full min-w-24 items-center justify-center border-b-2 px-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20 md:min-w-28 md:px-5"
 							:class="
 								isActive(item.key)
 									? 'border-primary text-primary'
@@ -77,9 +77,9 @@ async function handleLogout() {
 			</NavigationMenuList>
 		</NavigationMenuRoot>
 
-		<div class="flex-1" />
+		<div class="hidden flex-1 md:block" />
 
-		<ToolbarRoot class="flex items-center gap-3" aria-label="全局工具">
+		<ToolbarRoot class="hidden items-center gap-3 md:flex" aria-label="全局工具">
 			<ToolbarButton
 				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
 				aria-label="搜索"
@@ -102,14 +102,14 @@ async function handleLogout() {
 
 		<DropdownMenuRoot>
 			<DropdownMenuTrigger
-				class="flex h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+				class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
 				aria-label="用户菜单"
 			>
 				<span class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
 					{{ userInitial }}
 				</span>
-				<span class="text-sm">{{ userName }}</span>
-				<ChevronDown class="size-4 text-muted-foreground" />
+				<span class="hidden text-sm lg:inline">{{ userName }}</span>
+				<ChevronDown class="hidden size-4 text-muted-foreground sm:block" />
 			</DropdownMenuTrigger>
 			<DropdownMenuPortal>
 				<DropdownMenuContent

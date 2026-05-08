@@ -2,7 +2,6 @@
 import { Eye, EyeOff } from 'lucide-vue-next';
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from '@/composables/useToast';
 
@@ -36,9 +35,7 @@ async function handleLogin() {
 
 	loading.value = true;
 	try {
-		const data = await authApi.login(form.username, form.password);
-		authStore.setToken(data.access_token);
-		authStore.setUser(data.user);
+		await authStore.login(form.username, form.password);
 		toast.success('登录成功');
 		router.push('/');
 	} catch (err) {

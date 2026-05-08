@@ -7,6 +7,7 @@ export interface Deployment {
 	application_name: string | null
 	operation_type: string
 	trigger_type: string
+	environment?: string
 	env_file: string | null
 	status: TaskStatus
 	started_at: string
@@ -17,4 +18,5 @@ export interface Deployment {
 
 export interface DeploymentDetail extends Deployment {
 	log_text: string | null
+	created_at: string
 }

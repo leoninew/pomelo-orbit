@@ -47,6 +47,7 @@ export interface ConfigFile {
 	id: string
 	path: string
 	created_at: string
+	updated_at: string
 }
 
 export interface ApplicationRoute {

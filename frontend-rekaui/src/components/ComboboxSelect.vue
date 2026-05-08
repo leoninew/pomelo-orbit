@@ -13,7 +13,7 @@ import {
 	ComboboxTrigger
 } from 'reka-ui'
 
-export type ComboboxOptionValue = string | number | boolean
+export type ComboboxOptionValue = string | number
 
 export interface ComboboxOption {
 	value: ComboboxOptionValue

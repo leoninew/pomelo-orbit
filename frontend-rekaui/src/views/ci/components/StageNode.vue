@@ -13,12 +13,7 @@ interface Props {
 	}
 }
 
-const props = withDefaults(defineProps<Props>(), {
-	data: () => ({
-		readonly: false,
-		selected: false,
-	}),
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits(['click']);
 

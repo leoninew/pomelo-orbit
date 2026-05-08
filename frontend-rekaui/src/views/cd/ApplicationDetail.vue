@@ -1002,7 +1002,7 @@ onMounted(async () => {
 				<label class="mb-1.5 block text-sm font-medium text-foreground">
 					选择服务 <span class="text-destructive">*</span>
 				</label>
-				<ComboboxRoot v-model="selectedService" :display-value="(s) => s?.service_name || ''" @update:model-value="onServiceChange">
+				<ComboboxRoot v-model="selectedService" :display-value="(s: ApplicationServiceConfig | null) => s?.service_name || ''" @update:model-value="onServiceChange">
 					<ComboboxAnchor
 						class="flex h-10 w-full items-center gap-2 rounded-md border bg-background px-3 text-sm transition-colors"
 						:class="routeFormErrors.service_name ? 'border-destructive' : 'border-input hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20'"

@@ -12,7 +12,7 @@ import {
 	SelectViewport
 } from 'reka-ui'
 
-export type SelectOptionValue = string | number | boolean
+export type SelectOptionValue = string | number
 
 export interface SelectOption {
 	value: SelectOptionValue

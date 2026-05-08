@@ -10,7 +10,7 @@ import request from '@/utils/request';
 
 // Credential API
 export const credentialApi = {
-	list(params?: { page?: number; per_page?: number }): Promise<PaginatedResp<Credential>> {
+	list(params?: { page?: number; per_page?: number; search?: string }): Promise<PaginatedResp<Credential>> {
 		return request.get('/api/ci/credential', { params });
 	},
 

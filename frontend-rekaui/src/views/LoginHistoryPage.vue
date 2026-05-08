@@ -15,7 +15,7 @@
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error?.message || '加载失败' }}</p>
+				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
 			<div v-else-if="history.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">暂无数据</p>

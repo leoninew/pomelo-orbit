@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
-import type { Edge, Node, NodeClickEvent } from '@vue-flow/core';
+import type { Edge, Node, NodeComponent, NodeTypesObject } from '@vue-flow/core';
 import { useVueFlow, VueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
 import dagre from 'dagre';
@@ -23,7 +23,7 @@ const emit = defineEmits<(e: 'view-stage', stageRun: StageRun) => void>();
 
 const { fitView, updateNodeData } = useVueFlow();
 const isReady = ref(false);
-const nodeTypes = { stage: markRaw(StageNode) };
+const nodeTypes: NodeTypesObject = { stage: markRaw(StageNode) as unknown as NodeComponent };
 
 // ── 布局：只算一次 ────────────────────────────────────────────────────────────
 
@@ -130,7 +130,7 @@ watch(
 
 // ── 交互 ─────────────────────────────────────────────────────────────────────
 
-function handleNodeClick(event: NodeClickEvent) {
+function handleNodeClick(event: { node: Node }) {
 	const sr = (event.node.data as { stageRun?: StageRun }).stageRun;
 	if (sr) {
 		emit('view-stage', sr);

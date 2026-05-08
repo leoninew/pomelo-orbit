@@ -17,6 +17,7 @@ export interface Repository {
 	name: string
 	code: string
 	repository_url: string
+	has_credential: boolean
 	git_credential_id?: string | null
 	git_credential_name?: string | null
 	variable_declarations: VariableDeclaration[] // 变量列表（包含内置和自定义）

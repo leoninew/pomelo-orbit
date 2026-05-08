@@ -164,7 +164,7 @@ onMounted(fetchTemplates)
 
 		<div v-else-if="status === 'error'" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
 			<div class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error?.message || '加载失败' }}</p>
+				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
 		</div>
 

@@ -176,7 +176,7 @@ onMounted(fetchProjects)
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="w-full">
+				<table class="app-table-list">
 					<thead class="border-b border-border bg-muted/30">
 						<tr>
 							<th class="px-6 py-4 text-left text-xs font-normal text-muted-foreground">名称</th>

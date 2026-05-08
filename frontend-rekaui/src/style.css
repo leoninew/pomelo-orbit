@@ -60,3 +60,53 @@
   }
 
 }
+
+@layer components {
+  .app-table-list {
+    @apply w-full;
+  }
+
+  .app-table-list thead {
+    @apply border-b border-border bg-muted/30;
+  }
+
+  .app-table-list th {
+    @apply px-6 py-4 text-left text-xs font-normal text-muted-foreground;
+  }
+
+  .app-table-list tbody {
+    @apply divide-y divide-border;
+  }
+
+  .app-table-list tbody tr {
+    @apply transition-colors hover:bg-muted/30;
+  }
+
+  .app-table-list td {
+    @apply px-6 py-5 text-sm;
+  }
+
+  .app-table-detail {
+    @apply w-full;
+  }
+
+  .app-table-detail thead {
+    @apply border-b border-border bg-muted/30;
+  }
+
+  .app-table-detail th {
+    @apply px-5 py-3 text-left text-xs font-normal text-muted-foreground;
+  }
+
+  .app-table-detail tbody {
+    @apply divide-y divide-border;
+  }
+
+  .app-table-detail tbody tr {
+    @apply transition-colors hover:bg-muted/30;
+  }
+
+  .app-table-detail td {
+    @apply px-5 py-4 text-sm;
+  }
+}

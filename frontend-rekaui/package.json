@@ -32,6 +32,7 @@
 		"@eslint/js": "^9.0.0",
 		"@stylistic/eslint-plugin": "^5.10.0",
 		"@tailwindcss/vite": "^4.2.2",
+		"@types/dagre": "^0.7.54",
 		"@vitejs/plugin-vue": "^4.5.0",
 		"@vitest/coverage-v8": "^2.1.8",
 		"eslint": "^9.0.0",

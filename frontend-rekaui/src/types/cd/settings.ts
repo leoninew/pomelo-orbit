@@ -4,6 +4,8 @@ export interface ConfigItemResp {
 	value: unknown
 	default: unknown
 	is_overridden: boolean
+	description?: string
+	updated_at?: string
 }
 
 export interface SystemConfigResp {

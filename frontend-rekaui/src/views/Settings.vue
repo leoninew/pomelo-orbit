@@ -67,7 +67,7 @@
 								<!-- Boolean -->
 								<SelectControl
 									v-if="typeof item.default === 'boolean'"
-									v-model="editingBool"
+									v-model="editingBoolStr"
 									:options="booleanOptions"
 									width-class="w-28"
 								/>
@@ -312,14 +312,14 @@ const selectOptions: Record<string, string[]> = {
 	cert__letsencrypt__challenge: ['http', 'dns'],
 };
 const booleanOptions = [
-	{ value: true, label: 'true' },
-	{ value: false, label: 'false' },
+	{ value: 'true', label: 'true' },
+	{ value: 'false', label: 'false' },
 ];
 const secretKeys = new Set(['jwt__secret_key']);
 
 const editingKey = ref<string>();
 const editingStr = ref('');
-const editingBool = ref(false);
+const editingBoolStr = ref('false');
 
 const passwordModalOpen = ref(false);
 const passwordForm = reactive({
@@ -353,7 +353,7 @@ async function fetchConfig() {
 function startEdit(record: ConfigItemResp) {
 	editingKey.value = record.key;
 	if (typeof record.default === 'boolean') {
-		editingBool.value = record.value as boolean;
+		editingBoolStr.value = String(record.value);
 	} else {
 		editingStr.value = secretKeys.has(record.key) ? '' : String(record.value ?? '');
 	}
@@ -370,7 +370,7 @@ async function handleSave(record: ConfigItemResp) {
 	}
 	try {
 		await executeOp(async () => {
-			const value = typeof record.default === 'boolean' ? editingBool.value : editingStr.value;
+			const value = typeof record.default === 'boolean' ? editingBoolStr.value === 'true' : editingStr.value;
 			config.value = await settingApi.updateConfig({ key: record.key, value });
 			needsRestart.value = true;
 			editingKey.value = undefined;

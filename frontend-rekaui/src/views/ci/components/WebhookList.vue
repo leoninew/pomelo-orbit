@@ -305,7 +305,7 @@ async function confirmDelete() {
 					<input
 						v-model="form.enabled"
 						type="checkbox"
-						class="size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring/20"
+						class="app-checkbox"
 					/>
 					<span class="text-sm text-foreground">启用</span>
 				</label>

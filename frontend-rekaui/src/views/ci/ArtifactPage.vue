@@ -35,6 +35,7 @@ const repoSelectOptions = computed(() =>
 	repoOptions.value.map((repo) => ({
 		value: repo.id,
 		label: repo.name,
+		description: repo.repository_url,
 	}))
 );
 
@@ -42,6 +43,7 @@ const templateSelectOptions = computed(() =>
 	templateOptions.value.map((template) => ({
 		value: template.id,
 		label: template.name,
+		description: `v${template.version}`,
 	}))
 );
 
@@ -114,8 +116,8 @@ onMounted(async () => {
 
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex flex-wrap items-center justify-between gap-3" aria-label="制品工具栏">
-			<div class="flex flex-wrap items-center gap-2">
+		<ToolbarRoot class="overflow-x-auto" aria-label="制品工具栏">
+			<div class="flex min-w-max items-center gap-2">
 				<ComboboxSelect
 					:model-value="query.repository_id"
 					:options="repoSelectOptions"
@@ -136,24 +138,34 @@ onMounted(async () => {
 					v-model="query.search"
 					placeholder="搜索名称/路径"
 					:loading="status === 'loading'"
+					class="shrink-0"
 					@search="handleSearch"
 				/>
 			</div>
 		</ToolbarRoot>
 
-		<!-- Table Card -->
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div class="app-surface">
 			<div v-if="status === 'loading'" class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error }}</p>
+				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
 			<div v-else-if="artifacts.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1240px]">
+				<table class="app-table-list table-fixed">
+					<colgroup>
+						<col class="w-[16%]" />
+						<col class="w-[16%]" />
+						<col class="w-[11%]" />
+						<col class="w-[11%]" />
+						<col class="w-[10%]" />
+						<col class="w-[13%]" />
+						<col class="w-[15%]" />
+						<col class="w-[8%]" />
+					</colgroup>
 					<thead>
 						<tr>
 							<th>项目</th>
@@ -168,30 +180,39 @@ onMounted(async () => {
 					</thead>
 					<tbody>
 						<tr v-for="a in artifacts" :key="a.id">
-							<td>
+							<td class="overflow-hidden">
 								<router-link
 									:to="`/ci/repository/${a.repository_id}`"
-									class="text-primary hover:underline"
+									class="app-link block truncate"
+									:title="a.repository_name"
 								>
 									{{ a.repository_name }}
 								</router-link>
 							</td>
-							<td>
-								<router-link :to="`/ci/template/${a.template_id}`" class="text-primary hover:underline">
+							<td class="overflow-hidden">
+								<router-link
+									:to="`/ci/template/${a.template_id}`"
+									class="app-link block truncate"
+									:title="a.template_name"
+								>
 									{{ a.template_name }}
 								</router-link>
 							</td>
-							<td class="max-w-48 truncate text-foreground" :title="a.name">{{ a.name }}</td>
+							<td class="overflow-hidden truncate text-foreground" :title="a.name">{{ a.name }}</td>
 							<td>
-								<span class="inline-flex items-center rounded-md bg-secondary px-2 py-0.5 text-sm text-secondary-foreground">{{ artifactTypeLabel(a.type) }}</span>
+								<span class="inline-flex items-center whitespace-nowrap rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+									{{ artifactTypeLabel(a.type) }}
+								</span>
 							</td>
-							<td class="text-foreground">{{ a.stage_name }}</td>
-							<td class="max-w-sm truncate text-foreground" :title="a.path || undefined">
+							<td class="overflow-hidden truncate text-foreground" :title="a.stage_name">{{ a.stage_name }}</td>
+							<td class="overflow-hidden truncate text-foreground" :title="a.path || undefined">
 								{{ a.path ?? '—' }}
 							</td>
-							<td class="text-foreground">{{ formatTime(a.created_at) }}</td>
+							<td class="overflow-hidden truncate text-foreground" :title="formatTime(a.created_at)">
+								{{ formatTime(a.created_at) }}
+							</td>
 							<td>
-								<router-link :to="`/ci/run/${a.pipeline_run_id}`" class="text-primary hover:underline">
+								<router-link :to="`/ci/run/${a.pipeline_run_id}`" class="app-link">
 									查看
 								</router-link>
 							</td>

@@ -202,19 +202,19 @@ onUnmounted(stopLog);
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="deployment && !isTerminalStatus(deployment.status)"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-3"
 					@click="isCancelDialogOpen = true"
 				>
 					取消部署
 				</button>
 				<button
-					class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+					class="app-icon-button"
 					@click="refreshDeployment"
 				>
 					<RefreshCw class="h-4 w-4" />
 				</button>
 				<button
-					class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-4"
 					@click="router.push('/cd/deployments')"
 				>
 					返回
@@ -229,101 +229,101 @@ onUnmounted(stopLog);
 
 		<!-- 内容 -->
 		<div v-else-if="deployment" class="flex flex-col gap-4">
-				<!-- 基本信息卡片 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">基本信息</h2>
-					</div>
-					<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">部署 ID</dt>
-							<dd class="min-w-0 text-foreground">{{ deploymentId }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">应用</dt>
-							<dd>
-								<router-link
-									:to="`/cd/applications/${deployment.application_id}`"
-									class="text-primary hover:underline"
-								>
-									{{ deployment.application_name || deployment.application_id }}
-								</router-link>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
-							<dd>
-								<span
-									class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-									:class="statusBadgeClass"
-								>
-									{{ statusLabel }}
-								</span>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">操作类型</dt>
-							<dd class="text-foreground">
-								{{ deployment.operation_type === 'deploy' ? '部署' : deployment.operation_type === 'stop' ? '停止' : '重启' }}
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
-							<dd class="text-foreground">{{ deployment.trigger_type }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">环境</dt>
-							<dd class="text-foreground">{{ deployment.environment || '—' }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">环境文件</dt>
-							<dd class="text-foreground">{{ deployment.env_file || '—' }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">耗时</dt>
-							<dd class="text-muted-foreground">{{ formatDuration(deployment.duration_ms) }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">完成时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(deployment.finished_at) }}</dd>
-						</div>
-						<div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
-							<dd class="min-w-0 text-destructive">
-								<span class="block truncate" :title="deployment.error_message">
-									{{ deployment.error_message }}
-								</span>
-							</dd>
-						</div>
-					</dl>
+			<!-- 基本信息卡片 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
+				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">部署 ID</dt>
+						<dd class="min-w-0 break-all text-foreground">{{ deploymentId }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">应用</dt>
+						<dd>
+							<router-link
+								:to="`/cd/applications/${deployment.application_id}`"
+								class="app-link"
+							>
+								{{ deployment.application_name || deployment.application_id }}
+							</router-link>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dd>
+							<span
+								class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
+								:class="statusBadgeClass"
+							>
+								{{ statusLabel }}
+							</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">操作类型</dt>
+						<dd class="text-foreground">
+							{{ deployment.operation_type === 'deploy' ? '部署' : deployment.operation_type === 'stop' ? '停止' : '重启' }}
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
+						<dd class="text-foreground">{{ deployment.trigger_type }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">环境</dt>
+						<dd class="text-foreground">{{ deployment.environment || '—' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">环境文件</dt>
+						<dd class="text-foreground">{{ deployment.env_file || '—' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">耗时</dt>
+						<dd class="text-muted-foreground">{{ formatDuration(deployment.duration_ms) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">完成时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(deployment.finished_at) }}</dd>
+					</div>
+					<div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
+						<dd class="min-w-0 text-destructive">
+							<span class="block truncate" :title="deployment.error_message">
+								{{ deployment.error_message }}
+							</span>
+						</dd>
+					</div>
+				</dl>
+			</div>
 
-				<!-- 日志卡片 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">部署日志</h2>
-					</div>
-					<div
-						ref="logContainerRef"
-						class="h-[600px] overflow-y-auto bg-muted/30 p-4 font-mono text-xs text-foreground"
-					>
-						<pre v-if="logText" class="whitespace-pre-wrap">{{ logText }}</pre>
-						<div v-else class="flex h-full items-center justify-center text-muted-foreground">
-							<div class="text-center">
-								<Loader2 class="mx-auto h-8 w-8 animate-spin" />
-								<p class="mt-2">加载日志中...</p>
-							</div>
+			<!-- 日志卡片 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">部署日志</h2>
+				</div>
+				<div
+					ref="logContainerRef"
+					class="h-[600px] overflow-y-auto bg-muted/30 p-4 font-mono text-xs text-foreground"
+				>
+					<pre v-if="logText" class="whitespace-pre-wrap">{{ logText }}</pre>
+					<div v-else class="flex h-full items-center justify-center text-muted-foreground">
+						<div class="text-center">
+							<Loader2 class="mx-auto h-8 w-8 animate-spin" />
+							<p class="mt-2">加载日志中...</p>
 						</div>
 					</div>
 				</div>
+			</div>
 		</div>
 
 		<AppDialog
@@ -336,14 +336,14 @@ onUnmounted(stopLog);
 			<template #footer>
 				<button
 					type="button"
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isCancelDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
 					type="button"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+					class="app-button-destructive"
 					@click="handleCancel"
 				>
 					确认取消

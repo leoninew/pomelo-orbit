@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { deploymentApi } from '@/api/cd/deployments'
+import AppDialog from '@/components/AppDialog.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import SearchControl from '@/components/SearchControl.vue'
 import { useStatusAsync } from '@/composables/useStatusAsync'
@@ -12,13 +13,18 @@ import { formatTime } from '@/utils/time'
 import { ToolbarRoot } from 'reka-ui'
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
-const { status, execute } = useStatusAsync()
+const { status, error, execute } = useStatusAsync()
+const { loading: operating, execute: executeOp } = useStatusAsync()
 
 const deployments = ref<Deployment[]>([])
 const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
 const searchText = ref('')
+const applicationId = ref<string | undefined>(route.query.application_id as string | undefined)
+const isCancelDialogOpen = ref(false)
+const deploymentToCancel = ref<Deployment | null>(null)
 
 function operationTypeLabel(type: string) {
 	const map: Record<string, string> = {
@@ -42,7 +48,8 @@ async function fetchDeployments() {
 			const res = await deploymentApi.list({
 				page: pagination.current,
 				per_page: pagination.pageSize,
-				search: searchText.value || undefined
+				search: searchText.value || undefined,
+				application_id: applicationId.value
 			})
 			deployments.value = res.items
 			pagination.total = res.total
@@ -68,18 +75,48 @@ function handlePageSizeChange(pageSize: number) {
 	fetchDeployments()
 }
 
+function isCancelable(deployment: Deployment) {
+	return ['running', 'waiting_to_run'].includes(deployment.status)
+}
+
+function openCancelDialog(deployment: Deployment) {
+	deploymentToCancel.value = deployment
+	isCancelDialogOpen.value = true
+}
+
+async function handleCancelOk() {
+	if (!deploymentToCancel.value) {
+		return
+	}
+	const target = deploymentToCancel.value
+	try {
+		await executeOp(async () => {
+			await deploymentApi.cancel(target.id)
+			toast.success('已取消部署')
+			isCancelDialogOpen.value = false
+			deploymentToCancel.value = null
+			await fetchDeployments()
+		})
+	} catch {
+		toast.error('取消失败')
+	}
+}
+
 onMounted(fetchDeployments)
 </script>
 
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex items-center gap-6" aria-label="部署记录工具栏">
-			<SearchControl
-				v-model="searchText"
-				placeholder="搜索应用/环境"
-				:loading="status === 'loading'"
-				@search="handleSearch"
-			/>
+		<ToolbarRoot class="overflow-x-auto" aria-label="部署记录工具栏">
+			<div class="flex min-w-max items-center gap-2">
+				<SearchControl
+					v-model="searchText"
+					placeholder="搜索应用/环境"
+					:loading="status === 'loading'"
+					class="shrink-0"
+					@search="handleSearch"
+				/>
+			</div>
 		</ToolbarRoot>
 
 		<!-- Table Card -->
@@ -87,11 +124,14 @@ onMounted(fetchDeployments)
 			<div v-if="status === 'loading'" class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
+			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
+				<p class="text-sm">{{ error || '加载失败' }}</p>
+			</div>
 			<div v-else-if="deployments.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1200px]">
+				<table class="app-table-list min-w-[1360px]">
 					<thead>
 						<tr>
 							<th>应用</th>
@@ -100,6 +140,7 @@ onMounted(fetchDeployments)
 							<th>环境</th>
 							<th>环境文件</th>
 							<th>状态</th>
+							<th>错误信息</th>
 							<th>开始时间</th>
 							<th>耗时</th>
 							<th>操作</th>
@@ -129,15 +170,28 @@ onMounted(fetchDeployments)
 									{{ statusLabel(deployment.status) }}
 								</span>
 							</td>
+							<td class="max-w-56 truncate text-destructive" :title="deployment.error_message || undefined">
+								{{ deployment.error_message || '—' }}
+							</td>
 							<td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
 							<td class="text-foreground">{{ formatDuration(deployment.duration_ms) }}</td>
 							<td>
-								<button
-									class="app-link"
-									@click="router.push(`/cd/deployments/${deployment.id}`)"
-								>
-									查看
-								</button>
+								<div class="flex items-center gap-3">
+									<button
+										class="app-link"
+										@click="router.push(`/cd/deployments/${deployment.id}`)"
+									>
+										查看
+									</button>
+									<button
+										v-if="isCancelable(deployment)"
+										class="app-link-danger"
+										:disabled="operating"
+										@click="openCancelDialog(deployment)"
+									>
+										取消
+									</button>
+								</div>
 							</td>
 						</tr>
 					</tbody>
@@ -153,5 +207,26 @@ onMounted(fetchDeployments)
 			@change-page="goPage"
 			@change-page-size="handlePageSizeChange"
 		/>
+
+		<AppDialog
+			v-model:open="isCancelDialogOpen"
+			title="确认取消"
+			:description="`确定要取消 ${deploymentToCancel?.application_name || '该应用'} 的部署吗？`"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
+			<template #footer>
+				<button class="app-button" @click="isCancelDialogOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-destructive"
+					:disabled="operating"
+					@click="handleCancelOk"
+				>
+					{{ operating ? '取消中...' : '确认取消' }}
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>

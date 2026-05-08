@@ -37,13 +37,15 @@ function triggerLabel(trigger: string) {
 const repositoryOptions = computed(() =>
 	repositories.value.map((repo) => ({
 		value: repo.id,
-		label: repo.name
+		label: repo.name,
+		description: repo.repository_url
 	}))
 )
 const templateOptions = computed(() =>
 	templates.value.map((template) => ({
 		value: template.id,
-		label: template.name
+		label: template.name,
+		description: `v${template.version}`
 	}))
 )
 
@@ -144,8 +146,8 @@ onMounted(async () => {
 
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex flex-wrap items-center justify-between gap-3" aria-label="流水线记录工具栏">
-			<div class="flex flex-wrap items-center gap-2">
+		<ToolbarRoot class="overflow-x-auto" aria-label="流水线记录工具栏">
+			<div class="flex min-w-max items-center gap-2">
 				<ComboboxSelect
 					:model-value="query.repository_id"
 					:options="repositoryOptions"
@@ -161,7 +163,7 @@ onMounted(async () => {
 					@update:model-value="handleTemplateChange"
 				/>
 				<button
-					class="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary shrink-0 px-5"
 					:disabled="status === 'loading'"
 					@click="handleSearch"
 				>
@@ -175,19 +177,30 @@ onMounted(async () => {
 			</div>
 		</ToolbarRoot>
 
-		<!-- Table Card -->
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div class="app-surface">
 			<div v-if="status === 'loading'" class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error }}</p>
+				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
 			<div v-else-if="runs.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1440px]">
+				<table class="app-table-list table-fixed min-w-[960px]">
+					<colgroup>
+						<col class="w-[13%]" />
+						<col class="w-[13%]" />
+						<col class="w-[7%]" />
+						<col class="w-[8%]" />
+						<col class="w-[10%]" />
+						<col class="w-[8%]" />
+						<col class="w-[12%]" />
+						<col class="w-[12%]" />
+						<col class="w-[8%]" />
+						<col class="w-[9%]" />
+					</colgroup>
 					<thead>
 						<tr>
 							<th>仓库</th>
@@ -204,42 +217,49 @@ onMounted(async () => {
 					</thead>
 					<tbody>
 						<tr v-for="run in runs" :key="run.id">
-							<td>
+							<td class="overflow-hidden">
 								<button
-									class="text-primary hover:underline"
+									class="app-link block truncate"
+									:title="run.repository_name"
 									@click="router.push(`/ci/repository/${run.repository_id}`)"
 								>
 									{{ run.repository_name }}
 								</button>
 							</td>
-							<td>
-								<router-link :to="`/ci/template/${run.template_id}`" class="text-primary hover:underline">
+							<td class="overflow-hidden">
+								<router-link
+									:to="`/ci/template/${run.template_id}`"
+									class="app-link block truncate"
+									:title="run.template_name"
+								>
 									{{ run.template_name }}
 								</router-link>
 							</td>
 							<td>
-								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ run.template_version }}</span>
+								<span class="inline-block whitespace-nowrap rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ run.template_version }}</span>
 							</td>
-							<td class="text-foreground">{{ triggerLabel(run.trigger) }}</td>
-							<td class="max-w-44 truncate text-foreground" :title="run.trigger_ref">
+							<td class="whitespace-nowrap text-foreground">{{ triggerLabel(run.trigger) }}</td>
+							<td class="overflow-hidden truncate text-foreground" :title="run.trigger_ref">
 								{{ run.trigger_ref }}
 							</td>
 							<td>
 								<span
-									class="inline-flex rounded-md px-2 py-0.5 text-sm"
+									class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 									:class="statusBadgeClass(run.status)"
 								>
 									{{ statusLabel(run.status) }}
 								</span>
 							</td>
-							<td class="max-w-xs truncate text-foreground" :title="run.error_message || undefined">
+							<td class="overflow-hidden truncate text-foreground" :title="run.error_message || undefined">
 								{{ run.error_message || '—' }}
 							</td>
-							<td class="text-foreground">{{ formatTime(run.started_at) }}</td>
-							<td class="text-foreground">{{ formatDuration(run.started_at, run.finished_at) }}</td>
+							<td class="overflow-hidden truncate text-foreground" :title="formatTime(run.started_at)">
+								{{ formatTime(run.started_at) }}
+							</td>
+							<td class="whitespace-nowrap text-foreground">{{ formatDuration(run.started_at, run.finished_at) }}</td>
 							<td>
 								<button
-									class="text-primary hover:underline"
+									class="app-link whitespace-nowrap"
 									@click="router.push(`/ci/run/${run.id}`)"
 								>
 									查看

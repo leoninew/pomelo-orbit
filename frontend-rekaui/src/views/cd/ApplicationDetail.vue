@@ -16,6 +16,7 @@ import {
 import { applicationApi } from '@/api/cd/application';
 import { deploymentApi } from '@/api/cd/deployments';
 import AppDialog from '@/components/AppDialog.vue';
+import AppDrawer from '@/components/AppDrawer.vue';
 import SelectControl from '@/components/SelectControl.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
@@ -411,6 +412,13 @@ function handleDrawerClose() {
 	isEditingInDrawer.value = false;
 }
 
+function handleFileDrawerOpenChange(open: boolean) {
+	fileDrawerVisible.value = open;
+	if (!open) {
+		isEditingInDrawer.value = false;
+	}
+}
+
 async function saveCurrentFile() {
 	if (!currentFilePath.value.trim()) {
 		toast.error('请输入文件路径');
@@ -592,40 +600,40 @@ onMounted(async () => {
 			<h1 class="text-xl font-semibold text-foreground">{{ application?.name || '应用详情' }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
 				<button
-						v-if="application"
-						:disabled="operating"
-						class="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						@click="handleDeploy"
-					>
-						{{ operating ? '部署中...' : '部署' }}
+					v-if="application"
+					:disabled="operating"
+					class="app-button-primary h-9 px-3"
+					@click="handleDeploy"
+				>
+					{{ operating ? '部署中...' : '部署' }}
 				</button>
 				<button
-						v-if="application"
-						class="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="handleExport"
-					>
-						<Download class="size-4" />
-						导出
+					v-if="application"
+					class="app-button h-9 px-3"
+					@click="handleExport"
+				>
+					<Download class="size-4" />
+					导出
 				</button>
 				<button
-						v-if="application"
-						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="openEditModal"
-					>
-						编辑
+					v-if="application"
+					class="app-button h-9 px-3"
+					@click="openEditModal"
+				>
+					编辑
 				</button>
 				<button
-						v-if="application"
-						class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-						@click="openDeleteModal"
-					>
-						删除
+					v-if="application"
+					class="app-button-danger h-9 px-3"
+					@click="openDeleteModal"
+				>
+					删除
 				</button>
 				<button
-						class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="router.push('/cd/applications')"
-					>
-						返回
+					class="app-button h-9 px-4"
+					@click="router.push('/cd/applications')"
+				>
+					返回
 				</button>
 			</div>
 		</div>
@@ -637,126 +645,126 @@ onMounted(async () => {
 
 		<!-- 内容 -->
 		<div v-else-if="application" class="flex flex-col gap-4">
-				<!-- 基本信息卡片 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">基本信息</h2>
-					</div>
-					<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">应用名称</dt>
-							<dd class="text-foreground">{{ application.name }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">应用代码</dt>
-							<dd class="text-foreground">{{ application.code }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
-							<dd>
-								<span
-									class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-									:class="statusBadgeClass"
-								>
-									{{ statusText }}
-								</span>
-							</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">拉取策略</dt>
-							<dd class="text-foreground">{{ application.image_pull_policy }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">路由管理</dt>
-							<dd class="text-foreground">{{ application.route_managed ? '已启用' : '未启用' }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
-						</div>
-						<div class="flex gap-2">
-							<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
-							<dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
-						</div>
-					</dl>
+			<!-- 基本信息卡片 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
+				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">应用名称</dt>
+						<dd class="text-foreground">{{ application.name }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">应用代码</dt>
+						<dd class="text-foreground">{{ application.code }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dd>
+							<span
+								class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
+								:class="statusBadgeClass"
+							>
+								{{ statusText }}
+							</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">拉取策略</dt>
+						<dd class="text-foreground">{{ application.image_pull_policy }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">路由管理</dt>
+						<dd class="text-foreground">{{ application.route_managed ? '已启用' : '未启用' }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+						<dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
+					</div>
+				</dl>
+			</div>
 
-				<!-- 配置文件 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="flex items-center justify-between border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">配置文件</h2>
-						<button
-							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-							@click="openAddFileDrawer"
-						>
-							<Plus class="h-4 w-4" />
-							添加文件
-						</button>
-					</div>
-					<div class="overflow-x-auto">
-						<table class="app-table-detail min-w-[760px]">
-							<thead>
-								<tr>
-									<th>文件路径</th>
-									<th>创建时间</th>
-									<th>操作</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr v-if="fileListLoading">
-									<td colspan="3" class="text-center text-muted-foreground">
-										<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-									</td>
-								</tr>
-								<tr v-else-if="files.length === 0">
-									<td colspan="3" class="text-center text-muted-foreground">
-										暂无配置文件
-									</td>
-								</tr>
-								<tr
-									v-for="file in files"
-									:key="file.id"
-								>
-									<td class="max-w-md truncate text-foreground" :title="file.path">
-										{{ file.path }}
-									</td>
-									<td class="text-muted-foreground">{{ formatTime(file.created_at) }}</td>
-									<td>
-										<div class="flex items-center gap-3">
-											<button
-												class="inline-flex items-center gap-1 text-primary hover:underline"
-												@click="openFileDrawer(file.id, false)"
-											>
-												<Eye class="h-3 w-3" />
-												查看
-											</button>
-											<button
-												class="text-primary hover:underline"
-												@click="openFileDrawer(file.id, true)"
-											>
-												编辑
-											</button>
-											<button
-												class="text-destructive hover:underline"
-												@click="confirmDeleteFile(file.id)"
-											>
-												删除
-											</button>
-										</div>
-									</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
+			<!-- 配置文件 -->
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
+					<h2 class="font-semibold text-foreground">配置文件</h2>
+					<button
+						class="app-button-primary h-9 px-3"
+						@click="openAddFileDrawer"
+					>
+						<Plus class="h-4 w-4" />
+						添加文件
+					</button>
 				</div>
+				<div class="overflow-x-auto">
+					<table class="app-table-detail min-w-[760px]">
+						<thead>
+							<tr>
+								<th>文件路径</th>
+								<th>创建时间</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-if="fileListLoading">
+								<td colspan="3" class="text-center text-muted-foreground">
+									<span class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+								</td>
+							</tr>
+							<tr v-else-if="files.length === 0">
+								<td colspan="3" class="text-center text-muted-foreground">
+									暂无配置文件
+								</td>
+							</tr>
+							<tr
+								v-for="file in files"
+								:key="file.id"
+							>
+								<td class="max-w-md truncate text-foreground" :title="file.path">
+									{{ file.path }}
+								</td>
+								<td class="text-muted-foreground">{{ formatTime(file.created_at) }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button
+											class="app-link inline-flex items-center gap-1"
+											@click="openFileDrawer(file.id, false)"
+										>
+											<Eye class="h-3 w-3" />
+											查看
+										</button>
+										<button
+											class="app-link"
+											@click="openFileDrawer(file.id, true)"
+										>
+											编辑
+										</button>
+										<button
+											class="app-link-danger"
+											@click="confirmDeleteFile(file.id)"
+										>
+											删除
+										</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
 
-				<!-- 服务配置 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">服务配置</h2>
-					</div>
-					<div class="overflow-x-auto">
-						<table class="app-table-detail min-w-[960px]">
+			<!-- 服务配置 -->
+			<div class="app-surface">
+				<div class="app-section-header">
+					<h2 class="font-semibold text-foreground">服务配置</h2>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="app-table-detail min-w-[960px]">
 							<thead>
 								<tr>
 									<th>服务</th>
@@ -799,14 +807,14 @@ onMounted(async () => {
 									<td>
 										<div class="flex items-center gap-3">
 											<button
-												class="text-primary hover:underline"
+												class="app-link"
 												@click="openEditServiceConfigModal(config)"
 											>
 												编辑
 											</button>
 											<button
 												v-if="canResetServiceConfig(config)"
-												class="text-destructive hover:underline"
+												class="app-link-danger"
 												@click="confirmResetServiceConfig(config)"
 											>
 												重置
@@ -817,23 +825,23 @@ onMounted(async () => {
 								</tr>
 							</tbody>
 						</table>
-					</div>
 				</div>
+			</div>
 
-				<!-- 路由配置 -->
-				<div v-if="application.route_managed" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="flex items-center justify-between border-b border-border px-5 py-4">
-						<h2 class="font-semibold text-foreground">路由配置</h2>
-						<button
-							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-							@click="openAddRouteModal"
-						>
-							<Plus class="h-4 w-4" />
-							添加路由
-						</button>
-					</div>
-					<div class="overflow-x-auto">
-						<table class="app-table-detail min-w-[760px]">
+			<!-- 路由配置 -->
+			<div v-if="application.route_managed" class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
+					<h2 class="font-semibold text-foreground">路由配置</h2>
+					<button
+						class="app-button-primary h-9 px-3"
+						@click="openAddRouteModal"
+					>
+						<Plus class="h-4 w-4" />
+						添加路由
+					</button>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="app-table-detail min-w-[760px]">
 							<thead>
 								<tr>
 									<th>域名</th>
@@ -865,13 +873,13 @@ onMounted(async () => {
 									<td>
 										<div class="flex items-center gap-3">
 											<button
-												class="text-primary hover:underline"
+												class="app-link"
 												@click="openEditRouteModal(r)"
 											>
 												编辑
 											</button>
 											<button
-												class="text-destructive hover:underline"
+												class="app-link-danger"
 												@click="confirmDeleteRoute(r.id)"
 											>
 												删除
@@ -881,108 +889,88 @@ onMounted(async () => {
 								</tr>
 							</tbody>
 						</table>
-					</div>
-				</div>
-		</div>
-
-		<!-- 文件抽屉 -->
-		<div
-			v-if="fileDrawerVisible"
-			class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-			@click.self="handleDrawerClose"
-		>
-			<div class="relative h-[80vh] w-[90vw] max-w-5xl rounded-lg border border-border bg-card">
-				<div class="flex items-center justify-between border-b border-border px-6 py-4">
-					<h3 class="text-lg font-semibold text-foreground">
-						{{ isEditingInDrawer ? (currentFileId ? '编辑文件' : '添加文件') : '查看文件' }}
-					</h3>
-					<button
-						class="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-						@click="handleDrawerClose"
-					>
-						<X class="h-5 w-5" />
-					</button>
-				</div>
-				<div class="h-[calc(80vh-8rem)] overflow-y-auto p-6">
-					<div v-if="isEditingInDrawer" class="space-y-4">
-						<div>
-							<label class="mb-1.5 block text-sm font-medium text-foreground">文件路径</label>
-							<input
-								v-model="currentFilePath"
-								type="text"
-								:disabled="!!currentFileId"
-								placeholder="例如: docker-compose.yml"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30"
-							/>
-						</div>
-						<div>
-							<label class="mb-1.5 block text-sm font-medium text-foreground">文件内容</label>
-							<textarea
-								v-model="currentFileContent"
-								rows="20"
-								class="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
-							></textarea>
-						</div>
-					</div>
-					<div v-else>
-						<pre class="whitespace-pre-wrap font-mono text-sm text-foreground">{{ currentFileContent }}</pre>
-					</div>
-				</div>
-				<div v-if="isEditingInDrawer" class="flex justify-end gap-2 border-t border-border px-6 py-4">
-					<button
-						class="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="handleDrawerClose"
-					>
-						取消
-					</button>
-					<button
-						:disabled="fileContentLoading"
-						class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						@click="saveCurrentFile"
-					>
-						{{ fileContentLoading ? '保存中...' : '保存' }}
-					</button>
 				</div>
 			</div>
 		</div>
 
+		<AppDrawer
+			:open="fileDrawerVisible"
+			:title="isEditingInDrawer ? (currentFileId ? '编辑文件' : '添加文件') : '查看文件'"
+			width-class="w-[min(920px,100vw)]"
+			body-class="min-h-0 flex-1 overflow-hidden p-0"
+			@update:open="handleFileDrawerOpenChange"
+		>
+			<div v-if="isEditingInDrawer" class="flex h-full flex-col gap-4 p-6">
+				<div>
+					<label class="app-field-label mb-1.5 block">文件路径</label>
+					<input
+						v-model="currentFilePath"
+						type="text"
+						:disabled="!!currentFileId"
+						placeholder="例如: docker-compose.yml"
+						class="app-input"
+					/>
+				</div>
+				<div class="min-h-0 flex-1">
+					<label class="app-field-label mb-1.5 block">文件内容</label>
+					<textarea
+						v-model="currentFileContent"
+						class="app-textarea h-[calc(100%-1.75rem)] resize-none font-mono"
+					></textarea>
+				</div>
+			</div>
+			<pre v-else class="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-sm text-foreground">{{ currentFileContent }}</pre>
+			<template v-if="isEditingInDrawer" #footer>
+				<button class="app-button" @click="handleDrawerClose">
+					取消
+				</button>
+				<button
+					:disabled="fileContentLoading"
+					class="app-button-primary"
+					@click="saveCurrentFile"
+				>
+					{{ fileContentLoading ? '保存中...' : '保存' }}
+				</button>
+			</template>
+		</AppDrawer>
+
 		<AppDialog v-model:open="isEditDialogOpen" title="编辑应用">
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">
+				<label class="app-field-label mb-1.5 block">
 					应用名称 <span class="text-destructive">*</span>
 				</label>
 				<input
 					v-model="editForm.name"
 					type="text"
-					class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
-					:class="editErrors.name ? 'border-destructive' : 'border-input'"
+					class="app-input"
+					:class="editErrors.name ? 'app-input-error' : ''"
 				/>
-				<p v-if="editErrors.name" class="mt-1 text-xs text-destructive">{{ editErrors.name }}</p>
+				<p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">应用代码</label>
+				<label class="app-field-label mb-1.5 block">应用代码</label>
 				<input
 					v-model="editForm.code"
 					type="text"
 					disabled
-					class="w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+					class="app-input"
 				/>
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">镜像拉取策略</label>
+				<label class="app-field-label mb-1.5 block">镜像拉取策略</label>
 				<SelectControl v-model="editForm.image_pull_policy" :options="imagePullPolicyOptions" />
 			</div>
 			<label class="flex items-center gap-2">
-				<input v-model="editForm.route_managed" type="checkbox" class="h-4 w-4 rounded border-input text-primary" />
+				<input v-model="editForm.route_managed" type="checkbox" class="app-checkbox" />
 				<span class="text-sm font-medium text-foreground">启用路由管理</span>
 			</label>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isEditDialogOpen = false">
+				<button class="app-button" @click="isEditDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="operating"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					@click="handleEditOk"
 				>
 					{{ operating ? '保存中...' : '保存' }}
@@ -992,16 +980,16 @@ onMounted(async () => {
 
 		<AppDialog v-model:open="isDeleteDialogOpen" title="确认删除" description="确定要删除此应用吗？此操作不可恢复。" width-class="w-[min(420px,calc(100vw-32px))]">
 			<label class="flex items-center gap-2">
-				<input v-model="deleteDir" type="checkbox" class="h-4 w-4 rounded border-input text-primary" />
+				<input v-model="deleteDir" type="checkbox" class="app-checkbox" />
 				<span class="text-sm text-foreground">同时删除工作目录</span>
 			</label>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteDialogOpen = false">
+				<button class="app-button" @click="isDeleteDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="operating"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					@click="handleDeleteOk"
 				>
 					{{ operating ? '删除中...' : '删除' }}
@@ -1011,12 +999,12 @@ onMounted(async () => {
 
 		<AppDialog v-model:open="isDeleteFileDialogOpen" title="确认删除" description="确定要删除这个配置文件吗？此操作无法撤销。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteFileDialogOpen = false">
+				<button class="app-button" @click="isDeleteFileDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="fileListLoading"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					@click="executeDeleteFile"
 				>
 					{{ fileListLoading ? '删除中...' : '删除' }}
@@ -1026,24 +1014,24 @@ onMounted(async () => {
 
 		<AppDialog v-model:open="isServiceConfigDialogOpen" title="编辑服务镜像">
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">服务</label>
-				<input :value="selectedServiceName" type="text" disabled class="w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground" />
+				<label class="app-field-label mb-1.5 block">服务</label>
+				<input :value="selectedServiceName" type="text" disabled class="app-input" />
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">镜像</label>
+				<label class="app-field-label mb-1.5 block">镜像</label>
 				<input
 					v-model="serviceConfigForm.image"
 					type="text"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+					class="app-input"
 				/>
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isServiceConfigDialogOpen = false">
+				<button class="app-button" @click="isServiceConfigDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="!serviceConfigDirty || serviceConfigSaving"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					@click="saveServiceConfig"
 				>
 					{{ serviceConfigSaving ? '保存中...' : '保存' }}
@@ -1053,12 +1041,12 @@ onMounted(async () => {
 
 		<AppDialog v-model:open="isDeleteServiceConfigDialogOpen" title="确认重置" description="确定要重置此服务镜像配置吗？" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="cancelResetServiceConfig">
+				<button class="app-button" @click="cancelResetServiceConfig">
 					取消
 				</button>
 				<button
 					:disabled="serviceConfigSaving"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					@click="executeResetServiceConfig"
 				>
 					{{ serviceConfigSaving ? '重置中...' : '重置' }}
@@ -1068,35 +1056,35 @@ onMounted(async () => {
 
 		<AppDialog v-model:open="isRouteDialogOpen" :title="editingRouteId ? '编辑路由' : '添加路由'">
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">
+				<label class="app-field-label mb-1.5 block">
 					选择服务 <span class="text-destructive">*</span>
 				</label>
-				<ComboboxRoot v-model="selectedService" :display-value="(s: ApplicationServiceConfig | null) => s?.service_name || ''" @update:model-value="onServiceChange">
+				<ComboboxRoot v-model="selectedService" :display-value="(s: ComposeServiceResp | null) => s?.service_name || ''" @update:model-value="onServiceChange">
 					<ComboboxAnchor
-						class="flex h-10 w-full items-center gap-2 rounded-md border bg-background px-3 text-sm transition-colors"
-						:class="routeFormErrors.service_name ? 'border-destructive' : 'border-input hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20'"
+						class="app-combobox-anchor"
+						:class="routeFormErrors.service_name ? 'app-input-error' : ''"
 					>
 						<Search class="size-4 shrink-0 text-muted-foreground" />
 						<ComboboxInput v-model="serviceSearchTerm" placeholder="搜索服务..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
 						<ComboboxCancel v-if="selectedService" as-child>
-							<button class="text-muted-foreground transition-colors hover:text-foreground">
+							<button class="text-muted-foreground transition-colors hover:text-foreground" aria-label="清除服务">
 								<X class="size-3.5" />
 							</button>
 						</ComboboxCancel>
 						<ComboboxTrigger as-child>
-							<button class="text-muted-foreground">
+							<button class="text-muted-foreground" aria-label="展开服务列表">
 								<ChevronDown class="size-4" />
 							</button>
 						</ComboboxTrigger>
 					</ComboboxAnchor>
 					<ComboboxPortal disabled>
-						<ComboboxContent position="popper" align="start" class="z-[60] max-h-64 w-[var(--reka-combobox-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover shadow-lg" :side-offset="4">
+						<ComboboxContent position="popper" align="start" class="app-popover-content w-[var(--reka-combobox-trigger-width)]" :side-offset="4">
 							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">未找到服务</ComboboxEmpty>
 							<ComboboxItem
 								v-for="service in filteredServices"
 								:key="service.service_name"
 								:value="service"
-								class="flex cursor-pointer flex-col gap-1 px-3 py-2 outline-none transition-colors hover:bg-accent/50 data-[highlighted]:bg-accent/50"
+								class="app-option-item flex-col items-start"
 							>
 								<span class="text-sm text-foreground">{{ service.service_name }}</span>
 								<span class="text-xs text-muted-foreground">{{ service.default_domain }}:{{ service.default_port }}</span>
@@ -1104,23 +1092,23 @@ onMounted(async () => {
 						</ComboboxContent>
 					</ComboboxPortal>
 				</ComboboxRoot>
-				<p v-if="routeFormErrors.service_name" class="mt-1 text-xs text-destructive">{{ routeFormErrors.service_name }}</p>
+				<p v-if="routeFormErrors.service_name" class="app-field-error mt-1 text-xs">{{ routeFormErrors.service_name }}</p>
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">
+				<label class="app-field-label mb-1.5 block">
 					域名 <span class="text-destructive">*</span>
 				</label>
 				<input
 					v-model="routeForm.domain"
 					type="text"
 					placeholder="example.com"
-					class="w-full rounded-md border px-3 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/20"
-					:class="routeFormErrors.domain ? 'border-destructive' : 'border-input bg-background focus:border-ring'"
+					class="app-input"
+					:class="routeFormErrors.domain ? 'app-input-error' : ''"
 				/>
-				<p v-if="routeFormErrors.domain" class="mt-1 text-xs text-destructive">{{ routeFormErrors.domain }}</p>
+				<p v-if="routeFormErrors.domain" class="app-field-error mt-1 text-xs">{{ routeFormErrors.domain }}</p>
 			</div>
 			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">
+				<label class="app-field-label mb-1.5 block">
 					端口 <span class="text-destructive">*</span>
 				</label>
 				<input
@@ -1129,18 +1117,18 @@ onMounted(async () => {
 					min="1"
 					max="65535"
 					placeholder="80"
-					class="w-full rounded-md border px-3 py-2 text-sm text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring/20"
-					:class="routeFormErrors.port ? 'border-destructive' : 'border-input bg-background focus:border-ring'"
+					class="app-input"
+					:class="routeFormErrors.port ? 'app-input-error' : ''"
 				/>
-				<p v-if="routeFormErrors.port" class="mt-1 text-xs text-destructive">{{ routeFormErrors.port }}</p>
+				<p v-if="routeFormErrors.port" class="app-field-error mt-1 text-xs">{{ routeFormErrors.port }}</p>
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isRouteDialogOpen = false">
+				<button class="app-button" @click="isRouteDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="routeLoading"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					@click="handleRouteOk"
 				>
 					{{ routeLoading ? '保存中...' : '保存' }}
@@ -1150,12 +1138,12 @@ onMounted(async () => {
 
 		<AppDialog v-model:open="isDeleteRouteDialogOpen" title="确认删除" description="确定要删除这个路由配置吗？此操作无法撤销。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteRouteDialogOpen = false">
+				<button class="app-button" @click="isDeleteRouteDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="routeLoading"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					@click="executeDeleteRoute"
 				>
 					{{ routeLoading ? '删除中...' : '删除' }}

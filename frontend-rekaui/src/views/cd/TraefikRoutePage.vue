@@ -67,38 +67,41 @@ onMounted(fetchRoutes);
 
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="Traefik 工具栏">
-			<SearchControl
-				v-model="searchText"
-				placeholder="搜索名称/规则/服务/提供者"
-				:loading="loading"
-				@search="handleSearch"
-			/>
-			<div class="flex items-center gap-3">
-				<button
-					class="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-					@click="openDashboard"
-				>
-					<ExternalLink class="size-4" />
-					打开 Dashboard
-				</button>
-				<button
-					class="h-10 rounded-md border border-border bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-2"
-					:disabled="loading"
-					@click="fetchRoutes"
-				>
-					<RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
-					刷新
-				</button>
+		<ToolbarRoot class="overflow-x-auto" aria-label="Traefik 工具栏">
+			<div class="flex min-w-max items-center justify-between gap-6">
+				<SearchControl
+					v-model="searchText"
+					class="shrink-0"
+					placeholder="搜索名称/规则/服务/提供者"
+					:loading="loading"
+					@search="handleSearch"
+				/>
+				<div class="flex items-center gap-3">
+					<button
+						class="app-button-primary px-5"
+						@click="openDashboard"
+					>
+						<ExternalLink class="size-4" />
+						打开 Dashboard
+					</button>
+					<button
+						class="app-button px-5"
+						:disabled="loading"
+						@click="fetchRoutes"
+					>
+						<RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
+						刷新
+					</button>
+				</div>
 			</div>
 		</ToolbarRoot>
 
 		<!-- Table Card -->
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div class="app-surface">
 			<div v-if="loading" class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
-			<div v-else-if="filteredRoutes.length === 0" class="text-center py-16 text-muted-foreground">
+			<div v-else-if="filteredRoutes.length === 0" class="py-16 text-center text-muted-foreground">
 				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
@@ -131,7 +134,7 @@ onMounted(fetchRoutes);
 									v-if="buildRouteUrl(r.rule, r.tls)"
 									:href="buildRouteUrl(r.rule, r.tls)!"
 									target="_blank"
-									class="flex items-center gap-1 text-primary hover:underline"
+									class="app-link flex items-center gap-1"
 								>
 									<span class="truncate">{{ r.rule }}</span>
 									<ExternalLink class="size-3" />

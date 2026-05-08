@@ -196,7 +196,7 @@ onMounted(fetchRoute);
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="routeData && !routeData.enabled"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="handleEnable"
 				>
@@ -204,7 +204,7 @@ onMounted(fetchRoute);
 				</button>
 				<button
 					v-else-if="routeData"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="handleDisable"
 				>
@@ -212,21 +212,21 @@ onMounted(fetchRoute);
 				</button>
 				<button
 					v-if="routeData"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-3"
 					@click="openEditModal"
 				>
 					编辑
 				</button>
 				<button
 					v-if="routeData"
-					class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-danger h-9 px-3"
 					:disabled="operating"
 					@click="isDeleteDialogOpen = true"
 				>
 					删除
 				</button>
 				<button
-					class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-4"
 					@click="router.push('/cd/routes')"
 				>
 					返回
@@ -242,22 +242,22 @@ onMounted(fetchRoute);
 		<!-- Content -->
 		<template v-else-if="routeData">
 			<!-- Basic Info Card -->
-			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-				<div class="border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">名称</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">名称</dt>
 						<dd class="text-foreground">{{ routeData.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">域名</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">域名</dt>
 						<dd>
 							<a
 								:href="`${routeData.https_enabled ? 'https' : 'http'}://${routeData.domain}`"
 								target="_blank"
-								class="text-primary hover:underline flex items-center gap-1"
+								class="app-link inline-flex items-center gap-1"
 							>
 								{{ routeData.domain }}
 								<ExternalLink class="size-3" />
@@ -265,18 +265,18 @@ onMounted(fetchRoute);
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">路径前缀</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">路径前缀</dt>
 						<dd class="text-foreground">{{ routeData.path_prefix }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">目标地址</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">目标地址</dt>
 						<dd class="text-foreground">{{ routeData.target_url }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">状态</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
 							<span
-								class="inline-block px-2 py-0.5 text-xs rounded border"
+								class="inline-block rounded border px-2 py-0.5 text-xs"
 								:class="routeData.enabled ? 'bg-green-50 text-green-700 border-green-200' : 'bg-muted text-muted-foreground border-border'"
 							>
 								{{ routeData.enabled ? '启用' : '停用' }}
@@ -284,23 +284,23 @@ onMounted(fetchRoute);
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">创建时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">更新时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.updated_at) }}</dd>
 					</div>
 				</dl>
 			</div>
 
 			<!-- HTTPS Config Card -->
-			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-				<div class="border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">HTTPS 配置</h2>
 				</div>
 				<div class="space-y-4 px-5 py-4">
-					<div class="flex items-center justify-between p-3 bg-muted/30 rounded-md">
+					<div class="flex items-center justify-between rounded-md bg-muted/30 p-3">
 						<div>
 							<p class="text-sm text-foreground">当前状态</p>
 							<p class="text-sm text-muted-foreground">
@@ -308,7 +308,7 @@ onMounted(fetchRoute);
 							</p>
 						</div>
 						<span
-							class="inline-block px-2 py-0.5 text-xs rounded border"
+							class="inline-block rounded border px-2 py-0.5 text-xs"
 							:class="routeData.https_enabled ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-muted text-muted-foreground border-border'"
 						>
 							{{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
@@ -318,7 +318,7 @@ onMounted(fetchRoute);
 					<div v-if="!routeData.https_enabled" class="space-y-2">
 						<button
 							v-if="canUseLetsencrypt"
-							class="w-full p-3 text-left bg-muted/30 rounded-md border border-border hover:border-primary/50 transition-colors"
+							class="app-action-item"
 							:disabled="operating"
 							@click="handleEnableLetsencrypt"
 						>
@@ -326,14 +326,14 @@ onMounted(fetchRoute);
 							<p class="text-sm text-muted-foreground">自动申请并续期免费 SSL 证书</p>
 						</button>
 						<button
-							class="w-full p-3 text-left bg-muted/30 rounded-md border border-border hover:border-primary/50 transition-colors"
+							class="app-action-item"
 							:disabled="operating"
 							@click="handleEnableMkcert"
 						>
 							<p class="text-sm text-foreground">mkcert 本地证书</p>
 							<p class="text-sm text-muted-foreground">生成本地开发用的自签名证书</p>
 						</button>
-						<label class="block w-full p-3 bg-muted/30 rounded-md border border-border hover:border-primary/50 transition-colors cursor-pointer">
+						<label class="app-action-item cursor-pointer">
 							<p class="text-sm text-foreground">上传自定义证书</p>
 							<p class="text-sm text-muted-foreground">上传 .pem 格式的证书文件</p>
 							<input
@@ -347,7 +347,7 @@ onMounted(fetchRoute);
 
 					<div v-else class="flex justify-end">
 						<button
-							class="px-4 py-2 text-sm font-medium text-destructive bg-background border border-destructive/50 rounded-md hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+							class="app-button-danger"
 							:disabled="operating"
 							@click="handleDisableHttps"
 						>
@@ -361,50 +361,50 @@ onMounted(fetchRoute);
 		<AppDialog v-model:open="isEditDialogOpen" title="编辑路由">
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">域名</label>
+					<label class="app-field-label">域名</label>
 					<input
 						v-model="form.domain"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-						:class="errors.domain ? 'border-destructive' : 'border-input'"
+						class="app-input"
+						:class="errors.domain ? 'app-input-error' : ''"
 						placeholder="example.com"
 					/>
-					<p v-if="errors.domain" class="text-xs text-destructive">{{ errors.domain }}</p>
+					<p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">路径前缀</label>
+					<label class="app-field-label">路径前缀</label>
 					<input
 						v-model="form.path_prefix"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+						class="app-input"
 						placeholder="/"
 					/>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">目标地址</label>
+					<label class="app-field-label">目标地址</label>
 					<input
 						v-model="form.target_url"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-						:class="errors.target_url ? 'border-destructive' : 'border-input'"
+						class="app-input"
+						:class="errors.target_url ? 'app-input-error' : ''"
 						placeholder="http://host:port"
 					/>
-					<p v-if="errors.target_url" class="text-xs text-destructive">{{ errors.target_url }}</p>
+					<p v-if="errors.target_url" class="app-field-error text-xs">{{ errors.target_url }}</p>
 				</div>
 			</div>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isEditDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					:disabled="operating"
 					@click="handleSave"
 				>
-					<span v-if="operating" class="inline-block size-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
 					保存
 				</button>
 			</template>
@@ -419,17 +419,17 @@ onMounted(fetchRoute);
 		>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isDeleteDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					:disabled="operating"
 					@click="handleDelete"
 				>
-					<span v-if="operating" class="inline-block size-3.5 border-2 border-destructive-foreground/30 border-t-destructive-foreground rounded-full animate-spin" />
+					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
 					删除
 				</button>
 			</template>

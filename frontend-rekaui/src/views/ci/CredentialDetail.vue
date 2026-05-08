@@ -2,16 +2,8 @@
 import { Download } from 'lucide-vue-next';
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import {
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogOverlay,
-	DialogPortal,
-	DialogRoot,
-	DialogTitle,
-} from 'reka-ui';
 import { credentialApi } from '@/api/ci';
+import AppDialog from '@/components/AppDialog.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type { Credential } from '@/types/ci/credential';
@@ -120,7 +112,7 @@ onMounted(fetchCredential);
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="credential"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="openEditModal"
 				>
@@ -128,7 +120,7 @@ onMounted(fetchCredential);
 				</button>
 				<button
 					v-if="credential"
-					class="inline-flex h-9 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="handleExport"
 				>
@@ -137,14 +129,14 @@ onMounted(fetchCredential);
 				</button>
 				<button
 					v-if="credential"
-					class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-danger h-9 px-3"
 					:disabled="operating"
 					@click="openDeleteModal"
 				>
 					删除
 				</button>
 				<button
-					class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-4"
 					@click="$router.push('/ci/credential')"
 				>
 					返回
@@ -152,8 +144,8 @@ onMounted(fetchCredential);
 			</div>
 		</div>
 
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-			<div class="border-b border-border px-5 py-4">
+		<div class="app-surface">
+			<div class="app-section-header">
 				<h2 class="font-semibold text-foreground">基本信息</h2>
 			</div>
 
@@ -162,105 +154,88 @@ onMounted(fetchCredential);
 			</div>
 			<dl v-else-if="credential" class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 				<div class="flex gap-2">
-					<dt class="text-muted-foreground w-24 shrink-0">凭据名称</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">凭据名称</dt>
 					<dd class="text-foreground">{{ credential.name }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="text-muted-foreground w-24 shrink-0">类型</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">类型</dt>
 					<dd>
-						<span class="inline-block px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded">
+						<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 							{{ credentialTypeLabels[credential.type] ?? credential.type }}
 						</span>
 					</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="text-muted-foreground w-24 shrink-0">创建时间</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
 					<dd class="text-muted-foreground">{{ formatTime(credential.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="text-muted-foreground w-24 shrink-0">更新时间</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
 					<dd class="text-muted-foreground">{{ formatTime(credential.updated_at) }}</dd>
 				</div>
 			</dl>
 		</div>
 
-		<!-- Edit modal -->
-		<DialogRoot v-model:open="isEditModalOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 bg-black/50 z-50 data-[state=open]:animate-overlayShow" />
-				<DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-50 p-6 data-[state=open]:animate-contentShow">
-					<DialogTitle class="mb-4 text-lg font-semibold text-foreground">编辑凭据</DialogTitle>
-					<DialogDescription class="sr-only">编辑凭据信息</DialogDescription>
-					
-					<div class="flex flex-col gap-3">
-						<div class="flex flex-col gap-1.5">
-							<label class="text-sm font-medium text-foreground">凭据名称</label>
-							<input
-								v-model="form.name"
-								type="text"
-								class="px-3 py-2 text-sm bg-background border rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								:class="errors.name ? 'border-destructive' : 'border-input'"
-							/>
-							<p v-if="errors.name" class="text-xs text-destructive">{{ errors.name }}</p>
-						</div>
-						<div class="flex flex-col gap-1.5">
-							<label class="text-sm font-medium text-foreground">
-								凭据内容
-								<span class="text-muted-foreground font-normal">（留空则不修改）</span>
-							</label>
-							<textarea
-								v-model="form.data"
-								class="px-3 py-2 text-xs font-mono bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
-								rows="8"
-								:placeholder="credential ? getDataPlaceholder(credential.type) : ''"
-							/>
-						</div>
-					</div>
-					
-					<div class="flex justify-end gap-2 mt-6">
-						<DialogClose as-child>
-							<button class="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-md hover:bg-muted/50 transition-colors">
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
-							:disabled="operating"
-							@click="handleEditOk"
-						>
-							<span v-if="operating" class="inline-block size-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-							保存
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+		<AppDialog v-model:open="isEditModalOpen" title="编辑凭据" description="更新凭据名称，凭据内容留空时不会修改。">
+			<div class="flex flex-col gap-3">
+				<div class="flex flex-col gap-1.5">
+					<label class="app-field-label">凭据名称</label>
+					<input
+						v-model="form.name"
+						type="text"
+						class="app-input"
+						:class="errors.name ? 'app-input-error' : ''"
+					/>
+					<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+				</div>
+				<div class="flex flex-col gap-1.5">
+					<label class="app-field-label">
+						凭据内容
+						<span class="font-normal text-muted-foreground">（留空则不修改）</span>
+					</label>
+					<textarea
+						v-model="form.data"
+						class="app-textarea font-mono text-xs"
+						rows="8"
+						:placeholder="credential ? getDataPlaceholder(credential.type) : ''"
+					/>
+				</div>
+			</div>
+			<template #footer>
+				<button class="app-button" @click="isEditModalOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating"
+					@click="handleEditOk"
+				>
+					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+					保存
+				</button>
+			</template>
+		</AppDialog>
 
-		<!-- Delete confirm modal -->
-		<DialogRoot v-model:open="isDeleteModalOpen">
-			<DialogPortal>
-				<DialogOverlay class="fixed inset-0 bg-black/50 z-50 data-[state=open]:animate-overlayShow" />
-				<DialogContent class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-border rounded-lg shadow-xl w-full max-w-md z-50 p-6 data-[state=open]:animate-contentShow">
-					<DialogTitle class="text-lg font-semibold text-foreground">删除凭据</DialogTitle>
-					<DialogDescription class="py-4 text-sm text-muted-foreground">确定删除此凭据？</DialogDescription>
-					
-					<div class="flex justify-end gap-2">
-						<DialogClose as-child>
-							<button class="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-md hover:bg-muted/50 transition-colors">
-								取消
-							</button>
-						</DialogClose>
-						<button
-							class="px-4 py-2 text-sm font-medium bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
-							:disabled="operating"
-							@click="handleDelete"
-						>
-							<span v-if="operating" class="inline-block size-3.5 border-2 border-destructive-foreground/30 border-t-destructive-foreground rounded-full animate-spin" />
-							删除
-						</button>
-					</div>
-				</DialogContent>
-			</DialogPortal>
-		</DialogRoot>
+		<AppDialog
+			v-model:open="isDeleteModalOpen"
+			title="删除凭据"
+			description="确定删除此凭据？"
+			width-class="w-[min(420px,calc(100vw-32px))]"
+			body-class="hidden"
+		>
+			<template #footer>
+				<button class="app-button" @click="isDeleteModalOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-destructive"
+					:disabled="operating"
+					@click="handleDelete"
+				>
+					<span v-if="operating" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
+					删除
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>

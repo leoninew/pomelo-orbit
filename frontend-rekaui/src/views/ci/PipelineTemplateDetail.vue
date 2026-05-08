@@ -1,22 +1,12 @@
 ﻿
 <script setup lang="ts">
-import { ChevronDown, Plus, Search, X } from 'lucide-vue-next';
+import { Plus } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 // import { VueDraggable } from 'vue-draggable-plus';
 import { useRoute, useRouter } from 'vue-router';
-import {
-	ComboboxAnchor,
-	ComboboxCancel,
-	ComboboxContent,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxPortal,
-	ComboboxRoot,
-	ComboboxTrigger,
-	ComboboxEmpty,
-} from 'reka-ui';
 import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 import AppDialog from '@/components/AppDialog.vue';
+import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
 import type {
@@ -48,24 +38,27 @@ const declarations = ref<VariableDeclaration[]>([]);
 const stageCache = reactive<Record<string, BuildStage>>({});
 const viewMode = ref<'list' | 'dag'>('list');
 
-// Stage 搜索 - 使用 reka-ui Combobox
-const selectedStage = ref<BuildStage | null>(null);
-const stageSearchTerm = ref('');
 const stageOptions = ref<BuildStage[]>([]);
 
-const filteredStages = computed(() => {
+const stageSelectOptions = computed(() => {
 	const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
-	const filtered = stageOptions.value.filter((s) => !inOrch.has(s.id));
-	if (!stageSearchTerm.value) {return filtered;}
-	return filtered.filter((s) =>
-		s.name.toLowerCase().includes(stageSearchTerm.value.toLowerCase())
-	);
+	return stageOptions.value
+		.filter((stage) => !inOrch.has(stage.id))
+		.map((stage) => ({
+			value: stage.id,
+			label: stage.name,
+			description: `v${stage.version} · ${stage.image}`,
+		}));
 });
 
-// 项目搜索 - 使用 reka-ui Combobox
-const selectedRepo = ref<Repository | null>(null);
-const repoSearchTerm = ref('');
 const repoOptions = ref<Repository[]>([]);
+const repoSelectOptions = computed(() =>
+	repoOptions.value.map((repo) => ({
+		value: repo.id,
+		label: repo.name,
+		description: repo.git_credential_id ? repo.repository_url : '未配置 Git 凭据',
+	}))
+);
 
 // 已保存的快照，用于 dirty 检测
 const savedOrch = ref<string>('[]');
@@ -204,12 +197,11 @@ async function searchStages() {
 	}
 }
 
-function onStageChange(stage: BuildStage | null) {
+function handleStageSelection(value: ComboboxOptionValue) {
+	addOrchForm.stageId = String(value || '');
+	const stage = stageOptions.value.find((item) => item.id === addOrchForm.stageId);
 	if (stage) {
-		addOrchForm.stageId = stage.id;
 		stageCache[stage.id] = stage;
-	} else {
-		addOrchForm.stageId = '';
 	}
 }
 
@@ -336,8 +328,6 @@ async function handleDeleteOk() {
 async function openAddOrchModal() {
 	addOrchForm.stageId = '';
 	addOrchForm.dependsOn = [];
-	selectedStage.value = null;
-	stageSearchTerm.value = '';
 	isAddOrchDialogOpen.value = true;
 	await searchStages();
 }
@@ -437,12 +427,8 @@ async function searchRepos() {
 	}
 }
 
-function onRepoChange(repo: Repository | null) {
-	if (repo) {
-		runForm.repositoryId = repo.id;
-	} else {
-		runForm.repositoryId = '';
-	}
+function handleRepoSelection(value: ComboboxOptionValue) {
+	runForm.repositoryId = String(value || '');
 }
 
 async function openRunModal() {
@@ -452,8 +438,6 @@ async function openRunModal() {
 	}
 	runForm.repositoryId = '';
 	runForm.triggerRef = '';
-	selectedRepo.value = null;
-	repoSearchTerm.value = '';
 	await searchRepos();
 	isRunDialogOpen.value = true;
 }
@@ -569,49 +553,49 @@ onUnmounted(() => {
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
-					<button
-						v-if="template && (isDirty || hasStageUpdates)"
-						:disabled="saving"
-						class="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						@click="handleSave"
-					>
-						{{ saving ? '保存中...' : hasStageUpdates && !isDirty ? '更新' : '保存' }}
-					</button>
-					<button
-						v-if="template"
-						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="openRunModal"
-					>
-						运行
-					</button>
-					<button
-						v-if="template"
-						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="openEditInfoModal"
-					>
-						编辑
-					</button>
-					<button
-						v-if="template"
-						:disabled="duplicating"
-						class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
-						@click="handleDuplicate"
-					>
-						{{ duplicating ? '复制中...' : '复制' }}
-					</button>
-					<button
-						v-if="template"
-						class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-						@click="openDeleteModal"
-					>
-						删除
-					</button>
-					<button
-						class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-						@click="router.push('/ci/template')"
-					>
-						返回
-					</button>
+				<button
+					v-if="template && (isDirty || hasStageUpdates)"
+					:disabled="saving"
+					class="app-button-primary h-9 px-3"
+					@click="handleSave"
+				>
+					{{ saving ? '保存中...' : hasStageUpdates && !isDirty ? '更新' : '保存' }}
+				</button>
+				<button
+					v-if="template"
+					class="app-button h-9 px-3"
+					@click="openRunModal"
+				>
+					运行
+				</button>
+				<button
+					v-if="template"
+					class="app-button h-9 px-3"
+					@click="openEditInfoModal"
+				>
+					编辑
+				</button>
+				<button
+					v-if="template"
+					:disabled="duplicating"
+					class="app-button h-9 px-3"
+					@click="handleDuplicate"
+				>
+					{{ duplicating ? '复制中...' : '复制' }}
+				</button>
+				<button
+					v-if="template"
+					class="app-button-danger h-9 px-3"
+					@click="openDeleteModal"
+				>
+					删除
+				</button>
+				<button
+					class="app-button h-9 px-4"
+					@click="router.push('/ci/template')"
+				>
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -623,8 +607,8 @@ onUnmounted(() => {
 		<!-- 内容 -->
 		<div v-else-if="template" class="flex flex-col gap-4">
 				<!-- 基本信息卡片 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="border-b border-border px-5 py-4">
+				<div class="app-surface">
+					<div class="app-section-header">
 						<h2 class="font-semibold text-foreground">基本信息</h2>
 					</div>
 					<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
@@ -644,8 +628,8 @@ onUnmounted(() => {
 				</div>
 
 				<!-- Stage 编排 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="flex items-center justify-between border-b border-border px-5 py-4">
+				<div class="app-surface">
+					<div class="app-section-header flex items-center justify-between">
 						<div class="flex items-center gap-4">
 							<h2 class="font-semibold text-foreground">阶段编排</h2>
 							<div v-if="sortableOrch.length > 0" class="flex gap-1 rounded-md border border-border bg-background p-1">
@@ -666,7 +650,7 @@ onUnmounted(() => {
 							</div>
 						</div>
 						<button
-							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+							class="app-button-primary h-9 px-3"
 							@click="openAddOrchModal"
 						>
 							<Plus class="h-4 w-4" />
@@ -701,7 +685,7 @@ onUnmounted(() => {
 										<div class="flex items-center gap-2">
 											<router-link
 												:to="`/ci/build-stage/${orch.stage_id}`"
-												class="text-primary hover:underline"
+												class="app-link"
 											>
 												{{ stageCache[orch.stage_id]?.name ?? orch.stage_name }}
 											</router-link>
@@ -732,13 +716,13 @@ onUnmounted(() => {
 									<td>
 										<div class="flex items-center gap-3">
 											<button
-												class="text-primary hover:underline"
+												class="app-link"
 												@click="openEditOrchModal(idx)"
 											>
 												编辑
 											</button>
 											<button
-												class="text-destructive hover:underline"
+												class="app-link-danger"
 												@click="confirmRemoveOrch(idx)"
 											>
 												移除
@@ -759,11 +743,11 @@ onUnmounted(() => {
 				</div>
 
 				<!-- 变量声明 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="flex items-center justify-between border-b border-border px-5 py-4">
+				<div class="app-surface">
+					<div class="app-section-header flex items-center justify-between">
 						<h2 class="font-semibold text-foreground">变量声明</h2>
 						<button
-							class="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+							class="app-button-primary h-9 px-3"
 							@click="openAddVarModal"
 						>
 							<Plus class="h-4 w-4" />
@@ -779,8 +763,8 @@ onUnmounted(() => {
 				</div>
 
 				<!-- 制品声明 -->
-				<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-					<div class="border-b border-border px-5 py-4">
+				<div class="app-surface">
+					<div class="app-section-header">
 						<h2 class="font-semibold text-foreground">制品声明</h2>
 					</div>
 					<div v-if="artifactDeclarations.length === 0" class="px-5 py-12 text-center text-sm text-muted-foreground">
@@ -816,30 +800,34 @@ onUnmounted(() => {
 				</div>
 		</div>
 
-		<AppDialog v-model:open="isEditInfoDialogOpen" title="编辑基本信息">
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">模板名称</label>
+		<AppDialog
+			v-model:open="isEditInfoDialogOpen"
+			title="编辑基本信息"
+			description="更新流水线模板名称和描述。"
+		>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">模板名称</label>
 				<input
 					v-model="editForm.name"
 					type="text"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+					class="app-input"
 				/>
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">描述</label>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">描述</label>
 				<textarea
 					v-model="editForm.description"
 					rows="3"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+					class="app-textarea"
 				></textarea>
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="cancelEditInfo">
+				<button class="app-button" @click="cancelEditInfo">
 					取消
 				</button>
 				<button
 					:disabled="saving"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					@click="handleEditInfoOk"
 				>
 					{{ saving ? '保存中...' : '保存' }}
@@ -848,58 +836,33 @@ onUnmounted(() => {
 		</AppDialog>
 
 		<AppDialog v-model:open="isAddOrchDialogOpen" title="添加 Stage">
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">选择 Stage</label>
-				<ComboboxRoot
-					v-model="selectedStage"
-					:display-value="(s: BuildStage | null) => s?.name || ''"
-					@update:model-value="onStageChange"
-				>
-					<ComboboxAnchor class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
-						<Search class="size-4 shrink-0 text-muted-foreground" />
-						<ComboboxInput v-model="stageSearchTerm" placeholder="搜索 Stage..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
-						<ComboboxCancel v-if="selectedStage" as-child>
-							<button class="text-muted-foreground transition-colors hover:text-foreground">
-								<X class="size-3.5" />
-							</button>
-						</ComboboxCancel>
-						<ComboboxTrigger as-child>
-							<button class="text-muted-foreground">
-								<ChevronDown class="size-4" />
-							</button>
-						</ComboboxTrigger>
-					</ComboboxAnchor>
-					<ComboboxPortal disabled>
-						<ComboboxContent position="popper" align="start" class="z-[60] max-h-64 w-[var(--reka-combobox-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover shadow-lg" :side-offset="4">
-							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">未找到 Stage</ComboboxEmpty>
-							<ComboboxItem
-								v-for="stage in filteredStages"
-								:key="stage.id"
-								:value="stage"
-								class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[highlighted]:bg-accent/50"
-							>
-								{{ stage.name }}
-							</ComboboxItem>
-						</ComboboxContent>
-					</ComboboxPortal>
-				</ComboboxRoot>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">选择 Stage</label>
+				<ComboboxSelect
+					:model-value="addOrchForm.stageId"
+					:options="stageSelectOptions"
+					:portal="false"
+					placeholder="搜索 Stage..."
+					empty-text="未找到 Stage"
+					@update:model-value="handleStageSelection"
+				/>
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">依赖 Stage（可选）</label>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">依赖 Stage（可选）</label>
 				<div class="space-y-2">
 					<label v-for="orch in sortableOrch" :key="orch.stage_id" class="flex items-center gap-2">
-						<input v-model="addOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="h-4 w-4 rounded border-input text-primary" />
+						<input v-model="addOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="app-checkbox" />
 						<span class="text-sm text-foreground">{{ orch.stage_name }}</span>
 					</label>
 				</div>
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isAddOrchDialogOpen = false">
+				<button class="app-button" @click="isAddOrchDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="!addOrchForm.stageId"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					@click="confirmAddOrch"
 				>
 					添加
@@ -908,57 +871,40 @@ onUnmounted(() => {
 		</AppDialog>
 
 		<AppDialog v-model:open="isEditOrchDialogOpen" title="编辑依赖">
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">依赖 Stage</label>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">依赖 Stage</label>
 				<div class="space-y-2">
 					<label v-for="orch in editableOrchOptions" :key="orch.stage_id" class="flex items-center gap-2">
-						<input v-model="editOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="h-4 w-4 rounded border-input text-primary" />
+						<input v-model="editOrchForm.dependsOn" :value="orch.stage_id" type="checkbox" class="app-checkbox" />
 						<span class="text-sm text-foreground">{{ orch.stage_name }}</span>
 					</label>
 				</div>
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isEditOrchDialogOpen = false">
+				<button class="app-button" @click="isEditOrchDialogOpen = false">
 					取消
 				</button>
-				<button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" @click="confirmEditOrch">
+				<button class="app-button-primary" @click="confirmEditOrch">
 					保存
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isRunDialogOpen" title="运行流水线">
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">选择项目</label>
-				<ComboboxRoot v-model="selectedRepo" :display-value="(r: Repository | null) => r?.name || ''" @update:model-value="onRepoChange">
-					<ComboboxAnchor class="flex h-10 w-full items-center gap-2 rounded-md border border-input bg-background px-3 text-sm transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
-						<Search class="size-4 shrink-0 text-muted-foreground" />
-						<ComboboxInput v-model="repoSearchTerm" placeholder="搜索项目..." class="grow bg-transparent outline-none placeholder:text-muted-foreground" />
-						<ComboboxCancel v-if="selectedRepo" as-child>
-							<button class="text-muted-foreground transition-colors hover:text-foreground">
-								<X class="size-3.5" />
-							</button>
-						</ComboboxCancel>
-						<ComboboxTrigger as-child>
-							<button class="text-muted-foreground">
-								<ChevronDown class="size-4" />
-							</button>
-						</ComboboxTrigger>
-					</ComboboxAnchor>
-					<ComboboxPortal disabled>
-						<ComboboxContent position="popper" align="start" class="z-[60] max-h-64 w-[var(--reka-combobox-trigger-width)] overflow-y-auto rounded-md border border-border bg-popover shadow-lg" :side-offset="4">
-							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">未找到项目</ComboboxEmpty>
-							<ComboboxItem
-								v-for="repo in repoOptions"
-								:key="repo.id"
-								:value="repo"
-								class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[highlighted]:bg-accent/50"
-							>
-								{{ repo.name }}
-							</ComboboxItem>
-						</ComboboxContent>
-					</ComboboxPortal>
-				</ComboboxRoot>
+		<AppDialog
+			v-model:open="isRunDialogOpen"
+			title="运行流水线"
+			description="选择仓库并指定触发分支。"
+		>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">选择项目</label>
+				<ComboboxSelect
+					:model-value="runForm.repositoryId"
+					:options="repoSelectOptions"
+					:portal="false"
+					placeholder="搜索项目..."
+					empty-text="未找到项目"
+					@update:model-value="handleRepoSelection"
+				/>
 				<p
 					v-if="selectedRepository && !selectedRepository.git_credential_id"
 					class="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
@@ -966,22 +912,22 @@ onUnmounted(() => {
 					该项目未配置 Git 凭据，请先在仓库详情配置后再运行。
 				</p>
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">触发分支</label>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">触发分支</label>
 				<input
 					v-model="runForm.triggerRef"
 					type="text"
 					:placeholder="selectedRepository?.default_branch || 'main'"
-					class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+					class="app-input"
 				/>
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isRunDialogOpen = false">
+				<button class="app-button" @click="isRunDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id || running"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					@click="handleRunOk"
 				>
 					{{ running ? '运行中...' : '运行' }}
@@ -989,47 +935,55 @@ onUnmounted(() => {
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isAddVarDialogOpen" title="添加变量">
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">变量名</label>
-				<input v-model="varForm.name" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+		<AppDialog
+			v-model:open="isAddVarDialogOpen"
+			title="添加变量"
+			description="添加模板自定义变量。"
+		>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">变量名</label>
+				<input v-model="varForm.name" type="text" class="app-input" />
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">变量值</label>
-				<input v-model="varForm.value" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			<div class="space-y-1.5">
+				<label class="app-field-label block">变量值</label>
+				<input v-model="varForm.value" type="text" class="app-input" />
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">说明</label>
-				<input v-model="varForm.description" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			<div class="space-y-1.5">
+				<label class="app-field-label block">说明</label>
+				<input v-model="varForm.description" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isAddVarDialogOpen = false">
+				<button class="app-button" @click="isAddVarDialogOpen = false">
 					取消
 				</button>
-				<button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" @click="handleAddVarOk">
+				<button class="app-button-primary" @click="handleAddVarOk">
 					添加
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isEditVarDialogOpen" title="编辑变量">
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">变量名</label>
-				<input v-model="varForm.name" type="text" disabled class="w-full rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-muted-foreground" />
+		<AppDialog
+			v-model:open="isEditVarDialogOpen"
+			title="编辑变量"
+			description="编辑模板自定义变量。"
+		>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">变量名</label>
+				<input v-model="varForm.name" type="text" disabled class="app-input" />
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">变量值</label>
-				<input v-model="varForm.value" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			<div class="space-y-1.5">
+				<label class="app-field-label block">变量值</label>
+				<input v-model="varForm.value" type="text" class="app-input" />
 			</div>
-			<div>
-				<label class="mb-1.5 block text-sm font-medium text-foreground">说明</label>
-				<input v-model="varForm.description" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20" />
+			<div class="space-y-1.5">
+				<label class="app-field-label block">说明</label>
+				<input v-model="varForm.description" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isEditVarDialogOpen = false">
+				<button class="app-button" @click="isEditVarDialogOpen = false">
 					取消
 				</button>
-				<button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90" @click="handleEditVarOk">
+				<button class="app-button-primary" @click="handleEditVarOk">
 					保存
 				</button>
 			</template>
@@ -1037,12 +991,12 @@ onUnmounted(() => {
 
 		<AppDialog v-model:open="isDeleteDialogOpen" title="确认删除" description="确定要删除此模板吗？此操作不可恢复。" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteDialogOpen = false">
+				<button class="app-button" @click="isDeleteDialogOpen = false">
 					取消
 				</button>
 				<button
 					:disabled="deleting"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					@click="handleDeleteOk"
 				>
 					{{ deleting ? '删除中...' : '确认删除' }}
@@ -1052,10 +1006,10 @@ onUnmounted(() => {
 
 		<AppDialog v-model:open="isDeleteOrchDialogOpen" title="确认移除" description="确定要移除此 Stage 吗？" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteOrchDialogOpen = false">
+				<button class="app-button" @click="isDeleteOrchDialogOpen = false">
 					取消
 				</button>
-				<button class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90" @click="removeOrch">
+				<button class="app-button-destructive" @click="removeOrch">
 					确认移除
 				</button>
 			</template>
@@ -1063,10 +1017,10 @@ onUnmounted(() => {
 
 		<AppDialog v-model:open="isDeleteVarDialogOpen" title="确认删除" :description="'确定要删除变量 ' + varToDelete + ' 吗？'" width-class="w-[min(420px,calc(100vw-32px))]" body-class="hidden">
 			<template #footer>
-				<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50" @click="isDeleteVarDialogOpen = false">
+				<button class="app-button" @click="isDeleteVarDialogOpen = false">
 					取消
 				</button>
-				<button class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90" @click="deleteVariable">
+				<button class="app-button-destructive" @click="deleteVariable">
 					确认删除
 				</button>
 			</template>

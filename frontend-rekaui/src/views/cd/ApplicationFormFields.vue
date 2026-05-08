@@ -1,24 +1,18 @@
 <script setup lang="ts">
 import SelectControl from '@/components/SelectControl.vue'
-
-interface FormData {
-	name: string
-	code: string
-	image_pull_policy: string
-	route_managed: boolean
-}
+import type { ApplicationFormState } from '@/types/cd/application'
 
 const props = defineProps<{
-	form: FormData
+	form: ApplicationFormState
 	errors: { name: string; code: string }
-}>();
+}>()
 
 const emit = defineEmits<{
-	'update:form': [value: FormData]
-}>();
+	'update:form': [value: ApplicationFormState]
+}>()
 
-function updateField<K extends keyof FormData>(field: K, value: FormData[K]) {
-	emit('update:form', { ...props.form, [field]: value });
+function updateField<K extends keyof ApplicationFormState>(field: K, value: ApplicationFormState[K]) {
+	emit('update:form', { ...props.form, [field]: value })
 }
 
 const imagePullPolicyOptions = [
@@ -32,7 +26,7 @@ const imagePullPolicyOptions = [
 	<div class="space-y-4">
 		<!-- 应用名称 -->
 		<div>
-			<label class="mb-1.5 block text-sm font-medium text-foreground">
+			<label class="app-field-label mb-1.5 block">
 				应用名称
 				<span class="text-destructive">*</span>
 			</label>
@@ -40,28 +34,28 @@ const imagePullPolicyOptions = [
 				:value="form.name"
 				type="text"
 				placeholder="输入应用名称"
-				class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
-				:class="{ 'border-destructive': errors.name }"
+				class="app-input"
+				:class="errors.name ? 'app-input-error' : ''"
 				@input="updateField('name', ($event.target as HTMLInputElement).value)"
 			/>
-			<p v-if="errors.name" class="mt-1 text-xs text-destructive">{{ errors.name }}</p>
+			<p v-if="errors.name" class="app-field-error mt-1 text-xs">{{ errors.name }}</p>
 		</div>
 
 		<!-- 应用代码 -->
 		<div>
-			<label class="mb-1.5 block text-sm font-medium text-foreground">
+			<label class="app-field-label mb-1.5 block">
 				应用代码
 				<span class="text-destructive">*</span>
 			</label>
 			<input
 				:value="form.code"
 				type="text"
-				placeholder="输入应用代码（英文、数字、下划线）"
-				class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
-				:class="{ 'border-destructive': errors.code }"
+				placeholder="输入应用代码（以小写字母开头，可含数字和连字符）"
+				class="app-input"
+				:class="errors.code ? 'app-input-error' : ''"
 				@input="updateField('code', ($event.target as HTMLInputElement).value)"
 			/>
-			<p v-if="errors.code" class="mt-1 text-xs text-destructive">{{ errors.code }}</p>
+			<p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
 			<p class="mt-1 text-xs text-muted-foreground">
 				应用代码用于生成工作目录，创建后不可修改
 			</p>
@@ -69,7 +63,7 @@ const imagePullPolicyOptions = [
 
 		<!-- 镜像拉取策略 -->
 		<div>
-			<label class="mb-1.5 block text-sm font-medium text-foreground">镜像拉取策略</label>
+			<label class="app-field-label mb-1.5 block">镜像拉取策略</label>
 			<SelectControl
 				:model-value="form.image_pull_policy"
 				:options="imagePullPolicyOptions"
@@ -84,7 +78,7 @@ const imagePullPolicyOptions = [
 				id="route_managed"
 				:checked="form.route_managed"
 				type="checkbox"
-				class="h-4 w-4 rounded border-input text-primary transition-colors focus:ring-2 focus:ring-ring/20"
+				class="app-checkbox"
 				@change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
 			/>
 			<label for="route_managed" class="text-sm font-medium text-foreground">

@@ -6,6 +6,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { buildStageApi } from '@/api/ci';
 import AppDialog from '@/components/AppDialog.vue';
+import AppDrawer from '@/components/AppDrawer.vue';
 import SelectControl from '@/components/SelectControl.vue';
 import { useStatusAsync } from '@/composables/useStatusAsync';
 import { useToast } from '@/composables/useToast';
@@ -245,14 +246,14 @@ onMounted(fetchStage);
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="stage"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-3"
 					@click="openEditModal"
 				>
 					编辑
 				</button>
 				<button
 					v-if="stage"
-					class="h-9 rounded-md border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button h-9 px-3"
 					:disabled="duplicating"
 					@click="handleDuplicate"
 				>
@@ -260,14 +261,14 @@ onMounted(fetchStage);
 				</button>
 				<button
 					v-if="stage"
-					class="h-9 rounded-md border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-danger h-9 px-3"
 					:disabled="deleting"
 					@click="openDeleteModal"
 				>
 					删除
 				</button>
 				<button
-					class="h-9 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button h-9 px-4"
 					@click="router.push('/ci/build-stage')"
 				>
 					返回
@@ -283,44 +284,44 @@ onMounted(fetchStage);
 		<!-- Content -->
 		<template v-else-if="stage">
 			<!-- Basic Info Card -->
-			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-				<div class="border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">名称</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">名称</dt>
 						<dd class="text-foreground">{{ stage.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">版本</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
 						<dd class="text-foreground">v{{ stage.version }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">镜像</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">镜像</dt>
 						<dd class="text-foreground">{{ stage.image }}</dd>
 					</div>
 					<div class="flex gap-2 sm:col-span-2">
-						<dt class="text-muted-foreground w-24 shrink-0">描述</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">描述</dt>
 						<dd class="text-foreground">{{ stage.description || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">创建时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="text-muted-foreground w-24 shrink-0">更新时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
 					</div>
 				</dl>
 			</div>
 
 			<!-- Script Card -->
-			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-				<div class="flex items-center justify-between border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">执行脚本</h2>
 					<button
-						class="h-8 px-3 text-sm font-medium text-foreground bg-background border border-input rounded-md hover:bg-muted/50 transition-colors"
+						class="app-button h-8 px-3"
 						@click="openScriptDrawer"
 					>
 						编辑
@@ -333,11 +334,11 @@ onMounted(fetchStage);
 			</div>
 
 			<!-- Artifacts Card -->
-			<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-				<div class="flex items-center justify-between border-b border-border px-5 py-4">
+			<div class="app-surface">
+				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">制品配置</h2>
 					<button
-						class="h-8 px-3 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 flex items-center gap-1.5 transition-colors"
+						class="app-button-primary h-9 px-3"
 						@click="openAddArtifactModal"
 					>
 						<Plus class="size-4" />
@@ -376,13 +377,13 @@ onMounted(fetchStage);
 								<td>
 									<div class="flex items-center gap-3">
 										<button
-											class="text-primary hover:underline"
+											class="app-link"
 											@click="openEditArtifactModal(idx)"
 										>
 											编辑
 										</button>
 										<button
-											class="text-destructive hover:underline"
+											class="app-link-danger"
 											@click="confirmRemoveArtifact(idx)"
 										>
 											删除
@@ -396,84 +397,88 @@ onMounted(fetchStage);
 				</div>
 		</template>
 
-		<AppDialog v-model:open="isEditDialogOpen" title="编辑构建">
+		<AppDialog v-model:open="isEditDialogOpen" title="编辑构建" description="更新构建阶段基本信息。">
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">名称</label>
+					<label class="app-field-label">名称</label>
 					<input
 						v-model="form.name"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+						class="app-input"
 					/>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">镜像</label>
+					<label class="app-field-label">镜像</label>
 					<input
 						v-model="form.image"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+						class="app-input"
 					/>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">描述</label>
+					<label class="app-field-label">描述</label>
 					<input
 						v-model="form.description"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+						class="app-input"
 					/>
 				</div>
 			</div>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isEditDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					:disabled="saving"
 					@click="handleSave"
 				>
-					<span v-if="saving" class="inline-block size-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
 					保存
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog
+		<AppDrawer
 			v-model:open="showScriptDrawer"
 			title="编辑脚本"
-			width-class="w-[min(768px,calc(100vw-32px))]"
-			body-class="px-6 py-4"
+			width-class="w-[min(860px,100vw)]"
+			body-class="min-h-0 flex-1 overflow-hidden p-0"
 		>
 			<textarea
 				v-model="scriptTemp"
-				class="w-full h-96 px-3 py-2 text-xs font-mono bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+				class="h-full w-full resize-none border-0 bg-muted/30 p-4 font-mono text-xs text-foreground outline-none"
 				placeholder="输入执行脚本..."
 			/>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="closeScriptDrawer"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					:disabled="saving"
 					@click="confirmScript"
 				>
-					<span v-if="saving" class="inline-block size-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
 					保存
 				</button>
 			</template>
-		</AppDialog>
+		</AppDrawer>
 
-		<AppDialog v-model:open="isArtifactDialogOpen" :title="artifactForm.isEdit ? '编辑制品' : '添加制品'">
+		<AppDialog
+			v-model:open="isArtifactDialogOpen"
+			:title="artifactForm.isEdit ? '编辑制品' : '添加制品'"
+			description="配置构建阶段产出的制品。"
+		>
 			<div class="flex flex-col gap-3">
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">类型</label>
+					<label class="app-field-label">类型</label>
 					<SelectControl
 						v-model="artifactForm.type"
 						:options="artifactTypeOptions"
@@ -481,37 +486,37 @@ onMounted(fetchStage);
 					/>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">名称</label>
+					<label class="app-field-label">名称</label>
 					<input
 						v-model="artifactForm.name"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+						class="app-input"
 						placeholder="例如: my-app"
 					/>
 				</div>
 				<div class="flex flex-col gap-1.5">
-					<label class="text-sm font-medium text-foreground">路径/镜像</label>
+					<label class="app-field-label">路径/镜像</label>
 					<input
 						v-model="artifactForm.path"
 						type="text"
-						class="px-3 py-2 text-sm bg-background border border-input rounded-md outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20"
+						class="app-input"
 						placeholder="例如: image:tag 或 ./dist"
 					/>
 				</div>
 			</div>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isArtifactDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-primary"
 					:disabled="saving"
 					@click="handleSaveArtifact"
 				>
-					<span v-if="saving" class="inline-block size-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
 					保存
 				</button>
 			</template>
@@ -526,17 +531,17 @@ onMounted(fetchStage);
 		>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isDeleteArtifactDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					:disabled="saving"
 					@click="removeArtifact"
 				>
-					<span v-if="saving" class="inline-block size-3.5 border-2 border-destructive-foreground/30 border-t-destructive-foreground rounded-full animate-spin" />
+					<span v-if="saving" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
 					删除
 				</button>
 			</template>
@@ -551,17 +556,17 @@ onMounted(fetchStage);
 		>
 			<template #footer>
 				<button
-					class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+					class="app-button"
 					@click="isDeleteDialogOpen = false"
 				>
 					取消
 				</button>
 				<button
-					class="flex items-center gap-1.5 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+					class="app-button-destructive"
 					:disabled="deleting"
 					@click="handleDelete"
 				>
-					<span v-if="deleting" class="inline-block size-3.5 border-2 border-destructive-foreground/30 border-t-destructive-foreground rounded-full animate-spin" />
+					<span v-if="deleting" class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
 					删除
 				</button>
 			</template>

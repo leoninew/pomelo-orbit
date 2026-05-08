@@ -3,6 +3,7 @@ import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { pipelineTemplateApi } from '@/api/ci'
+import AppDialog from '@/components/AppDialog.vue'
 import ListPagination from '@/components/ListPagination.vue'
 import SearchControl from '@/components/SearchControl.vue'
 import { useStatusAsync } from '@/composables/useStatusAsync'
@@ -10,13 +11,6 @@ import { useToast } from '@/composables/useToast'
 import type { PipelineTemplate } from '@/types/ci/template'
 import { formatTime } from '@/utils/time'
 import {
-	DialogClose,
-	DialogContent,
-	DialogDescription,
-	DialogOverlay,
-	DialogPortal,
-	DialogRoot,
-	DialogTitle,
 	ToggleGroupItem,
 	ToggleGroupRoot,
 	ToolbarRoot
@@ -29,8 +23,8 @@ const { loading: operating, execute: executeOp } = useStatusAsync()
 const { loading: duplicating, execute: executeDuplicate } = useStatusAsync()
 
 const templates = ref<PipelineTemplate[]>([])
-const viewMode = ref<'card' | 'table'>('card')
-const pagination = reactive({ current: 1, pageSize: 12, total: 0 })
+const viewMode = ref<'card' | 'table'>('table')
+const pagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize))
 const searchText = ref('')
 const showCreateDialog = ref(false)
@@ -147,7 +141,7 @@ onMounted(fetchTemplates)
 					</ToggleGroupItem>
 				</ToggleGroupRoot>
 				<button
-					class="flex h-10 items-center gap-2 rounded-md bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+					class="app-button-primary px-5"
 					@click="openCreateModal"
 				>
 					<Plus class="size-4" />
@@ -156,19 +150,19 @@ onMounted(fetchTemplates)
 			</div>
 		</ToolbarRoot>
 
-		<div v-if="status === 'loading'" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-if="status === 'loading'" class="app-surface">
 			<div class="flex justify-center py-16">
 				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
 			</div>
 		</div>
 
-		<div v-else-if="status === 'error'" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-else-if="status === 'error'" class="app-surface">
 			<div class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
 		</div>
 
-		<div v-else-if="templates.length === 0" class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-else-if="templates.length === 0" class="app-surface">
 			<div class="flex flex-col items-center justify-center py-16">
 				<Inbox class="size-12 text-muted-foreground" />
 				<p class="mt-2 text-sm text-muted-foreground">暂无模板</p>
@@ -179,14 +173,16 @@ onMounted(fetchTemplates)
 			<div
 				v-for="tpl in templates"
 				:key="tpl.id"
-				class="group cursor-pointer rounded-lg border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary"
+				class="app-surface group cursor-pointer p-4 transition-colors hover:border-primary"
 				@click="router.push(`/ci/template/${tpl.id}`)"
 			>
 				<div class="mb-3 flex items-start justify-between gap-4">
-					<h3 class="text-sm font-medium text-foreground group-hover:text-primary">{{ tpl.name }}</h3>
+					<h3 class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary">
+						{{ tpl.name }}
+					</h3>
 					<button
 						:disabled="duplicating"
-						class="shrink-0 text-sm text-primary hover:underline disabled:opacity-50"
+						class="app-link shrink-0 text-sm"
 						@click.stop="handleDuplicate(tpl.id)"
 					>
 						复制
@@ -206,9 +202,9 @@ onMounted(fetchTemplates)
 			</div>
 		</div>
 
-		<div v-else class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div v-else class="app-surface">
 			<div class="overflow-x-auto">
-				<table class="app-table-list min-w-[1120px]">
+				<table class="app-table-list min-w-[960px]">
 					<thead>
 						<tr>
 							<th>名称</th>
@@ -227,7 +223,7 @@ onMounted(fetchTemplates)
 							class="cursor-pointer"
 							@click="router.push(`/ci/template/${tpl.id}`)"
 						>
-							<td class="text-foreground">{{ tpl.name }}</td>
+							<td class="max-w-64 truncate text-foreground" :title="tpl.name">{{ tpl.name }}</td>
 							<td>
 								<span class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground">v{{ tpl.version }}</span>
 							</td>
@@ -236,18 +232,18 @@ onMounted(fetchTemplates)
 							<td class="max-w-sm truncate text-foreground" :title="tpl.description || undefined">
 								{{ tpl.description || '—' }}
 							</td>
-							<td class="text-foreground">{{ formatTime(tpl.created_at) }}</td>
+							<td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
 							<td class="text-right">
 								<router-link
 									:to="`/ci/template/${tpl.id}`"
-									class="text-primary hover:underline"
+									class="app-link"
 									@click.stop
 								>
 									查看
 								</router-link>
 								<button
 									:disabled="duplicating"
-									class="ml-3 text-primary hover:underline disabled:opacity-50"
+									class="app-link ml-3"
 									@click.stop="handleDuplicate(tpl.id)"
 								>
 									复制
@@ -264,65 +260,54 @@ onMounted(fetchTemplates)
 			:page-size="pagination.pageSize"
 			:total="pagination.total"
 			:total-pages="totalPages"
-			:page-size-options="[12, 24, 48]"
 			@change-page="goPage"
 			@change-page-size="handlePageSizeChange"
 		/>
 	</div>
 
-	<DialogRoot v-model:open="showCreateDialog">
-		<DialogPortal>
-			<DialogOverlay class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow" />
-			<DialogContent
-				class="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[min(520px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl outline-none data-[state=open]:animate-contentShow"
+	<AppDialog
+		v-model:open="showCreateDialog"
+		title="新建流水线模板"
+		description="创建一个可被仓库流水线复用的模板。"
+		width-class="w-[min(520px,calc(100vw-32px))]"
+	>
+		<div class="space-y-4">
+			<div class="space-y-1.5">
+				<label class="app-field-label block">模板名称</label>
+				<input
+					v-model="form.name"
+					type="text"
+					placeholder="输入模板名称"
+					class="app-input"
+					:class="errors.name ? 'app-input-error' : ''"
+				/>
+				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">描述</label>
+				<textarea
+					v-model="form.description"
+					rows="3"
+					placeholder="输入模板描述"
+					class="app-textarea"
+				/>
+			</div>
+		</div>
+		<template #footer>
+			<button class="app-button" @click="showCreateDialog = false">
+				取消
+			</button>
+			<button
+				class="app-button-primary"
+				:disabled="operating"
+				@click="handleCreateOk"
 			>
-				<div class="mb-5 space-y-1">
-					<DialogTitle class="text-lg font-semibold text-foreground">新建流水线模板</DialogTitle>
-					<DialogDescription class="text-sm text-muted-foreground">
-						创建一个可被仓库流水线复用的模板。
-					</DialogDescription>
-				</div>
-				<div class="space-y-4">
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">模板名称</label>
-						<input
-							v-model="form.name"
-							type="text"
-							placeholder="输入模板名称"
-							class="w-full rounded-md border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-							:class="errors.name ? 'border-destructive' : 'border-input'"
-						/>
-						<p v-if="errors.name" class="text-xs text-destructive">{{ errors.name }}</p>
-					</div>
-					<div class="space-y-1.5">
-						<label class="block text-sm font-medium text-foreground">描述</label>
-						<textarea
-							v-model="form.description"
-							rows="3"
-							placeholder="输入模板描述"
-							class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-						/>
-					</div>
-				</div>
-				<div class="mt-6 flex justify-end gap-2">
-					<DialogClose as-child>
-						<button class="rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50">
-							取消
-						</button>
-					</DialogClose>
-					<button
-						class="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-						:disabled="operating"
-						@click="handleCreateOk"
-					>
-						<span
-							v-if="operating"
-							class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-						/>
-						创建
-					</button>
-				</div>
-			</DialogContent>
-		</DialogPortal>
-	</DialogRoot>
+				<span
+					v-if="operating"
+					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
+				/>
+				创建
+			</button>
+		</template>
+	</AppDialog>
 </template>

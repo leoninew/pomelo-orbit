@@ -33,6 +33,9 @@ export default [
 			'vue/component-definition-name-casing': ['error', 'PascalCase'],
 			'vue/custom-event-name-casing': ['error', 'kebab-case'],
 			'vue/no-unused-refs': 'warn',
+			'vue/block-order': ['error', { order: ['template', 'script', 'style'] }],
+			'vue/html-indent': ['error', 'tab'],
+			'vue/script-indent': ['error', 'tab', { baseIndent: 1 }],
 
 			// TypeScript 规则
 			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],

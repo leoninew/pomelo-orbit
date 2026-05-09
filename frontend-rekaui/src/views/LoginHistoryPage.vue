@@ -10,7 +10,7 @@
 		</ToolbarRoot>
 
 		<!-- Table Card -->
-		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
@@ -51,16 +51,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 </template>
 

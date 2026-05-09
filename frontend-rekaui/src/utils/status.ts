@@ -13,19 +13,6 @@ const APP_STATUS_LABEL: Record<string, string> = {
 export const appStatusColor = (status: string): string => APP_STATUS_COLOR[status] ?? 'default';
 export const appStatusLabel = (status: string): string => APP_STATUS_LABEL[status] ?? '未部署';
 
-export function formatDuration(ms?: number | null): string {
-	if (!ms) {
-		return '-';
-	}
-	if (ms < 1000) {
-		return `${ms}ms`;
-	}
-	if (ms < 60000) {
-		return `${(ms / 1000).toFixed(1)}s`;
-	}
-	return `${(ms / 60000).toFixed(1)}min`;
-}
-
 // 异步任务状态标签（适用于 CI PipelineRun、CD Deployment、StageRun 等）
 const STATUS_LABEL: Record<string, string> = {
 	waiting_to_run: '待运行',

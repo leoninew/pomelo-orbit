@@ -23,9 +23,10 @@ def list_routes(
     _current_user=Depends(get_current_user),
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,
+    search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[RouteResp]:
     """列出所有路由"""
-    routes, total = route_service.list_routes(page, per_page)
+    routes, total = route_service.list_routes(page, per_page, search)
     return PaginatedResp(
         items=[RouteResp.model_validate(r) for r in routes],
         total=total,

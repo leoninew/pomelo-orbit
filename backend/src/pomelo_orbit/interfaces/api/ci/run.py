@@ -29,9 +29,12 @@ def list_all_runs(
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     repository_id: Annotated[str | None, Query()] = None,
     template_id: Annotated[str | None, Query()] = None,
+    date_from: Annotated[str | None, Query()] = None,
+    date_to: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineRunResp]:
     result = pipeline_run_service.list_runs(
-        repository_id=repository_id, template_id=template_id, page=page, per_page=per_page
+        repository_id=repository_id, template_id=template_id, page=page, per_page=per_page,
+        date_from=date_from, date_to=date_to,
     )
     return PaginatedResp(
         items=[PipelineRunResp.model_validate(r) for r in result.runs],

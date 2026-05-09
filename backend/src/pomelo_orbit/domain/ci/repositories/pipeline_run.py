@@ -1,6 +1,7 @@
 """CI Pipeline 运行仓储接口"""
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from pomelo_orbit.domain.ci.entities import PipelineRun
 
@@ -16,6 +17,8 @@ class PipelineRunRepository(ABC):
         per_page: int,
         repository_id: str | None = None,
         template_id: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
     ) -> tuple[list[PipelineRun], int]: ...
 
     @abstractmethod

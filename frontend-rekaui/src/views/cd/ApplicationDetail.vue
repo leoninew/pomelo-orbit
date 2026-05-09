@@ -398,7 +398,6 @@
 					:model-value="routeForm.service_name"
 					:options="composeServiceOptions"
 					:invalid="Boolean(routeFormErrors.service_name)"
-					:open-on-focus="false"
 					:portal="false"
 					placeholder="搜索服务..."
 					empty-text="未找到服务"
@@ -445,7 +444,7 @@
 			<template #footer>
 				<button class="app-button" @click="isRouteDialogOpen = false">取消</button>
 				<button :disabled="routeLoading" class="app-button-primary" @click="handleRouteOk">
-					保存
+					{{ editingRouteId ? '保存' : '添加' }}
 				</button>
 			</template>
 		</AppDialog>

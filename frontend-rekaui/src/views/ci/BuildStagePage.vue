@@ -87,32 +87,30 @@
 		v-model:open="isModalOpen"
 		title="新建构建"
 		description="创建一个可被流水线模板复用的构建阶段。"
-		width-class="w-[min(672px,calc(100vw-32px))]"
+		width-class="w-[min(600px,calc(100vw-32px))]"
 	>
 		<div class="space-y-4">
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<div class="space-y-1.5">
-					<label class="app-field-label block">名称</label>
-					<input
-						v-model="form.name"
-						type="text"
-						class="app-input"
-						:class="errors.name ? 'app-input-error' : ''"
-						placeholder="例如: build"
-					/>
-					<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
-				</div>
-				<div class="space-y-1.5">
-					<label class="app-field-label block">镜像</label>
-					<input
-						v-model="form.image"
-						type="text"
-						class="app-input"
-						:class="errors.image ? 'app-input-error' : ''"
-						placeholder="例如: alpine:latest"
-					/>
-					<p v-if="errors.image" class="app-field-error text-xs">{{ errors.image }}</p>
-				</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">名称</label>
+				<input
+					v-model="form.name"
+					type="text"
+					class="app-input"
+					:class="errors.name ? 'app-input-error' : ''"
+					placeholder="例如: build"
+				/>
+				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">镜像</label>
+				<input
+					v-model="form.image"
+					type="text"
+					class="app-input"
+					:class="errors.image ? 'app-input-error' : ''"
+					placeholder="例如: alpine:latest"
+				/>
+				<p v-if="errors.image" class="app-field-error text-xs">{{ errors.image }}</p>
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">脚本</label>
@@ -132,7 +130,7 @@
 
 		<template #footer>
 			<button class="app-button" @click="isModalOpen = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">保存</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">创建</button>
 		</template>
 	</AppDialog>
 </template>

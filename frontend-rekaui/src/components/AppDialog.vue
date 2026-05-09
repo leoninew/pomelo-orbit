@@ -5,6 +5,8 @@
 			<DialogContent
 				v-bind="contentA11yAttrs"
 				:class="['app-dialog-content', widthClass, contentClass]"
+				@open-auto-focus.prevent
+				@close-auto-focus.prevent
 			>
 				<div class="border-b border-border px-6 py-4">
 					<DialogTitle class="text-lg font-semibold text-foreground">

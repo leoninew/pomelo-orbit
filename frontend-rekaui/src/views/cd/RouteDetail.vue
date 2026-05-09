@@ -153,9 +153,9 @@
 		</template>
 
 		<AppDialog v-model:open="isEditDialogOpen" title="编辑路由">
-			<div class="flex flex-col gap-3">
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">域名</label>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">域名</label>
 					<input
 						v-model="form.domain"
 						type="text"
@@ -165,12 +165,12 @@
 					/>
 					<p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">路径前缀</label>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">路径前缀</label>
 					<input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">目标地址</label>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">目标地址</label>
 					<input
 						v-model="form.target_url"
 						type="text"

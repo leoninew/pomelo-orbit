@@ -1,14 +1,13 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-scroll" aria-label="模板工具栏">
-			<div class="app-toolbar-row">
-				<SearchControl
-					v-model="searchText"
-					placeholder="搜索模板名称"
-					:loading="status === 'loading'"
-					class="shrink-0"
-					@search="handleSearch"
-				/>
+		<ToolbarRoot class="app-toolbar-simple" aria-label="模板工具栏">
+			<SearchControl
+				v-model="searchText"
+				placeholder="搜索模板名称"
+				:loading="status === 'loading'"
+				@search="handleSearch"
+			/>
+			<div class="flex items-center gap-3">
 				<ToggleGroupRoot
 					v-model="viewMode"
 					type="single"
@@ -155,7 +154,6 @@
 		v-model:open="showCreateDialog"
 		title="新建流水线模板"
 		description="创建一个可被仓库流水线复用的模板。"
-		width-class="w-[min(520px,calc(100vw-32px))]"
 	>
 		<div class="space-y-4">
 			<div class="space-y-1.5">

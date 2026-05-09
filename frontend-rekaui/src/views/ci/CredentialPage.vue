@@ -119,7 +119,9 @@
 		</div>
 		<template #footer>
 			<button class="app-button" @click="showCredentialDialog = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">保存</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">
+				{{ isEditing ? '保存' : '创建' }}
+			</button>
 		</template>
 	</AppDialog>
 

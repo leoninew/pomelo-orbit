@@ -50,7 +50,7 @@
 			<!-- 脚本 -->
 			<div class="space-y-1.5">
 				<div class="flex items-center justify-between">
-					<label class="app-field-label">
+					<label class="app-field-label block">
 						脚本
 						<span class="text-destructive">*</span>
 					</label>
@@ -71,7 +71,7 @@
 			<!-- 制品 -->
 			<div class="space-y-1.5">
 				<div class="flex items-center justify-between">
-					<label class="app-field-label">制品（可选）</label>
+					<label class="app-field-label block">制品（可选）</label>
 					<button class="app-button flex items-center gap-1 px-3 py-1 text-xs" @click="addArtifact">
 						<Plus class="h-3 w-3" />
 						添加
@@ -105,7 +105,9 @@
 
 		<template #footer>
 			<button class="app-button" @click="handleClose">取消</button>
-			<button class="app-button-primary" :disabled="saving" @click="handleSave">保存</button>
+			<button class="app-button-primary" :disabled="saving" @click="handleSave">
+				{{ editingStage ? '保存' : '创建' }}
+			</button>
 		</template>
 	</AppDrawer>
 
@@ -240,7 +242,8 @@
 			toast.success(props.editingStage ? '更新成功' : '创建成功');
 			emit('saved', stage);
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			const fallbackMessage = props.editingStage ? '保存失败' : '创建失败';
+			toast.error(e instanceof Error ? e.message : fallbackMessage);
 		} finally {
 			saving.value = false;
 		}

@@ -12,7 +12,6 @@
 			<ComboboxSelect
 				v-model="form.template_id"
 				:options="templateOptions"
-				:open-on-focus="false"
 				placeholder="请选择模板"
 			/>
 		</div>

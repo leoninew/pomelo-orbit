@@ -145,7 +145,7 @@
 					placeholder="example-route"
 				/>
 				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
-				<p v-else class="app-tip">小写字母开头，可含数字、点号、下划线和连字符</p>
+				<p v-else class="app-field-hint">小写字母开头，可含数字、点号、下划线和连字符</p>
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">域名</label>
@@ -161,7 +161,7 @@
 			<div class="space-y-1.5">
 				<label class="app-field-label block">路径前缀</label>
 				<input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
-				<p class="app-tip">匹配以该前缀开头的请求路径，默认 /</p>
+				<p class="app-field-hint">匹配以该前缀开头的请求路径，默认 /</p>
 			</div>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">目标地址</label>
@@ -175,7 +175,7 @@
 				<p v-if="errors.target_url" class="app-field-error text-xs">
 					{{ errors.target_url }}
 				</p>
-				<p v-else class="app-tip">格式：http://host:port，例如 http://127.0.0.1:8080</p>
+				<p v-else class="app-field-hint">格式：http://host:port，例如 http://127.0.0.1:8080</p>
 			</div>
 			<label class="flex cursor-pointer items-center gap-3">
 				<SwitchRoot v-model:checked="form.enabled" class="app-switch-root">
@@ -187,7 +187,7 @@
 
 		<template #footer>
 			<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleSave">保存</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleSave">添加</button>
 		</template>
 	</AppDialog>
 </template>
@@ -292,7 +292,7 @@
 				fetchData();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '保存失败');
+			toast.error(error instanceof Error ? error.message : '添加失败');
 		}
 	}
 

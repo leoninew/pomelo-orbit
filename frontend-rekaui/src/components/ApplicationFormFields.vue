@@ -1,8 +1,8 @@
 <template>
 	<div class="space-y-4">
 		<!-- 应用名称 -->
-		<div>
-			<label class="app-field-label mb-1.5 block">
+		<div class="space-y-1.5">
+			<label class="app-field-label block">
 				应用名称
 				<span class="text-destructive">*</span>
 			</label>
@@ -18,8 +18,8 @@
 		</div>
 
 		<!-- 应用代码 -->
-		<div>
-			<label class="app-field-label mb-1.5 block">
+		<div class="space-y-1.5">
+			<label class="app-field-label block">
 				应用代码
 				<span class="text-destructive">*</span>
 			</label>
@@ -32,12 +32,12 @@
 				@input="updateField('code', ($event.target as HTMLInputElement).value)"
 			/>
 			<p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
-			<p class="mt-1 text-xs text-muted-foreground">应用代码用于生成工作目录，创建后不可修改</p>
+			<p class="app-field-hint">应用代码用于生成工作目录，创建后不可修改</p>
 		</div>
 
 		<!-- 镜像拉取策略 -->
-		<div>
-			<label class="app-field-label mb-1.5 block">镜像拉取策略</label>
+		<div class="space-y-1.5">
+			<label class="app-field-label block">镜像拉取策略</label>
 			<SelectControl
 				:model-value="form.image_pull_policy"
 				:options="imagePullPolicyOptions"
@@ -57,7 +57,7 @@
 			/>
 			<label for="route_managed" class="text-sm font-medium text-foreground">启用路由管理</label>
 		</div>
-		<p class="text-xs text-muted-foreground">启用后可为应用配置 HTTP 路由，自动生成 Traefik 配置</p>
+		<p class="app-field-hint">启用后可为应用配置 HTTP 路由，自动生成 Traefik 配置</p>
 	</div>
 </template>
 

@@ -204,7 +204,6 @@
 			v-model:open="isAddVariableDialogOpen"
 			title="添加变量"
 			description="添加仓库自定义变量。"
-			width-class="w-[min(480px,calc(100vw-32px))]"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
@@ -237,7 +236,7 @@
 			<template #footer>
 				<button class="app-button" @click="isAddVariableDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleAddVariableOk">
-					保存
+					添加
 				</button>
 			</template>
 		</AppDialog>
@@ -246,7 +245,6 @@
 			v-model:open="isEditVariableDialogOpen"
 			title="编辑变量"
 			description="编辑仓库自定义变量。"
-			width-class="w-[min(480px,calc(100vw-32px))]"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">

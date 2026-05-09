@@ -69,10 +69,11 @@
 			v-model:open="isEditModalOpen"
 			title="编辑凭据"
 			description="更新凭据名称，凭据内容留空时不会修改。"
+			width-class="w-[min(600px,calc(100vw-32px))]"
 		>
-			<div class="flex flex-col gap-3">
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">凭据名称</label>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">凭据名称</label>
 					<input
 						v-model="form.name"
 						type="text"
@@ -81,8 +82,8 @@
 					/>
 					<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">
 						凭据内容
 						<span class="font-normal text-muted-foreground">（留空则不修改）</span>
 					</label>

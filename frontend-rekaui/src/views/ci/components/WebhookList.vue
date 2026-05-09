@@ -133,7 +133,9 @@
 			</div>
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleOk">保存</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleOk">
+					{{ editingWebhook ? '保存' : '添加' }}
+				</button>
 			</template>
 		</AppDialog>
 

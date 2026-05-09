@@ -3,7 +3,6 @@
 		:model-value="modelValue"
 		:disabled="disabled"
 		open-on-click
-		:open-on-focus="openOnFocus"
 		@update:model-value="emit('update:modelValue', $event as ComboboxOptionValue)"
 	>
 		<ComboboxAnchor
@@ -106,7 +105,6 @@
 			emptyText?: string
 			portal?: boolean
 			widthClass?: string
-			openOnFocus?: boolean
 			invalid?: boolean
 		}>(),
 		{
@@ -115,7 +113,6 @@
 			emptyText: '暂无数据',
 			portal: true,
 			widthClass: 'w-full',
-			openOnFocus: true,
 			invalid: false,
 		}
 	);

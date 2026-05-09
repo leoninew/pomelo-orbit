@@ -221,7 +221,7 @@
 			<template #footer>
 				<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-					保存
+					创建
 				</button>
 			</template>
 		</AppDialog>
@@ -269,7 +269,7 @@
 	import { appStatusLabel } from '@/utils/status';
 	import { formatTime } from '@/utils/time';
 	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
-	import ApplicationFormFields from './ApplicationFormFields.vue';
+	import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
 
 	const router = useRouter();
 	const toast = useToast();

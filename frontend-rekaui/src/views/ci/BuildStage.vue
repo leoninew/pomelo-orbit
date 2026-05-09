@@ -136,18 +136,23 @@
 			title="编辑构建"
 			description="更新构建阶段基本信息。"
 		>
-			<div class="flex flex-col gap-3">
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">名称</label>
-					<input v-model="form.name" type="text" class="app-input" />
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">名称</label>
+					<input v-model="form.name" type="text" class="app-input" placeholder="例如: build" />
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">镜像</label>
-					<input v-model="form.image" type="text" class="app-input" />
+				<div class="space-y-1.5">
+					<label class="app-field-label block">镜像</label>
+					<input
+						v-model="form.image"
+						type="text"
+						class="app-input"
+						placeholder="例如: alpine:latest"
+					/>
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">描述</label>
-					<input v-model="form.description" type="text" class="app-input" />
+				<div class="space-y-1.5">
+					<label class="app-field-label block">描述（可选）</label>
+					<input v-model="form.description" type="text" class="app-input" placeholder="简短描述" />
 				</div>
 			</div>
 			<template #footer>
@@ -178,17 +183,17 @@
 			:title="artifactForm.isEdit ? '编辑制品' : '添加制品'"
 			description="配置构建阶段产出的制品。"
 		>
-			<div class="flex flex-col gap-3">
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">类型</label>
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">类型</label>
 					<SelectControl
 						v-model="artifactForm.type"
 						:options="artifactTypeOptions"
 						placeholder="选择制品类型"
 					/>
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">名称</label>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">名称</label>
 					<input
 						v-model="artifactForm.name"
 						type="text"
@@ -196,8 +201,8 @@
 						placeholder="例如: my-app"
 					/>
 				</div>
-				<div class="flex flex-col gap-1.5">
-					<label class="app-field-label">路径/镜像</label>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">路径/镜像</label>
 					<input
 						v-model="artifactForm.path"
 						type="text"
@@ -209,7 +214,7 @@
 			<template #footer>
 				<button class="app-button" @click="isArtifactDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="saving" @click="handleSaveArtifact">
-					保存
+					{{ artifactForm.isEdit ? '保存' : '添加' }}
 				</button>
 			</template>
 		</AppDialog>

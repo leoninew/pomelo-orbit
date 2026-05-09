@@ -23,6 +23,20 @@
 - CI/CD 主要列表页和详情页已完成第一轮共享样式收口，包含表格、链接、按钮、输入框、错误态、tip、surface、section header。
 - `ComboboxSelect` 已支持 `openOnFocus`，Dialog 首控件场景可关闭自动展开。
 
+## 模态窗风格标准
+
+- 外壳统一使用 `AppDialog`；抽屉型编辑使用 `AppDrawer`。页面层不再直接使用 Reka `DialogRoot/DialogContent`。
+- 默认表单弹窗使用 `AppDialog` 默认宽度 `w-[min(520px,calc(100vw-32px))]`；复杂 textarea 或长表单才显式放宽到 `600px` 或更宽。
+- 确认类弹窗使用 `width-class="w-[min(420px,calc(100vw-32px))]"` 和 `body-class="hidden"`。
+- 表单主体使用 `space-y-4`；字段块使用 `space-y-1.5`；label 使用 `app-field-label block`。
+- 输入控件使用 `app-input` / `app-textarea`，下拉使用 `SelectControl`，可搜索选择使用 `ComboboxSelect`。
+- 错误态：控件加 `app-input-error`，错误文本使用 `app-field-error text-xs`。
+- 字段级说明使用 `app-field-hint`；块状说明或导入摘要使用 `app-tip`。
+- Footer 按钮右对齐由 `AppDialog` 负责：取消用 `app-button`，普通提交用 `app-button-primary`，危险确认用 `app-button-destructive`。
+- 列表页新建弹窗按钮文案用“创建”；详情页编辑弹窗按钮文案用“保存”；导入弹窗用“导入”；删除/取消确认用对应危险操作文案。
+- 模态窗和抽屉统一取消自动 focus：`AppDialog` / `AppDrawer` 在 `open-auto-focus` 与 `close-auto-focus` 上 prevent；`ComboboxSelect` 不再支持 focus 时自动展开，只保留点击展开。
+- 字段差异是业务差异，不为统一风格强行补齐或删除字段。
+
 ## 2026-05-09 本轮处理
 
 - 修复 `DeploymentDetail.vue` 应用详情链接，前端路由从错误的 `/cd/application/:id` 改为 `/cd/applications/:id`。
@@ -37,6 +51,15 @@
   - 新增 `app-toolbar-simple`、`app-toolbar-scroll`、`app-toolbar-row`。
   - 多筛选/多操作工具条使用横向滚动范式，避免换行撑高。
   - 简单搜索+操作工具条使用简单范式，减少逐页 class 分叉。
+- 建立模态窗风格标准，并完成第一轮收口：
+  - 新增 `app-field-hint`，字段级说明从零散 `text-xs text-muted-foreground` 收敛为共享类。
+  - 新建/添加/编辑类弹窗的主按钮文案按场景区分为“创建 / 添加 / 保存”。
+  - 构建、路由、凭据、变量、Webhook 等表单弹窗的字段块间距和 label 写法统一到 `space-y-1.5` / `app-field-label block`。
+  - 移除重复默认宽度和临时窄宽度，复杂 textarea 弹窗使用 `600px` 范式。
+- 统一取消模态窗自动 focus 行为：
+  - `AppDialog` / `AppDrawer` 统一阻止打开和关闭时的自动 focus。
+  - 移除弹窗内 `ComboboxSelect` 的局部 `open-on-focus=false` 特例。
+  - `ComboboxSelect` 移除 `openOnFocus` prop，默认不再 focus 展开。
 
 ## 剩余观察项
 
@@ -50,3 +73,11 @@
   - `cd frontend-rekaui && yarn lint --fix`
   - `cd frontend-rekaui && yarn typecheck`
   - `git diff --check -- frontend-rekaui docs/todo.md`
+- 2026-05-09 模态窗第一轮已执行：
+  - `cd frontend-rekaui && yarn lint --fix`
+  - `cd frontend-rekaui && yarn typecheck`
+  - `git diff --check -- docs/todo.md frontend-rekaui`
+- 2026-05-09 focus 行为收口已执行：
+  - `cd frontend-rekaui && yarn lint --fix`
+  - `cd frontend-rekaui && yarn typecheck`
+  - `git diff --check -- docs/todo.md frontend-rekaui`

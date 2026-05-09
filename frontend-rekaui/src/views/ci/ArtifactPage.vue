@@ -6,7 +6,7 @@
 					:model-value="query.repository_id"
 					:options="repoSelectOptions"
 					placeholder="筛选项目"
-					width-class="w-60"
+					width-class="app-toolbar-select"
 					@update:model-value="handleRepositoryChange"
 				/>
 
@@ -14,7 +14,7 @@
 					:model-value="query.template_id"
 					:options="templateSelectOptions"
 					placeholder="筛选模板"
-					width-class="w-60"
+					width-class="app-toolbar-select"
 					@update:model-value="handleTemplateChange"
 				/>
 
@@ -39,20 +39,18 @@
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list table-fixed">
 					<colgroup>
-						<col class="w-[16%]" />
-						<col class="w-[16%]" />
-						<col class="w-[11%]" />
-						<col class="w-[11%]" />
-						<col class="w-[10%]" />
+						<col class="w-[17%]" />
+						<col class="w-[17%]" />
+						<col class="w-[12%]" />
 						<col class="w-[13%]" />
-						<col class="w-[15%]" />
-						<col class="w-[8%]" />
+						<col class="w-[18%]" />
+						<col class="w-[16%]" />
+						<col class="w-[7%]" />
 					</colgroup>
 					<thead>
 						<tr>
 							<th>项目</th>
 							<th>模板</th>
-							<th>名称</th>
 							<th>类型</th>
 							<th>Stage</th>
 							<th>路径/镜像</th>
@@ -80,7 +78,6 @@
 									{{ a.template_name }}
 								</router-link>
 							</td>
-							<td class="overflow-hidden truncate text-foreground" :title="a.name">{{ a.name }}</td>
 							<td>
 								<span
 									class="inline-flex items-center whitespace-nowrap rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
@@ -109,16 +106,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -191,11 +188,21 @@
 	}
 
 	function handleRepositoryChange(value: string | number | boolean) {
-		query.repository_id = String(value || '');
+		const nextValue = String(value || '');
+		if (query.repository_id === nextValue) {
+			return;
+		}
+		query.repository_id = nextValue;
+		handleSearch();
 	}
 
 	function handleTemplateChange(value: string | number | boolean) {
-		query.template_id = String(value || '');
+		const nextValue = String(value || '');
+		if (query.template_id === nextValue) {
+			return;
+		}
+		query.template_id = nextValue;
+		handleSearch();
 	}
 
 	function handleSearch() {

@@ -63,7 +63,7 @@
 		</div>
 
 		<!-- 卡片视图 -->
-		<template v-else-if="viewMode === 'card'">
+		<div v-else-if="viewMode === 'card'" class="space-y-3">
 			<div v-if="applications.length === 0" class="app-surface">
 				<div class="flex flex-col items-center justify-center py-16">
 					<Inbox class="size-12 text-muted-foreground" />
@@ -123,6 +123,7 @@
 				</div>
 			</div>
 			<ListPagination
+				standalone
 				:current="pagination.current"
 				:page-size="pagination.pageSize"
 				:total="pagination.total"
@@ -130,7 +131,7 @@
 				@change-page="goPage"
 				@change-page-size="handlePageSizeChange"
 			/>
-		</template>
+		</div>
 
 		<!-- 表格视图 -->
 		<template v-else>
@@ -197,15 +198,16 @@
 						</tbody>
 					</table>
 				</div>
+
+				<ListPagination
+					:current="pagination.current"
+					:page-size="pagination.pageSize"
+					:total="pagination.total"
+					:total-pages="totalPages"
+					@change-page="goPage"
+					@change-page-size="handlePageSizeChange"
+				/>
 			</div>
-			<ListPagination
-				:current="pagination.current"
-				:page-size="pagination.pageSize"
-				:total="pagination.total"
-				:total-pages="totalPages"
-				@change-page="goPage"
-				@change-page-size="handlePageSizeChange"
-			/>
 		</template>
 
 		<AppDialog

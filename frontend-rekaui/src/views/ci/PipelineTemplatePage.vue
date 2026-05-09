@@ -53,53 +53,60 @@
 			</div>
 		</div>
 
-		<div
-			v-else-if="viewMode === 'card'"
-			class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-		>
-			<div
-				v-for="tpl in templates"
-				:key="tpl.id"
-				class="app-surface group cursor-pointer p-4 transition-colors hover:border-primary"
-				@click="router.push(`/ci/template/${tpl.id}`)"
-			>
-				<div class="mb-3 flex items-start justify-between gap-4">
-					<h3 class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary">
-						{{ tpl.name }}
-					</h3>
-					<button
-						:disabled="duplicating"
-						class="app-link shrink-0 text-sm"
-						@click.stop="handleDuplicate(tpl.id)"
-					>
-						复制
-					</button>
-				</div>
-				<p class="mb-4 min-h-10 text-sm text-muted-foreground">
-					{{ tpl.description || '—' }}
-				</p>
-				<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-					<span class="rounded bg-muted px-2 py-0.5">v{{ tpl.version }}</span>
-					<span class="rounded bg-muted px-2 py-0.5">{{ tpl.orchestration.length }} 阶段</span>
-					<span class="rounded bg-muted px-2 py-0.5">
-						{{ tpl.variable_declarations.length }} 变量
-					</span>
-				</div>
-				<div class="text-sm text-muted-foreground">
-					{{ formatTime(tpl.updated_at) }}
+		<template v-else-if="viewMode === 'card'">
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+				<div
+					v-for="tpl in templates"
+					:key="tpl.id"
+					class="app-surface group cursor-pointer p-4 transition-colors hover:border-primary"
+					@click="router.push(`/ci/template/${tpl.id}`)"
+				>
+					<div class="mb-3 flex items-start justify-between gap-4">
+						<h3 class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary">
+							{{ tpl.name }}
+						</h3>
+						<button
+							:disabled="duplicating"
+							class="app-link shrink-0 text-sm"
+							@click.stop="handleDuplicate(tpl.id)"
+						>
+							复制
+						</button>
+					</div>
+					<p class="mb-4 min-h-10 text-sm text-muted-foreground">
+						{{ tpl.description || '—' }}
+					</p>
+					<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+						<span class="rounded bg-muted px-2 py-0.5">v{{ tpl.version }}</span>
+						<span class="rounded bg-muted px-2 py-0.5">{{ tpl.orchestration.length }} 阶段</span>
+						<span class="rounded bg-muted px-2 py-0.5">
+							{{ tpl.variable_declarations.length }} 变量
+						</span>
+					</div>
+					<div class="text-sm text-muted-foreground">
+						{{ formatTime(tpl.updated_at) }}
+					</div>
 				</div>
 			</div>
-		</div>
+
+			<ListPagination
+				standalone
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</template>
 
 		<div v-else class="app-surface">
 			<div class="overflow-x-auto">
-				<table class="app-table-list min-w-[960px]">
+				<table class="app-table-list min-w-[780px]">
 					<thead>
 						<tr>
 							<th>名称</th>
 							<th>版本</th>
-							<th>阶段</th>
-							<th>变量</th>
 							<th>描述</th>
 							<th>创建时间</th>
 							<th class="text-right">操作</th>
@@ -116,8 +123,6 @@
 							<td>
 								<span class="app-badge-sm">v{{ tpl.version }}</span>
 							</td>
-							<td class="text-foreground">{{ tpl.orchestration.length }}</td>
-							<td class="text-foreground">{{ tpl.variable_declarations.length }}</td>
 							<td class="max-w-sm truncate text-foreground" :title="tpl.description || undefined">
 								{{ tpl.description || '—' }}
 							</td>
@@ -138,16 +143,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 
 	<AppDialog

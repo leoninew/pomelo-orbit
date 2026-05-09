@@ -1,14 +1,12 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-scroll" aria-label="Traefik 工具栏">
-			<div class="app-toolbar-row">
-				<SearchControl
-					v-model="searchText"
-					class="shrink-0"
-					placeholder="搜索名称/规则/服务/提供者"
-					:loading="status === 'loading'"
-					@search="handleSearch"
-				/>
+		<ToolbarRoot class="app-toolbar-simple" aria-label="Traefik 工具栏">
+			<SearchControl
+				v-model="searchText"
+				placeholder="搜索名称/规则/服务/提供者"
+				:loading="status === 'loading'"
+			/>
+			<div class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openDashboard">
 					<ExternalLink class="size-4" />
 					打开 Dashboard

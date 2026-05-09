@@ -68,16 +68,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 
 	<AppDialog

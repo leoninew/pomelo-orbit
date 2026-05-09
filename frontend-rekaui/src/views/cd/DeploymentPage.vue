@@ -2,8 +2,15 @@
 	<div class="space-y-6">
 		<ToolbarRoot class="app-toolbar-scroll" aria-label="部署记录工具栏">
 			<div class="app-toolbar-row">
+				<ComboboxSelect
+					:model-value="query.application_id"
+					:options="appSelectOptions"
+					placeholder="筛选应用"
+					width-class="app-toolbar-select"
+					@update:model-value="handleApplicationChange"
+				/>
 				<SearchControl
-					v-model="searchText"
+					v-model="query.search"
 					placeholder="搜索应用/环境"
 					:loading="status === 'loading'"
 					class="shrink-0"
@@ -22,14 +29,12 @@
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1360px]">
+				<table class="app-table-list min-w-[1120px]">
 					<thead>
 						<tr>
 							<th>应用</th>
 							<th>操作类型</th>
 							<th>触发方式</th>
-							<th>环境</th>
-							<th>环境文件</th>
 							<th>状态</th>
 							<th>错误信息</th>
 							<th>开始时间</th>
@@ -49,13 +54,6 @@
 							</td>
 							<td class="text-foreground">{{ operationTypeLabel(deployment.operation_type) }}</td>
 							<td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
-							<td class="text-foreground">{{ deployment.environment || '—' }}</td>
-							<td
-								class="max-w-48 truncate text-foreground"
-								:title="deployment.env_file || undefined"
-							>
-								{{ deployment.env_file || '—' }}
-							</td>
 							<td>
 								<span
 									class="inline-flex rounded-md px-2 py-0.5 text-sm"
@@ -65,13 +63,14 @@
 								</span>
 							</td>
 							<td
-								class="max-w-56 truncate text-destructive"
+								class="max-w-56 truncate"
+								:class="deployment.error_message ? 'text-destructive' : 'text-muted-foreground'"
 								:title="deployment.error_message || undefined"
 							>
 								{{ deployment.error_message || '—' }}
 							</td>
 							<td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
-							<td class="text-foreground">{{ formatDuration(deployment.duration_ms) }}</td>
+							<td class="text-foreground">{{ formatDuration(deployment.started_at, deployment.finished_at) }}</td>
 							<td>
 								<div class="flex items-center gap-3">
 									<button class="app-link" @click="router.push(`/cd/deployments/${deployment.id}`)">
@@ -91,16 +90,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 
 		<AppDialog
 			v-model:open="isCancelDialogOpen"
@@ -122,16 +121,19 @@
 <script setup lang="ts">
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
+	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
+	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import type { Application } from '@/types/cd/application';
 	import type { Deployment } from '@/types/cd/deployment';
-	import { formatDuration, statusBadgeClass, statusLabel } from '@/utils/status';
-	import { formatTime } from '@/utils/time';
+	import { statusBadgeClass, statusLabel } from '@/utils/status';
+	import { formatDuration, formatTime } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 
 	const router = useRouter();
@@ -143,10 +145,31 @@
 	const deployments = ref<Deployment[]>([]);
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-	const searchText = ref('');
-	const applicationId = ref<string | undefined>(route.query.application_id as string | undefined);
 	const isCancelDialogOpen = ref(false);
 	const deploymentToCancel = ref<Deployment | null>(null);
+
+	const query = reactive({
+		search: '',
+		application_id: (route.query.application_id as string) || '',
+	});
+
+	const appOptions = ref<Application[]>([]);
+	const appSelectOptions = computed(() =>
+		appOptions.value.map((app) => ({
+			value: app.id,
+			label: app.name,
+			description: app.code,
+		}))
+	);
+
+	async function loadApps() {
+		try {
+			const resp = await applicationApi.list({ per_page: 100 });
+			appOptions.value = resp.items;
+		} catch (err: unknown) {
+			toast.error(err instanceof Error ? err.message : '获取应用列表失败');
+		}
+	}
 
 	function operationTypeLabel(type: string) {
 		const map: Record<string, string> = {
@@ -170,8 +193,8 @@
 				const res = await deploymentApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
-					search: searchText.value || undefined,
-					application_id: applicationId.value,
+					search: query.search || undefined,
+					application_id: query.application_id || undefined,
 				});
 				deployments.value = res.items;
 				pagination.total = res.total;
@@ -179,6 +202,15 @@
 		} catch {
 			toast.error('获取部署记录失败');
 		}
+	}
+
+	function handleApplicationChange(value: string | number | boolean) {
+		const nextValue = String(value || '');
+		if (query.application_id === nextValue) {
+			return;
+		}
+		query.application_id = nextValue;
+		handleSearch();
 	}
 
 	function handleSearch() {
@@ -224,5 +256,8 @@
 		}
 	}
 
-	onMounted(fetchDeployments);
+	onMounted(async () => {
+		fetchDeployments();
+		await loadApps();
+	});
 </script>

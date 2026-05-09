@@ -77,7 +77,7 @@
 					</div>
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">耗时</dt>
-						<dd class="text-muted-foreground">{{ formatDuration(deployment.duration_ms) }}</dd>
+						<dd class="text-muted-foreground">{{ formatDuration(deployment.started_at, deployment.finished_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
@@ -154,8 +154,8 @@
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
 	import type { DeploymentDetail } from '@/types/cd/deployment';
-	import { formatDuration, isTerminalStatus } from '@/utils/status';
-	import { delayAsync, formatTime } from '@/utils/time';
+	import { isTerminalStatus } from '@/utils/status';
+	import { delayAsync, formatDuration, formatTime } from '@/utils/time';
 	import config from '@/config';
 
 	const route = useRoute();

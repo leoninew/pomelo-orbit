@@ -22,13 +22,12 @@
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1040px]">
+				<table class="app-table-list min-w-[920px]">
 					<thead>
 						<tr>
 							<th>名称</th>
 							<th>镜像</th>
 							<th>版本</th>
-							<th>制品</th>
 							<th>描述</th>
 							<th>创建时间</th>
 							<th>操作</th>
@@ -47,7 +46,6 @@
 							<td>
 								<span class="app-badge-sm">v{{ stage.version }}</span>
 							</td>
-							<td class="text-foreground">{{ stage.artifacts?.length ?? 0 }}</td>
 							<td
 								class="max-w-xs truncate text-muted-foreground"
 								:title="stage.description || undefined"
@@ -71,16 +69,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 
 	<AppDialog

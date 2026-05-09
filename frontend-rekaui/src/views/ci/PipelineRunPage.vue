@@ -6,14 +6,14 @@
 					:model-value="query.repository_id"
 					:options="repositoryOptions"
 					placeholder="筛选项目"
-					width-class="w-60"
+					width-class="app-toolbar-select"
 					@update:model-value="handleRepositoryChange"
 				/>
 				<ComboboxSelect
 					:model-value="query.template_id"
 					:options="templateOptions"
 					placeholder="筛选模板"
-					width-class="w-60"
+					width-class="app-toolbar-select"
 					@update:model-value="handleTemplateChange"
 				/>
 				<button
@@ -36,17 +36,16 @@
 				<p class="text-sm">暂无数据</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list table-fixed min-w-[960px]">
+				<table class="app-table-list table-fixed min-w-[900px]">
 					<colgroup>
+						<col class="w-[14%]" />
+						<col class="w-[14%]" />
+						<col class="w-[8%]" />
+						<col class="w-[12%]" />
+						<col class="w-[10%]" />
 						<col class="w-[13%]" />
 						<col class="w-[13%]" />
 						<col class="w-[7%]" />
-						<col class="w-[8%]" />
-						<col class="w-[10%]" />
-						<col class="w-[8%]" />
-						<col class="w-[12%]" />
-						<col class="w-[12%]" />
-						<col class="w-[8%]" />
 						<col class="w-[9%]" />
 					</colgroup>
 					<thead>
@@ -54,7 +53,6 @@
 							<th>仓库</th>
 							<th>模板</th>
 							<th>版本</th>
-							<th>触发方式</th>
 							<th>触发 Ref</th>
 							<th>状态</th>
 							<th>错误信息</th>
@@ -90,7 +88,6 @@
 									v{{ run.template_version }}
 								</span>
 							</td>
-							<td class="whitespace-nowrap text-foreground">{{ triggerLabel(run.trigger) }}</td>
 							<td class="overflow-hidden truncate text-foreground" :title="run.trigger_ref">
 								{{ run.trigger_ref }}
 							</td>
@@ -103,7 +100,8 @@
 								</span>
 							</td>
 							<td
-								class="overflow-hidden truncate text-foreground"
+								class="overflow-hidden truncate"
+								:class="run.error_message ? 'text-destructive' : 'text-muted-foreground'"
 								:title="run.error_message || undefined"
 							>
 								{{ run.error_message || '—' }}
@@ -129,16 +127,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -170,14 +168,6 @@
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 	const query = reactive({ repository_id: '', template_id: '' });
-
-	function triggerLabel(trigger: string) {
-		const map: Record<string, string> = {
-			manual: '手动',
-			webhook: 'Webhook',
-		};
-		return map[trigger] ?? trigger;
-	}
 
 	const repositoryOptions = computed(() =>
 		repositories.value.map((repo) => ({
@@ -254,11 +244,21 @@
 	}
 
 	function handleRepositoryChange(value: string | number | boolean) {
-		query.repository_id = String(value || '');
+		const nextValue = String(value || '');
+		if (query.repository_id === nextValue) {
+			return;
+		}
+		query.repository_id = nextValue;
+		handleSearch();
 	}
 
 	function handleTemplateChange(value: string | number | boolean) {
-		query.template_id = String(value || '');
+		const nextValue = String(value || '');
+		if (query.template_id === nextValue) {
+			return;
+		}
+		query.template_id = nextValue;
+		handleSearch();
 	}
 
 	function handleSearch() {

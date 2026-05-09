@@ -1,14 +1,14 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-scroll" aria-label="路由工具栏">
-			<div class="app-toolbar-row">
-				<SearchControl
-					v-model="searchText"
-					class="shrink-0"
-					placeholder="搜索名称/域名/目标地址"
-					:loading="status === 'loading'"
-					@search="handleSearch"
-				/>
+		<ToolbarRoot class="app-toolbar-simple" aria-label="路由工具栏">
+			<SearchControl
+				v-model="searchText"
+				class="shrink-0"
+				placeholder="搜索名称/域名/目标地址"
+				:loading="status === 'loading'"
+				@search="handleSearch"
+			/>
+			<div class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openCreateModal">
 					<Plus class="size-4" />
 					添加路由
@@ -117,16 +117,16 @@
 					</tbody>
 				</table>
 			</div>
-		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</div>
 	</div>
 
 	<AppDialog

@@ -3,7 +3,7 @@
 		<ToolbarRoot class="flex items-center" aria-label="登录历史工具栏">
 			<SearchControl
 				v-model="searchText"
-				placeholder="搜索 IP 地址或用户代理"
+				placeholder="搜索用户名、IP 地址或用户代理"
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
@@ -23,6 +23,7 @@
 					<thead>
 						<tr>
 							<th>登录时间</th>
+							<th>用户名</th>
 							<th>IP 地址</th>
 							<th>用户代理</th>
 							<th>状态</th>
@@ -31,6 +32,7 @@
 					<tbody>
 						<tr v-for="record in history" :key="record.id">
 							<td class="text-foreground">{{ formatTime(record.login_at) }}</td>
+							<td class="text-foreground">{{ record.username }}</td>
 							<td class="text-foreground">{{ record.ip_address }}</td>
 							<td class="max-w-md truncate text-foreground" :title="record.user_agent || undefined">
 								{{ record.user_agent || '-' }}

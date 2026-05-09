@@ -1,11 +1,32 @@
 <template>
 	<div class="space-y-6">
+		<!-- 用户信息 -->
+		<div class="app-surface">
+			<div class="app-section-header flex items-center justify-between">
+				<h2 class="font-semibold text-foreground">用户信息</h2>
+				<button class="app-button-primary h-8 px-3" @click="isPasswordDialogOpen = true">
+					<Key class="size-4" />
+					修改密码
+				</button>
+			</div>
+			<dl v-if="authStore.user" class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+				<div class="flex gap-2">
+					<dt class="w-24 shrink-0 text-muted-foreground">用户名</dt>
+					<dd class="text-foreground">{{ authStore.user.username }}</dd>
+				</div>
+				<div class="flex gap-2">
+					<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+					<dd class="text-muted-foreground">{{ formatTime(authStore.user.created_at) }}</dd>
+				</div>
+				<div class="flex gap-2">
+					<dt class="w-24 shrink-0 text-muted-foreground">上次登录</dt>
+					<dd class="text-muted-foreground">{{ formatTime(authStore.user.last_login_at) }}</dd>
+				</div>
+			</dl>
+		</div>
+
 		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="系统设置工具栏">
 			<SearchControl v-model="searchText" placeholder="搜索配置项" :loading="configLoading" />
-			<button class="app-button-primary px-5" @click="isPasswordDialogOpen = true">
-				<Key class="size-4" />
-				修改密码
-			</button>
 		</ToolbarRoot>
 
 		<!-- Restart Warning -->

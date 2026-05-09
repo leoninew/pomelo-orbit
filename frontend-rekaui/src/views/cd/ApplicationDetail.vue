@@ -812,7 +812,10 @@
 			await executeOp(async () => {
 				const res = await applicationApi.deploy(applicationId);
 				toast.success('部署已触发');
-				router.push(`/cd/deployments/${res.deployment_id}`);
+				router.push({
+					path: `/cd/deployments/${res.deployment_id}`,
+					query: { from: 'application' },
+				});
 			});
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : '触发部署失败');
@@ -832,7 +835,7 @@
 					try {
 						const detail = await deploymentApi.get(res.deployment_id);
 						if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-							await loadApplication(); // 重新加载应用状态
+							await fetchApplication(); // 重新加载应用状态
 							break;
 						}
 					} catch {
@@ -850,7 +853,10 @@
 			await executeOp(async () => {
 				const res = await applicationApi.restart(applicationId);
 				toast.success('重启操作已提交');
-				router.push(`/cd/deployments/${res.deployment_id}`);
+				router.push({
+					path: `/cd/deployments/${res.deployment_id}`,
+					query: { from: 'application' },
+				});
 			});
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : '重启失败');

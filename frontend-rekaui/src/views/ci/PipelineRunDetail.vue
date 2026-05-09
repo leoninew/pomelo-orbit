@@ -359,10 +359,9 @@
 		<AppDialog
 			v-model:open="isCancelDialogOpen"
 			title="确认取消"
-			description="确定要取消此流水线运行吗？"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">确定要取消此流水线运行吗？</p>
 			<template #footer>
 				<button type="button" class="app-button" @click="isCancelDialogOpen = false">取消</button>
 				<button

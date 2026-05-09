@@ -106,10 +106,11 @@
 		<AppDialog
 			v-model:open="isCancelDialogOpen"
 			title="确认取消"
-			:description="`确定要取消 ${deploymentToCancel?.application_name || '该应用'} 的部署吗？`"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">
+				确定要取消「<strong>{{ deploymentToCancel?.application_name || '该应用' }}</strong>」的部署吗？
+			</p>
 			<template #footer>
 				<button class="app-button" @click="isCancelDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleCancelOk">

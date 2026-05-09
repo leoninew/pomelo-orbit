@@ -199,10 +199,11 @@
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
 			title="删除路由"
-			description="确定删除此路由？此操作不可恢复。"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">
+				确定删除路由「<strong>{{ routeData?.domain }}</strong>」？此操作不可恢复。
+			</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">

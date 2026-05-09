@@ -56,11 +56,11 @@ export const routeApi = {
 	},
 
 	enable(id: string): Promise<void> {
-		return request.put(`/api/cd/route/${id}/enable`);
+		return request.post(`/api/cd/route/${id}/enable`);
 	},
 
 	disable(id: string): Promise<void> {
-		return request.put(`/api/cd/route/${id}/disable`);
+		return request.post(`/api/cd/route/${id}/disable`);
 	},
 
 	sync(): Promise<void> {

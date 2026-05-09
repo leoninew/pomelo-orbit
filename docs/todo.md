@@ -1,6 +1,6 @@
 # frontend-rekaui 待办
 
-更新日期：2026-05-09
+更新日期：2026-05-10
 
 ## 范围
 
@@ -8,64 +8,104 @@
 
 ## 当前状态
 
-- 表格体系已基本收敛：当前扫描到的页面表格均使用 `app-table-list` 或 `app-table-detail`。
-- 弹窗和抽屉已基本收敛：页面层手写 `DialogRoot/DialogContent` 已清掉，统一通过 `AppDialog` / `AppDrawer` 使用 Reka UI。
-- Toast 已统一到 `AppToaster` / Reka Toast。
-- CI/CD 主要列表页和详情页已完成第一轮共享样式收口，包含表格、链接、按钮、输入框、错误态、tip、surface、section header。
+- ✅ 表格体系已基本收敛：当前扫描到的页面表格均使用 `app-table-list` 或 `app-table-detail`
+- ✅ 弹窗和抽屉已基本收敛：页面层手写 `DialogRoot/DialogContent` 已清掉，统一通过 `AppDialog` / `AppDrawer` 使用 Reka UI
+- ✅ Toast 已统一到 `AppToaster` / Reka Toast
+- ✅ CI/CD 主要列表页和详情页已完成第一轮共享样式收口，包含表格、链接、按钮、输入框、错误态、tip、surface、section header
+- ✅ 页面迁移验证已完成：15 个页面（8 个 CI + 7 个 CD）
 
-## 真实待办
+## 待办事项
 
-- 后续可把状态徽标颜色进一步抽成共享状态类，但这不是当前阻塞项。
-- 后续若 `ComboboxSelect` 需要支持更复杂对象值，再单独扩展；当前应用详情已通过 `service_name` 字符串值接入共享组件。
-- **流水线模板详情页阶段编排需要实现拓扑排序功能**，当前已移除手动序号列，后续需要根据依赖关系自动排序。
-- **变量声明表格的"重置"功能需要实现**，当前操作列文案已从"删除"改为"重置"，但实际行为仍是删除，需要实现真正的重置到默认值逻辑。
+### 高优先级
 
-## 2026-05-09 本轮处理
+#### 1. 确认对话框修复
+需要将描述文本从 `description` 属性移到对话框正文中，移除 `body-class="hidden"` 模式。
 
-- 新增 `docs/style.md`，承载 `frontend-rekaui` 风格一致性规范。
-- `docs/todo.md` 收敛为真实待办和进度记录，不再承载长期风格规范。
-- 统一脚本抽屉风格：
-  - `BuildStage.vue` 脚本抽屉宽度统一到 `w-[min(960px,100vw)]`。
-  - `StageEdit.vue` 脚本抽屉主按钮文案从“确定”统一为“保存”。
-- 统一文件抽屉风格：
-  - `ApplicationDetail.vue` 配置文件查看/编辑抽屉宽度统一到 `w-[min(960px,100vw)]`。
-- 修复 `DeploymentDetail.vue` 应用详情链接，前端路由从错误的 `/cd/application/:id` 改为 `/cd/applications/:id`。
-- 修复 `PipelineRunDetail.vue` Stage 日志抽屉状态：
-  - 区分加载中、等待日志输出、无日志、加载失败。
-  - 加载失败提供重试入口。
-  - 避免终态无日志时一直显示“加载日志中...”。
-- 收口 `ApplicationDetail.vue` 应用路由弹窗的服务选择：
-  - 页面内手写 Reka Combobox 替换为共享 `ComboboxSelect`。
-  - `ComboboxSelect` 增加 `invalid` 错误态入口。
-- 收口 CI/CD 列表工具条样式：
-  - 新增 `app-toolbar-simple`、`app-toolbar-scroll`、`app-toolbar-row`。
-  - 多筛选/多操作工具条使用横向滚动范式，避免换行撑高。
-  - 简单搜索+操作工具条使用简单范式，减少逐页 class 分叉。
-- 建立模态窗风格标准，并完成第一轮收口：
-  - 新增 `app-field-hint`，字段级说明从零散 `text-xs text-muted-foreground` 收敛为共享类。
-  - 新建/添加/编辑类弹窗的主按钮文案按场景区分为“创建 / 添加 / 保存”。
-  - 构建、路由、凭据、变量、Webhook 等表单弹窗的字段块间距和 label 写法统一到 `space-y-1.5` / `app-field-label block`。
-  - 移除重复默认宽度和临时窄宽度，复杂 textarea 弹窗使用 `600px` 范式。
-- 统一取消模态窗自动 focus 行为：
-  - `AppDialog` / `AppDrawer` 统一阻止打开和关闭时的自动 focus。
-  - 移除弹窗内 `ComboboxSelect` 的局部 `open-on-focus=false` 特例。
-  - `ComboboxSelect` 移除 `openOnFocus` prop，默认不再 focus 展开。
-- 删除遗留组件 `StageEdit.vue`，该组件无任何引用。
-- 移除流水线模板详情页阶段编排表格的序号列，为后续拓扑排序做准备。
-- 变量声明表格操作列文案从"删除"改为"重置"。
-- 变量声明表格无值时显示从斜体"未设置"改为普通"—"。
+**待修复文件：**
+- `frontend-rekaui/src/views/Settings.vue` - 重置配置确认
+- `frontend-rekaui/src/views/ci/PipelineTemplateDetail.vue` - 删除模板、移除 Stage、删除变量确认
+- `frontend-rekaui/src/views/ci/components/WebhookList.vue` - 删除 Webhook 确认
+- `frontend-rekaui/src/views/cd/ApplicationDetail.vue` - 删除配置文件（第 438 行）、重置镜像（第 483 行）、删除路由（第 563 行）确认
 
-## 验证记录
+#### 2. Monaco Editor 集成
+- `frontend-rekaui/src/views/ci/BuildStage.vue` - 脚本编辑需要集成 Monaco Editor，当前使用普通 textarea
+- `frontend-rekaui/src/views/cd/ApplicationDetail.vue` - 配置文件编辑需要集成 Monaco Editor，当前使用普通 textarea
 
-- 2026-05-09 本轮已执行：
-  - `cd frontend-rekaui && yarn lint --fix`
-  - `cd frontend-rekaui && yarn typecheck`
-  - `git diff --check -- frontend-rekaui docs/todo.md docs/style.md`
-- 2026-05-09 模态窗第一轮已执行：
-  - `cd frontend-rekaui && yarn lint --fix`
-  - `cd frontend-rekaui && yarn typecheck`
-  - `git diff --check -- docs/todo.md frontend-rekaui`
-- 2026-05-09 focus 行为收口已执行：
-  - `cd frontend-rekaui && yarn lint --fix`
-  - `cd frontend-rekaui && yarn typecheck`
-  - `git diff --check -- docs/todo.md frontend-rekaui`
+### 中优先级
+
+#### 3. 功能实现
+- **流水线模板详情页阶段编排拓扑排序**：当前已移除手动序号列，需要根据依赖关系自动排序
+- **变量声明表格重置功能**：当前操作列文案已从"删除"改为"重置"，但实际行为仍是删除，需要实现真正的重置到默认值逻辑
+
+#### 4. 表格对齐统一
+部分表格标题左右对齐不一致，需要统一规范：
+- 列表类表格（`app-table-list`）：标题和内容都左对齐，操作列右对齐
+- 详情类表格（`app-table-detail`）：标题和内容都左对齐，操作列右对齐
+
+### 低优先级
+
+#### 5. 优化项
+- 状态徽标颜色可进一步抽成共享状态类（非阻塞项）
+- `ComboboxSelect` 若需支持更复杂对象值，再单独扩展（当前已满足需求）
+
+
+## 页面迁移验证记录
+
+### 验证完成情况
+已完成 15 个页面的功能完整性对比验证（8 个 CI 模块 + 7 个 CD 模块）
+
+### CI 模块（8/8 完成）
+
+| 页面 | 状态 | 备注 |
+|------|------|------|
+| PipelineTemplateDetail.vue | ✅ | ⚠️ 拖拽排序功能已移除 |
+| PipelineSnapshotDetail.vue | ✅ | 功能完整，新增多个改进 |
+| PipelineRunPage.vue | ✅ | ⚠️ 重试/取消按钮已移除（有意） |
+| PipelineRunDetail.vue | ✅ | 功能完整，日志查看改进 |
+| CredentialPage.vue | ✅ | 新增搜索功能 |
+| CredentialDetail.vue | ✅ | 按钮样式改进 |
+| BuildStagePage.vue | ✅ | 新增搜索功能 |
+| BuildStage.vue | ✅ | ⚠️ 脚本编辑器降级为 textarea |
+
+### CD 模块（7/7 完成）
+
+| 页面 | 状态 | 备注 |
+|------|------|------|
+| ArtifactPage.vue | ✅ | 新增搜索功能 |
+| TraefikRoutePage.vue | ✅ | 新增搜索功能，错误处理改进 |
+| RoutePage.vue | ✅ | 新增搜索、created_at 列 |
+| RouteDetail.vue | ✅ | HTTPS 配置 UI 改进 |
+| DeploymentPage.vue | ✅ | 新增应用筛选、错误列 |
+| DeploymentDetail.vue | ✅ | 日志状态机改进，智能返回按钮 |
+| ApplicationPage.vue | ✅ | 分页大小选择器，导入功能增强 |
+| ApplicationDetail.vue | ✅ | 服务镜像表格增强，路由选择改进 |
+
+### 主要改进点
+- 所有列表页新增搜索功能
+- 统一使用共享组件（AppDialog、AppDrawer、ComboboxSelect）
+- 表格样式统一（app-table-list、app-table-detail）
+- 部署/停止操作跳转到详情页（更好的 UX）
+- 日志查看状态机更完善
+
+
+## 历史变更记录
+
+### 2026-05-10
+- 完成 15 个页面的迁移验证（8 个 CI + 7 个 CD）
+- 修复多个确认对话框的实现方式
+- 重构 todo.md 文档结构
+
+### 2026-05-09
+- 新增 `docs/style.md`，承载风格一致性规范
+- 统一脚本抽屉风格（960px 宽度）
+- 统一文件抽屉风格（960px 宽度）
+- 修复 `DeploymentDetail.vue` 应用详情链接路由
+- 修复 `PipelineRunDetail.vue` Stage 日志抽屉状态
+- 收口 `ApplicationDetail.vue` 应用路由弹窗的服务选择
+- 收口 CI/CD 列表工具条样式（新增 `app-toolbar-*` 类）
+- 建立模态窗风格标准并完成第一轮收口
+- 统一取消模态窗自动 focus 行为
+- 删除遗留组件 `StageEdit.vue`
+- 移除流水线模板详情页阶段编排表格的序号列
+- 变量声明表格操作列文案从"删除"改为"重置"
+- 变量声明表格无值时显示从斜体"未设置"改为普通"—"

@@ -230,10 +230,11 @@
 		<AppDialog
 			v-model:open="isDeleteArtifactDialogOpen"
 			title="删除制品"
-			description="确定删除此制品配置？"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">
+				确定删除制品「<strong>{{ sortableArtifacts[artifactToDelete]?.name }}</strong>」？
+			</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteArtifactDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="saving" @click="removeArtifact">
@@ -245,10 +246,11 @@
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
 			title="删除 Stage"
-			description="确定删除此 Stage？此操作不可恢复。"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">
+				确定删除 Stage「<strong>{{ stage?.name }}</strong>」？此操作不可恢复。
+			</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="deleting" @click="handleDelete">

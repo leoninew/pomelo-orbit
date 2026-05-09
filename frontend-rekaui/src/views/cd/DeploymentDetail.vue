@@ -5,15 +5,15 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="deployment && !isTerminalStatus(deployment.status)"
-					class="app-button h-9 px-3"
+					class="app-button-danger h-9 px-3"
 					@click="isCancelDialogOpen = true"
 				>
 					<X class="size-4" />
 					取消部署
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/cd/deployments')">
+				<button class="app-button h-9 px-4" @click="goBack">
 					<ArrowLeft class="size-4" />
-					返回
+					{{ backButtonText }}
 				</button>
 			</div>
 		</div>
@@ -130,10 +130,9 @@
 		<AppDialog
 			v-model:open="isCancelDialogOpen"
 			title="确认取消"
-			description="确定要取消此部署吗？"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">确定要取消此部署吗？</p>
 			<template #footer>
 				<button type="button" class="app-button" @click="isCancelDialogOpen = false">取消</button>
 				<button type="button" class="app-button-destructive" @click="handleCancel">确认取消</button>
@@ -171,6 +170,16 @@
 	const isCancelDialogOpen = ref(false);
 	const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
 	let logAbort: AbortController | null = null;
+
+	const backButtonText = computed(() => (route.query.from === 'application' ? '返回应用' : '返回'));
+
+	function goBack() {
+		if (route.query.from === 'application' && deployment.value?.application_id) {
+			router.push(`/cd/applications/${deployment.value.application_id}`);
+			return;
+		}
+		router.push('/cd/deployments');
+	}
 
 	const statusBadgeClass = computed(() => {
 		const s = deployment.value?.status;

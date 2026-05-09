@@ -128,10 +128,9 @@
 	<AppDialog
 		v-model:open="showDeleteDialog"
 		title="确认删除"
-		description="确定要删除这个凭据吗？此操作不可恢复。"
 		width-class="w-[min(420px,calc(100vw-32px))]"
-		body-class="hidden"
 	>
+		<p class="text-sm text-foreground">确定要删除这个凭据吗？此操作不可恢复。</p>
 		<template #footer>
 			<button class="app-button" @click="showDeleteDialog = false">取消</button>
 			<button class="app-button-destructive" :disabled="operating" @click="handleDelete">

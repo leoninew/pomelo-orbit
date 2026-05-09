@@ -109,10 +109,9 @@
 		<AppDialog
 			v-model:open="isDeleteModalOpen"
 			title="删除凭据"
-			description="确定删除此凭据？"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">确定删除此凭据？</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteModalOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">

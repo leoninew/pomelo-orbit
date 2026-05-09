@@ -1,6 +1,6 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="仓库工具栏">
+		<ToolbarRoot class="app-toolbar-simple" aria-label="仓库工具栏">
 			<SearchControl
 				v-model="searchText"
 				placeholder="搜索名称/地址"

@@ -1,7 +1,7 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="overflow-x-auto" aria-label="流水线记录工具栏">
-			<div class="flex min-w-max items-center gap-2">
+		<ToolbarRoot class="app-toolbar-scroll" aria-label="流水线记录工具栏">
+			<div class="app-toolbar-row">
 				<ComboboxSelect
 					:model-value="query.repository_id"
 					:options="repositoryOptions"

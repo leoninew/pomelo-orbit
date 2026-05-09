@@ -1,13 +1,14 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="flex flex-wrap items-center justify-between gap-3" aria-label="模板工具栏">
-			<SearchControl
-				v-model="searchText"
-				placeholder="搜索模板名称"
-				:loading="status === 'loading'"
-				@search="handleSearch"
-			/>
-			<div class="flex items-center gap-3">
+		<ToolbarRoot class="app-toolbar-scroll" aria-label="模板工具栏">
+			<div class="app-toolbar-row">
+				<SearchControl
+					v-model="searchText"
+					placeholder="搜索模板名称"
+					:loading="status === 'loading'"
+					class="shrink-0"
+					@search="handleSearch"
+				/>
 				<ToggleGroupRoot
 					v-model="viewMode"
 					type="single"

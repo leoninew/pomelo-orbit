@@ -71,6 +71,18 @@
 		@apply border-b border-border px-5 py-4;
 	}
 
+	.app-toolbar-simple {
+		@apply flex flex-wrap items-center justify-between gap-6;
+	}
+
+	.app-toolbar-scroll {
+		@apply overflow-x-auto;
+	}
+
+	.app-toolbar-row {
+		@apply flex min-w-max items-center gap-3;
+	}
+
 	.app-field-label {
 		@apply text-sm font-medium text-foreground;
 	}

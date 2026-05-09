@@ -8,7 +8,11 @@
 	>
 		<ComboboxAnchor
 			class="app-combobox-anchor"
-			:class="[widthClass, disabled ? 'cursor-not-allowed opacity-60' : '']"
+			:class="[
+				widthClass,
+				disabled ? 'cursor-not-allowed opacity-60' : '',
+				invalid ? 'app-input-error' : '',
+			]"
 		>
 			<ComboboxInput
 				:display-value="displayValue"
@@ -103,6 +107,7 @@
 			portal?: boolean
 			widthClass?: string
 			openOnFocus?: boolean
+			invalid?: boolean
 		}>(),
 		{
 			placeholder: '请选择',
@@ -111,6 +116,7 @@
 			portal: true,
 			widthClass: 'w-full',
 			openOnFocus: true,
+			invalid: false,
 		}
 	);
 

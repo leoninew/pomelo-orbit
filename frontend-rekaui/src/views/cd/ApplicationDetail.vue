@@ -394,59 +394,16 @@
 					选择服务
 					<span class="text-destructive">*</span>
 				</label>
-				<ComboboxRoot
-					v-model="selectedService"
-					:display-value="(s: ComposeServiceResp | null) => s?.service_name || ''"
-					@update:model-value="onServiceChange"
-				>
-					<ComboboxAnchor
-						class="app-combobox-anchor"
-						:class="routeFormErrors.service_name ? 'app-input-error' : ''"
-					>
-						<Search class="size-4 shrink-0 text-muted-foreground" />
-						<ComboboxInput
-							v-model="serviceSearchTerm"
-							placeholder="搜索服务..."
-							class="grow bg-transparent outline-none placeholder:text-muted-foreground"
-						/>
-						<ComboboxCancel v-if="selectedService" as-child>
-							<button
-								class="text-muted-foreground transition-colors hover:text-foreground"
-								aria-label="清除服务"
-							>
-								<X class="size-3.5" />
-							</button>
-						</ComboboxCancel>
-						<ComboboxTrigger as-child>
-							<button class="text-muted-foreground" aria-label="展开服务列表">
-								<ChevronDown class="size-4" />
-							</button>
-						</ComboboxTrigger>
-					</ComboboxAnchor>
-					<ComboboxPortal disabled>
-						<ComboboxContent
-							position="popper"
-							align="start"
-							class="app-popover-content w-[var(--reka-combobox-trigger-width)]"
-							:side-offset="4"
-						>
-							<ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">
-								未找到服务
-							</ComboboxEmpty>
-							<ComboboxItem
-								v-for="service in filteredServices"
-								:key="service.service_name"
-								:value="service"
-								class="app-option-item flex-col items-start"
-							>
-								<span class="text-sm text-foreground">{{ service.service_name }}</span>
-								<span class="text-xs text-muted-foreground">
-									{{ service.default_domain }}:{{ service.default_port }}
-								</span>
-							</ComboboxItem>
-						</ComboboxContent>
-					</ComboboxPortal>
-				</ComboboxRoot>
+				<ComboboxSelect
+					:model-value="routeForm.service_name"
+					:options="composeServiceOptions"
+					:invalid="Boolean(routeFormErrors.service_name)"
+					:open-on-focus="false"
+					:portal="false"
+					placeholder="搜索服务..."
+					empty-text="未找到服务"
+					@update:model-value="handleRouteServiceChange"
+				/>
 				<p v-if="routeFormErrors.service_name" class="app-field-error mt-1 text-xs">
 					{{ routeFormErrors.service_name }}
 				</p>
@@ -511,25 +468,15 @@
 </template>
 
 <script setup lang="ts">
-	import { ChevronDown, Download, Eye, Plus, Search, X } from 'lucide-vue-next';
+	import { Download, Eye, Plus } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
-	import {
-		ComboboxAnchor,
-		ComboboxCancel,
-		ComboboxContent,
-		ComboboxInput,
-		ComboboxItem,
-		ComboboxPortal,
-		ComboboxRoot,
-		ComboboxTrigger,
-		ComboboxEmpty,
-	} from 'reka-ui';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
+	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
@@ -579,8 +526,6 @@
 
 	const routeForm = reactive({ service_name: '', domain: '', port: 80 });
 	const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
-	const selectedService = ref<ComposeServiceResp | null>(null);
-	const serviceSearchTerm = ref('');
 	const serviceConfigForm = reactive({ image: '' });
 
 	const fileDrawerVisible = ref(false);
@@ -612,14 +557,13 @@
 		activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : ''
 	);
 
-	const filteredServices = computed(() => {
-		if (!serviceSearchTerm.value) {
-			return composeServices.value;
-		}
-		return composeServices.value.filter((s) =>
-			s.service_name.toLowerCase().includes(serviceSearchTerm.value.toLowerCase())
-		);
-	});
+	const composeServiceOptions = computed(() =>
+		composeServices.value.map((service) => ({
+			value: service.service_name,
+			label: service.service_name,
+			description: `${service.default_domain}:${service.default_port}`,
+		}))
+	);
 	const serviceConfigDirty = computed(
 		() => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
 	);
@@ -1018,11 +962,14 @@
 		}
 	}
 
-	function onServiceChange(service: ComposeServiceResp | null) {
+	function handleRouteServiceChange(value: ComboboxOptionValue) {
+		const serviceName = String(value || '');
+		const service = composeServices.value.find((item) => item.service_name === serviceName);
 		if (service) {
 			routeForm.service_name = service.service_name;
 			routeForm.domain = service.default_domain;
 			routeForm.port = service.default_port;
+			routeFormErrors.service_name = '';
 		} else {
 			routeForm.service_name = '';
 		}
@@ -1032,8 +979,6 @@
 		editingRouteId.value = '';
 		Object.assign(routeForm, { service_name: '', domain: '', port: 80 });
 		Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
-		selectedService.value = null;
-		serviceSearchTerm.value = '';
 		await loadComposeServices();
 		if (composeServices.value.length === 0) {
 			return;
@@ -1049,10 +994,6 @@
 		if (composeServices.value.length === 0) {
 			return;
 		}
-		// 设置选中的服务
-		selectedService.value =
-			composeServices.value.find((s) => s.service_name === r.service_name) || null;
-		serviceSearchTerm.value = '';
 		isRouteDialogOpen.value = true;
 	}
 

@@ -336,8 +336,16 @@
 				<pre v-if="logsText" class="whitespace-pre-wrap">{{ logsText }}</pre>
 				<div v-else class="flex h-full items-center justify-center text-muted-foreground">
 					<div class="text-center">
-						<AppSpinner />
-						<p class="mt-2">加载日志中...</p>
+						<AppSpinner v-if="stageLogStatus === 'loading' || stageLogStatus === 'streaming'" />
+						<p v-if="stageLogStatus === 'loading'" class="mt-2">加载日志中...</p>
+						<p v-else-if="stageLogStatus === 'streaming'" class="mt-2">等待日志输出...</p>
+						<p v-else-if="stageLogStatus === 'empty'">暂无日志输出</p>
+						<div v-else-if="stageLogStatus === 'error'">
+							<p class="text-destructive">{{ stageLogError || '日志加载失败' }}</p>
+							<button type="button" class="app-link mt-2 text-sm" @click="retryStageLog">
+								重试
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -400,6 +408,8 @@
 	const showLogsDrawer = ref(false);
 	const isCancelDialogOpen = ref(false);
 	const stagesView = ref<'list' | 'dag'>('list');
+	const stageLogStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
+	const stageLogError = ref('');
 
 	const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
 	const stageRuns = computed(() => run.value?.stage_runs ?? []);
@@ -420,7 +430,6 @@
 
 	// 日志 drawer 状态
 	const logsText = ref('');
-	const logsLoading = ref(false);
 	const logContainer = ref<HTMLDivElement>();
 	let logPollAbort: AbortController | null = null;
 
@@ -485,6 +494,8 @@
 		logPollAbort?.abort();
 		currentStageRun.value = sr;
 		logsText.value = '';
+		stageLogStatus.value = 'loading';
+		stageLogError.value = '';
 		showLogsDrawer.value = true;
 		startLogPolling(sr.id);
 	}
@@ -510,30 +521,51 @@
 		closeLogDrawer();
 	}
 
+	function retryStageLog() {
+		if (!currentStageRun.value) {
+			return;
+		}
+		logPollAbort?.abort();
+		logsText.value = '';
+		stageLogStatus.value = 'loading';
+		stageLogError.value = '';
+		startLogPolling(currentStageRun.value.id);
+	}
+
 	async function startLogPolling(stageRunId: string) {
 		logPollAbort = new AbortController();
 		const signal = logPollAbort.signal;
-		logsLoading.value = true;
+		stageLogStatus.value = 'loading';
 		let offset = 0;
 
 		while (!signal.aborted) {
 			try {
 				const resp = await pipelineRunApi.getStageLog(runId.value, stageRunId, offset);
+				if (signal.aborted) {
+					break;
+				}
 				if (currentStageRun.value?.id !== stageRunId) {
 					break;
 				}
 				if (resp.logs) {
 					logsText.value += resp.logs;
 					offset = resp.offset;
+					stageLogStatus.value = resp.is_complete ? 'done' : 'streaming';
 					await nextTick();
 					scrollToBottom();
+				} else if (resp.is_complete) {
+					stageLogStatus.value = logsText.value ? 'done' : 'empty';
+				} else {
+					stageLogStatus.value = 'streaming';
 				}
-				logsLoading.value = false;
 				if (resp.is_complete) {
 					break;
 				}
-			} catch {
-				logsLoading.value = false;
+			} catch (error) {
+				if (!signal.aborted) {
+					stageLogStatus.value = 'error';
+					stageLogError.value = error instanceof Error ? error.message : '日志加载失败';
+				}
 				break;
 			}
 			await delayAsync(1500);

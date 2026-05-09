@@ -1,23 +1,44 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="overflow-x-auto" aria-label="应用工具栏">
-			<div class="flex min-w-max items-center gap-2">
-				<SearchControl
-					v-model="searchText"
-					placeholder="搜索应用名称"
-					:loading="status === 'loading'"
-					class="shrink-0"
-					@search="handleSearch"
-				/>
+		<ToolbarRoot class="app-toolbar-simple" aria-label="应用工具栏">
+			<SearchControl
+				v-model="searchText"
+				placeholder="搜索应用名称"
+				:loading="status === 'loading'"
+				class="shrink-0"
+				@search="handleSearch"
+			/>
+			<div class="flex items-center gap-3">
+				<ToggleGroupRoot
+					v-model="viewMode"
+					type="single"
+					class="flex h-10 overflow-hidden rounded-md border border-border bg-background"
+					aria-label="应用视图"
+				>
+					<ToggleGroupItem
+						value="card"
+						class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+						aria-label="卡片视图"
+					>
+						<LayoutGrid class="size-4" />
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						value="table"
+						class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+						aria-label="表格视图"
+					>
+						<List class="size-4" />
+					</ToggleGroupItem>
+				</ToggleGroupRoot>
 				<button
-					class="app-button-primary h-10 px-4"
+					class="app-button-primary px-5"
 					:disabled="status === 'loading'"
 					@click="openCreateDialog"
 				>
 					<Plus class="size-4" />
 					新建应用
 				</button>
-				<button class="app-button h-10 px-4" @click="triggerImport">
+				<button class="app-button px-5" @click="triggerImport">
 					<Upload class="size-4" />
 					导入
 				</button>
@@ -31,84 +52,161 @@
 			</div>
 		</ToolbarRoot>
 
-		<!-- Table Card -->
-		<div class="app-surface">
-			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
+		<!-- 加载 / 错误 -->
+		<div v-if="status === 'loading'" class="app-surface">
+			<AppSpinner class="py-16" />
+		</div>
+		<div v-else-if="status === 'error'" class="app-surface">
+			<div class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
-			</div>
-			<div v-else-if="applications.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">暂无数据</p>
-			</div>
-			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[1040px]">
-					<thead>
-						<tr>
-							<th>名称</th>
-							<th>编码</th>
-							<th>拉取策略</th>
-							<th>状态</th>
-							<th>路由管理</th>
-							<th>创建时间</th>
-							<th>操作</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="app in applications" :key="app.id">
-							<td>
-								<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
-									{{ app.name }}
-								</button>
-							</td>
-							<td class="text-foreground">{{ app.code }}</td>
-							<td class="text-foreground">{{ app.image_pull_policy }}</td>
-							<td>
-								<span
-									class="inline-flex rounded-md border px-2 py-0.5 text-sm"
-									:class="appBadgeClass(app.status)"
-								>
-									{{ appStatusLabel(app.status) }}
-								</span>
-							</td>
-							<td class="text-foreground">{{ app.route_managed ? '启用' : '未启用' }}</td>
-							<td class="text-foreground">{{ formatTime(app.created_at) }}</td>
-							<td>
-								<div class="flex items-center gap-3">
-									<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
-										查看
-									</button>
-									<button
-										v-if="app.status === 'deployed'"
-										class="app-link-danger"
-										:disabled="operating"
-										@click="handleStop(app)"
-									>
-										{{ operatingAppId === app.id ? '停止中' : '停止' }}
-									</button>
-									<button
-										v-else
-										class="app-link"
-										:disabled="app.status === 'deploying' || operating"
-										@click="handleDeploy(app)"
-									>
-										{{ app.status === 'deploying' ? '部署中' : '部署' }}
-									</button>
-								</div>
-							</td>
-						</tr>
-					</tbody>
-				</table>
 			</div>
 		</div>
 
-		<ListPagination
-			:current="pagination.current"
-			:page-size="pagination.pageSize"
-			:total="pagination.total"
-			:total-pages="totalPages"
-			@change-page="goPage"
-			@change-page-size="handlePageSizeChange"
-		/>
+		<!-- 卡片视图 -->
+		<template v-else-if="viewMode === 'card'">
+			<div v-if="applications.length === 0" class="app-surface">
+				<div class="flex flex-col items-center justify-center py-16">
+					<Inbox class="size-12 text-muted-foreground" />
+					<p class="mt-2 text-sm text-muted-foreground">暂无应用</p>
+				</div>
+			</div>
+			<div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				<div
+					v-for="app in applications"
+					:key="app.id"
+					class="app-surface group cursor-pointer p-4 transition-colors hover:border-primary"
+					@click="router.push(`/cd/applications/${app.id}`)"
+				>
+					<div class="mb-3 flex items-start justify-between gap-2">
+						<h3
+							class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary"
+						>
+							{{ app.name }}
+						</h3>
+						<span
+							class="inline-flex shrink-0 rounded-md border px-2 py-0.5 text-xs"
+							:class="appBadgeClass(app.status)"
+						>
+							{{ appStatusLabel(app.status) }}
+						</span>
+					</div>
+					<div class="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+						<span>编码: {{ app.code }}</span>
+						<span>拉取策略: {{ app.image_pull_policy }}</span>
+					</div>
+					<div class="mb-4 text-xs text-muted-foreground">
+						路由托管:
+						<span v-if="app.route_managed" class="font-medium text-green-600">已启用</span>
+						<span v-else>未启用</span>
+					</div>
+					<div class="flex items-center justify-between" @click.stop>
+						<span class="text-xs text-muted-foreground">{{ formatTime(app.created_at) }}</span>
+						<div class="flex items-center gap-2">
+							<button
+								v-if="app.status === 'deployed'"
+								class="app-link-danger text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+								:disabled="operating"
+								@click="handleStop(app)"
+							>
+								停止
+							</button>
+							<button
+								v-else
+								class="app-link text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+								:disabled="app.status === 'deploying' || operating"
+								@click="handleDeploy(app)"
+							>
+								部署
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</template>
+
+		<!-- 表格视图 -->
+		<template v-else>
+			<div class="app-surface">
+				<div v-if="applications.length === 0" class="text-center py-16 text-muted-foreground">
+					<p class="text-sm">暂无应用</p>
+				</div>
+				<div v-else class="overflow-x-auto">
+					<table class="app-table-list min-w-[1040px]">
+						<thead>
+							<tr>
+								<th>名称</th>
+								<th>编码</th>
+								<th>拉取策略</th>
+								<th>状态</th>
+								<th>路由管理</th>
+								<th>创建时间</th>
+								<th>操作</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="app in applications" :key="app.id">
+								<td>
+									<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
+										{{ app.name }}
+									</button>
+								</td>
+								<td class="text-foreground">{{ app.code }}</td>
+								<td class="text-foreground">{{ app.image_pull_policy }}</td>
+								<td>
+									<span
+										class="inline-flex rounded-md border px-2 py-0.5 text-sm"
+										:class="appBadgeClass(app.status)"
+									>
+										{{ appStatusLabel(app.status) }}
+									</span>
+								</td>
+								<td class="text-foreground">{{ app.route_managed ? '启用' : '未启用' }}</td>
+								<td class="text-foreground">{{ formatTime(app.created_at) }}</td>
+								<td>
+									<div class="flex items-center gap-3">
+										<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
+											查看
+										</button>
+										<button
+											v-if="app.status === 'deployed'"
+											class="app-link-danger"
+											:disabled="operating"
+											@click="handleStop(app)"
+										>
+											停止
+										</button>
+										<button
+											v-else
+											class="app-link"
+											:disabled="app.status === 'deploying' || operating"
+											@click="handleDeploy(app)"
+										>
+											部署
+										</button>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<ListPagination
+				:current="pagination.current"
+				:page-size="pagination.pageSize"
+				:total="pagination.total"
+				:total-pages="totalPages"
+				@change-page="goPage"
+				@change-page-size="handlePageSizeChange"
+			/>
+		</template>
 
 		<AppDialog
 			v-model:open="isCreateDialogOpen"
@@ -152,7 +250,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Plus, Upload } from 'lucide-vue-next';
+	import { Inbox, LayoutGrid, List, Plus, Upload } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
@@ -170,7 +268,7 @@
 	} from '@/types/cd/application';
 	import { appStatusLabel } from '@/utils/status';
 	import { formatTime } from '@/utils/time';
-	import { ToolbarRoot } from 'reka-ui';
+	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 	import ApplicationFormFields from './ApplicationFormFields.vue';
 
 	const router = useRouter();
@@ -180,6 +278,7 @@
 
 	const applications = ref<Application[]>([]);
 	const searchText = ref('');
+	const viewMode = ref<'card' | 'table'>('card');
 	const isCreateDialogOpen = ref(false);
 	const isImportDialogOpen = ref(false);
 	const fileInput = ref<HTMLInputElement>();

@@ -35,7 +35,7 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">应用</dt>
 						<dd>
-							<router-link :to="`/cd/application/${deployment.application_id}`" class="app-link">
+							<router-link :to="`/cd/applications/${deployment.application_id}`" class="app-link">
 								{{ deployment.application_name || deployment.application_id }}
 							</router-link>
 						</dd>

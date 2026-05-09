@@ -138,8 +138,9 @@ def delete_repository(
     repository_id: str,
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     _current_user=Depends(get_current_user),
+    delete_workspace: Annotated[bool, Query()] = False,
 ) -> None:
-    repository_service.delete_repository(repository_id)
+    repository_service.delete_repository(repository_id, delete_workspace=delete_workspace)
 
 
 @router.get("/{repository_id}/run", response_model=PaginatedResp[PipelineRunResp])

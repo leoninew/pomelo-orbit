@@ -13,7 +13,6 @@ from pomelo_orbit.domain.ci.entities import (
     Repository,
     StageRun,
 )
-from pomelo_orbit.infrastructure.time_utils import from_iso8601
 from pomelo_orbit.domain.ci.executor import ExecutionContext, PipelineExecutor
 from pomelo_orbit.domain.ci.repositories import (
     ArtifactRepository,
@@ -39,6 +38,7 @@ from pomelo_orbit.infrastructure.ci.workspace import (
     create_workspace,
     get_stage_log_path,
 )
+from pomelo_orbit.infrastructure.time_utils import from_iso8601
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +119,13 @@ class PipelineRunService:
     # ── 查询方法 ──────────────────────────────────────────────────────────────
 
     def list_runs(
-        self, page: int = 1, per_page: int = 20, repository_id: str | None = None, template_id: str | None = None,
-        date_from: str | None = None, date_to: str | None = None,
+        self,
+        page: int = 1,
+        per_page: int = 20,
+        repository_id: str | None = None,
+        template_id: str | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
     ) -> PaginatedRuns:
         """分页查询运行列表"""
         if repository_id:
@@ -130,8 +135,12 @@ class PipelineRunService:
         date_from_dt = from_iso8601(date_from) if date_from else None
         date_to_dt = from_iso8601(date_to) if date_to else None
         runs, total = self.run_repo.find_paginated_with_filters(
-            page=page, per_page=per_page, repository_id=repository_id, template_id=template_id,
-            date_from=date_from_dt, date_to=date_to_dt,
+            page=page,
+            per_page=per_page,
+            repository_id=repository_id,
+            template_id=template_id,
+            date_from=date_from_dt,
+            date_to=date_to_dt,
         )
         return PaginatedRuns(runs=runs, total=total)
 

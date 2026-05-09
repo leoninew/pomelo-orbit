@@ -447,7 +447,7 @@ function openDeleteModal() {
 async function handleDeleteOk() {
 	try {
 		await executeOp(async () => {
-			await repositoryApi.delete(repositoryId);
+			await repositoryApi.delete(repositoryId, { delete_workspace: deleteWorkspace.value });
 			toast.success('删除成功');
 			router.push('/ci/repository');
 		});

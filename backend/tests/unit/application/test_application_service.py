@@ -546,6 +546,7 @@ class TestStopApplicationBusinessLogic:
         assert app.status == ApplicationStatus.UNDEPLOYED
         mock_app_repo.save.assert_called_once_with(app)
 
+
 class TestRestartApplicationBusinessLogic:
     """重启应用业务逻辑测试"""
 
@@ -808,8 +809,10 @@ class TestSimplifiedDeploymentFlow:
         await app_service.stop_application("app-1")
 
         # 验证没有调用 find_last_successful_deploy
-        assert not hasattr(mock_deployment_repo, "find_last_successful_deploy") or \
-               not mock_deployment_repo.find_last_successful_deploy.called
+        assert (
+            not hasattr(mock_deployment_repo, "find_last_successful_deploy")
+            or not mock_deployment_repo.find_last_successful_deploy.called
+        )
 
         # 验证 stop 调用只包含 application_code 和 remove_volumes 参数
         mock_app_manager.stop.assert_called_once()

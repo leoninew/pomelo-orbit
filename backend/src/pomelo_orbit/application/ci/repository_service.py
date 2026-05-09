@@ -117,10 +117,16 @@ class RepositoryService:
         self.repository_repo.save(repository)
         return repository
 
-    def delete_repository(self, repository_id: str) -> None:
-        """删除项目（检查运行中的流水线）"""
+    def delete_repository(self, repository_id: str, delete_workspace: bool = False) -> None:
+        """删除项目（检查运行中的流水线）
+
+        Args:
+            repository_id: 仓库ID
+            delete_workspace: 是否同时删除工作目录
+        """
         repository = self.get_repository(repository_id)
         if self.repository_repo.has_running_pipelines(repository_id):
             raise BusinessError("Repository has running pipelines, cannot delete", status_code=409)
         self.repository_repo.delete(repository)
-        cleanup_project(repository.code)
+        if delete_workspace:
+            cleanup_project(repository.code)

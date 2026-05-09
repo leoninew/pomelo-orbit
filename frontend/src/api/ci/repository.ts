@@ -24,8 +24,8 @@ export const repositoryApi = {
 		return request.put(`/api/ci/repository/${id}`, data);
 	},
 
-	delete(id: string): Promise<void> {
-		return request.delete(`/api/ci/repository/${id}`);
+	delete(id: string, params?: { delete_workspace?: boolean }): Promise<void> {
+		return request.delete(`/api/ci/repository/${id}`, { params });
 	},
 
 	trigger(id: string, data?: PipelineRunTriggerReq): Promise<PipelineRun> {

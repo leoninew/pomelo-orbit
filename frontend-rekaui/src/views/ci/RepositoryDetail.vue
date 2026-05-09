@@ -47,14 +47,8 @@
 
 		<template v-else-if="repository">
 			<div class="app-surface">
-				<div class="app-section-header flex items-center justify-between">
+				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">基本信息</h2>
-					<router-link
-						:to="`/ci/run?repository_id=${repository.id}`"
-						class="app-link text-sm font-medium"
-					>
-						查看流水线记录
-					</router-link>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
@@ -86,6 +80,14 @@
 								{{ repository.git_credential_name || repository.git_credential_id }}
 							</router-link>
 							<span v-else class="text-muted-foreground">未配置</span>
+						</dd>
+					</div>
+					<div class="flex gap-2">
+						<dt class="w-24 shrink-0 text-muted-foreground">流水线记录</dt>
+						<dd>
+							<router-link :to="`/ci/run?repository_id=${repository.id}`" class="app-link">
+								查看所有记录
+							</router-link>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -192,10 +194,15 @@
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
 			title="删除仓库"
-			:description="`确定要删除仓库「${repository?.name ?? ''}」吗？此操作不可撤销。`"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-foreground">
+				确定要删除仓库「<strong>{{ repository?.name ?? '' }}</strong>」吗？此操作不可撤销。
+			</p>
+			<label class="mt-4 flex cursor-pointer items-center gap-2">
+				<input v-model="deleteWorkspace" type="checkbox" class="size-4 accent-destructive" />
+				<span class="text-sm text-foreground">同时删除工作目录（data/ci/{{ repository?.code }}）</span>
+			</label>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
@@ -317,6 +324,7 @@
 	const isAddVariableDialogOpen = ref(false);
 	const isEditVariableDialogOpen = ref(false);
 	const triggerModalRef = ref<InstanceType<typeof TriggerModal>>();
+	const deleteWorkspace = ref(false);
 
 	const editForm = reactive({
 		name: '',
@@ -486,13 +494,14 @@
 	}
 
 	function openDeleteDialog() {
+		deleteWorkspace.value = false;
 		isDeleteDialogOpen.value = true;
 	}
 
 	async function handleDeleteOk() {
 		try {
 			await executeOp(async () => {
-				await repositoryApi.delete(repositoryId);
+				await repositoryApi.delete(repositoryId, { delete_workspace: deleteWorkspace.value });
 				toast.success('删除成功');
 				router.push('/ci/repository');
 			});

@@ -72,8 +72,8 @@
 			<div class="space-y-1.5">
 				<div class="flex items-center justify-between">
 					<label class="app-field-label block">制品（可选）</label>
-					<button class="app-button flex items-center gap-1 px-3 py-1 text-xs" @click="addArtifact">
-						<Plus class="h-3 w-3" />
+					<button class="app-button-primary flex items-center gap-1 px-3 py-1 text-xs" @click="addArtifact">
+						<Plus class="size-3" />
 						添加
 					</button>
 				</div>
@@ -127,7 +127,7 @@
 
 		<template #footer>
 			<button class="app-button" @click="closeScriptDrawer">取消</button>
-			<button class="app-button-primary" @click="confirmScript">确定</button>
+			<button class="app-button-primary" @click="confirmScript">保存</button>
 		</template>
 	</AppDrawer>
 </template>

@@ -6,12 +6,17 @@
 				<h1 class="text-xl font-semibold text-foreground">{{ routeData?.name ?? '路由详情' }}</h1>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
+				<button v-if="routeData" class="app-button-primary h-9 px-3" @click="openEditModal">
+					<Pencil class="size-4" />
+					编辑
+				</button>
 				<button
 					v-if="routeData && !routeData.enabled"
 					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="handleEnable"
 				>
+					<Power class="size-4" />
 					启用
 				</button>
 				<button
@@ -20,18 +25,22 @@
 					:disabled="operating"
 					@click="handleDisable"
 				>
+					<PowerOff class="size-4" />
 					停用
 				</button>
-				<button v-if="routeData" class="app-button h-9 px-3" @click="openEditModal">编辑</button>
 				<button
 					v-if="routeData"
 					class="app-button-danger h-9 px-3"
 					:disabled="operating"
 					@click="isDeleteDialogOpen = true"
 				>
+					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/cd/routes')">返回</button>
+				<button class="app-button h-9 px-4" @click="router.push('/cd/routes')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -205,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ExternalLink } from 'lucide-vue-next';
+	import { ArrowLeft, ExternalLink, Pencil, Power, PowerOff, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import type { Route } from '@/api/cd/route';

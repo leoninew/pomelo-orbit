@@ -3,28 +3,40 @@
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
+				<button v-if="template" class="app-button-primary h-9 px-3" @click="openEditInfoModal">
+					<Pencil class="size-4" />
+					编辑
+				</button>
 				<button
 					v-if="template && (isDirty || hasStageUpdates)"
 					:disabled="saving"
 					class="app-button-primary h-9 px-3"
 					@click="handleSave"
 				>
+					<Save class="size-4" />
 					{{ hasStageUpdates && !isDirty ? '更新' : '保存' }}
 				</button>
-				<button v-if="template" class="app-button h-9 px-3" @click="openRunModal">运行</button>
-				<button v-if="template" class="app-button h-9 px-3" @click="openEditInfoModal">编辑</button>
+				<button v-if="template" class="app-button h-9 px-3" @click="openRunModal">
+					<Play class="size-4" />
+					运行
+				</button>
 				<button
 					v-if="template"
 					:disabled="duplicating"
 					class="app-button h-9 px-3"
 					@click="handleDuplicate"
 				>
+					<Copy class="size-4" />
 					复制
 				</button>
 				<button v-if="template" class="app-button-danger h-9 px-3" @click="openDeleteModal">
+					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/ci/template')">返回</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/template')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -87,8 +99,8 @@
 							</button>
 						</div>
 					</div>
-					<button class="app-button-primary h-9 px-3" @click="openAddOrchModal">
-						<Plus class="h-4 w-4" />
+					<button class="app-button-primary h-8 px-3" @click="openAddOrchModal">
+						<Plus class="size-4" />
 						添加阶段
 					</button>
 				</div>
@@ -168,8 +180,8 @@
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">变量声明</h2>
-					<button class="app-button-primary h-9 px-3" @click="openAddVarModal">
-						<Plus class="h-4 w-4" />
+					<button class="app-button-primary h-8 px-3" @click="openAddVarModal">
+						<Plus class="size-4" />
 						添加变量
 					</button>
 				</div>
@@ -432,7 +444,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Plus } from 'lucide-vue-next';
+	import { ArrowLeft, Copy, Pencil, Play, Plus, Save, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 	// import { VueDraggable } from 'vue-draggable-plus';
 	import { useRoute, useRouter } from 'vue-router';

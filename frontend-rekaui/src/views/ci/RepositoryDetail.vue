@@ -13,18 +13,19 @@
 					v-if="repository"
 					class="app-button-primary h-9 px-3"
 					:disabled="operating"
+					@click="openEditDialog"
+				>
+					<Pencil class="size-4" />
+					编辑
+				</button>
+				<button
+					v-if="repository"
+					class="app-button-primary h-9 px-3"
+					:disabled="operating"
 					@click="openTriggerModal"
 				>
 					<Play class="size-4" />
 					触发
-				</button>
-				<button
-					v-if="repository"
-					class="app-button h-9 px-3"
-					:disabled="operating"
-					@click="openEditDialog"
-				>
-					编辑
 				</button>
 				<button
 					v-if="repository"
@@ -35,7 +36,10 @@
 					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/ci/repository')">返回</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/repository')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -98,7 +102,7 @@
 			<div class="app-surface">
 				<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
 					<h2 class="font-semibold text-foreground">变量配置</h2>
-					<button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
+					<button class="app-button-primary h-8 px-3" @click="openAddVariableDialog">
 						<Plus class="size-4" />
 						添加自定义变量
 					</button>
@@ -276,7 +280,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Play, Plus, Trash2 } from 'lucide-vue-next';
+	import { ArrowLeft, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci';

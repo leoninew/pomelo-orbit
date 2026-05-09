@@ -5,7 +5,10 @@
 		<div v-else-if="snapshot" class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-3">
 				<h1 class="text-xl font-semibold text-foreground">快照详情</h1>
-				<button class="app-button h-9 px-4" @click="router.back()">返回</button>
+				<button class="app-button h-9 px-4" @click="router.back()">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 
 			<!-- 基本信息 -->
@@ -183,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+	import { ArrowLeft } from 'lucide-vue-next';
 	import { computed, onMounted, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';

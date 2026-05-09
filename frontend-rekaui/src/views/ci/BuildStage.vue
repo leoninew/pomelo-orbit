@@ -8,13 +8,17 @@
 				</div>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
-				<button v-if="stage" class="app-button h-9 px-3" @click="openEditModal">编辑</button>
+				<button v-if="stage" class="app-button-primary h-9 px-3" @click="openEditModal">
+					<Pencil class="size-4" />
+					编辑
+				</button>
 				<button
 					v-if="stage"
 					class="app-button h-9 px-3"
 					:disabled="duplicating"
 					@click="handleDuplicate"
 				>
+					<Copy class="size-4" />
 					复制
 				</button>
 				<button
@@ -23,9 +27,13 @@
 					:disabled="deleting"
 					@click="openDeleteModal"
 				>
+					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/ci/build-stage')">返回</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/build-stage')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -87,7 +95,7 @@
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">制品配置</h2>
-					<button class="app-button-primary h-9 px-3" @click="openAddArtifactModal">
+					<button class="app-button-primary h-8 px-3" @click="openAddArtifactModal">
 						<Plus class="size-4" />
 						添加制品
 					</button>
@@ -164,12 +172,12 @@
 		<AppDrawer
 			v-model:open="showScriptDrawer"
 			title="编辑脚本"
-			width-class="w-[min(860px,100vw)]"
-			body-class="min-h-0 flex-1 overflow-hidden p-0"
+			width-class="w-[min(960px,100vw)]"
+			body-class="min-h-0 flex-1 overflow-hidden p-4"
 		>
 			<textarea
 				v-model="scriptTemp"
-				class="h-full w-full resize-none border-0 bg-muted/30 p-4 font-mono text-xs text-foreground outline-none"
+				class="app-textarea h-full resize-none font-mono"
 				placeholder="输入执行脚本..."
 			/>
 			<template #footer>
@@ -252,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Plus } from 'lucide-vue-next';
+	import { ArrowLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-vue-next';
 	// import { CodeEditor } from 'monaco-editor-vue3';
 	import { computed, onMounted, reactive, ref, watch } from 'vue';
 	// import { VueDraggable } from 'vue-draggable-plus';

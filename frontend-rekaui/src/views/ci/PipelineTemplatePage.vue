@@ -116,10 +116,12 @@
 						<tr
 							v-for="tpl in templates"
 							:key="tpl.id"
-							class="cursor-pointer"
-							@click="router.push(`/ci/template/${tpl.id}`)"
 						>
-							<td class="max-w-64 truncate text-foreground" :title="tpl.name">{{ tpl.name }}</td>
+							<td class="max-w-64 truncate" :title="tpl.name">
+								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">
+									{{ tpl.name }}
+								</router-link>
+							</td>
 							<td>
 								<span class="app-badge-sm">v{{ tpl.version }}</span>
 							</td>
@@ -128,13 +130,13 @@
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
 							<td class="text-right">
-								<router-link :to="`/ci/template/${tpl.id}`" class="app-link" @click.stop>
+								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">
 									查看
 								</router-link>
 								<button
 									:disabled="duplicating"
 									class="app-link ml-3"
-									@click.stop="handleDuplicate(tpl.id)"
+									@click="handleDuplicate(tpl.id)"
 								>
 									复制
 								</button>

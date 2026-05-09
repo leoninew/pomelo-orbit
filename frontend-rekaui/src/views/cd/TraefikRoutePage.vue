@@ -148,10 +148,6 @@
 		}
 	}
 
-	function handleSearch() {
-		// 前端搜索，无需额外操作
-	}
-
 	function buildRouteUrl(rule: string, tls: boolean): string | null {
 		const match = rule.match(/Host\(`([^`]+)`\)/);
 		if (!match) {

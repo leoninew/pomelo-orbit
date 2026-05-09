@@ -5,10 +5,11 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="credential"
-					class="app-button h-9 px-3"
+					class="app-button-primary h-9 px-3"
 					:disabled="operating"
 					@click="openEditModal"
 				>
+					<Pencil class="size-4" />
 					编辑
 				</button>
 				<button
@@ -26,9 +27,13 @@
 					:disabled="operating"
 					@click="openDeleteModal"
 				>
+					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button class="app-button h-9 px-4" @click="$router.push('/ci/credential')">返回</button>
+				<button class="app-button h-9 px-4" @click="$router.push('/ci/credential')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -119,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Download } from 'lucide-vue-next';
+	import { ArrowLeft, Download, Pencil, Trash2 } from 'lucide-vue-next';
 	import { onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { credentialApi } from '@/api/ci';

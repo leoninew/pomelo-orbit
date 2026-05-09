@@ -9,6 +9,7 @@
 					class="app-button-primary h-9 px-3"
 					@click="handleRetry"
 				>
+					<RotateCcw class="size-4" />
 					重试
 				</button>
 				<button
@@ -17,6 +18,7 @@
 					class="app-button-destructive h-9 px-3"
 					@click="isCancelDialogOpen = true"
 				>
+					<X class="size-4" />
 					取消
 				</button>
 				<button
@@ -28,7 +30,10 @@
 					<Loader2 class="h-4 w-4" :class="isPolling ? 'animate-spin' : ''" />
 					{{ isPolling ? '自动刷新中' : '已暂停刷新' }}
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/ci/run')">返回</button>
+				<button class="app-button h-9 px-4" @click="router.push('/ci/run')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -374,7 +379,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Loader2 } from 'lucide-vue-next';
+	import { ArrowLeft, Loader2, RotateCcw, X } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';

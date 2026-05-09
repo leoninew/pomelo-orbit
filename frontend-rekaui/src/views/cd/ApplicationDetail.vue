@@ -3,23 +3,31 @@
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">{{ application?.name || '应用详情' }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
+				<button v-if="application" class="app-button-primary h-9 px-3" @click="openEditModal">
+					<Pencil class="size-4" />
+					编辑
+				</button>
 				<button
 					v-if="application"
 					:disabled="operating"
 					class="app-button-primary h-9 px-3"
 					@click="handleDeploy"
 				>
+					<Play class="size-4" />
 					部署
 				</button>
 				<button v-if="application" class="app-button h-9 px-3" @click="handleExport">
 					<Download class="size-4" />
 					导出
 				</button>
-				<button v-if="application" class="app-button h-9 px-3" @click="openEditModal">编辑</button>
 				<button v-if="application" class="app-button-danger h-9 px-3" @click="openDeleteModal">
+					<Trash2 class="size-4" />
 					删除
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/cd/applications')">返回</button>
+				<button class="app-button h-9 px-4" @click="router.push('/cd/applications')">
+					<ArrowLeft class="size-4" />
+					返回
+				</button>
 			</div>
 		</div>
 
@@ -76,8 +84,8 @@
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">配置文件</h2>
-					<button class="app-button-primary h-9 px-3" @click="openAddFileDrawer">
-						<Plus class="h-4 w-4" />
+					<button class="app-button-primary h-8 px-3" @click="openAddFileDrawer">
+						<Plus class="size-4" />
 						添加文件
 					</button>
 				</div>
@@ -107,10 +115,9 @@
 								<td>
 									<div class="flex items-center gap-3">
 										<button
-											class="app-link inline-flex items-center gap-1"
+											class="app-link"
 											@click="openFileDrawer(file.id, false)"
 										>
-											<Eye class="h-3 w-3" />
 											查看
 										</button>
 										<button class="app-link" @click="openFileDrawer(file.id, true)">编辑</button>
@@ -197,8 +204,8 @@
 			<div v-if="application.route_managed" class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">路由配置</h2>
-					<button class="app-button-primary h-9 px-3" @click="openAddRouteModal">
-						<Plus class="h-4 w-4" />
+					<button class="app-button-primary h-8 px-3" @click="openAddRouteModal">
+						<Plus class="size-4" />
 						添加路由
 					</button>
 				</div>
@@ -243,34 +250,30 @@
 		<AppDrawer
 			:open="fileDrawerVisible"
 			:title="isEditingInDrawer ? (currentFileId ? '编辑文件' : '添加文件') : '查看文件'"
-			width-class="w-[min(920px,100vw)]"
+			width-class="w-[min(960px,100vw)]"
 			body-class="min-h-0 flex-1 overflow-hidden p-0"
 			@update:open="handleFileDrawerOpenChange"
 		>
-			<div v-if="isEditingInDrawer" class="flex h-full flex-col gap-4 p-6">
-				<div>
-					<label class="app-field-label mb-1.5 block">文件路径</label>
+			<div class="flex h-full flex-col gap-4 p-6">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">文件路径</label>
 					<input
 						v-model="currentFilePath"
 						type="text"
-						:disabled="!!currentFileId"
+						:disabled="!isEditingInDrawer || !!currentFileId"
 						placeholder="例如: docker-compose.yml"
 						class="app-input"
 					/>
 				</div>
-				<div class="min-h-0 flex-1">
-					<label class="app-field-label mb-1.5 block">文件内容</label>
+				<div class="min-h-0 flex-1 space-y-1.5">
+					<label class="app-field-label block">文件内容</label>
 					<textarea
 						v-model="currentFileContent"
+						:disabled="!isEditingInDrawer"
 						class="app-textarea h-[calc(100%-1.75rem)] resize-none font-mono"
 					></textarea>
 				</div>
 			</div>
-			<pre
-				v-else
-				class="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-sm text-foreground"
-			>{{ currentFileContent }}</pre
-			>
 			<template v-if="isEditingInDrawer" #footer>
 				<button class="app-button" @click="handleDrawerClose">取消</button>
 				<button :disabled="fileContentLoading" class="app-button-primary" @click="saveCurrentFile">
@@ -467,7 +470,7 @@
 </template>
 
 <script setup lang="ts">
-	import { Download, Eye, Plus } from 'lucide-vue-next';
+	import { ArrowLeft, Download, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';

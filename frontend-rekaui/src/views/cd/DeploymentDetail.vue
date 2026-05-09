@@ -8,12 +8,13 @@
 					class="app-button h-9 px-3"
 					@click="isCancelDialogOpen = true"
 				>
+					<X class="size-4" />
 					取消部署
 				</button>
-				<button class="app-icon-button" @click="refreshDeployment">
-					<RefreshCw class="h-4 w-4" />
+				<button class="app-button h-9 px-4" @click="router.push('/cd/deployments')">
+					<ArrowLeft class="size-4" />
+					返回
 				</button>
-				<button class="app-button h-9 px-4" @click="router.push('/cd/deployments')">返回</button>
 			</div>
 		</div>
 
@@ -104,8 +105,12 @@
 
 			<!-- 日志卡片 -->
 			<div class="app-surface">
-				<div class="app-section-header">
+				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">部署日志</h2>
+					<button class="app-button h-8 px-3" @click="refreshDeployment">
+						<RefreshCw class="size-4" />
+						刷新
+					</button>
 				</div>
 				<div
 					ref="logContainerRef"
@@ -144,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-	import { RefreshCw } from 'lucide-vue-next';
+	import { ArrowLeft, RefreshCw, X } from 'lucide-vue-next';
 	import { computed, onMounted, onUnmounted, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { deploymentApi } from '@/api/cd/deployments';

@@ -52,11 +52,7 @@
 						<ArrowRight class="size-4" />
 					</button>
 				</div>
-				<div v-if="status === 'loading'" class="flex justify-center py-16">
-					<div
-						class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-					/>
-				</div>
+				<AppSpinner v-if="status === 'loading'" class="py-16" />
 				<div v-else-if="recentRuns.length === 0" class="text-center py-16 text-muted-foreground">
 					<p class="text-sm">暂无构建记录</p>
 				</div>
@@ -108,11 +104,7 @@
 						<ArrowRight class="size-4" />
 					</button>
 				</div>
-				<div v-if="status === 'loading'" class="flex justify-center py-16">
-					<div
-						class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-					/>
-				</div>
+				<AppSpinner v-if="status === 'loading'" class="py-16" />
 				<div v-else-if="recentDeploys.length === 0" class="text-center py-16 text-muted-foreground">
 					<p class="text-sm">暂无部署记录</p>
 				</div>
@@ -158,11 +150,12 @@
 
 <script setup lang="ts">
 	import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
-	import { computed, onMounted, reactive, ref } from 'vue';
+	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import { pipelineRunApi, repositoryApi } from '@/api/ci';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import type { Deployment } from '@/types/cd/deployment';
@@ -218,25 +211,34 @@
 				const todayEnd = todayStart.add(1, 'day');
 
 				const ciProjectsRes = await repositoryApi.list({ per_page: 1 });
-				const ciRunsRes = await pipelineRunApi.list({ per_page: 5 });
+				ciStats.projectCount = ciProjectsRes.total;
+				await nextTick();
 
-				const cdAppsRes = await applicationApi.list({ per_page: 1 });
-				const cdTodayRes = await deploymentApi.list({
-					per_page: 100,
+				const ciRunsRes = await pipelineRunApi.list({ per_page: 5 });
+				recentRuns.value = ciRunsRes.items;
+				await nextTick();
+
+				const ciTodayRunsRes = await pipelineRunApi.list({
+					per_page: 1,
 					date_from: todayStart.toISOString(),
 					date_to: todayEnd.toISOString(),
 				});
-				const cdRecentRes = await deploymentApi.list({ per_page: 5 });
+				ciStats.todayRuns = ciTodayRunsRes.total;
+				await nextTick();
 
-				ciStats.projectCount = ciProjectsRes.total;
-				ciStats.todayRuns = ciRunsRes.items.filter((r) => {
-					const createdAt = new Date(r.created_at);
-					return createdAt >= todayStart.toDate() && createdAt < todayEnd.toDate();
-				}).length;
-				recentRuns.value = ciRunsRes.items;
-
+				const cdAppsRes = await applicationApi.list({ per_page: 1 });
 				cdStats.applicationCount = cdAppsRes.total;
+				await nextTick();
+
+				const cdTodayRes = await deploymentApi.list({
+					per_page: 1,
+					date_from: todayStart.toISOString(),
+					date_to: todayEnd.toISOString(),
+				});
 				cdStats.todayDeploys = cdTodayRes.total;
+				await nextTick();
+
+				const cdRecentRes = await deploymentApi.list({ per_page: 5 });
 				recentDeploys.value = cdRecentRes.items;
 			});
 		} catch {

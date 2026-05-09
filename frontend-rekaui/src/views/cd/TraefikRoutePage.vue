@@ -22,9 +22,7 @@
 
 		<!-- Table Card -->
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="py-16 text-center">
 				<p class="text-sm text-destructive">{{ error || '获取路由失败' }}</p>
 				<p class="mt-1 text-xs text-muted-foreground">请检查 Traefik 服务是否正常运行</p>
@@ -61,7 +59,7 @@
 							<td class="whitespace-nowrap text-foreground">{{ r.provider }}</td>
 							<td>
 								<span
-									class="inline-block rounded border px-2 py-0.5 text-sm"
+									class="app-badge-status-sm"
 									:class="
 										r.status === 'enabled'
 											? 'border-green-200 bg-green-50 text-green-700'
@@ -86,18 +84,14 @@
 							<td class="max-w-0 truncate text-foreground" :title="r.service">{{ r.service }}</td>
 							<td class="max-w-0" :title="r.entrypoints.join(', ')">
 								<div class="flex flex-nowrap gap-1 overflow-hidden">
-									<span
-										v-for="ep in r.entrypoints"
-										:key="ep"
-										class="inline-block shrink-0 rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
-									>
+									<span v-for="ep in r.entrypoints" :key="ep" class="app-badge-sm shrink-0">
 										{{ ep }}
 									</span>
 								</div>
 							</td>
 							<td class="whitespace-nowrap">
 								<span
-									class="inline-block rounded border px-2 py-0.5 text-sm"
+									class="app-badge-status-sm"
 									:class="
 										r.tls
 											? 'border-blue-200 bg-blue-50 text-blue-700'
@@ -121,6 +115,7 @@
 	import { ToolbarRoot } from 'reka-ui';
 	import type { TraefikRouter } from '@/api/cd/traefik-route';
 	import { traefikRouteApi } from '@/api/cd/traefik-route';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

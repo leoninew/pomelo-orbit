@@ -33,9 +33,7 @@
 
 		<!-- Table Card -->
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
@@ -125,7 +123,7 @@
 			<template #footer>
 				<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-					{{ operating ? '保存中...' : '保存' }}
+					保存
 				</button>
 			</template>
 		</AppDialog>
@@ -146,7 +144,7 @@
 			<template #footer>
 				<button class="app-button" @click="isImportDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleImportOk">
-					{{ operating ? '导入中...' : '导入' }}
+					导入
 				</button>
 			</template>
 		</AppDialog>
@@ -159,6 +157,7 @@
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

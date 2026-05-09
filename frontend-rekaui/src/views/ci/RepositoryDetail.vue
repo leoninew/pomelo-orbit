@@ -39,11 +39,7 @@
 			</div>
 		</div>
 
-		<div v-if="status === 'loading'" class="flex justify-center py-12">
-			<span
-				class="inline-block size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-			/>
-		</div>
+		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
 		<template v-else-if="repository">
 			<div class="app-surface">
@@ -185,13 +181,7 @@
 			</div>
 			<template #footer>
 				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleEditOk">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
-					保存
-				</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleEditOk">保存</button>
 			</template>
 		</AppDialog>
 
@@ -205,10 +195,6 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-destructive-foreground border-t-transparent"
-					/>
 					删除
 				</button>
 			</template>
@@ -251,10 +237,6 @@
 			<template #footer>
 				<button class="app-button" @click="isAddVariableDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleAddVariableOk">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
 					保存
 				</button>
 			</template>
@@ -288,10 +270,6 @@
 			<template #footer>
 				<button class="app-button" @click="isEditVariableDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleEditVariableOk">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
 					保存
 				</button>
 			</template>
@@ -305,6 +283,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { credentialApi, pipelineTemplateApi, repositoryApi, webhookApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

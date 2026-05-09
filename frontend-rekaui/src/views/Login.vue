@@ -54,11 +54,7 @@
 						class="app-button-primary flex w-full items-center justify-center gap-2"
 						:disabled="loading"
 					>
-						<span
-							v-if="loading"
-							class="inline-block size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-						/>
-						{{ loading ? '登录中...' : '登录' }}
+						登录
 					</button>
 				</form>
 			</div>

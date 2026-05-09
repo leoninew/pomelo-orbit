@@ -21,13 +21,11 @@
 		</ToolbarRoot>
 
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
-			<div v-else-if="paginatedRoutes.length === 0" class="text-center py-16 text-muted-foreground">
+			<div v-else-if="routes.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
@@ -55,7 +53,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						<tr v-for="route in paginatedRoutes" :key="route.id">
+						<tr v-for="route in routes" :key="route.id">
 							<td>
 								<router-link :to="`/cd/routes/${route.id}`" class="app-link whitespace-nowrap">
 									{{ route.name }}
@@ -77,7 +75,7 @@
 							</td>
 							<td>
 								<span
-									class="inline-block rounded border px-2 py-0.5 text-sm"
+									class="app-badge-status-sm"
 									:class="
 										route.enabled
 											? 'bg-green-50 text-green-700 border-green-200'
@@ -89,7 +87,7 @@
 							</td>
 							<td>
 								<span
-									class="inline-block rounded border px-2 py-0.5 text-sm"
+									class="app-badge-status-sm"
 									:class="
 										route.https_enabled
 											? 'bg-blue-50 text-blue-700 border-blue-200'
@@ -124,7 +122,7 @@
 		<ListPagination
 			:current="pagination.current"
 			:page-size="pagination.pageSize"
-			:total="displayTotal"
+			:total="pagination.total"
 			:total-pages="totalPages"
 			@change-page="goPage"
 			@change-page-size="handlePageSizeChange"
@@ -189,13 +187,7 @@
 
 		<template #footer>
 			<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleSave">
-				<span
-					v-if="operating"
-					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-				/>
-				保存
-			</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleSave">保存</button>
 		</template>
 	</AppDialog>
 </template>
@@ -207,6 +199,7 @@
 	import type { Route } from '@/api/cd/route';
 	import { routeApi } from '@/api/cd/route';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -221,28 +214,7 @@
 	const searchText = ref('');
 	const isCreateDialogOpen = ref(false);
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-
-	const filteredRoutes = computed(() => {
-		if (!searchText.value.trim()) {
-			return routes.value;
-		}
-		const search = searchText.value.toLowerCase();
-		return routes.value.filter(
-			(route) =>
-				route.name.toLowerCase().includes(search) ||
-				route.domain.toLowerCase().includes(search) ||
-				route.target_url.toLowerCase().includes(search)
-		);
-	});
-
-	const paginatedRoutes = computed(() => {
-		const start = (pagination.current - 1) * pagination.pageSize;
-		const end = start + pagination.pageSize;
-		return filteredRoutes.value.slice(start, end);
-	});
-
-	const displayTotal = computed(() => filteredRoutes.value.length);
-	const totalPages = computed(() => Math.ceil(displayTotal.value / pagination.pageSize));
+	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
 	const form = reactive({
 		name: '',
@@ -267,22 +239,13 @@
 	async function fetchData() {
 		try {
 			await execute(async () => {
-				const pageSize = 100;
-				const firstPage = await routeApi.list(1, pageSize);
-				const allRoutes = [...firstPage.items];
-				let page = 2;
-
-				while (allRoutes.length < firstPage.total) {
-					const nextPage = await routeApi.list(page, pageSize);
-					if (nextPage.items.length === 0) {
-						break;
-					}
-					allRoutes.push(...nextPage.items);
-					page += 1;
-				}
-
-				routes.value = allRoutes;
-				pagination.total = allRoutes.length;
+				const res = await routeApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+				});
+				routes.value = res.items;
+				pagination.total = res.total;
 			});
 		} catch {
 			toast.error('获取路由失败');
@@ -291,15 +254,18 @@
 
 	function handleSearch() {
 		pagination.current = 1;
+		fetchData();
 	}
 
 	function goPage(page: number) {
 		pagination.current = page;
+		fetchData();
 	}
 
 	function handlePageSizeChange(pageSize: number) {
 		pagination.pageSize = pageSize;
 		pagination.current = 1;
+		fetchData();
 	}
 
 	function openCreateModal() {

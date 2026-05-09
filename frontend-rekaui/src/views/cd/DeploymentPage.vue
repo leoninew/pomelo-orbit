@@ -14,9 +14,7 @@
 
 		<!-- Table Card -->
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
@@ -114,7 +112,7 @@
 			<template #footer>
 				<button class="app-button" @click="isCancelDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleCancelOk">
-					{{ operating ? '取消中...' : '确认取消' }}
+					确认取消
 				</button>
 			</template>
 		</AppDialog>
@@ -126,6 +124,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

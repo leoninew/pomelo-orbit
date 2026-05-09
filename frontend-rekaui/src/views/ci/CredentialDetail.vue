@@ -37,11 +37,7 @@
 				<h2 class="font-semibold text-foreground">基本信息</h2>
 			</div>
 
-			<div v-if="loading" class="flex justify-center px-5 py-10">
-				<span
-					class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
-				/>
-			</div>
+			<AppSpinner v-if="loading" class="px-5 py-10" />
 			<dl
 				v-else-if="credential"
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
@@ -53,7 +49,7 @@
 				<div class="flex gap-2">
 					<dt class="w-24 shrink-0 text-muted-foreground">类型</dt>
 					<dd>
-						<span class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+						<span class="app-badge">
 							{{ credentialTypeLabels[credential.type] ?? credential.type }}
 						</span>
 					</dd>
@@ -100,13 +96,7 @@
 			</div>
 			<template #footer>
 				<button class="app-button" @click="isEditModalOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleEditOk">
-					<span
-						v-if="operating"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-					/>
-					保存
-				</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleEditOk">保存</button>
 			</template>
 		</AppDialog>
 
@@ -120,10 +110,6 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteModalOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">
-					<span
-						v-if="operating"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
-					/>
 					删除
 				</button>
 			</template>
@@ -137,6 +123,7 @@
 	import { useRouter } from 'vue-router';
 	import { credentialApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import type { Credential } from '@/types/ci/credential';

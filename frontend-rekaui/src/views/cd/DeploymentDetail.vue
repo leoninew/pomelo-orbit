@@ -18,9 +18,7 @@
 		</div>
 
 		<!-- 加载状态 -->
-		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
-			<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-		</div>
+		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
 		<!-- 内容 -->
 		<div v-else-if="deployment" class="flex flex-col gap-4">
@@ -116,10 +114,7 @@
 					<pre v-if="logText" class="whitespace-pre-wrap">{{ logText }}</pre>
 					<div v-else class="flex h-full items-center justify-center text-muted-foreground">
 						<div class="text-center">
-							<Loader2
-								v-if="logStatus === 'loading' || logStatus === 'streaming'"
-								class="mx-auto h-8 w-8 animate-spin"
-							/>
+							<AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
 							<p v-if="logStatus === 'loading'" class="mt-2 text-sm">加载日志中...</p>
 							<p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">日志流传输中...</p>
 							<p v-else-if="logStatus === 'empty'" class="text-sm">暂无日志输出</p>
@@ -149,11 +144,12 @@
 </template>
 
 <script setup lang="ts">
-	import { Loader2, RefreshCw } from 'lucide-vue-next';
+	import { RefreshCw } from 'lucide-vue-next';
 	import { computed, onMounted, onUnmounted, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';

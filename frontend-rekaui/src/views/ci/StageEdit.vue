@@ -105,13 +105,7 @@
 
 		<template #footer>
 			<button class="app-button" @click="handleClose">取消</button>
-			<button class="app-button-primary" :disabled="saving" @click="handleSave">
-				<span
-					v-if="saving"
-					class="size-4 animate-spin rounded-full border-2 border-primary-foreground/20 border-t-primary-foreground"
-				/>
-				保存
-			</button>
+			<button class="app-button-primary" :disabled="saving" @click="handleSave">保存</button>
 		</template>
 	</AppDrawer>
 

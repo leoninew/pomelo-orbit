@@ -48,17 +48,8 @@
 
 		<template #footer>
 			<button type="button" class="app-button" @click="isOpen = false">取消</button>
-			<button
-				type="button"
-				:disabled="!canSubmit || loading"
-				class="app-button-primary"
-				@click="handleOk"
-			>
-				<span
-					v-if="loading"
-					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-				/>
-				{{ loading ? '触发中...' : '触发' }}
+			<button type="button" :disabled="!canSubmit" class="app-button-primary" @click="handleOk">
+				触发
 			</button>
 		</template>
 	</AppDialog>
@@ -68,7 +59,6 @@
 	import { computed, reactive, ref, watch } from 'vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
-	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
@@ -92,7 +82,6 @@
 	}>();
 
 	const toast = useToast();
-	const { loading, execute: executeOp } = useStatusAsync();
 
 	const isOpen = ref(false);
 	const initialVariableValues = ref<Record<string, string>>({});
@@ -249,20 +238,18 @@
 		isOpen.value = true;
 	}
 
-	async function handleOk() {
+	function handleOk() {
 		if (!canSubmit.value) {
 			toast.error('请为所有变量提供值');
 			return;
 		}
 
-		await executeOp(async () => {
-			emit('trigger', {
-				template_id: form.template_id,
-				trigger_ref: form.trigger_ref,
-				variables: buildRuntimeOverrides(),
-			});
-			isOpen.value = false;
+		emit('trigger', {
+			template_id: form.template_id,
+			trigger_ref: form.trigger_ref,
+			variables: buildRuntimeOverrides(),
 		});
+		isOpen.value = false;
 	}
 
 	defineExpose({ open });

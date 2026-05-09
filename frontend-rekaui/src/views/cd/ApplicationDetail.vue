@@ -9,7 +9,7 @@
 					class="app-button-primary h-9 px-3"
 					@click="handleDeploy"
 				>
-					{{ operating ? '部署中...' : '部署' }}
+					部署
 				</button>
 				<button v-if="application" class="app-button h-9 px-3" @click="handleExport">
 					<Download class="size-4" />
@@ -24,11 +24,7 @@
 		</div>
 
 		<!-- 加载状态 -->
-		<div v-if="basicInfoLoading" class="flex items-center justify-center py-12">
-			<div
-				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-			></div>
-		</div>
+		<AppSpinner v-if="basicInfoLoading" class="py-12" />
 
 		<!-- 内容 -->
 		<div v-else-if="application" class="flex flex-col gap-4">
@@ -97,9 +93,7 @@
 						<tbody>
 							<tr v-if="fileListLoading">
 								<td colspan="3" class="text-center text-muted-foreground">
-									<span
-										class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
-									/>
+									<AppSpinner />
 								</td>
 							</tr>
 							<tr v-else-if="files.length === 0">
@@ -151,9 +145,7 @@
 						<tbody>
 							<tr v-if="serviceConfigListLoading">
 								<td colspan="6" class="text-center text-muted-foreground">
-									<span
-										class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
-									/>
+									<AppSpinner />
 								</td>
 							</tr>
 							<tr v-else-if="serviceConfigError">
@@ -224,9 +216,7 @@
 						<tbody>
 							<tr v-if="routeListLoading">
 								<td colspan="5" class="text-center text-muted-foreground">
-									<span
-										class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
-									/>
+									<AppSpinner />
 								</td>
 							</tr>
 							<tr v-else-if="appRoutes.length === 0">
@@ -284,7 +274,7 @@
 			<template v-if="isEditingInDrawer" #footer>
 				<button class="app-button" @click="handleDrawerClose">取消</button>
 				<button :disabled="fileContentLoading" class="app-button-primary" @click="saveCurrentFile">
-					{{ fileContentLoading ? '保存中...' : '保存' }}
+					保存
 				</button>
 			</template>
 		</AppDrawer>
@@ -317,9 +307,7 @@
 			</label>
 			<template #footer>
 				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button :disabled="operating" class="app-button-primary" @click="handleEditOk">
-					{{ operating ? '保存中...' : '保存' }}
-				</button>
+				<button :disabled="operating" class="app-button-primary" @click="handleEditOk">保存</button>
 			</template>
 		</AppDialog>
 
@@ -336,7 +324,7 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button :disabled="operating" class="app-button-destructive" @click="handleDeleteOk">
-					{{ operating ? '删除中...' : '删除' }}
+					删除
 				</button>
 			</template>
 		</AppDialog>
@@ -355,7 +343,7 @@
 					class="app-button-destructive"
 					@click="executeDeleteFile"
 				>
-					{{ fileListLoading ? '删除中...' : '删除' }}
+					删除
 				</button>
 			</template>
 		</AppDialog>
@@ -376,7 +364,7 @@
 					class="app-button-primary"
 					@click="saveServiceConfig"
 				>
-					{{ serviceConfigSaving ? '保存中...' : '保存' }}
+					保存
 				</button>
 			</template>
 		</AppDialog>
@@ -395,7 +383,7 @@
 					class="app-button-destructive"
 					@click="executeResetServiceConfig"
 				>
-					{{ serviceConfigSaving ? '重置中...' : '重置' }}
+					重置
 				</button>
 			</template>
 		</AppDialog>
@@ -500,7 +488,7 @@
 			<template #footer>
 				<button class="app-button" @click="isRouteDialogOpen = false">取消</button>
 				<button :disabled="routeLoading" class="app-button-primary" @click="handleRouteOk">
-					{{ routeLoading ? '保存中...' : '保存' }}
+					保存
 				</button>
 			</template>
 		</AppDialog>
@@ -515,7 +503,7 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteRouteDialogOpen = false">取消</button>
 				<button :disabled="routeLoading" class="app-button-destructive" @click="executeDeleteRoute">
-					{{ routeLoading ? '删除中...' : '删除' }}
+					删除
 				</button>
 			</template>
 		</AppDialog>
@@ -540,6 +528,7 @@
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

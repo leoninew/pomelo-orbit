@@ -30,11 +30,7 @@
 		</div>
 
 		<!-- Loading State -->
-		<div v-if="status === 'loading'" class="flex justify-center py-12">
-			<span
-				class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
-			/>
-		</div>
+		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
 		<!-- Content -->
 		<template v-else-if="stage">
@@ -114,9 +110,7 @@
 							<tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
 								<td class="text-muted-foreground">{{ idx + 1 }}</td>
 								<td>
-									<span
-										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-									>
+									<span class="app-badge">
 										{{ artifact.type }}
 									</span>
 								</td>
@@ -158,13 +152,7 @@
 			</div>
 			<template #footer>
 				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="saving" @click="handleSave">
-					<span
-						v-if="saving"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-					/>
-					保存
-				</button>
+				<button class="app-button-primary" :disabled="saving" @click="handleSave">保存</button>
 			</template>
 		</AppDialog>
 
@@ -181,13 +169,7 @@
 			/>
 			<template #footer>
 				<button class="app-button" @click="closeScriptDrawer">取消</button>
-				<button class="app-button-primary" :disabled="saving" @click="confirmScript">
-					<span
-						v-if="saving"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-					/>
-					保存
-				</button>
+				<button class="app-button-primary" :disabled="saving" @click="confirmScript">保存</button>
 			</template>
 		</AppDrawer>
 
@@ -227,10 +209,6 @@
 			<template #footer>
 				<button class="app-button" @click="isArtifactDialogOpen = false">取消</button>
 				<button class="app-button-primary" :disabled="saving" @click="handleSaveArtifact">
-					<span
-						v-if="saving"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-					/>
 					保存
 				</button>
 			</template>
@@ -246,10 +224,6 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteArtifactDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="saving" @click="removeArtifact">
-					<span
-						v-if="saving"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
-					/>
 					删除
 				</button>
 			</template>
@@ -265,10 +239,6 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="deleting" @click="handleDelete">
-					<span
-						v-if="deleting"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
-					/>
 					删除
 				</button>
 			</template>
@@ -284,6 +254,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

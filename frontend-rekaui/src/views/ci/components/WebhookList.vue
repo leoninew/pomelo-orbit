@@ -49,7 +49,7 @@
 						</td>
 						<td>
 							<span
-								class="inline-block rounded border px-2 py-0.5 text-xs"
+								class="app-badge-status"
 								:class="
 									wh.enabled
 										? 'border-green-200 bg-green-50 text-green-700'
@@ -133,13 +133,7 @@
 			</div>
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleOk">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
-					保存
-				</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleOk">保存</button>
 			</template>
 		</AppDialog>
 
@@ -153,10 +147,6 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="confirmDelete">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-destructive-foreground border-t-transparent"
-					/>
 					删除
 				</button>
 			</template>
@@ -212,12 +202,14 @@
 		}))
 	);
 
-	const getTemplateName = (templateId: string) => {
+	function getTemplateName(templateId: string) {
 		const tpl = props.templates.find((t) => t.id === templateId);
 		return tpl?.name || templateId;
-	};
+	}
 
-	const webhookUrl = (webhookId: string) => `${window.location.origin}/api/webhooks/${webhookId}`;
+	function webhookUrl(webhookId: string) {
+		return `${window.location.origin}/api/webhooks/${webhookId}`;
+	}
 
 	async function copyUrl(webhookId: string) {
 		try {

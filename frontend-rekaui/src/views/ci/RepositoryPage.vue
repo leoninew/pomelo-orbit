@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<div class="space-y-6">
 		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="仓库工具栏">
 			<SearchControl
@@ -15,9 +15,7 @@
 
 		<!-- Table Card -->
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="repositories.length === 0" class="text-center py-16 text-muted-foreground">
 				<p class="text-sm">暂无数据</p>
 			</div>
@@ -87,9 +85,7 @@
 		title="新建仓库"
 		description="添加一个可用于流水线触发的 Git 仓库。"
 	>
-		<div v-if="modalStatus === 'loading'" class="flex justify-center py-8">
-			<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-		</div>
+		<AppSpinner v-if="modalStatus === 'loading'" class="py-8" />
 
 		<div v-else class="space-y-4">
 			<div class="space-y-1.5">
@@ -147,10 +143,6 @@
 				:disabled="operating || modalStatus === 'loading'"
 				@click="handleCreateOk"
 			>
-				<span
-					v-if="operating"
-					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-				/>
 				创建
 			</button>
 		</template>
@@ -163,6 +155,7 @@
 	import { useRouter } from 'vue-router';
 	import { credentialApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

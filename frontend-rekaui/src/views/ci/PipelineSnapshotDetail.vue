@@ -1,10 +1,6 @@
-﻿<template>
+<template>
 	<div class="flex flex-col gap-4">
-		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
-			<div
-				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-			></div>
-		</div>
+		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
 		<div v-else-if="snapshot" class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-3">
@@ -171,9 +167,7 @@
 							<tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
 								<td class="text-foreground">{{ artifact.stageName }}</td>
 								<td>
-									<span
-										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-									>
+									<span class="app-badge">
 										{{ artifact.type }}
 									</span>
 								</td>
@@ -192,6 +186,7 @@
 	import { computed, onMounted, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';

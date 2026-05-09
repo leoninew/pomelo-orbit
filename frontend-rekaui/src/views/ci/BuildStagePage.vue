@@ -14,9 +14,7 @@
 		</ToolbarRoot>
 
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error }}</p>
 			</div>
@@ -47,11 +45,7 @@
 								{{ stage.image }}
 							</td>
 							<td>
-								<span
-									class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
-								>
-									v{{ stage.version }}
-								</span>
+								<span class="app-badge-sm">v{{ stage.version }}</span>
 							</td>
 							<td class="text-foreground">{{ stage.artifacts?.length ?? 0 }}</td>
 							<td
@@ -138,13 +132,7 @@
 
 		<template #footer>
 			<button class="app-button" @click="isModalOpen = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">
-				<span
-					v-if="operating"
-					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-				/>
-				保存
-			</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleModalOk">保存</button>
 		</template>
 	</AppDialog>
 </template>
@@ -156,6 +144,7 @@
 	import { ToolbarRoot } from 'reka-ui';
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

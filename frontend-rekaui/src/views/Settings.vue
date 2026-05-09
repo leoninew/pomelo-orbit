@@ -2,7 +2,7 @@
 	<div class="space-y-6">
 		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="系统设置工具栏">
 			<SearchControl v-model="searchText" placeholder="搜索配置项" :loading="configLoading" />
-			<button class="app-button-primary px-5" @click="passwordModalOpen = true">
+			<button class="app-button-primary px-5" @click="isPasswordDialogOpen = true">
 				<Key class="size-4" />
 				修改密码
 			</button>
@@ -15,9 +15,7 @@
 
 		<!-- Config Table -->
 		<div v-if="configLoading" class="app-surface">
-			<div class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner class="py-16" />
 		</div>
 		<div v-else-if="filteredConfig.length === 0" class="app-surface">
 			<div class="text-center py-16 text-muted-foreground">
@@ -114,7 +112,7 @@
 		</div>
 
 		<AppDialog
-			v-model:open="passwordModalOpen"
+			v-model:open="isPasswordDialogOpen"
 			title="修改密码"
 			description="请输入当前密码和新密码。"
 		>
@@ -160,37 +158,27 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="passwordModalOpen = false">取消</button>
+				<button class="app-button" @click="isPasswordDialogOpen = false">取消</button>
 				<button
 					class="app-button-primary"
 					:disabled="passwordLoading"
 					@click="handleChangePassword"
 				>
-					<span
-						v-if="passwordLoading"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
 					修改密码
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
-			v-model:open="resetModalOpen"
+			v-model:open="isResetDialogOpen"
 			title="确认重置"
 			description="确定要将此配置项重置为默认值吗？"
 			width-class="w-[min(400px,calc(100vw-32px))]"
 			body-class="hidden"
 		>
 			<template #footer>
-				<button class="app-button" @click="resetModalOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleReset">
-					<span
-						v-if="operating"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
-					重置
-				</button>
+				<button class="app-button" @click="isResetDialogOpen = false">取消</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleReset">重置</button>
 			</template>
 		</AppDialog>
 	</div>
@@ -202,6 +190,7 @@
 	import { ToolbarRoot } from 'reka-ui';
 	import { settingApi } from '@/api/settings';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -247,7 +236,7 @@
 	const editingStr = ref('');
 	const editingBoolStr = ref('false');
 
-	const passwordModalOpen = ref(false);
+	const isPasswordDialogOpen = ref(false);
 	const passwordForm = reactive({
 		old_password: '',
 		new_password: '',
@@ -308,12 +297,12 @@
 		}
 	}
 
-	const resetModalOpen = ref(false);
+	const isResetDialogOpen = ref(false);
 	const pendingResetKey = ref('');
 
 	function confirmReset(key: string) {
 		pendingResetKey.value = key;
-		resetModalOpen.value = true;
+		isResetDialogOpen.value = true;
 	}
 
 	async function handleReset() {
@@ -323,7 +312,7 @@
 					keys: [pendingResetKey.value],
 				});
 				needsRestart.value = true;
-				resetModalOpen.value = false;
+				isResetDialogOpen.value = false;
 				toast.warning('已重置，请重启服务以生效');
 			});
 		} catch {
@@ -351,7 +340,7 @@
 			await executeChangePassword(async () => {
 				await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
 				toast.success('密码修改成功');
-				passwordModalOpen.value = false;
+				isPasswordDialogOpen.value = false;
 				Object.assign(passwordForm, {
 					old_password: '',
 					new_password: '',

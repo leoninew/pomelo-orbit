@@ -36,11 +36,7 @@
 		</div>
 
 		<!-- Loading State -->
-		<div v-if="basicInfoLoading" class="flex justify-center py-12">
-			<span
-				class="inline-block size-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"
-			/>
-		</div>
+		<AppSpinner v-if="basicInfoLoading" class="py-12" />
 
 		<!-- Content -->
 		<template v-else-if="routeData">
@@ -79,7 +75,7 @@
 						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
 							<span
-								class="inline-block rounded border px-2 py-0.5 text-xs"
+								class="app-badge-status"
 								:class="
 									routeData.enabled
 										? 'bg-green-50 text-green-700 border-green-200'
@@ -115,7 +111,7 @@
 							</p>
 						</div>
 						<span
-							class="inline-block rounded border px-2 py-0.5 text-xs"
+							class="app-badge-status"
 							:class="
 								routeData.https_enabled
 									? 'bg-blue-50 text-blue-700 border-blue-200'
@@ -187,13 +183,7 @@
 			</div>
 			<template #footer>
 				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleSave">
-					<span
-						v-if="operating"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-					/>
-					保存
-				</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleSave">保存</button>
 			</template>
 		</AppDialog>
 
@@ -207,10 +197,6 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">
-					<span
-						v-if="operating"
-						class="inline-block size-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground"
-					/>
 					删除
 				</button>
 			</template>
@@ -225,6 +211,7 @@
 	import type { Route } from '@/api/cd/route';
 	import { routeApi } from '@/api/cd/route';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { formatTime } from '@/utils/time';

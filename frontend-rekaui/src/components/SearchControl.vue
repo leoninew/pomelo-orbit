@@ -28,11 +28,7 @@
 			:disabled="disabled || loading"
 			@click="emit('search')"
 		>
-			<span
-				v-if="loading"
-				class="inline-block size-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground"
-			/>
-			<span v-else>搜索</span>
+			搜索
 		</button>
 	</div>
 </template>

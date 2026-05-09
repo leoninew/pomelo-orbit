@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">流水线详情</h1>
@@ -9,7 +9,7 @@
 					class="app-button-primary h-9 px-3"
 					@click="handleRetry"
 				>
-					{{ retrying ? '重试中...' : '重试' }}
+					重试
 				</button>
 				<button
 					v-if="run?.status === 'waiting_to_run' || run?.status === 'running'"
@@ -33,11 +33,7 @@
 		</div>
 
 		<!-- 加载状态 -->
-		<div v-if="loading" class="flex items-center justify-center py-12">
-			<div
-				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-			></div>
-		</div>
+		<AppSpinner v-if="loading" class="py-12" />
 
 		<!-- 内容 -->
 		<div v-else-if="run" class="flex flex-col gap-4">
@@ -73,9 +69,7 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
 						<dd>
-							<span
-								class="inline-block rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground"
-							>
+							<span class="app-badge-pill">
 								{{ run.trigger }}
 							</span>
 						</dd>
@@ -193,9 +187,7 @@
 							<tbody>
 								<tr v-if="run.snapshot_id && !snapshot">
 									<td colspan="8" class="text-center text-muted-foreground">
-										<span
-											class="inline-block size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary"
-										/>
+										<AppSpinner />
 									</td>
 								</tr>
 								<tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
@@ -287,11 +279,7 @@
 				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">制品</h2>
 				</div>
-				<div v-if="artifactsLoading" class="flex justify-center py-16">
-					<div
-						class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-					/>
-				</div>
+				<AppSpinner v-if="artifactsLoading" class="py-16" />
 				<div
 					v-else-if="!isTerminalStatus(run.status)"
 					class="text-center py-16 text-muted-foreground"
@@ -316,9 +304,7 @@
 							<tr v-for="artifact in artifacts" :key="artifact.id">
 								<td class="text-foreground">{{ artifact.stage_name }}</td>
 								<td>
-									<span
-										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-									>
+									<span class="app-badge">
 										{{ artifact.type }}
 									</span>
 								</td>
@@ -350,7 +336,7 @@
 				<pre v-if="logsText" class="whitespace-pre-wrap">{{ logsText }}</pre>
 				<div v-else class="flex h-full items-center justify-center text-muted-foreground">
 					<div class="text-center">
-						<Loader2 class="mx-auto h-8 w-8 animate-spin" />
+						<AppSpinner />
 						<p class="mt-2">加载日志中...</p>
 					</div>
 				</div>
@@ -372,7 +358,7 @@
 					class="app-button-destructive"
 					@click="handleCancel"
 				>
-					{{ canceling ? '取消中...' : '确认取消' }}
+					确认
 				</button>
 			</template>
 		</AppDialog>
@@ -385,6 +371,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

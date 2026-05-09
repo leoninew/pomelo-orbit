@@ -99,10 +99,6 @@
 		@apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
-	.app-button-sm {
-		@apply h-9 px-3;
-	}
-
 	.app-button-primary {
 		@apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
 	}
@@ -169,6 +165,30 @@
 
 	.app-tip {
 		@apply rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
+	}
+
+	.app-badge {
+		@apply inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground;
+	}
+
+	.app-badge-sm {
+		@apply inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground;
+	}
+
+	.app-badge-pill {
+		@apply inline-block rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground;
+	}
+
+	.app-badge-status {
+		@apply inline-block rounded border px-2 py-0.5 text-xs;
+	}
+
+	.app-badge-status-sm {
+		@apply inline-block rounded border px-2 py-0.5 text-sm;
+	}
+
+	.app-badge-warning {
+		@apply inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700;
 	}
 
 	.app-dialog-overlay {

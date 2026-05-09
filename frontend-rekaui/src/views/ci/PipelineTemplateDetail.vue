@@ -1,4 +1,4 @@
-﻿<template>
+<template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
@@ -9,7 +9,7 @@
 					class="app-button-primary h-9 px-3"
 					@click="handleSave"
 				>
-					{{ saving ? '保存中...' : hasStageUpdates && !isDirty ? '更新' : '保存' }}
+					{{ hasStageUpdates && !isDirty ? '更新' : '保存' }}
 				</button>
 				<button v-if="template" class="app-button h-9 px-3" @click="openRunModal">运行</button>
 				<button v-if="template" class="app-button h-9 px-3" @click="openEditInfoModal">编辑</button>
@@ -19,7 +19,7 @@
 					class="app-button h-9 px-3"
 					@click="handleDuplicate"
 				>
-					{{ duplicating ? '复制中...' : '复制' }}
+					复制
 				</button>
 				<button v-if="template" class="app-button-danger h-9 px-3" @click="openDeleteModal">
 					删除
@@ -29,11 +29,7 @@
 		</div>
 
 		<!-- 加载状态 -->
-		<div v-if="status === 'loading'" class="flex items-center justify-center py-12">
-			<div
-				class="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary"
-			></div>
-		</div>
+		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
 		<!-- 内容 -->
 		<div v-else-if="template" class="flex flex-col gap-4">
@@ -127,7 +123,7 @@
 												stageCache[orch.stage_id] &&
 													stageCache[orch.stage_id].version > orch.stage_version
 											"
-											class="inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+											class="app-badge-warning"
 										>
 											有更新
 										</span>
@@ -210,9 +206,7 @@
 							<tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
 								<td class="text-foreground">{{ artifact.stageName }}</td>
 								<td>
-									<span
-										class="inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-									>
+									<span class="app-badge">
 										{{ artifact.type }}
 									</span>
 								</td>
@@ -241,7 +235,7 @@
 			<template #footer>
 				<button class="app-button" @click="cancelEditInfo">取消</button>
 				<button :disabled="saving" class="app-button-primary" @click="handleEditInfoOk">
-					{{ saving ? '保存中...' : '保存' }}
+					保存
 				</button>
 			</template>
 		</AppDialog>
@@ -345,7 +339,7 @@
 					class="app-button-primary"
 					@click="handleRunOk"
 				>
-					{{ running ? '运行中...' : '运行' }}
+					运行
 				</button>
 			</template>
 		</AppDialog>
@@ -406,7 +400,7 @@
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button :disabled="deleting" class="app-button-destructive" @click="handleDeleteOk">
-					{{ deleting ? '删除中...' : '确认删除' }}
+					确认删除
 				</button>
 			</template>
 		</AppDialog>
@@ -446,6 +440,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

@@ -21,20 +21,14 @@
 					:disabled="status === 'loading'"
 					@click="handleSearch"
 				>
-					<span
-						v-if="status === 'loading'"
-						class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-					/>
-					<Search v-else class="size-4" />
+					<Search class="size-4" />
 					搜索
 				</button>
 			</div>
 		</ToolbarRoot>
 
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
@@ -153,6 +147,7 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

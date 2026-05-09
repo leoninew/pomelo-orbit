@@ -29,9 +29,7 @@
 		</ToolbarRoot>
 
 		<div class="app-surface">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
@@ -128,6 +126,7 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
 	import { artifactApi, repositoryApi, pipelineTemplateApi } from '@/api/ci';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

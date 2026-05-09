@@ -32,7 +32,7 @@
 					</td>
 					<td>
 						<span
-							class="inline-block rounded px-2 py-0.5 text-sm"
+							class="app-badge-status-sm"
 							:class="
 								decl.source
 									? getSourceBadgeClass(decl.source)

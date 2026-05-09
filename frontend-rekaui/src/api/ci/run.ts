@@ -16,6 +16,8 @@ export const pipelineRunApi = {
 		per_page?: number
 		repository_id?: string
 		template_id?: string
+		date_from?: string
+		date_to?: string
 	}): Promise<PaginatedResp<PipelineRun>> {
 		return request.get('/api/ci/run', { params });
 	},

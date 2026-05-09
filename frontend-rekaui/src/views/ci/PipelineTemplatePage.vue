@@ -37,9 +37,7 @@
 		</ToolbarRoot>
 
 		<div v-if="status === 'loading'" class="app-surface">
-			<div class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner class="py-16" />
 		</div>
 
 		<div v-else-if="status === 'error'" class="app-surface">
@@ -116,11 +114,7 @@
 						>
 							<td class="max-w-64 truncate text-foreground" :title="tpl.name">{{ tpl.name }}</td>
 							<td>
-								<span
-									class="inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
-								>
-									v{{ tpl.version }}
-								</span>
+								<span class="app-badge-sm">v{{ tpl.version }}</span>
 							</td>
 							<td class="text-foreground">{{ tpl.orchestration.length }}</td>
 							<td class="text-foreground">{{ tpl.variable_declarations.length }}</td>
@@ -186,13 +180,7 @@
 		</div>
 		<template #footer>
 			<button class="app-button" @click="showCreateDialog = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-				<span
-					v-if="operating"
-					class="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"
-				/>
-				创建
-			</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">创建</button>
 		</template>
 	</AppDialog>
 </template>
@@ -203,6 +191,7 @@
 	import { useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

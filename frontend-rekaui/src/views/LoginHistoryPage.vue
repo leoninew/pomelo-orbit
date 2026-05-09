@@ -11,9 +11,7 @@
 
 		<!-- Table Card -->
 		<div class="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-			<div v-if="status === 'loading'" class="flex justify-center py-16">
-				<div class="size-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-			</div>
+			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
@@ -69,6 +67,7 @@
 <script setup lang="ts">
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { authApi } from '@/api/auth';
+	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

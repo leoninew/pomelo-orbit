@@ -28,7 +28,7 @@
 						<span v-if="hasDisplayValue(effectiveValue(decl))" class="text-foreground">
 							{{ effectiveValue(decl) }}
 						</span>
-						<span v-else class="text-muted-foreground italic">未设置</span>
+						<span v-else class="text-muted-foreground">—</span>
 					</td>
 					<td>
 						<span
@@ -52,7 +52,7 @@
 								class="app-link-danger"
 								@click="emit('delete', decl.name)"
 							>
-								删除
+								重置
 							</button>
 							<span v-if="!canEdit(decl)" class="text-muted-foreground">—</span>
 						</div>

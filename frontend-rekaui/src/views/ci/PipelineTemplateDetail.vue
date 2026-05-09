@@ -68,7 +68,10 @@
 
 			<!-- Stage 编排 -->
 			<div class="app-surface">
-				<div class="app-section-header flex items-center justify-between">
+				<div
+					v-if="viewMode === 'list'"
+					class="app-section-header flex items-center justify-between"
+				>
 					<div class="flex items-center gap-4">
 						<h2 class="font-semibold text-foreground">阶段编排</h2>
 						<div
@@ -109,7 +112,6 @@
 					<table class="app-table-detail min-w-[760px]">
 						<thead>
 							<tr>
-								<th>#</th>
 								<th>阶段</th>
 								<th>版本</th>
 								<th>依赖</th>
@@ -119,12 +121,11 @@
 						</thead>
 						<tbody>
 							<tr v-if="sortableOrch.length === 0">
-								<td colspan="6" class="text-center text-muted-foreground">
+								<td colspan="5" class="text-center text-muted-foreground">
 									暂无 Stage，点击上方按钮添加
 								</td>
 							</tr>
 							<tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_id">
-								<td class="text-muted-foreground">{{ idx + 1 }}</td>
 								<td>
 									<div class="flex items-center gap-2">
 										<router-link :to="`/ci/build-stage/${orch.stage_id}`" class="app-link">

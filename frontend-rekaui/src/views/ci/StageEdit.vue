@@ -72,7 +72,10 @@
 			<div class="space-y-1.5">
 				<div class="flex items-center justify-between">
 					<label class="app-field-label block">制品（可选）</label>
-					<button class="app-button-primary flex items-center gap-1 px-3 py-1 text-xs" @click="addArtifact">
+					<button
+						class="app-button-primary flex items-center gap-1 px-3 py-1 text-xs"
+						@click="addArtifact"
+					>
 						<Plus class="size-3" />
 						添加
 					</button>

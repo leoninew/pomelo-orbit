@@ -69,16 +69,10 @@
 						<dd class="text-foreground">{{ deployment.trigger_type }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">环境</dt>
-						<dd class="text-foreground">{{ deployment.environment || '—' }}</dd>
-					</div>
-					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">环境文件</dt>
-						<dd class="text-foreground">{{ deployment.env_file || '—' }}</dd>
-					</div>
-					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">耗时</dt>
-						<dd class="text-muted-foreground">{{ formatDuration(deployment.started_at, deployment.finished_at) }}</dd>
+						<dd class="text-muted-foreground">
+							{{ formatDuration(deployment.started_at, deployment.finished_at) }}
+						</dd>
 					</div>
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>

@@ -62,7 +62,9 @@
 					@click="router.push(`/ci/template/${tpl.id}`)"
 				>
 					<div class="mb-3 flex items-start justify-between gap-4">
-						<h3 class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary">
+						<h3
+							class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary"
+						>
 							{{ tpl.name }}
 						</h3>
 						<button
@@ -113,10 +115,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						<tr
-							v-for="tpl in templates"
-							:key="tpl.id"
-						>
+						<tr v-for="tpl in templates" :key="tpl.id">
 							<td class="max-w-64 truncate" :title="tpl.name">
 								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">
 									{{ tpl.name }}
@@ -130,9 +129,7 @@
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
 							<td class="text-right">
-								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">
-									查看
-								</router-link>
+								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">查看</router-link>
 								<button
 									:disabled="duplicating"
 									class="app-link ml-3"

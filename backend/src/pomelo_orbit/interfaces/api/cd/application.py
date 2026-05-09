@@ -210,8 +210,6 @@ async def deploy_application(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     container: FromDishka[AsyncContainer],
     _current_user=Depends(get_current_user),
-    branch: Annotated[str | None, Body(embed=True)] = None,
-    env: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
     """手动触发部署"""
     app = app_service.get_application(app_id)
@@ -220,7 +218,6 @@ async def deploy_application(
         application_id=app.id,
         operation_type=OperationType.DEPLOY,
         trigger_type=TriggerType.MANUAL,
-        env_file=env,
         is_rollback=False,
     )
 
@@ -238,10 +235,9 @@ async def stop_application(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     _current_user=Depends(get_current_user),
     remove_volumes: Annotated[bool, Body(embed=True)] = False,
-    env: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
     """停止应用"""
-    deployment = await app_service.stop_application(app_id, remove_volumes, env)
+    deployment = await app_service.stop_application(app_id, remove_volumes)
     return {"deployment_id": deployment.id}
 
 
@@ -253,12 +249,11 @@ async def restart_application(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
     container: FromDishka[AsyncContainer],
     _current_user=Depends(get_current_user),
-    env: Annotated[str | None, Body(embed=True)] = None,
 ) -> dict:
     """重启应用"""
     app = app_service.get_application(app_id)
 
-    deployment = await app_service.restart_application(app_id, env)
+    deployment = await app_service.restart_application(app_id)
 
     async def _run_restart() -> None:
         await run_in_new_scope(container, ApplicationService, lambda svc: svc.execute_restart(app, deployment))

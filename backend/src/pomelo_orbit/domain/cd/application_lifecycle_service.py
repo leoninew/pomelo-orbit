@@ -65,7 +65,6 @@ class ApplicationLifecycleDomainService:
     def create_deploy_record(
         application: Application,
         trigger_type: TriggerType = TriggerType.MANUAL,
-        env_file: str | None = None,
     ) -> Deployment:
         """创建部署记录"""
         return Deployment(
@@ -76,12 +75,11 @@ class ApplicationLifecycleDomainService:
             trigger_type=trigger_type,
             status=TaskStatus.WAITING_TO_RUN.value,
             is_rollback=False,
-            env_file=env_file,
             started_at=utc_now(),
         )
 
     @staticmethod
-    def create_stop_record(application: Application, env_file: str | None = None) -> Deployment:
+    def create_stop_record(application: Application) -> Deployment:
         """创建停止记录"""
         return Deployment(
             id=str(ULID()),
@@ -91,7 +89,6 @@ class ApplicationLifecycleDomainService:
             trigger_type=TriggerType.MANUAL,
             status=TaskStatus.WAITING_TO_RUN.value,
             is_rollback=False,
-            env_file=env_file,
             started_at=utc_now(),
         )
 
@@ -99,7 +96,6 @@ class ApplicationLifecycleDomainService:
     def create_restart_record(
         application: Application,
         trigger_type: TriggerType = TriggerType.MANUAL,
-        env_file: str | None = None,
     ) -> Deployment:
         """创建重启记录"""
         return Deployment(
@@ -110,7 +106,6 @@ class ApplicationLifecycleDomainService:
             trigger_type=trigger_type,
             status=TaskStatus.WAITING_TO_RUN.value,
             is_rollback=False,
-            env_file=env_file,
             started_at=utc_now(),
         )
 

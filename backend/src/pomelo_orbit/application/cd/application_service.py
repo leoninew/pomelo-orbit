@@ -100,7 +100,6 @@ class ApplicationService:
                     service_configs=service_configs,
                     pull_policy=application.image_pull_policy,
                     deployment_id=deployment.id,
-                    env_file=deployment.env_file,
                     routes=routes,
                 )
 
@@ -153,7 +152,7 @@ class ApplicationService:
             self.deployment_repo.commit()
 
             try:
-                await self.app_manager.restart(application.code, deployment.env_file)
+                await self.app_manager.restart(application.code)
 
                 ApplicationLifecycleDomainService.mark_deploy_success(deployment, application)
                 self.deployment_repo.save(deployment)
@@ -178,19 +177,13 @@ class ApplicationService:
                 )
                 return False
 
-    def _find_last_successful_deployment(self, application_id: str) -> Deployment | None:
-        return self.deployment_repo.find_last_successful_deploy(application_id)
-
-    async def stop_application(
-        self, application_id: str, remove_volumes: bool = False, env_file: str | None = None
-    ) -> Deployment:
+    async def stop_application(self, application_id: str, remove_volumes: bool = False) -> Deployment:
         """
         停止应用（同步）
 
         Args:
             application_id: 应用 ID
             remove_volumes: 是否删除数据卷
-            env_file: 环境文件名（可选，未指定时从最近部署记录获取）
 
         Returns:
             部署记录
@@ -201,18 +194,13 @@ class ApplicationService:
 
         ApplicationLifecycleDomainService.validate_stop(app)
 
-        # 如果未指定 env_file，从最近一次成功部署记录获取
-        if env_file is None:
-            last_deployment = self._find_last_successful_deployment(application_id)
-            env_file = last_deployment.env_file if last_deployment else None
-
-        deployment = ApplicationLifecycleDomainService.create_stop_record(app, env_file)
+        deployment = ApplicationLifecycleDomainService.create_stop_record(app)
         self.deployment_repo.save(deployment)
 
         lock = self.get_lock(application_id)
         async with lock:
             try:
-                await self.app_manager.stop(app.code, remove_volumes, env_file)
+                await self.app_manager.stop(app.code, remove_volumes)
 
                 ApplicationLifecycleDomainService.mark_stop_success(deployment, app)
                 self.deployment_repo.save(deployment)
@@ -228,13 +216,12 @@ class ApplicationService:
                 logger.error(f"Application stop failed: app={app.code}, error={e}", exc_info=True)
                 raise
 
-    async def restart_application(self, application_id: str, env_file: str | None = None) -> Deployment:
+    async def restart_application(self, application_id: str) -> Deployment:
         """
         重启应用（异步，返回部署记录，后台执行）
 
         Args:
             application_id: 应用 ID
-            env_file: 环境文件名（可选，未指定时从最近部署记录获取）
 
         Returns:
             部署记录
@@ -245,12 +232,7 @@ class ApplicationService:
 
         ApplicationLifecycleDomainService.validate_restart(app)
 
-        # 如果未指定 env_file，从最近一次成功部署记录获取
-        if env_file is None:
-            last_deployment = self._find_last_successful_deployment(application_id)
-            env_file = last_deployment.env_file if last_deployment else None
-
-        deployment = ApplicationLifecycleDomainService.create_restart_record(app, env_file=env_file)
+        deployment = ApplicationLifecycleDomainService.create_restart_record(app)
         self.deployment_repo.save(deployment)
         self.deployment_repo.commit()
 
@@ -433,7 +415,6 @@ class ApplicationService:
         application_id: str,
         operation_type: OperationType,
         trigger_type: TriggerType,
-        env_file: str | None = None,
         is_rollback: bool = False,
     ) -> Deployment:
         """创建部署记录"""
@@ -448,7 +429,6 @@ class ApplicationService:
             operation_type=operation_type,
             trigger_type=trigger_type,
             status=TaskStatus.WAITING_TO_RUN,
-            env_file=env_file,
             is_rollback=is_rollback,
         )
 

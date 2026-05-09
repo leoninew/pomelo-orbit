@@ -7,8 +7,6 @@ export interface Deployment {
 	application_name: string | null
 	operation_type: string
 	trigger_type: string
-	environment?: string
-	env_file: string | null
 	status: TaskStatus
 	started_at: string
 	finished_at: string | null

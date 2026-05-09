@@ -116,7 +116,6 @@ class Deployment:
     status: str
     operation_type: OperationType
     is_rollback: bool
-    env_file: str | None = None
     started_at: datetime = field(default_factory=utc_now)
     finished_at: datetime | None = None
     duration_ms: int | None = None

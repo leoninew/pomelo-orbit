@@ -167,46 +167,6 @@ class TestGetLock:
         assert lock1 is not lock2
 
 
-class TestFindLastSuccessfulDeployment:
-    """查找最近成功部署测试"""
-
-    def test_finds_last_successful_deployment(self, app_service, mock_deployment_repo):
-        """测试查找最近一次成功的部署"""
-        deployment = Deployment(
-            id="deploy-2",
-            application_id="app-1",
-            application_name="Test",
-            trigger_type=TriggerType.MANUAL,
-            status=TaskStatus.RAN_TO_COMPLETION.value,
-            operation_type=OperationType.DEPLOY,
-            is_rollback=False,
-        )
-        mock_deployment_repo.find_last_successful_deploy.return_value = deployment
-
-        result = app_service._find_last_successful_deployment("app-1")
-
-        assert result is not None
-        assert result.id == "deploy-2"
-        mock_deployment_repo.find_last_successful_deploy.assert_called_once_with("app-1")
-
-    def test_returns_none_when_no_successful_deployment(self, app_service, mock_deployment_repo):
-        """测试没有成功部署时返回 None"""
-        mock_deployment_repo.find_last_successful_deploy.return_value = None
-
-        result = app_service._find_last_successful_deployment("app-1")
-
-        assert result is None
-
-    def test_ignores_non_deploy_operations(self, app_service, mock_deployment_repo):
-        """测试仓储层负责过滤非部署操作，应用服务直接使用结果"""
-        mock_deployment_repo.find_last_successful_deploy.return_value = None
-
-        result = app_service._find_last_successful_deployment("app-1")
-
-        assert result is None
-        mock_deployment_repo.find_last_successful_deploy.assert_called_once_with("app-1")
-
-
 class TestConfigFileManagement:
     """配置文件管理测试"""
 
@@ -586,39 +546,6 @@ class TestStopApplicationBusinessLogic:
         assert app.status == ApplicationStatus.UNDEPLOYED
         mock_app_repo.save.assert_called_once_with(app)
 
-    @pytest.mark.asyncio
-    async def test_stop_uses_env_file_from_last_deployment(
-        self, app_service, mock_app_repo, mock_deployment_repo, mock_app_manager, tmp_path
-    ):
-        """测试停止时使用最近部署的 env_file"""
-        app = Application(
-            id="app-1",
-            name="Test",
-            code="test-app",
-            status=ApplicationStatus.DEPLOYED,
-            image_pull_policy="IfNotPresent",
-        )
-        mock_app_repo.find_by_id.return_value = app
-
-        last_deployment = Deployment(
-            id="deploy-1",
-            application_id="app-1",
-            application_name="Test",
-            trigger_type=TriggerType.MANUAL,
-            status=TaskStatus.RAN_TO_COMPLETION.value,
-            operation_type=OperationType.DEPLOY,
-            is_rollback=False,
-            env_file=".env.production",
-        )
-        mock_deployment_repo.find_last_successful_deploy.return_value = last_deployment
-
-        await app_service.stop_application("app-1")
-
-        mock_app_manager.stop.assert_called_once()
-        call_args = mock_app_manager.stop.call_args
-        assert call_args[0][2] == ".env.production"
-
-
 class TestRestartApplicationBusinessLogic:
     """重启应用业务逻辑测试"""
 
@@ -827,3 +754,84 @@ class TestPreviewComposeYaml:
         call_kwargs = mock_app_manager.preview_docker_compose.call_args
         # 确认 routes 参数被传入（非 None）
         assert call_kwargs.args[4] == routes or call_kwargs.kwargs.get("routes") == routes
+
+
+class TestSimplifiedDeploymentFlow:
+    """测试简化后的部署流程（移除 environment 和 env_file）"""
+
+    @pytest.mark.asyncio
+    async def test_deploy_without_env_file(
+        self, app_service, mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_app_manager
+    ):
+        """测试部署不再需要 env_file 参数"""
+        app = Application(
+            id="app-1",
+            name="Test",
+            code="test-app",
+            status=ApplicationStatus.UNDEPLOYED,
+            image_pull_policy="IfNotPresent",
+        )
+        mock_app_repo.find_by_id.return_value = app
+        mock_config_file_repo.find_by_application.return_value = []
+
+        deployment = Deployment(
+            id="deploy-1",
+            application_id="app-1",
+            application_name="Test",
+            trigger_type=TriggerType.MANUAL,
+            status=TaskStatus.WAITING_TO_RUN.value,
+            operation_type=OperationType.DEPLOY,
+            is_rollback=False,
+        )
+
+        await app_service.deploy(app, deployment)
+
+        # 验证 deploy 调用不包含 env_file 参数
+        mock_app_manager.deploy.assert_called_once()
+        call_kwargs = mock_app_manager.deploy.call_args.kwargs
+        assert "env_file" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_stop_without_env_file_lookup(
+        self, app_service, mock_app_repo, mock_deployment_repo, mock_app_manager
+    ):
+        """测试停止操作不再查找最后一次部署的 env_file"""
+        app = Application(
+            id="app-1",
+            name="Test",
+            code="test-app",
+            status=ApplicationStatus.DEPLOYED,
+            image_pull_policy="IfNotPresent",
+        )
+        mock_app_repo.find_by_id.return_value = app
+
+        await app_service.stop_application("app-1")
+
+        # 验证没有调用 find_last_successful_deploy
+        assert not hasattr(mock_deployment_repo, "find_last_successful_deploy") or \
+               not mock_deployment_repo.find_last_successful_deploy.called
+
+        # 验证 stop 调用只包含 application_code 和 remove_volumes 参数
+        mock_app_manager.stop.assert_called_once()
+        call_args = mock_app_manager.stop.call_args
+        # stop 接收 application_code 和 remove_volumes 两个参数
+        assert len(call_args.args) == 2  # application_code, remove_volumes
+        assert call_args.args[0] == "test-app"
+        assert call_args.args[1] is False  # remove_volumes 默认为 False
+        assert "env_file" not in call_args.kwargs
+
+    def test_deployment_entity_no_env_fields(self):
+        """测试 Deployment 实体不再包含 environment 和 env_file 字段"""
+        deployment = Deployment(
+            id="deploy-1",
+            application_id="app-1",
+            application_name="Test",
+            trigger_type=TriggerType.MANUAL,
+            status=TaskStatus.WAITING_TO_RUN.value,
+            operation_type=OperationType.DEPLOY,
+            is_rollback=False,
+        )
+
+        # 验证实体不包含这些字段
+        assert not hasattr(deployment, "environment")
+        assert not hasattr(deployment, "env_file")

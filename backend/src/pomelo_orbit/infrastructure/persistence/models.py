@@ -82,7 +82,6 @@ class DeploymentModel(Base):
     application_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     operation_type: Mapped[str] = mapped_column(String(20), default=OperationType.DEPLOY, nullable=False)
     trigger_type: Mapped[str] = mapped_column(String(20), nullable=False)  # webhook | manual
-    env_file: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, index=True)  # queued | running | success | failed
     started_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

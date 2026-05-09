@@ -15,7 +15,6 @@ class DeploymentResp(BaseModel):
     application_name: str | None = None
     operation_type: str
     trigger_type: str
-    env_file: str | None
     status: str
     started_at: datetime
     finished_at: datetime | None

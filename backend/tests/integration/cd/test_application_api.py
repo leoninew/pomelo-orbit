@@ -182,7 +182,7 @@ class TestApplicationAPI:
         """测试部署应用"""
         response = auth_client.post(
             f"/api/cd/applications/{test_app.id}/deploy",
-            json={"branch": "main", "env": "production"},
+            json={"branch": "main"},
         )
 
         assert response.status_code == 200

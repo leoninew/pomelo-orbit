@@ -308,7 +308,7 @@
 	const importSummary = computed(() =>
 		[
 			`配置文件 ${importForm.config_files.length}`,
-			`服务配置 ${importForm.service_configs.length}`,
+			`镜像配置 ${importForm.service_configs.length}`,
 			`路由 ${importForm.routes.length}`,
 		].join(' / ')
 	);

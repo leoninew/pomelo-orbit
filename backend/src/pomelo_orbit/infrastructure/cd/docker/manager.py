@@ -221,15 +221,9 @@ class ApplicationManagerImpl(ApplicationManager):
         self,
         app_dir: Path,
         pull_policy: str = "missing",
-        env_file: str | None = None,
         log_file: TextIO | None = None,
     ) -> str:
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
-        if env_file:
-            env_path = app_dir / env_file
-            if not env_path.exists():
-                raise FileNotFoundError(f"Environment file not found: {env_path}")
-            cmd.extend(["--env-file", env_file])
         cmd.extend(["up", "-d", "--remove-orphans", "--pull", pull_policy])
         return await self._run_command(cmd, cwd=app_dir, log_file=log_file)
 
@@ -237,21 +231,16 @@ class ApplicationManagerImpl(ApplicationManager):
         self,
         app_dir: Path,
         remove_volumes: bool = False,
-        env_file: str | None = None,
         log_file: TextIO | None = None,
     ) -> str:
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
-        if env_file:
-            cmd.extend(["--env-file", env_file])
         cmd.append("down")
         if remove_volumes:
             cmd.append("-v")
         return await self._run_command(cmd, cwd=app_dir, log_file=log_file)
 
-    async def _compose_restart(self, app_dir: Path, env_file: str | None = None, log_file: TextIO | None = None) -> str:
+    async def _compose_restart(self, app_dir: Path, log_file: TextIO | None = None) -> str:
         cmd = ["docker", "compose", "-f", "docker-compose.yml"]
-        if env_file:
-            cmd.extend(["--env-file", env_file])
         cmd.append("restart")
         return await self._run_command(cmd, cwd=app_dir, log_file=log_file)
 
@@ -330,7 +319,6 @@ class ApplicationManagerImpl(ApplicationManager):
         service_configs: list[ApplicationServiceConfig] | None,
         pull_policy: str,
         deployment_id: str,
-        env_file: str | None = None,
         routes: list[ApplicationRoute] | None = None,
     ) -> None:
         working_dir = self.get_app_working_dir(application_code)
@@ -373,9 +361,7 @@ class ApplicationManagerImpl(ApplicationManager):
                 self._write_log(log_file, f"Init script output:\n{init_output}")
 
             self._write_log(log_file, f"Starting services (pull policy: {pull_policy})...")
-            up_output = await self._compose_up(
-                working_dir, pull_policy=pull_policy, env_file=env_file, log_file=log_file
-            )
+            up_output = await self._compose_up(working_dir, pull_policy=pull_policy, log_file=log_file)
             self._write_log(log_file, f"Start output:\n{up_output}")
             logger.info(f"Deploy completed: app={application_code}, deployment={deployment_id}")
         finally:
@@ -387,17 +373,17 @@ class ApplicationManagerImpl(ApplicationManager):
             raise FileNotFoundError("应用目录不存在, 请先部署应用")
         return await self._compose_up(runtime_dir)
 
-    async def stop(self, application_code: str, remove_volumes: bool = False, env_file: str | None = None) -> str:
+    async def stop(self, application_code: str, remove_volumes: bool = False) -> str:
         working_dir = self.get_app_working_dir(application_code)
         if not working_dir.exists():
             raise FileNotFoundError("应用目录不存在")
-        return await self._compose_down(working_dir, remove_volumes=remove_volumes, env_file=env_file)
+        return await self._compose_down(working_dir, remove_volumes=remove_volumes)
 
-    async def restart(self, application_code: str, env_file: str | None = None) -> str:
+    async def restart(self, application_code: str) -> str:
         working_dir = self.get_app_working_dir(application_code)
         if not working_dir.exists():
             raise FileNotFoundError("应用目录不存在")
-        return await self._compose_restart(working_dir, env_file=env_file)
+        return await self._compose_restart(working_dir)
 
     async def status(self, application_code: str) -> str:
         working_dir = self.get_app_working_dir(application_code)

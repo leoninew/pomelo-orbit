@@ -11,7 +11,7 @@
 				/>
 				<SearchControl
 					v-model="query.search"
-					placeholder="搜索应用/环境"
+					placeholder="搜索应用"
 					:loading="status === 'loading'"
 					class="shrink-0"
 					@search="handleSearch"
@@ -70,7 +70,9 @@
 								{{ deployment.error_message || '—' }}
 							</td>
 							<td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
-							<td class="text-foreground">{{ formatDuration(deployment.started_at, deployment.finished_at) }}</td>
+							<td class="text-foreground">
+								{{ formatDuration(deployment.started_at, deployment.finished_at) }}
+							</td>
 							<td>
 								<div class="flex items-center gap-3">
 									<button class="app-link" @click="router.push(`/cd/deployments/${deployment.id}`)">

@@ -3,10 +3,10 @@
 		<!-- 用户信息 -->
 		<div class="app-surface">
 			<div class="app-section-header flex items-center justify-between">
-				<h2 class="font-semibold text-foreground">用户信息</h2>
+				<h2 class="font-semibold text-foreground">{{ t('settings.userInfo') }}</h2>
 				<button class="app-button-primary h-8 px-3" @click="isPasswordDialogOpen = true">
 					<Key class="size-4" />
-					修改密码
+					{{ t('settings.changePassword') }}
 				</button>
 			</div>
 			<dl
@@ -14,27 +14,31 @@
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
 			>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">用户名</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('settings.username') }}</dt>
 					<dd class="text-foreground">{{ authStore.user.username }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('settings.createdAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(authStore.user.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">上次登录</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('settings.lastLogin') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(authStore.user.last_login_at) }}</dd>
 				</div>
 			</dl>
 		</div>
 
 		<ToolbarRoot class="flex items-center justify-between gap-6" aria-label="系统设置工具栏">
-			<SearchControl v-model="searchText" placeholder="搜索配置项" :loading="configLoading" />
+			<SearchControl
+				v-model="searchText"
+				:placeholder="t('settings.searchPlaceholder')"
+				:loading="configLoading"
+			/>
 		</ToolbarRoot>
 
 		<!-- Restart Warning -->
 		<div v-if="needsRestart" class="app-tip border-amber-200 bg-amber-50">
-			<p class="text-sm text-amber-800">⚠️ 配置已更新，请重启服务以使更改生效</p>
+			<p class="text-sm text-amber-800">{{ t('settings.restartWarning') }}</p>
 		</div>
 
 		<!-- Config Table -->
@@ -43,7 +47,7 @@
 		</div>
 		<div v-else-if="filteredConfig.length === 0" class="app-surface">
 			<div class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">{{ searchText ? '未找到匹配的配置项' : '暂无配置' }}</p>
+				<p class="text-sm">{{ searchText ? t('settings.noMatch') : t('settings.noConfig') }}</p>
 			</div>
 		</div>
 		<div v-else class="app-surface">
@@ -51,11 +55,11 @@
 				<table class="app-table-list min-w-[1120px]">
 					<thead>
 						<tr>
-							<th>配置项</th>
-							<th>当前值</th>
-							<th>默认值</th>
-							<th>更新时间</th>
-							<th class="text-right">操作</th>
+							<th>{{ t('settings.configKey') }}</th>
+							<th>{{ t('settings.currentValue') }}</th>
+							<th>{{ t('settings.defaultValue') }}</th>
+							<th>{{ t('settings.updatedAt') }}</th>
+							<th class="text-right">{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -88,7 +92,11 @@
 										v-else
 										v-model="editingStr"
 										:type="secretKeys.has(item.key) ? 'password' : 'text'"
-										:placeholder="secretKeys.has(item.key) ? '留空表示不修改' : ''"
+										:placeholder="
+											secretKeys.has(item.key)
+												? t('settings.passwordDialog.emptyKeepUnchanged')
+												: ''
+										"
 										class="app-input h-9"
 									/>
 								</div>
@@ -113,19 +121,19 @@
 							<td>
 								<div v-if="editingKey === item.key" class="flex justify-end gap-2">
 									<button :disabled="operating" class="app-link" @click="handleSave(item)">
-										保存
+										{{ t('common.save') }}
 									</button>
 									<button class="text-muted-foreground hover:text-foreground" @click="cancelEdit">
-										取消
+										{{ t('common.cancel') }}
 									</button>
 								</div>
 								<div v-else class="flex justify-end gap-2">
-									<button class="app-link" @click="startEdit(item)">编辑</button>
+									<button class="app-link" @click="startEdit(item)">{{ t('common.edit') }}</button>
 									<button
 										class="text-muted-foreground hover:text-foreground"
 										@click="confirmReset(item.key)"
 									>
-										重置
+										{{ t('common.reset') }}
 									</button>
 								</div>
 							</td>
@@ -137,16 +145,18 @@
 
 		<AppDialog
 			v-model:open="isPasswordDialogOpen"
-			title="修改密码"
-			description="请输入当前密码和新密码。"
+			:title="t('settings.passwordDialog.title')"
+			:description="t('settings.passwordDialog.description')"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">当前密码</label>
+					<label class="app-field-label block">
+						{{ t('settings.passwordDialog.oldPassword') }}
+					</label>
 					<input
 						v-model="passwordForm.old_password"
 						type="password"
-						placeholder="输入当前密码"
+						:placeholder="t('settings.passwordDialog.oldPasswordPlaceholder')"
 						class="app-input"
 						:class="passwordErrors.old_password ? 'app-input-error' : ''"
 					/>
@@ -155,11 +165,13 @@
 					</p>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">新密码</label>
+					<label class="app-field-label block">
+						{{ t('settings.passwordDialog.newPassword') }}
+					</label>
 					<input
 						v-model="passwordForm.new_password"
 						type="password"
-						placeholder="输入新密码（至少 6 位）"
+						:placeholder="t('settings.passwordDialog.newPasswordPlaceholder')"
 						class="app-input"
 						:class="passwordErrors.new_password ? 'app-input-error' : ''"
 					/>
@@ -168,11 +180,13 @@
 					</p>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">确认新密码</label>
+					<label class="app-field-label block">
+						{{ t('settings.passwordDialog.confirmPassword') }}
+					</label>
 					<input
 						v-model="passwordForm.confirm_password"
 						type="password"
-						placeholder="再次输入新密码"
+						:placeholder="t('settings.passwordDialog.confirmPasswordPlaceholder')"
 						class="app-input"
 						:class="passwordErrors.confirm_password ? 'app-input-error' : ''"
 					/>
@@ -182,27 +196,33 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isPasswordDialogOpen = false">取消</button>
+				<button class="app-button" @click="isPasswordDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
 				<button
 					class="app-button-primary"
 					:disabled="passwordLoading"
 					@click="handleChangePassword"
 				>
-					修改密码
+					{{ t('settings.changePassword') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isResetDialogOpen"
-			title="确认重置"
-			description="确定要将此配置项重置为默认值吗？"
+			:title="t('settings.resetDialog.title')"
+			:description="t('settings.resetDialog.description')"
 			width-class="w-[min(400px,calc(100vw-32px))]"
 			body-class="hidden"
 		>
 			<template #footer>
-				<button class="app-button" @click="isResetDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleReset">重置</button>
+				<button class="app-button" @click="isResetDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleReset">
+					{{ t('common.reset') }}
+				</button>
 			</template>
 		</AppDialog>
 	</div>
@@ -212,6 +232,7 @@
 	import { Key } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
+	import { useI18n } from 'vue-i18n';
 	import { settingApi } from '@/api/settings';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
@@ -223,6 +244,7 @@
 	import type { ConfigItemResp, SystemConfigResp } from '@/types/cd/settings';
 	import { formatTime } from '@/utils/time';
 
+	const { t } = useI18n();
 	const authStore = useAuthStore();
 	const toast = useToast();
 
@@ -285,7 +307,7 @@
 				config.value = await settingApi.getConfig();
 			});
 		} catch {
-			toast.error('加载配置失败');
+			toast.error(t('settings.loadFailed'));
 		}
 	}
 
@@ -314,10 +336,10 @@
 				config.value = await settingApi.updateConfig({ key: record.key, value });
 				needsRestart.value = true;
 				editingKey.value = undefined;
-				toast.warning('已保存，请重启服务以生效');
+				toast.warning(t('settings.saveSuccess'));
 			});
 		} catch {
-			toast.error('保存失败');
+			toast.error(t('settings.saveFailed'));
 		}
 	}
 
@@ -337,18 +359,23 @@
 				});
 				needsRestart.value = true;
 				isResetDialogOpen.value = false;
-				toast.warning('已重置，请重启服务以生效');
+				toast.warning(t('settings.resetSuccess'));
 			});
 		} catch {
-			toast.error('重置失败');
+			toast.error(t('settings.resetFailed'));
 		}
 	}
 
 	function validatePassword() {
-		passwordErrors.old_password = passwordForm.old_password ? '' : '请输入当前密码';
-		passwordErrors.new_password = passwordForm.new_password.length >= 6 ? '' : '密码至少 6 位';
+		passwordErrors.old_password = passwordForm.old_password
+			? ''
+			: t('settings.passwordDialog.oldPasswordRequired');
+		passwordErrors.new_password =
+			passwordForm.new_password.length >= 6 ? '' : t('settings.passwordDialog.newPasswordTooShort');
 		passwordErrors.confirm_password =
-			passwordForm.confirm_password === passwordForm.new_password ? '' : '两次输入的密码不一致';
+			passwordForm.confirm_password === passwordForm.new_password
+				? ''
+				: t('settings.passwordDialog.passwordMismatch');
 		return (
 			!passwordErrors.old_password &&
 			!passwordErrors.new_password &&
@@ -363,7 +390,7 @@
 		try {
 			await executeChangePassword(async () => {
 				await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
-				toast.success('密码修改成功');
+				toast.success(t('settings.passwordDialog.changeSuccess'));
 				isPasswordDialogOpen.value = false;
 				Object.assign(passwordForm, {
 					old_password: '',
@@ -372,7 +399,9 @@
 				});
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '密码修改失败');
+			toast.error(
+				error instanceof Error ? error.message : t('settings.passwordDialog.changeFailed')
+			);
 		}
 	}
 

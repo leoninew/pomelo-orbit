@@ -26,8 +26,10 @@
 	}>();
 
 	const pathData = computed(() => {
-		if (!props.data || props.data.length === 0) {return '';}
-		
+		if (!props.data || props.data.length === 0) {
+			return '';
+		}
+
 		// 单点数据居中显示
 		if (props.data.length === 1) {
 			return 'M50,15';

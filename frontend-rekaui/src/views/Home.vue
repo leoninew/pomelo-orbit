@@ -5,8 +5,8 @@
 			aria-label="概览工具栏"
 		>
 			<div class="space-y-1">
-				<h1 class="text-xl font-semibold text-foreground">项目概览</h1>
-				<p class="text-sm text-muted-foreground">CI/CD 今日运行与最近活动</p>
+				<h1 class="text-xl font-semibold text-foreground">{{ t('home.title') }}</h1>
+				<p class="text-sm text-muted-foreground">{{ t('home.subtitle') }}</p>
 			</div>
 			<button
 				class="app-button inline-flex h-10 items-center gap-2 px-4"
@@ -14,7 +14,7 @@
 				@click="refresh"
 			>
 				<RefreshCw class="size-4" :class="{ 'animate-spin': status === 'loading' }" />
-				刷新
+				{{ t('common.refresh') }}
 			</button>
 		</ToolbarRoot>
 
@@ -59,18 +59,18 @@
 		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
 			<section class="app-surface overflow-hidden">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="text-sm font-semibold text-foreground">最近构建</h2>
+					<h2 class="text-sm font-semibold text-foreground">{{ t('home.recentBuilds') }}</h2>
 					<button
 						class="app-link inline-flex items-center gap-1 text-sm"
 						@click="router.push('/ci/run')"
 					>
-						查看全部
+						{{ t('common.viewAll') }}
 						<ArrowRight class="size-4" />
 					</button>
 				</div>
 				<AppSpinner v-if="status === 'loading'" class="py-16" />
 				<div v-else-if="recentRuns.length === 0" class="text-center py-16 text-muted-foreground">
-					<p class="text-sm">暂无构建记录</p>
+					<p class="text-sm">{{ t('home.noBuilds') }}</p>
 				</div>
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-list table-fixed min-w-[560px]">
@@ -81,9 +81,9 @@
 						</colgroup>
 						<thead>
 							<tr>
-								<th>仓库</th>
-								<th>创建时间</th>
-								<th class="text-right">状态</th>
+								<th>{{ t('home.repository') }}</th>
+								<th>{{ t('common.createdAt') }}</th>
+								<th class="text-right">{{ t('common.status') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -120,18 +120,18 @@
 
 			<section class="app-surface overflow-hidden">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="text-sm font-semibold text-foreground">最近部署</h2>
+					<h2 class="text-sm font-semibold text-foreground">{{ t('home.recentDeploys') }}</h2>
 					<button
 						class="app-link inline-flex items-center gap-1 text-sm"
 						@click="router.push('/cd/deployments')"
 					>
-						查看全部
+						{{ t('common.viewAll') }}
 						<ArrowRight class="size-4" />
 					</button>
 				</div>
 				<AppSpinner v-if="status === 'loading'" class="py-16" />
 				<div v-else-if="recentDeploys.length === 0" class="text-center py-16 text-muted-foreground">
-					<p class="text-sm">暂无部署记录</p>
+					<p class="text-sm">{{ t('home.noDeploys') }}</p>
 				</div>
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-list table-fixed min-w-[560px]">
@@ -142,9 +142,9 @@
 						</colgroup>
 						<thead>
 							<tr>
-								<th>应用</th>
-								<th>开始时间</th>
-								<th class="text-right">状态</th>
+								<th>{{ t('home.application') }}</th>
+								<th>{{ t('home.startTime') }}</th>
+								<th class="text-right">{{ t('common.status') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -186,6 +186,7 @@
 	import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
+	import { useI18n } from 'vue-i18n';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import { pipelineRunApi, repositoryApi } from '@/api/ci';
@@ -197,7 +198,7 @@
 	import { statusBadgeClass, statusLabel } from '@/utils/status';
 	import { formatTime, getTodayStart } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
-	
+
 	// 导入卡片图片
 	import image1 from '@/assets/images/1.png';
 	import image2 from '@/assets/images/2.png';
@@ -207,46 +208,47 @@
 	const router = useRouter();
 	const toast = useToast();
 	const { status, execute } = useStatusAsync();
+	const { t } = useI18n({ useScope: 'global' });
 
 	const ciStats = reactive({ projectCount: 0, todayRuns: 0 });
 	const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 });
 	const recentRuns = ref<PipelineRun[]>([]);
 	const recentDeploys = ref<Deployment[]>([]);
-	
+
 	const cardImages = [image1, image2, image3, image4];
 
 	const overviewCards = computed(() => [
 		{
-			label: '代码仓库',
+			label: t('home.repositories'),
 			value: ciStats.projectCount,
-			description: '已接入 CI 项目',
+			description: t('home.repositoriesDesc'),
 			path: '/ci/repository',
 			icon: FolderGit2,
 			iconBgClass: 'bg-blue-500/10 dark:bg-blue-400/10',
 			iconColorClass: 'text-blue-600 dark:text-blue-400',
 		},
 		{
-			label: '今日构建',
+			label: t('home.todayBuilds'),
 			value: ciStats.todayRuns,
-			description: '今日触发流水线',
+			description: t('home.todayBuildsDesc'),
 			path: '/ci/run',
 			icon: Play,
 			iconBgClass: 'bg-purple-500/10 dark:bg-purple-400/10',
 			iconColorClass: 'text-purple-600 dark:text-purple-400',
 		},
 		{
-			label: '应用管理',
+			label: t('home.applications'),
 			value: cdStats.applicationCount,
-			description: '已接入 CD 应用',
+			description: t('home.applicationsDesc'),
 			path: '/cd/applications',
 			icon: LayoutGrid,
 			iconBgClass: 'bg-indigo-500/10 dark:bg-indigo-400/10',
 			iconColorClass: 'text-indigo-600 dark:text-indigo-400',
 		},
 		{
-			label: '今日部署',
+			label: t('home.todayDeploys'),
 			value: cdStats.todayDeploys,
-			description: '今日部署任务',
+			description: t('home.todayDeploysDesc'),
 			path: '/cd/deployments',
 			icon: Rocket,
 			iconBgClass: 'bg-orange-500/10 dark:bg-orange-400/10',

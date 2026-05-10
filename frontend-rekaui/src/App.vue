@@ -4,10 +4,12 @@
 		<RouterView v-if="isLoginPage" />
 
 		<!-- Main layout -->
-		<div v-else class="flex min-h-screen flex-col gap-4 p-4 md:h-full md:min-h-0 md:gap-6 md:p-6">
+		<div v-else class="flex min-h-screen flex-col md:h-full md:min-h-0">
 			<AppTopBar :current-module="currentPrimaryModule" />
 
-			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row md:gap-6">
+			<div
+				class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 md:flex-row md:gap-4 md:p-4"
+			>
 				<!-- Sidebar -->
 				<aside
 					v-if="currentScope"
@@ -46,7 +48,7 @@
 				</aside>
 
 				<!-- Main content -->
-				<main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-1 md:p-2">
+				<main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
 					<RouterView />
 				</main>
 			</div>
@@ -59,12 +61,14 @@
 <script setup lang="ts">
 	import { PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next';
 	import { computed, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRoute } from 'vue-router';
 	import AppToaster from '@/components/AppToaster.vue';
 	import AppTopBar from '@/components/AppTopBar.vue';
 	import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
 
 	const route = useRoute();
+	const { t } = useI18n({ useScope: 'global' });
 
 	const collapsed = ref(false);
 	const currentScope = computed(() => getNavigationScope(route.path));
@@ -75,7 +79,10 @@
 		if (!currentScope.value) {
 			return [];
 		}
-		return secondaryNavigation[currentScope.value] ?? [];
+		return (secondaryNavigation[currentScope.value] ?? []).map((item) => ({
+			...item,
+			label: t(item.labelKey),
+		}));
 	});
 
 	const isLoginPage = computed(() => route.name === 'Login');

@@ -3,7 +3,7 @@
 		<ToolbarRoot class="flex items-center" aria-label="登录历史工具栏">
 			<SearchControl
 				v-model="searchText"
-				placeholder="搜索用户名、IP 地址或用户代理"
+				:placeholder="t('loginHistory.searchPlaceholder')"
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
@@ -13,20 +13,20 @@
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || '加载失败' }}</p>
+				<p class="text-sm">{{ error || t('loginHistory.loadFailed') }}</p>
 			</div>
 			<div v-else-if="history.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">暂无数据</p>
+				<p class="text-sm">{{ t('common.noData') }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[920px]">
 					<thead>
 						<tr>
-							<th>登录时间</th>
-							<th>用户名</th>
-							<th>IP 地址</th>
-							<th>用户代理</th>
-							<th>状态</th>
+							<th>{{ t('loginHistory.loginTime') }}</th>
+							<th>{{ t('loginHistory.username') }}</th>
+							<th>{{ t('loginHistory.ipAddress') }}</th>
+							<th>{{ t('loginHistory.userAgent') }}</th>
+							<th>{{ t('common.status') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -46,7 +46,11 @@
 											: 'border-red-200 bg-red-50 text-red-700',
 									]"
 								>
-									{{ record.success ? '成功' : '失败' }}
+									{{
+										record.success
+											? t('loginHistory.statusSuccess')
+											: t('loginHistory.statusFailed')
+									}}
 								</span>
 							</td>
 						</tr>
@@ -68,6 +72,7 @@
 
 <script setup lang="ts">
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { authApi } from '@/api/auth';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
@@ -78,6 +83,7 @@
 	import { formatTime } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 
+	const { t } = useI18n();
 	const toast = useToast();
 	const { status, error, execute } = useStatusAsync();
 	const history = ref<LoginHistory[]>([]);
@@ -97,7 +103,7 @@
 				pagination.total = res.total;
 			});
 		} catch {
-			toast.error('获取登录历史失败');
+			toast.error(t('loginHistory.loadFailed'));
 		}
 	}
 

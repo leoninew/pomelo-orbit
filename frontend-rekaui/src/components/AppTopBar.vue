@@ -1,10 +1,10 @@
 <template>
 	<header
-		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-2xl border border-border bg-card px-3 shadow-sm md:h-20"
+		class="sticky top-0 z-40 flex min-h-14 shrink-0 items-center overflow-hidden border-b border-border bg-card/95 px-3 shadow-sm backdrop-blur md:h-16 md:px-4"
 	>
 		<RouterLink
 			to="/"
-			class="flex h-16 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
+			class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
 			aria-label="Pomelo Orbit 首页"
 		>
 			<span class="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
@@ -15,13 +15,17 @@
 
 		<NavigationMenuRoot
 			:model-value="currentModule ?? undefined"
-			class="flex h-16 min-w-0 flex-1 overflow-x-auto md:h-full md:flex-none"
+			class="flex h-14 min-w-0 flex-1 overflow-x-auto md:h-full md:flex-none"
 			aria-label="一级模块导航"
 			:delay-duration="100"
 			:skip-delay-duration="200"
 		>
 			<NavigationMenuList class="flex h-full min-w-max items-stretch gap-0">
-				<NavigationMenuItem v-for="item in primaryNavigation" :key="item.key" :value="item.key">
+				<NavigationMenuItem
+					v-for="item in localizedPrimaryNavigation"
+					:key="item.key"
+					:value="item.key"
+				>
 					<NavigationMenuLink as-child :active="isActive(item.key)">
 						<RouterLink
 							:to="item.path"
@@ -56,12 +60,21 @@
 			</ToolbarButton>
 			<ToolbarButton
 				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
-				:aria-label="themeLabel"
+				:aria-label="t('theme.' + theme)"
 				@click="cycleTheme"
 			>
 				<Monitor v-if="theme === 'system'" class="size-5" />
 				<Sun v-else-if="theme === 'light'" class="size-5" />
 				<Moon v-else class="size-5" />
+			</ToolbarButton>
+			<ToolbarButton
+				class="inline-flex h-9 min-w-12 items-center justify-center gap-1.5 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
+				:aria-label="switchLocaleLabel"
+				:title="switchLocaleLabel"
+				@click="toggleLocale"
+			>
+				<Languages class="size-5" />
+				<span class="text-xs font-semibold leading-none">{{ nextLocaleShortName }}</span>
 			</ToolbarButton>
 			<ToolbarButton
 				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
@@ -95,7 +108,7 @@
 						@select="handleLogout"
 					>
 						<LogOut class="size-4" />
-						退出登录
+						{{ t('user.logout') }}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenuPortal>
@@ -104,12 +117,25 @@
 </template>
 
 <script setup lang="ts">
-	import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Monitor, Moon, Search, Sun } from 'lucide-vue-next';
+	import {
+		Bell,
+		ChevronDown,
+		CircleHelp,
+		Code2,
+		Languages,
+		LogOut,
+		Monitor,
+		Moon,
+		Search,
+		Sun,
+	} from 'lucide-vue-next';
 	import { computed } from 'vue';
 	import { useRouter } from 'vue-router';
+	import { useI18n } from 'vue-i18n';
 	import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
 	import { useAuthStore } from '@/stores/auth';
 	import { useTheme } from '@/composables/useTheme';
+	import { setLocale, type Locale } from '@/i18n';
 	import {
 		DropdownMenuContent,
 		DropdownMenuItem,
@@ -131,18 +157,31 @@
 	const router = useRouter();
 	const authStore = useAuthStore();
 	const { theme, cycleTheme } = useTheme();
+	const { t, locale } = useI18n({ useScope: 'global' });
 
 	const userName = computed(() => authStore.user?.username || 'admin');
 	const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
 
-	const themeLabel = computed(() => {
-		const labels = {
-			system: '主题：跟随系统',
-			light: '主题：浅色',
-			dark: '主题：暗色',
-		};
-		return labels[theme.value];
-	});
+	const localizedPrimaryNavigation = computed(() =>
+		primaryNavigation.map((item) => ({
+			...item,
+			label: t(item.labelKey),
+		}))
+	);
+
+	const currentLocale = computed(() => locale.value as Locale);
+	const nextLocale = computed<Locale>(() => (currentLocale.value === 'zh-CN' ? 'en-US' : 'zh-CN'));
+	const nextLocaleShortName = computed(() => (nextLocale.value === 'zh-CN' ? '中' : 'EN'));
+	const nextLocaleName = computed(() =>
+		t(`language.${nextLocale.value === 'zh-CN' ? 'zhCN' : 'enUS'}`)
+	);
+	const switchLocaleLabel = computed(() =>
+		t('language.switchTo', { language: nextLocaleName.value })
+	);
+
+	function toggleLocale() {
+		setLocale(nextLocale.value);
+	}
 
 	function isActive(moduleKey: PrimaryNavigationKey) {
 		return props.currentModule === moduleKey;

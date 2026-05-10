@@ -2,7 +2,7 @@
 	<div
 		v-if="totalPages > 0"
 		class="overflow-x-auto"
-		:class="standalone ? '' : 'border-t border-gray-100 px-5 py-3 sm:px-6'"
+		:class="standalone ? '' : 'border-t border-border px-5 py-3 sm:px-6'"
 	>
 		<div class="flex min-w-max items-center justify-end gap-3">
 			<SelectControl

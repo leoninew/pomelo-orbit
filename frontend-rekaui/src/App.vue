@@ -1,5 +1,5 @@
 <template>
-	<div class="min-h-screen bg-slate-50 text-foreground md:h-screen">
+	<div class="min-h-screen bg-background text-foreground md:h-screen">
 		<!-- Login page: no layout -->
 		<RouterView v-if="isLoginPage" />
 
@@ -11,7 +11,7 @@
 				<!-- Sidebar -->
 				<aside
 					v-if="currentScope"
-					class="flex shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm transition-all duration-200"
+					class="flex shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200"
 					:class="collapsed ? 'md:w-16' : 'md:w-60'"
 				>
 					<nav class="flex-1 overflow-x-auto overflow-y-hidden p-3 md:overflow-y-auto md:p-4">
@@ -37,7 +37,7 @@
 					</nav>
 
 					<button
-						class="hidden h-11 items-center justify-center border-t border-gray-100 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground md:flex"
+						class="hidden h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground md:flex"
 						@click="collapsed = !collapsed"
 					>
 						<PanelLeftClose v-if="!collapsed" class="size-4" />

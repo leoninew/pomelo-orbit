@@ -1,6 +1,6 @@
 <template>
 	<header
-		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-2xl border border-gray-100 bg-card px-3 shadow-sm md:h-20"
+		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-2xl border border-border bg-card px-3 shadow-sm md:h-20"
 	>
 		<RouterLink
 			to="/"
@@ -56,6 +56,15 @@
 			</ToolbarButton>
 			<ToolbarButton
 				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
+				:aria-label="themeLabel"
+				@click="cycleTheme"
+			>
+				<Monitor v-if="theme === 'system'" class="size-5" />
+				<Sun v-else-if="theme === 'light'" class="size-5" />
+				<Moon v-else class="size-5" />
+			</ToolbarButton>
+			<ToolbarButton
+				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
 				aria-label="帮助"
 			>
 				<CircleHelp class="size-5" />
@@ -95,11 +104,12 @@
 </template>
 
 <script setup lang="ts">
-	import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Search } from 'lucide-vue-next';
+	import { Bell, ChevronDown, CircleHelp, Code2, LogOut, Monitor, Moon, Search, Sun } from 'lucide-vue-next';
 	import { computed } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
 	import { useAuthStore } from '@/stores/auth';
+	import { useTheme } from '@/composables/useTheme';
 	import {
 		DropdownMenuContent,
 		DropdownMenuItem,
@@ -120,9 +130,19 @@
 
 	const router = useRouter();
 	const authStore = useAuthStore();
+	const { theme, cycleTheme } = useTheme();
 
 	const userName = computed(() => authStore.user?.username || 'admin');
 	const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
+
+	const themeLabel = computed(() => {
+		const labels = {
+			system: '主题：跟随系统',
+			light: '主题：浅色',
+			dark: '主题：暗色',
+		};
+		return labels[theme.value];
+	});
 
 	function isActive(moduleKey: PrimaryNavigationKey) {
 		return props.currentModule === moduleKey;

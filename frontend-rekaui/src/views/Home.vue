@@ -50,7 +50,7 @@
 					<img
 						:src="cardImages[index]"
 						:alt="card.label"
-						class="h-24 w-24 object-contain sm:h-28 sm:w-28 xl:h-24 xl:w-24 2xl:h-28 2xl:w-28"
+						class="h-24 w-24 rounded-xl bg-white/80 object-contain p-1 ring-1 ring-black/5 transition-colors dark:bg-white/90 dark:ring-white/10 sm:h-28 sm:w-28 xl:h-24 xl:w-24 2xl:h-28 2xl:w-28"
 					/>
 				</div>
 			</button>

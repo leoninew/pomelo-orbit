@@ -132,7 +132,6 @@
 	<AppDialog
 		v-model:open="isCreateDialogOpen"
 		title="添加路由"
-		description="创建一个可同步到 Traefik 的 HTTP 路由。"
 	>
 		<div class="space-y-4">
 			<div class="space-y-1.5">

@@ -2,7 +2,6 @@
 	<AppDialog
 		v-model:open="isOpen"
 		title="触发流水线"
-		description="选择流水线模板并配置运行变量。"
 		width-class="w-[min(600px,calc(100vw-32px))]"
 		content-class="overflow-hidden"
 		body-class="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-4"

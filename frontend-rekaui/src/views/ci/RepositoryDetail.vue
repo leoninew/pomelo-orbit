@@ -138,7 +138,6 @@
 		<AppDialog
 			v-model:open="isEditDialogOpen"
 			title="编辑仓库"
-			description="更新仓库地址、默认分支和 Git 凭据配置。"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
@@ -218,7 +217,6 @@
 		<AppDialog
 			v-model:open="isAddVariableDialogOpen"
 			title="添加变量"
-			description="添加仓库自定义变量。"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
@@ -259,7 +257,6 @@
 		<AppDialog
 			v-model:open="isEditVariableDialogOpen"
 			title="编辑变量"
-			description="编辑仓库自定义变量。"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">

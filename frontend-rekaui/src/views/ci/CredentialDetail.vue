@@ -73,7 +73,6 @@
 		<AppDialog
 			v-model:open="isEditModalOpen"
 			title="编辑凭据"
-			description="更新凭据名称，凭据内容留空时不会修改。"
 			width-class="w-[min(600px,calc(100vw-32px))]"
 		>
 			<div class="space-y-4">

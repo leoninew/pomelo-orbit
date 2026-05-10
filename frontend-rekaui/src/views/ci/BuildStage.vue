@@ -142,7 +142,6 @@
 		<AppDialog
 			v-model:open="isEditDialogOpen"
 			title="编辑构建"
-			description="更新构建阶段基本信息。"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
@@ -189,7 +188,6 @@
 		<AppDialog
 			v-model:open="isArtifactDialogOpen"
 			:title="artifactForm.isEdit ? '编辑制品' : '添加制品'"
-			description="配置构建阶段产出的制品。"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">

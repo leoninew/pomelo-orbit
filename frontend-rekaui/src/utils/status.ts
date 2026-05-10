@@ -29,13 +29,13 @@ export function statusLabel(status: string): string {
 // 异步任务状态 badge 样式
 const STATUS_BADGE_MAP: Record<string, string> = {
 	waiting_to_run:
-		'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
+		'border border-amber-200 bg-amber-50 text-amber-700 shadow-[0_0_8px_rgba(245,158,11,0.15)] dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:shadow-[0_0_8px_rgba(245,158,11,0.2)]',
 	running:
-		'border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300',
+		'border border-blue-200 bg-blue-50 text-blue-700 shadow-[0_0_8px_rgba(59,130,246,0.15)] animate-pulse dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:shadow-[0_0_8px_rgba(59,130,246,0.2)]',
 	ran_to_completion:
-		'border border-green-200 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300',
+		'border border-green-200 bg-green-50 text-green-700 shadow-[0_0_8px_rgba(34,197,94,0.15)] dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300 dark:shadow-[0_0_8px_rgba(34,197,94,0.2)]',
 	faulted:
-		'border border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300',
+		'border border-red-200 bg-red-50 text-red-700 shadow-[0_0_8px_rgba(239,68,68,0.15)] dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:shadow-[0_0_8px_rgba(239,68,68,0.2)]',
 	canceled: 'border border-border bg-muted text-muted-foreground',
 };
 

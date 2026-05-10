@@ -146,7 +146,6 @@
 		<AppDialog
 			v-model:open="isPasswordDialogOpen"
 			:title="t('settings.passwordDialog.title')"
-			:description="t('settings.passwordDialog.description')"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
@@ -212,10 +211,9 @@
 		<AppDialog
 			v-model:open="isResetDialogOpen"
 			:title="t('settings.resetDialog.title')"
-			:description="t('settings.resetDialog.description')"
 			width-class="w-[min(400px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">{{ t('settings.resetDialog.description') }}</p>
 			<template #footer>
 				<button class="app-button" @click="isResetDialogOpen = false">
 					{{ t('common.cancel') }}

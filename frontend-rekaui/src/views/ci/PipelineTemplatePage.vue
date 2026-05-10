@@ -157,7 +157,6 @@
 	<AppDialog
 		v-model:open="showCreateDialog"
 		title="新建流水线模板"
-		description="创建一个可被仓库流水线复用的模板。"
 	>
 		<div class="space-y-4">
 			<div class="space-y-1.5">

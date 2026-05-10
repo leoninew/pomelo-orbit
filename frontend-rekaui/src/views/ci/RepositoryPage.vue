@@ -83,7 +83,6 @@
 	<AppDialog
 		v-model:open="showCreateModal"
 		title="新建仓库"
-		description="添加一个可用于流水线触发的 Git 仓库。"
 	>
 		<AppSpinner v-if="modalStatus === 'loading'" class="py-8" />
 

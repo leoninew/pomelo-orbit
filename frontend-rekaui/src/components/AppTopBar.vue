@@ -48,18 +48,6 @@
 		<ToolbarRoot class="hidden items-center gap-3 md:flex" aria-label="全局工具">
 			<ToolbarButton
 				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
-				aria-label="搜索"
-			>
-				<Search class="size-5" />
-			</ToolbarButton>
-			<ToolbarButton
-				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
-				aria-label="通知"
-			>
-				<Bell class="size-5" />
-			</ToolbarButton>
-			<ToolbarButton
-				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
 				:aria-label="t('theme.' + theme)"
 				@click="cycleTheme"
 			>
@@ -75,12 +63,6 @@
 			>
 				<Languages class="size-5" />
 				<span class="text-xs font-semibold leading-none">{{ nextLocaleShortName }}</span>
-			</ToolbarButton>
-			<ToolbarButton
-				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
-				aria-label="帮助"
-			>
-				<CircleHelp class="size-5" />
 			</ToolbarButton>
 		</ToolbarRoot>
 
@@ -118,15 +100,12 @@
 
 <script setup lang="ts">
 	import {
-		Bell,
 		ChevronDown,
-		CircleHelp,
 		Code2,
 		Languages,
 		LogOut,
 		Monitor,
 		Moon,
-		Search,
 		Sun,
 	} from 'lucide-vue-next';
 	import { computed } from 'vue';

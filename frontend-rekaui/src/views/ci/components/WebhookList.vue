@@ -73,7 +73,6 @@
 		<AppDialog
 			v-model:open="isDialogOpen"
 			:title="editingWebhook ? '编辑 Webhook' : '添加 Webhook'"
-			description="配置仓库 Webhook。"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
@@ -142,10 +141,9 @@
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
 			title="删除 Webhook"
-			description="确定删除此 Webhook？此操作不可撤销。"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">确定删除此 Webhook？此操作不可撤销。</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button class="app-button-destructive" :disabled="operating" @click="confirmDelete">

@@ -23,7 +23,7 @@
 				v-for="(card, index) in overviewCards"
 				:key="card.label"
 				:aria-label="`查看${card.label}详情，当前${card.value}个`"
-				class="group app-surface relative flex min-h-36 items-center gap-4 overflow-hidden px-4 py-4 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+				class="group app-surface relative flex min-h-36 items-center gap-4 overflow-hidden px-4 py-4 text-left shadow-sm transition-all duration-300 hover:scale-[1.02] hover:border-primary/30 hover:shadow-lg"
 				@click="router.push(card.path)"
 			>
 				<!-- 图标 -->
@@ -39,7 +39,9 @@
 				<!-- 指标文字 -->
 				<div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
 					<p class="text-base font-medium text-foreground">{{ card.label }}</p>
-					<span class="text-3xl font-bold leading-none text-foreground">{{ card.value }}</span>
+					<span class="text-4xl font-bold leading-none tracking-tight text-foreground">{{
+						card.value
+					}}</span>
 					<span class="text-sm text-muted-foreground">{{ card.description }}</span>
 				</div>
 
@@ -53,6 +55,12 @@
 						class="h-24 w-24 rounded-xl bg-white/80 object-contain p-1 ring-1 ring-black/5 transition-colors dark:bg-white/90 dark:ring-white/10 sm:h-28 sm:w-28 xl:h-24 xl:w-24 2xl:h-28 2xl:w-28"
 					/>
 				</div>
+
+				<!-- Hover 光晕效果 -->
+				<div
+					class="pointer-events-none absolute inset-0 rounded-[20px] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+					:style="{ background: getCardGlow(card.iconColorClass) }"
+				></div>
 			</button>
 		</div>
 
@@ -216,6 +224,17 @@
 	const recentDeploys = ref<Deployment[]>([]);
 
 	const cardImages = [image1, image2, image3, image4];
+
+	function getCardGlow(iconColorClass: string): string {
+		const colorMap: Record<string, string> = {
+			blue: 'rgba(59, 130, 246, 0.05)',
+			purple: 'rgba(168, 85, 247, 0.05)',
+			indigo: 'rgba(99, 102, 241, 0.05)',
+		};
+		const color = Object.keys(colorMap).find((key) => iconColorClass.includes(key));
+		const glowColor = color ? colorMap[color] : 'rgba(249, 115, 22, 0.05)';
+		return `radial-gradient(circle at 50% 50%, ${glowColor} 0%, transparent 70%)`;
+	}
 
 	const overviewCards = computed(() => [
 		{

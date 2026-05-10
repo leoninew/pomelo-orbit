@@ -91,9 +91,9 @@
 								{{ appStatusLabel(app.status) }}
 							</span>
 						</div>
-						<div class="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-							<span>编码: {{ app.code }}</span>
-							<span>拉取策略: {{ app.image_pull_policy }}</span>
+						<div class="mb-2 text-xs text-muted-foreground">
+							<div>编码: {{ app.code }}</div>
+							<div class="mt-1">拉取策略: {{ app.image_pull_policy }}</div>
 						</div>
 						<div class="mb-4 text-xs text-muted-foreground">
 							路由托管:
@@ -215,7 +215,6 @@
 		<AppDialog
 			v-model:open="isCreateDialogOpen"
 			title="新建应用"
-			description="创建持续部署应用的基础信息。"
 		>
 			<ApplicationFormFields
 				:form="form"
@@ -233,7 +232,6 @@
 		<AppDialog
 			v-model:open="isImportDialogOpen"
 			title="导入应用"
-			description="从导出的 JSON 文件导入应用，可在导入前调整名称和代码。"
 		>
 			<ApplicationFormFields
 				:form="importForm"

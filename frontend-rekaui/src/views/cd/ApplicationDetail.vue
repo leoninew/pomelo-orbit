@@ -417,9 +417,11 @@
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
 			title="确认删除"
-			:description="`确定要删除应用「${application?.name || '当前应用'}」吗？此操作不可恢复。`"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
+			<p class="mb-4 text-sm text-muted-foreground">
+				确定要删除应用「{{ application?.name || '当前应用' }}」吗？此操作不可恢复。
+			</p>
 			<label class="flex items-center gap-2">
 				<input v-model="deleteDir" type="checkbox" class="app-checkbox" />
 				<span class="text-sm text-foreground">
@@ -437,10 +439,9 @@
 		<AppDialog
 			v-model:open="isDeleteFileDialogOpen"
 			title="确认删除"
-			description="确定要删除这个配置文件吗？此操作无法撤销。"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">确定要删除这个配置文件吗？此操作无法撤销。</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteFileDialogOpen = false">取消</button>
 				<button
@@ -483,10 +484,11 @@
 		<AppDialog
 			v-model:open="isDeleteServiceConfigDialogOpen"
 			title="确认重置"
-			:description="`确定要重置「${pendingDeleteServiceName || '当前服务'}」的镜像覆盖并回退到 compose 原值吗？`"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">
+				确定要重置「{{ pendingDeleteServiceName || '当前服务' }}」的镜像覆盖并回退到 compose 原值吗？
+			</p>
 			<template #footer>
 				<button class="app-button" @click="cancelResetServiceConfig">取消</button>
 				<button
@@ -563,10 +565,11 @@
 		<AppDialog
 			v-model:open="isDeleteRouteDialogOpen"
 			title="确认删除"
-			description="确定要删除这个路由配置吗？此操作无法撤销。"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">
+				确定要删除这个路由配置吗？此操作无法撤销。
+			</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteRouteDialogOpen = false">取消</button>
 				<button :disabled="routeLoading" class="app-button-destructive" @click="executeDeleteRoute">

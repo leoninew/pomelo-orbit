@@ -235,7 +235,6 @@
 		<AppDialog
 			v-model:open="isEditInfoDialogOpen"
 			title="编辑基本信息"
-			description="更新流水线模板名称和描述。"
 		>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">模板名称</label>
@@ -315,7 +314,6 @@
 		<AppDialog
 			v-model:open="isRunDialogOpen"
 			title="运行流水线"
-			description="选择仓库并指定触发分支。"
 		>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">选择项目</label>
@@ -358,7 +356,6 @@
 		<AppDialog
 			v-model:open="isAddVarDialogOpen"
 			title="添加变量"
-			description="添加模板自定义变量。"
 		>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">变量名</label>
@@ -381,7 +378,6 @@
 		<AppDialog
 			v-model:open="isEditVarDialogOpen"
 			title="编辑变量"
-			description="编辑模板自定义变量。"
 		>
 			<div class="space-y-1.5">
 				<label class="app-field-label block">变量名</label>
@@ -404,10 +400,9 @@
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
 			title="确认删除"
-			description="确定要删除此模板吗？此操作不可恢复。"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">确定要删除此模板吗？此操作不可恢复。</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
 				<button :disabled="deleting" class="app-button-destructive" @click="handleDeleteOk">
@@ -419,10 +414,9 @@
 		<AppDialog
 			v-model:open="isDeleteOrchDialogOpen"
 			title="确认移除"
-			description="确定要移除此 Stage 吗？"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">确定要移除此 Stage 吗？</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteOrchDialogOpen = false">取消</button>
 				<button class="app-button-destructive" @click="removeOrch">确认移除</button>
@@ -432,10 +426,9 @@
 		<AppDialog
 			v-model:open="isDeleteVarDialogOpen"
 			title="确认删除"
-			:description="'确定要删除变量 ' + varToDelete + ' 吗？'"
 			width-class="w-[min(420px,calc(100vw-32px))]"
-			body-class="hidden"
 		>
+			<p class="text-sm text-muted-foreground">确定要删除变量 {{ varToDelete }} 吗？</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteVarDialogOpen = false">取消</button>
 				<button class="app-button-destructive" @click="deleteVariable">确认删除</button>

@@ -77,9 +77,6 @@
 	<AppDialog
 		v-model:open="showCredentialDialog"
 		:title="isEditing ? '编辑凭据' : '新建凭据'"
-		:description="
-			isEditing ? '更新凭据名称，凭据内容留空时不会修改。' : '创建可用于 Git 或镜像仓库访问的凭据。'
-		"
 		width-class="w-[min(600px,calc(100vw-32px))]"
 	>
 		<div class="space-y-4">
@@ -142,7 +139,6 @@
 	<AppDialog
 		v-model:open="showImportDialog"
 		title="导入凭据"
-		description="确认导入文件中的凭据信息。"
 		width-class="w-[min(600px,calc(100vw-32px))]"
 	>
 		<div class="space-y-4">

@@ -84,7 +84,6 @@
 	<AppDialog
 		v-model:open="isModalOpen"
 		title="新建构建"
-		description="创建一个可被流水线模板复用的构建阶段。"
 		width-class="w-[min(600px,calc(100vw-32px))]"
 	>
 		<div class="space-y-4">

@@ -19,10 +19,10 @@
 		--accent-foreground: 222.2 47.4% 11.2%;
 		--destructive: 0 84.2% 60.2%;
 		--destructive-foreground: 210 40% 98%;
-		--border: 214.3 31.8% 91.4%;
-		--input: 214.3 31.8% 91.4%;
+		--border: 220 13% 91%; /* 通用边框颜色 */
+		--input: 220 13% 91%; /* 输入框边框颜色，与 border 保持一致以确保视觉统一 */
 		--ring: 221.2 83.2% 53.3%;
-		--radius: 0.5rem;
+		--radius: 0.75rem;
 	}
 }
 
@@ -64,11 +64,11 @@
 
 @layer components {
 	.app-surface {
-		@apply overflow-hidden rounded-lg border border-border bg-card shadow-sm;
+		@apply overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm;
 	}
 
 	.app-section-header {
-		@apply border-b border-border px-5 py-4;
+		@apply border-b border-gray-100 px-6 py-5;
 	}
 
 	.app-toolbar-simple {
@@ -100,7 +100,7 @@
 	}
 
 	.app-input {
-		@apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+		@apply h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
 	}
 
 	.app-input-error {
@@ -108,35 +108,35 @@
 	}
 
 	.app-input-search {
-		@apply h-10 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+		@apply h-10 w-full rounded-xl border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
 	}
 
 	.app-textarea {
-		@apply min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+		@apply min-h-24 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
 	}
 
 	.app-button {
-		@apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
+		@apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
 	.app-button-primary {
-		@apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+		@apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
 	.app-button-danger {
-		@apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/50 bg-background px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
+		@apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-background px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
 	.app-button-destructive {
-		@apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
+		@apply inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-destructive bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
 	.app-icon-button {
-		@apply inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
+		@apply inline-flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
 	.app-action-item {
-		@apply block w-full rounded-md border border-border bg-muted/30 p-3 text-left transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
+		@apply block w-full rounded-xl border border-gray-100 bg-muted/30 p-3 text-left transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
 	}
 
 	.app-checkbox {
@@ -160,7 +160,7 @@
 	}
 
 	.app-select-trigger {
-		@apply flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60;
+		@apply flex h-10 items-center justify-between gap-2 rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60;
 	}
 
 	.app-switch-root {
@@ -172,19 +172,19 @@
 	}
 
 	.app-combobox-anchor {
-		@apply flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20;
+		@apply flex h-10 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20;
 	}
 
 	.app-popover-content {
-		@apply z-[60] max-h-64 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none;
+		@apply z-[60] max-h-64 rounded-xl border border-gray-100 bg-popover p-1 text-popover-foreground shadow-lg outline-none;
 	}
 
 	.app-option-item {
-		@apply flex cursor-pointer items-center justify-between gap-3 rounded-sm px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50;
+		@apply flex cursor-pointer items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[highlighted]:bg-accent/50;
 	}
 
 	.app-tip {
-		@apply rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
+		@apply rounded-xl border border-gray-100 bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
 	}
 
 	.app-badge {
@@ -216,15 +216,15 @@
 	}
 
 	.app-dialog-content {
-		@apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card shadow-xl outline-none data-[state=open]:animate-contentShow;
+		@apply fixed left-1/2 top-1/2 z-50 max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-gray-100 bg-card shadow-xl outline-none data-[state=open]:animate-contentShow;
 	}
 
 	.app-drawer-content {
-		@apply fixed bottom-0 right-0 top-0 z-50 flex max-h-screen max-w-full flex-col border-l border-border bg-card shadow-xl outline-none;
+		@apply fixed bottom-0 right-0 top-0 z-50 flex max-h-screen max-w-full flex-col border-l border-gray-100 bg-card shadow-xl outline-none;
 	}
 
 	.app-toast-root {
-		@apply flex w-full items-start gap-3 rounded-lg border px-4 py-3 shadow-lg outline-none;
+		@apply flex w-full items-start gap-3 rounded-xl border px-4 py-3 shadow-lg outline-none;
 	}
 
 	.app-table-list {
@@ -232,15 +232,15 @@
 	}
 
 	.app-table-list thead {
-		@apply border-b border-border bg-muted/30;
+		@apply border-b border-gray-50 bg-muted/30;
 	}
 
 	.app-table-list th {
-		@apply h-12 whitespace-nowrap px-6 py-3 text-left align-middle text-xs font-normal text-muted-foreground;
+		@apply h-12 whitespace-nowrap px-6 py-3 text-left align-middle text-xs font-medium text-muted-foreground;
 	}
 
 	.app-table-list tbody {
-		@apply divide-y divide-border;
+		@apply divide-y divide-gray-50;
 	}
 
 	.app-table-list tbody tr {
@@ -248,7 +248,7 @@
 	}
 
 	.app-table-list td {
-		@apply h-12 px-6 py-3 align-middle text-sm;
+		@apply h-12 px-6 py-4 align-middle text-sm;
 	}
 
 	.app-table-detail {
@@ -256,15 +256,15 @@
 	}
 
 	.app-table-detail thead {
-		@apply border-b border-border bg-muted/30;
+		@apply border-b border-gray-50 bg-muted/30;
 	}
 
 	.app-table-detail th {
-		@apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-xs font-normal text-muted-foreground;
+		@apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-xs font-medium text-muted-foreground;
 	}
 
 	.app-table-detail tbody {
-		@apply divide-y divide-border;
+		@apply divide-y divide-gray-50;
 	}
 
 	.app-table-detail tbody tr {

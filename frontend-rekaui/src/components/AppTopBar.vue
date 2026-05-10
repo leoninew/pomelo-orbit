@@ -1,6 +1,6 @@
 <template>
 	<header
-		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-lg border border-border bg-card px-3 shadow-sm md:h-20"
+		class="flex min-h-16 shrink-0 items-center overflow-hidden rounded-2xl border border-gray-100 bg-card px-3 shadow-sm md:h-20"
 	>
 		<RouterLink
 			to="/"

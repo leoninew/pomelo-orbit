@@ -1,17 +1,17 @@
 <template>
-	<div class="min-h-screen bg-muted/30 text-foreground md:h-screen">
+	<div class="min-h-screen bg-slate-50 text-foreground md:h-screen">
 		<!-- Login page: no layout -->
 		<RouterView v-if="isLoginPage" />
 
 		<!-- Main layout -->
-		<div v-else class="flex min-h-screen flex-col gap-3 p-3 md:h-full md:min-h-0 md:gap-4 md:p-4">
+		<div v-else class="flex min-h-screen flex-col gap-4 p-4 md:h-full md:min-h-0 md:gap-6 md:p-6">
 			<AppTopBar :current-module="currentPrimaryModule" />
 
-			<div class="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:flex-row md:gap-4">
+			<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row md:gap-6">
 				<!-- Sidebar -->
 				<aside
 					v-if="currentScope"
-					class="flex shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all duration-200"
+					class="flex shrink-0 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-card shadow-sm transition-all duration-200"
 					:class="collapsed ? 'md:w-16' : 'md:w-60'"
 				>
 					<nav class="flex-1 overflow-x-auto overflow-y-hidden p-3 md:overflow-y-auto md:p-4">
@@ -37,7 +37,7 @@
 					</nav>
 
 					<button
-						class="hidden h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground md:flex"
+						class="hidden h-11 items-center justify-center border-t border-gray-100 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground md:flex"
 						@click="collapsed = !collapsed"
 					>
 						<PanelLeftClose v-if="!collapsed" class="size-4" />
@@ -46,9 +46,7 @@
 				</aside>
 
 				<!-- Main content -->
-				<main
-					class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-background p-4 shadow-sm md:p-6"
-				>
+				<main class="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-1 md:p-2">
 					<RouterView />
 				</main>
 			</div>

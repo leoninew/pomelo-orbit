@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomelo Orbit Dashboard Redesign</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'PingFang SC', sans-serif;
+            background-color: #f8fafc;
+        }
+        .card-glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            transition: all 0.3s ease;
+        }
+        .gradient-blue { background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); }
+        .gradient-green { background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); }
+        .gradient-orange { background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); }
+        .gradient-purple { background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); }
+        
+        .sparkline {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header Mockup -->
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">项目概览</h1>
+                <p class="text-gray-500 text-sm mt-1">CI/CD 今日运行与最近活动</p>
+            </div>
+            <button class="px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm font-medium text-gray-600 hover:bg-gray-50 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                刷新数据
+            </button>
+        </div>
+
+        <!-- Redesigned Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            
+            <!-- Card 1: 代码仓库 -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                </div>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-blue-50 text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">+12%</span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-sm font-medium">代码仓库</h3>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-bold text-gray-900">24</span>
+                        <span class="text-gray-400 text-xs">已接入 CI 项目</span>
+                    </div>
+                </div>
+                <div class="mt-4 h-12">
+                    <svg class="w-full h-full" viewBox="0 0 100 30">
+                        <path class="sparkline stroke-blue-500" d="M0,25 L10,20 L20,28 L30,15 L40,22 L50,10 L60,18 L70,5 L80,12 L90,8 L100,15" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 2: 今日构建 -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                </div>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-purple-50 text-purple-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">正常</span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-sm font-medium">今日构建</h3>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-bold text-gray-900">128</span>
+                        <span class="text-gray-400 text-xs">今日触发流水线</span>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                        <div class="bg-purple-500 h-1.5 rounded-full" style="width: 75%"></div>
+                    </div>
+                    <div class="flex justify-between mt-1">
+                        <span class="text-[10px] text-gray-400">成功率 98%</span>
+                        <span class="text-[10px] text-gray-400">128/150</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: 应用管理 -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-indigo-50 text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">活跃</span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-sm font-medium">应用管理</h3>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-bold text-gray-900">42</span>
+                        <span class="text-gray-400 text-xs">已接入 CD 应用</span>
+                    </div>
+                </div>
+                <div class="mt-4 flex gap-1">
+                    <div class="h-2 flex-1 bg-indigo-500 rounded-sm"></div>
+                    <div class="h-2 flex-1 bg-indigo-400 rounded-sm"></div>
+                    <div class="h-2 flex-1 bg-indigo-300 rounded-sm"></div>
+                    <div class="h-2 flex-1 bg-indigo-200 rounded-sm"></div>
+                    <div class="h-2 flex-1 bg-gray-100 rounded-sm"></div>
+                </div>
+            </div>
+
+            <!-- Card 4: 今日部署 -->
+            <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-orange-600"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-4.5 5-4.5"/><path d="M12 15v5s3.03-.55 4.5-2c1.63-1.62 4.5-5 4.5-5"/></svg>
+                </div>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 rounded-xl bg-orange-50 text-orange-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4.5c1.62-1.63 5-4.5 5-4.5"/><path d="M12 15v5s3.03-.55 4.5-2c1.63-1.62 4.5-5 4.5-5"/></svg>
+                    </div>
+                    <span class="text-xs font-semibold text-orange-600 bg-orange-50 px-2 py-1 rounded-full">高峰期</span>
+                </div>
+                <div>
+                    <h3 class="text-gray-500 text-sm font-medium">今日部署</h3>
+                    <div class="flex items-baseline gap-2 mt-1">
+                        <span class="text-3xl font-bold text-gray-900">16</span>
+                        <span class="text-gray-400 text-xs">今日部署任务</span>
+                    </div>
+                </div>
+                <div class="mt-4 h-12 flex items-end gap-1">
+                    <div class="w-full bg-orange-100 h-4 rounded-t-sm"></div>
+                    <div class="w-full bg-orange-200 h-8 rounded-t-sm"></div>
+                    <div class="w-full bg-orange-300 h-6 rounded-t-sm"></div>
+                    <div class="w-full bg-orange-400 h-10 rounded-t-sm"></div>
+                    <div class="w-full bg-orange-500 h-12 rounded-t-sm"></div>
+                    <div class="w-full bg-orange-400 h-7 rounded-t-sm"></div>
+                    <div class="w-full bg-orange-200 h-3 rounded-t-sm"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Recent Activities (Optional Mockup for context) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-gray-800">最近构建</h3>
+                    <a href="#" class="text-blue-600 text-sm hover:underline">查看全部 &rarr;</a>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 text-left border-b border-gray-50">
+                            <th class="pb-3 font-medium">仓库</th>
+                            <th class="pb-3 font-medium">时间</th>
+                            <th class="pb-3 font-medium text-right">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600">
+                        <tr class="border-b border-gray-50 last:border-0">
+                            <td class="py-4 font-medium text-blue-600">pomelo-db</td>
+                            <td class="py-4 text-gray-400">2026-05-08 22:20</td>
+                            <td class="py-4 text-right"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold">成功</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-50 last:border-0">
+                            <td class="py-4 font-medium text-blue-600">golang/example</td>
+                            <td class="py-4 text-gray-400">2026-05-04 13:03</td>
+                            <td class="py-4 text-right"><span class="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold">异常</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-gray-800">最近部署</h3>
+                    <a href="#" class="text-blue-600 text-sm hover:underline">查看全部 &rarr;</a>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-gray-400 text-left border-b border-gray-50">
+                            <th class="pb-3 font-medium">应用</th>
+                            <th class="pb-3 font-medium">时间</th>
+                            <th class="pb-3 font-medium text-right">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600">
+                        <tr class="border-b border-gray-50 last:border-0">
+                            <td class="py-4 font-medium text-gray-800">Nginx-Main</td>
+                            <td class="py-4 text-gray-400">2026-05-09 23:09</td>
+                            <td class="py-4 text-right"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold">成功</span></td>
+                        </tr>
+                        <tr class="border-b border-gray-50 last:border-0">
+                            <td class="py-4 font-medium text-gray-800">API-Gateway</td>
+                            <td class="py-4 text-gray-400">2026-05-09 22:45</td>
+                            <td class="py-4 text-right"><span class="px-2 py-1 bg-green-50 text-green-600 rounded text-[10px] font-bold">成功</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

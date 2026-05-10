@@ -2,11 +2,13 @@
 
 为本地容器环境打造的轻量级 CI/CD 平台，覆盖代码构建到容器部署的完整链路，适用于 Windows WSL2、macOS 及 Linux 服务器。
 
-![image-20260414090258948](./assets/image-20260414090258948.png)
-
 ---
 
 ## 持续集成（CI）
+
+![image-20260510222925014](docs/assets/image-20260510222925014.png)
+
+![ScreenShot_2026-05-10_222011_238](docs/assets/ScreenShot_2026-05-10_222011_238.png)
 
 ### Stage — 可复用执行单元
 
@@ -20,11 +22,9 @@ PipelineStage {
 }
 ```
 
-![image-20260414090244892](./assets/image-20260414090244892.png)
-
-
-
 ### 流水线模板 — DAG 编排
+
+![image-20260510222654280](docs/assets/image-20260510222654280.png)
 
 模板将多个 Stage 编排为有向无环图（DAG），通过 `depends_on` 定义依赖关系，没有依赖的 Stage 自动并行执行。
 
@@ -37,21 +37,21 @@ clone
 
 lint 和 test 并行，build 等 test 完成后才执行。
 
-![image-20260414090209291](./assets/image-20260414090209291.png)
-
 ---
 
 ## 持续部署（CD）
+
+![image-20260510222723581](docs/assets/image-20260510222723581.png)
 
 ### 应用管理
 
 应用配置（`docker-compose.yml`、环境变量文件、初始化脚本）集中存储在数据库，部署时动态写入文件系统再执行 `docker compose up -d`。支持多环境配置文件（`.env.linux` / `.env.windows`），同一套配置可以在不同环境部署。
 
-![image-20260414090329448](./assets/image-20260414090329448.png)
-
 ---
 
 ## 动态路由网关
+
+![image-20260510222733841](docs/assets/image-20260510222733841.png)
 
 基于 Traefik，路由规则存储在数据库，变更时实时同步为 Traefik 动态配置文件，Traefik 通过文件监听自动热加载，无需重启网关。
 
@@ -64,8 +64,6 @@ Web UI 配置路由
 ```
 
 支持域名路由、路径前缀路由，HTTP/HTTPS 均可配置。
-
-![image-20260414090050785](./assets/image-20260414090050785.png)
 
 ---
 
@@ -86,7 +84,7 @@ Web UI 配置路由
 | 层级 | 技术 |
 |------|------|
 | 后端 | Python 3.12 + FastAPI + SQLAlchemy + SQLite |
-| 前端 | Vue 3 + Vite + Ant Design Vue + TypeScript |
+| 前端 | Vue 3 + Vite + Reka UI + Tailwind CSS + TypeScript |
 | 网关 | Traefik |
 | 容器 | Docker + docker-compose |
 
@@ -102,16 +100,12 @@ make dev-frontend  # 启动前端（端口 10002）
 
 访问 [localhost:10002](http://localhost:10002)，默认账号：admin / admin
 
-> **端口说明**: 使用 10001/10002 端口是为了避免 Windows 系统保留的端口范围 (8909-9008)。
-
 ```bash
 make help    # 查看所有命令
 make lint    # 代码检查
 make test    # 单元测试
 make build   # 镜像构建
 ```
-
-部署指南：[docs/guides/docker-deployment.md](docs/guides/docker-deployment.md)
 
 ## 许可证
 

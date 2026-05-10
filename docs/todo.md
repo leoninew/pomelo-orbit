@@ -1,12 +1,10 @@
-# frontend 待办
+# Pomelo Orbit 开发待办
 
 更新日期：2026-05-10
 
-## 范围
-
-当前文档只记录 `frontend` 的真实进度和待办事项。风格一致性规范已抽取到 `docs/style.md`。
-
 ## 当前状态
+
+### Frontend 完成情况
 
 - ✅ 表格体系已基本收敛：当前扫描到的页面表格均使用 `app-table-list` 或 `app-table-detail`
 - ✅ 弹窗和抽屉已基本收敛：页面层手写 `DialogRoot/DialogContent` 已清掉，统一通过 `AppDialog` / `AppDrawer` 使用 Reka UI
@@ -16,25 +14,43 @@
 - ✅ 确认对话框规范化修复已完成：15 个文件
 - ✅ Monaco Editor 集成已完成：BuildStageDetail.vue、ApplicationDetail.vue、DeploymentDetail.vue
 
+---
+
 ## 待办事项
 
-### 中优先级
+### Frontend
 
-#### 3. 功能实现
+#### 中优先级
+
+**功能实现**
 - **流水线模板详情页阶段编排拓扑排序**：当前已移除手动序号列，需要根据依赖关系自动排序
 - **变量声明表格重置功能**：当前操作列文案已从"删除"改为"重置"，但实际行为仍是删除，需要实现真正的重置到默认值逻辑
 
-#### 4. 表格对齐统一
+**表格对齐统一**
 部分表格标题左右对齐不一致，需要统一规范：
 - 列表类表格（`app-table-list`）：标题和内容都左对齐，操作列右对齐
 - 详情类表格（`app-table-detail`）：标题和内容都左对齐，操作列右对齐
 
-### 低优先级
+#### 低优先级
 
-#### 5. 优化项
+**优化项**
 - 状态徽标颜色可进一步抽成共享状态类（非阻塞项）
 - `ComboboxSelect` 若需支持更复杂对象值，再单独扩展（当前已满足需求）
 
+### Backend & General Features
+
+#### 待实现功能
+
+- **持续部署 port 变量化**：CD 模块中 port 应该用变量占位
+- **制品（Artifact）领域**：制品存储、版本管理、跨 Run 引用
+- **触发弹窗重构**：去掉独立的 trigger_ref 输入框，改为完整变量列表（`repository_ref` 可编辑）
+- **流水线模板"保存并运行"**：流水线模板详情页"运行"按钮有未保存变更时已拦截，后续考虑支持"保存并运行"快捷操作
+
+#### 已知技术债
+
+- **流水线异步任务状态管理**：`backend/src/pomelo_orbit/infrastructure/ci/executor_impl.py` 中流水线异步任务状态管理复杂，cancel/retry 逻辑与 asyncio task 生命周期耦合较深，需要梳理
+
+---
 
 ## 页面迁移验证记录
 
@@ -74,6 +90,7 @@
 - 部署/停止操作跳转到详情页（更好的 UX）
 - 日志查看状态机更完善
 
+---
 
 ## 历史变更记录
 
@@ -83,6 +100,8 @@
 - 完成 Monaco Editor 集成（BuildStageDetail.vue、ApplicationDetail.vue、DeploymentDetail.vue）
 - 文件重命名：BuildStage.vue → BuildStageDetail.vue
 - 重构 todo.md 文档结构
+- 合并 `docs/discussions/tood.md` 到 `docs/todo.md`
+- 完成文档重组：建立 development/、frontend/、backend/ 目录结构
 
 ### 2026-05-09
 - 新增 `docs/style.md`，承载风格一致性规范

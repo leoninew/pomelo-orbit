@@ -334,12 +334,11 @@
 			body-class="min-h-0 flex-1 overflow-hidden p-0"
 			@update:open="handleLogDrawerOpenChange"
 		>
-			<div
-				ref="logContainer"
-				class="h-full overflow-y-auto bg-muted/30 p-4 font-mono text-xs text-foreground"
-			>
-				<pre v-if="logsText" class="whitespace-pre-wrap">{{ logsText }}</pre>
-				<div v-else class="flex h-full items-center justify-center text-muted-foreground">
+			<div class="flex h-full flex-col gap-3 p-6">
+				<div v-if="logsText" class="min-h-0 flex-1">
+					<MonacoEditor :model-value="logsText" language="plaintext" height="100%" :readonly="true" />
+				</div>
+				<div v-else class="flex flex-1 items-center justify-center text-muted-foreground">
 					<div class="text-center">
 						<AppSpinner v-if="stageLogStatus === 'loading' || stageLogStatus === 'streaming'" />
 						<p v-if="stageLogStatus === 'loading'" class="mt-2">加载日志中...</p>
@@ -379,12 +378,13 @@
 
 <script setup lang="ts">
 	import { ArrowLeft, Loader2, RotateCcw, X } from 'lucide-vue-next';
-	import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+	import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
+	import MonacoEditor from '@/components/MonacoEditor.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
@@ -434,7 +434,6 @@
 
 	// 日志 drawer 状态
 	const logsText = ref('');
-	const logContainer = ref<HTMLDivElement>();
 	let logPollAbort: AbortController | null = null;
 
 	let pollAbort: AbortController | null = null;
@@ -555,8 +554,6 @@
 					logsText.value += resp.logs;
 					offset = resp.offset;
 					stageLogStatus.value = resp.is_complete ? 'done' : 'streaming';
-					await nextTick();
-					scrollToBottom();
 				} else if (resp.is_complete) {
 					stageLogStatus.value = logsText.value ? 'done' : 'empty';
 				} else {
@@ -573,12 +570,6 @@
 				break;
 			}
 			await delayAsync(1500);
-		}
-	}
-
-	function scrollToBottom() {
-		if (logContainer.value) {
-			logContainer.value.scrollTop = logContainer.value.scrollHeight;
 		}
 	}
 

@@ -232,10 +232,7 @@
 			</div>
 		</div>
 
-		<AppDialog
-			v-model:open="isEditInfoDialogOpen"
-			title="编辑基本信息"
-		>
+		<AppDialog v-model:open="isEditInfoDialogOpen" title="编辑基本信息">
 			<div class="space-y-1.5">
 				<label class="app-field-label block">模板名称</label>
 				<input v-model="editForm.name" type="text" class="app-input" />
@@ -311,10 +308,7 @@
 			</template>
 		</AppDialog>
 
-		<AppDialog
-			v-model:open="isRunDialogOpen"
-			title="运行流水线"
-		>
+		<AppDialog v-model:open="isRunDialogOpen" title="运行流水线">
 			<div class="space-y-1.5">
 				<label class="app-field-label block">选择项目</label>
 				<ComboboxSelect
@@ -353,10 +347,7 @@
 			</template>
 		</AppDialog>
 
-		<AppDialog
-			v-model:open="isAddVarDialogOpen"
-			title="添加变量"
-		>
+		<AppDialog v-model:open="isAddVarDialogOpen" title="添加变量">
 			<div class="space-y-1.5">
 				<label class="app-field-label block">变量名</label>
 				<input v-model="varForm.name" type="text" class="app-input" />
@@ -375,10 +366,7 @@
 			</template>
 		</AppDialog>
 
-		<AppDialog
-			v-model:open="isEditVarDialogOpen"
-			title="编辑变量"
-		>
+		<AppDialog v-model:open="isEditVarDialogOpen" title="编辑变量">
 			<div class="space-y-1.5">
 				<label class="app-field-label block">变量名</label>
 				<input v-model="varForm.name" type="text" disabled class="app-input" />

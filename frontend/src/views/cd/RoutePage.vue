@@ -129,10 +129,7 @@
 		</div>
 	</div>
 
-	<AppDialog
-		v-model:open="isCreateDialogOpen"
-		title="添加路由"
-	>
+	<AppDialog v-model:open="isCreateDialogOpen" title="添加路由">
 		<div class="space-y-4">
 			<div class="space-y-1.5">
 				<label class="app-field-label block">名称</label>

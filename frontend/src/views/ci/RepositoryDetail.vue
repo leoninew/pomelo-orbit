@@ -135,10 +135,7 @@
 			@trigger="handleTrigger"
 		/>
 
-		<AppDialog
-			v-model:open="isEditDialogOpen"
-			title="编辑仓库"
-		>
+		<AppDialog v-model:open="isEditDialogOpen" title="编辑仓库">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">名称</label>
@@ -214,10 +211,7 @@
 			</template>
 		</AppDialog>
 
-		<AppDialog
-			v-model:open="isAddVariableDialogOpen"
-			title="添加变量"
-		>
+		<AppDialog v-model:open="isAddVariableDialogOpen" title="添加变量">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">变量名</label>
@@ -254,10 +248,7 @@
 			</template>
 		</AppDialog>
 
-		<AppDialog
-			v-model:open="isEditVariableDialogOpen"
-			title="编辑变量"
-		>
+		<AppDialog v-model:open="isEditVariableDialogOpen" title="编辑变量">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">变量名</label>

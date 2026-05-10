@@ -99,15 +99,7 @@
 </template>
 
 <script setup lang="ts">
-	import {
-		ChevronDown,
-		Code2,
-		Languages,
-		LogOut,
-		Monitor,
-		Moon,
-		Sun,
-	} from 'lucide-vue-next';
+	import { ChevronDown, Code2, Languages, LogOut, Monitor, Moon, Sun } from 'lucide-vue-next';
 	import { computed } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';

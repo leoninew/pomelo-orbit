@@ -80,13 +80,17 @@
 					>
 						<div class="flex items-start justify-between gap-4">
 							<div class="min-w-0 space-y-1">
-								<h3 class="truncate text-base font-semibold text-foreground group-hover:text-primary">
+								<h3
+									class="truncate text-base font-semibold text-foreground group-hover:text-primary"
+								>
 									{{ app.name }}
 								</h3>
 								<div class="flex items-center gap-2">
 									<span class="font-mono text-xs text-muted-foreground">{{ app.code }}</span>
 									<span class="h-1 w-1 rounded-full bg-muted-foreground/40" />
-									<span class="text-xs text-muted-foreground">{{ formatTime(app.created_at) }}</span>
+									<span class="text-xs text-muted-foreground">
+										{{ formatTime(app.created_at) }}
+									</span>
 								</div>
 							</div>
 							<span
@@ -100,7 +104,9 @@
 						<div class="mt-5 grid gap-3 text-sm">
 							<div class="flex items-center justify-between gap-3">
 								<span class="text-muted-foreground">镜像拉取</span>
-								<span class="font-medium text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</span>
+								<span class="font-medium text-foreground">
+									{{ pullPolicyLabel(app.image_pull_policy) }}
+								</span>
 							</div>
 							<div class="flex items-center justify-between gap-3">
 								<span class="text-muted-foreground">路由托管</span>
@@ -225,10 +231,7 @@
 			</div>
 		</template>
 
-		<AppDialog
-			v-model:open="isCreateDialogOpen"
-			title="新建应用"
-		>
+		<AppDialog v-model:open="isCreateDialogOpen" title="新建应用">
 			<ApplicationFormFields
 				:form="form"
 				:errors="formErrors"
@@ -242,10 +245,7 @@
 			</template>
 		</AppDialog>
 
-		<AppDialog
-			v-model:open="isImportDialogOpen"
-			title="导入应用"
-		>
+		<AppDialog v-model:open="isImportDialogOpen" title="导入应用">
 			<ApplicationFormFields
 				:form="importForm"
 				:errors="importErrors"

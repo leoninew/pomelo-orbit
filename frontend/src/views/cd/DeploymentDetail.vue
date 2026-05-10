@@ -107,7 +107,10 @@
 					</button>
 				</div>
 				<div class="p-5">
-					<div v-if="!logText" class="flex h-[600px] items-center justify-center text-muted-foreground">
+					<div
+						v-if="!logText"
+						class="flex h-[600px] items-center justify-center text-muted-foreground"
+					>
 						<div class="text-center">
 							<AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
 							<p v-if="logStatus === 'loading'" class="mt-2 text-sm">加载日志中...</p>

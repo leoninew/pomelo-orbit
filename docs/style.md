@@ -1,10 +1,10 @@
-# frontend-rekaui 风格一致性规范
+# frontend 风格一致性规范
 
 更新日期：2026-05-09
 
 ## 基础原则
 
-- 范围限定为 `frontend-rekaui`。
+- 范围限定为 `frontend`。
 - 遵从 `CODE_STANDARDS.md`；开发服务器由用户管理，不主动启动、停止或重启。
 - 优先使用 Reka UI、共享组件和共享样式类，不复刻旧 `frontend`。
 - 页面层避免直接使用 Reka primitives 组合业务外壳；优先使用项目内共享组件。

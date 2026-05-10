@@ -80,10 +80,7 @@
 		</div>
 	</div>
 
-	<AppDialog
-		v-model:open="showCreateModal"
-		title="新建仓库"
-	>
+	<AppDialog v-model:open="showCreateModal" title="新建仓库">
 		<AppSpinner v-if="modalStatus === 'loading'" class="py-8" />
 
 		<div v-else class="space-y-4">

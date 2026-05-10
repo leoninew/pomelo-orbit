@@ -154,10 +154,7 @@
 		</div>
 	</div>
 
-	<AppDialog
-		v-model:open="showCreateDialog"
-		title="新建流水线模板"
-	>
+	<AppDialog v-model:open="showCreateDialog" title="新建流水线模板">
 		<div class="space-y-4">
 			<div class="space-y-1.5">
 				<label class="app-field-label block">模板名称</label>

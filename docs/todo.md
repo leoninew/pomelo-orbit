@@ -1,10 +1,10 @@
-# frontend-rekaui 待办
+# frontend 待办
 
 更新日期：2026-05-10
 
 ## 范围
 
-当前文档只记录 `frontend-rekaui` 的真实进度和待办事项。风格一致性规范已抽取到 `docs/style.md`。
+当前文档只记录 `frontend` 的真实进度和待办事项。风格一致性规范已抽取到 `docs/style.md`。
 
 ## 当前状态
 

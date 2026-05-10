@@ -142,10 +142,7 @@
 			</div>
 		</template>
 
-		<AppDialog
-			v-model:open="isEditDialogOpen"
-			title="编辑构建"
-		>
+		<AppDialog v-model:open="isEditDialogOpen" title="编辑构建">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">名称</label>

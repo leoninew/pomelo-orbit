@@ -143,10 +143,7 @@
 			</div>
 		</div>
 
-		<AppDialog
-			v-model:open="isPasswordDialogOpen"
-			:title="t('settings.passwordDialog.title')"
-		>
+		<AppDialog v-model:open="isPasswordDialogOpen" :title="t('settings.passwordDialog.title')">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
 					<label class="app-field-label block">

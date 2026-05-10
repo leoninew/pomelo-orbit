@@ -7,14 +7,13 @@
 | 项目 | 框架 | UI 库 | 端口 | 状态 |
 |------|------|-------|------|------|
 | frontend | Vue 3 + Vite | DaisyUI | 10002 | 生产中 |
-| frontend-rekaui | Vue 3 + Vite | Reka UI | 10003 | 开发中 |
-| frontend-unaui | Nuxt 3 | Nuxt UI | 10004 | 开发中 |
+| frontend | Vue 3 + Vite | Reka UI | 10002 | 开发中 |
 
 ## 详细对比
 
 ### 1. 框架层面
 
-#### frontend-rekaui (Vue 3 + Vite)
+#### frontend (Vue 3 + Vite)
 - **优势**:
   - 轻量灵活，完全控制
   - 构建速度快
@@ -39,7 +38,7 @@
 
 ### 2. UI 库对比
 
-#### Reka UI (frontend-rekaui)
+#### Reka UI (frontend)
 - **类型**: 无样式 (Unstyled) 组件库
 - **特点**:
   - 完全的样式自由度
@@ -81,7 +80,7 @@
 
 ### 3. 开发体验
 
-#### frontend-rekaui
+#### frontend
 
 **项目结构**:
 ```
@@ -145,7 +144,7 @@ pages/
 
 ### 4. 样式方案
 
-#### frontend-rekaui
+#### frontend
 - **方案**: CSS 变量 + Tailwind CSS v4
 - **主题切换**: 通过切换 CSS 变量实现
 - **自定义**: 完全自由，但需要更多工作
@@ -194,7 +193,7 @@ export default defineAppConfig({
 
 ### 5. 性能对比
 
-| 指标 | frontend-rekaui | frontend-unaui |
+| 指标 | frontend | frontend-unaui |
 |------|----------------|----------------|
 | 首次加载 | 快 | 中等 |
 | 构建速度 | 快 | 中等 |
@@ -204,7 +203,7 @@ export default defineAppConfig({
 
 ### 6. 学习曲线
 
-#### frontend-rekaui
+#### frontend
 - **难度**: ⭐⭐⭐
 - **需要掌握**:
   - Vue 3 基础
@@ -224,7 +223,7 @@ export default defineAppConfig({
 
 ### 7. 适用场景建议
 
-#### 选择 frontend-rekaui 如果:
+#### 选择 frontend 如果:
 - ✅ 需要高度定制的设计系统
 - ✅ 有专业的 UI/UX 设计师
 - ✅ 追求最小的包体积
@@ -240,7 +239,7 @@ export default defineAppConfig({
 
 ### 8. 迁移建议
 
-#### 从 frontend 迁移到 frontend-rekaui
+#### 从 frontend 迁移到 frontend
 1. **优势**: 保持 Vue 3 + Vite 技术栈，学习成本低
 2. **工作量**: 需要重写所有组件样式
 3. **时间**: 约 3-4 周
@@ -254,7 +253,7 @@ export default defineAppConfig({
 
 #### 创建一个用户列表页
 
-**frontend-rekaui**:
+**frontend**:
 ```vue
 <!-- src/views/Users.vue -->
 <script setup lang="ts">
@@ -324,7 +323,7 @@ const columns = [
 
 ### 10. 总结
 
-| 维度 | frontend-rekaui | frontend-unaui | 推荐 |
+| 维度 | frontend | frontend-unaui | 推荐 |
 |------|----------------|----------------|------|
 | 开发速度 | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | unaui |
 | 定制能力 | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | rekaui |
@@ -335,5 +334,5 @@ const columns = [
 
 **最终建议**:
 - 如果是**快速迭代的业务项目**，推荐 **frontend-unaui**
-- 如果是**需要独特设计的产品**，推荐 **frontend-rekaui**
+- 如果是**需要独特设计的产品**，推荐 **frontend**
 - 对于 Pomelo Orbit 这样的内部工具，**frontend-unaui** 更合适

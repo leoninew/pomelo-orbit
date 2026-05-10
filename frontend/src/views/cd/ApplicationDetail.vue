@@ -341,10 +341,7 @@
 				</div>
 				<div class="min-h-0 flex-1">
 					<label class="app-field-label mb-1.5 block">文件内容</label>
-					<div
-						v-if="fileContentLoading"
-						class="flex h-full items-center justify-center"
-					>
+					<div v-if="fileContentLoading" class="flex h-full items-center justify-center">
 						<AppSpinner />
 					</div>
 					<MonacoEditor
@@ -488,7 +485,8 @@
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-muted-foreground">
-				确定要重置「{{ pendingDeleteServiceName || '当前服务' }}」的镜像覆盖并回退到 compose 原值吗？
+				确定要重置「{{ pendingDeleteServiceName || '当前服务' }}」的镜像覆盖并回退到 compose
+				原值吗？
 			</p>
 			<template #footer>
 				<button class="app-button" @click="cancelResetServiceConfig">取消</button>
@@ -568,9 +566,7 @@
 			title="确认删除"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
-			<p class="text-sm text-muted-foreground">
-				确定要删除这个路由配置吗？此操作无法撤销。
-			</p>
+			<p class="text-sm text-muted-foreground">确定要删除这个路由配置吗？此操作无法撤销。</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteRouteDialogOpen = false">取消</button>
 				<button :disabled="routeLoading" class="app-button-destructive" @click="executeDeleteRoute">

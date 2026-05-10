@@ -39,9 +39,9 @@
 				<!-- 指标文字 -->
 				<div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
 					<p class="text-base font-medium text-foreground">{{ card.label }}</p>
-					<span class="text-4xl font-bold leading-none tracking-tight text-foreground">{{
-						card.value
-					}}</span>
+					<span class="text-4xl font-bold leading-none tracking-tight text-foreground">
+						{{ card.value }}
+					</span>
 					<span class="text-sm text-muted-foreground">{{ card.description }}</span>
 				</div>
 
@@ -91,7 +91,7 @@
 							<tr>
 								<th>{{ t('home.repository') }}</th>
 								<th>{{ t('common.createdAt') }}</th>
-								<th >{{ t('common.status') }}</th>
+								<th>{{ t('common.status') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -111,7 +111,7 @@
 								>
 									{{ formatTime(run.created_at) }}
 								</td>
-								<td >
+								<td>
 									<button
 										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 										:class="statusBadgeClass(run.status)"
@@ -152,7 +152,7 @@
 							<tr>
 								<th>{{ t('home.application') }}</th>
 								<th>{{ t('home.startTime') }}</th>
-								<th >{{ t('common.status') }}</th>
+								<th>{{ t('common.status') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -172,7 +172,7 @@
 								>
 									{{ formatTime(deployment.started_at) }}
 								</td>
-								<td >
+								<td>
 									<button
 										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 										:class="statusBadgeClass(deployment.status)"

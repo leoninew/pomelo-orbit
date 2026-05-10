@@ -50,7 +50,7 @@ dev-backend:
 
 dev-frontend:
 	@echo "启动前端服务器 (端口 10002)..."
-	cd frontend-rekaui && yarn dev
+	cd frontend && yarn dev
 
 lint:
 	@echo "后端代码检查..."
@@ -60,8 +60,8 @@ lint:
 	cd backend && PYTHONUTF8=1 uv run mypy src/ tests/
 	@echo "前端代码检查..."
 	$(if $(fix), \
-		cd frontend-rekaui && yarn format && yarn lint:fix, \
-		cd frontend-rekaui && yarn lint)
+		cd frontend && yarn format && yarn lint:fix, \
+		cd frontend && yarn lint)
 
 test: test-backend test-frontend
 	@echo "✓ 所有测试完成"

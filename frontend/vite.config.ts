@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 export default defineConfig({
 	plugins: [tailwindcss(), vue()],
 	server: {
-		port: 10003,
+		port: 10002,
 		proxy: {
 			"/api": {
 				target: "http://127.0.0.1:10001",

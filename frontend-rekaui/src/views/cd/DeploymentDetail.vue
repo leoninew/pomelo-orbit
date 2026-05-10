@@ -106,12 +106,8 @@
 						刷新
 					</button>
 				</div>
-				<div
-					ref="logContainerRef"
-					class="h-[600px] overflow-y-auto bg-muted/30 p-4 font-mono text-xs text-foreground"
-				>
-					<pre v-if="logText" class="whitespace-pre-wrap">{{ logText }}</pre>
-					<div v-else class="flex h-full items-center justify-center text-muted-foreground">
+				<div class="p-5">
+					<div v-if="!logText" class="flex h-[600px] items-center justify-center text-muted-foreground">
 						<div class="text-center">
 							<AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
 							<p v-if="logStatus === 'loading'" class="mt-2 text-sm">加载日志中...</p>
@@ -123,6 +119,14 @@
 							</div>
 						</div>
 					</div>
+					<MonacoEditor
+						v-else
+						:model-value="logText"
+						language="plaintext"
+						height="600px"
+						:readonly="true"
+						@mount="handleEditorMount"
+					/>
 				</div>
 			</div>
 		</div>
@@ -148,6 +152,7 @@
 	import { deploymentApi } from '@/api/cd/deployments';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
+	import MonacoEditor from '@/components/MonacoEditor.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
@@ -155,6 +160,7 @@
 	import { isTerminalStatus } from '@/utils/status';
 	import { delayAsync, formatDuration, formatTime } from '@/utils/time';
 	import config from '@/config';
+	import type { editor } from 'monaco-editor';
 
 	const route = useRoute();
 	const router = useRouter();
@@ -166,10 +172,10 @@
 	const deployment = ref<DeploymentDetail>();
 	const logText = ref('');
 	const logOffset = ref(0);
-	const logContainerRef = ref<HTMLElement>();
 	const isCancelDialogOpen = ref(false);
 	const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
 	let logAbort: AbortController | null = null;
+	let logEditorInstance: editor.IStandaloneCodeEditor | null = null;
 
 	const backButtonText = computed(() => (route.query.from === 'application' ? '返回应用' : '返回'));
 
@@ -350,9 +356,17 @@
 	}
 
 	function scrollToBottom() {
-		if (logContainerRef.value) {
-			logContainerRef.value.scrollTop = logContainerRef.value.scrollHeight;
+		if (logEditorInstance) {
+			const lineCount = logEditorInstance.getModel()?.getLineCount() || 0;
+			if (lineCount > 0) {
+				logEditorInstance.revealLine(lineCount);
+			}
 		}
+	}
+
+	function handleEditorMount(editor: editor.IStandaloneCodeEditor) {
+		logEditorInstance = editor;
+		scrollToBottom();
 	}
 
 	onMounted(async () => {

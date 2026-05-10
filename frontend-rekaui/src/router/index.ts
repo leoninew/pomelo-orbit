@@ -82,7 +82,7 @@ const router = createRouter({
 		{
 			path: '/ci/build-stage/:id',
 			name: 'BuildStageDetail',
-			component: () => import('@/views/ci/BuildStage.vue'),
+			component: () => import('@/views/ci/BuildStageDetail.vue'),
 			meta: { title: '构建阶段详情', menuKey: 'buildstages' },
 		},
 		{

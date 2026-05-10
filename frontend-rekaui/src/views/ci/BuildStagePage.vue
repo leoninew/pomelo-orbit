@@ -110,16 +110,6 @@
 				<p v-if="errors.image" class="app-field-error text-xs">{{ errors.image }}</p>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">脚本</label>
-				<textarea
-					v-model="form.script"
-					class="app-textarea min-h-40 font-mono"
-					:class="errors.script ? 'app-input-error' : ''"
-					placeholder="echo hello&#10;echo world"
-				/>
-				<p v-if="errors.script" class="app-field-error text-xs">{{ errors.script }}</p>
-			</div>
-			<div class="space-y-1.5">
 				<label class="app-field-label block">描述（可选）</label>
 				<input v-model="form.description" type="text" class="app-input" placeholder="简短描述" />
 			</div>
@@ -131,7 +121,6 @@
 		</template>
 	</AppDialog>
 </template>
-
 <script setup lang="ts">
 	import { Plus } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
@@ -159,14 +148,13 @@
 	const searchText = ref('');
 	const isModalOpen = ref(false);
 
-	const form = reactive({ name: '', image: '', script: '', description: '' });
-	const errors = reactive({ name: '', image: '', script: '' });
+	const form = reactive({ name: '', image: '', description: '' });
+	const errors = reactive({ name: '', image: '' });
 
 	function validate() {
 		errors.name = form.name.trim() ? '' : '请输入名称';
 		errors.image = form.image.trim() ? '' : '请输入镜像';
-		errors.script = form.script.trim() ? '' : '请输入脚本';
-		return !errors.name && !errors.image && !errors.script;
+		return !errors.name && !errors.image;
 	}
 
 	async function fetchStages() {
@@ -205,8 +193,8 @@
 	}
 
 	function openCreateModal() {
-		Object.assign(form, { name: '', image: '', script: '', description: '' });
-		Object.assign(errors, { name: '', image: '', script: '' });
+		Object.assign(form, { name: '', image: '', description: '' });
+		Object.assign(errors, { name: '', image: '' });
 		isModalOpen.value = true;
 	}
 
@@ -219,7 +207,7 @@
 				await buildStageApi.create({
 					name: form.name,
 					image: form.image,
-					script: form.script,
+					script: '',
 					description: form.description,
 				});
 				toast.success('创建成功');

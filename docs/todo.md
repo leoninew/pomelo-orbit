@@ -13,23 +13,10 @@
 - ✅ Toast 已统一到 `AppToaster` / Reka Toast
 - ✅ CI/CD 主要列表页和详情页已完成第一轮共享样式收口，包含表格、链接、按钮、输入框、错误态、tip、surface、section header
 - ✅ 页面迁移验证已完成：15 个页面（8 个 CI + 7 个 CD）
+- ✅ 确认对话框规范化修复已完成：15 个文件
+- ✅ Monaco Editor 集成已完成：BuildStageDetail.vue、ApplicationDetail.vue、DeploymentDetail.vue
 
 ## 待办事项
-
-### 高优先级
-
-#### 1. 确认对话框修复
-需要将描述文本从 `description` 属性移到对话框正文中，移除 `body-class="hidden"` 模式。
-
-**待修复文件：**
-- `frontend-rekaui/src/views/Settings.vue` - 重置配置确认
-- `frontend-rekaui/src/views/ci/PipelineTemplateDetail.vue` - 删除模板、移除 Stage、删除变量确认
-- `frontend-rekaui/src/views/ci/components/WebhookList.vue` - 删除 Webhook 确认
-- `frontend-rekaui/src/views/cd/ApplicationDetail.vue` - 删除配置文件（第 438 行）、重置镜像（第 483 行）、删除路由（第 563 行）确认
-
-#### 2. Monaco Editor 集成
-- `frontend-rekaui/src/views/ci/BuildStage.vue` - 脚本编辑需要集成 Monaco Editor，当前使用普通 textarea
-- `frontend-rekaui/src/views/cd/ApplicationDetail.vue` - 配置文件编辑需要集成 Monaco Editor，当前使用普通 textarea
 
 ### 中优先级
 
@@ -65,7 +52,7 @@
 | CredentialPage.vue | ✅ | 新增搜索功能 |
 | CredentialDetail.vue | ✅ | 按钮样式改进 |
 | BuildStagePage.vue | ✅ | 新增搜索功能 |
-| BuildStage.vue | ✅ | ⚠️ 脚本编辑器降级为 textarea |
+| BuildStageDetail.vue | ✅ | 已集成 Monaco Editor |
 
 ### CD 模块（7/7 完成）
 
@@ -76,9 +63,9 @@
 | RoutePage.vue | ✅ | 新增搜索、created_at 列 |
 | RouteDetail.vue | ✅ | HTTPS 配置 UI 改进 |
 | DeploymentPage.vue | ✅ | 新增应用筛选、错误列 |
-| DeploymentDetail.vue | ✅ | 日志状态机改进，智能返回按钮 |
+| DeploymentDetail.vue | ✅ | 日志状态机改进，智能返回按钮，已集成 Monaco Editor |
 | ApplicationPage.vue | ✅ | 分页大小选择器，导入功能增强 |
-| ApplicationDetail.vue | ✅ | 服务镜像表格增强，路由选择改进 |
+| ApplicationDetail.vue | ✅ | 服务镜像表格增强，路由选择改进，已集成 Monaco Editor |
 
 ### 主要改进点
 - 所有列表页新增搜索功能
@@ -92,7 +79,9 @@
 
 ### 2026-05-10
 - 完成 15 个页面的迁移验证（8 个 CI + 7 个 CD）
-- 修复多个确认对话框的实现方式
+- 完成所有确认对话框的规范化修复（15 个文件）
+- 完成 Monaco Editor 集成（BuildStageDetail.vue、ApplicationDetail.vue、DeploymentDetail.vue）
+- 文件重命名：BuildStage.vue → BuildStageDetail.vue
 - 重构 todo.md 文档结构
 
 ### 2026-05-09

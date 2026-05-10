@@ -81,11 +81,14 @@
 					<h2 class="font-semibold text-foreground">执行脚本</h2>
 					<button class="app-button h-8 px-3" @click="openScriptDrawer">编辑</button>
 				</div>
-				<pre
-					v-if="stage.script"
-					class="overflow-x-auto bg-muted/30 p-5 text-xs font-mono text-foreground"
-				>{{ stage.script }}</pre
-				>
+				<div v-if="stage.script" class="p-5">
+					<MonacoEditor
+						:model-value="stage.script"
+						language="shell"
+						height="300px"
+						:readonly="true"
+					/>
+				</div>
 				<div v-else class="px-5 py-10 text-center text-muted-foreground">
 					<p class="text-sm">暂无脚本</p>
 				</div>
@@ -172,13 +175,18 @@
 			v-model:open="showScriptDrawer"
 			title="编辑脚本"
 			width-class="w-[min(960px,100vw)]"
-			body-class="min-h-0 flex-1 overflow-hidden p-4"
+			body-class="min-h-0 flex-1 overflow-hidden p-0"
 		>
-			<textarea
-				v-model="scriptTemp"
-				class="app-textarea h-full resize-none font-mono"
-				placeholder="输入执行脚本..."
-			/>
+			<div class="flex h-full min-h-0 flex-col p-4">
+				<div class="min-h-0 flex-1">
+					<MonacoEditor
+						v-model="scriptTemp"
+						language="shell"
+						height="100%"
+						placeholder="输入执行脚本..."
+					/>
+				</div>
+			</div>
 			<template #footer>
 				<button class="app-button" @click="closeScriptDrawer">取消</button>
 				<button class="app-button-primary" :disabled="saving" @click="confirmScript">保存</button>
@@ -265,14 +273,13 @@
 
 <script setup lang="ts">
 	import { ArrowLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-vue-next';
-	// import { CodeEditor } from 'monaco-editor-vue3';
 	import { computed, onMounted, reactive, ref, watch } from 'vue';
-	// import { VueDraggable } from 'vue-draggable-plus';
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
+	import MonacoEditor from '@/components/MonacoEditor.vue';
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

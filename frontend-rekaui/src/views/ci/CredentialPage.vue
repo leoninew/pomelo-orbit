@@ -34,7 +34,7 @@
 							<th>名称</th>
 							<th>类型</th>
 							<th>创建时间</th>
-							<th class="text-right">操作</th>
+							<th>操作</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -52,7 +52,7 @@
 								</span>
 							</td>
 							<td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
-							<td class="text-right">
+							<td>
 								<button class="app-link mr-3" @click="openEditModal(cred)">编辑</button>
 								<button class="app-link-danger" @click="confirmDelete(cred.id)">删除</button>
 							</td>

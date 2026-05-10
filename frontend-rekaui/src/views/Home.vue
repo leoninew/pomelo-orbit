@@ -91,7 +91,7 @@
 							<tr>
 								<th>{{ t('home.repository') }}</th>
 								<th>{{ t('common.createdAt') }}</th>
-								<th class="text-right">{{ t('common.status') }}</th>
+								<th >{{ t('common.status') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -111,7 +111,7 @@
 								>
 									{{ formatTime(run.created_at) }}
 								</td>
-								<td class="text-right">
+								<td >
 									<button
 										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 										:class="statusBadgeClass(run.status)"
@@ -152,7 +152,7 @@
 							<tr>
 								<th>{{ t('home.application') }}</th>
 								<th>{{ t('home.startTime') }}</th>
-								<th class="text-right">{{ t('common.status') }}</th>
+								<th >{{ t('common.status') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -172,7 +172,7 @@
 								>
 									{{ formatTime(deployment.started_at) }}
 								</td>
-								<td class="text-right">
+								<td >
 									<button
 										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 										:class="statusBadgeClass(deployment.status)"

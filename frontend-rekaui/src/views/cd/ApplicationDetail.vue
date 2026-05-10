@@ -339,20 +339,21 @@
 						class="app-input"
 					/>
 				</div>
-				<div class="min-h-0 flex-1 space-y-1.5">
-					<label class="app-field-label block">文件内容</label>
+				<div class="min-h-0 flex-1">
+					<label class="app-field-label mb-1.5 block">文件内容</label>
 					<div
 						v-if="fileContentLoading"
-						class="flex h-[calc(100%-1.75rem)] items-center justify-center rounded-md border border-border bg-muted/30"
+						class="flex h-full items-center justify-center"
 					>
 						<AppSpinner />
 					</div>
-					<textarea
+					<MonacoEditor
 						v-else
 						v-model="currentFileContent"
+						language="yaml"
+						height="100%"
 						:readonly="!isEditingInDrawer"
-						class="app-textarea h-[calc(100%-1.75rem)] resize-none font-mono"
-					></textarea>
+					/>
 				</div>
 			</div>
 			<template #footer>
@@ -582,13 +583,14 @@
 			:open="composePreviewDrawerOpen"
 			title="docker-compose 预览"
 			width-class="w-[min(960px,100vw)]"
+			body-class="min-h-0 flex-1 overflow-hidden p-0"
 			@update:open="handleComposePreviewDrawerOpenChange"
 		>
-			<div class="space-y-3">
+			<div class="flex h-full flex-col gap-3 p-6">
 				<p class="text-sm text-muted-foreground">
 					与部署时写入的 docker-compose.yml 一致：模板渲染、服务镜像覆盖、路由托管 labels。
 				</p>
-				<div v-if="composePreviewLoading" class="flex justify-center py-12">
+				<div v-if="composePreviewLoading" class="flex flex-1 items-center justify-center">
 					<AppSpinner />
 				</div>
 				<div
@@ -597,12 +599,13 @@
 				>
 					{{ composePreviewError }}
 				</div>
-				<div
-					v-else
-					class="rounded-md border border-border bg-muted/30 px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words overflow-auto"
-					style="max-height: calc(100vh - 200px)"
-				>
-					{{ composePreviewYaml }}
+				<div v-else class="min-h-0 flex-1">
+					<MonacoEditor
+						:model-value="composePreviewYaml"
+						language="yaml"
+						height="100%"
+						:readonly="true"
+					/>
 				</div>
 			</div>
 			<template #footer>
@@ -631,6 +634,7 @@
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
+	import MonacoEditor from '@/components/MonacoEditor.vue';
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

@@ -111,7 +111,7 @@
 							<th>版本</th>
 							<th>描述</th>
 							<th>创建时间</th>
-							<th class="text-right">操作</th>
+							<th>操作</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -128,7 +128,7 @@
 								{{ tpl.description || '—' }}
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
-							<td class="text-right">
+							<td>
 								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">查看</router-link>
 								<button
 									:disabled="duplicating"

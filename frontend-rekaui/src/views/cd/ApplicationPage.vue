@@ -71,55 +71,68 @@
 				</div>
 			</div>
 			<template v-else>
-				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 					<div
 						v-for="app in applications"
 						:key="app.id"
-						class="app-surface group cursor-pointer p-5 transition-colors hover:border-primary"
+						class="app-surface group flex min-h-56 cursor-pointer flex-col p-5 transition-colors hover:border-primary"
 						@click="router.push(`/cd/applications/${app.id}`)"
 					>
-						<div class="mb-3 flex items-start justify-between gap-2">
-							<h3
-								class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary"
-							>
-								{{ app.name }}
-							</h3>
+						<div class="flex items-start justify-between gap-4">
+							<div class="min-w-0 space-y-1">
+								<h3 class="truncate text-base font-semibold text-foreground group-hover:text-primary">
+									{{ app.name }}
+								</h3>
+								<div class="flex items-center gap-2">
+									<span class="font-mono text-xs text-muted-foreground">{{ app.code }}</span>
+									<span class="h-1 w-1 rounded-full bg-muted-foreground/40" />
+									<span class="text-xs text-muted-foreground">{{ formatTime(app.created_at) }}</span>
+								</div>
+							</div>
 							<span
-								class="inline-flex shrink-0 rounded-md border px-2 py-0.5 text-xs"
+								class="inline-flex shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
 								:class="appBadgeClass(app.status)"
 							>
 								{{ appStatusLabel(app.status) }}
 							</span>
 						</div>
-						<div class="mb-2 text-xs text-muted-foreground">
-							<div>编码: {{ app.code }}</div>
-							<div class="mt-1">拉取策略: {{ app.image_pull_policy }}</div>
-						</div>
-						<div class="mb-4 text-xs text-muted-foreground">
-							路由托管:
-							<span v-if="app.route_managed" class="font-medium text-green-600">已启用</span>
-							<span v-else>未启用</span>
-						</div>
-						<div class="flex items-center justify-between" @click.stop>
-							<span class="text-xs text-muted-foreground">{{ formatTime(app.created_at) }}</span>
-							<div class="flex items-center gap-2">
-								<button
-									v-if="app.status === 'deployed'"
-									class="app-link-danger text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-									:disabled="operating"
-									@click="handleStop(app)"
-								>
-									停止
-								</button>
-								<button
-									v-else
-									class="app-link text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-									:disabled="app.status === 'deploying' || operating"
-									@click="handleDeploy(app)"
-								>
-									部署
-								</button>
+
+						<div class="mt-5 grid gap-3 text-sm">
+							<div class="flex items-center justify-between gap-3">
+								<span class="text-muted-foreground">镜像拉取</span>
+								<span class="font-medium text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</span>
 							</div>
+							<div class="flex items-center justify-between gap-3">
+								<span class="text-muted-foreground">路由托管</span>
+								<span class="font-medium" :class="routeManagedClass(app.route_managed)">
+									{{ routeManagedLabel(app.route_managed) }}
+								</span>
+							</div>
+						</div>
+
+						<div
+							class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm"
+							@click.stop
+						>
+							<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
+								查看
+							</button>
+							<button
+								v-if="app.status === 'deployed'"
+								class="app-link-danger"
+								:disabled="isAppOperating(app)"
+								@click="handleStop(app)"
+							>
+								停止
+							</button>
+							<button
+								v-else
+								class="app-link"
+								:disabled="app.status === 'deploying' || isAppOperating(app)"
+								@click="handleDeploy(app)"
+							>
+								部署
+							</button>
 						</div>
 					</div>
 				</div>
@@ -322,6 +335,27 @@
 
 	function appBadgeClass(s: string) {
 		return badgeMap[s] ?? 'border-border bg-muted text-muted-foreground';
+	}
+
+	function pullPolicyLabel(policy: string) {
+		const map: Record<string, string> = {
+			missing: '缺失时拉取',
+			always: '总是拉取',
+			never: '从不拉取',
+		};
+		return map[policy] ?? policy;
+	}
+
+	function routeManagedLabel(enabled: boolean) {
+		return enabled ? '已启用' : '未启用';
+	}
+
+	function routeManagedClass(enabled: boolean) {
+		return enabled ? 'text-green-600' : 'text-muted-foreground';
+	}
+
+	function isAppOperating(app: Application) {
+		return operating && operatingAppId.value === app.id;
 	}
 
 	async function fetchApplications() {

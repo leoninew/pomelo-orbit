@@ -59,7 +59,7 @@
 							<th>{{ t('settings.currentValue') }}</th>
 							<th>{{ t('settings.defaultValue') }}</th>
 							<th>{{ t('settings.updatedAt') }}</th>
-							<th class="text-right">{{ t('common.operation') }}</th>
+							<th>{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>

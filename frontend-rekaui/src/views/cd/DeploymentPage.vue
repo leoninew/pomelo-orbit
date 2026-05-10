@@ -109,7 +109,9 @@
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定要取消「<strong>{{ deploymentToCancel?.application_name || '该应用' }}</strong>」的部署吗？
+				确定要取消「
+				<strong>{{ deploymentToCancel?.application_name || '该应用' }}</strong>
+				」的部署吗？
 			</p>
 			<template #footer>
 				<button class="app-button" @click="isCancelDialogOpen = false">取消</button>

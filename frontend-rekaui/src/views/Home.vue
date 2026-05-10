@@ -18,30 +18,46 @@
 			</button>
 		</ToolbarRoot>
 
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
 			<button
-				v-for="card in overviewCards"
+				v-for="(card, index) in overviewCards"
 				:key="card.label"
-				class="app-surface rounded-lg p-4 text-left transition-colors hover:bg-muted/30"
+				:aria-label="`查看${card.label}详情，当前${card.value}个`"
+				class="group app-surface relative flex min-h-36 items-center gap-4 overflow-hidden px-4 py-4 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
 				@click="router.push(card.path)"
 			>
-				<div class="flex items-start justify-between gap-4">
-					<div class="min-w-0">
-						<p class="text-sm text-muted-foreground">{{ card.label }}</p>
-						<p class="mt-3 text-2xl font-semibold text-foreground">{{ card.value }}</p>
-						<p class="mt-1 text-xs text-muted-foreground">{{ card.description }}</p>
-					</div>
-					<span
-						class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+				<!-- 图标 -->
+				<div class="flex shrink-0 items-center">
+					<div
+						class="flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
+						:class="card.iconBgClass"
 					>
-						<component :is="card.icon" class="size-4" />
-					</span>
+						<component :is="card.icon" class="size-5" :class="card.iconColorClass" />
+					</div>
+				</div>
+
+				<!-- 指标文字 -->
+				<div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
+					<p class="text-base font-medium text-foreground">{{ card.label }}</p>
+					<span class="text-3xl font-bold leading-none text-foreground">{{ card.value }}</span>
+					<span class="text-sm text-muted-foreground">{{ card.description }}</span>
+				</div>
+
+				<!-- 插图 -->
+				<div
+					class="flex shrink-0 items-center opacity-90 transition-opacity duration-300 group-hover:opacity-100"
+				>
+					<img
+						:src="cardImages[index]"
+						:alt="card.label"
+						class="h-24 w-24 object-contain sm:h-28 sm:w-28 xl:h-24 xl:w-24 2xl:h-28 2xl:w-28"
+					/>
 				</div>
 			</button>
 		</div>
 
 		<div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-			<section class="app-surface overflow-hidden rounded-lg">
+			<section class="app-surface overflow-hidden">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="text-sm font-semibold text-foreground">最近构建</h2>
 					<button
@@ -57,7 +73,12 @@
 					<p class="text-sm">暂无构建记录</p>
 				</div>
 				<div v-else class="overflow-x-auto">
-					<table class="app-table-list min-w-[520px]">
+					<table class="app-table-list table-fixed min-w-[560px]">
+						<colgroup>
+							<col class="w-[42%]" />
+							<col class="w-[34%]" />
+							<col class="w-[24%]" />
+						</colgroup>
 						<thead>
 							<tr>
 								<th>仓库</th>
@@ -66,26 +87,30 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr
-								v-for="run in recentRuns"
-								:key="run.id"
-								class="cursor-pointer"
-								@click="router.push(`/ci/run/${run.id}`)"
-							>
-								<td
-									class="max-w-56 truncate text-foreground"
-									:title="run.repository_name || run.repository_id"
-								>
-									{{ run.repository_name || run.repository_id }}
+							<tr v-for="run in recentRuns" :key="run.id">
+								<td class="overflow-hidden">
+									<button
+										class="app-link block truncate"
+										:title="run.repository_name || run.repository_id"
+										@click="router.push(`/ci/repository/${run.repository_id}`)"
+									>
+										{{ run.repository_name || run.repository_id }}
+									</button>
 								</td>
-								<td class="text-muted-foreground">{{ formatTime(run.created_at) }}</td>
+								<td
+									class="overflow-hidden truncate text-foreground"
+									:title="formatTime(run.created_at)"
+								>
+									{{ formatTime(run.created_at) }}
+								</td>
 								<td class="text-right">
-									<span
-										class="inline-flex rounded px-2 py-1 text-xs"
+									<button
+										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 										:class="statusBadgeClass(run.status)"
+										@click="router.push(`/ci/run/${run.id}`)"
 									>
 										{{ statusLabel(run.status) }}
-									</span>
+									</button>
 								</td>
 							</tr>
 						</tbody>
@@ -93,7 +118,7 @@
 				</div>
 			</section>
 
-			<section class="app-surface overflow-hidden rounded-lg">
+			<section class="app-surface overflow-hidden">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="text-sm font-semibold text-foreground">最近部署</h2>
 					<button
@@ -109,7 +134,12 @@
 					<p class="text-sm">暂无部署记录</p>
 				</div>
 				<div v-else class="overflow-x-auto">
-					<table class="app-table-list min-w-[520px]">
+					<table class="app-table-list table-fixed min-w-[560px]">
+						<colgroup>
+							<col class="w-[42%]" />
+							<col class="w-[34%]" />
+							<col class="w-[24%]" />
+						</colgroup>
 						<thead>
 							<tr>
 								<th>应用</th>
@@ -118,26 +148,30 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr
-								v-for="deployment in recentDeploys"
-								:key="deployment.id"
-								class="cursor-pointer"
-								@click="router.push(`/cd/deployments/${deployment.id}`)"
-							>
-								<td
-									class="max-w-56 truncate text-foreground"
-									:title="deployment.application_name || deployment.application_id"
-								>
-									{{ deployment.application_name || deployment.application_id }}
+							<tr v-for="deployment in recentDeploys" :key="deployment.id">
+								<td class="overflow-hidden">
+									<button
+										class="app-link block truncate"
+										:title="deployment.application_name || deployment.application_id"
+										@click="router.push(`/cd/applications/${deployment.application_id}`)"
+									>
+										{{ deployment.application_name || deployment.application_id }}
+									</button>
 								</td>
-								<td class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</td>
+								<td
+									class="overflow-hidden truncate text-foreground"
+									:title="formatTime(deployment.started_at)"
+								>
+									{{ formatTime(deployment.started_at) }}
+								</td>
 								<td class="text-right">
-									<span
-										class="inline-flex rounded px-2 py-1 text-xs"
+									<button
+										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
 										:class="statusBadgeClass(deployment.status)"
+										@click="router.push(`/cd/deployments/${deployment.id}`)"
 									>
 										{{ statusLabel(deployment.status) }}
-									</span>
+									</button>
 								</td>
 							</tr>
 						</tbody>
@@ -150,7 +184,7 @@
 
 <script setup lang="ts">
 	import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
-	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
@@ -163,6 +197,12 @@
 	import { statusBadgeClass, statusLabel } from '@/utils/status';
 	import { formatTime, getTodayStart } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
+	
+	// 导入卡片图片
+	import image1 from '@/assets/images/1.png';
+	import image2 from '@/assets/images/2.png';
+	import image3 from '@/assets/images/3.png';
+	import image4 from '@/assets/images/4.png';
 
 	const router = useRouter();
 	const toast = useToast();
@@ -172,6 +212,8 @@
 	const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 });
 	const recentRuns = ref<PipelineRun[]>([]);
 	const recentDeploys = ref<Deployment[]>([]);
+	
+	const cardImages = [image1, image2, image3, image4];
 
 	const overviewCards = computed(() => [
 		{
@@ -180,6 +222,8 @@
 			description: '已接入 CI 项目',
 			path: '/ci/repository',
 			icon: FolderGit2,
+			iconBgClass: 'bg-blue-500/10 dark:bg-blue-400/10',
+			iconColorClass: 'text-blue-600 dark:text-blue-400',
 		},
 		{
 			label: '今日构建',
@@ -187,6 +231,8 @@
 			description: '今日触发流水线',
 			path: '/ci/run',
 			icon: Play,
+			iconBgClass: 'bg-purple-500/10 dark:bg-purple-400/10',
+			iconColorClass: 'text-purple-600 dark:text-purple-400',
 		},
 		{
 			label: '应用管理',
@@ -194,6 +240,8 @@
 			description: '已接入 CD 应用',
 			path: '/cd/applications',
 			icon: LayoutGrid,
+			iconBgClass: 'bg-indigo-500/10 dark:bg-indigo-400/10',
+			iconColorClass: 'text-indigo-600 dark:text-indigo-400',
 		},
 		{
 			label: '今日部署',
@@ -201,6 +249,8 @@
 			description: '今日部署任务',
 			path: '/cd/deployments',
 			icon: Rocket,
+			iconBgClass: 'bg-orange-500/10 dark:bg-orange-400/10',
+			iconColorClass: 'text-orange-600 dark:text-orange-400',
 		},
 	]);
 
@@ -210,35 +260,30 @@
 				const todayStart = getTodayStart();
 				const todayEnd = todayStart.add(1, 'day');
 
-				const ciProjectsRes = await repositoryApi.list({ per_page: 1 });
+				// 并行请求所有数据以提升性能
+				const [ciProjectsRes, ciRunsRes, ciTodayRunsRes, cdAppsRes, cdTodayRes, cdRecentRes] =
+					await Promise.all([
+						repositoryApi.list({ per_page: 1 }),
+						pipelineRunApi.list({ per_page: 5 }),
+						pipelineRunApi.list({
+							per_page: 1,
+							date_from: todayStart.toISOString(),
+							date_to: todayEnd.toISOString(),
+						}),
+						applicationApi.list({ per_page: 1 }),
+						deploymentApi.list({
+							per_page: 1,
+							date_from: todayStart.toISOString(),
+							date_to: todayEnd.toISOString(),
+						}),
+						deploymentApi.list({ per_page: 5 }),
+					]);
+
 				ciStats.projectCount = ciProjectsRes.total;
-				await nextTick();
-
-				const ciRunsRes = await pipelineRunApi.list({ per_page: 5 });
 				recentRuns.value = ciRunsRes.items;
-				await nextTick();
-
-				const ciTodayRunsRes = await pipelineRunApi.list({
-					per_page: 1,
-					date_from: todayStart.toISOString(),
-					date_to: todayEnd.toISOString(),
-				});
 				ciStats.todayRuns = ciTodayRunsRes.total;
-				await nextTick();
-
-				const cdAppsRes = await applicationApi.list({ per_page: 1 });
 				cdStats.applicationCount = cdAppsRes.total;
-				await nextTick();
-
-				const cdTodayRes = await deploymentApi.list({
-					per_page: 1,
-					date_from: todayStart.toISOString(),
-					date_to: todayEnd.toISOString(),
-				});
 				cdStats.todayDeploys = cdTodayRes.total;
-				await nextTick();
-
-				const cdRecentRes = await deploymentApi.list({ per_page: 5 });
 				recentDeploys.value = cdRecentRes.items;
 			});
 		} catch {

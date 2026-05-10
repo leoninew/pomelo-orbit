@@ -54,11 +54,11 @@
 		</div>
 
 		<template v-else-if="viewMode === 'card'">
-			<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
 				<div
 					v-for="tpl in templates"
 					:key="tpl.id"
-					class="app-surface group cursor-pointer p-4 transition-colors hover:border-primary"
+					class="app-surface group cursor-pointer p-5 transition-colors hover:border-primary"
 					@click="router.push(`/ci/template/${tpl.id}`)"
 				>
 					<div class="mb-3 flex items-start justify-between gap-4">

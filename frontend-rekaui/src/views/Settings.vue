@@ -9,7 +9,10 @@
 					修改密码
 				</button>
 			</div>
-			<dl v-if="authStore.user" class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
+			<dl
+				v-if="authStore.user"
+				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
+			>
 				<div class="flex gap-2">
 					<dt class="w-24 shrink-0 text-muted-foreground">用户名</dt>
 					<dd class="text-foreground">{{ authStore.user.username }}</dd>

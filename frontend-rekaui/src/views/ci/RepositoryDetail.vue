@@ -197,11 +197,15 @@
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定要删除仓库「<strong>{{ repository?.name ?? '' }}</strong>」吗？此操作不可撤销。
+				确定要删除仓库「
+				<strong>{{ repository?.name ?? '' }}</strong>
+				」吗？此操作不可撤销。
 			</p>
 			<label class="mt-4 flex cursor-pointer items-center gap-2">
 				<input v-model="deleteWorkspace" type="checkbox" class="size-4 accent-destructive" />
-				<span class="text-sm text-foreground">同时删除工作目录（data/ci/{{ repository?.code }}）</span>
+				<span class="text-sm text-foreground">
+					同时删除工作目录（data/ci/{{ repository?.code }}）
+				</span>
 			</label>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>

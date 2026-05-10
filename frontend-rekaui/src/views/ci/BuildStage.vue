@@ -233,7 +233,9 @@
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定删除制品「<strong>{{ sortableArtifacts[artifactToDelete]?.name }}</strong>」？
+				确定删除制品「
+				<strong>{{ sortableArtifacts[artifactToDelete]?.name }}</strong>
+				」？
 			</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteArtifactDialogOpen = false">取消</button>
@@ -249,7 +251,9 @@
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定删除 Stage「<strong>{{ stage?.name }}</strong>」？此操作不可恢复。
+				确定删除 Stage「
+				<strong>{{ stage?.name }}</strong>
+				」？此操作不可恢复。
 			</p>
 			<template #footer>
 				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>

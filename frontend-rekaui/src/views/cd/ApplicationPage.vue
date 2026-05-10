@@ -63,74 +63,76 @@
 		</div>
 
 		<!-- 卡片视图 -->
-		<div v-else-if="viewMode === 'card'" class="space-y-3">
+		<div v-else-if="viewMode === 'card'" class="space-y-6">
 			<div v-if="applications.length === 0" class="app-surface">
 				<div class="flex flex-col items-center justify-center py-16">
 					<Inbox class="size-12 text-muted-foreground" />
 					<p class="mt-2 text-sm text-muted-foreground">暂无应用</p>
 				</div>
 			</div>
-			<div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-				<div
-					v-for="app in applications"
-					:key="app.id"
-					class="app-surface group cursor-pointer p-4 transition-colors hover:border-primary"
-					@click="router.push(`/cd/applications/${app.id}`)"
-				>
-					<div class="mb-3 flex items-start justify-between gap-2">
-						<h3
-							class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary"
-						>
-							{{ app.name }}
-						</h3>
-						<span
-							class="inline-flex shrink-0 rounded-md border px-2 py-0.5 text-xs"
-							:class="appBadgeClass(app.status)"
-						>
-							{{ appStatusLabel(app.status) }}
-						</span>
-					</div>
-					<div class="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-						<span>编码: {{ app.code }}</span>
-						<span>拉取策略: {{ app.image_pull_policy }}</span>
-					</div>
-					<div class="mb-4 text-xs text-muted-foreground">
-						路由托管:
-						<span v-if="app.route_managed" class="font-medium text-green-600">已启用</span>
-						<span v-else>未启用</span>
-					</div>
-					<div class="flex items-center justify-between" @click.stop>
-						<span class="text-xs text-muted-foreground">{{ formatTime(app.created_at) }}</span>
-						<div class="flex items-center gap-2">
-							<button
-								v-if="app.status === 'deployed'"
-								class="app-link-danger text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-								:disabled="operating"
-								@click="handleStop(app)"
+			<template v-else>
+				<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+					<div
+						v-for="app in applications"
+						:key="app.id"
+						class="app-surface group cursor-pointer p-5 transition-colors hover:border-primary"
+						@click="router.push(`/cd/applications/${app.id}`)"
+					>
+						<div class="mb-3 flex items-start justify-between gap-2">
+							<h3
+								class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary"
 							>
-								停止
-							</button>
-							<button
-								v-else
-								class="app-link text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-								:disabled="app.status === 'deploying' || operating"
-								@click="handleDeploy(app)"
+								{{ app.name }}
+							</h3>
+							<span
+								class="inline-flex shrink-0 rounded-md border px-2 py-0.5 text-xs"
+								:class="appBadgeClass(app.status)"
 							>
-								部署
-							</button>
+								{{ appStatusLabel(app.status) }}
+							</span>
+						</div>
+						<div class="mb-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+							<span>编码: {{ app.code }}</span>
+							<span>拉取策略: {{ app.image_pull_policy }}</span>
+						</div>
+						<div class="mb-4 text-xs text-muted-foreground">
+							路由托管:
+							<span v-if="app.route_managed" class="font-medium text-green-600">已启用</span>
+							<span v-else>未启用</span>
+						</div>
+						<div class="flex items-center justify-between" @click.stop>
+							<span class="text-xs text-muted-foreground">{{ formatTime(app.created_at) }}</span>
+							<div class="flex items-center gap-2">
+								<button
+									v-if="app.status === 'deployed'"
+									class="app-link-danger text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+									:disabled="operating"
+									@click="handleStop(app)"
+								>
+									停止
+								</button>
+								<button
+									v-else
+									class="app-link text-xs sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+									:disabled="app.status === 'deploying' || operating"
+									@click="handleDeploy(app)"
+								>
+									部署
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
-			<ListPagination
-				standalone
-				:current="pagination.current"
-				:page-size="pagination.pageSize"
-				:total="pagination.total"
-				:total-pages="totalPages"
-				@change-page="goPage"
-				@change-page-size="handlePageSizeChange"
-			/>
+				<ListPagination
+					standalone
+					:current="pagination.current"
+					:page-size="pagination.pageSize"
+					:total="pagination.total"
+					:total-pages="totalPages"
+					@change-page="goPage"
+					@change-page-size="handlePageSizeChange"
+				/>
+			</template>
 		</div>
 
 		<!-- 表格视图 -->

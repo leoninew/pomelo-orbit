@@ -92,7 +92,7 @@
 							<button
 								class="rounded px-3 py-1 text-xs font-medium transition-colors"
 								:class="
-									viewMode === 'dag'
+									(viewMode as 'list' | 'dag') === 'dag'
 										? 'bg-primary text-primary-foreground'
 										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
 								"

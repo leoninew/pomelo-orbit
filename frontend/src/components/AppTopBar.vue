@@ -7,9 +7,13 @@
 			class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
 			aria-label="Pomelo Orbit 首页"
 		>
-			<span class="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary">
-				<Code2 class="size-5" />
-			</span>
+			<img
+				src="/logo-128.png"
+				alt="Pomelo Orbit Logo"
+				class="size-9"
+				width="36"
+				height="36"
+			/>
 			<span class="hidden text-base font-semibold tracking-normal sm:inline">Pomelo Orbit</span>
 		</RouterLink>
 
@@ -99,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ChevronDown, Code2, Languages, LogOut, Monitor, Moon, Sun } from 'lucide-vue-next';
+	import { ChevronDown, Languages, LogOut, Monitor, Moon, Sun } from 'lucide-vue-next';
 	import { computed } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';

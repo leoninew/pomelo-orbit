@@ -68,44 +68,15 @@
 
 			<!-- Stage 编排 -->
 			<div class="app-surface">
-				<div
-					v-if="viewMode === 'list'"
-					class="app-section-header flex items-center justify-between"
-				>
-					<div class="flex items-center gap-4">
-						<h2 class="font-semibold text-foreground">阶段编排</h2>
-						<div
-							v-if="sortableOrch.length > 0"
-							class="flex gap-1 rounded-md border border-border bg-background p-1"
-						>
-							<button
-								class="rounded px-3 py-1 text-xs font-medium transition-colors"
-								:class="
-									viewMode === 'list'
-										? 'bg-primary text-primary-foreground'
-										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-								"
-								@click="viewMode = 'list'"
-							>
-								列表
-							</button>
-							<button
-								class="rounded px-3 py-1 text-xs font-medium transition-colors"
-								:class="
-									(viewMode as 'list' | 'dag') === 'dag'
-										? 'bg-primary text-primary-foreground'
-										: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-								"
-								@click="viewMode = 'dag'"
-							>
-								DAG
-							</button>
-						</div>
+				<div class="app-section-header flex items-center justify-between">
+					<h2 class="font-semibold text-foreground">阶段编排</h2>
+					<div class="flex items-center gap-2">
+						<ViewModeToggle v-model="viewMode" />
+						<button class="app-button-primary h-8 px-3" @click="openAddOrchModal">
+							<Plus class="size-4" />
+							添加阶段
+						</button>
 					</div>
-					<button class="app-button-primary h-8 px-3" @click="openAddOrchModal">
-						<Plus class="size-4" />
-						添加阶段
-					</button>
 				</div>
 				<!-- 列表视图 -->
 				<div v-if="viewMode === 'list'" class="overflow-x-auto">
@@ -170,11 +141,16 @@
 				</div>
 
 				<!-- DAG 视图 -->
-				<div v-else-if="dagStages.length > 0" class="p-6">
-					<div class="h-[500px]">
-						<StageDAGView :stages="dagStages" />
+				<div v-else-if="viewMode === 'dag'" class="p-6">
+					<div v-if="dagStages.length === 0" class="text-center text-muted-foreground">
+						暂无 Stage，点击上方按钮添加
+					</div>
+					<div v-else class="h-[500px]">
+						<StageDAGView :stages="dagStages" :animated="true" />
 					</div>
 				</div>
+				<!-- 无效状态 -->
+				<div v-else class="p-6 text-center text-destructive">无效的视图模式</div>
 			</div>
 
 			<!-- 变量声明 -->
@@ -433,6 +409,7 @@
 	import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
+	import ViewModeToggle from '@/components/ViewModeToggle.vue';
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

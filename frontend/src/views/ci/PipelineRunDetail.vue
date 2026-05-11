@@ -144,33 +144,7 @@
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
 					<h2 class="font-semibold text-foreground">阶段编排</h2>
-					<div
-						v-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0"
-						class="flex gap-1 rounded-md border border-border bg-background p-1"
-					>
-						<button
-							class="rounded px-3 py-1 text-xs font-medium transition-colors"
-							:class="
-								stagesView === 'list'
-									? 'bg-primary text-primary-foreground'
-									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-							"
-							@click="stagesView = 'list'"
-						>
-							列表
-						</button>
-						<button
-							class="rounded px-3 py-1 text-xs font-medium transition-colors"
-							:class="
-								stagesView === 'dag'
-									? 'bg-primary text-primary-foreground'
-									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-							"
-							@click="stagesView = 'dag'"
-						>
-							DAG
-						</button>
-					</div>
+					<ViewModeToggle v-model="stagesView" />
 				</div>
 
 				<!-- 列表视图 -->
@@ -258,11 +232,14 @@
 				</div>
 
 				<!-- DAG 视图 -->
-				<div
-					v-else-if="snapshot?.stages_snapshot && snapshot.stages_snapshot.length > 0"
-					class="p-6"
-				>
-					<div class="h-[500px]">
+				<div v-else-if="stagesView === 'dag'" class="p-6">
+					<div
+						v-if="!snapshot?.stages_snapshot || snapshot.stages_snapshot.length === 0"
+						class="text-center text-muted-foreground"
+					>
+						暂无阶段记录
+					</div>
+					<div v-else class="h-[500px]">
 						<StageDAGView
 							:stages="snapshot.stages_snapshot"
 							:stage-runs="stageRuns"
@@ -271,6 +248,8 @@
 						/>
 					</div>
 				</div>
+				<!-- 无效状态 -->
+				<div v-else class="p-6 text-center text-destructive">无效的视图模式</div>
 			</div>
 
 			<div class="app-surface">
@@ -336,7 +315,12 @@
 		>
 			<div class="flex h-full flex-col gap-3 p-6">
 				<div v-if="logsText" class="min-h-0 flex-1">
-					<MonacoEditor :model-value="logsText" language="plaintext" height="100%" :readonly="true" />
+					<MonacoEditor
+						:model-value="logsText"
+						language="plaintext"
+						height="100%"
+						:readonly="true"
+					/>
 				</div>
 				<div v-else class="flex flex-1 items-center justify-center text-muted-foreground">
 					<div class="text-center">
@@ -384,6 +368,7 @@
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
+	import ViewModeToggle from '@/components/ViewModeToggle.vue';
 	import MonacoEditor from '@/components/MonacoEditor.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

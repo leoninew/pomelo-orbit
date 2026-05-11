@@ -49,6 +49,7 @@ import os
 import platform
 import re
 import socket
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -680,8 +681,14 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     local_archive = local_backup_dir / f"data-{date_str}.tar.gz"
 
     logger.info(f"备份远程目录: {remote_dir}")
+    logger.info("排除: CI 工作区 (workspace)")
+
+    # 构建排除参数
+    excludes = ["./data/ci/*/workspace"]
+    exclude_args = " ".join(f"--exclude={shlex.quote(pattern)}" for pattern in excludes)
+
     run_ssh_command(
-        f"tar -czf {remote_archive} -C {remote_dir} .",
+        f"tar -czf {remote_archive} {exclude_args} -C {remote_dir} .",
         "压缩远程目录",
     )
     logger.info(f"下载备份文件: {local_archive}")

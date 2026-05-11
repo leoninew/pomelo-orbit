@@ -133,6 +133,18 @@
 		@apply h-10 w-full rounded-xl border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
 	}
 
+	.app-search-control {
+		@apply flex h-10 w-full max-w-sm items-center overflow-hidden rounded-xl border border-input bg-background transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20;
+	}
+
+	.app-search-input {
+		@apply h-full w-full bg-transparent pl-10 pr-9 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground;
+	}
+
+	.app-search-button {
+		@apply inline-flex h-full min-w-20 shrink-0 items-center justify-center bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+	}
+
 	.app-textarea {
 		@apply min-h-24 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
 	}

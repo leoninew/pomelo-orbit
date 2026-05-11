@@ -1,14 +1,16 @@
 <template>
-	<div class="flex min-w-0 max-w-sm items-center">
+	<div class="app-search-control">
 		<div class="relative min-w-0 flex-1">
-			<Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+			<Search
+				class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+			/>
 			<input
 				:value="modelValue"
 				type="text"
 				:placeholder="placeholder"
-				class="app-input-search rounded-r-none border-r-0"
+				class="app-search-input"
 				:disabled="disabled || loading"
-				@input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+				@input="handleInput"
 				@keydown.enter="emit('search')"
 			/>
 			<button
@@ -24,7 +26,7 @@
 		</div>
 		<button
 			type="button"
-			class="app-button-primary min-w-20 rounded-l-none px-5"
+			class="app-search-button"
 			:disabled="disabled || loading"
 			@click="emit('search')"
 		>
@@ -54,6 +56,11 @@
 		'update:modelValue': [value: string]
 		search: []
 	}>();
+
+	function handleInput(event: Event) {
+		const target = event.target as HTMLInputElement;
+		emit('update:modelValue', target.value ?? '');
+	}
 
 	function clearSearch() {
 		emit('update:modelValue', '');

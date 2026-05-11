@@ -120,12 +120,16 @@ async def health():
 # Mount static files for frontend (if exists)
 static_dir = Path("static")
 if static_dir.exists() and static_dir.is_dir():
-    # Serve static files
-    app.mount("/assets", StaticFiles(directory=str(static_dir / "assets")), name="assets")
-
-    # SPA fallback - serve index.html for all non-API routes
+    # SPA fallback - serve index.html for non-API routes, or static files if they exist
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
+        file_path = static_dir / full_path
+
+        # If the file exists (favicon, logo, assets/*, etc.), serve it
+        if file_path.is_file():
+            return FileResponse(file_path)
+
+        # Otherwise, serve index.html for SPA routing
         return FileResponse(static_dir / "index.html")
 
 

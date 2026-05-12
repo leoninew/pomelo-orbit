@@ -62,6 +62,31 @@ class ApplicationService:
             self._locks[application_id] = asyncio.Lock()
         return self._locks[application_id]
 
+    def get_compose_file(self, application_id: str) -> ApplicationConfigFile:
+        """
+        获取应用的 docker-compose 配置文件
+
+        Args:
+            application_id: 应用 ID
+
+        Returns:
+            docker-compose 配置文件
+
+        Raises:
+            BusinessError: 当 docker-compose 文件不存在时
+        """
+        config_files = self.config_file_repo.find_by_application(application_id)
+        compose_file = next(
+            (f for f in config_files if f.path in ("docker-compose.yml", "docker-compose.yml.jinja")),
+            None,
+        )
+        if not compose_file:
+            raise BusinessError(
+                f"No docker-compose file found for application {application_id}",
+                status_code=400,
+            )
+        return compose_file
+
     async def deploy(
         self,
         application: Application,
@@ -193,6 +218,9 @@ class ApplicationService:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
 
         ApplicationLifecycleDomainService.validate_stop(app)
+
+        # 验证 docker-compose 文件存在
+        self.get_compose_file(application_id)
 
         deployment = ApplicationLifecycleDomainService.create_stop_record(app)
         self.deployment_repo.save(deployment)
@@ -601,19 +629,15 @@ class ApplicationService:
         except (ValueError, yaml.YAMLError) as e:
             raise BusinessError(str(e), status_code=400) from e
 
-    def _load_compose_services(self, application_id: str) -> tuple[Application, dict[str, Any]]:
-        """渲染 docker-compose 模板后解析 services 节点"""
+    def _load_compose_services(self, application_id: str, compose_file: ApplicationConfigFile) -> tuple[Application, dict[str, Any]]:
+        """
+        渲染 docker-compose 模板后解析 services 节点
+
+        前置条件：compose_file 必须存在且有效
+        """
         app = self.app_repo.find_by_id(application_id)
         if not app:
             raise BusinessError(f"Application {application_id} not found", status_code=404)
-
-        config_files = self.config_file_repo.find_by_application(application_id)
-        compose_file = next(
-            (f for f in config_files if f.path in ("docker-compose.yml", "docker-compose.yml.jinja")),
-            None,
-        )
-        if not compose_file:
-            raise BusinessError("No docker-compose file found for this application", status_code=400)
 
         rendered = self.app_manager.render_compose(app.code, compose_file.content, compose_file.path)
         try:
@@ -684,7 +708,15 @@ class ApplicationService:
 
     def list_service_configs(self, application_id: str) -> list[dict[str, Any]]:
         """列出当前 compose 中的 service 及其配置覆盖"""
-        app, services = self._load_compose_services(application_id)
+        config_files = self.config_file_repo.find_by_application(application_id)
+        compose_file = next(
+            (f for f in config_files if f.path in ("docker-compose.yml", "docker-compose.yml.jinja")),
+            None,
+        )
+        if not compose_file:
+            return []
+
+        app, services = self._load_compose_services(application_id, compose_file)
         configs = {
             config.service_name: config for config in self.app_service_config_repo.find_by_application(application_id)
         }
@@ -697,7 +729,8 @@ class ApplicationService:
 
     def update_service_config(self, application_id: str, service_name: str, image: str | None) -> dict[str, Any]:
         """更新应用某个 service 的配置覆盖"""
-        app, services = self._load_compose_services(application_id)
+        compose_file = self.get_compose_file(application_id)
+        app, services = self._load_compose_services(application_id, compose_file)
         if service_name not in services:
             raise BusinessError(f"Service {service_name} not found", status_code=404)
 

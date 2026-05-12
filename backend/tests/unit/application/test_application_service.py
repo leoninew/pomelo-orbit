@@ -506,7 +506,9 @@ class TestStopApplicationBusinessLogic:
             await app_service.stop_application("app-1")
 
     @pytest.mark.asyncio
-    async def test_stop_creates_deployment_record(self, app_service, mock_app_repo, mock_deployment_repo, tmp_path):
+    async def test_stop_creates_deployment_record(
+        self, app_service, mock_app_repo, mock_deployment_repo, mock_config_file_repo, tmp_path
+    ):
         """测试停止应用时创建部署记录"""
         app = Application(
             id="app-1",
@@ -517,6 +519,14 @@ class TestStopApplicationBusinessLogic:
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx\n",
+            )
+        ]
 
         await app_service.stop_application("app-1")
 
@@ -528,7 +538,7 @@ class TestStopApplicationBusinessLogic:
 
     @pytest.mark.asyncio
     async def test_stop_success_updates_application_status(
-        self, app_service, mock_app_repo, mock_deployment_repo, tmp_path
+        self, app_service, mock_app_repo, mock_deployment_repo, mock_config_file_repo, tmp_path
     ):
         """测试停止成功时更新应用状态为 UNDEPLOYED"""
         app = Application(
@@ -540,6 +550,14 @@ class TestStopApplicationBusinessLogic:
         )
         mock_app_repo.find_by_id.return_value = app
         mock_deployment_repo.find_by_application.return_value = ([], 0)
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx\n",
+            )
+        ]
 
         await app_service.stop_application("app-1")
 
@@ -794,7 +812,7 @@ class TestSimplifiedDeploymentFlow:
 
     @pytest.mark.asyncio
     async def test_stop_without_env_file_lookup(
-        self, app_service, mock_app_repo, mock_deployment_repo, mock_app_manager
+        self, app_service, mock_app_repo, mock_deployment_repo, mock_config_file_repo, mock_app_manager
     ):
         """测试停止操作不再查找最后一次部署的 env_file"""
         app = Application(
@@ -805,6 +823,14 @@ class TestSimplifiedDeploymentFlow:
             image_pull_policy="IfNotPresent",
         )
         mock_app_repo.find_by_id.return_value = app
+        mock_config_file_repo.find_by_application.return_value = [
+            ApplicationConfigFile(
+                id="cfg-1",
+                application_id="app-1",
+                path="docker-compose.yml",
+                content="services:\n  web:\n    image: nginx\n",
+            )
+        ]
 
         await app_service.stop_application("app-1")
 

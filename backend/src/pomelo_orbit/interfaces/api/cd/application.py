@@ -214,6 +214,9 @@ async def deploy_application(
     """手动触发部署"""
     app = app_service.get_application(app_id)
 
+    # 验证 docker-compose 文件存在（在创建部署记录之前）
+    app_service.get_compose_file(app_id)
+
     deployment = app_service.create_deployment(
         application_id=app.id,
         operation_type=OperationType.DEPLOY,
@@ -252,6 +255,9 @@ async def restart_application(
 ) -> dict:
     """重启应用"""
     app = app_service.get_application(app_id)
+
+    # 验证 docker-compose 文件存在（在创建部署记录之前）
+    app_service.get_compose_file(app_id)
 
     deployment = await app_service.restart_application(app_id)
 

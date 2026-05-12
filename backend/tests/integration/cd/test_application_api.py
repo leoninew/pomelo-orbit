@@ -178,7 +178,7 @@ class TestApplicationAPI:
         assert config_file is None
 
     @patch("pomelo_orbit.application.cd.application_service.ApplicationService.deploy")
-    def test_deploy_application(self, mock_deploy, auth_client, db_session, test_app):
+    def test_deploy_application(self, mock_deploy, auth_client, db_session, test_app, test_compose_file):
         """测试部署应用"""
         response = auth_client.post(
             f"/api/cd/application/{test_app.id}/deploy",
@@ -217,7 +217,7 @@ class TestApplicationAPI:
 
     @patch("pomelo_orbit.application.cd.application_service.ApplicationService.execute_restart")
     @patch("pomelo_orbit.application.cd.application_service.ApplicationService.restart_application")
-    def test_restart_application(self, mock_restart, mock_execute, auth_client, test_app):
+    def test_restart_application(self, mock_restart, mock_execute, auth_client, test_app, test_compose_file):
         """测试重启应用"""
         from pomelo_orbit.domain.cd.entities import Deployment, TriggerType
         from pomelo_orbit.domain.cd.value_objects import OperationType, TaskStatus

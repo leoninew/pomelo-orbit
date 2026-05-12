@@ -89,10 +89,10 @@
       },
       {
         "id": "01KP0K6W1YW73REFQE8YAVTPMN",
-        "name": "General Container Image Build Pipeline",
-        "description": "标准容器镜像制作流程流水线",
+        "name": "通用容器镜像流水线",
+        "description": "- docker build",
         "variable_declarations": "[]",
-        "version": 23
+        "version": 24
       }
     ],
     "comment": "内置模板"

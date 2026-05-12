@@ -20,26 +20,26 @@ Pomelo Orbit Remote Deployment Tool
   GHCR_TOKEN                      - GitHub Container Registry 令牌（可选，拉取私有镜像需要）
 
 用法:
-  python scripts/renew.py install [--image IMAGE]    - 初次部署（从数据库读取配置）
-  python scripts/renew.py upgrade [--image IMAGE]    - 更新部署（只更新镜像和 .env）
-  python scripts/renew.py tunnel start [ports...]    - 启动 SSH 隧道
-  python scripts/renew.py tunnel stop                - 停止 SSH 隧道
-  python scripts/renew.py tunnel status              - 查看隧道状态
-  python scripts/renew.py exec <command>             - 执行远程命令
-  python scripts/renew.py docker-compose <args>      - 执行 docker compose 命令
-  python scripts/renew.py backup                     - 备份远程数据目录
+  python scripts/manage.py install [--image IMAGE]    - 初次部署（从数据库读取配置）
+  python scripts/manage.py upgrade [--image IMAGE]    - 更新部署（只更新镜像和 .env）
+  python scripts/manage.py tunnel start [ports...]    - 启动 SSH 隧道
+  python scripts/manage.py tunnel stop                - 停止 SSH 隧道
+  python scripts/manage.py tunnel status              - 查看隧道状态
+  python scripts/manage.py exec <command>             - 执行远程命令
+  python scripts/manage.py docker-compose <args>      - 执行 docker compose 命令
+  python scripts/manage.py backup                     - 备份远程数据目录
 
 示例:
-  python scripts/renew.py install --image ghcr.io/leoninew/pomelo-orbit:latest
-  python scripts/renew.py upgrade --image ghcr.io/leoninew/pomelo-orbit:v1.0
-  python scripts/renew.py tunnel start               - 使用默认配置启动隧道
-  python scripts/renew.py tunnel start 8080           - 转发 8080->8080
-  python scripts/renew.py tunnel start 8080:8888      - 转发 8080->8888
-  python scripts/renew.py tunnel start 8080 9090      - 转发 8080->8080 和 9090->9090
-  python scripts/renew.py tunnel start 8080:8888 9090:9999
-  python scripts/renew.py exec ls -al
-  python scripts/renew.py docker-compose up -d
-  python scripts/renew.py docker-compose logs -f
+  python scripts/manage.py install --image ghcr.io/leoninew/pomelo-orbit:latest
+  python scripts/manage.py upgrade --image ghcr.io/leoninew/pomelo-orbit:v1.0
+  python scripts/manage.py tunnel start               - 使用默认配置启动隧道
+  python scripts/manage.py tunnel start 8080           - 转发 8080->8080
+  python scripts/manage.py tunnel start 8080:8888      - 转发 8080->8888
+  python scripts/manage.py tunnel start 8080 9090      - 转发 8080->8080 和 9090->9090
+  python scripts/manage.py tunnel start 8080:8888 9090:9999
+  python scripts/manage.py exec ls -al
+  python scripts/manage.py docker-compose up -d
+  python scripts/manage.py docker-compose logs -f
 """
 
 import argparse
@@ -355,14 +355,19 @@ class RemoteExecutor:
     def __init__(self, config: Config):
         self.config = config
 
-    def exec(self, command_args: list[str]):
+    def exec(self, command_args: list[str], workdir: str | None = None):
         """执行远程命令"""
         if not command_args:
             logger.error("未提供命令")
             sys.exit(1)
         # 将参数列表拼接为命令字符串
         command = " ".join(command_args)
-        os.system(f"ssh {self.config.ssh_target} {command}")
+        # 如果指定了工作目录，在命令前添加 cd
+        if workdir:
+            command = f"cd {workdir} && {command}"
+        # 转义命令中的双引号和反斜杠，然后用双引号包裹
+        command_escaped = command.replace('\\', '\\\\').replace('"', '\\"')
+        os.system(f'ssh {self.config.ssh_target} "{command_escaped}"')
 
     def docker_compose(self, args: list[str]):
         """执行 docker compose 命令"""
@@ -728,6 +733,9 @@ def main():
     # exec 命令
     exec_parser = subparsers.add_parser("exec", help="执行远程命令")
     exec_parser.add_argument(
+        "-w", "--workdir", help="工作目录（在执行命令前切换到此目录）"
+    )
+    exec_parser.add_argument(
         "remote_command", nargs=argparse.REMAINDER, help="要执行的命令"
     )
 
@@ -793,7 +801,7 @@ def main():
             getattr(tunnel, args.action)()
     elif args.command == "exec":
         executor = RemoteExecutor(config)
-        executor.exec(args.remote_command)
+        executor.exec(args.remote_command, workdir=args.workdir)
     elif args.command == "docker-compose":
         executor = RemoteExecutor(config)
         executor.docker_compose(args.dc_args)

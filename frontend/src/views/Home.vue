@@ -1,23 +1,5 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot
-			class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-			aria-label="概览工具栏"
-		>
-			<div class="space-y-1">
-				<h1 class="text-xl font-semibold text-foreground">{{ t('home.title') }}</h1>
-				<p class="text-sm text-muted-foreground">{{ t('home.subtitle') }}</p>
-			</div>
-			<button
-				class="app-button inline-flex h-10 items-center gap-2 px-4"
-				:disabled="status === 'loading'"
-				@click="refresh"
-			>
-				<RefreshCw class="size-4" :class="{ 'animate-spin': status === 'loading' }" />
-				{{ t('common.refresh') }}
-			</button>
-		</ToolbarRoot>
-
 		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
 			<button
 				v-for="(card, index) in overviewCards"
@@ -191,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-	import { ArrowRight, FolderGit2, LayoutGrid, Play, RefreshCw, Rocket } from 'lucide-vue-next';
+	import { ArrowRight, FolderGit2, LayoutGrid, Play, Rocket } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';
@@ -205,7 +187,6 @@
 	import type { PipelineRun } from '@/types/ci/run';
 	import { statusBadgeClass, statusLabel } from '@/utils/status';
 	import { formatTime, getTodayStart } from '@/utils/time';
-	import { ToolbarRoot } from 'reka-ui';
 
 	// 导入卡片图片
 	import image1 from '@/assets/images/1.png';

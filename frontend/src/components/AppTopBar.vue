@@ -7,13 +7,7 @@
 			class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
 			aria-label="Pomelo Orbit 首页"
 		>
-			<img
-				src="/logo-128.png"
-				alt="Pomelo Orbit Logo"
-				class="size-9"
-				width="36"
-				height="36"
-			/>
+			<img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-9" width="36" height="36" />
 			<span class="hidden text-base font-semibold tracking-normal sm:inline">Pomelo Orbit</span>
 		</RouterLink>
 

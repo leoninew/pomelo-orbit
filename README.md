@@ -91,12 +91,12 @@ Web UI 配置路由
 ## 快速开始
 
 ```bash
-make install       # 安装依赖
-make dev-backend   # 启动后端（端口 10001）
-make dev-frontend  # 启动前端（端口 10002）
+make install   # 安装依赖
+make backend   # 启动后端（端口 9001）
+make frontend  # 启动前端（端口 9002）
 ```
 
-访问 [localhost:10002](http://localhost:10002)，默认账号：admin / admin
+访问 [localhost:9002](http://localhost:9002)，默认账号：admin / admin
 
 ```bash
 make help    # 查看所有命令

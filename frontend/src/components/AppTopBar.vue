@@ -8,7 +8,15 @@
 			:aria-label="t('app.homeAria')"
 		>
 			<img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-9" width="36" height="36" />
-			<span class="hidden text-base font-semibold tracking-normal sm:inline">Pomelo Orbit</span>
+			<div class="hidden flex-col sm:flex">
+				<span class="text-base font-semibold leading-tight tracking-normal">Pomelo Orbit</span>
+				<span
+					v-if="config.envLabel"
+					class="text-xs font-medium leading-tight text-amber-600 dark:text-amber-400"
+				>
+					{{ config.envLabel }}
+				</span>
+			</div>
 		</RouterLink>
 
 		<NavigationMenuRoot
@@ -105,6 +113,7 @@
 	import { useAuthStore } from '@/stores/auth';
 	import { useTheme } from '@/composables/useTheme';
 	import { setLocale, type Locale } from '@/i18n';
+	import config from '@/config';
 	import {
 		DropdownMenuContent,
 		DropdownMenuItem,

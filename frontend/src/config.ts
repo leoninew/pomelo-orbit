@@ -14,8 +14,7 @@ export const config = {
 	get apiBaseUrl() {
 		return getApiBaseUrl();
 	},
-	isDev: import.meta.env.DEV,
-	isProd: import.meta.env.PROD,
+	envLabel: import.meta.env.VITE_ENV_LABEL,
 	features: {
 		sseDeploymentLog: import.meta.env.VITE_FEATURE_SSE_DEPLOYMENT_LOG === 'true',
 	},

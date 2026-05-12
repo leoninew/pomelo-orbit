@@ -13,7 +13,7 @@ app:
 
 cors:
   origins:
-    - "http://localhost:10002"
+    - "http://localhost:9002"
   allow_credentials: true
   allow_methods: ["*"]
   allow_headers: ["*"]

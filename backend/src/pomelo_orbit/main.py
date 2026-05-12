@@ -14,7 +14,6 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 from pomelo_orbit.domain import BusinessError
 from pomelo_orbit.infrastructure import get_cors_config, get_settings

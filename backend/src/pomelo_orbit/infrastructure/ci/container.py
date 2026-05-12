@@ -65,10 +65,12 @@ class ContainerExecutor:
             volume_binds["/var/run/docker.sock"] = {"bind": "/var/run/docker.sock", "mode": "rw"}
 
             # 构造命令：用换行符拼接，保留注释和空行语义，sh -c 按行顺序执行
+            # 启用 shell trace 模式（-x 参数），输出每条执行的命令（增强可观测性）
             command = None
             if commands:
                 joined = "\n".join(commands)
-                command = ["-c", joined]
+                # 在脚本开头添加 set -x，让 shell 输出每条执行的命令
+                command = ["-x", "-c", joined]
 
             # 在线程池中执行 Docker 操作（避免阻塞事件循环）
             cmd_str = command[1] if command else "(none)"

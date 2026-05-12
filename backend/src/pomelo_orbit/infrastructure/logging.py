@@ -108,10 +108,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         start_time = time.perf_counter()
-        method = request.method
-        path = request.url.path
+        method, path, query = request.method, request.url.path, request.url.query
+        # 构建完整的请求路径（含查询参数）
+        query_str = f"?{query}" if query else ""
+        full_path = f"{path}{query_str}"
 
-        self.logger.info(f"Request: {method} {path}")
+        self.logger.info(f"Request: {method} {full_path}")
 
         # 尝试读取请求体（空值时跳过）
         request_body = None
@@ -131,13 +133,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # 记录响应
             if response.status_code >= 500:
-                self.logger.error(f"Response: {method} {path} - {response.status_code} ({duration_ms:.2f}ms)")
+                self.logger.error(f"Response: {method} {full_path} - {response.status_code} ({duration_ms:.2f}ms)")
             elif response.status_code >= 400:
-                self.logger.warning(f"Response: {method} {path} - {response.status_code} ({duration_ms:.2f}ms)")
+                self.logger.warning(f"Response: {method} {full_path} - {response.status_code} ({duration_ms:.2f}ms)")
                 if response_body:
                     self.logger.warning(f"Response body: {response_body[:1024]}")
             else:
-                self.logger.info(f"Response: {method} {path} - {response.status_code} ({duration_ms:.2f}ms)")
+                self.logger.info(f"Response: {method} {full_path} - {response.status_code} ({duration_ms:.2f}ms)")
                 if response_body:
                     self.logger.info(f"Response body: {response_body[:1024]}")
 
@@ -145,5 +147,5 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         except Exception as e:
             duration_ms = (time.perf_counter() - start_time) * 1000
-            self.logger.exception(f"Exception: {method} {path} - {type(e).__name__}: {e!s} ({duration_ms:.2f}ms)")
+            self.logger.exception(f"Exception: {method} {full_path} - {type(e).__name__}: {e!s} ({duration_ms:.2f}ms)")
             return JSONResponse(status_code=500, content={"detail": "Internal server error"})

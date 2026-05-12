@@ -263,14 +263,14 @@ class ApplicationManagerImpl(ApplicationManager):
             if not bash_path:
                 raise RuntimeError("bash not found in PATH. Please install Git Bash or Cygwin.")
 
-            cmd_str = f"$ {bash_path} init.sh"
+            cmd_str = f"$ {bash_path} -x init.sh"
             logger.info(f"{cmd_str}  (cwd={app_dir})")
             if log_file:
                 self._write_log(log_file, cmd_str)
 
             def _run_sync() -> str:
                 result = subprocess.run(
-                    [bash_path, "init.sh"],
+                    [bash_path, "-x", "init.sh"],
                     cwd=str(app_dir),
                     capture_output=True,
                     text=True,

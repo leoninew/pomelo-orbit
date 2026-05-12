@@ -226,7 +226,7 @@
 	}
 
 	.app-badge-sm {
-		@apply inline-block rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground;
+		@apply inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground;
 	}
 
 	.app-badge-pill {
@@ -238,7 +238,7 @@
 	}
 
 	.app-badge-status-sm {
-		@apply inline-block rounded border px-2 py-0.5 text-sm;
+		@apply inline-block rounded border px-2 py-0.5 text-xs;
 	}
 
 	.app-badge-warning {

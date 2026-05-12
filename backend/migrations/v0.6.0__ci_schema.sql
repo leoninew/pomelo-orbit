@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_template_name ON pipeline_template(name)
 -- 独立 Stage 表（执行最小单元，不含编排属性）
 CREATE TABLE IF NOT EXISTS build_stage (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     image TEXT NOT NULL,
     script TEXT NOT NULL DEFAULT '',
     artifacts TEXT,                        -- JSON array | NULL

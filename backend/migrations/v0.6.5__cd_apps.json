@@ -1,0 +1,68 @@
+[
+  {
+    "type": "insert",
+    "table": "application",
+    "data": [
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "name": "Traefik",
+        "code": "traefik",
+        "image_pull_policy": "missing",
+        "status": "stopped",
+        "route_managed": 0
+      },
+      {
+        "id": "01KN8CG4A5S4VVH6NKNJF4F9NJ",
+        "name": "FileBrowser",
+        "code": "filebrowser",
+        "image_pull_policy": "missing",
+        "status": "stopped",
+        "route_managed": 1
+      }
+    ],
+    "comment": "CD 内置应用：Traefik 和 FileBrowser"
+  },
+  {
+    "type": "insert",
+    "table": "application_config_file",
+    "data": [
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVR",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": ".env",
+        "content": "TRAEFIK_LOG_LEVEL=INFO\n"
+      },
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVQ",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": "data/traefik.yml.jinja",
+        "content": "api:\n  dashboard: true\n  insecure: true\n\nentryPoints:\n  web:\n    address: \":80\"\n  websecure:\n    address: \":443\"\n\n{% if cert.letsencrypt.enabled %}\ncertificatesResolvers:\n  letsencrypt:\n    acme:\n      email: {{ cert.letsencrypt.email }}\n      storage: /etc/traefik/acme.json\n      {% if cert.letsencrypt.challenge == \"http\" %}\n      httpChallenge:\n        entryPoint: web\n      {% elif cert.letsencrypt.challenge == \"dns\" %}\n      dnsChallenge:\n        provider: {{ cert.letsencrypt.dns_provider }}\n      {% endif %}\n{% endif %}\n\nproviders:\n  file:\n    directory: /etc/traefik/dynamic\n    watch: true\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: traefik\n\nlog:\n  level: INFO\n"
+      },
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVN",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": "docker-compose.yml.jinja",
+        "content": "services:\n  traefik:\n    image: traefik:3\n    container_name: traefik\n    restart: unless-stopped\n    entrypoint: [\"sh\", \"-c\", \"chmod 600 /etc/traefik/acme.json && exec traefik\"]\n    ports:\n      - \"80:80\"\n      - \"443:443\"\n      - \"8080:8080\"\n    env_file: .env\n    networks:\n      - traefik\n    volumes:\n      - {{ app.physical_app_dir }}/data/traefik.yml:/etc/traefik/traefik.yml:ro\n      - {{ app.physical_app_dir }}/data/dynamic:/etc/traefik/dynamic:ro\n      - {{ app.physical_app_dir }}/data/certs:/etc/traefik/certs:ro\n      - {{ app.physical_app_dir }}/data/acme.json:/etc/traefik/acme.json\n      - /var/run/docker.sock:/var/run/docker.sock:ro\n    labels:\n      {% if cert.letsencrypt.enabled %}\n      # 1. HTTPS 主路由（Traefik 面板）\n      - traefik.enable=true\n      - traefik.http.routers.traefik-https.rule=Host(`{{app.code}}.{{ config.domain_suffix }}`)\n      - traefik.http.routers.traefik-https.entrypoints=websecure\n      - traefik.http.routers.traefik-https.tls=true\n      - traefik.http.routers.traefik-https.tls.certresolver=letsencrypt\n      - traefik.http.routers.traefik-https.service=api@internal\n\n      {% else %}\n      # 2. HTTP 路由\n      - traefik.enable=true\n      - traefik.http.routers.traefik-http.rule=Host(`{{app.code}}.{{ config.domain_suffix }}`)\n      - traefik.http.routers.traefik-http.entrypoints=web\n      - traefik.http.routers.traefik-http.service=api@internal\n      {% endif %}\n\nnetworks:\n  traefik:\n    name: traefik\n    driver: bridge\n"
+      },
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVP",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": "init.sh",
+        "content": "#!/bin/bash\nset -e\n\necho \"Initializing Traefik...\"\n\n# 创建应用数据目录\nmkdir -p data/dynamic\nmkdir -p data/certs\n\n# 仅在不存在时创建 acme.json（避免覆盖已有证书）\nif [ ! -f data/acme.json ]; then\n  touch data/acme.json\nfi\n\necho \"Traefik initialized\"\n"
+      },
+      {
+        "id": "01KN8CG4A5PBH7TDXAQ0MD5Z34",
+        "application_id": "01KN8CG4A5S4VVH6NKNJF4F9NJ",
+        "path": "docker-compose.yml.jinja",
+        "content": "services:\n  filebrowser:\n    image: filebrowser/filebrowser\n    container_name: filebrowser\n    restart: unless-stopped\n    environment:\n      - PUID=1000\n      - PGID=1000\n    networks:\n      - traefik\n    volumes:\n      - {{ app.physical_dir }}:/srv\n      - {{ app.physical_app_dir }}/data:/database\n\nnetworks:\n  traefik:\n    external: true\n"
+      },
+      {
+        "id": "01KN8CG4A6PBH7TDXAQ0MD5Z35",
+        "application_id": "01KN8CG4A5S4VVH6NKNJF4F9NJ",
+        "path": "init.sh",
+        "content": "#!/bin/bash\nset -e\n\necho \"Initializing FileBrowser...\"\n\nmkdir -p data\nchown -R 1000:100 data\nchmod 755 data\n\necho \"FileBrowser initialized\"\n"
+      }
+    ],
+    "comment": "CD 应用配置文件"
+  }
+]

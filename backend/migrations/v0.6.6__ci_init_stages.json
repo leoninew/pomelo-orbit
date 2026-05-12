@@ -32,46 +32,46 @@
         "id": "01STAGE000000000000000CLONE",
         "name": "git clone",
         "image": "alpine/git",
-        "script": "set -e\ngit init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD",
+        "script": "set -e\n# 强制全局关闭 SSL 验证\ngit config --global http.sslVerify \"false\"\ngit config --system http.sslVerify \"false\"\n# 信任工作区目录\ngit config --global --add safe.directory /workspace\n# 初始化仓库\ngit init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\n# 拉取代码\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD",
         "artifacts": null,
         "description": "克隆代码仓库",
-        "version": 2
+        "version": 8
       },
       {
         "id": "01KNRANZDR4PASATAXKTBBTRX9",
         "name": "golang:1.23 test",
         "image": "golang:1.23-alpine",
-        "script": "set -e\ncd {{ working_dir | default('.') }}\ngo test ./...",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo test ./...",
         "artifacts": null,
         "description": "运行 Go 单元测试",
-        "version": 2
+        "version": 3
       },
       {
         "id": "01KNRDSSJ7RNND7110175N4NR2",
         "name": "golang:1.23 build",
         "image": "golang:1.23-alpine",
-        "script": "set -e\ncd {{ working_dir | default('.') }}\nmkdir -p dist\ngo build -o dist/",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\nmkdir -p dist\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo build -o dist/",
         "artifacts": null,
         "description": "运行 Go 构建",
-        "version": 2
+        "version": 5
       },
       {
         "id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
         "name": "golang:1.23 lint",
         "image": "golang:1.23-alpine",
-        "script": "set -e\ncd {{ working_dir | default('.') }}\ngo install golang.org/x/lint/golint@latest\ngolint ./...",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo install golang.org/x/lint/golint@latest\ngolint ./...",
         "artifacts": null,
         "description": "运行 Go 代码质量",
-        "version": 2
+        "version": 3
       },
       {
         "id": "01KP0K4ZTV60PM2XDT11MTX2MY",
         "name": "docker build",
         "image": "docker:29.4",
-        "script": "set -e\ndocker build -t {{ repository_code }}:{{ runtime_datetime }} {{ working_dir | default('.') }}\n# docker push {{ repository_code }}:{{ runtime_datetime }}",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\ndocker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile | default('Dockerfile') }} .\n# docker push {{ repository_code }}:{{ runtime_datetime }}",
         "artifacts": "[{\"type\": \"docker_image\", \"path\": \"{{ repository_code }}:{{ runtime_datetime }}\", \"name\": \"{{ repository_code }}\"}]",
         "description": "通用镜像构建+推送",
-        "version": 15
+        "version": 16
       }
     ],
     "comment": "内置 Stage 预设"
@@ -85,14 +85,14 @@
         "name": "Go 构建流水线",
         "description": "- test & lint\n- build",
         "variable_declarations": "[{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"hello\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
-        "version": 2
+        "version": 7
       },
       {
         "id": "01KP0K6W1YW73REFQE8YAVTPMN",
         "name": "General Container Image Build Pipeline",
         "description": "标准容器镜像制作流程流水线",
-        "variable_declarations": "[{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"fastapi\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
-        "version": 16
+        "variable_declarations": "[]",
+        "version": 23
       }
     ],
     "comment": "内置模板"
@@ -102,56 +102,56 @@
     "table": "pipeline_template_stage",
     "data": [
       {
-        "id": "01KP2KKVCC4WFPEM81BJXZCXK3",
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCK",
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01STAGE000000000000000CLONE",
         "stage_name": "git clone",
-        "stage_version": 2,
+        "stage_version": 8,
         "depends_on": "[]",
         "sort_order": 0
       },
       {
-        "id": "01KP2KKVCC4WFPEM81BJXZCXK4",
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCM",
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRANZDR4PASATAXKTBBTRX9",
         "stage_name": "golang:1.23 test",
-        "stage_version": 2,
+        "stage_version": 3,
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 1
       },
       {
-        "id": "01KP2KKVCC4WFPEM81BJXZCXK5",
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCN",
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
         "stage_name": "golang:1.23 lint",
-        "stage_version": 2,
+        "stage_version": 3,
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 2
       },
       {
-        "id": "01KP2KKVCC4WFPEM81BJXZCXK6",
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCP",
         "template_id": "01KNVEJPWVK757139NMNNNCEFE",
         "stage_id": "01KNRDSSJ7RNND7110175N4NR2",
         "stage_name": "golang:1.23 build",
-        "stage_version": 2,
+        "stage_version": 5,
         "depends_on": "[\"01KNRANZDR4PASATAXKTBBTRX9\"]",
         "sort_order": 3
       },
       {
-        "id": "01KP4N6A45YJ2X7ADM9Q437J5T",
+        "id": "01KRCYJJF8GNWTA76CE2M4QXAZ",
         "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
         "stage_id": "01STAGE000000000000000CLONE",
         "stage_name": "git clone",
-        "stage_version": 2,
+        "stage_version": 8,
         "depends_on": "[]",
         "sort_order": 0
       },
       {
-        "id": "01KP4N6A45YJ2X7ADM9Q437J5V",
+        "id": "01KRCYJJF8GNWTA76CE2M4QXB0",
         "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
         "stage_id": "01KP0K4ZTV60PM2XDT11MTX2MY",
         "stage_name": "docker build",
-        "stage_version": 15,
+        "stage_version": 16,
         "depends_on": "[\"01STAGE000000000000000CLONE\"]",
         "sort_order": 1
       }

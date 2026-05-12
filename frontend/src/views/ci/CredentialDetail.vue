@@ -54,9 +54,9 @@
 				<div class="flex gap-2">
 					<dt class="w-24 shrink-0 text-muted-foreground">类型</dt>
 					<dd>
-						<span class="app-badge">
+						<AppBadge>
 							{{ credentialTypeLabels[credential.type] ?? credential.type }}
-						</span>
+						</AppBadge>
 					</dd>
 				</div>
 				<div class="flex gap-2">
@@ -127,6 +127,7 @@
 	import { useRouter } from 'vue-router';
 	import { credentialApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

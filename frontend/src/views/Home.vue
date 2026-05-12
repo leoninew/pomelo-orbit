@@ -94,13 +94,9 @@
 									{{ formatTime(run.created_at) }}
 								</td>
 								<td>
-									<button
-										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
-										:class="statusBadgeClass(run.status)"
-										@click="router.push(`/ci/run/${run.id}`)"
-									>
+									<AppBadge variant="status" :tone="statusTone(run.status)">
 										{{ statusLabel(run.status) }}
-									</button>
+									</AppBadge>
 								</td>
 							</tr>
 						</tbody>
@@ -155,13 +151,9 @@
 									{{ formatTime(deployment.started_at) }}
 								</td>
 								<td>
-									<button
-										class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
-										:class="statusBadgeClass(deployment.status)"
-										@click="router.push(`/cd/deployments/${deployment.id}`)"
-									>
+									<AppBadge variant="status" :tone="statusTone(deployment.status)">
 										{{ statusLabel(deployment.status) }}
-									</button>
+									</AppBadge>
 								</td>
 							</tr>
 						</tbody>
@@ -180,12 +172,13 @@
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
 	import { pipelineRunApi, repositoryApi } from '@/api/ci';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import type { Deployment } from '@/types/cd/deployment';
 	import type { PipelineRun } from '@/types/ci/run';
-	import { statusBadgeClass, statusLabel } from '@/utils/status';
+	import { statusLabel, statusTone } from '@/utils/status';
 	import { formatTime, getTodayStart } from '@/utils/time';
 
 	// 导入卡片图片

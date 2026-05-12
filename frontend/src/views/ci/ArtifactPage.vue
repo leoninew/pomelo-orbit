@@ -79,11 +79,9 @@
 								</router-link>
 							</td>
 							<td>
-								<span
-									class="inline-flex items-center whitespace-nowrap rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
-								>
+								<AppBadge>
 									{{ artifactTypeLabel(a.type) }}
-								</span>
+								</AppBadge>
 							</td>
 							<td class="overflow-hidden truncate text-foreground" :title="a.stage_name">
 								{{ a.stage_name }}
@@ -123,6 +121,7 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
 	import { artifactApi, repositoryApi, pipelineTemplateApi } from '@/api/ci';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';

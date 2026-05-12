@@ -56,16 +56,9 @@
 							<td class="max-w-0 truncate text-foreground" :title="r.name">{{ r.name }}</td>
 							<td class="whitespace-nowrap text-foreground">{{ r.provider }}</td>
 							<td>
-								<span
-									class="app-badge-status-sm"
-									:class="
-										r.status === 'enabled'
-											? 'border-green-200 bg-green-50 text-green-700'
-											: 'border-border bg-muted text-muted-foreground'
-									"
-								>
+								<AppBadge variant="status" :tone="r.status === 'enabled' ? 'success' : 'default'">
 									{{ r.status }}
-								</span>
+								</AppBadge>
 							</td>
 							<td class="max-w-0" :title="r.rule">
 								<a
@@ -82,22 +75,15 @@
 							<td class="max-w-0 truncate text-foreground" :title="r.service">{{ r.service }}</td>
 							<td class="max-w-0" :title="r.entrypoints.join(', ')">
 								<div class="flex flex-nowrap gap-1 overflow-hidden">
-									<span v-for="ep in r.entrypoints" :key="ep" class="app-badge-sm shrink-0">
+									<AppBadge v-for="ep in r.entrypoints" :key="ep">
 										{{ ep }}
-									</span>
+									</AppBadge>
 								</div>
 							</td>
 							<td class="whitespace-nowrap">
-								<span
-									class="app-badge-status-sm"
-									:class="
-										r.tls
-											? 'border-blue-200 bg-blue-50 text-blue-700'
-											: 'border-border bg-muted text-muted-foreground'
-									"
-								>
+								<AppBadge variant="status" :tone="r.tls ? 'info' : 'default'">
 									{{ r.tls ? 'HTTPS' : 'HTTP' }}
-								</span>
+								</AppBadge>
 							</td>
 						</tr>
 					</tbody>
@@ -113,6 +99,7 @@
 	import { ToolbarRoot } from 'reka-ui';
 	import type { TraefikRouter } from '@/api/cd/traefik-route';
 	import { traefikRouteApi } from '@/api/cd/traefik-route';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

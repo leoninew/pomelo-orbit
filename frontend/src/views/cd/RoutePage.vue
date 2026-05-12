@@ -74,28 +74,14 @@
 								{{ route.target_url }}
 							</td>
 							<td>
-								<span
-									class="app-badge-status-sm"
-									:class="
-										route.enabled
-											? 'bg-green-50 text-green-700 border-green-200'
-											: 'bg-muted text-muted-foreground border-border'
-									"
-								>
+								<AppBadge variant="status" :tone="route.enabled ? 'success' : 'default'">
 									{{ route.enabled ? '启用' : '停用' }}
-								</span>
+								</AppBadge>
 							</td>
 							<td>
-								<span
-									class="app-badge-status-sm"
-									:class="
-										route.https_enabled
-											? 'bg-blue-50 text-blue-700 border-blue-200'
-											: 'bg-muted text-muted-foreground border-border'
-									"
-								>
+								<AppBadge variant="status" :tone="route.https_enabled ? 'info' : 'default'">
 									{{ route.https_enabled ? 'HTTPS' : 'HTTP' }}
-								</span>
+								</AppBadge>
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
 							<td class="whitespace-nowrap">
@@ -194,6 +180,7 @@
 	import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
 	import type { Route } from '@/api/cd/route';
 	import { routeApi } from '@/api/cd/route';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';

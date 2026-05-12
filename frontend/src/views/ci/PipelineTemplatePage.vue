@@ -79,11 +79,11 @@
 						{{ tpl.description || '—' }}
 					</p>
 					<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
-						<span class="rounded bg-muted px-2 py-0.5">v{{ tpl.version }}</span>
-						<span class="rounded bg-muted px-2 py-0.5">{{ tpl.orchestration.length }} 阶段</span>
-						<span class="rounded bg-muted px-2 py-0.5">
+						<AppBadge>v{{ tpl.version }}</AppBadge>
+						<AppBadge>{{ tpl.orchestration.length }} 阶段</AppBadge>
+						<AppBadge>
 							{{ tpl.variable_declarations.length }} 变量
-						</span>
+						</AppBadge>
 					</div>
 					<div class="text-sm text-muted-foreground">
 						{{ formatTime(tpl.updated_at) }}
@@ -122,7 +122,7 @@
 								</router-link>
 							</td>
 							<td>
-								<span class="app-badge-sm">v{{ tpl.version }}</span>
+								<AppBadge>v{{ tpl.version }}</AppBadge>
 							</td>
 							<td class="max-w-sm truncate text-foreground" :title="tpl.description || undefined">
 								{{ tpl.description || '—' }}
@@ -190,6 +190,7 @@
 	import { useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

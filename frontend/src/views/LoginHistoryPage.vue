@@ -38,20 +38,13 @@
 								{{ record.user_agent || '-' }}
 							</td>
 							<td>
-								<span
-									:class="[
-										'inline-flex rounded-md border px-2 py-0.5 text-sm',
-										record.success
-											? 'border-green-200 bg-green-50 text-green-700'
-											: 'border-red-200 bg-red-50 text-red-700',
-									]"
-								>
+								<AppBadge variant="status" :tone="record.success ? 'success' : 'error'">
 									{{
 										record.success
 											? t('loginHistory.statusSuccess')
 											: t('loginHistory.statusFailed')
 									}}
-								</span>
+								</AppBadge>
 							</td>
 						</tr>
 					</tbody>
@@ -74,6 +67,7 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useI18n } from 'vue-i18n';
 	import { authApi } from '@/api/auth';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

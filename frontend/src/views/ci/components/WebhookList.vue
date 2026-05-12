@@ -37,10 +37,10 @@
 						</td>
 						<td>
 							<div class="flex min-w-0 items-center gap-2">
-								<span
-									class="max-w-72 truncate rounded bg-muted px-2 py-0.5 text-xs text-foreground"
-								>
-									{{ webhookUrl(wh.id) }}
+								<span class="max-w-72 truncate">
+									<AppBadge>
+										{{ webhookUrl(wh.id) }}
+									</AppBadge>
 								</span>
 								<button class="app-icon-button size-7" title="复制 URL" @click="copyUrl(wh.id)">
 									<Copy class="size-3.5" />
@@ -48,16 +48,9 @@
 							</div>
 						</td>
 						<td>
-							<span
-								class="app-badge-status"
-								:class="
-									wh.enabled
-										? 'border-green-200 bg-green-50 text-green-700'
-										: 'border-border bg-muted text-muted-foreground'
-								"
-							>
+							<AppBadge variant="status" :tone="wh.enabled ? 'success' : 'default'">
 								{{ wh.enabled ? '启用' : '停用' }}
-							</span>
+							</AppBadge>
 						</td>
 						<td>
 							<div class="flex items-center gap-3">
@@ -158,6 +151,7 @@
 	import { Copy, Plus } from 'lucide-vue-next';
 	import { computed, reactive, ref } from 'vue';
 	import { webhookApi } from '@/api/ci';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

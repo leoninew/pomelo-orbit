@@ -83,16 +83,9 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
-							<span
-								class="app-badge-status"
-								:class="
-									routeData.enabled
-										? 'bg-green-50 text-green-700 border-green-200'
-										: 'bg-muted text-muted-foreground border-border'
-								"
-							>
+							<AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
 								{{ routeData.enabled ? '启用' : '停用' }}
-							</span>
+							</AppBadge>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -119,16 +112,9 @@
 								{{ routeData.https_enabled ? 'HTTPS 已启用' : 'HTTPS 未启用' }}
 							</p>
 						</div>
-						<span
-							class="app-badge-status"
-							:class="
-								routeData.https_enabled
-									? 'bg-blue-50 text-blue-700 border-blue-200'
-									: 'bg-muted text-muted-foreground border-border'
-							"
-						>
+						<AppBadge variant="status" :tone="routeData.https_enabled ? 'info' : 'default'">
 							{{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
-						</span>
+						</AppBadge>
 					</div>
 
 					<div v-if="!routeData.https_enabled" class="space-y-2">
@@ -222,6 +208,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import type { Route } from '@/api/cd/route';
 	import { routeApi } from '@/api/cd/route';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';

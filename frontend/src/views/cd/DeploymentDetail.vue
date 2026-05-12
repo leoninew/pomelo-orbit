@@ -44,12 +44,9 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
-							<span
-								class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-								:class="statusBadgeClass"
-							>
-								{{ statusLabel }}
-							</span>
+							<AppBadge variant="pill" :tone="deploymentStatusTone">
+								{{ deploymentStatusLabel }}
+							</AppBadge>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -153,6 +150,7 @@
 	import { computed, onMounted, onUnmounted, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { deploymentApi } from '@/api/cd/deployments';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import MonacoEditor from '@/components/MonacoEditor.vue';
@@ -160,7 +158,7 @@
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
 	import type { DeploymentDetail } from '@/types/cd/deployment';
-	import { isTerminalStatus } from '@/utils/status';
+	import { isTerminalStatus, statusLabel, statusTone } from '@/utils/status';
 	import { delayAsync, formatDuration, formatTime } from '@/utils/time';
 	import config from '@/config';
 	import type { editor } from 'monaco-editor';
@@ -190,35 +188,13 @@
 		router.push('/cd/deployments');
 	}
 
-	const statusBadgeClass = computed(() => {
-		const s = deployment.value?.status;
-		if (!s) {
-			return 'bg-muted/50 text-muted-foreground';
-		}
-		const map: Record<string, string> = {
-			waiting_to_run: 'bg-muted/50 text-muted-foreground',
-			running: 'bg-blue-50 text-blue-700 border-blue-200',
-			ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
-			faulted: 'bg-red-50 text-red-700 border-red-200',
-			canceled: 'bg-gray-50 text-gray-700 border-gray-200',
-		};
-		return map[s] || 'bg-muted/50 text-muted-foreground';
-	});
+	const deploymentStatusTone = computed(() =>
+		deployment.value ? statusTone(deployment.value.status) : 'default'
+	);
 
-	const statusLabel = computed(() => {
-		const s = deployment.value?.status;
-		if (!s) {
-			return '';
-		}
-		const map: Record<string, string> = {
-			waiting_to_run: '等待运行',
-			running: '运行中',
-			ran_to_completion: '成功',
-			faulted: '失败',
-			canceled: '已取消',
-		};
-		return map[s] || s;
-	});
+	const deploymentStatusLabel = computed(() =>
+		deployment.value ? statusLabel(deployment.value.status) : ''
+	);
 
 	async function fetchDeployment() {
 		try {

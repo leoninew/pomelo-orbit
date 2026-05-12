@@ -3,13 +3,9 @@
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground flex items-center gap-2">
 				{{ application?.name || '应用详情' }}
-				<span
-					v-if="application"
-					class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-					:class="statusBadgeClass"
-				>
+				<AppBadge v-if="application" variant="pill" :tone="statusTone">
 					{{ statusText }}
-				</span>
+				</AppBadge>
 			</h1>
 			<div class="flex flex-wrap items-center gap-2">
 				<button v-if="application" class="app-button-primary h-9 px-3" @click="openEditModal">
@@ -87,12 +83,9 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
-							<span
-								class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-								:class="statusBadgeClass"
-							>
+							<AppBadge variant="pill" :tone="statusTone">
 								{{ statusText }}
-							</span>
+							</AppBadge>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -228,12 +221,9 @@
 									{{ getServiceDisplayImage(config) || '—' }}
 								</td>
 								<td>
-									<span
-										v-if="isServiceOverridden(config)"
-										class="inline-block rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
-									>
+									<AppBadge v-if="isServiceOverridden(config)" variant="pill" tone="primary">
 										已覆盖
-									</span>
+									</AppBadge>
 									<span v-else class="text-muted-foreground">—</span>
 								</td>
 								<td class="text-muted-foreground">
@@ -627,6 +617,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
@@ -642,6 +633,7 @@
 		ComposeServiceResp,
 		ConfigFile,
 	} from '@/types/cd/application';
+	import { appStatusLabel, appStatusTone } from '@/utils/status';
 	import { delayAsync, formatTime } from '@/utils/time';
 
 	const route = useRoute();
@@ -731,33 +723,12 @@
 		() => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
 	);
 
-	const statusBadgeClass = computed(() => {
-		const status = application.value?.status;
-		if (!status) {
-			return 'bg-muted/50 text-muted-foreground';
-		}
-		const map: Record<string, string> = {
-			deployed: 'bg-green-50 text-green-700 border-green-200',
-			deploy_failed: 'bg-red-50 text-red-700 border-red-200',
-			deploying: 'bg-blue-50 text-blue-700 border-blue-200',
-			undeployed: 'bg-muted/50 text-muted-foreground',
-		};
-		return map[status] || 'bg-muted/50 text-muted-foreground';
-	});
-
-	const statusText = computed(() => {
-		const status = application.value?.status;
-		if (!status) {
-			return '';
-		}
-		const map: Record<string, string> = {
-			deployed: '已部署',
-			deploy_failed: '部署失败',
-			deploying: '部署中',
-			undeployed: '未部署',
-		};
-		return map[status] || status;
-	});
+	const statusTone = computed(() =>
+		application.value ? appStatusTone(application.value.status) : 'default'
+	);
+	const statusText = computed(() =>
+		application.value ? appStatusLabel(application.value.status) : ''
+	);
 
 	async function fetchApplication() {
 		try {

@@ -45,11 +45,9 @@
 								</router-link>
 							</td>
 							<td>
-								<span
-									class="inline-flex rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-sm text-blue-700"
-								>
+								<AppBadge variant="pill" tone="info">
 									{{ credentialTypeLabels[cred.type] || cred.type }}
-								</span>
+								</AppBadge>
 							</td>
 							<td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
 							<td>
@@ -183,6 +181,7 @@
 	import { Plus, Upload } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { credentialApi } from '@/api/ci';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';

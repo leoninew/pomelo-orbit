@@ -44,7 +44,7 @@
 								{{ stage.image }}
 							</td>
 							<td>
-								<span class="app-badge-sm">v{{ stage.version }}</span>
+								<AppBadge>v{{ stage.version }}</AppBadge>
 							</td>
 							<td
 								class="max-w-xs truncate text-muted-foreground"
@@ -128,6 +128,7 @@
 	import { ToolbarRoot } from 'reka-ui';
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

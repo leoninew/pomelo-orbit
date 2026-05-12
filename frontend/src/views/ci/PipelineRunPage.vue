@@ -82,22 +82,17 @@
 								</router-link>
 							</td>
 							<td>
-								<span
-									class="inline-block whitespace-nowrap rounded bg-muted px-2 py-0.5 text-sm text-muted-foreground"
-								>
+								<AppBadge variant="default">
 									v{{ run.template_version }}
-								</span>
+								</AppBadge>
 							</td>
 							<td class="overflow-hidden truncate text-foreground" :title="run.trigger_ref">
 								{{ run.trigger_ref }}
 							</td>
 							<td>
-								<span
-									class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm"
-									:class="statusBadgeClass(run.status)"
-								>
+								<AppBadge variant="status" :tone="statusTone(run.status)">
 									{{ statusLabel(run.status) }}
-								</span>
+								</AppBadge>
 							</td>
 							<td
 								class="overflow-hidden truncate"
@@ -145,6 +140,7 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';
@@ -153,7 +149,7 @@
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { PipelineTemplate } from '@/types/ci/template';
-	import { statusBadgeClass, statusLabel } from '@/utils/status';
+	import { statusLabel, statusTone } from '@/utils/status';
 	import { formatTime, formatDuration } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 

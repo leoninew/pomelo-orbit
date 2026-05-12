@@ -102,27 +102,23 @@
 										<router-link :to="`/ci/build-stage/${orch.stage_id}`" class="app-link">
 											{{ stageCache[orch.stage_id]?.name ?? orch.stage_name }}
 										</router-link>
-										<span
+										<AppBadge
 											v-if="
 												stageCache[orch.stage_id] &&
 													stageCache[orch.stage_id].version > orch.stage_version
 											"
-											class="app-badge-warning"
+											tone="warning"
 										>
 											有更新
-										</span>
+										</AppBadge>
 									</div>
 								</td>
 								<td class="text-foreground">v{{ orch.stage_version }}</td>
 								<td>
 									<div v-if="orch.depends_on.length > 0" class="flex flex-wrap gap-1">
-										<span
-											v-for="depId in orch.depends_on"
-											:key="depId"
-											class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-										>
+										<AppBadge v-for="depId in orch.depends_on" :key="depId">
 											{{ stageCache[depId]?.name ?? depId }}
-										</span>
+										</AppBadge>
 									</div>
 									<span v-else class="text-muted-foreground">—</span>
 								</td>
@@ -195,9 +191,9 @@
 							<tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
 								<td class="text-foreground">{{ artifact.stageName }}</td>
 								<td>
-									<span class="app-badge">
+									<AppBadge>
 										{{ artifact.type }}
-									</span>
+									</AppBadge>
 								</td>
 								<td class="text-foreground">{{ artifact.name }}</td>
 								<td class="text-muted-foreground">{{ artifact.path || '—' }}</td>
@@ -408,6 +404,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ViewModeToggle from '@/components/ViewModeToggle.vue';
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';

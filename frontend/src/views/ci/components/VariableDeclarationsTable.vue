@@ -31,16 +31,9 @@
 						<span v-else class="text-muted-foreground">—</span>
 					</td>
 					<td>
-						<span
-							class="app-badge-status-sm"
-							:class="
-								decl.source
-									? getSourceBadgeClass(decl.source)
-									: 'border border-border bg-muted text-muted-foreground'
-							"
-						>
-							{{ decl.source ? getSourceLabel(decl.source) : '未知' }}
-						</span>
+						<AppBadge variant="status" :tone="getSourceTone(requireSource(decl))">
+							{{ getSourceLabel(requireSource(decl)) }}
+						</AppBadge>
 					</td>
 					<td v-if="!readonly">
 						<div class="flex items-center gap-2">
@@ -64,8 +57,9 @@
 </template>
 
 <script setup lang="ts">
+	import AppBadge from '@/components/AppBadge.vue';
 	import type { VariableDeclaration } from '@/types/ci/template';
-	import { getSourceBadgeClass, getSourceLabel, isVariableEditable } from '@/utils/variableSource';
+	import { getSourceLabel, getSourceTone, isVariableEditable } from '@/utils/variableSource';
 
 	withDefaults(
 		defineProps<{
@@ -97,10 +91,16 @@
 	}
 
 	function canEdit(decl: VariableDeclaration) {
-		// 优先使用后端明确设置的 editable 字段，回退到 source 推断
 		if (decl.editable !== undefined) {
 			return decl.editable;
 		}
-		return decl.source ? isVariableEditable(decl.source) : false;
+		return isVariableEditable(requireSource(decl));
+	}
+
+	function requireSource(decl: VariableDeclaration) {
+		if (!decl.source) {
+			throw new Error(`Variable declaration source is required: ${decl.name}`);
+		}
+		return decl.source;
 	}
 </script>

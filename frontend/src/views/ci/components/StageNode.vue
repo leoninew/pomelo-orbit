@@ -45,7 +45,7 @@
 	const stage = computed(() => props.data.stage);
 	const status = computed(() => props.data.status);
 
-	const statusText = computed(() => statusLabel(status.value ?? ''));
+	const statusText = computed(() => (status.value ? statusLabel(status.value) : ''));
 	const textColor = computed(() => statusColor(status.value));
 	const isRunning = computed(() => status.value === 'running');
 

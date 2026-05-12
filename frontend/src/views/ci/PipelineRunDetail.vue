@@ -55,12 +55,9 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
-							<span
-								class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-								:class="statusBadgeClass"
-							>
-								{{ statusText }}
-							</span>
+							<AppBadge variant="pill" :tone="pipelineStatusTone">
+								{{ pipelineStatusLabel }}
+							</AppBadge>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -74,9 +71,9 @@
 					<div class="flex gap-2">
 						<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
 						<dd>
-							<span class="app-badge-pill">
+							<AppBadge variant="pill">
 								{{ run.trigger }}
-							</span>
+							</AppBadge>
 						</dd>
 					</div>
 					<div class="flex gap-2">
@@ -182,13 +179,9 @@
 									<td class="text-foreground">v{{ stage.version }}</td>
 									<td>
 										<div v-if="stage.depends_on.length" class="flex flex-wrap gap-1">
-											<span
-												v-for="depId in stage.depends_on"
-												:key="depId"
-												class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-											>
+											<AppBadge v-for="depId in stage.depends_on" :key="depId">
 												{{ snapshotStageMap[depId]?.name ?? depId }}
-											</span>
+											</AppBadge>
 										</div>
 										<span v-else class="text-muted-foreground">—</span>
 									</td>
@@ -196,14 +189,12 @@
 										{{ stage.artifacts?.length ? stage.artifacts.length : '—' }}
 									</td>
 									<td>
-										<span
-											class="inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium"
-											:class="
-												getStageStatusBadge(stageRunMap[stage.id]?.status ?? 'waiting_to_run')
-											"
+										<AppBadge
+											variant="pill"
+											:tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
 										>
-											{{ getStageStatusText(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
-										</span>
+											{{ stageStatusLabel(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
+										</AppBadge>
 									</td>
 									<td class="max-w-xs">
 										<span
@@ -288,9 +279,9 @@
 							<tr v-for="artifact in artifacts" :key="artifact.id">
 								<td class="text-foreground">{{ artifact.stage_name }}</td>
 								<td>
-									<span class="app-badge">
+									<AppBadge>
 										{{ artifact.type }}
-									</span>
+									</AppBadge>
 								</td>
 								<td class="text-foreground">{{ artifact.name }}</td>
 								<td class="max-w-md truncate text-muted-foreground">
@@ -366,6 +357,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
 	import ViewModeToggle from '@/components/ViewModeToggle.vue';
@@ -375,7 +367,7 @@
 	import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { Artifact, StageRun } from '@/types/ci/stage_run';
-	import { isTerminalStatus } from '@/utils/status';
+	import { isTerminalStatus, statusLabel, statusTone } from '@/utils/status';
 	import { delayAsync, formatTime } from '@/utils/time';
 	import StageDAGView from './components/StageDAGView.vue';
 	import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
@@ -424,58 +416,18 @@
 	let pollAbort: AbortController | null = null;
 	const isPolling = ref(false);
 
-	const statusBadgeClass = computed(() => {
-		const status = run.value?.status;
-		if (!status) {
-			return 'bg-muted/50 text-muted-foreground';
-		}
-		const map: Record<string, string> = {
-			waiting_to_run: 'bg-muted/50 text-muted-foreground',
-			running: 'bg-blue-50 text-blue-700 border-blue-200',
-			ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
-			faulted: 'bg-red-50 text-red-700 border-red-200',
-			canceled: 'bg-gray-50 text-gray-700 border-gray-200',
-		};
-		return map[status] || 'bg-muted/50 text-muted-foreground';
-	});
+	const pipelineStatusTone = computed(() => (run.value ? statusTone(run.value.status) : 'default'));
+	const pipelineStatusLabel = computed(() => (run.value ? statusLabel(run.value.status) : ''));
 
-	const statusText = computed(() => {
-		const status = run.value?.status;
-		if (!status) {
-			return '';
-		}
-		const map: Record<string, string> = {
-			waiting_to_run: '等待运行',
-			running: '运行中',
-			ran_to_completion: '成功',
-			faulted: '失败',
-			canceled: '已取消',
-		};
-		return map[status] || status;
-	});
-
-	function getStageStatusBadge(status: string) {
-		const map: Record<string, string> = {
-			waiting_to_run: 'bg-muted/50 text-muted-foreground',
-			running: 'bg-blue-50 text-blue-700 border-blue-200',
-			ran_to_completion: 'bg-green-50 text-green-700 border-green-200',
-			faulted: 'bg-red-50 text-red-700 border-red-200',
-			canceled: 'bg-gray-50 text-gray-700 border-gray-200',
-			skipped: 'bg-gray-50 text-gray-600 border-gray-200',
-		};
-		return map[status] || 'bg-muted/50 text-muted-foreground';
+	function stageStatusTone(status: string) {
+		return status === 'skipped' ? 'default' : statusTone(status);
 	}
 
-	function getStageStatusText(status: string) {
-		const map: Record<string, string> = {
-			waiting_to_run: '等待',
-			running: '运行中',
-			ran_to_completion: '成功',
-			faulted: '失败',
-			canceled: '已取消',
-			skipped: '跳过',
-		};
-		return map[status] || status;
+	function stageStatusLabel(status: string) {
+		if (status === 'skipped') {
+			return '跳过';
+		}
+		return statusLabel(status);
 	}
 
 	function openLogDrawer(sr: StageRun) {

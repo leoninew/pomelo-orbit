@@ -93,12 +93,9 @@
 									</span>
 								</div>
 							</div>
-							<span
-								class="inline-flex shrink-0 rounded-md border px-2.5 py-1 text-xs font-medium"
-								:class="appBadgeClass(app.status)"
-							>
+							<AppBadge variant="status" :tone="appStatusTone(app.status)">
 								{{ appStatusLabel(app.status) }}
-							</span>
+							</AppBadge>
 						</div>
 
 						<div class="mt-5 grid gap-3 text-sm">
@@ -183,12 +180,9 @@
 								<td class="text-foreground">{{ app.code }}</td>
 								<td class="text-foreground">{{ app.image_pull_policy }}</td>
 								<td>
-									<span
-										class="inline-flex rounded-md border px-2 py-0.5 text-sm"
-										:class="appBadgeClass(app.status)"
-									>
+									<AppBadge variant="status" :tone="appStatusTone(app.status)">
 										{{ appStatusLabel(app.status) }}
-									</span>
+									</AppBadge>
 								</td>
 								<td class="text-foreground">{{ app.route_managed ? '启用' : '未启用' }}</td>
 								<td class="text-foreground">{{ formatTime(app.created_at) }}</td>
@@ -269,6 +263,7 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
@@ -281,7 +276,7 @@
 		ApplicationImportReq,
 		ApplicationImportState,
 	} from '@/types/cd/application';
-	import { appStatusLabel } from '@/utils/status';
+	import { appStatusLabel, appStatusTone } from '@/utils/status';
 	import { formatTime } from '@/utils/time';
 	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 	import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
@@ -325,17 +320,6 @@
 			`路由 ${importForm.routes.length}`,
 		].join(' / ')
 	);
-
-	const badgeMap: Record<string, string> = {
-		deployed: 'border-green-200 bg-green-50 text-green-700',
-		deploy_failed: 'border-red-200 bg-red-50 text-red-700',
-		deploying: 'border-blue-200 bg-blue-50 text-blue-700',
-		undeployed: 'border-border bg-muted text-muted-foreground',
-	};
-
-	function appBadgeClass(s: string) {
-		return badgeMap[s] ?? 'border-border bg-muted text-muted-foreground';
-	}
 
 	function pullPolicyLabel(policy: string) {
 		const map: Record<string, string> = {

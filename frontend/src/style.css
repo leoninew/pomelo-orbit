@@ -221,29 +221,6 @@
 		@apply rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
 	}
 
-	.app-badge {
-		@apply inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground;
-	}
-
-	.app-badge-sm {
-		@apply inline-block rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground;
-	}
-
-	.app-badge-pill {
-		@apply inline-block rounded-full bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground;
-	}
-
-	.app-badge-status {
-		@apply inline-block rounded border px-2 py-0.5 text-xs;
-	}
-
-	.app-badge-status-sm {
-		@apply inline-block rounded border px-2 py-0.5 text-xs;
-	}
-
-	.app-badge-warning {
-		@apply inline-block rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700;
-	}
 
 	.app-dialog-overlay {
 		@apply fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow;

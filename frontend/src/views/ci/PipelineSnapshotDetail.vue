@@ -107,13 +107,9 @@
 								<td class="text-muted-foreground">{{ stage.image }}</td>
 								<td>
 									<div v-if="stage.depends_on.length > 0" class="flex flex-wrap gap-1">
-										<span
-											v-for="depId in stage.depends_on"
-											:key="depId"
-											class="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-										>
+										<AppBadge v-for="depId in stage.depends_on" :key="depId">
 											{{ snapshotStageMap[depId]?.name ?? depId }}
-										</span>
+										</AppBadge>
 									</div>
 									<span v-else class="text-muted-foreground">—</span>
 								</td>
@@ -170,9 +166,9 @@
 							<tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
 								<td class="text-foreground">{{ artifact.stageName }}</td>
 								<td>
-									<span class="app-badge">
+									<AppBadge>
 										{{ artifact.type }}
-									</span>
+									</AppBadge>
 								</td>
 								<td class="text-foreground">{{ artifact.name }}</td>
 								<td class="text-muted-foreground">{{ artifact.path }}</td>
@@ -190,6 +186,7 @@
 	import { computed, onMounted, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

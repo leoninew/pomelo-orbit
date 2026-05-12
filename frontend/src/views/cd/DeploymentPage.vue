@@ -55,12 +55,9 @@
 							<td class="text-foreground">{{ operationTypeLabel(deployment.operation_type) }}</td>
 							<td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
 							<td>
-								<span
-									class="inline-flex rounded-md px-2 py-0.5 text-sm"
-									:class="statusBadgeClass(deployment.status)"
-								>
+								<AppBadge variant="status" :tone="statusTone(deployment.status)">
 									{{ statusLabel(deployment.status) }}
-								</span>
+								</AppBadge>
 							</td>
 							<td
 								class="max-w-56 truncate"
@@ -128,6 +125,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
@@ -137,7 +135,7 @@
 	import { useToast } from '@/composables/useToast';
 	import type { Application } from '@/types/cd/application';
 	import type { Deployment } from '@/types/cd/deployment';
-	import { statusBadgeClass, statusLabel } from '@/utils/status';
+	import { statusLabel, statusTone } from '@/utils/status';
 	import { formatDuration, formatTime } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 

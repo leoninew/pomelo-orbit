@@ -134,9 +134,9 @@
 							<tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
 								<td class="text-muted-foreground">{{ idx + 1 }}</td>
 								<td>
-									<span class="app-badge">
+									<AppBadge>
 										{{ getArtifactTypeLabel(artifact.type) }}
-									</span>
+									</AppBadge>
 								</td>
 								<td class="text-foreground">{{ artifact.name }}</td>
 								<td class="text-muted-foreground">{{ artifact.path }}</td>
@@ -316,6 +316,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
 	import MonacoEditor from '@/components/MonacoEditor.vue';

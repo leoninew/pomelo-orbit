@@ -14,7 +14,7 @@ class TestRouteAPI:
     def test_create_route(self, mock_deploy, auth_client, db_session, test_route):
         """测试创建路由"""
         response = auth_client.post(
-            "/api/cd/routes",
+            "/api/cd/route",
             json={
                 "name": "new-route",
                 "domain": "new.example.com",
@@ -32,7 +32,7 @@ class TestRouteAPI:
 
     def test_list_routes(self, auth_client, test_route):
         """测试列出路由"""
-        response = auth_client.get("/api/cd/routes")
+        response = auth_client.get("/api/cd/route")
 
         assert response.status_code == 200
         data = response.json()
@@ -41,7 +41,7 @@ class TestRouteAPI:
 
     def test_get_route(self, auth_client, test_route):
         """测试获取路由详情"""
-        response = auth_client.get(f"/api/cd/routes/{test_route.id}")
+        response = auth_client.get(f"/api/cd/route/{test_route.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -53,7 +53,7 @@ class TestRouteAPI:
     def test_update_route(self, mock_deploy, mock_revoke_cert, auth_client, db_session, test_route):
         """测试更新路由"""
         response = auth_client.put(
-            f"/api/cd/routes/{test_route.id}",
+            f"/api/cd/route/{test_route.id}",
             json={"name": "updated-route", "domain": "updated.example.com"},
         )
 
@@ -67,7 +67,7 @@ class TestRouteAPI:
 
     def test_delete_route(self, auth_client, db_session, disabled_route):
         """测试删除路由"""
-        response = auth_client.delete(f"/api/cd/routes/{disabled_route.id}")
+        response = auth_client.delete(f"/api/cd/route/{disabled_route.id}")
 
         assert response.status_code == 204
 

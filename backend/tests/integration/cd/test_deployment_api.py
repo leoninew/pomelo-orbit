@@ -14,7 +14,7 @@ class TestDeploymentAPI:
 
     def test_list_deployments(self, auth_client, test_deployment):
         """测试列出部署"""
-        response = auth_client.get("/api/cd/deployments")
+        response = auth_client.get("/api/cd/deployment")
 
         assert response.status_code == 200
         data = response.json()
@@ -24,7 +24,7 @@ class TestDeploymentAPI:
     def test_list_deployments_with_filters(self, auth_client, test_app, test_deployment):
         """测试带过滤条件列出部署"""
         response = auth_client.get(
-            f"/api/cd/deployments?application_id={test_app.id}&status={TaskStatus.RAN_TO_COMPLETION}"
+            f"/api/cd/deployment?application_id={test_app.id}&status={TaskStatus.RAN_TO_COMPLETION}"
         )
 
         assert response.status_code == 200
@@ -34,7 +34,7 @@ class TestDeploymentAPI:
 
     def test_get_deployment(self, auth_client, test_deployment):
         """测试获取部署详情"""
-        response = auth_client.get(f"/api/cd/deployments/{test_deployment.id}")
+        response = auth_client.get(f"/api/cd/deployment/{test_deployment.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -43,7 +43,7 @@ class TestDeploymentAPI:
 
     def test_get_deployment_not_found(self, auth_client):
         """测试获取不存在的部署"""
-        response = auth_client.get("/api/cd/deployments/nonexistent-id")
+        response = auth_client.get("/api/cd/deployment/nonexistent-id")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -53,7 +53,7 @@ class TestDeploymentAPI:
         """测试获取部署日志"""
         mock_read_log.return_value = ("deployment log content", 100, True)
 
-        response = auth_client.get(f"/api/cd/deployments/{test_deployment.id}/logs")
+        response = auth_client.get(f"/api/cd/deployment/{test_deployment.id}/logs")
 
         assert response.status_code == 200
         data = response.json()
@@ -73,7 +73,7 @@ class TestDeploymentAPI:
         db_session.commit()
         db_session.refresh(deployment)
 
-        response = auth_client.post(f"/api/cd/deployments/{deployment.id}/cancel")
+        response = auth_client.post(f"/api/cd/deployment/{deployment.id}/cancel")
 
         assert response.status_code == 200
         data = response.json()

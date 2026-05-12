@@ -65,10 +65,12 @@
 	import { useRoute } from 'vue-router';
 	import AppToaster from '@/components/AppToaster.vue';
 	import AppTopBar from '@/components/AppTopBar.vue';
+	import { useTheme } from '@/composables/useTheme';
 	import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
 
 	const route = useRoute();
 	const { t } = useI18n({ useScope: 'global' });
+	useTheme();
 
 	const collapsed = ref(false);
 	const currentScope = computed(() => getNavigationScope(route.path));

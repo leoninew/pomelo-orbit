@@ -1,74 +1,75 @@
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 export type Theme = 'system' | 'light' | 'dark';
+type EffectiveTheme = 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'pomelo-orbit-theme';
 
-// 全局状态
 const theme = ref<Theme>('system');
+const systemTheme = ref<EffectiveTheme>('light');
+const effectiveTheme = computed<EffectiveTheme>(() =>
+	theme.value === 'system' ? systemTheme.value : theme.value
+);
+let initialized = false;
 
-function getSystemTheme(): 'light' | 'dark' {
+function isTheme(value: string | null): value is Theme {
+	return value === 'system' || value === 'light' || value === 'dark';
+}
+
+function getSavedTheme(): Theme | null {
+	if (typeof localStorage === 'undefined') {
+		return null;
+	}
+	const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+	return isTheme(savedTheme) ? savedTheme : null;
+}
+
+function getSystemTheme(): EffectiveTheme {
 	if (typeof window === 'undefined') {
 		return 'light';
 	}
 	return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function getEffectiveTheme(currentTheme: Theme): 'light' | 'dark' {
-	if (currentTheme === 'system') {
-		return getSystemTheme();
+function applyTheme(nextEffectiveTheme: EffectiveTheme) {
+	if (typeof document === 'undefined') {
+		return;
 	}
-	return currentTheme;
+	const root = document.documentElement;
+	root.classList.toggle('dark', nextEffectiveTheme === 'dark');
+	root.dataset.theme = nextEffectiveTheme;
 }
 
-function applyTheme(effectiveTheme: 'light' | 'dark') {
-	const root = document.documentElement;
-	if (effectiveTheme === 'dark') {
-		root.classList.add('dark');
-	} else {
-		root.classList.remove('dark');
+function initializeTheme() {
+	if (initialized) {
+		return;
 	}
+	initialized = true;
+
+	const savedTheme = getSavedTheme();
+	if (savedTheme) {
+		theme.value = savedTheme;
+	}
+	systemTheme.value = getSystemTheme();
+	applyTheme(effectiveTheme.value);
+
+	if (typeof window !== 'undefined') {
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		mediaQuery.addEventListener('change', (event) => {
+			systemTheme.value = event.matches ? 'dark' : 'light';
+		});
+	}
+
+	watch([theme, effectiveTheme], ([nextTheme, nextEffectiveTheme]) => {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+		}
+		applyTheme(nextEffectiveTheme);
+	});
 }
 
 export function useTheme() {
-	let mediaQuery: MediaQueryList | undefined;
-	let handleSystemThemeChange: (() => void) | undefined;
-
-	onMounted(() => {
-		// 从 localStorage 读取保存的主题
-		const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-		if (savedTheme && ['system', 'light', 'dark'].includes(savedTheme)) {
-			theme.value = savedTheme;
-		}
-
-		// 应用初始主题
-		const effectiveTheme = getEffectiveTheme(theme.value);
-		applyTheme(effectiveTheme);
-
-		// 监听系统主题变化
-		mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-		handleSystemThemeChange = () => {
-			if (theme.value === 'system') {
-				const newEffectiveTheme = getSystemTheme();
-				applyTheme(newEffectiveTheme);
-			}
-		};
-
-		mediaQuery.addEventListener('change', handleSystemThemeChange);
-	});
-
-	onUnmounted(() => {
-		if (mediaQuery && handleSystemThemeChange) {
-			mediaQuery.removeEventListener('change', handleSystemThemeChange);
-		}
-	});
-
-	// 监听主题变化
-	watch(theme, (newTheme) => {
-		localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-		const effectiveTheme = getEffectiveTheme(newTheme);
-		applyTheme(effectiveTheme);
-	});
+	initializeTheme();
 
 	function setTheme(newTheme: Theme) {
 		theme.value = newTheme;
@@ -83,6 +84,7 @@ export function useTheme() {
 
 	return {
 		theme,
+		effectiveTheme,
 		setTheme,
 		cycleTheme,
 	};

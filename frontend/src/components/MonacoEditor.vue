@@ -40,7 +40,7 @@
 		mount: [editor: editor.IStandaloneCodeEditor]
 	}>();
 
-	const { theme } = useTheme();
+	const { effectiveTheme } = useTheme();
 	const editorInstance = ref<editor.IStandaloneCodeEditor>();
 
 	const content = computed({
@@ -48,7 +48,7 @@
 		set: (value: string) => emit('update:modelValue', value),
 	});
 
-	const editorTheme = computed(() => (theme.value === 'dark' ? 'vs-dark' : 'vs'));
+	const editorTheme = computed(() => (effectiveTheme.value === 'dark' ? 'vs-dark' : 'vs'));
 
 	const wrapperClass = computed(() => ({
 		'monaco-editor-error': props.hasError,
@@ -83,17 +83,11 @@
 		emit('mount', editor);
 	}
 
-	// 监听主题变化
-	watch(
-		() => theme.value,
-		() => {
-			if (editorInstance.value) {
-				editorInstance.value.updateOptions({
-					theme: editorTheme.value,
-				});
-			}
+	watch(editorTheme, (newTheme) => {
+		if (editorInstance.value) {
+			editorInstance.value.updateOptions({ theme: newTheme });
 		}
-	);
+	});
 </script>
 
 <style scoped>

@@ -4,13 +4,15 @@
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div class="flex items-center gap-3">
 				<div>
-					<h1 class="text-xl font-semibold text-foreground">{{ stage?.name ?? 'Stage 详情' }}</h1>
+					<h1 class="text-xl font-semibold text-foreground">
+						{{ stage?.name ?? t('buildStageDetail.title') }}
+					</h1>
 				</div>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
 				<button v-if="stage" class="app-button-primary h-9 px-3" @click="openEditModal">
 					<Pencil class="size-4" />
-					编辑
+					{{ t('common.edit') }}
 				</button>
 				<button
 					v-if="stage"
@@ -19,7 +21,7 @@
 					@click="handleDuplicate"
 				>
 					<Copy class="size-4" />
-					复制
+					{{ t('common.copy') }}
 				</button>
 				<button
 					v-if="stage"
@@ -28,11 +30,11 @@
 					@click="openDeleteModal"
 				>
 					<Trash2 class="size-4" />
-					删除
+					{{ t('common.delete') }}
 				</button>
 				<button class="app-button h-9 px-4" @click="router.push('/ci/build-stage')">
 					<ArrowLeft class="size-4" />
-					返回
+					{{ t('common.back') }}
 				</button>
 			</div>
 		</div>
@@ -45,31 +47,31 @@
 			<!-- Basic Info Card -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">基本信息</h2>
+					<h2 class="font-semibold text-foreground">{{ t('buildStageDetail.basicInfo') }}</h2>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">名称</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
 						<dd class="text-foreground">{{ stage.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('buildStageDetail.version') }}</dt>
 						<dd class="text-foreground">v{{ stage.version }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">镜像</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('buildStageDetail.image') }}</dt>
 						<dd class="text-foreground">{{ stage.image }}</dd>
 					</div>
 					<div class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">描述</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
 						<dd class="text-foreground">{{ stage.description || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
 					</div>
 				</dl>
@@ -78,8 +80,17 @@
 			<!-- Script Card -->
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">执行脚本</h2>
-					<button class="app-button h-8 px-3" @click="openScriptDrawer">编辑</button>
+					<h2 class="font-semibold text-foreground">{{ t('buildStageDetail.script') }}</h2>
+					<div class="flex items-center gap-2">
+						<button class="app-button-primary h-8 px-3" @click="openScriptDrawer">
+							<Pencil class="size-4" />
+							{{ t('common.edit') }}
+						</button>
+						<button v-if="stage.script" class="app-button h-8 px-3" @click="handleCopyScript">
+							<Copy class="size-4" />
+							{{ t('common.copy') }}
+						</button>
+					</div>
 				</div>
 				<div v-if="stage.script" class="p-5">
 					<MonacoEditor
@@ -90,17 +101,17 @@
 					/>
 				</div>
 				<div v-else class="px-5 py-10 text-center text-muted-foreground">
-					<p class="text-sm">暂无脚本</p>
+					<p class="text-sm">{{ t('buildStageDetail.noScript') }}</p>
 				</div>
 			</div>
 
 			<!-- Artifacts Card -->
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">制品配置</h2>
+					<h2 class="font-semibold text-foreground">{{ t('buildStageDetail.artifactConfig') }}</h2>
 					<button class="app-button-primary h-8 px-3" @click="openAddArtifactModal">
 						<Plus class="size-4" />
-						添加制品
+						{{ t('buildStageDetail.addArtifact') }}
 					</button>
 				</div>
 				<div class="overflow-x-auto">
@@ -108,30 +119,34 @@
 						<thead>
 							<tr>
 								<th>#</th>
-								<th>类型</th>
-								<th>名称</th>
-								<th>路径/镜像</th>
-								<th>操作</th>
+								<th>{{ t('buildStageDetail.artifactType') }}</th>
+								<th>{{ t('common.name') }}</th>
+								<th>{{ t('buildStageDetail.pathOrImage') }}</th>
+								<th>{{ t('common.operation') }}</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr v-if="sortableArtifacts.length === 0">
-								<td colspan="5" class="text-center text-muted-foreground">暂无制品配置</td>
+								<td colspan="5" class="text-center text-muted-foreground">
+									{{ t('buildStageDetail.noArtifactConfig') }}
+								</td>
 							</tr>
 							<tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
 								<td class="text-muted-foreground">{{ idx + 1 }}</td>
 								<td>
 									<span class="app-badge">
-										{{ artifact.type }}
+										{{ getArtifactTypeLabel(artifact.type) }}
 									</span>
 								</td>
 								<td class="text-foreground">{{ artifact.name }}</td>
 								<td class="text-muted-foreground">{{ artifact.path }}</td>
 								<td>
 									<div class="flex items-center gap-3">
-										<button class="app-link" @click="openEditArtifactModal(idx)">编辑</button>
+										<button class="app-link" @click="openEditArtifactModal(idx)">
+											{{ t('common.edit') }}
+										</button>
 										<button class="app-link-danger" @click="confirmRemoveArtifact(idx)">
-											删除
+											{{ t('common.delete') }}
 										</button>
 									</div>
 								</td>
@@ -142,35 +157,51 @@
 			</div>
 		</template>
 
-		<AppDialog v-model:open="isEditDialogOpen" title="编辑构建">
+		<AppDialog v-model:open="isEditDialogOpen" :title="t('buildStageDetail.editBuild')">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">名称</label>
-					<input v-model="form.name" type="text" class="app-input" placeholder="例如: build" />
+					<label class="app-field-label block">{{ t('common.name') }}</label>
+					<input
+						v-model="form.name"
+						type="text"
+						class="app-input"
+						:placeholder="t('buildStageDetail.namePlaceholder')"
+					/>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">镜像</label>
+					<label class="app-field-label block">{{ t('buildStageDetail.image') }}</label>
 					<input
 						v-model="form.image"
 						type="text"
 						class="app-input"
-						placeholder="例如: alpine:latest"
+						:placeholder="t('buildStageDetail.imagePlaceholder')"
 					/>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">描述（可选）</label>
-					<input v-model="form.description" type="text" class="app-input" placeholder="简短描述" />
+					<label class="app-field-label block">
+						{{ t('buildStageDetail.descriptionOptional') }}
+					</label>
+					<input
+						v-model="form.description"
+						type="text"
+						class="app-input"
+						:placeholder="t('buildStageDetail.descriptionPlaceholder')"
+					/>
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="saving" @click="handleSave">保存</button>
+				<button class="app-button" @click="isEditDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
+				<button class="app-button-primary" :disabled="saving" @click="handleSave">
+					{{ t('common.save') }}
+				</button>
 			</template>
 		</AppDialog>
 
 		<AppDrawer
 			v-model:open="showScriptDrawer"
-			title="编辑脚本"
+			:title="t('buildStageDetail.editScript')"
 			width-class="w-[min(960px,100vw)]"
 			body-class="min-h-0 flex-1 overflow-hidden p-0"
 		>
@@ -180,88 +211,98 @@
 						v-model="scriptTemp"
 						language="shell"
 						height="100%"
-						placeholder="输入执行脚本..."
+						:placeholder="t('buildStageDetail.scriptPlaceholder')"
 					/>
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="closeScriptDrawer">取消</button>
-				<button class="app-button-primary" :disabled="saving" @click="confirmScript">保存</button>
+				<button class="app-button" @click="closeScriptDrawer">{{ t('common.cancel') }}</button>
+				<button class="app-button-primary" :disabled="saving" @click="confirmScript">
+					{{ t('common.save') }}
+				</button>
 			</template>
 		</AppDrawer>
 
 		<AppDialog
 			v-model:open="isArtifactDialogOpen"
-			:title="artifactForm.isEdit ? '编辑制品' : '添加制品'"
+			:title="
+				artifactForm.isEdit ? t('buildStageDetail.editArtifact') : t('buildStageDetail.addArtifact')
+			"
 		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">类型</label>
+					<label class="app-field-label block">{{ t('buildStageDetail.artifactType') }}</label>
 					<SelectControl
 						v-model="artifactForm.type"
 						:options="artifactTypeOptions"
-						placeholder="选择制品类型"
+						:placeholder="t('buildStageDetail.artifactTypePlaceholder')"
 					/>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">名称</label>
+					<label class="app-field-label block">{{ t('common.name') }}</label>
 					<input
 						v-model="artifactForm.name"
 						type="text"
 						class="app-input"
-						placeholder="例如: my-app"
+						:placeholder="t('buildStageDetail.artifactNamePlaceholder')"
 					/>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">路径/镜像</label>
+					<label class="app-field-label block">{{ t('buildStageDetail.pathOrImage') }}</label>
 					<input
 						v-model="artifactForm.path"
 						type="text"
 						class="app-input"
-						placeholder="例如: image:tag 或 ./dist"
+						:placeholder="t('buildStageDetail.artifactPathPlaceholder')"
 					/>
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isArtifactDialogOpen = false">取消</button>
+				<button class="app-button" @click="isArtifactDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
 				<button class="app-button-primary" :disabled="saving" @click="handleSaveArtifact">
-					{{ artifactForm.isEdit ? '保存' : '添加' }}
+					{{ artifactForm.isEdit ? t('common.save') : t('common.add') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteArtifactDialogOpen"
-			title="删除制品"
+			:title="t('buildStageDetail.deleteArtifact')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定删除制品「
-				<strong>{{ sortableArtifacts[artifactToDelete]?.name }}</strong>
-				」？
+				{{
+					t('buildStageDetail.deleteArtifactConfirm', {
+						name: sortableArtifacts[artifactToDelete]?.name ?? '',
+					})
+				}}
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteArtifactDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteArtifactDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
 				<button class="app-button-destructive" :disabled="saving" @click="removeArtifact">
-					删除
+					{{ t('common.delete') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
-			title="删除 Stage"
+			:title="t('buildStageDetail.deleteStage')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定删除 Stage「
-				<strong>{{ stage?.name }}</strong>
-				」？此操作不可恢复。
+				{{ t('buildStageDetail.deleteStageConfirm', { name: stage?.name ?? '' }) }}
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
 				<button class="app-button-destructive" :disabled="deleting" @click="handleDelete">
-					删除
+					{{ t('common.delete') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -271,6 +312,7 @@
 <script setup lang="ts">
 	import { ArrowLeft, Copy, Pencil, Plus, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref, watch } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -285,6 +327,7 @@
 
 	const route = useRoute();
 	const router = useRouter();
+	const { t } = useI18n({ useScope: 'global' });
 	const stageId = computed(() => route.params.id as string);
 	const toast = useToast();
 
@@ -300,10 +343,10 @@
 	const isDeleteArtifactDialogOpen = ref(false);
 	const showScriptDrawer = ref(false);
 	const scriptTemp = ref('');
-	const artifactTypeOptions = [
-		{ value: 'docker_image', label: 'Docker 镜像' },
-		{ value: 'binary', label: '二进制文件' },
-	];
+	const artifactTypeOptions = computed(() => [
+		{ value: 'docker_image', label: t('buildStageDetail.artifactTypes.dockerImage') },
+		{ value: 'binary', label: t('buildStageDetail.artifactTypes.binary') },
+	]);
 	const form = reactive({ name: '', image: '', description: '' });
 	const artifactForm = reactive({
 		isEdit: false,
@@ -322,7 +365,7 @@
 				sortableArtifacts.value = stage.value.artifacts ? [...stage.value.artifacts] : [];
 			});
 		} catch {
-			toast.error('获取 Stage 失败');
+			toast.error(t('buildStageDetail.fetchFailed'));
 			router.push('/ci/build-stage');
 		}
 	}
@@ -348,6 +391,22 @@
 		showScriptDrawer.value = false;
 	}
 
+	async function handleCopyScript() {
+		if (!stage.value?.script) {
+			return;
+		}
+		if (!navigator.clipboard) {
+			toast.error(t('buildStageDetail.copyFailed'));
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(stage.value.script);
+			toast.success(t('buildStageDetail.scriptCopied'));
+		} catch {
+			toast.error(t('buildStageDetail.copyFailed'));
+		}
+	}
+
 	async function confirmScript() {
 		try {
 			await executeSave(async () => {
@@ -356,10 +415,10 @@
 				});
 				stage.value = updated;
 				showScriptDrawer.value = false;
-				toast.success('脚本已保存');
+				toast.success(t('buildStageDetail.scriptSaved'));
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			toast.error(e instanceof Error ? e.message : t('buildStageDetail.saveFailed'));
 		}
 	}
 
@@ -372,11 +431,11 @@
 					description: form.description,
 				});
 				stage.value = updated;
-				toast.success('更新成功');
+				toast.success(t('buildStageDetail.updateSuccess'));
 				isEditDialogOpen.value = false;
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			toast.error(e instanceof Error ? e.message : t('buildStageDetail.saveFailed'));
 		}
 	}
 
@@ -406,6 +465,10 @@
 		isArtifactDialogOpen.value = true;
 	}
 
+	function getArtifactTypeLabel(type: ArtifactType) {
+		return artifactTypeOptions.value.find((option) => option.value === type)?.label ?? type;
+	}
+
 	function confirmRemoveArtifact(idx: number) {
 		artifactToDelete.value = idx;
 		isDeleteArtifactDialogOpen.value = true;
@@ -424,32 +487,30 @@
 				stage.value = await buildStageApi.update(stageId.value, {
 					artifacts: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [],
 				});
-				toast.success('删除成功');
+				toast.success(t('buildStageDetail.deleteSuccess'));
 				isDeleteArtifactDialogOpen.value = false;
 				artifactToDelete.value = -1;
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '删除失败');
+			toast.error(e instanceof Error ? e.message : t('buildStageDetail.deleteFailed'));
 		}
 	}
 
 	async function handleSaveArtifact() {
 		if (!artifactForm.name.trim() || !artifactForm.path.trim()) {
-			toast.error('名称和路径不能为空');
+			toast.error(t('buildStageDetail.artifactFieldsRequired'));
 			return;
 		}
 
 		if (artifactForm.isEdit) {
-			// 编辑模式
 			sortableArtifacts.value[artifactForm.order] = {
 				type: artifactForm.type,
 				name: artifactForm.name,
 				path: artifactForm.path,
 			};
 		} else {
-			// 添加模式 - 检查名称是否重复
 			if (sortableArtifacts.value.some((a) => a.name === artifactForm.name)) {
-				toast.error('制品名称已存在');
+				toast.error(t('buildStageDetail.artifactNameExists'));
 				return;
 			}
 			sortableArtifacts.value.push({
@@ -464,11 +525,15 @@
 				stage.value = await buildStageApi.update(stageId.value, {
 					artifacts: sortableArtifacts.value,
 				});
-				toast.success(artifactForm.isEdit ? '更新成功' : '添加成功');
+				toast.success(
+					artifactForm.isEdit
+						? t('buildStageDetail.updateSuccess')
+						: t('buildStageDetail.addSuccess')
+				);
 				isArtifactDialogOpen.value = false;
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			toast.error(e instanceof Error ? e.message : t('buildStageDetail.saveFailed'));
 		}
 	}
 
@@ -480,11 +545,11 @@
 		try {
 			await executeDuplicate(async () => {
 				const newStage = await buildStageApi.duplicate(stageId.value);
-				toast.success('复制成功');
+				toast.success(t('buildStageDetail.duplicateSuccess'));
 				router.push(`/ci/build-stage/${newStage.id}`);
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '复制失败');
+			toast.error(e instanceof Error ? e.message : t('buildStageDetail.duplicateFailed'));
 		}
 	}
 
@@ -492,11 +557,11 @@
 		try {
 			await executeDelete(async () => {
 				await buildStageApi.delete(stageId.value);
-				toast.success('删除成功');
+				toast.success(t('buildStageDetail.deleteSuccess'));
 				router.push('/ci/build-stage');
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '删除失败');
+			toast.error(e instanceof Error ? e.message : t('buildStageDetail.deleteFailed'));
 		}
 	}
 

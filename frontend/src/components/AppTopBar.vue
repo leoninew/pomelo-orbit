@@ -5,7 +5,7 @@
 		<RouterLink
 			to="/"
 			class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/20 sm:px-3 md:h-full md:w-60"
-			aria-label="Pomelo Orbit 首页"
+			:aria-label="t('app.homeAria')"
 		>
 			<img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-9" width="36" height="36" />
 			<span class="hidden text-base font-semibold tracking-normal sm:inline">Pomelo Orbit</span>
@@ -14,7 +14,7 @@
 		<NavigationMenuRoot
 			:model-value="currentModule ?? undefined"
 			class="flex h-14 min-w-0 flex-1 overflow-x-auto md:h-full md:flex-none"
-			aria-label="一级模块导航"
+			:aria-label="t('app.primaryNavAria')"
 			:delay-duration="100"
 			:skip-delay-duration="200"
 		>
@@ -43,7 +43,7 @@
 
 		<div class="hidden flex-1 md:block" />
 
-		<ToolbarRoot class="hidden items-center gap-3 md:flex" aria-label="全局工具">
+		<ToolbarRoot class="hidden items-center gap-3 md:flex" :aria-label="t('app.globalToolbarAria')">
 			<ToolbarButton
 				class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20"
 				:aria-label="t('theme.' + theme)"
@@ -67,7 +67,7 @@
 		<DropdownMenuRoot>
 			<DropdownMenuTrigger
 				class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
-				aria-label="用户菜单"
+				:aria-label="t('app.userMenuAria')"
 			>
 				<span
 					class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"

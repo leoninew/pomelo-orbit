@@ -1,5 +1,5 @@
 <template>
-	<ToastProvider label="通知" swipe-direction="right" :duration="3000">
+	<ToastProvider :label="t('toast.providerLabel')" swipe-direction="right" :duration="3000">
 		<ToastRoot
 			v-for="toast in toasts"
 			:key="toast.id"
@@ -21,7 +21,7 @@
 				<button
 					type="button"
 					class="-mr-1 rounded p-1 opacity-70 transition-opacity hover:opacity-100"
-					aria-label="关闭通知"
+					:aria-label="t('toast.close')"
 				>
 					<X class="size-4" />
 				</button>
@@ -43,40 +43,63 @@
 		ToastTitle,
 		ToastViewport,
 	} from 'reka-ui';
-	import type { Component } from 'vue';
+	import { computed, type Component } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useToast, type ToastType } from '@/composables/useToast';
 
 	const { toasts, remove } = useToast();
+	const { t } = useI18n({ useScope: 'global' });
 
-	const toastConfig: Record<
-		ToastType,
-		{
-			title: string
-			icon: Component
-			className: string
-		}
-	> = {
+	const toastStyles = {
 		success: {
-			title: '成功',
-			icon: CheckCircle2,
-			className: 'border-green-200 bg-green-50 text-green-800',
+			light: 'border-green-200 bg-green-50 text-green-800',
+			dark: 'dark:border-green-500/30 dark:bg-green-950/60 dark:text-green-100',
 		},
 		error: {
-			title: '错误',
-			icon: AlertCircle,
-			className: 'border-red-200 bg-red-50 text-red-800',
+			light: 'border-red-200 bg-red-50 text-red-800',
+			dark: 'dark:border-red-500/30 dark:bg-red-950/60 dark:text-red-100',
 		},
 		warning: {
-			title: '提醒',
-			icon: AlertTriangle,
-			className: 'border-amber-200 bg-amber-50 text-amber-800',
+			light: 'border-amber-200 bg-amber-50 text-amber-800',
+			dark: 'dark:border-amber-500/30 dark:bg-amber-950/60 dark:text-amber-100',
 		},
 		info: {
-			title: '通知',
-			icon: Info,
-			className: 'border-blue-200 bg-blue-50 text-blue-800',
+			light: 'border-blue-200 bg-blue-50 text-blue-800',
+			dark: 'dark:border-blue-500/30 dark:bg-blue-950/60 dark:text-blue-100',
 		},
-	};
+	} as const;
+
+	const toastConfig = computed<
+		Record<
+			ToastType,
+			{
+				title: string
+				icon: Component
+				className: string
+			}
+		>
+	>(() => ({
+		success: {
+			title: t('toast.success'),
+			icon: CheckCircle2,
+			className: `${toastStyles.success.light} ${toastStyles.success.dark}`,
+		},
+		error: {
+			title: t('toast.error'),
+			icon: AlertCircle,
+			className: `${toastStyles.error.light} ${toastStyles.error.dark}`,
+		},
+		warning: {
+			title: t('toast.warning'),
+			icon: AlertTriangle,
+			className: `${toastStyles.warning.light} ${toastStyles.warning.dark}`,
+		},
+		info: {
+			title: t('toast.info'),
+			icon: Info,
+			className: `${toastStyles.info.light} ${toastStyles.info.dark}`,
+		},
+	}));
 
 	function handleOpenChange(id: number, open: boolean) {
 		if (!open) {

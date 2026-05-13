@@ -20,12 +20,14 @@ from pomelo_orbit.domain import AuthenticationError, AuthorizationError, Busines
 from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.domain.cd.repositories import UserRepository
 from pomelo_orbit.infrastructure import SecurityService, get_security_service, hash_password, verify_password
+from pomelo_orbit.infrastructure.captcha import create_captcha_image, generate_captcha_text, generate_captcha_token
 from pomelo_orbit.infrastructure.cd.repositories.di import get_user_repo
 from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.csrf import generate_csrf_token
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
 from pomelo_orbit.infrastructure.time_utils import utc_now
 from pomelo_orbit.interfaces.api.auth.dto import (
+    CaptchaResp,
     CsrfTokenResp,
     GoogleCallbackReq,
     LoginHistoryResp,
@@ -80,6 +82,17 @@ def get_csrf_token(
     return CsrfTokenResp(token=token)
 
 
+@router.get("/captcha", response_model=CaptchaResp)
+def get_captcha(
+    settings: Annotated[Dynaconf, Depends(get_settings)],
+) -> CaptchaResp:
+    """获取验证码"""
+    text = generate_captcha_text()
+    image = create_captcha_image(text)
+    token = generate_captcha_token(text, settings.jwt.secret_key, ttl_minutes=1)
+    return CaptchaResp(token=token, image=image)
+
+
 @router.post("/login", response_model=TokenResp)
 def login(
     login_req: LoginReq,
@@ -93,6 +106,8 @@ def login(
         csrf_token=login_req.csrf_token,
         ip_address=_get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
+        captcha_token=login_req.captcha_token,
+        captcha_answer=login_req.captcha_answer,
     )
 
     result = auth_service.login(cmd)

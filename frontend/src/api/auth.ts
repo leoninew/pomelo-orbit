@@ -1,4 +1,5 @@
 import type {
+	CaptchaResp,
 	CsrfTokenResp,
 	GoogleCallbackReq,
 	LoginHistory,
@@ -15,6 +16,11 @@ export const authApi = {
 	// 获取 CSRF Token
 	getCsrfToken(): Promise<CsrfTokenResp> {
 		return request.get('/api/auth/csrf-token');
+	},
+
+	// 获取验证码
+	getCaptcha(): Promise<CaptchaResp> {
+		return request.get('/api/auth/captcha');
 	},
 
 	// 登录

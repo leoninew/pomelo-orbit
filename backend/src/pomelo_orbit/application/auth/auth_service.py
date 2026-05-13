@@ -13,6 +13,7 @@ from pomelo_orbit.domain.auth.entities import LoginAttempt, LoginHistory, User
 from pomelo_orbit.domain.auth.repositories import LoginAttemptRepository
 from pomelo_orbit.domain.cd.repositories import UserRepository
 from pomelo_orbit.infrastructure import SecurityService, hash_password, verify_password
+from pomelo_orbit.infrastructure.captcha import verify_captcha_token
 from pomelo_orbit.infrastructure.csrf import verify_csrf_token
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
@@ -43,17 +44,25 @@ class AuthService:
             登录响应（包含 access_token）
 
         Raises:
-            BusinessError: CSRF Token 无效或速率限制
+            BusinessError: CSRF Token 无效、验证码错误或速率限制
             AuthenticationError: 用户名或密码错误
         """
         # 1. 验证 CSRF Token
         if not verify_csrf_token(cmd.csrf_token, self._security_service.settings.jwt.secret_key):
             raise BusinessError("请求令牌无效或已过期, 请刷新页面重试", status_code=400)
 
-        # 2. 检查速率限制
+        # 2. 验证验证码（必填）
+        if not cmd.captcha_token or not cmd.captcha_answer:
+            raise BusinessError("请输入验证码", status_code=400)
+        if not verify_captcha_token(
+            cmd.captcha_token, cmd.captcha_answer, self._security_service.settings.jwt.secret_key
+        ):
+            raise BusinessError("验证码错误或已过期", status_code=400)
+
+        # 3. 检查速率限制
         self._check_rate_limit(cmd.ip_address, cmd.username)
 
-        # 3. 验证用户名和密码
+        # 4. 验证用户名和密码
         user = self._user_repo.find_by_username(cmd.username)
         if user is None or not verify_password(cmd.password, user.password_hash):
             # 记录失败尝试（立即提交，防止事务回滚）
@@ -66,7 +75,7 @@ class AuthService:
             logger.warning(f"Login failed: username={cmd.username}, ip={cmd.ip_address}")
             raise AuthenticationError("用户名或密码错误")
 
-        # 3.1. 检查账号状态
+        # 4.1. 检查账号状态
         if not user.is_active:
             # 记录失败尝试（账号已禁用）
             self._record_login_attempt_immediately(
@@ -80,7 +89,7 @@ class AuthService:
             )
             raise BusinessError("账号已被禁用, 请联系管理员", status_code=403)
 
-        # 4. 记录成功尝试
+        # 5. 记录成功尝试
         attempt = LoginAttempt(
             id=str(ULID()),
             username=cmd.username,
@@ -90,14 +99,14 @@ class AuthService:
         )
         self._login_attempt_repo.save(attempt)
 
-        # 4.1. 清理14天前的登录尝试记录
+        # 5.1. 清理14天前的登录尝试记录
         self._login_attempt_repo.delete_old_records(14)
 
-        # 5. 更新最后登录时间
+        # 6. 更新最后登录时间
         user.last_login_at = utc_now()
         self._user_repo.save(user)
 
-        # 6. 记录登录历史
+        # 7. 记录登录历史
         login_history = LoginHistory(
             id=str(ULID()),
             user_id=user.id,
@@ -109,7 +118,7 @@ class AuthService:
         )
         self._user_repo.save_login_history(login_history)
 
-        # 7. 生成 token
+        # 8. 生成 token
         access_token = self._security_service.create_access_token(data={"sub": user.username})
         logger.info(f"Login successful: username={user.username}, ip={cmd.ip_address}")
 

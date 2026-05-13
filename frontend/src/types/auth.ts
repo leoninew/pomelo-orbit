@@ -3,10 +3,17 @@ export interface CsrfTokenResp {
 	token: string
 }
 
+export interface CaptchaResp {
+	token: string
+	image: string
+}
+
 export interface LoginReq {
 	username: string
 	password: string
 	csrf_token: string
+	captcha_token: string
+	captcha_answer: string
 }
 
 export interface TokenResp {

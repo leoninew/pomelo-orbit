@@ -49,6 +49,31 @@
 						<p v-if="errors.password" class="app-field-error text-xs">{{ errors.password }}</p>
 					</div>
 
+					<div class="space-y-1.5">
+						<label for="captcha" class="app-field-label block">{{ t('login.captcha') }}</label>
+						<div class="flex gap-2">
+							<input
+								id="captcha"
+								v-model="form.captchaAnswer"
+								type="text"
+								class="app-input flex-1"
+								:class="errors.captcha ? 'app-input-error' : ''"
+								:placeholder="t('login.captchaPlaceholder')"
+								maxlength="4"
+								@input="errors.captcha = ''"
+							/>
+							<img
+								v-if="captchaImage"
+								:src="captchaImage"
+								:alt="t('login.captcha')"
+								class="h-10 cursor-pointer rounded border border-border"
+								:title="t('login.captchaRefresh')"
+								@click="fetchCaptcha"
+							/>
+						</div>
+						<p v-if="errors.captcha" class="app-field-error text-xs">{{ errors.captcha }}</p>
+					</div>
+
 					<button
 						type="submit"
 						class="app-button-primary flex w-full items-center justify-center gap-2"
@@ -116,27 +141,45 @@
 	const form = reactive({
 		username: '',
 		password: '',
+		captchaAnswer: '',
 	});
 
 	const errors = reactive({
 		username: '',
 		password: '',
+		captcha: '',
 	});
 
 	const showPassword = ref(false);
 	const loading = ref(false);
 	const csrfToken = ref('');
+	const captchaToken = ref('');
+	const captchaImage = ref('');
 
-	// 页面加载时获取 CSRF Token
+	// 页面加载时获取 CSRF Token 和验证码
 	onMounted(async () => {
 		try {
 			const response = await authApi.getCsrfToken();
 			csrfToken.value = response.token;
+			await fetchCaptcha();
 		} catch (err) {
 			console.error('Failed to fetch CSRF token:', err);
 			toast.error('初始化失败，请刷新页面重试');
 		}
 	});
+
+	async function fetchCaptcha() {
+		try {
+			const response = await authApi.getCaptcha();
+			captchaToken.value = response.token;
+			captchaImage.value = response.image;
+			form.captchaAnswer = '';
+			errors.captcha = '';
+		} catch (err) {
+			console.error('Failed to fetch captcha:', err);
+			toast.error('获取验证码失败');
+		}
+	}
 
 	function handleGoogleLogin() {
 		window.location.assign(buildApiUrl('/api/auth/google'));
@@ -145,7 +188,8 @@
 	function validate() {
 		errors.username = form.username.trim() ? '' : t('login.usernameRequired');
 		errors.password = form.password.trim() ? '' : t('login.passwordRequired');
-		return !errors.username && !errors.password;
+		errors.captcha = form.captchaAnswer.trim() ? '' : t('login.captchaRequired');
+		return !errors.username && !errors.password && !errors.captcha;
 	}
 
 	async function handleLogin() {
@@ -160,11 +204,20 @@
 
 		loading.value = true;
 		try {
-			await authStore.login(form.username, form.password, csrfToken.value);
+			await authStore.login(
+				form.username,
+				form.password,
+				csrfToken.value,
+				captchaToken.value,
+				form.captchaAnswer
+			);
 			toast.success(t('login.loginSuccess'));
 			router.push('/');
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : t('login.loginFailed'));
+
+			// 刷新验证码
+			await fetchCaptcha();
 
 			// 如果是速率限制错误（429），不要重新获取 CSRF Token
 			const isRateLimited = err instanceof ApiError && err.status === 429;

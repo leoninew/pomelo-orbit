@@ -11,6 +11,8 @@ class LoginReq(BaseModel):
     csrf_token: str
     ip_address: str
     user_agent: str | None = None
+    captcha_token: str
+    captcha_answer: str
 
 
 class LoginResp(BaseModel):

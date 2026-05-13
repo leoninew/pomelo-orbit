@@ -13,12 +13,21 @@ class LoginReq(BaseModel):
     username: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=1)
     csrf_token: str = Field(..., min_length=1, description="CSRF Token")
+    captcha_token: str = Field(..., min_length=1, description="验证码 Token")
+    captcha_answer: str = Field(..., min_length=1, description="验证码答案")
 
 
 class CsrfTokenResp(BaseModel):
     """CSRF Token 响应"""
 
     token: str
+
+
+class CaptchaResp(BaseModel):
+    """验证码响应"""
+
+    token: str
+    image: str  # base64 编码的图片
 
 
 class TokenResp(BaseModel):

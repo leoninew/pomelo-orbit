@@ -365,9 +365,8 @@ class RemoteExecutor:
         # 如果指定了工作目录，在命令前添加 cd
         if workdir:
             command = f"cd {workdir} && {command}"
-        # 转义命令中的双引号和反斜杠，然后用双引号包裹
-        command_escaped = command.replace('\\', '\\\\').replace('"', '\\"')
-        os.system(f'ssh {self.config.ssh_target} "{command_escaped}"')
+        # 使用 subprocess.run 避免本地 shell 解析问题
+        subprocess.run(["ssh", self.config.ssh_target, command], check=False)
 
     def docker_compose(self, args: list[str]):
         """执行 docker compose 命令"""

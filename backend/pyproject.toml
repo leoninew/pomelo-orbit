@@ -30,6 +30,8 @@ dependencies = [
     "python-ulid>=2.0.0",
     "httpx>=0.27.0",
     "dishka>=1.9.1",
+    # 验证码生成
+    "pillow>=10.0.0",
 ]
 
 [build-system]

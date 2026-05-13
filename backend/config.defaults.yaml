@@ -33,7 +33,7 @@ jwt:
 # 登录速率限制
 rate_limit:
   window_minutes: 3                  # 统计窗口（分钟）
-  failure_threshold: 2               # 失败次数阈值（超过此值触发限制）
+  failure_threshold: 3               # 失败次数阈值（超过此值触发限制）
   retry_interval_seconds: 60         # 强制等待间隔（秒）
 
 # Webhook 配置

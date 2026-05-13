@@ -106,6 +106,7 @@
 	import { buildApiUrl } from '@/config';
 	import { useAuthStore } from '@/stores/auth';
 	import { useToast } from '@/composables/useToast';
+	import { ApiError } from '@/utils/request';
 
 	const { t } = useI18n();
 	const router = useRouter();
@@ -162,9 +163,16 @@
 			await authStore.login(form.username, form.password, csrfToken.value);
 			toast.success(t('login.loginSuccess'));
 			router.push('/');
-		} catch (err) {
+		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : t('login.loginFailed'));
-			// 登录失败后重新获取 CSRF Token
+
+			// 如果是速率限制错误（429），不要重新获取 CSRF Token
+			const isRateLimited = err instanceof ApiError && err.status === 429;
+			if (isRateLimited) {
+				return;
+			}
+
+			// 其他登录失败，重新获取 CSRF Token
 			try {
 				const response = await authApi.getCsrfToken();
 				csrfToken.value = response.token;

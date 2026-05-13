@@ -56,8 +56,8 @@ class AuthService:
         # 3. 验证用户名和密码
         user = self._user_repo.find_by_username(cmd.username)
         if user is None or not verify_password(cmd.password, user.password_hash):
-            # 记录失败尝试
-            self._record_login_attempt(
+            # 记录失败尝试（立即提交，防止事务回滚）
+            self._record_login_attempt_immediately(
                 username=cmd.username,
                 ip_address=cmd.ip_address,
                 user_agent=cmd.user_agent,
@@ -66,13 +66,29 @@ class AuthService:
             logger.warning(f"Login failed: username={cmd.username}, ip={cmd.ip_address}")
             raise AuthenticationError("用户名或密码错误")
 
+        # 3.1. 检查账号状态
+        if not user.is_active:
+            # 记录失败尝试（账号已禁用）
+            self._record_login_attempt_immediately(
+                username=cmd.username,
+                ip_address=cmd.ip_address,
+                user_agent=cmd.user_agent,
+                success=False,
+            )
+            logger.warning(
+                f"Login blocked: account disabled, user_id={user.id}, username={cmd.username}, ip={cmd.ip_address}"
+            )
+            raise BusinessError("账号已被禁用, 请联系管理员", status_code=403)
+
         # 4. 记录成功尝试
-        self._record_login_attempt(
+        attempt = LoginAttempt(
+            id=str(ULID()),
             username=cmd.username,
             ip_address=cmd.ip_address,
             user_agent=cmd.user_agent,
             success=True,
         )
+        self._login_attempt_repo.save(attempt)
 
         # 4.1. 清理14天前的登录尝试记录
         self._login_attempt_repo.delete_old_records(14)
@@ -101,7 +117,7 @@ class AuthService:
 
     def _check_rate_limit(self, ip_address: str, username: str) -> None:
         """
-        检查速率限制
+        检查速率限制（简化规则：从第3次开始，每分钟只允许尝试一次）
 
         Args:
             ip_address: 客户端 IP
@@ -110,19 +126,40 @@ class AuthService:
         Raises:
             BusinessError: 超过速率限制
         """
-        # IP 级别：10 分钟内失败不超过 5 次
-        ip_fail_count = self._login_attempt_repo.count_failed_by_ip(ip_address, minutes=10)
-        if ip_fail_count >= 5:
-            logger.warning(f"Login rate limit exceeded: ip={ip_address}, fail_count={ip_fail_count}")
-            raise BusinessError("操作过于频繁, 请 10 分钟后再试", status_code=429)
+        # 从配置读取参数
+        window_minutes = self._security_service.settings.rate_limit.window_minutes
+        failure_threshold = self._security_service.settings.rate_limit.failure_threshold
+        retry_interval_seconds = self._security_service.settings.rate_limit.retry_interval_seconds
 
-        # 账号级别：10 分钟内失败不超过 3 次
-        username_fail_count = self._login_attempt_repo.count_failed_by_username(username, minutes=10)
-        if username_fail_count >= 3:
-            logger.warning(f"Login rate limit exceeded: username={username}, fail_count={username_fail_count}")
-            raise BusinessError("该账号登录失败次数过多, 请 10 分钟后再试", status_code=429)
+        # IP 级别：窗口内失败 >= 阈值，强制等待间隔
+        ip_fail_count, last_ip_attempt = self._login_attempt_repo.get_failed_attempts_summary_by_ip(
+            ip_address, window_minutes
+        )
+        if ip_fail_count >= failure_threshold and last_ip_attempt:
+            elapsed = (utc_now() - last_ip_attempt.created_at).total_seconds()
+            if elapsed < retry_interval_seconds:
+                remaining = int(retry_interval_seconds - elapsed)
+                logger.warning(
+                    f"Login rate limit exceeded: ip={ip_address}, fail_count={ip_fail_count}, "
+                    f"elapsed={int(elapsed)}s, remaining={remaining}s"
+                )
+                raise BusinessError(f"操作过于频繁, 请 {remaining} 秒后再试", status_code=429)
 
-    def _record_login_attempt(
+        # 账号级别：窗口内失败 >= 阈值，强制等待间隔
+        username_fail_count, last_username_attempt = self._login_attempt_repo.get_failed_attempts_summary_by_username(
+            username, window_minutes
+        )
+        if username_fail_count >= failure_threshold and last_username_attempt:
+            elapsed = (utc_now() - last_username_attempt.created_at).total_seconds()
+            if elapsed < retry_interval_seconds:
+                remaining = int(retry_interval_seconds - elapsed)
+                logger.warning(
+                    f"Login rate limit exceeded: username={username}, fail_count={username_fail_count}, "
+                    f"elapsed={int(elapsed)}s, remaining={remaining}s"
+                )
+                raise BusinessError(f"该账号登录失败次数过多, 请 {remaining} 秒后再试", status_code=429)
+
+    def _record_login_attempt_immediately(
         self,
         username: str,
         ip_address: str,
@@ -130,7 +167,7 @@ class AuthService:
         success: bool,
     ) -> None:
         """
-        记录登录尝试
+        记录登录尝试并立即提交（防止事务回滚）
 
         Args:
             username: 用户名
@@ -145,7 +182,7 @@ class AuthService:
             user_agent=user_agent,
             success=success,
         )
-        self._login_attempt_repo.save(attempt)
+        self._login_attempt_repo.save_and_commit(attempt)
 
     def oauth_login(self, provider: str, id_token_str: str) -> User:
         """

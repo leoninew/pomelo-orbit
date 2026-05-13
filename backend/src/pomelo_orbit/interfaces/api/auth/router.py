@@ -76,7 +76,7 @@ def get_csrf_token(
     settings: Annotated[Dynaconf, Depends(get_settings)],
 ) -> CsrfTokenResp:
     """获取 CSRF Token"""
-    token = generate_csrf_token(settings.jwt.secret_key, ttl_minutes=10)
+    token = generate_csrf_token(settings.jwt.secret_key, ttl_minutes=1)
     return CsrfTokenResp(token=token)
 
 

@@ -21,14 +21,22 @@ def test_user(db_session):
     return user
 
 
+def get_csrf_token(client):
+    """获取 CSRF Token"""
+    response = client.get("/api/auth/csrf-token")
+    assert response.status_code == 200
+    return response.json()["token"]
+
+
 class TestAuthAPI:
     """认证 API 测试"""
 
     def test_login_success(self, client, test_user):
         """测试成功登录"""
+        csrf_token = get_csrf_token(client)
         response = client.post(
             "/api/auth/login",
-            json={"username": "testuser", "password": "testpass123"},
+            json={"username": "testuser", "password": "testpass123", "csrf_token": csrf_token},
         )
 
         assert response.status_code == 200
@@ -38,9 +46,10 @@ class TestAuthAPI:
 
     def test_login_wrong_password(self, client, test_user):
         """测试密码错误"""
+        csrf_token = get_csrf_token(client)
         response = client.post(
             "/api/auth/login",
-            json={"username": "testuser", "password": "wrongpass"},
+            json={"username": "testuser", "password": "wrongpass", "csrf_token": csrf_token},
         )
 
         assert response.status_code == 400
@@ -48,9 +57,10 @@ class TestAuthAPI:
 
     def test_login_user_not_found(self, client, test_user):
         """测试用户不存在"""
+        csrf_token = get_csrf_token(client)
         response = client.post(
             "/api/auth/login",
-            json={"username": "nonexistent", "password": "anypass"},
+            json={"username": "nonexistent", "password": "anypass", "csrf_token": csrf_token},
         )
 
         assert response.status_code == 400
@@ -59,9 +69,10 @@ class TestAuthAPI:
     def test_get_me_with_valid_token(self, client, test_user):
         """测试使用有效 Token 获取用户信息"""
         # 先登录获取 token
+        csrf_token = get_csrf_token(client)
         login_response = client.post(
             "/api/auth/login",
-            json={"username": "testuser", "password": "testpass123"},
+            json={"username": "testuser", "password": "testpass123", "csrf_token": csrf_token},
         )
         token = login_response.json()["access_token"]
 
@@ -89,9 +100,10 @@ class TestAuthAPI:
     def test_list_login_history(self, client, test_user):
         """测试查询登录历史"""
         # 先登录生成历史记录
+        csrf_token = get_csrf_token(client)
         login_response = client.post(
             "/api/auth/login",
-            json={"username": "testuser", "password": "testpass123"},
+            json={"username": "testuser", "password": "testpass123", "csrf_token": csrf_token},
         )
         token = login_response.json()["access_token"]
 

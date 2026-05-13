@@ -12,13 +12,18 @@ class LoginAttemptRepository(ABC):
         ...
 
     @abstractmethod
-    def count_failed_by_ip(self, ip_address: str, minutes: int) -> int:
-        """统计指定 IP 在指定时间内的失败次数"""
+    def save_and_commit(self, attempt: LoginAttempt) -> None:
+        """保存登录尝试记录并立即提交（用于失败记录，防止事务回滚）"""
         ...
 
     @abstractmethod
-    def count_failed_by_username(self, username: str, minutes: int) -> int:
-        """统计指定用户名在指定时间内的失败次数"""
+    def get_failed_attempts_summary_by_ip(self, ip_address: str, minutes: int) -> tuple[int, LoginAttempt | None]:
+        """获取 IP 失败次数和最后失败记录（单次查询优化）"""
+        ...
+
+    @abstractmethod
+    def get_failed_attempts_summary_by_username(self, username: str, minutes: int) -> tuple[int, LoginAttempt | None]:
+        """获取用户名失败次数和最后失败记录（单次查询优化）"""
         ...
 
     @abstractmethod

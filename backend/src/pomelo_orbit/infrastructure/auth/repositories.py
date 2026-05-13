@@ -20,31 +20,53 @@ class LoginAttemptRepositoryImpl(LoginAttemptRepository):
         model = LoginAttemptMapper.to_orm(attempt)
         self._session.add(model)
 
-    def count_failed_by_ip(self, ip_address: str, minutes: int) -> int:
-        """统计指定 IP 在指定时间内的失败次数"""
+    def save_and_commit(self, attempt: LoginAttempt) -> None:
+        """保存登录尝试记录并立即提交（用于失败记录，防止事务回滚）"""
+        model = LoginAttemptMapper.to_orm(attempt)
+        self._session.add(model)
+        self._session.commit()
+
+    def get_failed_attempts_summary_by_ip(self, ip_address: str, minutes: int) -> tuple[int, LoginAttempt | None]:
+        """获取 IP 失败次数和最后失败记录（单次查询优化）"""
         cutoff_time = utc_now() - timedelta(minutes=minutes)
-        return (
+
+        # 查询窗口内的所有失败记录
+        failed_attempts = (
             self._session.query(LoginAttemptModel)
             .filter(
                 LoginAttemptModel.ip_address == ip_address,
                 LoginAttemptModel.success == False,  # noqa: E712
                 LoginAttemptModel.created_at >= cutoff_time,
             )
-            .count()
+            .order_by(LoginAttemptModel.created_at.desc())
+            .all()
         )
 
-    def count_failed_by_username(self, username: str, minutes: int) -> int:
-        """统计指定用户名在指定时间内的失败次数"""
+        if not failed_attempts:
+            return 0, None
+
+        return len(failed_attempts), LoginAttemptMapper.to_domain(failed_attempts[0])
+
+    def get_failed_attempts_summary_by_username(self, username: str, minutes: int) -> tuple[int, LoginAttempt | None]:
+        """获取用户名失败次数和最后失败记录（单次查询优化）"""
         cutoff_time = utc_now() - timedelta(minutes=minutes)
-        return (
+
+        # 查询窗口内的所有失败记录
+        failed_attempts = (
             self._session.query(LoginAttemptModel)
             .filter(
                 LoginAttemptModel.username == username,
                 LoginAttemptModel.success == False,  # noqa: E712
                 LoginAttemptModel.created_at >= cutoff_time,
             )
-            .count()
+            .order_by(LoginAttemptModel.created_at.desc())
+            .all()
         )
+
+        if not failed_attempts:
+            return 0, None
+
+        return len(failed_attempts), LoginAttemptMapper.to_domain(failed_attempts[0])
 
     def delete_old_records(self, days: int) -> None:
         """删除指定天数之前的登录尝试记录"""

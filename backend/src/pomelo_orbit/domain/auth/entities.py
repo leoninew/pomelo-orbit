@@ -13,6 +13,7 @@ class User:
     id: str
     username: str
     password_hash: str
+    is_active: bool = True  # 账号状态：True=启用, False=禁用
     oauth_provider: str = ""  # OAuth 提供商（google, github 等）
     oauth_provider_id: str = ""  # OAuth 提供商的用户 ID
     email: str | None = None

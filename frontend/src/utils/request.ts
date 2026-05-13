@@ -4,6 +4,19 @@ import config from '@/config';
 import router from '@/router';
 import { useAuthStore } from '@/stores/auth';
 
+/**
+ * API 错误类，保留 HTTP 状态码
+ */
+export class ApiError extends Error {
+	constructor(
+		message: string,
+		public status?: number
+	) {
+		super(message);
+		this.name = 'ApiError';
+	}
+}
+
 const request = axios.create({
 	baseURL: config.apiBaseUrl,
 	timeout: 30000,
@@ -35,16 +48,16 @@ request.interceptors.response.use(
 				name: 'Login',
 				query: { redirect: router.currentRoute.value.fullPath },
 			});
-			return Promise.reject(new Error('登录已过期，请重新登录'));
+			return Promise.reject(new ApiError('登录已过期，请重新登录', 401));
 		}
 
 		if (error.response?.data?.detail) {
-			return Promise.reject(new Error(error.response.data.detail));
+			return Promise.reject(new ApiError(error.response.data.detail, error.response.status));
 		}
 
 		// 处理网络错误等基础错误
 		if (error.request) {
-			return Promise.reject(new Error('网络连接失败，请检查网络设置'));
+			return Promise.reject(new ApiError('网络连接失败，请检查网络设置'));
 		}
 
 		return Promise.reject(error);

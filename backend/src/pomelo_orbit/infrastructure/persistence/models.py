@@ -24,6 +24,7 @@ class UserModel(Base):
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     oauth_provider: Mapped[str] = mapped_column(String(50), nullable=False, default="")
     oauth_provider_id: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)

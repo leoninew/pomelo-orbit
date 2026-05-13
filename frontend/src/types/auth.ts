@@ -1,7 +1,12 @@
 // 认证相关
+export interface CsrfTokenResp {
+	token: string
+}
+
 export interface LoginReq {
 	username: string
 	password: string
+	csrf_token: string
 }
 
 export interface TokenResp {

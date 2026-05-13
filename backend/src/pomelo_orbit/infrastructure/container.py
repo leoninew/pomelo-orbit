@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from pomelo_orbit.application.auth import AuthService
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
+from pomelo_orbit.domain.auth.repositories import LoginAttemptRepository
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
 from pomelo_orbit.domain.cd.repositories import (
     ApplicationRepository,
@@ -33,6 +34,7 @@ from pomelo_orbit.domain.ci.repositories import (
 )
 from pomelo_orbit.domain.ci.snapshot_manager import SnapshotManager
 from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
+from pomelo_orbit.infrastructure.auth.di import get_login_attempt_repo
 from pomelo_orbit.infrastructure.cd.docker.manager import ApplicationManagerImpl
 from pomelo_orbit.infrastructure.cd.repositories.di import (
     get_application_repo,
@@ -120,6 +122,7 @@ def _build_provider() -> Provider:
 
     # REQUEST scope — Auth
     provider.provide(get_user_repo, scope=Scope.REQUEST, provides=UserRepository)
+    provider.provide(get_login_attempt_repo, scope=Scope.REQUEST, provides=LoginAttemptRepository)
     provider.provide(AuthService, scope=Scope.REQUEST)
 
     # REQUEST scope — CD

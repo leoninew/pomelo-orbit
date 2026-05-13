@@ -30,8 +30,8 @@ export const useAuthStore = defineStore('auth', () => {
 	}
 
 	// 登录
-	async function login(username: string, password: string) {
-		const response = await authApi.login({ username, password });
+	async function login(username: string, password: string, csrfToken: string) {
+		const response = await authApi.login({ username, password, csrf_token: csrfToken });
 		setToken(response.access_token);
 		await fetchUser();
 		return response;

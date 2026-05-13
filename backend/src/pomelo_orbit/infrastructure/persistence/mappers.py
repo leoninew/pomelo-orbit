@@ -2,7 +2,7 @@
 领域实体与 ORM 模型之间的映射器
 """
 
-from pomelo_orbit.domain.auth.entities import LoginHistory, User
+from pomelo_orbit.domain.auth.entities import LoginAttempt, LoginHistory, User
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
@@ -20,6 +20,7 @@ from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationRouteModel,
     ApplicationServiceConfigModel,
     DeploymentModel,
+    LoginAttemptModel,
     LoginHistoryModel,
     RouteModel,
     UserModel,
@@ -89,6 +90,34 @@ class LoginHistoryMapper:
             user_agent=entity.user_agent,
             login_at=entity.login_at,
             success=entity.success,
+        )
+
+
+class LoginAttemptMapper:
+    """登录尝试记录映射器"""
+
+    @staticmethod
+    def to_domain(model: LoginAttemptModel) -> LoginAttempt:
+        """ORM 模型转领域实体"""
+        return LoginAttempt(
+            id=model.id,
+            username=model.username,
+            ip_address=model.ip_address,
+            user_agent=model.user_agent,
+            success=model.success,
+            created_at=model.created_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: LoginAttempt) -> LoginAttemptModel:
+        """领域实体转 ORM 模型"""
+        return LoginAttemptModel(
+            id=entity.id,
+            username=entity.username,
+            ip_address=entity.ip_address,
+            user_agent=entity.user_agent,
+            success=entity.success,
+            created_at=entity.created_at,
         )
 
 

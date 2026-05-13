@@ -12,19 +12,21 @@ from dynaconf import Dynaconf
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from ulid import ULID
 
 from pomelo_orbit.application.auth import AuthService
 from pomelo_orbit.application.auth.di import get_auth_service
+from pomelo_orbit.application.auth.dtos import LoginReq as AppLoginReq
 from pomelo_orbit.domain import AuthenticationError, AuthorizationError, BusinessError
-from pomelo_orbit.domain.auth.entities import LoginHistory, User
+from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.domain.cd.repositories import UserRepository
 from pomelo_orbit.infrastructure import SecurityService, get_security_service, hash_password, verify_password
 from pomelo_orbit.infrastructure.cd.repositories.di import get_user_repo
 from pomelo_orbit.infrastructure.config import get_settings
+from pomelo_orbit.infrastructure.csrf import generate_csrf_token
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
 from pomelo_orbit.infrastructure.time_utils import utc_now
 from pomelo_orbit.interfaces.api.auth.dto import (
+    CsrfTokenResp,
     GoogleCallbackReq,
     LoginHistoryResp,
     LoginReq,
@@ -37,6 +39,17 @@ from pomelo_orbit.interfaces.api.common import PaginatedResp
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
 logger = logging.getLogger(__name__)
+
+
+def _get_client_ip(request: Request) -> str:
+    """获取客户端 IP 地址"""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    return request.client.host if request.client else ""
 
 
 def get_current_user(
@@ -58,39 +71,32 @@ def get_current_user(
     return user
 
 
+@router.get("/csrf-token", response_model=CsrfTokenResp)
+def get_csrf_token(
+    settings: Annotated[Dynaconf, Depends(get_settings)],
+) -> CsrfTokenResp:
+    """获取 CSRF Token"""
+    token = generate_csrf_token(settings.jwt.secret_key, ttl_minutes=10)
+    return CsrfTokenResp(token=token)
+
+
 @router.post("/login", response_model=TokenResp)
 def login(
     login_req: LoginReq,
     request: Request,
-    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
-    security_service: Annotated[SecurityService, Depends(get_security_service)],
+    auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> TokenResp:
     """用户登录"""
-    user = user_repo.find_by_username(login_req.username)
-    if user is None or not verify_password(login_req.password, user.password_hash):
-        raise AuthenticationError("用户名或密码错误")
-
-    # 更新最后登录时间
-    user.last_login_at = utc_now()
-    user_repo.save(user)
-
-    # 记录登录历史
-    login_history = LoginHistory(
-        id=str(ULID()),
-        user_id=user.id,
-        username=user.username,
-        ip_address=request.headers.get(
-            "X-Forwarded-For", request.headers.get("X-Real-IP", request.client.host if request.client else None)
-        ),
+    cmd = AppLoginReq(
+        username=login_req.username,
+        password=login_req.password,
+        csrf_token=login_req.csrf_token,
+        ip_address=_get_client_ip(request),
         user_agent=request.headers.get("user-agent"),
-        login_at=utc_now(),
-        success=True,
     )
-    user_repo.save_login_history(login_history)
 
-    # 生成 token
-    access_token = security_service.create_access_token(data={"sub": user.username})
-    return TokenResp(access_token=access_token)
+    result = auth_service.login(cmd)
+    return TokenResp(access_token=result.access_token, token_type=result.token_type)
 
 
 @router.post("/logout")

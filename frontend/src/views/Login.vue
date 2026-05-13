@@ -99,9 +99,10 @@
 
 <script setup lang="ts">
 	import { Eye, EyeOff } from 'lucide-vue-next';
-	import { reactive, ref } from 'vue';
+	import { onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';
+	import { authApi } from '@/api/auth';
 	import { buildApiUrl } from '@/config';
 	import { useAuthStore } from '@/stores/auth';
 	import { useToast } from '@/composables/useToast';
@@ -123,6 +124,18 @@
 
 	const showPassword = ref(false);
 	const loading = ref(false);
+	const csrfToken = ref('');
+
+	// 页面加载时获取 CSRF Token
+	onMounted(async () => {
+		try {
+			const response = await authApi.getCsrfToken();
+			csrfToken.value = response.token;
+		} catch (err) {
+			console.error('Failed to fetch CSRF token:', err);
+			toast.error('初始化失败，请刷新页面重试');
+		}
+	});
 
 	function handleGoogleLogin() {
 		window.location.assign(buildApiUrl('/api/auth/google'));
@@ -139,13 +152,26 @@
 			return;
 		}
 
+		if (!csrfToken.value) {
+			toast.error('请求令牌无效，请刷新页面重试');
+			return;
+		}
+
 		loading.value = true;
 		try {
-			await authStore.login(form.username, form.password);
+			await authStore.login(form.username, form.password, csrfToken.value);
 			toast.success(t('login.loginSuccess'));
 			router.push('/');
 		} catch (err) {
 			toast.error(err instanceof Error ? err.message : t('login.loginFailed'));
+			// 登录失败后重新获取 CSRF Token
+			try {
+				const response = await authApi.getCsrfToken();
+				csrfToken.value = response.token;
+			} catch (error) {
+				console.error('Failed to refresh CSRF token:', error);
+				toast.error('初始化失败，请刷新页面重试');
+			}
 		} finally {
 			loading.value = false;
 		}

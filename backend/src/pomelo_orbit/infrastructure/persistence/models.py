@@ -47,6 +47,19 @@ class LoginHistoryModel(Base):
     success: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
+class LoginAttemptModel(Base):
+    """登录尝试记录模型（用于速率限制）"""
+
+    __tablename__ = "login_attempt"
+
+    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    username: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    ip_address: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
+
+
 class ApplicationModel(Base):
     """应用模型（聚合根）"""
 

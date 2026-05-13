@@ -1,4 +1,5 @@
 import type {
+	CsrfTokenResp,
 	GoogleCallbackReq,
 	LoginHistory,
 	LoginReq,
@@ -11,6 +12,11 @@ import request from '@/utils/request';
 
 // 认证相关 API
 export const authApi = {
+	// 获取 CSRF Token
+	getCsrfToken(): Promise<CsrfTokenResp> {
+		return request.get('/api/auth/csrf-token');
+	},
+
 	// 登录
 	login(data: LoginReq): Promise<TokenResp> {
 		return request.post('/api/auth/login', data);

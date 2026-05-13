@@ -33,3 +33,15 @@ class LoginHistory:
     ip_address: str | None = None
     user_agent: str | None = None
     login_at: datetime = field(default_factory=utc_now)
+
+
+@dataclass
+class LoginAttempt:
+    """登录尝试记录（用于速率限制）"""
+
+    id: str
+    username: str | None  # 可为空，因为用户名可能不存在
+    ip_address: str
+    success: bool
+    user_agent: str | None = None
+    created_at: datetime = field(default_factory=utc_now)

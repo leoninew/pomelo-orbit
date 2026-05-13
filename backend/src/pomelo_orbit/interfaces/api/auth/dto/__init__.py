@@ -12,6 +12,13 @@ class LoginReq(BaseModel):
 
     username: str = Field(..., min_length=1, max_length=50)
     password: str = Field(..., min_length=1)
+    csrf_token: str = Field(..., min_length=1, description="CSRF Token")
+
+
+class CsrfTokenResp(BaseModel):
+    """CSRF Token 响应"""
+
+    token: str
 
 
 class TokenResp(BaseModel):

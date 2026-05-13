@@ -4,6 +4,7 @@ FastAPI Application Entry Point
 
 import argparse
 import logging
+import socket
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -147,8 +148,6 @@ def main():
     args = parser.parse_args()
 
     # 检查端口是否被占用
-    import socket
-
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.bind((args.host, args.port))

@@ -8,9 +8,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pomelo Orbit</title>
-    <!-- 运行时配置注入点（Docker 部署时通过 entrypoint.sh 替换） -->
+    <!-- 运行时配置注入点：Nginx/entrypoint 可替换为 window.__CONFIG__。只放公开配置，不能放密钥。 -->
     <!-- __RUNTIME_CONFIG__ -->
     <script>
+      // 保底为空对象；真实运行时配置必须在应用入口脚本加载前注入。
       window.__CONFIG__ = window.__CONFIG__ || {};
     </script>
   </head>

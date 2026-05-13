@@ -116,6 +116,13 @@ async def health():
     return {"status": "ok"}
 
 
+# Catch-all for undefined API routes - must be registered AFTER all business routes
+@app.api_route("/api/{full_path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+async def api_not_found(full_path: str):
+    """Prevent API paths from falling through to the SPA fallback."""
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"detail": "Not Found"})
+
+
 # Mount static files for frontend (if exists)
 static_dir = Path("static")
 if static_dir.exists() and static_dir.is_dir():

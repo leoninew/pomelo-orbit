@@ -12,6 +12,8 @@ export interface TokenResp {
 export interface UserInfo {
 	id: string
 	username: string
+	email: string | null
+	auth_source: string
 	created_at: string
 	last_login_at: string | null
 }
@@ -29,4 +31,8 @@ export interface LoginHistory {
 	user_agent: string | null
 	login_at: string
 	success: boolean
+}
+
+export interface GoogleCallbackReq {
+	code: string
 }

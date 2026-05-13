@@ -7,6 +7,7 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container
 from dynaconf import Dynaconf
 from sqlalchemy.orm import Session
 
+from pomelo_orbit.application.auth import AuthService
 from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
 from pomelo_orbit.domain.cd.application_manager import ApplicationManager
@@ -16,6 +17,7 @@ from pomelo_orbit.domain.cd.repositories import (
     ApplicationServiceConfigRepository,
     ConfigFileRepository,
     DeploymentRepository,
+    UserRepository,
 )
 from pomelo_orbit.domain.ci.executor import PipelineExecutor
 from pomelo_orbit.domain.ci.repositories import (
@@ -38,6 +40,7 @@ from pomelo_orbit.infrastructure.cd.repositories.di import (
     get_application_service_config_repo,
     get_config_file_repo,
     get_deployment_repo,
+    get_user_repo,
 )
 from pomelo_orbit.infrastructure.ci.container import ContainerExecutor
 from pomelo_orbit.infrastructure.ci.di import (
@@ -114,6 +117,10 @@ def _build_provider() -> Provider:
 
     # REQUEST scope — session
     provider.provide(_get_session, scope=Scope.REQUEST, provides=Session)
+
+    # REQUEST scope — Auth
+    provider.provide(get_user_repo, scope=Scope.REQUEST, provides=UserRepository)
+    provider.provide(AuthService, scope=Scope.REQUEST)
 
     # REQUEST scope — CD
     provider.provide(get_application_repo, scope=Scope.REQUEST, provides=ApplicationRepository)

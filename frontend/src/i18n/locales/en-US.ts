@@ -109,6 +109,11 @@ export default {
 		passwordRequired: 'Password is required',
 		loginSuccess: 'Login successful',
 		loginFailed: 'Login failed',
+		or: 'or',
+		googleLogin: 'Sign in with Google',
+		googleProcessing: 'Signing in with Google...',
+		googleCancelled: 'Login cancelled',
+		googleFailed: 'Google login failed',
 	},
 	settings: {
 		title: 'Settings',

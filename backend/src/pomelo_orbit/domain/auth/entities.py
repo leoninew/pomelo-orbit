@@ -13,6 +13,10 @@ class User:
     id: str
     username: str
     password_hash: str
+    oauth_provider: str = ""  # OAuth 提供商（google, github 等）
+    oauth_provider_id: str = ""  # OAuth 提供商的用户 ID
+    email: str | None = None
+    auth_source: str = "password"  # password | oauth
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
     last_login_at: datetime | None = None

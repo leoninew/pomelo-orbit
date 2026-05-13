@@ -629,7 +629,9 @@ class ApplicationService:
         except (ValueError, yaml.YAMLError) as e:
             raise BusinessError(str(e), status_code=400) from e
 
-    def _load_compose_services(self, application_id: str, compose_file: ApplicationConfigFile) -> tuple[Application, dict[str, Any]]:
+    def _load_compose_services(
+        self, application_id: str, compose_file: ApplicationConfigFile
+    ) -> tuple[Application, dict[str, Any]]:
         """
         渲染 docker-compose 模板后解析 services 节点
 

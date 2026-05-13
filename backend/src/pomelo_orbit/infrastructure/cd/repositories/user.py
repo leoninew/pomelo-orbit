@@ -17,6 +17,22 @@ class UserRepositoryImpl(BaseRepository[User, UserModel], UserRepository):
         model = self._session.query(UserModel).filter(UserModel.username == username).first()
         return self._mapper.to_domain(model) if model else None
 
+    def find_by_oauth_account(self, provider: str, provider_id: str) -> User | None:
+        if not provider or not provider_id:
+            return None
+        model = (
+            self._session.query(UserModel)
+            .filter(UserModel.oauth_provider == provider, UserModel.oauth_provider_id == provider_id)
+            .first()
+        )
+        return self._mapper.to_domain(model) if model else None
+
+    def find_by_email(self, email: str) -> User | None:
+        if not email:
+            return None
+        model = self._session.query(UserModel).filter(UserModel.email == email).first()
+        return self._mapper.to_domain(model) if model else None
+
     def save_login_history(self, history: LoginHistory) -> None:
         model = LoginHistoryMapper.to_orm(history)
         self._session.add(model)

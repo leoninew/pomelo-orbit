@@ -11,6 +11,12 @@ const router = createRouter({
 			meta: { title: '登录', public: true },
 		},
 		{
+			path: '/google/callback',
+			name: 'GoogleCallback',
+			component: () => import('@/views/GoogleCallback.vue'),
+			meta: { title: 'Google 登录', public: true },
+		},
+		{
 			path: '/',
 			name: 'Home',
 			component: () => import('@/views/Home.vue'),

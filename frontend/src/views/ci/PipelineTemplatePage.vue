@@ -81,9 +81,7 @@
 					<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
 						<AppBadge>v{{ tpl.version }}</AppBadge>
 						<AppBadge>{{ tpl.orchestration.length }} 阶段</AppBadge>
-						<AppBadge>
-							{{ tpl.variable_declarations.length }} 变量
-						</AppBadge>
+						<AppBadge>{{ tpl.variable_declarations.length }} 变量</AppBadge>
 					</div>
 					<div class="text-sm text-muted-foreground">
 						{{ formatTime(tpl.updated_at) }}

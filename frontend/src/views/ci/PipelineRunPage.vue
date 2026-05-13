@@ -82,9 +82,7 @@
 								</router-link>
 							</td>
 							<td>
-								<AppBadge variant="default">
-									v{{ run.template_version }}
-								</AppBadge>
+								<AppBadge variant="default">v{{ run.template_version }}</AppBadge>
 							</td>
 							<td class="overflow-hidden truncate text-foreground" :title="run.trigger_ref">
 								{{ run.trigger_ref }}

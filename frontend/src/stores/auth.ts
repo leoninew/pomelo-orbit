@@ -17,6 +17,11 @@ export const useAuthStore = defineStore('auth', () => {
 		localStorage.setItem(TOKEN_KEY, newToken);
 	}
 
+	// 设置用户信息
+	function setUser(userInfo: UserInfo) {
+		user.value = userInfo;
+	}
+
 	// 清除 token
 	function clearToken() {
 		token.value = null;
@@ -72,6 +77,7 @@ export const useAuthStore = defineStore('auth', () => {
 		user,
 		isAuthenticated,
 		setToken,
+		setUser,
 		clearToken,
 		login,
 		logout,

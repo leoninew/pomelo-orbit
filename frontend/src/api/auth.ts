@@ -1,4 +1,11 @@
-import type { LoginHistory, LoginReq, PasswordChangeReq, TokenResp, UserInfo } from '@/types/auth';
+import type {
+	GoogleCallbackReq,
+	LoginHistory,
+	LoginReq,
+	PasswordChangeReq,
+	TokenResp,
+	UserInfo,
+} from '@/types/auth';
 import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
@@ -31,5 +38,10 @@ export const authApi = {
 		search?: string
 	}): Promise<PaginatedResp<LoginHistory>> {
 		return request.get('/api/auth/login-history', { params });
+	},
+
+	// Google OAuth 回调
+	googleCallback(data: GoogleCallbackReq): Promise<TokenResp> {
+		return request.post('/api/auth/google/callback', data);
 	},
 };

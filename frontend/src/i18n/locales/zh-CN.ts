@@ -109,6 +109,11 @@ export default {
 		passwordRequired: '请输入密码',
 		loginSuccess: '登录成功',
 		loginFailed: '登录失败',
+		or: '或',
+		googleLogin: '使用 Google 登录',
+		googleProcessing: '正在通过 Google 登录...',
+		googleCancelled: '登录已取消',
+		googleFailed: 'Google 登录失败',
 	},
 	settings: {
 		title: '系统设置',

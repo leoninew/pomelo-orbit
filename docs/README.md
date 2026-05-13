@@ -4,6 +4,7 @@
 
 ### 开发指南
 - [开发流程](./development/workflow.md) - Git 工作流、代码审查、发布流程
+- [运行时配置与 OAuth 配置](./guides/runtime-configuration.md) - 前端运行时注入、API Base URL、Google OAuth 回调
 - [编码规范](../CLAUDE.md) - 代码规范和最佳实践（项目根目录）
 
 ### 前端文档

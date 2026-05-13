@@ -26,6 +26,8 @@ class UserInfo(BaseModel):
 
     id: str
     username: str
+    email: str | None = None
+    auth_source: str
     created_at: datetime
     last_login_at: datetime | None = None
 
@@ -49,3 +51,9 @@ class LoginHistoryResp(BaseModel):
     success: bool
 
     model_config = {"from_attributes": True}
+
+
+class GoogleCallbackReq(BaseModel):
+    """Google OAuth 回调请求"""
+
+    code: str

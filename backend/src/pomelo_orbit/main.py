@@ -146,6 +146,17 @@ def main():
     parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
     args = parser.parse_args()
 
+    # 检查端口是否被占用
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind((args.host, args.port))
+        sock.close()
+    except OSError as e:
+        logger.error(f"Port {args.port} is already in use: {e}")
+        sys.exit(1)
+
     # 开发模式下静默跳过静态目录检查
     if not args.reload and not static_dir.exists():
         logger.warning(f"Static directory not found: path={static_dir.absolute()}")

@@ -5,14 +5,18 @@ import ulid
 from pomelo_orbit.domain.ci.entities import Repository
 from pomelo_orbit.domain.ci.value_objects import VariableDeclaration
 from pomelo_orbit.infrastructure.ci.mappers import RepositoryMapper
-from pomelo_orbit.infrastructure.ci.models import ProjectModel
+from pomelo_orbit.infrastructure.ci.models import RepositoryModel
+
+PROJECT_ID = "project-1"
 
 
 class TestProjectMapper:
     def test_to_domain(self):
-        orm = ProjectModel(
+        orm = RepositoryModel(
             id=str(ulid.ULID()),
+            project_id=PROJECT_ID,
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
             git_credential_id=str(ulid.ULID()),
             variable_overrides='[{"name": "KEY", "value": "value"}]',
@@ -30,9 +34,11 @@ class TestProjectMapper:
         assert entity.default_branch == "main"
 
     def test_to_domain_defaults(self):
-        orm = ProjectModel(
+        orm = RepositoryModel(
             id=str(ulid.ULID()),
+            project_id=PROJECT_ID,
             name="test-project",
+            code="test-project",
             repository_url="https://github.com/test/repo.git",
             git_credential_id=None,
             variable_overrides="[]",
@@ -45,6 +51,7 @@ class TestProjectMapper:
 
     def test_to_orm(self):
         entity = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -64,6 +71,7 @@ class TestProjectMapper:
 
     def test_to_orm_without_optional_fields(self):
         entity = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -76,6 +84,7 @@ class TestProjectMapper:
 
     def test_round_trip(self):
         original = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",

@@ -1,6 +1,7 @@
 // 重新导出所有类型，保持向后兼容
 
 export type { LoginHistory, LoginReq, PasswordChangeReq, TokenResp, UserInfo } from './auth';
+export type { Project, ProjectCreateReq, ProjectUpdateReq } from './project';
 export type {
 	Application,
 	ApplicationCreateReq,

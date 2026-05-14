@@ -30,7 +30,7 @@ class SnapshotManager:
         Returns:
             快照实体
         """
-        latest = self.snapshot_repo.find_latest(template.id)
+        latest = self.snapshot_repo.find_latest(template.project_id, template.id)
 
         # 如果最新快照的版本与当前模板一致，直接复用
         if latest and latest.version == template.version:

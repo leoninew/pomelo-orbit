@@ -1,5 +1,6 @@
 export { applicationApi, deploymentApi, routeApi, traefikRouteApi } from './cd';
 export { authApi } from './auth';
+export { projectApi } from './project';
 export {
 	artifactApi,
 	buildStageApi,

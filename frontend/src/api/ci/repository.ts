@@ -8,6 +8,7 @@ export const repositoryApi = {
 		page?: number
 		per_page?: number
 		search?: string
+		projectId?: string
 	}): Promise<PaginatedResp<Repository>> {
 		return request.get('/api/ci/repository', { params });
 	},

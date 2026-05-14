@@ -28,7 +28,8 @@ def make_executor(container_executor=None, stage_run_repo=None, artifact_repo=No
 def make_context(run_id: str = "run-1", retry_of: str | None = None, variables: dict | None = None) -> ExecutionContext:
     return ExecutionContext(
         run_id=run_id,
-        repository_id="project-1",
+        project_id="project-1",
+        repository_id="repository-1",
         repository_name="Test Project",
         template_id="template-1",
         template_name="Test Template",
@@ -151,7 +152,8 @@ class TestPipelineExecutorImpl:
         )
         context = ExecutionContext(
             run_id="run-1",
-            repository_id="project-1",
+            project_id="project-1",
+            repository_id="repository-1",
             repository_name="Test Project",
             template_id="template-1",
             template_name="Test Template",

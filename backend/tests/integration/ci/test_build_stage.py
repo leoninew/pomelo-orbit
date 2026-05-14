@@ -1,6 +1,7 @@
 """Stage API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import BuildStageModel
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
 class TestStageList:
@@ -9,6 +10,7 @@ class TestStageList:
         # 创建多个 stages
         for i in range(3):
             stage = BuildStageModel(
+                project_id=DEFAULT_CI_PROJECT_ID,
                 name=f"stage-{i}",
                 image="alpine:latest",
                 script=f"echo {i}",
@@ -84,6 +86,7 @@ class TestStageGet:
         """测试获取单个 Stage"""
         # 创建 stage
         stage = BuildStageModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             name="get-test",
             image="alpine:latest",
             script="echo test",
@@ -111,6 +114,7 @@ class TestStageUpdate:
         """测试更新 Stage"""
         # 创建 stage
         stage = BuildStageModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             name="update-test",
             image="alpine:latest",
             script="echo old",
@@ -139,6 +143,7 @@ class TestStageUpdate:
     def test_partial_update(self, auth_client, db_session):
         """测试部分更新"""
         stage = BuildStageModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             name="partial-test",
             image="alpine:latest",
             script="echo test",
@@ -165,6 +170,7 @@ class TestStageDelete:
         """测试删除未被引用的 Stage"""
         # 创建 stage
         stage = BuildStageModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             name="delete-test",
             image="alpine:latest",
             script="echo test",
@@ -186,6 +192,7 @@ class TestStageDelete:
         """测试不能删除被模板引用的 Stage"""
         # 创建 stage
         stage = BuildStageModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             name="referenced-stage",
             image="alpine:latest",
             script="echo test",

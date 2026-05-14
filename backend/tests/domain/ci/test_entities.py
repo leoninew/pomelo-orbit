@@ -19,10 +19,13 @@ from pomelo_orbit.domain.ci.value_objects import (
     VariableSource,
 )
 
+PROJECT_ID = "project-1"
+
 
 class TestProject:
     def test_create_project(self):
         project = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -39,6 +42,7 @@ class TestProject:
 
     def test_update_project(self):
         project = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -57,6 +61,7 @@ class TestProject:
 class TestCredential:
     def test_create_credential(self):
         credential = Credential.create(
+            project_id=PROJECT_ID,
             name="test-credential",
             type=CredentialType.GIT_SSH,
             encrypted_data="encrypted_data_here",
@@ -72,6 +77,7 @@ class TestPipelineTemplate:
     def test_create_template(self):
         var_decl = VariableDeclaration(name="IMAGE_NAME", value="latest")
         template = PipelineTemplate.create(
+            project_id=PROJECT_ID,
             name="test-template",
             variable_declarations=[var_decl],
             description="Test template",
@@ -81,7 +87,7 @@ class TestPipelineTemplate:
         assert len(template.variable_declarations) == 1
 
     def test_update_template(self):
-        template = PipelineTemplate.create(name="test-template", variable_declarations=[])
+        template = PipelineTemplate.create(project_id=PROJECT_ID, name="test-template", variable_declarations=[])
         original_updated_at = template.updated_at
         time.sleep(0.001)
         template.update(name="new-template", description="Updated")
@@ -93,6 +99,7 @@ class TestPipelineTemplate:
 class TestPipelineRun:
     def test_create_pipeline_run(self):
         run = PipelineRun.create(
+            project_id=PROJECT_ID,
             repository_id=str(ulid.ULID()),
             repository_name="test-project",
             snapshot_id=str(ulid.ULID()),
@@ -109,6 +116,7 @@ class TestPipelineRun:
 
     def test_pipeline_run_lifecycle(self):
         run = PipelineRun.create(
+            project_id=PROJECT_ID,
             repository_id=str(ulid.ULID()),
             repository_name="test-project",
             snapshot_id=str(ulid.ULID()),
@@ -128,6 +136,7 @@ class TestPipelineRun:
 
     def test_pipeline_run_failure(self):
         run = PipelineRun.create(
+            project_id=PROJECT_ID,
             repository_id=str(ulid.ULID()),
             repository_name="test-project",
             snapshot_id=str(ulid.ULID()),
@@ -146,6 +155,7 @@ class TestPipelineRun:
     def test_create_pipeline_run_with_retry_of(self):
         original_run_id = str(ulid.ULID())
         retry_run = PipelineRun.create(
+            project_id=PROJECT_ID,
             repository_id=str(ulid.ULID()),
             repository_name="test-project",
             snapshot_id=str(ulid.ULID()),

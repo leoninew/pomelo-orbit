@@ -22,6 +22,16 @@ const router = createRouter({
 			component: () => import('@/views/Home.vue'),
 			meta: { title: '首页', menuKey: 'home' },
 		},
+		{
+			path: '/home',
+			redirect: '/',
+		},
+		{
+			path: '/projects',
+			name: 'Projects',
+			component: () => import('@/views/ProjectPage.vue'),
+			meta: { title: '项目管理', menuKey: 'projects' },
+		},
 		// CD
 		{
 			path: '/cd/applications',

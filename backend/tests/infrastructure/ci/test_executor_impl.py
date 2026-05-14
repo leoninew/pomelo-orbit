@@ -46,6 +46,7 @@ class TestPipelineExecutorImpl:
     def context(self):
         return ExecutionContext(
             run_id="01HX0001",
+            project_id="project-1",
             repository_id="01HX0002",
             repository_name="Test Project",
             template_id="01HX0004",

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.credential_service import CredentialService
 from pomelo_orbit.application.ci.di import get_credential_service
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.credential import (
     CredentialCreateReq,
     CredentialExportResp,
@@ -17,6 +17,7 @@ from pomelo_orbit.interfaces.api.ci.dto.credential import (
     CredentialUpdateReq,
 )
 from pomelo_orbit.interfaces.api.common import PaginatedResp
+from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +27,11 @@ router = APIRouter(prefix="/credential", tags=["credential"])
 @router.get("", response_model=PaginatedResp[CredentialResp])
 def list_credentials(
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[CredentialResp]:
-    creds, total = credential_service.list_credentials(page=page, per_page=per_page)
+    creds, total = credential_service.list_credentials(current_project.id, page=page, per_page=per_page)
     return PaginatedResp(
         items=[CredentialResp.model_validate(c) for c in creds],
         total=total,
@@ -44,9 +45,14 @@ def list_credentials(
 def create_credential(
     data: CredentialCreateReq,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialResp:
-    cred = credential_service.create_credential(name=data.name, credential_type=data.type, data=data.data)
+    cred = credential_service.create_credential(
+        project_id=current_project.id,
+        name=data.name,
+        credential_type=data.type,
+        data=data.data,
+    )
     return CredentialResp.model_validate(cred)
 
 
@@ -54,9 +60,9 @@ def create_credential(
 def get_credential(
     credential_id: str,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialResp:
-    cred = credential_service.get_credential(credential_id)
+    cred = credential_service.get_credential(current_project.id, credential_id)
     return CredentialResp.model_validate(cred)
 
 
@@ -65,9 +71,9 @@ def update_credential(
     credential_id: str,
     data: CredentialUpdateReq,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialResp:
-    cred = credential_service.update_credential(credential_id, name=data.name, data=data.data)
+    cred = credential_service.update_credential(current_project.id, credential_id, name=data.name, data=data.data)
     return CredentialResp.model_validate(cred)
 
 
@@ -75,18 +81,18 @@ def update_credential(
 def delete_credential(
     credential_id: str,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> None:
-    credential_service.delete_credential(credential_id)
+    credential_service.delete_credential(current_project.id, credential_id)
 
 
 @router.get("/{credential_id}/export", response_model=CredentialExportResp)
 def export_credential(
     credential_id: str,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialExportResp:
-    data = credential_service.export_credential(credential_id)
+    data = credential_service.export_credential(current_project.id, credential_id)
     return CredentialExportResp(**data)
 
 
@@ -94,7 +100,12 @@ def export_credential(
 def import_credential(
     data: CredentialImportReq,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    _current_user=Depends(get_current_user),
+    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialResp:
-    cred = credential_service.import_credential(name=data.name, credential_type=data.type, data=data.data)
+    cred = credential_service.import_credential(
+        project_id=current_project.id,
+        name=data.name,
+        credential_type=data.type,
+        data=data.data,
+    )
     return CredentialResp.model_validate(cred)

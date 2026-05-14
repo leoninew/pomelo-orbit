@@ -176,6 +176,7 @@
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type { Deployment } from '@/types/cd/deployment';
 	import type { PipelineRun } from '@/types/ci/run';
 	import { statusLabel, statusTone } from '@/utils/status';
@@ -189,6 +190,7 @@
 
 	const router = useRouter();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
 	const { t } = useI18n({ useScope: 'global' });
 
@@ -249,21 +251,39 @@
 		},
 	]);
 
+	function resetOverview() {
+		ciStats.projectCount = 0;
+		ciStats.todayRuns = 0;
+		cdStats.applicationCount = 0;
+		cdStats.todayDeploys = 0;
+		recentRuns.value = [];
+		recentDeploys.value = [];
+	}
+
 	async function refresh() {
 		try {
 			await execute(async () => {
+				await projectStore.fetchProjects();
+
+				const activeProjectId = projectStore.activeProjectId;
+				if (!activeProjectId) {
+					resetOverview();
+					return;
+				}
+
 				const todayStart = getTodayStart();
 				const todayEnd = todayStart.add(1, 'day');
 
 				// 并行请求所有数据以提升性能
 				const [ciProjectsRes, ciRunsRes, ciTodayRunsRes, cdAppsRes, cdTodayRes, cdRecentRes] =
 					await Promise.all([
-						repositoryApi.list({ per_page: 1 }),
-						pipelineRunApi.list({ per_page: 5 }),
+						repositoryApi.list({ per_page: 1, projectId: activeProjectId }),
+						pipelineRunApi.list({ per_page: 5, projectId: activeProjectId }),
 						pipelineRunApi.list({
 							per_page: 1,
 							date_from: todayStart.toISOString(),
 							date_to: todayEnd.toISOString(),
+							projectId: activeProjectId,
 						}),
 						applicationApi.list({ per_page: 1 }),
 						deploymentApi.list({

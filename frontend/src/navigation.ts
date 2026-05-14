@@ -2,6 +2,7 @@ import {
 	FileCode2,
 	FolderGit2,
 	Globe,
+	FolderKanban,
 	History,
 	KeyRound,
 	Layers,
@@ -35,6 +36,13 @@ export interface PrimaryNavigationEntry {
 export const secondaryNavigation = {
 	home: [
 		{ key: 'home', label: '项目概述', labelKey: 'nav.home', path: '/', icon: LayoutGrid },
+		{
+			key: 'projects',
+			label: '项目管理',
+			labelKey: 'nav.projects',
+			path: '/projects',
+			icon: FolderKanban,
+		},
 		{
 			key: 'loginhistory',
 			label: '登录历史',
@@ -126,7 +134,13 @@ export const primaryNavigation = [
 ] satisfies PrimaryNavigationEntry[];
 
 export function getNavigationScope(path: string): NavigationScope | null {
-	if (path === '/' || path === '/login-history' || path === '/settings') {
+	if (
+		path === '/' ||
+		path === '/home' ||
+		path === '/projects' ||
+		path === '/login-history' ||
+		path === '/settings'
+	) {
 		return 'home';
 	}
 	if (path === '/ci' || path.startsWith('/ci/')) {

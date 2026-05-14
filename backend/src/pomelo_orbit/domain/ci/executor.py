@@ -12,6 +12,7 @@ class ExecutionContext:
     def __init__(
         self,
         run_id: str,
+        project_id: str,
         repository_id: str,
         repository_name: str,
         template_id: str,
@@ -23,6 +24,7 @@ class ExecutionContext:
         retry_of: str | None = None,
     ):
         self.run_id = run_id
+        self.project_id = project_id
         self.repository_id = repository_id
         self.repository_name = repository_name
         self.template_id = template_id

@@ -25,6 +25,7 @@ from pomelo_orbit.infrastructure.persistence.database import get_engine
 from pomelo_orbit.interfaces.api.auth.router import router as auth_router
 from pomelo_orbit.interfaces.api.cd import router as cd_router
 from pomelo_orbit.interfaces.api.ci import router as ci_router
+from pomelo_orbit.interfaces.api.project import router as project_router
 from pomelo_orbit.interfaces.api.settings.router import router as settings_router
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ setup_dishka(container=container, app=app)
 # Include routers
 app.include_router(auth_router, prefix="/api")
 app.include_router(cd_router, prefix="/api")
+app.include_router(project_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(ci_router, prefix="/api")
 

@@ -31,23 +31,32 @@ from pomelo_orbit.infrastructure.ci.models import (
     CredentialModel,
     PipelineRunModel,
     PipelineTemplateModel,
-    ProjectModel,
+    RepositoryModel,
     StageRunModel,
 )
 from pomelo_orbit.infrastructure.time_utils import utc_now
+
+PROJECT_ID = "project-1"
 
 
 class TestCredentialMapper:
     def test_to_domain(self):
         orm = CredentialModel(
-            id=str(ULID()), name="test-cred", type="git_ssh", encrypted_data="encrypted", created_at=utc_now()
+            id=str(ULID()),
+            project_id=PROJECT_ID,
+            name="test-cred",
+            type="git_ssh",
+            encrypted_data="encrypted",
+            created_at=utc_now(),
         )
         entity = CredentialMapper.to_domain(orm)
         assert entity.id == orm.id
         assert entity.type == CredentialType.GIT_SSH
 
     def test_to_orm(self):
-        entity = Credential.create(name="test-cred", type=CredentialType.GIT_TOKEN, encrypted_data="encrypted")
+        entity = Credential.create(
+            project_id=PROJECT_ID, name="test-cred", type=CredentialType.GIT_TOKEN, encrypted_data="encrypted"
+        )
         orm = CredentialMapper.to_orm(entity)
         assert orm.id == entity.id
         assert orm.type == "git_token"
@@ -56,6 +65,7 @@ class TestCredentialMapper:
 class TestPipelineTemplateMapper:
     def test_to_domain(self):
         orm = PipelineTemplateModel(
+            project_id=PROJECT_ID,
             id=str(ULID()),
             name="test-template",
             description="Test template",
@@ -69,6 +79,7 @@ class TestPipelineTemplateMapper:
 
     def test_to_orm(self):
         entity = PipelineTemplate.create(
+            project_id=PROJECT_ID,
             name="test-template",
             description="Test template",
             variable_declarations=[VariableDeclaration(name="VAR1", value="value1")],
@@ -80,7 +91,8 @@ class TestPipelineTemplateMapper:
 
 class TestProjectMapper:
     def test_to_domain(self):
-        orm = ProjectModel(
+        orm = RepositoryModel(
+            project_id=PROJECT_ID,
             id=str(ULID()),
             name="test-project",
             code="test-project",
@@ -100,6 +112,7 @@ class TestProjectMapper:
 
     def test_to_orm(self):
         entity = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo",
@@ -116,6 +129,7 @@ class TestProjectMapper:
 class TestPipelineRunMapper:
     def test_to_domain(self):
         orm = PipelineRunModel(
+            project_id=PROJECT_ID,
             id=str(ULID()),
             repository_id=str(ULID()),
             repository_name="test-project",
@@ -141,6 +155,7 @@ class TestPipelineRunMapper:
 
     def test_to_orm(self):
         entity = PipelineRun.create(
+            project_id=PROJECT_ID,
             repository_id=str(ULID()),
             repository_name="test-project",
             snapshot_id=str(ULID()),
@@ -189,6 +204,7 @@ class TestStageRunMapper:
 class TestArtifactMapper:
     def test_to_domain(self):
         orm = ArtifactModel(
+            project_id=PROJECT_ID,
             id=str(ULID()),
             pipeline_run_id=str(ULID()),
             stage_name="build",
@@ -203,6 +219,7 @@ class TestArtifactMapper:
 
     def test_to_orm(self):
         entity = Artifact.create(
+            project_id=PROJECT_ID,
             pipeline_run_id=str(ULID()),
             repository_id=str(ULID()),
             repository_name="Test Repo",

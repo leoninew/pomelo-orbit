@@ -51,6 +51,7 @@ export default {
 		cd: '持续部署',
 		settings: '系统设置',
 		loginHistory: '登录历史',
+		projects: '项目管理',
 		applications: '应用管理',
 		deployments: '部署记录',
 		routes: '路由配置',
@@ -96,6 +97,11 @@ export default {
 		profile: '个人信息',
 		username: '用户名',
 		changePassword: '修改密码',
+	},
+	project: {
+		currentProject: '当前项目',
+		projectManagement: '项目管理',
+		noProjects: '暂无项目',
 	},
 	login: {
 		title: 'Pomelo Orbit',

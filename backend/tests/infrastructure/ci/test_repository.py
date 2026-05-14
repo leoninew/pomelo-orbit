@@ -8,6 +8,8 @@ from pomelo_orbit.domain.ci.entities import Repository
 from pomelo_orbit.infrastructure.ci.models import Base
 from pomelo_orbit.infrastructure.ci.repositories import RepositoryRepositoryImpl
 
+PROJECT_ID = "project-1"
+
 
 class TestProjectRepository:
     def setup_method(self):
@@ -23,6 +25,7 @@ class TestProjectRepository:
 
     def test_save_and_find_by_id(self):
         project = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -33,7 +36,7 @@ class TestProjectRepository:
         self.repo.save(project)
         self.session.commit()
 
-        found = self.repo.find_by_id(project.id)
+        found = self.repo.find_by_id_in_project(PROJECT_ID, project.id)
 
         assert found is not None
         assert found.id == project.id
@@ -43,9 +46,10 @@ class TestProjectRepository:
     def test_find_by_repository_url(self):
         repo_url = "https://github.com/test/repo.git"
 
-        project1 = Repository.create(name="project1", code="project1", repository_url=repo_url)
-        project2 = Repository.create(name="project2", code="project2", repository_url=repo_url)
+        project1 = Repository.create(project_id=PROJECT_ID, name="project1", code="project1", repository_url=repo_url)
+        project2 = Repository.create(project_id=PROJECT_ID, name="project2", code="project2", repository_url=repo_url)
         project3 = Repository.create(
+            project_id=PROJECT_ID,
             name="project3",
             code="project3",
             repository_url="https://github.com/other/repo.git",
@@ -56,17 +60,18 @@ class TestProjectRepository:
         self.repo.save(project3)
         self.session.commit()
 
-        found = self.repo.find_by_repository_url(repo_url)
+        found = self.repo.find_by_repository_url(PROJECT_ID, repo_url)
 
         assert len(found) == 2
         assert {p.name for p in found} == {"project1", "project2"}
 
     def test_find_by_repository_url_not_found(self):
-        found = self.repo.find_by_repository_url("https://github.com/nonexistent/repo.git")
+        found = self.repo.find_by_repository_url(PROJECT_ID, "https://github.com/nonexistent/repo.git")
         assert len(found) == 0
 
     def test_update_project(self):
         project = Repository.create(
+            project_id=PROJECT_ID,
             name="test-project",
             code="test-project",
             repository_url="https://github.com/test/repo.git",
@@ -79,7 +84,7 @@ class TestProjectRepository:
         self.repo.save(project)
         self.session.commit()
 
-        found = self.repo.find_by_id(project.id)
+        found = self.repo.find_by_id_in_project(PROJECT_ID, project.id)
 
         assert found is not None
         assert found.name == "updated-project"

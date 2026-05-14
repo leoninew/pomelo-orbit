@@ -75,24 +75,7 @@ class _TemplateInfo:
 
 
 class PipelineRunService:
-    """PipelineRun 聚合根的应用服务
-
-    职责：
-    - PipelineRun 的创建、查询、取消
-    - PipelineRun 重试
-    - PipelineRun 执行编排
-    - StageRun 查询
-    - Artifact 查询
-    - Stage 日志读取
-
-    依赖：
-    - RepositoryRepository: 获取项目信息
-    - PipelineTemplateRepository: 获取模板
-    - PipelineSnapshotRepository: 获取快照
-    - SnapshotManager: 快照管理领域服务
-    - VariableResolver: 变量解析领域服务
-    - PipelineExecutor: 执行引擎
-    """
+    """PipelineRun 聚合根的应用服务"""
 
     def __init__(
         self,
@@ -116,10 +99,9 @@ class PipelineRunService:
         self.variable_resolver = variable_resolver
         self._pipeline_executor = pipeline_executor
 
-    # ── 查询方法 ──────────────────────────────────────────────────────────────
-
     def list_runs(
         self,
+        project_id: str,
         page: int = 1,
         per_page: int = 20,
         repository_id: str | None = None,
@@ -128,13 +110,14 @@ class PipelineRunService:
         date_to: str | None = None,
     ) -> PaginatedRuns:
         """分页查询运行列表"""
-        if repository_id:
-            repository = self.repository_repo.find_by_id(repository_id)
-            if not repository:
-                raise BusinessError(f"Repository {repository_id} not found", status_code=404)
+        if repository_id and not self.repository_repo.find_by_id_in_project(project_id, repository_id):
+            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
+        if template_id and not self.template_repo.find_by_id_in_project(project_id, template_id):
+            raise BusinessError(f"Template {template_id} not found", status_code=404)
         date_from_dt = from_iso8601(date_from) if date_from else None
         date_to_dt = from_iso8601(date_to) if date_to else None
         runs, total = self.run_repo.find_paginated_with_filters(
+            project_id=project_id,
             page=page,
             per_page=per_page,
             repository_id=repository_id,
@@ -144,19 +127,21 @@ class PipelineRunService:
         )
         return PaginatedRuns(runs=runs, total=total)
 
-    def get_run(self, run_id: str) -> PipelineRun:
+    def get_run(self, project_id: str, run_id: str) -> PipelineRun:
         """获取单个运行"""
-        run = self.run_repo.find_by_id(run_id)
+        run = self.run_repo.find_by_id_in_project(project_id, run_id)
         if not run:
             raise BusinessError(f"PipelineRun {run_id} not found", status_code=404)
         return run
 
-    def list_artifacts(self, run_id: str) -> list[Artifact]:
+    def list_artifacts(self, project_id: str, run_id: str) -> list[Artifact]:
         """查询运行的制品列表"""
-        return self.artifact_repo.find_by_run(run_id)
+        self.get_run(project_id, run_id)
+        return self.artifact_repo.find_by_run(project_id, run_id)
 
     def list_all_artifacts(
         self,
+        project_id: str,
         repository_id: str | None = None,
         template_id: str | None = None,
         search: str | None = None,
@@ -164,7 +149,12 @@ class PipelineRunService:
         per_page: int = 20,
     ) -> tuple[list[Artifact], int]:
         """分页查询所有制品"""
-        return self.artifact_repo.find_paginated(
+        if repository_id and not self.repository_repo.find_by_id_in_project(project_id, repository_id):
+            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
+        if template_id and not self.template_repo.find_by_id_in_project(project_id, template_id):
+            raise BusinessError(f"Template {template_id} not found", status_code=404)
+        return self.artifact_repo.find_paginated_by_project_id(
+            project_id=project_id,
             page=page,
             per_page=per_page,
             repository_id=repository_id,
@@ -172,12 +162,14 @@ class PipelineRunService:
             search=search,
         )
 
-    def list_stage_runs(self, run_id: str) -> list[StageRun]:
+    def list_stage_runs(self, project_id: str, run_id: str) -> list[StageRun]:
         """查询运行的 stage 列表"""
+        self.get_run(project_id, run_id)
         return self.stage_run_repo.find_by_run(run_id)
 
-    def read_stage_log(self, run_id: str, stage_run_id: str, offset: int = 0) -> StageLogResult:
+    def read_stage_log(self, project_id: str, run_id: str, stage_run_id: str, offset: int = 0) -> StageLogResult:
         """读取 stage 日志（增量）"""
+        self.get_run(project_id, run_id)
         stage_run = self.stage_run_repo.find_by_id(stage_run_id)
         if not stage_run or stage_run.pipeline_run_id != run_id:
             return StageLogResult(logs="", offset=offset, is_complete=True)
@@ -203,10 +195,9 @@ class PipelineRunService:
         )
         return StageLogResult(logs=content, offset=new_offset, is_complete=is_complete)
 
-    # ── 命令方法 ──────────────────────────────────────────────────────────────
-
     def create_run(
         self,
+        project_id: str,
         repository_id: str,
         template_id: str,
         trigger: PipelineRunTrigger,
@@ -214,16 +205,14 @@ class PipelineRunService:
         runtime_variables: dict[str, Any] | None = None,
     ) -> RunCreationResult:
         """创建运行"""
-        repository = self.repository_repo.find_by_id(repository_id)
+        repository = self.repository_repo.find_by_id_in_project(project_id, repository_id)
         if not repository:
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
 
-        template = self.template_repo.find_by_id(template_id)
+        template = self.template_repo.find_by_id_in_project(project_id, template_id)
         if not template:
             raise BusinessError(f"Template {template_id} not found", status_code=404)
 
-        # 按需创建快照（模板有变更才创建新版本）
-        # 获取完整的变量声明列表（内置 + stage + 自定义）
         complete_variable_declarations = self.variable_resolver.resolve_template_variables(
             template.stages,
             template.variable_declarations,
@@ -231,7 +220,6 @@ class PipelineRunService:
         snapshot = self.snapshot_manager.get_or_create_snapshot(template, complete_variable_declarations)
         self.run_repo.commit()
 
-        # 构建运行时变量（合并所有来源）
         merged = self.variable_resolver.build_runtime_variables(
             repository=repository,
             template=template,
@@ -240,22 +228,15 @@ class PipelineRunService:
             stage_declarations=complete_variable_declarations,
         )
 
-        # 验证变量
         try:
             validate_variables(merged, template.variable_declarations)
         except VariableError as e:
             raise BusinessError(str(e), status_code=400) from e
 
-        # 使用快照中的变量声明作为基准，只填充实际值
-        # 快照已经过滤了只在 stage 中使用的变量
         runtime_declarations = []
         for decl in snapshot.variables_snapshot:
-            # 从 merged 中获取实际值，并更新 source 和 description
             value = merged.get(decl.name)
-
-            # 判断变量来源并设置正确的 source 和 description
             if decl.name in self.variable_resolver._get_repository_builtin_specs():
-                # 仓库内置变量
                 runtime_declarations.append(
                     VariableDeclaration(
                         name=decl.name,
@@ -266,7 +247,6 @@ class PipelineRunService:
                     )
                 )
             else:
-                # 检查是否是仓库自定义变量
                 repo_custom_var = next(
                     (v for v in (repository.variable_overrides or []) if v.name == decl.name),
                     None,
@@ -282,7 +262,6 @@ class PipelineRunService:
                         )
                     )
                 else:
-                    # 保持原有的声明，只更新值
                     runtime_declarations.append(
                         VariableDeclaration(
                             name=decl.name,
@@ -293,9 +272,9 @@ class PipelineRunService:
                         )
                     )
 
-        # 脱敏后保存到快照
         masked = mask_secrets(merged, runtime_declarations)
         run = PipelineRun.create(
+            project_id=project_id,
             repository_id=repository_id,
             repository_name=repository.name,
             snapshot_id=snapshot.id,
@@ -314,21 +293,20 @@ class PipelineRunService:
         )
         return RunCreationResult(run=run, repository=repository, merged_variables=merged, snapshot=snapshot)
 
-    def create_retry_run(self, run_id: str) -> RunCreationResult:
+    def create_retry_run(self, project_id: str, run_id: str) -> RunCreationResult:
         """创建重试运行"""
-        original = self.get_run(run_id)
+        original = self.get_run(project_id, run_id)
         if original.status not in {TaskStatus.FAULTED, TaskStatus.RAN_TO_COMPLETION}:
             raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
-        snapshot = self.snapshot_repo.find_by_id(original.snapshot_id)
+        snapshot = self.snapshot_repo.find_by_id_in_project(project_id, original.snapshot_id)
         if not snapshot:
             raise BusinessError(f"Snapshot {original.snapshot_id} not found", status_code=404)
 
-        repository = self.repository_repo.find_by_id(original.repository_id)
+        repository = self.repository_repo.find_by_id_in_project(project_id, original.repository_id)
         if not repository:
             raise BusinessError(f"Repository {original.repository_id} not found", status_code=404)
 
-        # 重试复用原快照，快照中已经存储了完整的变量声明列表
         template_info = _TemplateInfo(
             id=original.template_id,
             name=original.template_name,
@@ -336,7 +314,6 @@ class PipelineRunService:
             variable_declarations=snapshot.variables_snapshot,
         )
 
-        # 构建运行时变量（重试时不传入 runtime_overrides，但需要重新获取 secret 变量）
         merged = self.variable_resolver.build_runtime_variables(
             repository=repository,
             template=template_info,
@@ -351,6 +328,7 @@ class PipelineRunService:
 
         masked = mask_secrets(merged, snapshot.variables_snapshot)
         new_run = PipelineRun.create(
+            project_id=project_id,
             repository_id=original.repository_id,
             repository_name=repository.name,
             snapshot_id=original.snapshot_id,
@@ -368,15 +346,15 @@ class PipelineRunService:
         logger.info(f"Pipeline retry: original={original.id}, new={new_run.id}")
         return RunCreationResult(run=new_run, repository=repository, merged_variables=merged, snapshot=snapshot)
 
-    def cancel_run(self, run_id: str) -> PipelineRun:
+    def cancel_run(self, project_id: str, run_id: str) -> PipelineRun:
         """取消运行"""
-        run = self.get_run(run_id)
+        run = self.get_run(project_id, run_id)
         try:
             run.cancel()
         except ValueError as e:
             raise BusinessError(str(e), status_code=400) from e
 
-        cancel_task(run_id)  # 取消 asyncio task（如果还在运行）
+        cancel_task(run_id)
         self.run_repo.save(run)
         self.run_repo.commit()
         return run
@@ -394,11 +372,11 @@ class PipelineRunService:
             self.run_repo.commit()
             return
 
-        # 创建工作目录
         create_workspace(repository.code, run.id)
 
         context = ExecutionContext(
             run_id=run.id,
+            project_id=run.project_id,
             repository_id=repository.id,
             repository_name=repository.name,
             template_id=run.template_id,

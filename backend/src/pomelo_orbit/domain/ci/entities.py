@@ -24,6 +24,7 @@ class Repository:
     """项目实体"""
 
     id: str
+    project_id: str
     name: str
     code: str  # 短标识符，固化工作目录路径，创建后不可修改
     repository_url: str
@@ -35,6 +36,7 @@ class Repository:
 
     @staticmethod
     def create(
+        project_id: str,
         name: str,
         code: str,
         repository_url: str,
@@ -45,6 +47,7 @@ class Repository:
         now = utc_now()
         return Repository(
             id=str(ULID()),
+            project_id=project_id,
             name=name,
             code=code,
             repository_url=repository_url,
@@ -138,6 +141,7 @@ class Credential:
     """凭据实体"""
 
     id: str
+    project_id: str
     name: str
     type: CredentialType
     encrypted_data: str
@@ -166,8 +170,8 @@ class Credential:
         return username, token
 
     @staticmethod
-    def create(name: str, type: CredentialType, encrypted_data: str) -> "Credential":
-        return Credential(id=str(ULID()), name=name, type=type, encrypted_data=encrypted_data)
+    def create(project_id: str, name: str, type: CredentialType, encrypted_data: str) -> "Credential":
+        return Credential(id=str(ULID()), project_id=project_id, name=name, type=type, encrypted_data=encrypted_data)
 
 
 @dataclass
@@ -178,6 +182,7 @@ class BuildStage:
     """
 
     id: str
+    project_id: str
     name: str
     image: str
     script: str
@@ -189,6 +194,7 @@ class BuildStage:
 
     @staticmethod
     def create(
+        project_id: str,
         name: str,
         image: str,
         script: str,
@@ -198,6 +204,7 @@ class BuildStage:
         now = utc_now()
         return BuildStage(
             id=str(ULID()),
+            project_id=project_id,
             name=name,
             image=image,
             script=script,
@@ -252,6 +259,7 @@ class PipelineTemplate:
     """流水线模板实体：将一组 Stage 编排起来，定义依赖关系和执行顺序，配合变量声明可以运行。"""
 
     id: str
+    project_id: str
     name: str
     version: int
     orchestration: list["StageOrchestration"]  # 编排：stage_id + depends_on + sort_order
@@ -263,6 +271,7 @@ class PipelineTemplate:
 
     @staticmethod
     def create(
+        project_id: str,
         name: str,
         variable_declarations: list[VariableDeclaration],
         description: str = "",
@@ -271,6 +280,7 @@ class PipelineTemplate:
             raise ValueError("Template name cannot be empty")
         return PipelineTemplate(
             id=str(ULID()),
+            project_id=project_id,
             name=name,
             orchestration=[],
             stages=[],
@@ -331,6 +341,7 @@ class PipelineSnapshot:
     """流水线快照：模板某一版本的不可变副本"""
 
     id: str
+    project_id: str
     template_id: str
     version: int  # 从 1 开始，单调递增
     stages_snapshot: list[StageDefinition]
@@ -352,6 +363,7 @@ class PipelineSnapshot:
         """
         return PipelineSnapshot(
             id=str(ULID()),
+            project_id=template.project_id,
             template_id=template.id,
             version=version,
             stages_snapshot=deepcopy(template.get_stage_definitions()),
@@ -364,6 +376,7 @@ class PipelineRun:
     """Pipeline 运行实例"""
 
     id: str
+    project_id: str
     repository_id: str
     repository_name: str
     snapshot_id: str
@@ -382,6 +395,7 @@ class PipelineRun:
 
     @staticmethod
     def create(
+        project_id: str,
         repository_id: str,
         repository_name: str,
         snapshot_id: str,
@@ -395,6 +409,7 @@ class PipelineRun:
     ) -> "PipelineRun":
         return PipelineRun(
             id=str(ULID()),
+            project_id=project_id,
             repository_id=repository_id,
             repository_name=repository_name,
             snapshot_id=snapshot_id,
@@ -471,6 +486,7 @@ class Artifact:
     """制品记录"""
 
     id: str
+    project_id: str
     pipeline_run_id: str
     repository_id: str
     repository_name: str
@@ -484,6 +500,7 @@ class Artifact:
 
     @staticmethod
     def create(
+        project_id: str,
         pipeline_run_id: str,
         repository_id: str,
         repository_name: str,
@@ -496,6 +513,7 @@ class Artifact:
     ) -> "Artifact":
         return Artifact(
             id=str(ULID()),
+            project_id=project_id,
             pipeline_run_id=pipeline_run_id,
             repository_id=repository_id,
             repository_name=repository_name,

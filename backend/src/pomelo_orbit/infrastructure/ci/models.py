@@ -16,6 +16,7 @@ class CredentialModel(Base):
     __tablename__ = "credential"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(50), nullable=False)
     encrypted_data: Mapped[str] = mapped_column(Text, nullable=False)
@@ -28,6 +29,7 @@ class PipelineTemplateModel(Base):
     __tablename__ = "pipeline_template"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     variable_declarations: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
@@ -42,6 +44,7 @@ class BuildStageModel(Base):
     __tablename__ = "build_stage"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     image: Mapped[str] = mapped_column(String(255), nullable=False)
     script: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -76,6 +79,7 @@ class PipelineSnapshotModel(Base):
     __table_args__ = (UniqueConstraint("template_id", "version", name="uq_snapshot_template_version"),)
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     template_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_template.id"), nullable=False, index=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     stages_snapshot: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON
@@ -83,12 +87,13 @@ class PipelineSnapshotModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
 
-class ProjectModel(Base):
-    """项目模型"""
+class RepositoryModel(Base):
+    """代码仓库模型"""
 
     __tablename__ = "repository"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     code: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
     repository_url: Mapped[str] = mapped_column(Text, nullable=False)
@@ -125,6 +130,7 @@ class PipelineRunModel(Base):
     __tablename__ = "pipeline_run"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     repository_id: Mapped[str] = mapped_column(String(26), ForeignKey("repository.id"), nullable=False, index=True)
     repository_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     snapshot_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_snapshot.id"), nullable=False, index=True)
@@ -164,6 +170,7 @@ class ArtifactModel(Base):
     __tablename__ = "artifact"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     pipeline_run_id: Mapped[str] = mapped_column(String(26), ForeignKey("pipeline_run.id"), nullable=False, index=True)
     repository_id: Mapped[str] = mapped_column(String(26), nullable=False, default="", index=True)
     repository_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")

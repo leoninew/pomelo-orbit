@@ -1,6 +1,6 @@
 """CI 项目 API 集成测试"""
 
-from pomelo_orbit.infrastructure.ci.models import ProjectModel
+from pomelo_orbit.infrastructure.ci.models import RepositoryModel
 
 
 class TestProjectList:
@@ -150,4 +150,4 @@ class TestProjectDelete:
     def test_deletes_project(self, auth_client, db_session, test_project):
         resp = auth_client.delete(f"/api/ci/repository/{test_project.id}")
         assert resp.status_code == 204
-        assert db_session.query(ProjectModel).filter_by(id=test_project.id).first() is None
+        assert db_session.query(RepositoryModel).filter_by(id=test_project.id).first() is None

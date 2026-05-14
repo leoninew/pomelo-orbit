@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 from pomelo_orbit.infrastructure.ci.models import PipelineRunModel
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
 class TestPipelineRunCreation:
@@ -125,6 +126,7 @@ class TestPipelineRunCancellation:
         """测试不能取消已完成的 run"""
         # 手动创建一个已完成的 run
         run = PipelineRunModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             repository_id=test_project.id,
             repository_name=test_project.name,
             snapshot_id="test-snapshot-id",
@@ -150,6 +152,7 @@ class TestPipelineRunRetry:
         """测试重试失败的 pipeline"""
         # 创建一个失败的 run（通过 mock 或直接创建数据库记录）
         failed_run = PipelineRunModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             repository_id=test_project.id,
             repository_name=test_project.name,
             snapshot_id="test-snapshot-id",
@@ -174,6 +177,7 @@ class TestPipelineRunRetry:
         """测试不能重试运行中的 run"""
         # 创建一个运行中的 run
         run = PipelineRunModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             repository_id=test_project.id,
             repository_name=test_project.name,
             snapshot_id="test-snapshot-id",

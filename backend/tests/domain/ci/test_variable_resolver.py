@@ -27,6 +27,7 @@ def make_repository(
 ) -> Repository:
     return Repository(
         id=id,
+        project_id="project-1",
         name=name,
         code="my-repo",
         repository_url=url,
@@ -421,4 +422,4 @@ class TestGetBuiltinVariableNames:
 
 def _make_stage(script: str) -> BuildStage:
     """创建测试用 BuildStage"""
-    return BuildStage.create(name="test-stage", image="alpine", script=script)
+    return BuildStage.create(project_id="project-1", name="test-stage", image="alpine", script=script)

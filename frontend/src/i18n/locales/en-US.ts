@@ -51,6 +51,7 @@ export default {
 		cd: 'CD',
 		settings: 'Settings',
 		loginHistory: 'Login History',
+		projects: 'Projects',
 		applications: 'Applications',
 		deployments: 'Deployments',
 		routes: 'Routes',
@@ -96,6 +97,11 @@ export default {
 		profile: 'Profile',
 		username: 'Username',
 		changePassword: 'Change Password',
+	},
+	project: {
+		currentProject: 'Current Project',
+		projectManagement: 'Project Management',
+		noProjects: 'No projects',
 	},
 	login: {
 		title: 'Pomelo Orbit',

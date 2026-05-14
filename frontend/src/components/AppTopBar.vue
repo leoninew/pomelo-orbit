@@ -76,6 +76,7 @@
 			<DropdownMenuTrigger
 				class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
 				:aria-label="t('app.userMenuAria')"
+				@click="loadProjects"
 			>
 				<span
 					class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
@@ -87,10 +88,44 @@
 			</DropdownMenuTrigger>
 			<DropdownMenuPortal>
 				<DropdownMenuContent
-					class="z-50 min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
+					class="z-50 min-w-64 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
 					align="end"
 					:side-offset="8"
 				>
+					<div class="px-3 py-2">
+						<p class="text-xs font-medium text-muted-foreground">
+							{{ t('project.currentProject') }}
+						</p>
+						<p class="mt-1 truncate text-sm font-medium text-foreground">
+							{{ activeProjectLabel }}
+						</p>
+					</div>
+					<div class="my-1 h-px bg-border" />
+					<div
+						v-if="projectStore.projects.length === 0"
+						class="px-3 py-2 text-sm text-muted-foreground"
+					>
+						{{ t('project.noProjects') }}
+					</div>
+					<DropdownMenuItem
+						v-for="project in projectStore.projects"
+						:key="project.id"
+						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+						@select="handleSetActiveProject(project.id)"
+					>
+						<Check v-if="project.id === projectStore.activeProjectId" class="size-4 text-primary" />
+						<span v-else class="size-4" />
+						<span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+						<span class="text-xs text-muted-foreground">{{ project.code }}</span>
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+						@select="openProjectManagement"
+					>
+						<FolderKanban class="size-4" />
+						{{ t('project.projectManagement') }}
+					</DropdownMenuItem>
+					<div class="my-1 h-px bg-border" />
 					<DropdownMenuItem
 						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
 						@select="handleLogout"
@@ -105,12 +140,22 @@
 </template>
 
 <script setup lang="ts">
-	import { ChevronDown, Languages, LogOut, Monitor, Moon, Sun } from 'lucide-vue-next';
+	import {
+		Check,
+		ChevronDown,
+		FolderKanban,
+		Languages,
+		LogOut,
+		Monitor,
+		Moon,
+		Sun,
+	} from 'lucide-vue-next';
 	import { computed } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';
 	import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
 	import { useAuthStore } from '@/stores/auth';
+	import { useProjectStore } from '@/stores/project';
 	import { useTheme } from '@/composables/useTheme';
 	import { setLocale, type Locale } from '@/i18n';
 	import config from '@/config';
@@ -134,11 +179,16 @@
 
 	const router = useRouter();
 	const authStore = useAuthStore();
+	const projectStore = useProjectStore();
 	const { theme, cycleTheme } = useTheme();
 	const { t, locale } = useI18n({ useScope: 'global' });
 
 	const userName = computed(() => authStore.user?.username || 'admin');
 	const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
+	const activeProjectLabel = computed(() => {
+		const project = projectStore.activeProject;
+		return project ? `${project.name} / ${project.code}` : t('project.noProjects');
+	});
 
 	const localizedPrimaryNavigation = computed(() =>
 		primaryNavigation.map((item) => ({
@@ -165,7 +215,27 @@
 		return props.currentModule === moduleKey;
 	}
 
+	async function loadProjects() {
+		if (!authStore.isAuthenticated || projectStore.loading) {
+			return;
+		}
+		try {
+			await projectStore.fetchProjects();
+		} catch {
+			return;
+		}
+	}
+
+	function handleSetActiveProject(projectId: string) {
+		projectStore.setActiveProject(projectId);
+	}
+
+	function openProjectManagement() {
+		router.push('/projects');
+	}
+
 	async function handleLogout() {
+		projectStore.clearProjects();
 		await authStore.logout();
 		router.push('/login');
 	}

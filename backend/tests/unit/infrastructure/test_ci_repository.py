@@ -11,7 +11,7 @@ from pomelo_orbit.domain.ci.entities import (
 from pomelo_orbit.infrastructure.ci.models import (
     ArtifactModel,
     PipelineRunModel,
-    ProjectModel,
+    RepositoryModel,
     StageRunModel,
 )
 from pomelo_orbit.infrastructure.ci.repositories import (
@@ -23,6 +23,9 @@ from pomelo_orbit.infrastructure.ci.repositories import (
     StageRunRepositoryImpl,
 )
 
+PROJECT_ID = "project-1"
+REPOSITORY_ID = "repository-1"
+
 
 class TestCredentialRepository:
     def test_is_referenced_by_projects_true(self):
@@ -30,8 +33,8 @@ class TestCredentialRepository:
         query_mock = Mock()
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
-        query_mock.first.return_value = ProjectModel()
-        assert CredentialRepositoryImpl(session).is_referenced_by_projects("cred-1") is True
+        query_mock.first.return_value = RepositoryModel()
+        assert CredentialRepositoryImpl(session).is_referenced_by_repositories(PROJECT_ID, "cred-1") is True
 
     def test_is_referenced_by_projects_false(self):
         session = Mock()
@@ -39,7 +42,7 @@ class TestCredentialRepository:
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
-        assert CredentialRepositoryImpl(session).is_referenced_by_projects("cred-1") is False
+        assert CredentialRepositoryImpl(session).is_referenced_by_repositories(PROJECT_ID, "cred-1") is False
 
 
 class TestPipelineTemplateRepository:
@@ -67,7 +70,7 @@ class TestProjectRepository:
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = PipelineRunModel()
-        assert RepositoryRepositoryImpl(session).has_running_pipelines("project-1") is True
+        assert RepositoryRepositoryImpl(session).has_running_pipelines(PROJECT_ID, REPOSITORY_ID) is True
 
     def test_has_running_pipelines_false(self):
         session = Mock()
@@ -75,19 +78,19 @@ class TestProjectRepository:
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
         query_mock.first.return_value = None
-        assert RepositoryRepositoryImpl(session).has_running_pipelines("project-1") is False
+        assert RepositoryRepositoryImpl(session).has_running_pipelines(PROJECT_ID, REPOSITORY_ID) is False
 
     def test_find_by_repository_url(self):
         session = Mock()
         query_mock = Mock()
         session.query.return_value = query_mock
         query_mock.filter.return_value = query_mock
-        project_orm = Mock(spec=ProjectModel)
+        project_orm = Mock(spec=RepositoryModel)
         query_mock.all.return_value = [project_orm]
         repo = RepositoryRepositoryImpl(session)
         repo._mapper = Mock()
         repo._mapper.to_domain.return_value = Mock(spec=Repository)
-        assert len(repo.find_by_repository_url("https://github.com/user/repo.git")) == 1
+        assert len(repo.find_by_repository_url(PROJECT_ID, "https://github.com/user/repo.git")) == 1
 
     def test_find_by_repository_url_empty(self):
         session = Mock()
@@ -97,7 +100,7 @@ class TestProjectRepository:
         query_mock.all.return_value = []
         repo = RepositoryRepositoryImpl(session)
         repo._mapper = Mock()
-        assert repo.find_by_repository_url("https://github.com/user/nonexist.git") == []
+        assert repo.find_by_repository_url(PROJECT_ID, "https://github.com/user/nonexist.git") == []
 
 
 class TestPipelineRunRepository:
@@ -115,7 +118,12 @@ class TestPipelineRunRepository:
         repo = PipelineRunRepositoryImpl(session)
         repo._mapper = Mock()
         repo._mapper.to_domain.return_value = Mock(spec=PipelineRun)
-        runs, total = repo.find_paginated_with_filters(page=1, per_page=20, repository_id="project-1")
+        runs, total = repo.find_paginated_with_filters(
+            project_id=PROJECT_ID,
+            page=1,
+            per_page=20,
+            repository_id=REPOSITORY_ID,
+        )
         assert len(runs) == 1 and total == 5
 
     def test_find_by_project_pagination(self):
@@ -130,7 +138,12 @@ class TestPipelineRunRepository:
         query_mock.all.return_value = []
         repo = PipelineRunRepositoryImpl(session)
         repo._mapper = Mock()
-        _, total = repo.find_paginated_with_filters(page=3, per_page=10, repository_id="project-1")
+        _, total = repo.find_paginated_with_filters(
+            project_id=PROJECT_ID,
+            page=3,
+            per_page=10,
+            repository_id=REPOSITORY_ID,
+        )
         assert total == 100
         query_mock.offset.assert_called_once_with(20)
 
@@ -161,7 +174,7 @@ class TestArtifactRepository:
         repo = ArtifactRepositoryImpl(session)
         repo._mapper = Mock()
         repo._mapper.to_domain.return_value = Mock(spec=Artifact)
-        assert len(repo.find_by_run("run-1")) == 1
+        assert len(repo.find_by_run(PROJECT_ID, "run-1")) == 1
 
     def test_find_by_run_empty(self):
         session = Mock()
@@ -172,4 +185,4 @@ class TestArtifactRepository:
         query_mock.all.return_value = []
         repo = ArtifactRepositoryImpl(session)
         repo._mapper = Mock()
-        assert repo.find_by_run("run-1") == []
+        assert repo.find_by_run(PROJECT_ID, "run-1") == []

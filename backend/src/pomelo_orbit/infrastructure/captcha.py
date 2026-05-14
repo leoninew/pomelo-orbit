@@ -1,13 +1,19 @@
 """验证码生成和验证"""
 
+from __future__ import annotations
+
 import base64
 import io
 import random
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from jose import jwt
 from PIL import Image, ImageDraw, ImageFont
-from PIL.ImageFont import FreeTypeFont, ImageFont as ImageFontType
+
+if TYPE_CHECKING:
+    from PIL.ImageFont import FreeTypeFont
+    from PIL.ImageFont import ImageFont as ImageFontType
 
 
 def generate_captcha_text(length: int = 4) -> str:

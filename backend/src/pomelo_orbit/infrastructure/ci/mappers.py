@@ -32,10 +32,15 @@ from pomelo_orbit.infrastructure.ci.models import (
     PipelineSnapshotModel,
     PipelineTemplateModel,
     PipelineTemplateStageModel,
-    ProjectModel,
     ProjectWebhookModel,
+    RepositoryModel,
     StageRunModel,
 )
+
+
+def _require_project_id(project_id: str | None) -> str:
+    assert project_id is not None, "project_id is required but was None"
+    return project_id
 
 
 class CredentialMapper:
@@ -43,6 +48,7 @@ class CredentialMapper:
     def to_domain(orm: CredentialModel) -> Credential:
         return Credential(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             name=orm.name,
             type=CredentialType(orm.type),
             encrypted_data=orm.encrypted_data,
@@ -53,6 +59,7 @@ class CredentialMapper:
     def to_orm(entity: Credential) -> CredentialModel:
         return CredentialModel(
             id=entity.id,
+            project_id=entity.project_id,
             name=entity.name,
             type=entity.type.value,
             encrypted_data=entity.encrypted_data,
@@ -67,6 +74,7 @@ class BuildStageMapper:
         artifacts = [ArtifactConfig(**a) for a in artifacts_raw] if artifacts_raw else None
         return BuildStage(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             name=orm.name,
             image=orm.image,
             script=orm.script,
@@ -82,6 +90,7 @@ class BuildStageMapper:
         artifacts_json = json.dumps([asdict(a) for a in entity.artifacts]) if entity.artifacts else None
         return BuildStageModel(
             id=entity.id,
+            project_id=entity.project_id,
             name=entity.name,
             image=entity.image,
             script=entity.script,
@@ -131,6 +140,7 @@ class PipelineTemplateMapper:
         variable_declarations = [VariableDeclaration(**vd) for vd in json.loads(orm.variable_declarations)]
         return PipelineTemplate(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             name=orm.name,
             description=orm.description,
             orchestration=orchestration,
@@ -145,6 +155,7 @@ class PipelineTemplateMapper:
     def to_orm(entity: PipelineTemplate) -> PipelineTemplateModel:
         return PipelineTemplateModel(
             id=entity.id,
+            project_id=entity.project_id,
             name=entity.name,
             description=entity.description,
             variable_declarations=json.dumps([vd.model_dump() for vd in entity.variable_declarations]),
@@ -162,6 +173,7 @@ class PipelineSnapshotMapper:
         variables_snapshot = [VariableDeclaration(**vd) for vd in json.loads(orm.variables_snapshot)]
         return PipelineSnapshot(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             template_id=orm.template_id,
             version=orm.version,
             stages_snapshot=stages_snapshot,
@@ -173,6 +185,7 @@ class PipelineSnapshotMapper:
     def to_orm(entity: PipelineSnapshot) -> PipelineSnapshotModel:
         return PipelineSnapshotModel(
             id=entity.id,
+            project_id=entity.project_id,
             template_id=entity.template_id,
             version=entity.version,
             stages_snapshot=json.dumps([s.model_dump() for s in entity.stages_snapshot]),
@@ -183,12 +196,13 @@ class PipelineSnapshotMapper:
 
 class RepositoryMapper:
     @staticmethod
-    def to_domain(orm: ProjectModel) -> Repository:
+    def to_domain(orm: RepositoryModel) -> Repository:
         variable_overrides_data = json.loads(orm.variable_overrides)
         variable_overrides = [VariableDeclaration(**item) for item in variable_overrides_data]
 
         return Repository(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             name=orm.name,
             code=orm.code,
             repository_url=orm.repository_url,
@@ -200,10 +214,11 @@ class RepositoryMapper:
         )
 
     @staticmethod
-    def to_orm(entity: Repository) -> ProjectModel:
+    def to_orm(entity: Repository) -> RepositoryModel:
         variable_overrides_data = [var.model_dump() for var in entity.variable_overrides]
-        return ProjectModel(
+        return RepositoryModel(
             id=entity.id,
+            project_id=entity.project_id,
             name=entity.name,
             code=entity.code,
             repository_url=entity.repository_url,
@@ -223,6 +238,7 @@ class PipelineRunMapper:
 
         return PipelineRun(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             repository_id=orm.repository_id,
             repository_name=orm.repository_name,
             snapshot_id=orm.snapshot_id,
@@ -244,6 +260,7 @@ class PipelineRunMapper:
     def to_orm(entity: PipelineRun) -> PipelineRunModel:
         return PipelineRunModel(
             id=entity.id,
+            project_id=entity.project_id,
             repository_id=entity.repository_id,
             repository_name=entity.repository_name,
             snapshot_id=entity.snapshot_id,
@@ -297,6 +314,7 @@ class ArtifactMapper:
     def to_domain(orm: ArtifactModel) -> Artifact:
         return Artifact(
             id=orm.id,
+            project_id=_require_project_id(orm.project_id),
             pipeline_run_id=orm.pipeline_run_id,
             repository_id=orm.repository_id,
             repository_name=orm.repository_name,
@@ -313,6 +331,7 @@ class ArtifactMapper:
     def to_orm(entity: Artifact) -> ArtifactModel:
         return ArtifactModel(
             id=entity.id,
+            project_id=entity.project_id,
             pipeline_run_id=entity.pipeline_run_id,
             repository_id=entity.repository_id,
             repository_name=entity.repository_name,

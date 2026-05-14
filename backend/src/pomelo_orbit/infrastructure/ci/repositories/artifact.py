@@ -15,18 +15,19 @@ class ArtifactRepositoryImpl(BaseRepository[Artifact, ArtifactModel], ArtifactRe
     def __init__(self, session: Session):
         super().__init__(session, ArtifactModel, ArtifactMapper())
 
-    def find_by_run(self, pipeline_run_id: str) -> list[Artifact]:
+    def find_by_run(self, project_id: str, pipeline_run_id: str) -> list[Artifact]:
         """查询 pipeline run 的所有制品"""
         orms = (
             self._session.query(ArtifactModel)
-            .filter(ArtifactModel.pipeline_run_id == pipeline_run_id)
+            .filter(ArtifactModel.project_id == project_id, ArtifactModel.pipeline_run_id == pipeline_run_id)
             .order_by(ArtifactModel.created_at)
             .all()
         )
         return [self._mapper.to_domain(orm) for orm in orms]
 
-    def find_paginated(  # type: ignore[override]
+    def find_paginated_by_project_id(
         self,
+        project_id: str,
         page: int = 1,
         per_page: int = 20,
         repository_id: str | None = None,
@@ -34,7 +35,7 @@ class ArtifactRepositoryImpl(BaseRepository[Artifact, ArtifactModel], ArtifactRe
         search: str | None = None,
     ) -> tuple[list[Artifact], int]:
         """分页查询制品列表"""
-        query = self._session.query(ArtifactModel)
+        query = self._session.query(ArtifactModel).filter(ArtifactModel.project_id == project_id)
         if repository_id:
             query = query.filter(ArtifactModel.repository_id == repository_id)
         if template_id:

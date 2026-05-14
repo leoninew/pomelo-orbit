@@ -1,6 +1,7 @@
 """流水线模板 API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import PipelineTemplateModel
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 STAGE_JSON = '[{"name": "build", "image": "alpine:latest", "script": "echo build"}]'
 STAGE_PAYLOAD = [{"name": "build", "image": "alpine:latest", "script": "echo build"}]
@@ -27,6 +28,7 @@ class TestPipelineTemplateList:
         for i in range(5):
             db_session.add(
                 PipelineTemplateModel(
+                    project_id=DEFAULT_CI_PROJECT_ID,
                     name=f"tmpl-{i}",
                     description="",
                     variable_declarations="[]",

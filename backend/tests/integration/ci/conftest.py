@@ -7,8 +7,9 @@ from pomelo_orbit.infrastructure.ci.models import (  # noqa: F401 - 触发 CI �
     PipelineRunModel,
     PipelineSnapshotModel,
     PipelineTemplateModel,
-    ProjectModel,
+    RepositoryModel,
 )
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 STAGE_JSON = '[{"name": "build", "image": "alpine:latest", "commands": ["echo build"]}]'
 
@@ -16,6 +17,7 @@ STAGE_JSON = '[{"name": "build", "image": "alpine:latest", "commands": ["echo bu
 @pytest.fixture
 def test_template(db_session):
     tmpl = PipelineTemplateModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         name="test-template",
         description="A test template",
         variable_declarations="[]",
@@ -29,6 +31,7 @@ def test_template(db_session):
 @pytest.fixture
 def test_snapshot(db_session, test_template):
     snapshot = PipelineSnapshotModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         template_id=test_template.id,
         version=1,
         stages_snapshot="[]",
@@ -43,6 +46,7 @@ def test_snapshot(db_session, test_template):
 @pytest.fixture
 def test_credential(db_session):
     cred = CredentialModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         name="test-cred",
         type="git_token",
         encrypted_data="encrypted-token",
@@ -55,7 +59,8 @@ def test_credential(db_session):
 
 @pytest.fixture
 def test_project(db_session, test_credential):
-    project = ProjectModel(
+    project = RepositoryModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         name="test-project",
         code="test-project",
         repository_url="https://github.com/test/repo.git",

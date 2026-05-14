@@ -18,10 +18,6 @@ class RepositoryService:
     - Repository 变量覆盖管理
     - Repository code 唯一性验证
     - 关联 Credential 验证
-
-    依赖：
-    - CredentialService: 验证凭据存在性
-    - VariableResolver: 过滤内置变量
     """
 
     def __init__(
@@ -35,20 +31,23 @@ class RepositoryService:
         self.variable_resolver = variable_resolver
 
     def list_repositories(
-        self, page: int = 1, per_page: int = 20, search: str | None = None
+        self, project_id: str, page: int = 1, per_page: int = 20, search: str | None = None
     ) -> tuple[list[Repository], int]:
         """分页查询项目列表"""
-        return self.repository_repo.find_paginated(page=page, per_page=per_page, search=search)
+        return self.repository_repo.find_paginated_by_project_id(
+            project_id=project_id, page=page, per_page=per_page, search=search
+        )
 
-    def get_repository(self, repository_id: str) -> Repository:
+    def get_repository(self, project_id: str, repository_id: str) -> Repository:
         """获取单个项目"""
-        repository = self.repository_repo.find_by_id(repository_id)
+        repository = self.repository_repo.find_by_id_in_project(project_id, repository_id)
         if not repository:
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
         return repository
 
     def create_repository(
         self,
+        project_id: str,
         name: str,
         code: str,
         repository_url: str,
@@ -57,15 +56,14 @@ class RepositoryService:
         default_branch: str = "master",
     ) -> Repository:
         """创建项目"""
-        # 验证凭据存在
-        if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
+        if git_credential_id and not self.credential_repo.find_by_id_in_project(project_id, git_credential_id):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
 
-        # 验证 code 唯一性
-        if self.repository_repo.find_by_code(code):
+        if self.repository_repo.find_by_code(project_id, code):
             raise BusinessError(f"Repository code '{code}' already exists", status_code=409)
 
         repository = Repository.create(
+            project_id=project_id,
             name=name,
             code=code,
             repository_url=repository_url,
@@ -78,6 +76,7 @@ class RepositoryService:
 
     def update_repository(
         self,
+        project_id: str,
         repository_id: str,
         name: str | None = None,
         repository_url: str | None = None,
@@ -85,21 +84,13 @@ class RepositoryService:
         git_credential_id: str | None = MISSING,  # type: ignore[assignment]
         default_branch: str | None = None,
     ) -> Repository:
-        """更新项目
+        """更新项目"""
+        repository = self.get_repository(project_id, repository_id)
 
-        Args:
-            variable_overrides: 变量覆盖列表
-                - MISSING: 不更新（保持原值）
-                - None: 清空变量列表（转换为空列表）
-                - list: 更新为新值
-        """
-        repository = self.get_repository(repository_id)
-
-        # 验证凭据存在（如果要更新且非置空）
         if (
             git_credential_id is not MISSING  # type: ignore[comparison-overlap]
             and git_credential_id
-            and not self.credential_repo.find_by_id(git_credential_id)
+            and not self.credential_repo.find_by_id_in_project(project_id, git_credential_id)
         ):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
 
@@ -117,15 +108,10 @@ class RepositoryService:
         self.repository_repo.save(repository)
         return repository
 
-    def delete_repository(self, repository_id: str, delete_workspace: bool = False) -> None:
-        """删除项目（检查运行中的流水线）
-
-        Args:
-            repository_id: 仓库ID
-            delete_workspace: 是否同时删除工作目录
-        """
-        repository = self.get_repository(repository_id)
-        if self.repository_repo.has_running_pipelines(repository_id):
+    def delete_repository(self, project_id: str, repository_id: str, delete_workspace: bool = False) -> None:
+        """删除项目（检查运行中的流水线）"""
+        repository = self.get_repository(project_id, repository_id)
+        if self.repository_repo.has_running_pipelines(project_id, repository_id):
             raise BusinessError("Repository has running pipelines, cannot delete", status_code=409)
         self.repository_repo.delete(repository)
         if delete_workspace:

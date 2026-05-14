@@ -1,8 +1,8 @@
 import type { AxiosRequestConfig } from 'axios';
 import axios, { type AxiosError } from 'axios';
 import config from '@/config';
-import router from '@/router';
 import { useAuthStore } from '@/stores/auth';
+import { handleUnauthorized } from '@/utils/handle-unauthorized';
 
 /**
  * API 错误类，保留 HTTP 状态码
@@ -42,12 +42,7 @@ request.interceptors.response.use(
 	(error: AxiosError<{ detail?: string }>) => {
 		// 401 - token 失效，清除登录状态并跳转登录页
 		if (error.response?.status === 401) {
-			const authStore = useAuthStore();
-			authStore.clearToken();
-			router.push({
-				name: 'Login',
-				query: { redirect: router.currentRoute.value.fullPath },
-			});
+			handleUnauthorized();
 			return Promise.reject(new ApiError('登录已过期，请重新登录', 401));
 		}
 

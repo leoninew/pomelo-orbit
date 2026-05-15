@@ -1,6 +1,6 @@
 # Pomelo Orbit 开发待办
 
-更新日期：2026-05-10
+更新日期：2026-05-15
 
 ## 当前状态
 
@@ -39,77 +39,20 @@
 
 ### Backend & General Features
 
-#### 高优先级
+#### 架构说明
 
-**CD 模块 API 接口重构：移除 get/update/delete 的 project_id 参数**
+**CD 模块与 CI 模块的架构差异**
 
-**背景：**
-CI 模块已完成接口重构（2026-05-15），移除了 get/update/delete 操作中冗余的 project_id 参数。该重构基于以下原则：
-- 资源通过 ID 已经唯一确定，无需额外传递 project_id
-- project_id 可以从资源实体本身获取（`resource.project_id`）
-- 简化 API 接口，减少参数冗余
-- 为后续统一添加项目级权限断言做准备
+CD 模块（Application、Deployment、Route）从设计之初就采用了简化的架构：
+- 领域实体**不包含** `project_id` 字段
+- API 端点从未使用 `project_id` 参数或 `get_current_project` 依赖
+- 所有 get/update/delete 操作已经是"只通过 ID 访问"的模式
 
-**重构原则：**
-1. **保留 project_id 的场景**：
-   - `list` 操作：需要 project_id 限定查询范围
-   - `create` 操作：需要 project_id 指定资源归属
+这与 CI 模块不同：
+- CI 模块实体包含 `project_id` 字段（Repository、Credential、BuildStage 等）
+- CI 模块已完成重构（2026-05-15），移除了 get/update/delete 操作中冗余的 project_id 参数
 
-2. **移除 project_id 的场景**：
-   - `get` 操作：通过 resource_id 获取
-   - `update` 操作：通过 resource_id 更新
-   - `delete` 操作：通过 resource_id 删除
-   - `duplicate` 操作：通过 resource_id 复制（从原资源获取 project_id）
-   - 其他基于 ID 的操作（如 `retry`、`cancel`）
-
-3. **实现层次**：
-   - Domain Repository：添加 `find_by_id(resource_id)` 方法（不验证 project_id）
-   - Infrastructure Repository：实现 `find_by_id()` 方法
-   - Application Service：修改方法签名，移除 project_id 参数，使用 `resource.project_id` 处理关联操作
-   - API Layer：移除 `Depends(get_current_project)` 依赖（对于 get/update/delete 端点）
-   - Frontend：移除 API 调用中的 projectId 参数
-
-**待重构的 CD 资源：**
-- [ ] **Application**（应用）
-  - [ ] Domain: `ApplicationRepository.find_by_id()`
-  - [ ] Infrastructure: 实现 `find_by_id()`
-  - [ ] Service: `get_application()`, `update_application()`, `delete_application()`
-  - [ ] API: `GET/PUT/DELETE /api/cd/application/{id}`
-  - [ ] Frontend: `applicationApi.get/update/delete`
-
-- [ ] **Deployment**（部署）
-  - [ ] Domain: `DeploymentRepository.find_by_id()`
-  - [ ] Infrastructure: 实现 `find_by_id()`
-  - [ ] Service: `get_deployment()`, `update_deployment()`, `delete_deployment()`, `cancel_deployment()`
-  - [ ] API: `GET/PUT/DELETE/POST /api/cd/deployment/{id}/*`
-  - [ ] Frontend: `deploymentApi.get/update/delete/cancel`
-
-- [ ] **Route**（路由）
-  - [ ] Domain: `RouteRepository.find_by_id()`
-  - [ ] Infrastructure: 实现 `find_by_id()`
-  - [ ] Service: `get_route()`, `update_route()`, `delete_route()`
-  - [ ] API: `GET/PUT/DELETE /api/cd/route/{id}`
-  - [ ] Frontend: `routeApi.get/update/delete`
-
-- [ ] **TraefikRoute**（Traefik 路由）
-  - [ ] Domain: `TraefikRouteRepository.find_by_id()`
-  - [ ] Infrastructure: 实现 `find_by_id()`
-  - [ ] Service: `get_traefik_route()`, `update_traefik_route()`, `delete_traefik_route()`
-  - [ ] API: `GET/PUT/DELETE /api/cd/traefik-route/{id}`
-  - [ ] Frontend: `traefikRouteApi.get/update/delete`
-
-**实施步骤：**
-1. 按资源逐个重构（Application → Deployment → Route → TraefikRoute）
-2. 每个资源按层次从下往上修改（Domain → Infrastructure → Service → API → Frontend）
-3. 修改完成后运行 `make lint` 确保类型检查通过
-4. 更新方法文档字符串（"通过 ID 获取/更新/删除"）
-5. 提交时使用统一的 commit message 格式：`refactor(cd): remove project_id from {resource} get/update/delete operations`
-
-**预期收益：**
-- API 接口更简洁，参数更少
-- 前后端代码更清晰，减少冗余传参
-- 为统一添加项目级权限断言奠定基础
-- 与 CI 模块保持一致的架构风格
+**注**：CD 模块的数据库模型虽然有 `project_id` 字段（nullable），但这是为未来多租户功能预留的，当前领域层和应用层完全未使用。
 
 #### 待实现功能
 
@@ -165,6 +108,10 @@ CI 模块已完成接口重构（2026-05-15），移除了 get/update/delete 操
 ---
 
 ## 历史变更记录
+
+### 2026-05-15
+- 移除 CD 模块 API 重构任务（经分析，CD 模块从设计之初就不包含 project_id，无需重构）
+- 添加 CD 模块与 CI 模块架构差异说明
 
 ### 2026-05-10
 - 完成 15 个页面的迁移验证（8 个 CI + 7 个 CD）

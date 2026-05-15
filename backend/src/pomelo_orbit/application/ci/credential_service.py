@@ -23,9 +23,9 @@ class CredentialService:
         """分页查询凭据列表"""
         return self.credential_repo.find_paginated_by_project_id(project_id=project_id, page=page, per_page=per_page)
 
-    def get_credential(self, project_id: str, credential_id: str) -> Credential:
-        """获取单个凭据"""
-        cred = self.credential_repo.find_by_id_in_project(project_id, credential_id)
+    def get_credential(self, credential_id: str) -> Credential:
+        """通过 ID 获取单个凭据"""
+        cred = self.credential_repo.find_by_id(credential_id)
         if not cred:
             raise BusinessError(f"Credential {credential_id} not found", status_code=404)
         return cred
@@ -43,29 +43,27 @@ class CredentialService:
         self.credential_repo.save(cred)
         return cred
 
-    def update_credential(
-        self, project_id: str, credential_id: str, name: str | None = None, data: str | None = None
-    ) -> Credential:
-        """更新凭据"""
-        cred = self.get_credential(project_id, credential_id)
+    def update_credential(self, credential_id: str, name: str | None = None, data: str | None = None) -> Credential:
+        """通过 ID 更新凭据"""
+        cred = self.get_credential(credential_id)
         if name is not None:
-            self._check_name_unique(project_id, name, exclude_id=credential_id)
+            self._check_name_unique(cred.project_id, name, exclude_id=credential_id)
             cred.name = name
         if data is not None:
             cred.encrypted_data = self.security_service.encrypt_value(data)
         self.credential_repo.save(cred)
         return cred
 
-    def delete_credential(self, project_id: str, credential_id: str) -> None:
-        """删除凭据（检查引用）"""
-        cred = self.get_credential(project_id, credential_id)
-        if self.credential_repo.is_referenced_by_repositories(project_id, credential_id):
+    def delete_credential(self, credential_id: str) -> None:
+        """通过 ID 删除凭据（检查引用）"""
+        cred = self.get_credential(credential_id)
+        if self.credential_repo.is_referenced_by_repositories(cred.project_id, credential_id):
             raise BusinessError("Credential is referenced by projects, cannot delete", status_code=409)
         self.credential_repo.delete(cred)
 
-    def export_credential(self, project_id: str, credential_id: str) -> dict:
-        """导出凭据（解密数据）"""
-        cred = self.get_credential(project_id, credential_id)
+    def export_credential(self, credential_id: str) -> dict:
+        """通过 ID 导出凭据（解密数据）"""
+        cred = self.get_credential(credential_id)
         return {
             "name": cred.name,
             "type": cred.type.value,

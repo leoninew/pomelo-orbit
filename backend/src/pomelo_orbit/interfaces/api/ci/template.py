@@ -63,9 +63,8 @@ def create_template(
 def get_template(
     template_id: str,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> PipelineTemplateResp:
-    tmpl = template_service.get_template(current_project.id, template_id)
+    tmpl = template_service.get_template(template_id)
     return PipelineTemplateResp.from_domain(tmpl, template_service.get_template_variables(tmpl))
 
 
@@ -74,7 +73,6 @@ def update_template(
     template_id: str,
     data: PipelineTemplateUpdateReq,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> PipelineTemplateResp:
     decls = (
         [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
@@ -85,7 +83,6 @@ def update_template(
         [StageOrchestration(**o.model_dump()) for o in data.orchestration] if data.orchestration is not None else None
     )
     tmpl = template_service.update_template(
-        project_id=current_project.id,
         template_id=template_id,
         name=data.name,
         description=data.description,
@@ -111,16 +108,14 @@ def resolve_template_variables(
 def delete_template(
     template_id: str,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> None:
-    template_service.delete_template(current_project.id, template_id)
+    template_service.delete_template(template_id)
 
 
 @router.post("/{template_id}/duplicate", response_model=PipelineTemplateResp, status_code=201)
 def duplicate_template(
     template_id: str,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> PipelineTemplateResp:
-    tmpl = template_service.duplicate_template(current_project.id, template_id)
+    tmpl = template_service.duplicate_template(template_id)
     return PipelineTemplateResp.from_domain(tmpl, template_service.get_template_variables(tmpl))

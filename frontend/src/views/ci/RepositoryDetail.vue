@@ -288,6 +288,7 @@
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectId } from '@/composables/useProjectId';
 	import type { Credential } from '@/types/ci/credential';
 	import { credentialTypeLabels } from '@/types/ci/credential';
 	import type { Repository } from '@/types/ci/repository';
@@ -302,6 +303,7 @@
 	const router = useRouter();
 	const repositoryId = route.params.id as string;
 	const toast = useToast();
+	const { requireProjectId } = useProjectId();
 
 	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -408,7 +410,7 @@
 
 	async function fetchTemplates() {
 		try {
-			const res = await pipelineTemplateApi.list({ per_page: 100 });
+			const res = await pipelineTemplateApi.list({ per_page: 100, projectId: requireProjectId() });
 			templates.value = res.items;
 		} catch {
 			toast.error('获取模板列表失败');
@@ -417,7 +419,7 @@
 
 	async function fetchWebhooks() {
 		try {
-			webhooks.value = await webhookApi.list(repositoryId);
+			webhooks.value = await webhookApi.list(repositoryId, { projectId: requireProjectId() });
 		} catch {
 			toast.error('获取 Webhook 列表失败');
 		}
@@ -425,7 +427,7 @@
 
 	async function fetchCredentials() {
 		try {
-			const res = await credentialApi.list({ per_page: 100 });
+			const res = await credentialApi.list({ per_page: 100, projectId: requireProjectId() });
 			credentials.value = res.items;
 		} catch {
 			toast.error('获取凭据列表失败');
@@ -493,7 +495,9 @@
 	async function handleDeleteOk() {
 		try {
 			await executeOp(async () => {
-				await repositoryApi.delete(repositoryId, { delete_workspace: deleteWorkspace.value });
+				await repositoryApi.delete(repositoryId, {
+					delete_workspace: deleteWorkspace.value,
+				});
 				toast.success('删除成功');
 				router.push('/ci/repository');
 			});

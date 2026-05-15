@@ -58,10 +58,10 @@ def list_repository(
     )
 
 
-def _resolve_cred_name(project_id: str, credential_id: str | None, credential_service: CredentialService) -> str | None:
+def _resolve_cred_name(credential_id: str | None, credential_service: CredentialService) -> str | None:
     if not credential_id:
         return None
-    cred = credential_service.get_credential(project_id, credential_id)
+    cred = credential_service.get_credential(credential_id)
     if not cred:
         raise BusinessError(f"凭据不存在: {credential_id}", status_code=404)
     return cred.name
@@ -86,7 +86,7 @@ def create_repository(
     )
     return RepositoryResp.from_domain(
         repository,
-        _resolve_cred_name(current_project.id, repository.git_credential_id, credential_service),
+        _resolve_cred_name(repository.git_credential_id, credential_service),
         variable_declarations=variable_resolver.get_repository_variables(repository),
     )
 
@@ -97,12 +97,11 @@ def get_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> RepositoryResp:
-    repository = repository_service.get_repository(current_project.id, repository_id)
+    repository = repository_service.get_repository(repository_id)
     return RepositoryResp.from_domain(
         repository,
-        _resolve_cred_name(current_project.id, repository.git_credential_id, credential_service),
+        _resolve_cred_name(repository.git_credential_id, credential_service),
         variable_declarations=variable_resolver.get_repository_variables(repository),
     )
 
@@ -114,10 +113,8 @@ def update_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> RepositoryResp:
     repository_service.update_repository(
-        project_id=current_project.id,
         repository_id=repository_id,
         name=data.name,
         repository_url=data.repository_url,
@@ -130,10 +127,10 @@ def update_repository(
         default_branch=data.default_branch,
     )
 
-    repository = repository_service.get_repository(current_project.id, repository_id)
+    repository = repository_service.get_repository(repository_id)
     return RepositoryResp.from_domain(
         repository,
-        _resolve_cred_name(current_project.id, repository.git_credential_id, credential_service),
+        _resolve_cred_name(repository.git_credential_id, credential_service),
         variable_declarations=variable_resolver.get_repository_variables(repository),
     )
 
@@ -142,10 +139,9 @@ def update_repository(
 def delete_repository(
     repository_id: str,
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
     delete_workspace: Annotated[bool, Query()] = False,
 ) -> None:
-    repository_service.delete_repository(current_project.id, repository_id, delete_workspace=delete_workspace)
+    repository_service.delete_repository(repository_id, delete_workspace=delete_workspace)
 
 
 @router.get("/{repository_id}/run", response_model=PaginatedResp[PipelineRunResp])

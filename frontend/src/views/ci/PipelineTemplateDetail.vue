@@ -410,6 +410,7 @@
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectId } from '@/composables/useProjectId';
 	import type {
 		ArtifactDeclaration,
 		BuildStage,
@@ -426,6 +427,7 @@
 	const router = useRouter();
 	const templateId = computed(() => route.params.id as string);
 	const toast = useToast();
+	const { requireProjectId } = useProjectId();
 
 	const { status, execute } = useStatusAsync();
 	const { loading: saving, execute: executeSave } = useStatusAsync();
@@ -591,6 +593,7 @@
 		try {
 			const resp = await buildStageApi.list({
 				per_page: 100,
+				projectId: requireProjectId(),
 			});
 			stageOptions.value = resp.items;
 		} catch (err: unknown) {
@@ -822,6 +825,7 @@
 		try {
 			const resp = await repositoryApi.list({
 				per_page: 100,
+				projectId: requireProjectId(),
 			});
 			repoOptions.value = resp.items;
 		} catch (err: unknown) {

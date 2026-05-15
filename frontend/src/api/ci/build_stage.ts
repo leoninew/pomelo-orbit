@@ -7,16 +7,17 @@ export const buildStageApi = {
 		page?: number
 		per_page?: number
 		search?: string
+		projectId?: string
 	}): Promise<PaginatedResp<BuildStage>> {
 		return request.get('/api/ci/build-stage', { params });
 	},
 
-	get(id: string): Promise<BuildStage> {
-		return request.get(`/api/ci/build-stage/${id}`);
+	get(id: string, params: { projectId: string }): Promise<BuildStage> {
+		return request.get(`/api/ci/build-stage/${id}`, { params });
 	},
 
-	create(data: BuildStageCreateReq): Promise<BuildStage> {
-		return request.post('/api/ci/build-stage', data);
+	create(data: BuildStageCreateReq, params: { projectId: string }): Promise<BuildStage> {
+		return request.post('/api/ci/build-stage', data, { params });
 	},
 
 	update(id: string, data: BuildStageUpdateReq): Promise<BuildStage> {
@@ -27,7 +28,7 @@ export const buildStageApi = {
 		return request.delete(`/api/ci/build-stage/${id}`);
 	},
 
-	duplicate(id: string): Promise<BuildStage> {
-		return request.post(`/api/ci/build-stage/${id}/duplicate`);
+	duplicate(id: string, params: { projectId: string }): Promise<BuildStage> {
+		return request.post(`/api/ci/build-stage/${id}/duplicate`, {}, { params });
 	},
 };

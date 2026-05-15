@@ -128,6 +128,7 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type { Artifact } from '@/types/ci/stage_run';
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineTemplate } from '@/types/ci/template';
@@ -135,6 +136,7 @@
 
 	const { status, error, execute } = useStatusAsync();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const artifacts = ref<Artifact[]>([]);
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
@@ -169,8 +171,12 @@
 	);
 
 	async function loadRepos() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			return;
+		}
 		try {
-			const resp = await repositoryApi.list({ per_page: 100 });
+			const resp = await repositoryApi.list({ per_page: 100, projectId });
 			repoOptions.value = resp.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
@@ -178,8 +184,12 @@
 	}
 
 	async function loadTemplates() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			return;
+		}
 		try {
-			const resp = await pipelineTemplateApi.list({ per_page: 100 });
+			const resp = await pipelineTemplateApi.list({ per_page: 100, projectId });
 			templateOptions.value = resp.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取模板列表失败');
@@ -210,6 +220,11 @@
 	}
 
 	async function fetchArtifacts() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const resp = await artifactApi.list({
@@ -218,6 +233,7 @@
 					search: query.search || undefined,
 					repository_id: query.repository_id || undefined,
 					template_id: query.template_id || undefined,
+					projectId,
 				});
 				artifacts.value = resp.items;
 				pagination.total = resp.total;

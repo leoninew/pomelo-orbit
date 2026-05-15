@@ -42,9 +42,9 @@ class TemplateService:
             project_id=project_id, page=page, per_page=per_page, search=search
         )
 
-    def get_template(self, project_id: str, template_id: str) -> PipelineTemplate:
-        """获取存储的模板（不含变量装饰）"""
-        tmpl = self.template_repo.find_by_id_in_project(project_id, template_id)
+    def get_template(self, template_id: str) -> PipelineTemplate:
+        """通过 ID 获取存储的模板（不含变量装饰）"""
+        tmpl = self.template_repo.find_by_id(template_id)
         if not tmpl:
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
         return tmpl
@@ -75,21 +75,22 @@ class TemplateService:
 
     def update_template(
         self,
-        project_id: str,
         template_id: str,
         name: str | None = None,
         description: str | None = None,
         orchestration: list[StageOrchestration] | None = None,
         variable_declarations: list[VariableDeclaration] | None = None,
     ) -> PipelineTemplate:
-        """更新模板（支持编排和变量声明更新）"""
-        tmpl = self.get_template(project_id, template_id)
+        """通过 ID 更新模板（支持编排和变量声明更新）"""
+        tmpl = self.get_template(template_id)
 
         orch_changed = False
         stages = list(tmpl.stages)
 
         if orchestration is not None:
-            stages = self._load_stages_by_ids(project_id, [o.stage_id for o in orchestration]) if orchestration else []
+            stages = (
+                self._load_stages_by_ids(tmpl.project_id, [o.stage_id for o in orchestration]) if orchestration else []
+            )
             stage_version_map = {s.id: s.version for s in stages}
             orchestration_with_version = [
                 o.model_copy(update={"stage_version": stage_version_map[o.stage_id]}) for o in orchestration
@@ -119,28 +120,28 @@ class TemplateService:
         self.template_repo.save(tmpl)
         return tmpl
 
-    def delete_template(self, project_id: str, template_id: str) -> None:
-        """删除模板（检查 webhook 引用）"""
-        tmpl = self.get_template(project_id, template_id)
+    def delete_template(self, template_id: str) -> None:
+        """通过 ID 删除模板（检查 webhook 引用）"""
+        tmpl = self.get_template(template_id)
         webhooks = self.webhook_repo.find_by_template(template_id)
         if webhooks:
             raise BusinessError("Template is referenced by webhooks, cannot delete", status_code=409)
         self.template_repo.delete(tmpl)
 
-    def duplicate_template(self, project_id: str, template_id: str) -> PipelineTemplate:
-        """复制模板（自动生成唯一名称）"""
-        tmpl = self.get_template(project_id, template_id)
+    def duplicate_template(self, template_id: str) -> PipelineTemplate:
+        """通过 ID 复制模板（自动生成唯一名称）"""
+        tmpl = self.get_template(template_id)
         base_name = re.sub(r" copy( \d+)?$", "", tmpl.name)
 
         i = 1
         while True:
             new_name = f"{base_name} copy" if i == 1 else f"{base_name} copy {i}"
-            if not self.template_repo.find_by_name(project_id, new_name):
+            if not self.template_repo.find_by_name(tmpl.project_id, new_name):
                 break
             i += 1
 
         new_template = PipelineTemplate.create(
-            project_id=project_id,
+            project_id=tmpl.project_id,
             name=new_name,
             variable_declarations=list(tmpl.variable_declarations),
             description=tmpl.description,

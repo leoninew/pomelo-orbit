@@ -7,6 +7,9 @@ from pomelo_orbit.domain.ci.entities import BuildStage, PipelineSnapshot, Pipeli
 
 class BuildStageRepository(ABC):
     @abstractmethod
+    def find_by_id(self, stage_id: str) -> BuildStage | None: ...
+
+    @abstractmethod
     def find_by_id_in_project(self, project_id: str, stage_id: str) -> BuildStage | None: ...
 
     @abstractmethod
@@ -31,6 +34,9 @@ class BuildStageRepository(ABC):
 
 
 class PipelineTemplateRepository(ABC):
+    @abstractmethod
+    def find_by_id(self, template_id: str) -> PipelineTemplate | None: ...
+
     @abstractmethod
     def find_by_id_in_project(self, project_id: str, template_id: str) -> PipelineTemplate | None: ...
 

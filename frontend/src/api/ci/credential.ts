@@ -14,16 +14,17 @@ export const credentialApi = {
 		page?: number
 		per_page?: number
 		search?: string
+		projectId?: string
 	}): Promise<PaginatedResp<Credential>> {
 		return request.get('/api/ci/credential', { params });
 	},
 
-	get(id: string): Promise<Credential> {
-		return request.get(`/api/ci/credential/${id}`);
+	get(id: string, params: { projectId: string }): Promise<Credential> {
+		return request.get(`/api/ci/credential/${id}`, { params });
 	},
 
-	create(data: CredentialCreateReq): Promise<Credential> {
-		return request.post('/api/ci/credential', data);
+	create(data: CredentialCreateReq, params: { projectId: string }): Promise<Credential> {
+		return request.post('/api/ci/credential', data, { params });
 	},
 
 	update(id: string, data: CredentialUpdateReq): Promise<Credential> {
@@ -34,11 +35,11 @@ export const credentialApi = {
 		return request.delete(`/api/ci/credential/${id}`);
 	},
 
-	exportCredential(id: string): Promise<CredentialExportResp> {
-		return request.get(`/api/ci/credential/${id}/export`);
+	exportCredential(id: string, params: { projectId: string }): Promise<CredentialExportResp> {
+		return request.get(`/api/ci/credential/${id}/export`, { params });
 	},
 
-	importCredential(data: CredentialImportReq): Promise<Credential> {
-		return request.post('/api/ci/credential/import', data);
+	importCredential(data: CredentialImportReq, params: { projectId: string }): Promise<Credential> {
+		return request.post('/api/ci/credential/import', data, { params });
 	},
 };

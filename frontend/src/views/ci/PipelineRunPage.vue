@@ -144,6 +144,7 @@
 	import ListPagination from '@/components/ListPagination.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { PipelineTemplate } from '@/types/ci/template';
@@ -154,6 +155,7 @@
 	const route = useRoute();
 	const router = useRouter();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 
 	const runs = ref<PipelineRun[]>([]);
@@ -179,6 +181,11 @@
 	);
 
 	async function fetchRuns() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await pipelineRunApi.list({
@@ -186,6 +193,7 @@
 					per_page: pagination.pageSize,
 					repository_id: query.repository_id || undefined,
 					template_id: query.template_id || undefined,
+					projectId,
 				});
 				runs.value = res.items;
 				pagination.total = res.total;
@@ -196,8 +204,12 @@
 	}
 
 	async function loadRepositories() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			return;
+		}
 		try {
-			const res = await repositoryApi.list({ per_page: 100 });
+			const res = await repositoryApi.list({ per_page: 100, projectId });
 			repositories.value = res.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
@@ -205,8 +217,12 @@
 	}
 
 	async function loadTemplates() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			return;
+		}
 		try {
-			const res = await pipelineTemplateApi.list({ per_page: 100 });
+			const res = await pipelineTemplateApi.list({ per_page: 100, projectId });
 			templates.value = res.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取模板列表失败');

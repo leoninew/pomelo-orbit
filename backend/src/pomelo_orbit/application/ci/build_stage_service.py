@@ -20,9 +20,9 @@ class BuildStageService:
         """分页查询 Stage"""
         return self.stage_repo.find_paginated_by_project_id(project_id, page, per_page, search=search)
 
-    def get_stage(self, project_id: str, stage_id: str) -> BuildStage:
-        """获取单个 Stage"""
-        stage = self.stage_repo.find_by_id_in_project(project_id, stage_id)
+    def get_stage(self, stage_id: str) -> BuildStage:
+        """通过 ID 获取单个 Stage"""
+        stage = self.stage_repo.find_by_id(stage_id)
         if not stage:
             raise BusinessError(f"Stage {stage_id} not found", status_code=404)
         return stage
@@ -61,7 +61,6 @@ class BuildStageService:
 
     def update_stage(
         self,
-        project_id: str,
         stage_id: str,
         name: str | None = None,
         image: str | None = None,
@@ -69,28 +68,28 @@ class BuildStageService:
         artifacts: list[ArtifactConfig] | None = None,
         description: str | None = None,
     ) -> BuildStage:
-        """更新 Stage"""
-        stage = self.get_stage(project_id, stage_id)
-        if name is not None and name != stage.name and self.stage_repo.find_by_name(project_id, name):
+        """通过 ID 更新 Stage"""
+        stage = self.get_stage(stage_id)
+        if name is not None and name != stage.name and self.stage_repo.find_by_name(stage.project_id, name):
             raise BusinessError(f"Stage '{name}' already exists", status_code=409)
         stage.update(name=name, image=image, script=script, artifacts=artifacts, description=description)
         self.stage_repo.save(stage)
         return stage
 
-    def duplicate_stage(self, project_id: str, stage_id: str) -> BuildStage:
-        """复制 Stage（自动生成唯一名称）"""
-        stage = self.get_stage(project_id, stage_id)
+    def duplicate_stage(self, stage_id: str) -> BuildStage:
+        """通过 ID 复制 Stage（自动生成唯一名称）"""
+        stage = self.get_stage(stage_id)
         base_name = re.sub(r" copy( \d+)?$", "", stage.name)
 
         i = 1
         while True:
             new_name = f"{base_name} copy" if i == 1 else f"{base_name} copy {i}"
-            if not self.stage_repo.find_by_name(project_id, new_name):
+            if not self.stage_repo.find_by_name(stage.project_id, new_name):
                 break
             i += 1
 
         return self.create_stage(
-            project_id=project_id,
+            project_id=stage.project_id,
             name=new_name,
             image=stage.image,
             script=stage.script,
@@ -98,9 +97,9 @@ class BuildStageService:
             description=stage.description,
         )
 
-    def delete_stage(self, project_id: str, stage_id: str) -> None:
-        """删除 Stage（检查模板引用）"""
-        stage = self.get_stage(project_id, stage_id)
-        if self.stage_repo.is_referenced_by_templates(project_id, stage_id):
+    def delete_stage(self, stage_id: str) -> None:
+        """通过 ID 删除 Stage（检查模板引用）"""
+        stage = self.get_stage(stage_id)
+        if self.stage_repo.is_referenced_by_templates(stage.project_id, stage_id):
             raise BusinessError("Stage is referenced by templates, cannot delete", status_code=409)
         self.stage_repo.delete(stage)

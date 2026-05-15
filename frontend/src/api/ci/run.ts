@@ -28,11 +28,11 @@ export const pipelineRunApi = {
 	},
 
 	retry(id: string): Promise<PipelineRun> {
-		return request.post(`/api/ci/run/${id}/retry`);
+		return request.post(`/api/ci/run/${id}/retry`, {});
 	},
 
 	cancel(id: string): Promise<PipelineRun> {
-		return request.post(`/api/ci/run/${id}/cancel`);
+		return request.post(`/api/ci/run/${id}/cancel`, {});
 	},
 
 	listArtifacts(runId: string): Promise<Artifact[]> {

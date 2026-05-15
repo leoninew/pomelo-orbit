@@ -60,9 +60,8 @@ def create_credential(
 def get_credential(
     credential_id: str,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialResp:
-    cred = credential_service.get_credential(current_project.id, credential_id)
+    cred = credential_service.get_credential(credential_id)
     return CredentialResp.model_validate(cred)
 
 
@@ -71,9 +70,8 @@ def update_credential(
     credential_id: str,
     data: CredentialUpdateReq,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialResp:
-    cred = credential_service.update_credential(current_project.id, credential_id, name=data.name, data=data.data)
+    cred = credential_service.update_credential(credential_id, name=data.name, data=data.data)
     return CredentialResp.model_validate(cred)
 
 
@@ -81,18 +79,16 @@ def update_credential(
 def delete_credential(
     credential_id: str,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> None:
-    credential_service.delete_credential(current_project.id, credential_id)
+    credential_service.delete_credential(credential_id)
 
 
 @router.get("/{credential_id}/export", response_model=CredentialExportResp)
 def export_credential(
     credential_id: str,
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> CredentialExportResp:
-    data = credential_service.export_credential(current_project.id, credential_id)
+    data = credential_service.export_credential(credential_id)
     return CredentialExportResp(**data)
 
 

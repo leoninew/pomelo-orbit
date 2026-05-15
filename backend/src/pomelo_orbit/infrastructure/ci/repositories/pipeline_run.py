@@ -17,6 +17,10 @@ class PipelineRunRepositoryImpl(BaseRepository[PipelineRun, PipelineRunModel], P
     def __init__(self, session: Session):
         super().__init__(session, PipelineRunModel, PipelineRunMapper())
 
+    def find_by_id(self, run_id: str) -> PipelineRun | None:
+        orm = self._session.query(PipelineRunModel).filter(PipelineRunModel.id == run_id).first()
+        return self._mapper.to_domain(orm) if orm else None
+
     def find_by_id_in_project(self, project_id: str, run_id: str) -> PipelineRun | None:
         orm = (
             self._session.query(PipelineRunModel)

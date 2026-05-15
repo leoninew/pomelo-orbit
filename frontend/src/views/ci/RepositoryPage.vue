@@ -157,6 +157,7 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type { Credential } from '@/types/ci/credential';
 	import type { RepositoryListItem } from '@/types/ci/repository';
 	import { formatTime } from '@/utils/time';
@@ -164,6 +165,7 @@
 
 	const router = useRouter();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 	const { status: modalStatus, execute: executeModal } = useStatusAsync();
@@ -206,12 +208,18 @@
 	}
 
 	async function fetchProjects() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await repositoryApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
+					projectId,
 				});
 				repositories.value = res.items;
 				pagination.total = res.total;
@@ -241,6 +249,11 @@
 	}
 
 	async function openCreateModal() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		Object.assign(form, {
 			name: '',
 			code: '',
@@ -251,7 +264,10 @@
 		showCreateModal.value = true;
 		try {
 			await executeModal(async () => {
-				const credRes = await credentialApi.list({ per_page: 100 });
+				const credRes = await credentialApi.list({
+					per_page: 100,
+					projectId,
+				});
 				credentials.value = credRes.items;
 			});
 		} catch {
@@ -263,14 +279,22 @@
 		if (!validate()) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				const repository = await repositoryApi.create({
-					name: form.name,
-					code: form.code,
-					repository_url: form.repository_url,
-					git_credential_id: form.git_credential_id || undefined,
-				});
+				const repository = await repositoryApi.create(
+					{
+						name: form.name,
+						code: form.code,
+						repository_url: form.repository_url,
+						git_credential_id: form.git_credential_id || undefined,
+					},
+					{ projectId }
+				);
 				toast.success('创建成功');
 				showCreateModal.value = false;
 				router.push(`/ci/repository/${repository.id}`);

@@ -189,12 +189,16 @@
 	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
+	import { useProjectId } from '@/composables/useProjectId';
 	import type { Credential, CredentialImportReq } from '@/types/ci/credential';
 	import { credentialTypeLabels } from '@/types/ci/credential';
 	import { formatTime } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 
 	const toast = useToast();
+	const projectStore = useProjectStore();
+	const { requireProjectId } = useProjectId();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -228,12 +232,18 @@
 	}
 
 	async function fetchCredentials() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await credentialApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
+					projectId,
 				});
 				credentials.value = res.items;
 				pagination.total = res.total;
@@ -288,11 +298,14 @@
 					});
 					toast.success('更新成功');
 				} else {
-					await credentialApi.create({
-						name: form.name,
-						type: form.type,
-						data: form.data,
-					});
+					await credentialApi.create(
+						{
+							name: form.name,
+							type: form.type,
+							data: form.data,
+						},
+						{ projectId: requireProjectId() }
+					);
 					toast.success('创建成功');
 				}
 				showCredentialDialog.value = false;
@@ -368,11 +381,14 @@
 		}
 		try {
 			await executeOp(async () => {
-				await credentialApi.importCredential({
-					name: importForm.name,
-					type: importForm.type as CredentialImportReq['type'],
-					data: importForm.data,
-				});
+				await credentialApi.importCredential(
+					{
+						name: importForm.name,
+						type: importForm.type as CredentialImportReq['type'],
+						data: importForm.data,
+					},
+					{ projectId: requireProjectId() }
+				);
 				toast.success('导入成功');
 				showImportDialog.value = false;
 				fetchCredentials();

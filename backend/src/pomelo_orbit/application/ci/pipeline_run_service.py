@@ -127,17 +127,17 @@ class PipelineRunService:
         )
         return PaginatedRuns(runs=runs, total=total)
 
-    def get_run(self, project_id: str, run_id: str) -> PipelineRun:
-        """获取单个运行"""
-        run = self.run_repo.find_by_id_in_project(project_id, run_id)
+    def get_run(self, run_id: str) -> PipelineRun:
+        """通过 ID 获取单个运行"""
+        run = self.run_repo.find_by_id(run_id)
         if not run:
             raise BusinessError(f"PipelineRun {run_id} not found", status_code=404)
         return run
 
-    def list_artifacts(self, project_id: str, run_id: str) -> list[Artifact]:
-        """查询运行的制品列表"""
-        self.get_run(project_id, run_id)
-        return self.artifact_repo.find_by_run(project_id, run_id)
+    def list_artifacts(self, run_id: str) -> list[Artifact]:
+        """通过 run_id 查询运行的制品列表"""
+        run = self.get_run(run_id)
+        return self.artifact_repo.find_by_run(run.project_id, run_id)
 
     def list_all_artifacts(
         self,
@@ -162,14 +162,14 @@ class PipelineRunService:
             search=search,
         )
 
-    def list_stage_runs(self, project_id: str, run_id: str) -> list[StageRun]:
-        """查询运行的 stage 列表"""
-        self.get_run(project_id, run_id)
+    def list_stage_runs(self, run_id: str) -> list[StageRun]:
+        """通过 run_id 查询运行的 stage 列表"""
+        self.get_run(run_id)
         return self.stage_run_repo.find_by_run(run_id)
 
-    def read_stage_log(self, project_id: str, run_id: str, stage_run_id: str, offset: int = 0) -> StageLogResult:
-        """读取 stage 日志（增量）"""
-        self.get_run(project_id, run_id)
+    def read_stage_log(self, run_id: str, stage_run_id: str, offset: int = 0) -> StageLogResult:
+        """通过 run_id 和 stage_run_id 读取 stage 日志（增量）"""
+        self.get_run(run_id)
         stage_run = self.stage_run_repo.find_by_id(stage_run_id)
         if not stage_run or stage_run.pipeline_run_id != run_id:
             return StageLogResult(logs="", offset=offset, is_complete=True)
@@ -293,17 +293,17 @@ class PipelineRunService:
         )
         return RunCreationResult(run=run, repository=repository, merged_variables=merged, snapshot=snapshot)
 
-    def create_retry_run(self, project_id: str, run_id: str) -> RunCreationResult:
-        """创建重试运行"""
-        original = self.get_run(project_id, run_id)
+    def create_retry_run(self, run_id: str) -> RunCreationResult:
+        """通过 run_id 创建重试运行"""
+        original = self.get_run(run_id)
         if original.status not in {TaskStatus.FAULTED, TaskStatus.RAN_TO_COMPLETION}:
             raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
-        snapshot = self.snapshot_repo.find_by_id_in_project(project_id, original.snapshot_id)
+        snapshot = self.snapshot_repo.find_by_id_in_project(original.project_id, original.snapshot_id)
         if not snapshot:
             raise BusinessError(f"Snapshot {original.snapshot_id} not found", status_code=404)
 
-        repository = self.repository_repo.find_by_id_in_project(project_id, original.repository_id)
+        repository = self.repository_repo.find_by_id_in_project(original.project_id, original.repository_id)
         if not repository:
             raise BusinessError(f"Repository {original.repository_id} not found", status_code=404)
 
@@ -328,7 +328,7 @@ class PipelineRunService:
 
         masked = mask_secrets(merged, snapshot.variables_snapshot)
         new_run = PipelineRun.create(
-            project_id=project_id,
+            project_id=original.project_id,
             repository_id=original.repository_id,
             repository_name=repository.name,
             snapshot_id=original.snapshot_id,
@@ -346,9 +346,9 @@ class PipelineRunService:
         logger.info(f"Pipeline retry: original={original.id}, new={new_run.id}")
         return RunCreationResult(run=new_run, repository=repository, merged_variables=merged, snapshot=snapshot)
 
-    def cancel_run(self, project_id: str, run_id: str) -> PipelineRun:
-        """取消运行"""
-        run = self.get_run(project_id, run_id)
+    def cancel_run(self, run_id: str) -> PipelineRun:
+        """通过 run_id 取消运行"""
+        run = self.get_run(run_id)
         try:
             run.cancel()
         except ValueError as e:

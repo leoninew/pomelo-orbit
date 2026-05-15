@@ -194,12 +194,16 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
+	import { useProjectId } from '@/composables/useProjectId';
 	import type { PipelineTemplate } from '@/types/ci/template';
 	import { formatTime } from '@/utils/time';
 	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
 	const router = useRouter();
 	const toast = useToast();
+	const projectStore = useProjectStore();
+	const { requireProjectId } = useProjectId();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
@@ -215,12 +219,18 @@
 	const errors = reactive({ name: '' });
 
 	async function fetchTemplates() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await pipelineTemplateApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
+					projectId,
 				});
 				templates.value = res.items;
 				pagination.total = res.total;
@@ -262,11 +272,14 @@
 		}
 		try {
 			await executeOp(async () => {
-				const tpl = await pipelineTemplateApi.create({
-					name: form.name,
-					description: form.description || undefined,
-					variable_declarations: [],
-				});
+				const tpl = await pipelineTemplateApi.create(
+					{
+						name: form.name,
+						description: form.description || undefined,
+						variable_declarations: [],
+					},
+					{ projectId: requireProjectId() }
+				);
 				toast.success('创建成功');
 				showCreateDialog.value = false;
 				router.push(`/ci/template/${tpl.id}`);

@@ -55,18 +55,16 @@ def list_all_runs(
 def get_run(
     run_id: str,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> PipelineRunResp:
-    return PipelineRunResp.with_stage_runs(current_project.id, run_id, pipeline_run_service)
+    return PipelineRunResp.with_stage_runs(run_id, pipeline_run_service)
 
 
 @router.get("/{run_id}/artifacts", response_model=list[ArtifactResp])
 def list_artifacts(
     run_id: str,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> list[ArtifactResp]:
-    return [ArtifactResp.model_validate(a) for a in pipeline_run_service.list_artifacts(current_project.id, run_id)]
+    return [ArtifactResp.model_validate(a) for a in pipeline_run_service.list_artifacts(run_id)]
 
 
 @router.get("/{run_id}/stages/{stage_run_id}/log")
@@ -74,10 +72,9 @@ def get_stage_log(
     run_id: str,
     stage_run_id: str,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict:
-    result = pipeline_run_service.read_stage_log(current_project.id, run_id, stage_run_id, offset)
+    result = pipeline_run_service.read_stage_log(run_id, stage_run_id, offset)
     return {
         "logs": result.logs,
         "offset": result.offset,
@@ -89,10 +86,9 @@ def get_stage_log(
 def cancel_pipeline(
     run_id: str,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> PipelineRunResp:
-    pipeline_run_service.cancel_run(current_project.id, run_id)
-    return PipelineRunResp.with_stage_runs(current_project.id, run_id, pipeline_run_service)
+    pipeline_run_service.cancel_run(run_id)
+    return PipelineRunResp.with_stage_runs(run_id, pipeline_run_service)
 
 
 @router.post("/{run_id}/retry", response_model=PipelineRunResp, status_code=201)
@@ -101,10 +97,9 @@ async def retry_pipeline(
     run_id: str,
     background_tasks: BackgroundTasks,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
     container: FromDishka[AsyncContainer],
 ) -> PipelineRunResp:
-    result = pipeline_run_service.create_retry_run(current_project.id, run_id)
+    result = pipeline_run_service.create_retry_run(run_id)
 
     async def _run() -> None:
         await run_in_new_scope(
@@ -114,4 +109,4 @@ async def retry_pipeline(
         )
 
     background_tasks.add_task(_run)
-    return PipelineRunResp.with_stage_runs(current_project.id, result.run.id, pipeline_run_service)
+    return PipelineRunResp.with_stage_runs(result.run.id, pipeline_run_service)

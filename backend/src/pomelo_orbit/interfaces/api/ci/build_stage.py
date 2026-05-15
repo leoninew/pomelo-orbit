@@ -58,9 +58,8 @@ def create_stage(
 def get_stage(
     stage_id: str,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> BuildStageResp:
-    return BuildStageResp.model_validate(stage_service.get_stage(current_project.id, stage_id))
+    return BuildStageResp.model_validate(stage_service.get_stage(stage_id))
 
 
 @router.put("/{stage_id}", response_model=BuildStageResp)
@@ -68,10 +67,8 @@ def update_stage(
     stage_id: str,
     data: BuildStageUpdateReq,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> BuildStageResp:
     stage = stage_service.update_stage(
-        project_id=current_project.id,
         stage_id=stage_id,
         name=data.name,
         image=data.image,
@@ -86,16 +83,14 @@ def update_stage(
 def delete_stage(
     stage_id: str,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> None:
-    stage_service.delete_stage(current_project.id, stage_id)
+    stage_service.delete_stage(stage_id)
 
 
 @router.post("/{stage_id}/duplicate", response_model=BuildStageResp, status_code=201)
 def duplicate_stage(
     stage_id: str,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
 ) -> BuildStageResp:
-    stage = stage_service.duplicate_stage(current_project.id, stage_id)
+    stage = stage_service.duplicate_stage(stage_id)
     return BuildStageResp.model_validate(stage)

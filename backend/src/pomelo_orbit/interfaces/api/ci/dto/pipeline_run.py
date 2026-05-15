@@ -34,12 +34,10 @@ class PipelineRunResp(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def with_stage_runs(
-        cls, project_id: str, run_id: str, pipeline_run_service: "PipelineRunService"
-    ) -> "PipelineRunResp":
+    def with_stage_runs(cls, run_id: str, pipeline_run_service: "PipelineRunService") -> "PipelineRunResp":
         """构建包含 stage_runs 的详情响应（详情/cancel/retry 场景使用）。"""
-        run = pipeline_run_service.get_run(project_id, run_id)
-        stage_runs = pipeline_run_service.list_stage_runs(project_id, run_id)
+        run = pipeline_run_service.get_run(run_id)
+        stage_runs = pipeline_run_service.list_stage_runs(run_id)
         resp = cls.model_validate(run)
         resp.stage_runs = [StageRunResp.model_validate(s) for s in stage_runs]
         return resp

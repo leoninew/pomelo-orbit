@@ -134,11 +134,13 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type { BuildStage } from '@/types/ci/template';
 	import { formatTime } from '@/utils/time';
 
 	const router = useRouter();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
@@ -159,12 +161,18 @@
 	}
 
 	async function fetchStages() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await buildStageApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
+					projectId,
 				});
 				stages.value = res.items;
 				pagination.total = res.total;
@@ -203,14 +211,22 @@
 		if (!validate()) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				await buildStageApi.create({
-					name: form.name,
-					image: form.image,
-					script: '',
-					description: form.description,
-				});
+				await buildStageApi.create(
+					{
+						name: form.name,
+						image: form.image,
+						script: '',
+						description: form.description,
+					},
+					{ projectId }
+				);
 				toast.success('创建成功');
 				isModalOpen.value = false;
 				fetchStages();
@@ -221,6 +237,11 @@
 	}
 
 	async function handleDuplicate(id: string) {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeDuplicate(async () => {
 				const newStage = await buildStageApi.duplicate(id);

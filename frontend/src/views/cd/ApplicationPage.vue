@@ -107,7 +107,7 @@
 							</div>
 							<div class="flex items-center justify-between gap-3">
 								<span class="text-muted-foreground">路由托管</span>
-								<span class="font-medium" :class="routeManagedClass(app.route_managed)">
+								<span class="font-medium text-foreground">
 									{{ routeManagedLabel(app.route_managed) }}
 								</span>
 							</div>
@@ -332,10 +332,6 @@
 
 	function routeManagedLabel(enabled: boolean) {
 		return enabled ? '已启用' : '未启用';
-	}
-
-	function routeManagedClass(enabled: boolean) {
-		return enabled ? 'text-green-600' : 'text-muted-foreground';
 	}
 
 	function isAppOperating(app: Application) {

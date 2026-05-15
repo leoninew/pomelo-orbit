@@ -29,6 +29,10 @@ class BuildStageRepositoryImpl(BuildStageRepository):
         self._session = session
         self._mapper = BuildStageMapper()
 
+    def find_by_id(self, stage_id: str) -> BuildStage | None:
+        orm = self._session.query(BuildStageModel).filter(BuildStageModel.id == stage_id).first()
+        return self._mapper.to_domain(orm) if orm else None
+
     def find_by_id_in_project(self, project_id: str, stage_id: str) -> BuildStage | None:
         orm = (
             self._session.query(BuildStageModel)
@@ -114,6 +118,10 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
         )
         stages = [self._stage_mapper.to_domain(s) for s in stage_orms]
         return PipelineTemplateMapper.to_domain(orm, orchestration, stages)
+
+    def find_by_id(self, template_id: str) -> PipelineTemplate | None:
+        orm = self._session.query(PipelineTemplateModel).filter(PipelineTemplateModel.id == template_id).first()
+        return self._load(orm) if orm else None
 
     def find_by_id_in_project(self, project_id: str, template_id: str) -> PipelineTemplate | None:
         orm = (

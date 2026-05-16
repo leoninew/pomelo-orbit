@@ -76,14 +76,14 @@
 			<DropdownMenuTrigger
 				class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/20 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
 				:aria-label="t('app.userMenuAria')"
-				@click="loadProjects"
+				@click="handleUserMenuOpen"
 			>
 				<span
 					class="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground"
 				>
-					{{ userInitial }}
+					{{ (authStore.user?.username || 'admin').slice(0, 1).toUpperCase() }}
 				</span>
-				<span class="hidden text-sm lg:inline">{{ userName }}</span>
+				<span class="hidden text-sm lg:inline">{{ authStore.user?.username || 'admin' }}</span>
 				<ChevronDown class="hidden size-4 text-muted-foreground sm:block" />
 			</DropdownMenuTrigger>
 			<DropdownMenuPortal>
@@ -92,39 +92,43 @@
 					align="end"
 					:side-offset="8"
 				>
-					<div class="px-3 py-2">
-						<p class="text-xs font-medium text-muted-foreground">
-							{{ t('project.currentProject') }}
-						</p>
-						<p class="mt-1 truncate text-sm font-medium text-foreground">
-							{{ activeProjectLabel }}
-						</p>
-					</div>
-					<div class="my-1 h-px bg-border" />
-					<div
-						v-if="projectStore.projects.length === 0"
-						class="px-3 py-2 text-sm text-muted-foreground"
-					>
-						{{ t('project.noProjects') }}
-					</div>
-					<DropdownMenuItem
-						v-for="project in projectStore.projects"
-						:key="project.id"
-						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
-						@select="handleSetActiveProject(project.id)"
-					>
-						<Check v-if="project.id === projectStore.activeProjectId" class="size-4 text-primary" />
-						<span v-else class="size-4" />
-						<span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
-						<span class="text-xs text-muted-foreground">{{ project.code }}</span>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
-						@select="openProjectManagement"
-					>
-						<FolderKanban class="size-4" />
-						{{ t('project.projectManagement') }}
-					</DropdownMenuItem>
+					<DropdownMenuSub>
+						<DropdownMenuSubTrigger
+							class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent"
+						>
+							<FolderKanban class="size-4" />
+							<span class="min-w-0 flex-1 truncate">{{ activeProjectLabel }}</span>
+							<ChevronRight class="size-4 text-muted-foreground" />
+						</DropdownMenuSubTrigger>
+						<DropdownMenuPortal>
+							<DropdownMenuSubContent
+								class="z-50 min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
+								:side-offset="8"
+							>
+								<div v-if="projectStore.loading" class="px-3 py-2 text-sm text-muted-foreground">
+									{{ t('common.loading') }}
+								</div>
+								<template v-else>
+									<DropdownMenuItem
+										v-for="project in projectStore.projects"
+										:key="project.id"
+										class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+										:class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
+										@select="handleSwitchProject(project.id)"
+									>
+										<span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+										<span class="text-xs text-muted-foreground">{{ project.code }}</span>
+									</DropdownMenuItem>
+									<div
+										v-if="projectStore.projects.length === 0"
+										class="px-3 py-2 text-sm text-muted-foreground"
+									>
+										{{ t('project.noProjects') }}
+									</div>
+								</template>
+							</DropdownMenuSubContent>
+						</DropdownMenuPortal>
+					</DropdownMenuSub>
 					<div class="my-1 h-px bg-border" />
 					<DropdownMenuItem
 						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
@@ -141,8 +145,8 @@
 
 <script setup lang="ts">
 	import {
-		Check,
 		ChevronDown,
+		ChevronRight,
 		FolderKanban,
 		Languages,
 		LogOut,
@@ -158,12 +162,16 @@
 	import { useProjectStore } from '@/stores/project';
 	import { useTheme } from '@/composables/useTheme';
 	import { setLocale, type Locale } from '@/i18n';
+	import { useToast } from '@/composables/useToast';
 	import config from '@/config';
 	import {
 		DropdownMenuContent,
 		DropdownMenuItem,
 		DropdownMenuPortal,
 		DropdownMenuRoot,
+		DropdownMenuSub,
+		DropdownMenuSubContent,
+		DropdownMenuSubTrigger,
 		DropdownMenuTrigger,
 		NavigationMenuItem,
 		NavigationMenuLink,
@@ -182,9 +190,8 @@
 	const projectStore = useProjectStore();
 	const { theme, cycleTheme } = useTheme();
 	const { t, locale } = useI18n({ useScope: 'global' });
+	const toast = useToast();
 
-	const userName = computed(() => authStore.user?.username || 'admin');
-	const userInitial = computed(() => userName.value.slice(0, 1).toUpperCase());
 	const activeProjectLabel = computed(() => {
 		const project = projectStore.activeProject;
 		return project ? `${project.name} / ${project.code}` : t('project.noProjects');
@@ -197,15 +204,12 @@
 		}))
 	);
 
-	const currentLocale = computed(() => locale.value as Locale);
-	const nextLocale = computed<Locale>(() => (currentLocale.value === 'zh-CN' ? 'en-US' : 'zh-CN'));
+	const nextLocale = computed<Locale>(() => (locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'));
 	const nextLocaleShortName = computed(() => (nextLocale.value === 'zh-CN' ? '中' : 'EN'));
-	const nextLocaleName = computed(() =>
-		t(`language.${nextLocale.value === 'zh-CN' ? 'zhCN' : 'enUS'}`)
-	);
-	const switchLocaleLabel = computed(() =>
-		t('language.switchTo', { language: nextLocaleName.value })
-	);
+	const switchLocaleLabel = computed(() => {
+		const localeName = t(`language.${nextLocale.value === 'zh-CN' ? 'zhCN' : 'enUS'}`);
+		return t('language.switchTo', { language: localeName });
+	});
 
 	function toggleLocale() {
 		setLocale(nextLocale.value);
@@ -215,23 +219,21 @@
 		return props.currentModule === moduleKey;
 	}
 
-	async function loadProjects() {
-		if (!authStore.isAuthenticated || projectStore.loading) {
-			return;
-		}
-		try {
-			await projectStore.fetchProjects();
-		} catch {
-			return;
+	async function handleUserMenuOpen() {
+		if (projectStore.projects.length === 0 && !projectStore.loading) {
+			try {
+				await projectStore.fetchProjects();
+			} catch (error: unknown) {
+				toast.error(error instanceof Error ? error.message : '加载项目列表失败');
+			}
 		}
 	}
 
-	function handleSetActiveProject(project_id: string) {
-		projectStore.setActiveProject(project_id);
-	}
-
-	function openProjectManagement() {
-		router.push('/projects');
+	function handleSwitchProject(projectId: string) {
+		if (projectId !== projectStore.activeProjectId) {
+			projectStore.setActiveProject(projectId);
+			router.go(0);
+		}
 	}
 
 	async function handleLogout() {

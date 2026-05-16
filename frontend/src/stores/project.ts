@@ -52,7 +52,6 @@ export const useProjectStore = defineStore('project', () => {
 	async function createProject(data: ProjectCreateReq) {
 		const project = await projectApi.create(data);
 		await fetchProjects();
-		setActiveProject(project.id);
 		return project;
 	}
 

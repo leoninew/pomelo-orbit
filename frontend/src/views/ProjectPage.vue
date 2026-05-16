@@ -30,18 +30,16 @@
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[900px]">
 					<colgroup>
-						<col class="w-[22%]" />
-						<col class="w-[18%]" />
-						<col class="w-[12%]" />
-						<col class="w-[18%]" />
-						<col class="w-[18%]" />
-						<col class="w-[12%]" />
+						<col class="w-[25%]" />
+						<col class="w-[20%]" />
+						<col class="w-[20%]" />
+						<col class="w-[20%]" />
+						<col class="w-[15%]" />
 					</colgroup>
 					<thead>
 						<tr>
 							<th>项目名称</th>
 							<th>项目编码</th>
-							<th>当前项目</th>
 							<th>创建时间</th>
 							<th>更新时间</th>
 							<th>操作</th>
@@ -53,16 +51,6 @@
 								{{ project.name }}
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ project.code }}</td>
-							<td>
-								<AppBadge
-									v-if="project.id === projectStore.activeProjectId"
-									variant="status"
-									tone="success"
-								>
-									当前
-								</AppBadge>
-								<AppBadge v-else variant="status" tone="default">可切换</AppBadge>
-							</td>
 							<td class="whitespace-nowrap text-foreground">
 								{{ formatTime(project.created_at) }}
 							</td>
@@ -70,16 +58,7 @@
 								{{ formatTime(project.updated_at) }}
 							</td>
 							<td class="whitespace-nowrap">
-								<div class="flex items-center gap-3">
-									<button
-										v-if="project.id !== projectStore.activeProjectId"
-										class="app-link-success"
-										@click="handleSetActive(project.id)"
-									>
-										设为当前
-									</button>
-									<button class="app-link" @click="openEditDialog(project)">编辑</button>
-								</div>
+								<button class="app-link" @click="openEditDialog(project)">编辑</button>
 							</td>
 						</tr>
 					</tbody>
@@ -138,7 +117,6 @@
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
 	import type { Project } from '@/types/project';
-	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
@@ -220,11 +198,6 @@
 		await execute(async () => {
 			await projectStore.fetchProjects();
 		});
-	}
-
-	async function handleSetActive(project_id: string) {
-		projectStore.setActiveProject(project_id);
-		toast.success('当前项目已切换');
 	}
 
 	async function handleSave() {

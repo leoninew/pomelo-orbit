@@ -1,0 +1,294 @@
+[
+  {
+    "type": "insert",
+    "table": "application",
+    "data": [
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "name": "Traefik",
+        "code": "traefik",
+        "image_pull_policy": "missing",
+        "status": "stopped",
+        "route_managed": 0,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KN8CG4A5S4VVH6NKNJF4F9NJ",
+        "name": "FileBrowser",
+        "code": "filebrowser",
+        "image_pull_policy": "missing",
+        "status": "stopped",
+        "route_managed": 1,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      }
+    ],
+    "comment": "CD 内置应用：Traefik 和 FileBrowser"
+  },
+  {
+    "type": "insert",
+    "table": "application_config_file",
+    "data": [
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVR",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": ".env",
+        "content": "TRAEFIK_LOG_LEVEL=INFO\n",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVQ",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": "data/traefik.yml.jinja",
+        "content": "api:\n  dashboard: true\n  insecure: true\n\nentryPoints:\n  web:\n    address: \":80\"\n  websecure:\n    address: \":443\"\n\n{% if cert.letsencrypt.enabled %}\ncertificatesResolvers:\n  letsencrypt:\n    acme:\n      email: {{ cert.letsencrypt.email }}\n      storage: /etc/traefik/acme.json\n      {% if cert.letsencrypt.challenge == \"http\" %}\n      httpChallenge:\n        entryPoint: web\n      {% elif cert.letsencrypt.challenge == \"dns\" %}\n      dnsChallenge:\n        provider: {{ cert.letsencrypt.dns_provider }}\n      {% endif %}\n{% endif %}\n\nproviders:\n  file:\n    directory: /etc/traefik/dynamic\n    watch: true\n  docker:\n    endpoint: \"unix:///var/run/docker.sock\"\n    exposedByDefault: false\n    network: traefik\n\nlog:\n  level: INFO\n",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVN",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": "docker-compose.yml.jinja",
+        "content": "services:\n  traefik:\n    image: traefik:3\n    container_name: traefik\n    restart: unless-stopped\n    entrypoint: [\"sh\", \"-c\", \"chmod 600 /etc/traefik/acme.json && exec traefik\"]\n    ports:\n      - \"80:80\"\n      - \"443:443\"\n      - \"8080:8080\"\n    env_file: .env\n    networks:\n      - traefik\n    volumes:\n      - {{ app.physical_app_dir }}/data/traefik.yml:/etc/traefik/traefik.yml:ro\n      - {{ app.physical_app_dir }}/data/dynamic:/etc/traefik/dynamic:ro\n      - {{ app.physical_app_dir }}/data/certs:/etc/traefik/certs:ro\n      - {{ app.physical_app_dir }}/data/acme.json:/etc/traefik/acme.json\n      - /var/run/docker.sock:/var/run/docker.sock:ro\n    labels:\n      {% if cert.letsencrypt.enabled %}\n      # 1. HTTPS 主路由（Traefik 面板）\n      - traefik.enable=true\n      - traefik.http.routers.traefik-https.rule=Host(`{{app.code}}.{{ config.domain_suffix }}`)\n      - traefik.http.routers.traefik-https.entrypoints=websecure\n      - traefik.http.routers.traefik-https.tls=true\n      - traefik.http.routers.traefik-https.tls.certresolver=letsencrypt\n      - traefik.http.routers.traefik-https.service=api@internal\n\n      {% else %}\n      # 2. HTTP 路由\n      - traefik.enable=true\n      - traefik.http.routers.traefik-http.rule=Host(`{{app.code}}.{{ config.domain_suffix }}`)\n      - traefik.http.routers.traefik-http.entrypoints=web\n      - traefik.http.routers.traefik-http.service=api@internal\n      {% endif %}\n\nnetworks:\n  traefik:\n    name: traefik\n    driver: bridge\n",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KKX2YNPF6VJ9N7QYCWG61KVP",
+        "application_id": "01KKX2YNPF6VJ9N7QYCWG61KVM",
+        "path": "init.sh",
+        "content": "#!/bin/bash\nset -e\n\necho \"Initializing Traefik...\"\n\n# 创建应用数据目录\nmkdir -p data/dynamic\nmkdir -p data/certs\n\n# 仅在不存在时创建 acme.json（避免覆盖已有证书）\nif [ ! -f data/acme.json ]; then\n  touch data/acme.json\nfi\n\necho \"Traefik initialized\"\n",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KN8CG4A5PBH7TDXAQ0MD5Z34",
+        "application_id": "01KN8CG4A5S4VVH6NKNJF4F9NJ",
+        "path": "docker-compose.yml.jinja",
+        "content": "services:\n  filebrowser:\n    image: filebrowser/filebrowser\n    container_name: filebrowser\n    restart: unless-stopped\n    environment:\n      - PUID=1000\n      - PGID=1000\n    networks:\n      - traefik\n    volumes:\n      - {{ app.physical_dir }}:/srv\n      - {{ app.physical_app_dir }}/data:/database\n\nnetworks:\n  traefik:\n    external: true\n",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KN8CG4A6PBH7TDXAQ0MD5Z35",
+        "application_id": "01KN8CG4A5S4VVH6NKNJF4F9NJ",
+        "path": "init.sh",
+        "content": "#!/bin/bash\nset -e\n\necho \"Initializing FileBrowser...\"\n\nmkdir -p data\nchown -R 1000:100 data\nchmod 755 data\n\necho \"FileBrowser initialized\"\n",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      }
+    ],
+    "comment": "CD 应用配置文件"
+  },
+  {
+    "type": "insert",
+    "table": "route",
+    "data": [
+      {
+        "id": "01KRRKJAHSNF4FQKSM9D30K6S2",
+        "name": "example-route",
+        "domain": "example.com",
+        "path_prefix": "/",
+        "target_url": "http://127.0.0.1:8081",
+        "enabled": 0,
+        "https_enabled": 0,
+        "cert_pem": null,
+        "cert_key": null,
+        "cert_type": "manual",
+        "project_id": null,
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      }
+    ],
+    "comment": "示例路由配置"
+  },
+  {
+    "type": "insert",
+    "table": "repository",
+    "data": [
+      {
+        "id": "01KNNRBH52BQJYT9487B2H8N62",
+        "name": "golang/example",
+        "code": "golang-example",
+        "repository_url": "https://github.com/golang/example",
+        "git_credential_id": null,
+        "variable_overrides": "[]",
+        "default_branch": "master",
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KP0JZFQQA2Z77FRRVH35BYF6",
+        "name": "docker/awesome-compose",
+        "code": "awesome-compose",
+        "repository_url": "https://github.com/docker/awesome-compose",
+        "git_credential_id": null,
+        "variable_overrides": "[]",
+        "default_branch": "master",
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      }
+    ],
+    "comment": "内置 Repository"
+  },
+  {
+    "type": "insert",
+    "table": "build_stage",
+    "data": [
+      {
+        "id": "01STAGE000000000000000CLONE",
+        "name": "git clone",
+        "image": "alpine/git",
+        "script": "set -e\n# 强制全局关闭 SSL 验证\ngit config --global http.sslVerify \"false\"\ngit config --system http.sslVerify \"false\"\n# 信任工作区目录\ngit config --global --add safe.directory /workspace\n# 初始化仓库\ngit init\ngit remote remove origin 2>/dev/null || true\ngit remote add origin {{ repository_url }}\n# 拉取代码\ngit fetch --depth=1 origin {{ repository_ref }}\ngit checkout -B {{ repository_ref }} FETCH_HEAD",
+        "artifacts": null,
+        "description": "克隆代码仓库",
+        "version": 8,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KNRANZDR4PASATAXKTBBTRX9",
+        "name": "golang:1.23 test",
+        "image": "golang:1.23-alpine",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo test ./...",
+        "artifacts": null,
+        "description": "运行 Go 单元测试",
+        "version": 3,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KNRDSSJ7RNND7110175N4NR2",
+        "name": "golang:1.23 build",
+        "image": "golang:1.23-alpine",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\nmkdir -p dist\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo build -o dist/",
+        "artifacts": null,
+        "description": "运行 Go 构建",
+        "version": 5,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
+        "name": "golang:1.23 lint",
+        "image": "golang:1.23-alpine",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\ngo env -w GOPROXY=https://goproxy.cn,direct\ngo install golang.org/x/lint/golint@latest\ngolint ./...",
+        "artifacts": null,
+        "description": "运行 Go 代码质量",
+        "version": 3,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KP0K4ZTV60PM2XDT11MTX2MY",
+        "name": "docker build",
+        "image": "docker:29.4",
+        "script": "set -e\ncd {{ working_dir | default('.') }}\ndocker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile | default('Dockerfile') }} .\n# docker push {{ repository_code }}:{{ runtime_datetime }}",
+        "artifacts": "[{\"type\": \"docker_image\", \"path\": \"{{ repository_code }}:{{ runtime_datetime }}\", \"name\": \"{{ repository_code }}\"}]",
+        "description": "通用镜像构建+推送",
+        "version": 16,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      }
+    ],
+    "comment": "内置 Stage 预设"
+  },
+  {
+    "type": "insert",
+    "table": "pipeline_template",
+    "data": [
+      {
+        "id": "01KNVEJPWVK757139NMNNNCEFE",
+        "name": "Go 构建流水线",
+        "description": "- test & lint\n- build",
+        "variable_declarations": "[{\"name\":\"working_dir\",\"description\":\"\",\"default\":\".\",\"value\":\"hello\",\"secret\":false,\"source\":\"template_custom\",\"editable\":true}]",
+        "version": 7,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      },
+      {
+        "id": "01KP0K6W1YW73REFQE8YAVTPMN",
+        "name": "通用容器镜像流水线",
+        "description": "- docker build",
+        "variable_declarations": "[]",
+        "version": 24,
+        "project_id": "01KRRKK0K3T519ZQZES3M4QA9Z",
+        "created_at": "2024-03-16T00:00:00Z",
+        "updated_at": "2024-03-16T00:00:00Z"
+      }
+    ],
+    "comment": "内置模板"
+  },
+  {
+    "type": "insert",
+    "table": "pipeline_template_stage",
+    "data": [
+      {
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCK",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
+        "stage_id": "01STAGE000000000000000CLONE",
+        "stage_name": "git clone",
+        "stage_version": 8,
+        "depends_on": "[]",
+        "sort_order": 0
+      },
+      {
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCM",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
+        "stage_id": "01KNRANZDR4PASATAXKTBBTRX9",
+        "stage_name": "golang:1.23 test",
+        "stage_version": 3,
+        "depends_on": "[\"01STAGE000000000000000CLONE\"]",
+        "sort_order": 1
+      },
+      {
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCN",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
+        "stage_id": "01KNRKNAHG3EBS07VBK2YY5ZQN",
+        "stage_name": "golang:1.23 lint",
+        "stage_version": 3,
+        "depends_on": "[\"01STAGE000000000000000CLONE\"]",
+        "sort_order": 2
+      },
+      {
+        "id": "01KRCWNJVA1DM02TJXZ4STJCCP",
+        "template_id": "01KNVEJPWVK757139NMNNNCEFE",
+        "stage_id": "01KNRDSSJ7RNND7110175N4NR2",
+        "stage_name": "golang:1.23 build",
+        "stage_version": 5,
+        "depends_on": "[\"01KNRANZDR4PASATAXKTBBTRX9\"]",
+        "sort_order": 3
+      },
+      {
+        "id": "01KRCYJJF8GNWTA76CE2M4QXAZ",
+        "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
+        "stage_id": "01STAGE000000000000000CLONE",
+        "stage_name": "git clone",
+        "stage_version": 8,
+        "depends_on": "[]",
+        "sort_order": 0
+      },
+      {
+        "id": "01KRCYJJF8GNWTA76CE2M4QXB0",
+        "template_id": "01KP0K6W1YW73REFQE8YAVTPMN",
+        "stage_id": "01KP0K4ZTV60PM2XDT11MTX2MY",
+        "stage_name": "docker build",
+        "stage_version": 16,
+        "depends_on": "[\"01STAGE000000000000000CLONE\"]",
+        "sort_order": 1
+      }
+    ],
+    "comment": "内置模板的 Stage 编排"
+  }
+]

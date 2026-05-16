@@ -46,6 +46,7 @@ class ProjectModel(Base):
     owner_user_id: Mapped[str] = mapped_column(
         String(26), ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 

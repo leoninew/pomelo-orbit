@@ -10,6 +10,7 @@ class ProjectMapper:
             name=model.name,
             code=model.code,
             owner_user_id=model.owner_user_id,
+            is_active=model.is_active,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
@@ -21,6 +22,7 @@ class ProjectMapper:
             name=entity.name,
             code=entity.code,
             owner_user_id=entity.owner_user_id,
+            is_active=entity.is_active,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )

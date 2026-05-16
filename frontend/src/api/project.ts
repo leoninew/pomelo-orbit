@@ -17,4 +17,8 @@ export const projectApi = {
 	update(id: string, data: ProjectUpdateReq): Promise<Project> {
 		return request.put(`/api/project/${id}`, data);
 	},
+
+	deprecate(id: string): Promise<void> {
+		return request.post(`/api/project/${id}/deprecate`);
+	},
 };

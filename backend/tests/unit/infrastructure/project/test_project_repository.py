@@ -11,6 +11,7 @@ class TestProjectRepository:
             name="Project One",
             code="project-one",
             owner_user_id="user-1",
+            is_active=True,
             created_at=utc_now(),
             updated_at=utc_now(),
         )
@@ -29,6 +30,7 @@ class TestProjectRepository:
                 name="Project One",
                 code="project-one",
                 owner_user_id="user-1",
+                is_active=True,
                 created_at=utc_now(),
                 updated_at=utc_now(),
             )
@@ -45,6 +47,7 @@ class TestProjectRepository:
                 name="Project One",
                 code="project-one",
                 owner_user_id="user-1",
+                is_active=True,
                 created_at=utc_now(),
                 updated_at=utc_now(),
             )

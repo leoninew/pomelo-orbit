@@ -3,6 +3,7 @@ export interface Project {
 	name: string
 	code: string
 	owner_user_id: string
+	is_active: boolean
 	created_at: string
 	updated_at: string
 }

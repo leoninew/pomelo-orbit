@@ -58,3 +58,12 @@ def update_project(
         code=data.code,
     )
     return ProjectResp.model_validate(project)
+
+
+@router.post("/{project_id}/deprecate", status_code=204)
+def deprecate_project(
+    project_id: str,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    project_service.deprecate_project(current_user.id, project_id)

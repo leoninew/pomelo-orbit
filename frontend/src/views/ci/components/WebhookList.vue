@@ -149,7 +149,7 @@
 
 <script setup lang="ts">
 	import { Copy, Plus } from 'lucide-vue-next';
-	import { computed, reactive, ref } from 'vue';
+	import { computed, nextTick, reactive, ref } from 'vue';
 	import { webhookApi } from '@/api/ci';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -284,8 +284,10 @@
 		}
 	}
 
-	function handleDelete(wh: RepositoryWebhook) {
+	async function handleDelete(wh: RepositoryWebhook) {
 		deletingWebhook.value = wh;
+		(document.activeElement as HTMLElement)?.blur();
+		await nextTick();
 		isDeleteDialogOpen.value = true;
 	}
 

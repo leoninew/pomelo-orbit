@@ -179,7 +179,7 @@
 
 <script setup lang="ts">
 	import { Plus, Upload } from 'lucide-vue-next';
-	import { computed, onMounted, reactive, ref } from 'vue';
+	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { credentialApi } from '@/api/ci';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -319,8 +319,10 @@
 		}
 	}
 
-	function confirmDelete(id: string) {
+	async function confirmDelete(id: string) {
 		pendingDeleteId.value = id;
+		(document.activeElement as HTMLElement)?.blur();
+		await nextTick();
 		showDeleteDialog.value = true;
 	}
 

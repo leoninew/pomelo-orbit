@@ -61,6 +61,11 @@ export const useProjectStore = defineStore('project', () => {
 		return project;
 	}
 
+	async function deprecateProject(id: string) {
+		await projectApi.deprecate(id);
+		await fetchProjects();
+	}
+
 	return {
 		projects,
 		activeProjectId,
@@ -71,5 +76,6 @@ export const useProjectStore = defineStore('project', () => {
 		clearProjects,
 		createProject,
 		updateProject,
+		deprecateProject,
 	};
 });

@@ -30,8 +30,9 @@
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[900px]">
 					<colgroup>
-						<col class="w-[25%]" />
 						<col class="w-[20%]" />
+						<col class="w-[15%]" />
+						<col class="w-[10%]" />
 						<col class="w-[20%]" />
 						<col class="w-[20%]" />
 						<col class="w-[15%]" />
@@ -40,6 +41,7 @@
 						<tr>
 							<th>项目名称</th>
 							<th>项目编码</th>
+							<th>状态</th>
 							<th>创建时间</th>
 							<th>更新时间</th>
 							<th>操作</th>
@@ -51,6 +53,10 @@
 								{{ project.name }}
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ project.code }}</td>
+							<td>
+								<AppBadge v-if="project.is_active" variant="status" tone="success">活跃</AppBadge>
+								<AppBadge v-else variant="status" tone="default">已废弃</AppBadge>
+							</td>
 							<td class="whitespace-nowrap text-foreground">
 								{{ formatTime(project.created_at) }}
 							</td>
@@ -58,7 +64,16 @@
 								{{ formatTime(project.updated_at) }}
 							</td>
 							<td class="whitespace-nowrap">
-								<button class="app-link" @click="openEditDialog(project)">编辑</button>
+								<div class="flex items-center gap-3">
+									<button class="app-link" @click="openEditDialog(project)">编辑</button>
+									<button
+										v-if="project.is_active"
+										class="app-link-danger"
+										@click="openDeprecateDialog(project)"
+									>
+										废弃
+									</button>
+								</div>
 							</td>
 						</tr>
 					</tbody>
@@ -109,12 +124,26 @@
 				</button>
 			</template>
 		</AppDialog>
+
+		<AppDialog v-model:open="isDeprecateDialogOpen" title="废弃项目">
+			<p class="text-sm text-foreground">
+				确定要废弃项目
+				<strong>{{ deprecatingProject?.name }}</strong>
+				吗？废弃后将无法切换到该项目。
+			</p>
+			<template #footer>
+				<button class="app-button" @click="isDeprecateDialogOpen = false">取消</button>
+				<button class="app-button-danger" :disabled="operating" @click="handleDeprecate">
+					废弃
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>
 
 <script setup lang="ts">
 	import { Plus } from 'lucide-vue-next';
-	import { computed, onMounted, reactive, ref } from 'vue';
+	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
 	import type { Project } from '@/types/project';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -133,7 +162,9 @@
 
 	const searchText = ref('');
 	const isDialogOpen = ref(false);
+	const isDeprecateDialogOpen = ref(false);
 	const editingProject = ref<Project | null>(null);
+	const deprecatingProject = ref<Project | null>(null);
 	const pagination = reactive({ current: 1, pageSize: 10 });
 	const form = reactive({ name: '', code: '' });
 	const errors = reactive({ name: '', code: '' });
@@ -181,6 +212,13 @@
 		isDialogOpen.value = true;
 	}
 
+	async function openDeprecateDialog(project: Project) {
+		deprecatingProject.value = project;
+		(document.activeElement as HTMLElement)?.blur();
+		await nextTick();
+		isDeprecateDialogOpen.value = true;
+	}
+
 	function handleSearch() {
 		pagination.current = 1;
 	}
@@ -216,6 +254,18 @@
 				toast.success('项目已创建');
 			}
 			isDialogOpen.value = false;
+		});
+	}
+
+	async function handleDeprecate() {
+		if (!deprecatingProject.value) {
+			return;
+		}
+		const projectId = deprecatingProject.value.id;
+		await executeOp(async () => {
+			await projectStore.deprecateProject(projectId);
+			toast.success('项目已废弃');
+			isDeprecateDialogOpen.value = false;
 		});
 	}
 

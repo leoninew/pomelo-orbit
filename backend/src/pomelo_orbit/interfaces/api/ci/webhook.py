@@ -7,19 +7,17 @@ from typing import Annotated
 
 from dishka import AsyncContainer
 from dishka.integrations.fastapi import FromDishka, inject
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 
 from pomelo_orbit.application.ci.di import get_pipeline_run_service, get_webhook_service
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
 from pomelo_orbit.application.ci.webhook_service import WebhookService
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
-from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.webhook import (
     ProjectWebhookCreateReq,
     ProjectWebhookResp,
     ProjectWebhookUpdateReq,
 )
-from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 logger = logging.getLogger(__name__)
@@ -31,11 +29,9 @@ router = APIRouter(tags=["webhooks"])
 def list_webhooks(
     repository_id: str,
     webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> list[ProjectWebhookResp]:
-    return [
-        ProjectWebhookResp.model_validate(wh) for wh in webhook_service.list_webhooks(current_project.id, repository_id)
-    ]
+    return [ProjectWebhookResp.model_validate(wh) for wh in webhook_service.list_webhooks(project_id, repository_id)]
 
 
 @router.post("/repository/{repository_id}/webhook", response_model=ProjectWebhookResp, status_code=201)
@@ -43,10 +39,10 @@ def create_webhook(
     repository_id: str,
     data: ProjectWebhookCreateReq,
     webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> ProjectWebhookResp:
     wh = webhook_service.create_webhook(
-        project_id=current_project.id,
+        project_id=project_id,
         repository_id=repository_id,
         name=data.name,
         template_id=data.template_id,
@@ -62,10 +58,10 @@ def update_webhook(
     webhook_id: str,
     data: ProjectWebhookUpdateReq,
     webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> ProjectWebhookResp:
     wh = webhook_service.update_webhook(
-        project_id=current_project.id,
+        project_id=project_id,
         repository_id=repository_id,
         webhook_id=webhook_id,
         name=data.name,
@@ -82,9 +78,9 @@ def delete_webhook(
     repository_id: str,
     webhook_id: str,
     webhook_service: Annotated[WebhookService, Depends(get_webhook_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> None:
-    webhook_service.delete_webhook(current_project.id, repository_id, webhook_id)
+    webhook_service.delete_webhook(project_id, repository_id, webhook_id)
 
 
 @router.post("/webhook/{webhook_id}")

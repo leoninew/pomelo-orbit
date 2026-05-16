@@ -320,9 +320,11 @@ class ApplicationService:
 
     # ==================== 应用 CRUD ====================
 
-    def list_applications(self, page: int, per_page: int, search: str | None = None) -> tuple[list[Application], int]:
+    def list_applications(
+        self, project_id: str, page: int, per_page: int, search: str | None = None
+    ) -> tuple[list[Application], int]:
         """获取应用分页列表"""
-        return self.app_repo.find_paginated(page, per_page, search)
+        return self.app_repo.find_paginated(project_id, page, per_page, search)
 
     def get_application(self, application_id: str) -> Application:
         """获取应用详情"""
@@ -333,6 +335,7 @@ class ApplicationService:
 
     def create_application(
         self,
+        project_id: str,
         name: str,
         code: str,
         image_pull_policy: str,
@@ -344,6 +347,7 @@ class ApplicationService:
 
         app = Application(
             id=str(ULID()),
+            project_id=project_id,
             name=name,
             code=code,
             image_pull_policy=image_pull_policy,
@@ -440,6 +444,7 @@ class ApplicationService:
 
     def create_deployment(
         self,
+        project_id: str,
         application_id: str,
         operation_type: OperationType,
         trigger_type: TriggerType,
@@ -452,6 +457,7 @@ class ApplicationService:
 
         deployment = Deployment(
             id=str(ULID()),
+            project_id=project_id,
             application_id=app.id,
             application_name=app.name,
             operation_type=operation_type,
@@ -494,7 +500,7 @@ class ApplicationService:
             "routes": [{"service_name": r.service_name, "domain": r.domain, "port": r.port} for r in routes],
         }
 
-    def import_application(self, data: dict) -> Application:
+    def import_application(self, project_id: str, data: dict) -> Application:
         """导入应用数据"""
         existing_name = self.app_repo.find_by_name(data["name"])
         if existing_name:
@@ -506,6 +512,7 @@ class ApplicationService:
 
         app = Application(
             id=str(ULID()),
+            project_id=project_id,
             name=data["name"],
             code=data["code"],
             image_pull_policy=data.get("image_pull_policy", "missing"),

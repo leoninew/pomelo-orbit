@@ -187,9 +187,11 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import { formatTime } from '@/utils/time';
 
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -267,9 +269,14 @@
 		if (!validate()) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('未选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				await routeApi.create(form);
+				await routeApi.create(form, { project_id: projectId });
 				toast.success('添加成功');
 				isCreateDialogOpen.value = false;
 				fetchData();

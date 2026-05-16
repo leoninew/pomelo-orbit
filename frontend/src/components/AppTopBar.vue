@@ -226,8 +226,8 @@
 		}
 	}
 
-	function handleSetActiveProject(projectId: string) {
-		projectStore.setActiveProject(projectId);
+	function handleSetActiveProject(project_id: string) {
+		projectStore.setActiveProject(project_id);
 	}
 
 	function openProjectManagement() {

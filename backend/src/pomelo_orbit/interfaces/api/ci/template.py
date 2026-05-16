@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, Query
 from pomelo_orbit.application.ci.di import get_template_service
 from pomelo_orbit.application.ci.template_service import TemplateService
 from pomelo_orbit.domain.ci.value_objects import StageOrchestration, VariableDeclaration
-from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import (
     PipelineTemplateCreateReq,
     PipelineTemplateResp,
@@ -18,7 +17,6 @@ from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import (
     VariableDeclarationDto,
 )
 from pomelo_orbit.interfaces.api.common import PaginatedResp
-from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +26,12 @@ router = APIRouter(prefix="/template", tags=["template"])
 @router.get("", response_model=PaginatedResp[PipelineTemplateResp])
 def list_templates(
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineTemplateResp]:
-    items, total = template_service.list_templates(current_project.id, page=page, per_page=per_page, search=search)
+    items, total = template_service.list_templates(project_id, page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[PipelineTemplateResp.model_validate(t) for t in items],
         total=total,
@@ -47,11 +45,11 @@ def list_templates(
 def create_template(
     data: PipelineTemplateCreateReq,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> PipelineTemplateResp:
     decls = [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
     tmpl = template_service.create_template(
-        project_id=current_project.id,
+        project_id=project_id,
         name=data.name,
         description=data.description,
         variable_declarations=decls,
@@ -96,11 +94,11 @@ def update_template(
 def resolve_template_variables(
     data: TemplateVariableResolveReq,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> list[VariableDeclarationDto]:
     decls = [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
     orch = [StageOrchestration(**o.model_dump()) for o in data.orchestration]
-    resolved = template_service.resolve_template_variables(current_project.id, orch, decls)
+    resolved = template_service.resolve_template_variables(project_id, orch, decls)
     return [VariableDeclarationDto.model_validate(decl) for decl in resolved]
 
 

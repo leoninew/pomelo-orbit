@@ -15,9 +15,9 @@ export const useProjectStore = defineStore('project', () => {
 		projects.value.find((project) => project.id === activeProjectId.value)
 	);
 
-	function setActiveProject(projectId: string) {
-		activeProjectId.value = projectId;
-		storageStore.setItem(ACTIVE_PROJECT_ID_KEY, projectId);
+	function setActiveProject(project_id: string) {
+		activeProjectId.value = project_id;
+		storageStore.setItem(ACTIVE_PROJECT_ID_KEY, project_id);
 	}
 
 	function clearProjects() {

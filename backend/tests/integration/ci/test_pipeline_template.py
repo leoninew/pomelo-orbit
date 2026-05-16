@@ -9,7 +9,7 @@ STAGE_PAYLOAD = [{"name": "build", "image": "alpine:latest", "script": "echo bui
 
 class TestPipelineTemplateList:
     def test_returns_paginated_structure(self, auth_client, test_template):
-        resp = auth_client.get("/api/ci/template")
+        resp = auth_client.get(f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -18,7 +18,7 @@ class TestPipelineTemplateList:
         assert "per_page" in data
 
     def test_items_contain_required_fields(self, auth_client, test_template):
-        resp = auth_client.get("/api/ci/template")
+        resp = auth_client.get(f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}")
         item = resp.json()["items"][0]
         assert "id" in item
         assert "name" in item
@@ -36,7 +36,7 @@ class TestPipelineTemplateList:
             )
         db_session.commit()
 
-        resp = auth_client.get("/api/ci/template?page=1&per_page=2")
+        resp = auth_client.get(f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}&page=1&per_page=2")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["items"]) == 2
@@ -46,7 +46,7 @@ class TestPipelineTemplateList:
 class TestPipelineTemplateCreate:
     def test_creates_template(self, auth_client):
         resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "new-template",
                 "description": "desc",
@@ -87,7 +87,7 @@ class TestPipelineTemplateDelete:
     def test_cannot_delete_referenced_template(self, auth_client, test_template, test_project):
         # 创建一个 webhook 引用该模板
         webhook_resp = auth_client.post(
-            f"/api/ci/repository/{test_project.id}/webhook",
+            f"/api/ci/repository/{test_project.id}/webhook?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-webhook",
                 "template_id": test_template.id,

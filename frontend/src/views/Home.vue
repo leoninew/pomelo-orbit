@@ -95,7 +95,7 @@
 								</td>
 								<td>
 									<AppBadge variant="status" :tone="statusTone(run.status)">
-										{{ statusLabel(run.status) }}
+										{{ run.status }}
 									</AppBadge>
 								</td>
 							</tr>
@@ -152,7 +152,7 @@
 								</td>
 								<td>
 									<AppBadge variant="status" :tone="statusTone(deployment.status)">
-										{{ statusLabel(deployment.status) }}
+										{{ deployment.status }}
 									</AppBadge>
 								</td>
 							</tr>
@@ -179,7 +179,7 @@
 	import { useProjectStore } from '@/stores/project';
 	import type { Deployment } from '@/types/cd/deployment';
 	import type { PipelineRun } from '@/types/ci/run';
-	import { statusLabel, statusTone } from '@/utils/status';
+	import { statusTone } from '@/utils/status';
 	import { formatTime, getTodayStart } from '@/utils/time';
 
 	// 导入卡片图片
@@ -277,21 +277,22 @@
 				// 并行请求所有数据以提升性能
 				const [ciProjectsRes, ciRunsRes, ciTodayRunsRes, cdAppsRes, cdTodayRes, cdRecentRes] =
 					await Promise.all([
-						repositoryApi.list({ per_page: 1, projectId: activeProjectId }),
-						pipelineRunApi.list({ per_page: 5, projectId: activeProjectId }),
+						repositoryApi.list({ per_page: 1, project_id: activeProjectId }),
+						pipelineRunApi.list({ per_page: 5, project_id: activeProjectId }),
 						pipelineRunApi.list({
 							per_page: 1,
 							date_from: todayStart.toISOString(),
 							date_to: todayEnd.toISOString(),
-							projectId: activeProjectId,
+							project_id: activeProjectId,
 						}),
-						applicationApi.list({ per_page: 1 }),
+						applicationApi.list({ per_page: 1, project_id: activeProjectId }),
 						deploymentApi.list({
 							per_page: 1,
 							date_from: todayStart.toISOString(),
 							date_to: todayEnd.toISOString(),
+							project_id: activeProjectId,
 						}),
-						deploymentApi.list({ per_page: 5 }),
+						deploymentApi.list({ per_page: 5, project_id: activeProjectId }),
 					]);
 
 				ciStats.projectCount = ciProjectsRes.total;

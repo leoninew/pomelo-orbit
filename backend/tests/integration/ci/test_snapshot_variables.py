@@ -2,6 +2,8 @@
 
 import pytest
 
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
 
 class TestSnapshotVariables:
     """测试快照中的变量存储"""
@@ -18,7 +20,7 @@ class TestSnapshotVariables:
         """
         # 1. 创建模板
         template_resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "Test Template",
                 "description": "",
@@ -29,7 +31,7 @@ class TestSnapshotVariables:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "build",
                 "image": "alpine",
@@ -67,7 +69,7 @@ class TestSnapshotVariables:
 
         # 4. 创建仓库
         repo_resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-repo",
                 "code": "test-repo",
@@ -122,7 +124,7 @@ class TestSnapshotVariables:
         """
         # 1. 创建模板
         template_resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "Test Template",
                 "description": "",

@@ -14,9 +14,11 @@ class ProjectService:
         return self.project_repo.find_by_owner(owner_user_id)
 
     def get_project(self, owner_user_id: str, project_id: str) -> Project:
-        project = self.project_repo.find_by_owner_and_id(owner_user_id, project_id)
+        project = self.project_repo.find_by_id(project_id)
         if not project:
             raise BusinessError(f"Project {project_id} not found", status_code=404)
+        if project.owner_user_id != owner_user_id:
+            raise BusinessError(f"Project {project_id} owner not match", status_code=400)
         return project
 
     def create_project(self, owner_user_id: str, name: str, code: str) -> Project:

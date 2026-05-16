@@ -38,7 +38,7 @@ from pomelo_orbit.infrastructure.ci.models import (
 )
 
 
-def _require_project_id(project_id: str | None) -> str:
+def _require_project_id(project_id: str) -> str:
     assert project_id is not None, "project_id is required but was None"
     return project_id
 

@@ -410,7 +410,7 @@
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
-	import { useProjectId } from '@/composables/useProjectId';
+	import { useProjectStore } from '@/stores/project';
 	import type {
 		ArtifactDeclaration,
 		BuildStage,
@@ -427,7 +427,7 @@
 	const router = useRouter();
 	const templateId = computed(() => route.params.id as string);
 	const toast = useToast();
-	const { requireProjectId } = useProjectId();
+	const projectStore = useProjectStore();
 
 	const { status, execute } = useStatusAsync();
 	const { loading: saving, execute: executeSave } = useStatusAsync();
@@ -590,10 +590,15 @@
 	}
 
 	async function searchStages() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			const resp = await buildStageApi.list({
 				per_page: 100,
-				projectId: requireProjectId(),
+				project_id: projectId,
 			});
 			stageOptions.value = resp.items;
 		} catch (err: unknown) {
@@ -610,6 +615,11 @@
 	}
 
 	async function syncDeclarations() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			declarations.value = await pipelineTemplateApi.resolveVariables({
 				orchestration: sortableOrch.value.map((item, index) => ({
@@ -822,10 +832,15 @@
 	// ── 运行流水线 ──────────────────────────────────────────────────────────────────
 
 	async function searchRepos() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			const resp = await repositoryApi.list({
 				per_page: 100,
-				projectId: requireProjectId(),
+				project_id: projectId,
 			});
 			repoOptions.value = resp.items;
 		} catch (err: unknown) {

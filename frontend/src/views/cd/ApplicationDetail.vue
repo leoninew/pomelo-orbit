@@ -633,7 +633,7 @@
 		ComposeServiceResp,
 		ConfigFile,
 	} from '@/types/cd/application';
-	import { appStatusLabel, appStatusTone } from '@/utils/status';
+	import { appStatusTone } from '@/utils/status';
 	import { delayAsync, formatTime } from '@/utils/time';
 
 	const route = useRoute();
@@ -726,9 +726,7 @@
 	const statusTone = computed(() =>
 		application.value ? appStatusTone(application.value.status) : 'default'
 	);
-	const statusText = computed(() =>
-		application.value ? appStatusLabel(application.value.status) : ''
-	);
+	const statusText = computed(() => (application.value ? application.value.status : ''));
 
 	async function fetchApplication() {
 		try {

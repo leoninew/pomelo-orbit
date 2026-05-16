@@ -21,7 +21,6 @@ from pomelo_orbit.application.ci.repository_service import RepositoryService
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
 from pomelo_orbit.domain.exceptions import BusinessError
-from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp, TriggerPipelineReq
 from pomelo_orbit.interfaces.api.ci.dto.repository import (
     RepositoryCreateReq,
@@ -30,7 +29,6 @@ from pomelo_orbit.interfaces.api.ci.dto.repository import (
     RepositoryUpdateReq,
 )
 from pomelo_orbit.interfaces.api.common import PaginatedResp
-from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 logger = logging.getLogger(__name__)
@@ -41,14 +39,12 @@ router = APIRouter(prefix="/repository", tags=["repository"])
 @router.get("", response_model=PaginatedResp[RepositoryListResp])
 def list_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[RepositoryListResp]:
-    repositories, total = repository_service.list_repositories(
-        current_project.id, page=page, per_page=per_page, search=search
-    )
+    repositories, total = repository_service.list_repositories(project_id, page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[RepositoryListResp.from_domain(repo) for repo in repositories],
         total=total,
@@ -73,10 +69,10 @@ def create_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> RepositoryResp:
     repository = repository_service.create_repository(
-        project_id=current_project.id,
+        project_id=project_id,
         name=data.name,
         code=data.code,
         repository_url=data.repository_url,
@@ -148,12 +144,12 @@ def delete_repository(
 def list_repository_runs(
     repository_id: str,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> PaginatedResp[PipelineRunResp]:
     result = pipeline_run_service.list_runs(
-        project_id=current_project.id, repository_id=repository_id, page=page, per_page=per_page
+        project_id=project_id, repository_id=repository_id, page=page, per_page=per_page
     )
     return PaginatedResp(
         items=[PipelineRunResp.model_validate(r) for r in result.runs],
@@ -171,11 +167,14 @@ async def trigger_pipeline(
     data: TriggerPipelineReq,
     background_tasks: BackgroundTasks,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     container: FromDishka[AsyncContainer],
 ) -> PipelineRunResp:
+    # 从 repository 获取 project_id
+    repository = repository_service.get_repository(repository_id)
+
     result = pipeline_run_service.create_run(
-        project_id=current_project.id,
+        project_id=repository.project_id,
         repository_id=repository_id,
         template_id=data.template_id,
         trigger=PipelineRunTrigger.MANUAL,

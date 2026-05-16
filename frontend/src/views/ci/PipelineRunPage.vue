@@ -89,7 +89,7 @@
 							</td>
 							<td>
 								<AppBadge variant="status" :tone="statusTone(run.status)">
-									{{ statusLabel(run.status) }}
+									{{ run.status }}
 								</AppBadge>
 							</td>
 							<td
@@ -148,7 +148,7 @@
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { PipelineTemplate } from '@/types/ci/template';
-	import { statusLabel, statusTone } from '@/utils/status';
+	import { statusTone } from '@/utils/status';
 	import { formatTime, formatDuration } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 
@@ -193,7 +193,7 @@
 					per_page: pagination.pageSize,
 					repository_id: query.repository_id || undefined,
 					template_id: query.template_id || undefined,
-					projectId,
+					project_id: projectId,
 				});
 				runs.value = res.items;
 				pagination.total = res.total;
@@ -209,7 +209,7 @@
 			return;
 		}
 		try {
-			const res = await repositoryApi.list({ per_page: 100, projectId });
+			const res = await repositoryApi.list({ per_page: 100, project_id: projectId });
 			repositories.value = res.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
@@ -222,7 +222,7 @@
 			return;
 		}
 		try {
-			const res = await pipelineTemplateApi.list({ per_page: 100, projectId });
+			const res = await pipelineTemplateApi.list({ per_page: 100, project_id: projectId });
 			templates.value = res.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取模板列表失败');

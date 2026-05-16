@@ -13,10 +13,11 @@ class TestApplicationRepository:
         repo = ApplicationRepositoryImpl(db_session)
         app = Application(
             id="app-1",
+            project_id="test-project-1",
             name="Test App",
             code="test-app",
             image_pull_policy="IfNotPresent",
-            status="stopped",
+            status="undeployed",
             created_at=utc_now(),
         )
 
@@ -33,10 +34,11 @@ class TestApplicationRepository:
         repo = ApplicationRepositoryImpl(db_session)
         app = Application(
             id="app-2",
+            project_id="test-project-1",
             name="My App",
             code="my-app",
             image_pull_policy="IfNotPresent",
-            status="stopped",
+            status="undeployed",
             created_at=utc_now(),
         )
 
@@ -52,10 +54,11 @@ class TestApplicationRepository:
         repo = ApplicationRepositoryImpl(db_session)
         app = Application(
             id="app-3",
+            project_id="test-project-1",
             name="Code App",
             code="code-app",
             image_pull_policy="IfNotPresent",
-            status="stopped",
+            status="undeployed",
             created_at=utc_now(),
         )
 
@@ -71,10 +74,11 @@ class TestApplicationRepository:
         repo = ApplicationRepositoryImpl(db_session)
         app = Application(
             id="app-4",
+            project_id="test-project-1",
             name="Old Name",
             code="old-code",
             image_pull_policy="IfNotPresent",
-            status="stopped",
+            status="undeployed",
             created_at=utc_now(),
         )
         repo.save(app)
@@ -91,10 +95,11 @@ class TestApplicationRepository:
         repo = ApplicationRepositoryImpl(db_session)
         app = Application(
             id="app-5",
+            project_id="test-project-1",
             name="To Delete",
             code="to-delete",
             image_pull_policy="IfNotPresent",
-            status="stopped",
+            status="undeployed",
             created_at=utc_now(),
         )
         repo.save(app)
@@ -109,19 +114,20 @@ class TestApplicationRepository:
         for i in range(25):
             app = Application(
                 id=f"app-page-{i}",
+                project_id="test-project-1",
                 name=f"App {i}",
                 code=f"app-{i}",
                 image_pull_policy="IfNotPresent",
-                status="stopped",
+                status="undeployed",
                 created_at=utc_now(),
             )
             repo.save(app)
 
-        apps, total = repo.find_paginated(page=1, per_page=10)
+        apps, total = repo.find_paginated("test-project-1", page=1, per_page=10)
         assert total == 25
         assert len(apps) == 10
 
-        apps, total = repo.find_paginated(page=3, per_page=10)
+        apps, total = repo.find_paginated("test-project-1", page=3, per_page=10)
         assert total == 25
         assert len(apps) == 5
 
@@ -132,15 +138,16 @@ class TestApplicationRepository:
             name = f"Frontend {i}" if i < 5 else f"Backend {i}"
             app = Application(
                 id=f"app-search-{i}",
+                project_id="test-project-1",
                 name=name,
                 code=f"app-{i}",
                 image_pull_policy="IfNotPresent",
-                status="stopped",
+                status="undeployed",
                 created_at=utc_now(),
             )
             repo.save(app)
 
-        apps, total = repo.find_paginated(search="Frontend")
+        apps, total = repo.find_paginated("test-project-1", search="Frontend")
         assert total == 5
         assert len(apps) == 5
         assert all("Frontend" in app.name for app in apps)

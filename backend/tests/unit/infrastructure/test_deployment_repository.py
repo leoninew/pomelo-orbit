@@ -14,6 +14,7 @@ class TestDeploymentRepository:
         repo = DeploymentRepositoryImpl(db_session)
         deployment = Deployment(
             id="deploy-1",
+            project_id="project-1",
             application_id="app-1",
             application_name="Test App",
             trigger_type=TriggerType.MANUAL,
@@ -37,6 +38,7 @@ class TestDeploymentRepository:
         for i in range(5):
             deployment = Deployment(
                 id=f"deploy-app1-{i}",
+                project_id="project-1",
                 application_id="app-1",
                 application_name="App 1",
                 trigger_type=TriggerType.MANUAL,
@@ -50,6 +52,7 @@ class TestDeploymentRepository:
         for i in range(3):
             deployment = Deployment(
                 id=f"deploy-app2-{i}",
+                project_id="project-1",
                 application_id="app-2",
                 application_name="App 2",
                 trigger_type=TriggerType.MANUAL,
@@ -71,6 +74,7 @@ class TestDeploymentRepository:
         for i in range(25):
             deployment = Deployment(
                 id=f"deploy-page-{i}",
+                project_id="project-1",
                 application_id="app-1",
                 application_name="App 1",
                 trigger_type=TriggerType.MANUAL,
@@ -94,6 +98,7 @@ class TestDeploymentRepository:
         repo = DeploymentRepositoryImpl(db_session)
         deployment = Deployment(
             id="deploy-update",
+            project_id="project-1",
             application_id="app-1",
             application_name="App 1",
             trigger_type=TriggerType.MANUAL,
@@ -118,6 +123,7 @@ class TestDeploymentRepository:
         repo = DeploymentRepositoryImpl(db_session)
         deployment = Deployment(
             id="deploy-delete",
+            project_id="project-1",
             application_id="app-1",
             application_name="App 1",
             trigger_type=TriggerType.MANUAL,

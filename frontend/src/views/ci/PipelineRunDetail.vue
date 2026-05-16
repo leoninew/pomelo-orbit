@@ -367,7 +367,7 @@
 	import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { Artifact, StageRun } from '@/types/ci/stage_run';
-	import { isTerminalStatus, statusLabel, statusTone } from '@/utils/status';
+	import { isTerminalStatus, statusTone } from '@/utils/status';
 	import { delayAsync, formatTime } from '@/utils/time';
 	import StageDAGView from './components/StageDAGView.vue';
 	import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
@@ -417,7 +417,7 @@
 	const isPolling = ref(false);
 
 	const pipelineStatusTone = computed(() => (run.value ? statusTone(run.value.status) : 'default'));
-	const pipelineStatusLabel = computed(() => (run.value ? statusLabel(run.value.status) : ''));
+	const pipelineStatusLabel = computed(() => (run.value ? run.value.status : ''));
 
 	function stageStatusTone(status: string) {
 		return status === 'skipped' ? 'default' : statusTone(status);
@@ -427,7 +427,7 @@
 		if (status === 'skipped') {
 			return '跳过';
 		}
-		return statusLabel(status);
+		return status;
 	}
 
 	function openLogDrawer(sr: StageRun) {

@@ -288,7 +288,7 @@
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
-	import { useProjectId } from '@/composables/useProjectId';
+	import { useProjectStore } from '@/stores/project';
 	import type { Credential } from '@/types/ci/credential';
 	import { credentialTypeLabels } from '@/types/ci/credential';
 	import type { Repository } from '@/types/ci/repository';
@@ -303,7 +303,7 @@
 	const router = useRouter();
 	const repositoryId = route.params.id as string;
 	const toast = useToast();
-	const { requireProjectId } = useProjectId();
+	const projectStore = useProjectStore();
 
 	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -409,8 +409,13 @@
 	}
 
 	async function fetchTemplates() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
-			const res = await pipelineTemplateApi.list({ per_page: 100, projectId: requireProjectId() });
+			const res = await pipelineTemplateApi.list({ per_page: 100, project_id: projectId });
 			templates.value = res.items;
 		} catch {
 			toast.error('获取模板列表失败');
@@ -418,16 +423,26 @@
 	}
 
 	async function fetchWebhooks() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
-			webhooks.value = await webhookApi.list(repositoryId, { projectId: requireProjectId() });
+			webhooks.value = await webhookApi.list(repositoryId, { project_id: projectId });
 		} catch {
 			toast.error('获取 Webhook 列表失败');
 		}
 	}
 
 	async function fetchCredentials() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
-			const res = await credentialApi.list({ per_page: 100, projectId: requireProjectId() });
+			const res = await credentialApi.list({ per_page: 100, project_id: projectId });
 			credentials.value = res.items;
 		} catch {
 			toast.error('获取凭据列表失败');
@@ -469,14 +484,22 @@
 		if (!validateEditForm()) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				const updated = await repositoryApi.update(repositoryId, {
-					name: editForm.name,
-					repository_url: editForm.repository_url,
-					git_credential_id: editForm.git_credential_id || null,
-					default_branch: editForm.default_branch || 'master',
-				});
+				const updated = await repositoryApi.update(
+					repositoryId,
+					{
+						name: editForm.name,
+						repository_url: editForm.repository_url,
+						git_credential_id: editForm.git_credential_id || null,
+						default_branch: editForm.default_branch || 'master',
+					}
+				);
 				repository.value = updated;
 				resetEditForm();
 				toast.success('更新成功');
@@ -537,6 +560,11 @@
 			variableErrors.name = '变量名已存在';
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
 				const nextVariable: VariableDeclaration = {
@@ -546,9 +574,12 @@
 					secret: false,
 					source: 'repository_custom',
 				};
-				const updated = await repositoryApi.update(repositoryId, {
-					variable_overrides: variableOverridesWith(nextVariable),
-				});
+				const updated = await repositoryApi.update(
+					repositoryId,
+					{
+						variable_overrides: variableOverridesWith(nextVariable),
+					}
+				);
 				repository.value = updated;
 				toast.success('添加成功');
 				isAddVariableDialogOpen.value = false;
@@ -562,6 +593,11 @@
 		if (!editingVariableName.value) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
 				const current = repositoryCustomVariables.value.find(
@@ -570,13 +606,16 @@
 				if (!current) {
 					return;
 				}
-				const updated = await repositoryApi.update(repositoryId, {
-					variable_overrides: variableOverridesWith({
-						...current,
-						value: variableForm.value,
-						description: variableForm.description.trim() || undefined,
-					}),
-				});
+				const updated = await repositoryApi.update(
+					repositoryId,
+					{
+						variable_overrides: variableOverridesWith({
+							...current,
+							value: variableForm.value,
+							description: variableForm.description.trim() || undefined,
+						}),
+					}
+				);
 				repository.value = updated;
 				toast.success('更新成功');
 				isEditVariableDialogOpen.value = false;
@@ -587,13 +626,21 @@
 	}
 
 	async function deleteVariable(name: string) {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				const updated = await repositoryApi.update(repositoryId, {
-					variable_overrides: repositoryCustomVariables.value.filter(
-						(variable) => variable.name !== name
-					),
-				});
+				const updated = await repositoryApi.update(
+					repositoryId,
+					{
+						variable_overrides: repositoryCustomVariables.value.filter(
+							(variable) => variable.name !== name
+						),
+					}
+				);
 				repository.value = updated;
 				toast.success('删除成功');
 			});

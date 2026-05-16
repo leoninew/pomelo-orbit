@@ -235,7 +235,7 @@ class SSHTunnel:
                 continue
             try:
                 logger.info(
-                    f"终止进程 {pid} (localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']})..."
+                    f"终止进程 project_id={DEFAULT_CI_PROJECT_ID} (localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']})..."
                 )
                 if platform.system() == "Windows":
                     result = subprocess.run(

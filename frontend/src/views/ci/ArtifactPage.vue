@@ -176,7 +176,7 @@
 			return;
 		}
 		try {
-			const resp = await repositoryApi.list({ per_page: 100, projectId });
+			const resp = await repositoryApi.list({ per_page: 100, project_id: projectId });
 			repoOptions.value = resp.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
@@ -189,7 +189,7 @@
 			return;
 		}
 		try {
-			const resp = await pipelineTemplateApi.list({ per_page: 100, projectId });
+			const resp = await pipelineTemplateApi.list({ per_page: 100, project_id: projectId });
 			templateOptions.value = resp.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取模板列表失败');
@@ -233,7 +233,7 @@
 					search: query.search || undefined,
 					repository_id: query.repository_id || undefined,
 					template_id: query.template_id || undefined,
-					projectId,
+					project_id: projectId,
 				});
 				artifacts.value = resp.items;
 				pagination.total = resp.total;

@@ -14,7 +14,9 @@ class TestDeploymentAPI:
 
     def test_list_deployments(self, auth_client, test_deployment):
         """测试列出部署"""
-        response = auth_client.get("/api/cd/deployment")
+        from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
+        response = auth_client.get(f"/api/cd/deployment?project_id={DEFAULT_CI_PROJECT_ID}")
 
         assert response.status_code == 200
         data = response.json()
@@ -23,8 +25,10 @@ class TestDeploymentAPI:
 
     def test_list_deployments_with_filters(self, auth_client, test_app, test_deployment):
         """测试带过滤条件列出部署"""
+        from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
         response = auth_client.get(
-            f"/api/cd/deployment?application_id={test_app.id}&status={TaskStatus.RAN_TO_COMPLETION}"
+            f"/api/cd/deployment?project_id={DEFAULT_CI_PROJECT_ID}&application_id={test_app.id}&status={TaskStatus.RAN_TO_COMPLETION}"
         )
 
         assert response.status_code == 200

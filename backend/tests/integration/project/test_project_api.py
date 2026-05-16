@@ -34,7 +34,7 @@ class TestProjectApi:
 
         resp = auth_client.get("/api/project/foreign-project")
 
-        assert resp.status_code == 404
+        assert resp.status_code == 400
 
     def test_update_project(self, auth_client):
         create_resp = auth_client.post(

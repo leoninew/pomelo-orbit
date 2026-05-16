@@ -2,22 +2,24 @@
 
 from unittest.mock import patch
 
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
 
 class TestPipelineRunList:
     def test_returns_paginated_structure(self, auth_client):
-        resp = auth_client.get("/api/ci/run")
+        resp = auth_client.get(f"/api/ci/run?project_id={DEFAULT_CI_PROJECT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
         assert "total" in data
 
     def test_filter_by_project(self, auth_client, test_project):
-        resp = auth_client.get(f"/api/ci/run?repository_id={test_project.id}")
+        resp = auth_client.get(f"/api/ci/run?project_id={DEFAULT_CI_PROJECT_ID}&repository_id={test_project.id}")
         assert resp.status_code == 200
         assert "items" in resp.json()
 
     def test_list_by_project_endpoint(self, auth_client, test_project):
-        resp = auth_client.get(f"/api/ci/repository/{test_project.id}/run")
+        resp = auth_client.get(f"/api/ci/repository/{test_project.id}/run?project_id={DEFAULT_CI_PROJECT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data

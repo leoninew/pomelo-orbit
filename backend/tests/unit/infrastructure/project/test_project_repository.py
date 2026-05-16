@@ -21,7 +21,7 @@ class TestProjectRepository:
         assert len(projects) == 1
         assert projects[0].id == "project-1"
 
-    def test_find_by_owner_and_id_returns_only_owned_project(self, db_session):
+    def test_find_by_id_returns_project(self, db_session):
         repo = ProjectRepositoryImpl(db_session)
         repo.save(
             Project(
@@ -34,8 +34,8 @@ class TestProjectRepository:
             )
         )
 
-        assert repo.find_by_owner_and_id("user-1", "project-1") is not None
-        assert repo.find_by_owner_and_id("user-2", "project-1") is None
+        assert repo.find_by_id("project-1") is not None
+        assert repo.find_by_id("non-existent") is None
 
     def test_find_by_owner_and_code(self, db_session):
         repo = ProjectRepositoryImpl(db_session)

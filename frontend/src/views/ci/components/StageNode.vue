@@ -26,7 +26,7 @@
 <script setup lang="ts">
 	import { computed } from 'vue';
 	import type { SnapshotStage } from '@/types/ci/snapshot';
-	import { statusColor, statusLabel } from '@/utils/status';
+	import { statusColor } from '@/utils/status';
 	import type { TaskStatus } from '@/types/common';
 
 	interface Props {
@@ -45,7 +45,7 @@
 	const stage = computed(() => props.data.stage);
 	const status = computed(() => props.data.status);
 
-	const statusText = computed(() => (status.value ? statusLabel(status.value) : ''));
+	const statusText = computed(() => (status.value ? status.value : ''));
 	const textColor = computed(() => statusColor(status.value));
 	const isRunning = computed(() => status.value === 'running');
 

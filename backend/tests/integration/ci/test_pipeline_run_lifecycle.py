@@ -212,7 +212,7 @@ class TestPipelineRunFiltering:
             )
 
         # 按项目过滤
-        resp = auth_client.get(f"/api/ci/run?repository_id={test_project.id}")
+        resp = auth_client.get(f"/api/ci/run?project_id={DEFAULT_CI_PROJECT_ID}&repository_id={test_project.id}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -233,7 +233,7 @@ class TestPipelineRunFiltering:
         )
 
         # 按状态过滤
-        resp = auth_client.get("/api/ci/run?status=waiting_to_run")
+        resp = auth_client.get(f"/api/ci/run?project_id={DEFAULT_CI_PROJECT_ID}&status=waiting_to_run")
         assert resp.status_code == 200
         data = resp.json()
         # 验证返回的 runs 都是指定状态（如果有结果的话）

@@ -14,18 +14,18 @@ export const pipelineTemplateApi = {
 		page?: number
 		per_page?: number
 		search?: string
-		projectId?: string
+		project_id?: string
 	}): Promise<PaginatedResp<PipelineTemplate>> {
 		return request.get('/api/ci/template', { params });
 	},
 
-	get(id: string, params: { projectId: string }): Promise<PipelineTemplate> {
-		return request.get(`/api/ci/template/${id}`, { params });
+	get(id: string): Promise<PipelineTemplate> {
+		return request.get(`/api/ci/template/${id}`);
 	},
 
 	create(
 		data: PipelineTemplateCreateReq,
-		params: { projectId: string }
+		params: { project_id: string }
 	): Promise<PipelineTemplate> {
 		return request.post('/api/ci/template', data, { params });
 	},
@@ -34,25 +34,22 @@ export const pipelineTemplateApi = {
 		return request.put(`/api/ci/template/${id}`, data);
 	},
 
-	resolveVariables(
-		data: {
-			orchestration: StageOrchestration[]
-			variable_declarations?: VariableDeclaration[]
-		},
-		params: { projectId: string }
-	): Promise<VariableDeclaration[]> {
-		return request.post('/api/ci/template/resolve-variables', data, { params });
+	resolveVariables(data: {
+		orchestration: StageOrchestration[]
+		variable_declarations?: VariableDeclaration[]
+	}): Promise<VariableDeclaration[]> {
+		return request.post('/api/ci/template/resolve-variables', data);
 	},
 
 	delete(id: string): Promise<void> {
 		return request.delete(`/api/ci/template/${id}`);
 	},
 
-	duplicate(id: string, params: { projectId: string }): Promise<PipelineTemplate> {
-		return request.post(`/api/ci/template/${id}/duplicate`, {}, { params });
+	duplicate(id: string): Promise<PipelineTemplate> {
+		return request.post(`/api/ci/template/${id}/duplicate`, {});
 	},
 
-	getSnapshot(snapshotId: string, params: { projectId: string }): Promise<PipelineSnapshot> {
-		return request.get(`/api/ci/snapshot/${snapshotId}`, { params });
+	getSnapshot(snapshotId: string): Promise<PipelineSnapshot> {
+		return request.get(`/api/ci/snapshot/${snapshotId}`);
 	},
 };

@@ -14,16 +14,16 @@ export const credentialApi = {
 		page?: number
 		per_page?: number
 		search?: string
-		projectId?: string
+		project_id?: string
 	}): Promise<PaginatedResp<Credential>> {
 		return request.get('/api/ci/credential', { params });
 	},
 
-	get(id: string, params: { projectId: string }): Promise<Credential> {
-		return request.get(`/api/ci/credential/${id}`, { params });
+	get(id: string): Promise<Credential> {
+		return request.get(`/api/ci/credential/${id}`);
 	},
 
-	create(data: CredentialCreateReq, params: { projectId: string }): Promise<Credential> {
+	create(data: CredentialCreateReq, params: { project_id: string }): Promise<Credential> {
 		return request.post('/api/ci/credential', data, { params });
 	},
 
@@ -35,11 +35,11 @@ export const credentialApi = {
 		return request.delete(`/api/ci/credential/${id}`);
 	},
 
-	exportCredential(id: string, params: { projectId: string }): Promise<CredentialExportResp> {
-		return request.get(`/api/ci/credential/${id}/export`, { params });
+	exportCredential(id: string): Promise<CredentialExportResp> {
+		return request.get(`/api/ci/credential/${id}/export`);
 	},
 
-	importCredential(data: CredentialImportReq, params: { projectId: string }): Promise<Credential> {
+	importCredential(data: CredentialImportReq, params: { project_id: string }): Promise<Credential> {
 		return request.post('/api/ci/credential/import', data, { params });
 	},
 };

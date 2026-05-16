@@ -8,16 +8,16 @@ export const repositoryApi = {
 		page?: number
 		per_page?: number
 		search?: string
-		projectId?: string
+		project_id?: string
 	}): Promise<PaginatedResp<Repository>> {
 		return request.get('/api/ci/repository', { params });
 	},
 
-	get(id: string, params: { projectId: string }): Promise<Repository> {
-		return request.get(`/api/ci/repository/${id}`, { params });
+	get(id: string): Promise<Repository> {
+		return request.get(`/api/ci/repository/${id}`);
 	},
 
-	create(data: RepositoryCreateReq, params: { projectId: string }): Promise<Repository> {
+	create(data: RepositoryCreateReq, params: { project_id: string }): Promise<Repository> {
 		return request.post('/api/ci/repository', data, { params });
 	},
 
@@ -29,11 +29,7 @@ export const repositoryApi = {
 		return request.delete(`/api/ci/repository/${id}`, { params });
 	},
 
-	trigger(
-		id: string,
-		data: PipelineRunTriggerReq | undefined,
-		params: { projectId: string }
-	): Promise<PipelineRun> {
-		return request.post(`/api/ci/repository/${id}/trigger`, data || {}, { params });
+	trigger(id: string, data: PipelineRunTriggerReq | undefined): Promise<PipelineRun> {
+		return request.post(`/api/ci/repository/${id}/trigger`, data || {});
 	},
 };

@@ -9,7 +9,7 @@ export const artifactApi = {
 		repository_id?: string
 		template_id?: string
 		search?: string
-		projectId?: string
+		project_id?: string
 	}): Promise<PaginatedResp<Artifact>> {
 		return request.get('/api/ci/artifact', { params });
 	},

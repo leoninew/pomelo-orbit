@@ -1,11 +1,12 @@
 """凭据 API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import CredentialModel
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
 class TestCredentialList:
     def test_returns_paginated_structure(self, auth_client, test_credential):
-        resp = auth_client.get("/api/ci/credential")
+        resp = auth_client.get(f"/api/ci/credential?project_id={DEFAULT_CI_PROJECT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -16,7 +17,7 @@ class TestCredentialList:
 class TestCredentialCreate:
     def test_creates_credential(self, auth_client):
         resp = auth_client.post(
-            "/api/ci/credential",
+            f"/api/ci/credential?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "my-token",
                 "type": "git_token",

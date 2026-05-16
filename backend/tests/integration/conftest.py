@@ -15,24 +15,6 @@ class AuthClient:
     def __getattr__(self, name):
         return getattr(self._client, name)
 
-    def _with_project_id(self, url: str) -> str:
-        if not url.startswith("/api/ci/") or url.startswith("/api/ci/webhook/"):
-            return url
-        separator = "&" if "?" in url else "?"
-        return f"{url}{separator}projectId={DEFAULT_CI_PROJECT_ID}"
-
-    def get(self, url: str, **kwargs):
-        return self._client.get(self._with_project_id(url), **kwargs)
-
-    def post(self, url: str, **kwargs):
-        return self._client.post(self._with_project_id(url), **kwargs)
-
-    def put(self, url: str, **kwargs):
-        return self._client.put(self._with_project_id(url), **kwargs)
-
-    def delete(self, url: str, **kwargs):
-        return self._client.delete(self._with_project_id(url), **kwargs)
-
 
 @pytest.fixture
 def mock_user():

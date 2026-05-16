@@ -219,7 +219,7 @@
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
-					projectId,
+					project_id: projectId,
 				});
 				repositories.value = res.items;
 				pagination.total = res.total;
@@ -266,7 +266,7 @@
 			await executeModal(async () => {
 				const credRes = await credentialApi.list({
 					per_page: 100,
-					projectId,
+					project_id: projectId,
 				});
 				credentials.value = credRes.items;
 			});
@@ -293,7 +293,7 @@
 						repository_url: form.repository_url,
 						git_credential_id: form.git_credential_id || undefined,
 					},
-					{ projectId }
+					{ project_id: projectId }
 				);
 				toast.success('创建成功');
 				showCreateModal.value = false;

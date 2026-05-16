@@ -20,14 +20,6 @@ class ProjectRepositoryImpl(BaseRepository[Project, ProjectModel], ProjectReposi
         )
         return [ProjectMapper.to_domain(orm) for orm in orms]
 
-    def find_by_owner_and_id(self, owner_user_id: str, project_id: str) -> Project | None:
-        orm = (
-            self._session.query(ProjectModel)
-            .filter(ProjectModel.owner_user_id == owner_user_id, ProjectModel.id == project_id)
-            .first()
-        )
-        return ProjectMapper.to_domain(orm) if orm else None
-
     def find_by_owner_and_code(self, owner_user_id: str, code: str) -> Project | None:
         orm = (
             self._session.query(ProjectModel)

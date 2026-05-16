@@ -19,6 +19,7 @@ export const applicationApi = {
 		page?: number
 		per_page?: number
 		search?: string
+		project_id?: string
 	}): Promise<PaginatedResp<Application>> {
 		return request.get('/api/cd/application', { params });
 	},
@@ -29,8 +30,8 @@ export const applicationApi = {
 	},
 
 	// 创建应用
-	create(data: ApplicationCreateReq): Promise<Application> {
-		return request.post('/api/cd/application', data);
+	create(data: ApplicationCreateReq, params: { project_id: string }): Promise<Application> {
+		return request.post('/api/cd/application', data, { params });
 	},
 
 	// 更新应用
@@ -111,8 +112,11 @@ export const applicationApi = {
 	},
 
 	// 导入应用
-	importApplication(data: ApplicationImportReq): Promise<Application> {
-		return request.post('/api/cd/application/import', data);
+	importApplication(
+		data: ApplicationImportReq,
+		params: { project_id: string }
+	): Promise<Application> {
+		return request.post('/api/cd/application/import', data, { params });
 	},
 
 	// 获取路由托管列表

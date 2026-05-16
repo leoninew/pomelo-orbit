@@ -7,14 +7,12 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.build_stage_service import BuildStageService
 from pomelo_orbit.application.ci.di import get_stage_service
-from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.build_stage import (
     BuildStageCreateReq,
     BuildStageResp,
     BuildStageUpdateReq,
 )
 from pomelo_orbit.interfaces.api.common import PaginatedResp
-from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 
 router = APIRouter(prefix="/build-stage", tags=["build-stage"])
 
@@ -22,12 +20,12 @@ router = APIRouter(prefix="/build-stage", tags=["build-stage"])
 @router.get("", response_model=PaginatedResp[BuildStageResp])
 def list_stages(
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[BuildStageResp]:
-    stages, total = stage_service.list_stages(current_project.id, page=page, per_page=per_page, search=search)
+    stages, total = stage_service.list_stages(project_id, page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[BuildStageResp.model_validate(s) for s in stages],
         total=total,
@@ -41,10 +39,10 @@ def list_stages(
 def create_stage(
     data: BuildStageCreateReq,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
 ) -> BuildStageResp:
     stage = stage_service.create_stage(
-        project_id=current_project.id,
+        project_id=project_id,
         name=data.name,
         image=data.image,
         script=data.script,

@@ -69,6 +69,7 @@ class ApplicationLifecycleDomainService:
         """创建部署记录"""
         return Deployment(
             id=str(ULID()),
+            project_id=application.project_id,
             application_id=application.id,
             application_name=application.name,
             operation_type=OperationType.DEPLOY,
@@ -83,6 +84,7 @@ class ApplicationLifecycleDomainService:
         """创建停止记录"""
         return Deployment(
             id=str(ULID()),
+            project_id=application.project_id,
             application_id=application.id,
             application_name=application.name,
             operation_type=OperationType.STOP,
@@ -100,6 +102,7 @@ class ApplicationLifecycleDomainService:
         """创建重启记录"""
         return Deployment(
             id=str(ULID()),
+            project_id=application.project_id,
             application_id=application.id,
             application_name=application.name,
             operation_type=OperationType.RESTART,

@@ -94,7 +94,7 @@
 								</div>
 							</div>
 							<AppBadge variant="status" :tone="appStatusTone(app.status)">
-								{{ appStatusLabel(app.status) }}
+								{{ app.status }}
 							</AppBadge>
 						</div>
 
@@ -181,7 +181,7 @@
 								<td class="text-foreground">{{ app.image_pull_policy }}</td>
 								<td>
 									<AppBadge variant="status" :tone="appStatusTone(app.status)">
-										{{ appStatusLabel(app.status) }}
+										{{ app.status }}
 									</AppBadge>
 								</td>
 								<td class="text-foreground">{{ app.route_managed ? '启用' : '未启用' }}</td>
@@ -270,19 +270,21 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type {
 		Application,
 		ApplicationFormState,
 		ApplicationImportReq,
 		ApplicationImportState,
 	} from '@/types/cd/application';
-	import { appStatusLabel, appStatusTone } from '@/utils/status';
+	import { appStatusTone } from '@/utils/status';
 	import { formatTime } from '@/utils/time';
 	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 	import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
 
 	const router = useRouter();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -339,12 +341,18 @@
 	}
 
 	async function fetchApplications() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await applicationApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
+					project_id: projectId,
 				});
 				applications.value = res.items;
 				pagination.total = res.total;
@@ -397,14 +405,22 @@
 		if (!validateForm(form, formErrors)) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				await applicationApi.create({
-					name: form.name,
-					code: form.code,
-					image_pull_policy: form.image_pull_policy,
-					route_managed: form.route_managed,
-				});
+				await applicationApi.create(
+					{
+						name: form.name,
+						code: form.code,
+						image_pull_policy: form.image_pull_policy,
+						route_managed: form.route_managed,
+					},
+					{ project_id: projectId }
+				);
 				toast.success('创建成功');
 				isCreateDialogOpen.value = false;
 				await fetchApplications();
@@ -453,18 +469,26 @@
 		if (!validateForm(importForm, importErrors)) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				await applicationApi.importApplication({
-					version: importForm.version,
-					name: importForm.name,
-					code: importForm.code,
-					image_pull_policy: importForm.image_pull_policy,
-					route_managed: importForm.route_managed,
-					config_files: importForm.config_files,
-					service_configs: importForm.service_configs,
-					routes: importForm.routes,
-				});
+				await applicationApi.importApplication(
+					{
+						version: importForm.version,
+						name: importForm.name,
+						code: importForm.code,
+						image_pull_policy: importForm.image_pull_policy,
+						route_managed: importForm.route_managed,
+						config_files: importForm.config_files,
+						service_configs: importForm.service_configs,
+						routes: importForm.routes,
+					},
+					{ project_id: projectId }
+				);
 				toast.success('导入成功');
 				isImportDialogOpen.value = false;
 				await fetchApplications();

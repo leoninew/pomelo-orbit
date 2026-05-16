@@ -13,6 +13,7 @@ export const deploymentApi = {
 		search?: string
 		date_from?: string
 		date_to?: string
+		project_id?: string
 	}): Promise<PaginatedResp<Deployment>> {
 		return request.get('/api/cd/deployment', { params });
 	},

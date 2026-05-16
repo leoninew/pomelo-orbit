@@ -172,7 +172,7 @@
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
-					projectId,
+					project_id: projectId,
 				});
 				stages.value = res.items;
 				pagination.total = res.total;
@@ -225,7 +225,7 @@
 						script: '',
 						description: form.description,
 					},
-					{ projectId }
+					{ project_id: projectId }
 				);
 				toast.success('创建成功');
 				isModalOpen.value = false;

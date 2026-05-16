@@ -56,7 +56,7 @@
 							<td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
 							<td>
 								<AppBadge variant="status" :tone="statusTone(deployment.status)">
-									{{ statusLabel(deployment.status) }}
+									{{ deployment.status }}
 								</AppBadge>
 							</td>
 							<td
@@ -133,15 +133,17 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 	import type { Application } from '@/types/cd/application';
 	import type { Deployment } from '@/types/cd/deployment';
-	import { statusLabel, statusTone } from '@/utils/status';
+	import { statusTone } from '@/utils/status';
 	import { formatDuration, formatTime } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
 
 	const router = useRouter();
 	const route = useRoute();
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -166,8 +168,12 @@
 	);
 
 	async function loadApps() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			return;
+		}
 		try {
-			const resp = await applicationApi.list({ per_page: 100 });
+			const resp = await applicationApi.list({ per_page: 100, project_id: projectId });
 			appOptions.value = resp.items;
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : '获取应用列表失败');
@@ -191,6 +197,11 @@
 	}
 
 	async function fetchDeployments() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await deploymentApi.list({
@@ -198,6 +209,7 @@
 					per_page: pagination.pageSize,
 					search: query.search || undefined,
 					application_id: query.application_id || undefined,
+					project_id: projectId,
 				});
 				deployments.value = res.items;
 				pagination.total = res.total;

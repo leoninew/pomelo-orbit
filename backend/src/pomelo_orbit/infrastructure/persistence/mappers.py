@@ -216,6 +216,7 @@ class ApplicationMapper:
     def to_domain(model: ApplicationModel) -> Application:
         return Application(
             id=model.id,
+            project_id=model.project_id,
             name=model.name,
             code=model.code,
             image_pull_policy=model.image_pull_policy,
@@ -231,6 +232,7 @@ class ApplicationMapper:
     def to_orm(entity: Application) -> ApplicationModel:
         model = ApplicationModel(
             id=entity.id,
+            project_id=entity.project_id,
             name=entity.name,
             code=entity.code,
             image_pull_policy=entity.image_pull_policy,
@@ -252,6 +254,7 @@ class DeploymentMapper:
         """ORM 模型转领域实体"""
         return Deployment(
             id=model.id,
+            project_id=model.project_id,
             application_id=model.application_id,
             application_name=model.application_name,
             trigger_type=TriggerType(model.trigger_type),
@@ -271,6 +274,7 @@ class DeploymentMapper:
         """领域实体转 ORM 模型"""
         return DeploymentModel(
             id=entity.id,
+            project_id=entity.project_id,
             application_id=entity.application_id,
             application_name=entity.application_name,
             trigger_type=entity.trigger_type.value,

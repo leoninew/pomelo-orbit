@@ -11,11 +11,13 @@ from pomelo_orbit.infrastructure.persistence.models import (
     DeploymentModel,
     RouteModel,
 )
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
 @pytest.fixture
 def test_app(db_session):
     app = ApplicationModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         name="test-app",
         code="test-app",
         image_pull_policy="missing",
@@ -68,6 +70,7 @@ def test_service_config(db_session, test_app):
 @pytest.fixture
 def test_deployment(db_session, test_app):
     deployment = DeploymentModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         application_id=test_app.id,
         application_name=test_app.name,
         operation_type=OperationType.DEPLOY,

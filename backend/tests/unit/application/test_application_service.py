@@ -96,6 +96,7 @@ def sample_application():
     """创建示例应用"""
     return Application(
         id="app-1",
+        project_id="project-1",
         name="Test App",
         code="test-app",
         status=ApplicationStatus.UNDEPLOYED,
@@ -108,6 +109,7 @@ def sample_deployment():
     """创建示例部署记录"""
     return Deployment(
         id="deploy-1",
+        project_id="project-1",
         application_id="app-1",
         application_name="Test App",
         trigger_type=TriggerType.MANUAL,
@@ -202,6 +204,7 @@ class TestConfigFileManagement:
 
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test App",
             code="test-app",
             image_pull_policy="Always",
@@ -224,6 +227,7 @@ class TestConfigFileManagement:
 
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test App",
             code="test-app",
             image_pull_policy="Always",
@@ -495,6 +499,7 @@ class TestStopApplicationBusinessLogic:
 
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test",
             status=ApplicationStatus.UNDEPLOYED,
@@ -512,6 +517,7 @@ class TestStopApplicationBusinessLogic:
         """测试停止应用时创建部署记录"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
@@ -543,6 +549,7 @@ class TestStopApplicationBusinessLogic:
         """测试停止成功时更新应用状态为 UNDEPLOYED"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
@@ -573,6 +580,7 @@ class TestRestartApplicationBusinessLogic:
         """测试只能重启已启动的应用"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test",
             status=ApplicationStatus.UNDEPLOYED,
@@ -589,6 +597,7 @@ class TestRestartApplicationBusinessLogic:
         """测试重启应用时创建部署记录"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
@@ -611,6 +620,7 @@ class TestRestartApplicationBusinessLogic:
         """测试重启返回 WAITING_TO_RUN 状态的部署记录（后台异步执行）"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
@@ -632,6 +642,7 @@ class TestDeleteApplicationBusinessLogic:
         """测试只能删除已停止的应用"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test",
             status=ApplicationStatus.DEPLOYED,
@@ -647,6 +658,7 @@ class TestDeleteApplicationBusinessLogic:
         """测试删除应用但不删除目录"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
@@ -667,6 +679,7 @@ class TestDeleteApplicationBusinessLogic:
         """测试删除应用并删除目录"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
@@ -694,6 +707,7 @@ class TestPreviewComposeYaml:
     ):
         mock_app_repo.find_by_id.return_value = Application(
             id="app-1",
+            project_id="project-1",
             name="Test App",
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
@@ -717,6 +731,7 @@ class TestPreviewComposeYaml:
     def test_preview_requires_compose_file(self, app_service, mock_app_repo, mock_config_file_repo):
         mock_app_repo.find_by_id.return_value = Application(
             id="app-1",
+            project_id="project-1",
             name="Test App",
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
@@ -741,6 +756,7 @@ class TestPreviewComposeYaml:
 
         mock_app_repo.find_by_id.return_value = Application(
             id="app-1",
+            project_id="project-1",
             name="Test App",
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
@@ -785,6 +801,7 @@ class TestSimplifiedDeploymentFlow:
         """测试部署不再需要 env_file 参数"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.UNDEPLOYED,
@@ -795,6 +812,7 @@ class TestSimplifiedDeploymentFlow:
 
         deployment = Deployment(
             id="deploy-1",
+            project_id="project-1",
             application_id="app-1",
             application_name="Test",
             trigger_type=TriggerType.MANUAL,
@@ -817,6 +835,7 @@ class TestSimplifiedDeploymentFlow:
         """测试停止操作不再查找最后一次部署的 env_file"""
         app = Application(
             id="app-1",
+            project_id="project-1",
             name="Test",
             code="test-app",
             status=ApplicationStatus.DEPLOYED,
@@ -853,6 +872,7 @@ class TestSimplifiedDeploymentFlow:
         """测试 Deployment 实体不再包含 environment 和 env_file 字段"""
         deployment = Deployment(
             id="deploy-1",
+            project_id="project-1",
             application_id="app-1",
             application_name="Test",
             trigger_type=TriggerType.MANUAL,

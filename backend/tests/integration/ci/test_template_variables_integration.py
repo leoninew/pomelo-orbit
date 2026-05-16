@@ -2,6 +2,8 @@
 
 import pytest
 
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
 
 class TestTemplateVariableLifecycle:
     """测试模板变量的完整生命周期"""
@@ -17,7 +19,7 @@ class TestTemplateVariableLifecycle:
         """
         # 1. 创建模板
         resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "GO 构建流水线",
                 "description": "",
@@ -28,7 +30,7 @@ class TestTemplateVariableLifecycle:
 
         # 2. 创建一个 Stage（包含变量引用）
         stage_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "git clone",
                 "image": "alpine/git",
@@ -41,7 +43,7 @@ class TestTemplateVariableLifecycle:
 
         # 3. 调用 resolve-variables API（模拟前端添加 stage 后的行为）
         resolve_resp = auth_client.post(
-            "/api/ci/template/resolve-variables",
+            f"/api/ci/template/resolve-variables?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "orchestration": [
                     {
@@ -122,7 +124,7 @@ class TestTemplateVariableLifecycle:
         """
         # 1. 创建模板
         resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "Test Template",
                 "description": "",
@@ -133,7 +135,7 @@ class TestTemplateVariableLifecycle:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "build",
                 "image": "alpine",
@@ -199,7 +201,7 @@ class TestTemplateVariableLifecycle:
         """
         # 1. 创建模板
         resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "Multi Save Test",
                 "description": "",
@@ -210,7 +212,7 @@ class TestTemplateVariableLifecycle:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test",
                 "image": "alpine",
@@ -288,7 +290,7 @@ class TestRepositoryVariableLifecycle:
         """
         # 1. 创建仓库（带自定义变量）
         create_resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-repo",
                 "code": "test-repo",
@@ -343,7 +345,7 @@ class TestRepositoryVariableLifecycle:
         """
         # 1. 创建仓库
         create_resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-repo",
                 "code": "test-repo",
@@ -407,7 +409,7 @@ class TestRepositoryVariableLifecycle:
         """
         # 1. 创建仓库（尝试覆盖内置变量）
         create_resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-repo",
                 "code": "test-repo",
@@ -464,7 +466,7 @@ class TestRuntimeVariableMerging:
         """
         # 1. 创建仓库（带自定义变量）
         repo_resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-repo",
                 "code": "test-repo",
@@ -487,7 +489,7 @@ class TestRuntimeVariableMerging:
 
         # 2. 创建 Stage
         stage_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "build",
                 "image": "alpine",
@@ -500,7 +502,7 @@ class TestRuntimeVariableMerging:
 
         # 3. 创建模板（带自定义变量）
         template_resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-template",
                 "description": "",
@@ -542,7 +544,7 @@ class TestRuntimeVariableMerging:
 
         # 4. 触发流水线（带运行时变量）
         trigger_resp = auth_client.post(
-            f"/api/ci/repository/{repo_id}/trigger",
+            f"/api/ci/repository/{repo_id}/trigger?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "template_id": template_id,
                 "trigger_ref": "main",

@@ -7,10 +7,8 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.di import get_pipeline_run_service
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
-from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
-from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 
 router = APIRouter(prefix="/artifact", tags=["artifact"])
 
@@ -18,7 +16,7 @@ router = APIRouter(prefix="/artifact", tags=["artifact"])
 @router.get("", response_model=PaginatedResp[ArtifactResp])
 def list_artifacts(
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     repository_id: Annotated[str | None, Query()] = None,
@@ -26,7 +24,7 @@ def list_artifacts(
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[ArtifactResp]:
     artifacts, total = pipeline_run_service.list_all_artifacts(
-        project_id=current_project.id,
+        project_id=project_id,
         repository_id=repository_id,
         template_id=template_id,
         search=search,

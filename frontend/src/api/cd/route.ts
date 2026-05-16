@@ -35,6 +35,7 @@ export const routeApi = {
 		page?: number
 		per_page?: number
 		search?: string
+		project_id?: string
 	}): Promise<PaginatedResp<Route>> {
 		return request.get('/api/cd/route', { params });
 	},
@@ -43,8 +44,8 @@ export const routeApi = {
 		return request.get(`/api/cd/route/${id}`);
 	},
 
-	create(data: RouteCreateReq): Promise<Route> {
-		return request.post('/api/cd/route', data);
+	create(data: RouteCreateReq, params: { project_id: string }): Promise<Route> {
+		return request.post('/api/cd/route', data, { params });
 	},
 
 	update(id: string, data: RouteUpdateReq): Promise<Route> {

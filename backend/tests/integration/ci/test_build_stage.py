@@ -21,7 +21,7 @@ class TestStageList:
         db_session.commit()
 
         # 列出 stages
-        resp = auth_client.get("/api/ci/build-stage")
+        resp = auth_client.get(f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, dict)
@@ -33,7 +33,7 @@ class TestStageList:
 class TestStageCreate:
     def test_creates_stage(self, auth_client):
         resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "build",
                 "image": "alpine:latest",
@@ -51,7 +51,7 @@ class TestStageCreate:
 
     def test_validates_required_fields(self, auth_client):
         resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={"name": "incomplete"},
         )
         assert resp.status_code == 422
@@ -60,7 +60,7 @@ class TestStageCreate:
         """测试拒绝同名 Stage"""
         # 创建第一个 stage
         create_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "duplicate-test",
                 "image": "alpine:latest",
@@ -71,7 +71,7 @@ class TestStageCreate:
 
         # 尝试创建同名 stage
         resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "duplicate-test",
                 "image": "ubuntu:latest",
@@ -214,7 +214,7 @@ class TestStageUsage:
         """测试 Stage 可以在多个模板中复用"""
         # 创建一个通用的 build stage
         stage_resp = auth_client.post(
-            "/api/ci/build-stage",
+            f"/api/ci/build-stage?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "common-build",
                 "image": "alpine:latest",
@@ -226,13 +226,13 @@ class TestStageUsage:
 
         # 创建两个模板，都使用这个 stage（通过编排）
         template1_resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={"name": "template-1", "description": ""},
         )
         assert template1_resp.status_code == 201
 
         template2_resp = auth_client.post(
-            "/api/ci/template",
+            f"/api/ci/template?project_id={DEFAULT_CI_PROJECT_ID}",
             json={"name": "template-2", "description": ""},
         )
         assert template2_resp.status_code == 201

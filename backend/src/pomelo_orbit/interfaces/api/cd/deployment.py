@@ -26,7 +26,7 @@ router = APIRouter(prefix="/deployment", tags=["deployment"])
 @router.get("", response_model=PaginatedResp[DeploymentResp])
 def list_deployments(
     deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
-    _current_user=Depends(get_current_user),
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,
     application_id: Annotated[str | None, Query()] = None,
@@ -37,6 +37,7 @@ def list_deployments(
 ) -> PaginatedResp[DeploymentResp]:
     """列出所有部署"""
     deployments, total = deployment_service.list_deployments(
+        project_id=project_id,
         page=page,
         per_page=per_page,
         application_id=application_id,

@@ -20,6 +20,7 @@ class DeploymentRepository(ABC):
     @abstractmethod
     def find_paginated_with_filters(
         self,
+        project_id: str,
         page: int,
         per_page: int,
         application_id: str | None = None,

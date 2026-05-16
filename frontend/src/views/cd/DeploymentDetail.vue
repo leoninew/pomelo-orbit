@@ -158,7 +158,7 @@
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
 	import type { DeploymentDetail } from '@/types/cd/deployment';
-	import { isTerminalStatus, statusLabel, statusTone } from '@/utils/status';
+	import { isTerminalStatus, statusTone } from '@/utils/status';
 	import { delayAsync, formatDuration, formatTime } from '@/utils/time';
 	import config from '@/config';
 	import type { editor } from 'monaco-editor';
@@ -192,9 +192,7 @@
 		deployment.value ? statusTone(deployment.value.status) : 'default'
 	);
 
-	const deploymentStatusLabel = computed(() =>
-		deployment.value ? statusLabel(deployment.value.status) : ''
-	);
+	const deploymentStatusLabel = computed(() => (deployment.value ? deployment.value.status : ''));
 
 	async function fetchDeployment() {
 		try {

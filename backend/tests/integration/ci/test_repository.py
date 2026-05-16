@@ -1,11 +1,12 @@
 """CI 项目 API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import RepositoryModel
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
 class TestProjectList:
     def test_returns_paginated_structure(self, auth_client, test_project):
-        resp = auth_client.get("/api/ci/repository")
+        resp = auth_client.get(f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert "items" in data
@@ -15,7 +16,7 @@ class TestProjectList:
 class TestProjectCreate:
     def test_creates_project(self, auth_client, test_credential):
         resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "new-project",
                 "code": "new-project",
@@ -31,7 +32,7 @@ class TestProjectCreate:
 
     def test_creates_project_with_variable_overrides(self, auth_client, test_credential):
         resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "new-project",
                 "code": "new-project-vars",
@@ -79,7 +80,7 @@ class TestProjectUpdate:
         """修改基本信息时应保留原有变量"""
         # 1. 创建带变量的项目
         resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-preserve-vars",
                 "code": "test-preserve-vars",
@@ -117,7 +118,7 @@ class TestProjectUpdate:
         """明确传递空列表可以清空变量"""
         # 1. 创建带变量的项目
         resp = auth_client.post(
-            "/api/ci/repository",
+            f"/api/ci/repository?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "test-clear-vars",
                 "code": "test-clear-vars",

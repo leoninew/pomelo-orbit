@@ -41,9 +41,11 @@ class TestApplicationAPI:
 
     def test_create_application(self, auth_client, test_app):
         """测试创建应用"""
+        from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
         # test_app 确保数据库已初始化并有数据
         response = auth_client.post(
-            "/api/cd/application",
+            f"/api/cd/application?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "new-app",
                 "code": "new-app",
@@ -58,7 +60,9 @@ class TestApplicationAPI:
 
     def test_list_applications(self, auth_client, test_app):
         """测试列出应用"""
-        response = auth_client.get("/api/cd/application")
+        from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
+        response = auth_client.get(f"/api/cd/application?project_id={DEFAULT_CI_PROJECT_ID}")
 
         assert response.status_code == 200
         data = response.json()
@@ -197,6 +201,7 @@ class TestApplicationAPI:
 
         mock_deployment = Deployment(
             id="test-deployment-id",
+            project_id="test-project-id",
             application_id=test_app.id,
             application_name=test_app.name,
             operation_type=OperationType.STOP,
@@ -224,6 +229,7 @@ class TestApplicationAPI:
 
         mock_deployment = Deployment(
             id="test-deployment-id",
+            project_id="test-project-id",
             application_id=test_app.id,
             application_name=test_app.name,
             operation_type=OperationType.RESTART,

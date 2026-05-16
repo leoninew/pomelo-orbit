@@ -68,6 +68,7 @@ class Application:
     """应用实体（聚合根）"""
 
     id: str
+    project_id: str
     name: str
     code: str
     image_pull_policy: str
@@ -110,6 +111,7 @@ class Deployment:
     """部署记录实体"""
 
     id: str
+    project_id: str
     application_id: str | None
     application_name: str
     trigger_type: TriggerType

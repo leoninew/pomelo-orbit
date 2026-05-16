@@ -27,6 +27,7 @@ class DeploymentService:
 
     def list_deployments(
         self,
+        project_id: str,
         page: int,
         per_page: int,
         application_id: str | None = None,
@@ -41,6 +42,7 @@ class DeploymentService:
         date_to_dt = from_iso8601(date_to) if date_to else None
 
         return self.deployment_repo.find_paginated_with_filters(
+            project_id=project_id,
             page=page,
             per_page=per_page,
             application_id=application_id,

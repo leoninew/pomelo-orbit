@@ -83,7 +83,7 @@ class ApplicationModel(Base):
     __tablename__ = "application"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
+    project_id: Mapped[str] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
 
@@ -113,7 +113,7 @@ class DeploymentModel(Base):
     __tablename__ = "deployment"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
+    project_id: Mapped[str] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     application_id: Mapped[str | None] = mapped_column(String(26), nullable=True, index=True)
     application_name: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     operation_type: Mapped[str] = mapped_column(String(20), default=OperationType.DEPLOY, nullable=False)
@@ -195,7 +195,7 @@ class RouteModel(Base):
     __tablename__ = "route"
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
-    project_id: Mapped[str | None] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
+    project_id: Mapped[str] = mapped_column(String(26), ForeignKey("project.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     path_prefix: Mapped[str] = mapped_column(String(255), default="/", nullable=False)

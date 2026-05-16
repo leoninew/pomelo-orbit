@@ -44,6 +44,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
 
     def find_paginated_with_filters(
         self,
+        project_id: str,
         page: int,
         per_page: int,
         application_id: str | None = None,
@@ -53,7 +54,7 @@ class DeploymentRepositoryImpl(BaseRepository[Deployment, DeploymentModel], Depl
         date_to: datetime | None = None,
     ) -> tuple[list[Deployment], int]:
         """分页查询部署记录（支持过滤）"""
-        query = self._session.query(DeploymentModel)
+        query = self._session.query(DeploymentModel).filter(DeploymentModel.project_id == project_id)
 
         if application_id:
             query = query.filter(DeploymentModel.application_id == application_id)

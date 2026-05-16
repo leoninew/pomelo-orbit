@@ -190,7 +190,6 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
-	import { useProjectId } from '@/composables/useProjectId';
 	import type { Credential, CredentialImportReq } from '@/types/ci/credential';
 	import { credentialTypeLabels } from '@/types/ci/credential';
 	import { formatTime } from '@/utils/time';
@@ -198,7 +197,6 @@
 
 	const toast = useToast();
 	const projectStore = useProjectStore();
-	const { requireProjectId } = useProjectId();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -243,7 +241,7 @@
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
-					projectId,
+					project_id: projectId,
 				});
 				credentials.value = res.items;
 				pagination.total = res.total;
@@ -289,6 +287,11 @@
 		if (!validate()) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
 				if (isEditing.value) {
@@ -304,7 +307,7 @@
 							type: form.type,
 							data: form.data,
 						},
-						{ projectId: requireProjectId() }
+						{ project_id: projectId }
 					);
 					toast.success('创建成功');
 				}
@@ -379,6 +382,11 @@
 		if (importErrors.name || importErrors.data) {
 			return;
 		}
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('请先选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
 				await credentialApi.importCredential(
@@ -387,7 +395,7 @@
 						type: importForm.type as CredentialImportReq['type'],
 						data: importForm.data,
 					},
-					{ projectId: requireProjectId() }
+					{ project_id: projectId }
 				);
 				toast.success('导入成功');
 				showImportDialog.value = false;

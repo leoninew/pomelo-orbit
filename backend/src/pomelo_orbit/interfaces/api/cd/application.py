@@ -38,13 +38,13 @@ router = APIRouter(prefix="/application", tags=["application"])
 @router.get("", response_model=PaginatedResp[ApplicationResp])
 def list_applications(
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    _current_user=Depends(get_current_user),
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[ApplicationResp]:
     """列出所有应用"""
-    apps, total = app_service.list_applications(page, per_page, search)
+    apps, total = app_service.list_applications(project_id, page, per_page, search)
     return PaginatedResp(
         items=[ApplicationResp.model_validate(a) for a in apps],
         total=total,
@@ -58,10 +58,11 @@ def list_applications(
 def create_application(
     data: ApplicationCreateReq,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    _current_user=Depends(get_current_user),
+    project_id: Annotated[str, Query()],
 ) -> ApplicationResp:
     """创建应用"""
     app = app_service.create_application(
+        project_id=project_id,
         name=data.name,
         code=data.code,
         image_pull_policy=data.image_pull_policy,
@@ -74,10 +75,10 @@ def create_application(
 def import_application(
     data: ApplicationImportReq,
     app_service: Annotated[ApplicationService, Depends(get_application_service)],
-    _current_user=Depends(get_current_user),
+    project_id: Annotated[str, Query()],
 ) -> ApplicationResp:
     """导入应用"""
-    app = app_service.import_application(data.model_dump())
+    app = app_service.import_application(project_id, data.model_dump())
     return ApplicationResp.model_validate(app)
 
 
@@ -216,8 +217,8 @@ async def deploy_application(
 
     # 验证 docker-compose 文件存在（在创建部署记录之前）
     app_service.get_compose_file(app_id)
-
     deployment = app_service.create_deployment(
+        project_id=app.project_id,
         application_id=app.id,
         operation_type=OperationType.DEPLOY,
         trigger_type=TriggerType.MANUAL,

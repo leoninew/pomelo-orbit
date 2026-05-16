@@ -222,8 +222,8 @@
 		});
 	}
 
-	async function handleSetActive(projectId: string) {
-		projectStore.setActiveProject(projectId);
+	async function handleSetActive(project_id: string) {
+		projectStore.setActiveProject(project_id);
 		toast.success('当前项目已切换');
 	}
 

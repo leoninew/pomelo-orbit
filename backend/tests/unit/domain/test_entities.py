@@ -30,7 +30,7 @@ class TestApplicationEntity:
         app = create_test_application()
 
         assert app.image_pull_policy == "IfNotPresent"
-        assert app.status == "stopped"
+        assert app.status == "undeployed"
 
     def test_application_with_config_files(self, create_test_application):
         """测试 Application 实体可以关联配置文件"""

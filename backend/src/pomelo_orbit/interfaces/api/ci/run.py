@@ -10,11 +10,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
 from pomelo_orbit.application.ci.di import get_pipeline_run_service
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
-from pomelo_orbit.domain.project.entities import Project
 from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
-from pomelo_orbit.interfaces.api.project.dependencies import get_current_project
 from pomelo_orbit.interfaces.api.utils import run_in_new_scope
 
 logger = logging.getLogger(__name__)
@@ -25,7 +23,7 @@ router = APIRouter(prefix="/run", tags=["run"])
 @router.get("", response_model=PaginatedResp[PipelineRunResp])
 def list_all_runs(
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
-    current_project: Annotated[Project, Depends(get_current_project)],
+    project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     repository_id: Annotated[str | None, Query()] = None,
@@ -34,7 +32,7 @@ def list_all_runs(
     date_to: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineRunResp]:
     result = pipeline_run_service.list_runs(
-        project_id=current_project.id,
+        project_id=project_id,
         repository_id=repository_id,
         template_id=template_id,
         page=page,

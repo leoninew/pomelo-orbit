@@ -20,14 +20,14 @@ class TestCredentialCreate:
             f"/api/ci/credential?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "my-token",
-                "type": "git_token",
+                "type": "github_token",
                 "data": "plaintext-token",
             },
         )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "my-token"
-        assert data["type"] == "git_token"
+        assert data["type"] == "github_token"
 
 
 class TestCredentialDelete:

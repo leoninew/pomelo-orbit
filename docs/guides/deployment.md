@@ -105,7 +105,7 @@ POMELO_ORBIT_DATA_DIR=/d/SourceCodes/.../backend/data
 - 选择环境配置文件
 
 ### Webhook 自动部署
-- Git 仓库推送触发（GitHub/GitLab）
+- Git 仓库推送触发
 - 镜像仓库推送触发（Docker Registry）
 - 自动匹配应用并触发部署
 

@@ -15,7 +15,7 @@ from pomelo_orbit.domain.ci.value_objects import (
 class TestEnums:
     def test_credential_type(self):
         assert CredentialType.GIT_SSH.value == "git_ssh"
-        assert CredentialType.GIT_TOKEN.value == "git_token"
+        assert CredentialType.GITHUB_TOKEN.value == "github_token"
 
     def test_task_status(self):
         assert TaskStatus.WAITING_TO_RUN.value == "waiting_to_run"

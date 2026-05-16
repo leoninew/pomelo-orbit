@@ -344,7 +344,7 @@
 		credentials.value.filter(
 			(credential) =>
 				credential.type === 'git_ssh' ||
-				credential.type === 'git_token' ||
+				credential.type === 'github_token' ||
 				credential.type === 'gitee_token'
 		)
 	);
@@ -491,15 +491,12 @@
 		}
 		try {
 			await executeOp(async () => {
-				const updated = await repositoryApi.update(
-					repositoryId,
-					{
-						name: editForm.name,
-						repository_url: editForm.repository_url,
-						git_credential_id: editForm.git_credential_id || null,
-						default_branch: editForm.default_branch || 'master',
-					}
-				);
+				const updated = await repositoryApi.update(repositoryId, {
+					name: editForm.name,
+					repository_url: editForm.repository_url,
+					git_credential_id: editForm.git_credential_id || null,
+					default_branch: editForm.default_branch || 'master',
+				});
 				repository.value = updated;
 				resetEditForm();
 				toast.success('更新成功');
@@ -574,12 +571,9 @@
 					secret: false,
 					source: 'repository_custom',
 				};
-				const updated = await repositoryApi.update(
-					repositoryId,
-					{
-						variable_overrides: variableOverridesWith(nextVariable),
-					}
-				);
+				const updated = await repositoryApi.update(repositoryId, {
+					variable_overrides: variableOverridesWith(nextVariable),
+				});
 				repository.value = updated;
 				toast.success('添加成功');
 				isAddVariableDialogOpen.value = false;
@@ -606,16 +600,13 @@
 				if (!current) {
 					return;
 				}
-				const updated = await repositoryApi.update(
-					repositoryId,
-					{
-						variable_overrides: variableOverridesWith({
-							...current,
-							value: variableForm.value,
-							description: variableForm.description.trim() || undefined,
-						}),
-					}
-				);
+				const updated = await repositoryApi.update(repositoryId, {
+					variable_overrides: variableOverridesWith({
+						...current,
+						value: variableForm.value,
+						description: variableForm.description.trim() || undefined,
+					}),
+				});
 				repository.value = updated;
 				toast.success('更新成功');
 				isEditVariableDialogOpen.value = false;
@@ -633,14 +624,11 @@
 		}
 		try {
 			await executeOp(async () => {
-				const updated = await repositoryApi.update(
-					repositoryId,
-					{
-						variable_overrides: repositoryCustomVariables.value.filter(
-							(variable) => variable.name !== name
-						),
-					}
-				);
+				const updated = await repositoryApi.update(repositoryId, {
+					variable_overrides: repositoryCustomVariables.value.filter(
+						(variable) => variable.name !== name
+					),
+				});
 				repository.value = updated;
 				toast.success('删除成功');
 			});

@@ -40,7 +40,7 @@
 **页面组件**
 - ✅ `CredentialPage.vue` - 凭据管理页面
   - 凭据列表（表格视图）
-  - 创建/编辑凭据弹窗（支持 Git SSH / Git Token / Registry Token）
+  - 创建/编辑凭据弹窗（支持 Git SSH / GitHub Token / Registry Token）
   - 删除凭据（带确认）
   - 凭据内容不回显，编辑时可选更新
 

@@ -218,7 +218,7 @@
 		if (type === 'git_ssh') {
 			return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
 		}
-		if (type === 'git_token') {
+		if (type === 'github_token') {
 			return 'ghp_xxxxxxxxxxxxxxxxxxxx';
 		}
 		if (type === 'gitee_token') {

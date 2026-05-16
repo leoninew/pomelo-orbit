@@ -216,7 +216,7 @@
 	const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
 	const credentialTypeOptions = [
 		{ value: 'git_ssh', label: 'Git SSH 密钥' },
-		{ value: 'git_token', label: 'Git Token' },
+		{ value: 'github_token', label: 'GitHub Token' },
 		{ value: 'gitee_token', label: 'Gitee Token' },
 	];
 	const errors = reactive({ name: '', data: '' });
@@ -341,7 +341,7 @@
 		if (type === 'git_ssh') {
 			return '-----BEGIN OPENSSH PRIVATE KEY-----\n...';
 		}
-		if (type === 'git_token') {
+		if (type === 'github_token') {
 			return 'ghp_xxxxxxxxxxxxxxxxxxxx';
 		}
 		if (type === 'gitee_token') {

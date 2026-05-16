@@ -281,8 +281,8 @@ class PipelineExecutorImpl(PipelineExecutor):
             extra_binds.append(VolumeMount(host_path=str(secrets_path), container_path="/run/secrets", mode="ro"))
             env["GIT_SSH_COMMAND"] = "ssh -i /run/secrets/id_rsa -o StrictHostKeyChecking=no"
 
-        elif decrypted.type == CredentialType.GIT_TOKEN:
-            logger.info(f"Using GIT_TOKEN authentication: run={context.run_id}")
+        elif decrypted.type == CredentialType.GITHUB_TOKEN:
+            logger.info(f"Using GITHUB_TOKEN authentication: run={context.run_id}")
             token = decrypted.get_token()
             repo_url = self._build_authenticated_url(context.repository_url, token)
             # 直接替换脚本中已渲染的 SSH URL 为带 token 的 HTTPS URL

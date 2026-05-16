@@ -48,7 +48,7 @@ def test_credential(db_session):
     cred = CredentialModel(
         project_id=DEFAULT_CI_PROJECT_ID,
         name="test-cred",
-        type="git_token",
+        type="github_token",
         encrypted_data="encrypted-token",
     )
     db_session.add(cred)

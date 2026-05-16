@@ -35,7 +35,7 @@ class Project:
 ```python
 class CredentialType(str, Enum):
     GIT_SSH = "git_ssh"
-    GIT_TOKEN = "git_token"
+    GITHUB_TOKEN = "github_token"
 
 class Credential:
     id: UUID
@@ -201,7 +201,7 @@ CheckoutAction.execute(step, run, workspace_path)
   ├─ 解密 credential.encrypted_data
   ├─ 根据 credential.type 准备注入：
   │   ├─ git_ssh: 写临时私钥文件，设置 GIT_SSH_COMMAND
-  │   └─ git_token: 构造 https://{token}@... URL
+  │   └─ github_token: 构造 https://{token}@... URL
   ├─ 构造 docker run 命令：
   │   ├─ 镜像: alpine/git
   │   ├─ 挂载: workspace_path:/workspace

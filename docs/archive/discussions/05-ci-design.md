@@ -38,7 +38,7 @@ Project
 ```
 Credential
   name              # 用户起的名字，如 "公司 GitLab"
-  type              # git_ssh | git_token | registry_token
+  type              # git_ssh | github_token | registry_token
   data              # 加密存储（Fernet 对称加密，复用现有基础设施）
 ```
 

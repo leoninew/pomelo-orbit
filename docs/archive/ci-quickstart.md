@@ -9,7 +9,7 @@
 ### 1. Credential（凭据）
 用于访问 Git 仓库和镜像仓库的认证信息，支持三种类型：
 - **Git SSH**: SSH 私钥，用于通过 SSH 协议克隆仓库
-- **Git Token**: Personal Access Token，用于通过 HTTPS 克隆仓库
+- **GitHub Token**: Personal Access Token，用于通过 HTTPS 克隆仓库
 - **Registry Token**: 镜像仓库的用户名和密码
 
 ### 2. Pipeline Template（模板）
@@ -41,7 +41,7 @@
 2. 点击 **创建凭据**
 3. 选择凭据类型：
    - **Git SSH**: 粘贴你的 SSH 私钥
-   - **Git Token**: 粘贴 GitHub/GitLab Personal Access Token
+   - **GitHub Token**: 粘贴 GitHub/GitLab Personal Access Token
 4. 输入凭据名称（如 "GitHub SSH"）
 5. 点击 **确定**
 

@@ -153,7 +153,7 @@ class Credential:
         return self.encrypted_data
 
     def get_token(self) -> str:
-        if self.type not in (CredentialType.GIT_TOKEN, CredentialType.GITEE_TOKEN):
+        if self.type not in (CredentialType.GITHUB_TOKEN, CredentialType.GITEE_TOKEN):
             raise ValueError(f"Credential type {self.type} has no token")
         return self.encrypted_data
 

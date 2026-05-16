@@ -55,11 +55,11 @@ class TestCredentialMapper:
 
     def test_to_orm(self):
         entity = Credential.create(
-            project_id=PROJECT_ID, name="test-cred", type=CredentialType.GIT_TOKEN, encrypted_data="encrypted"
+            project_id=PROJECT_ID, name="test-cred", type=CredentialType.GITHUB_TOKEN, encrypted_data="encrypted"
         )
         orm = CredentialMapper.to_orm(entity)
         assert orm.id == entity.id
-        assert orm.type == "git_token"
+        assert orm.type == "github_token"
 
 
 class TestPipelineTemplateMapper:

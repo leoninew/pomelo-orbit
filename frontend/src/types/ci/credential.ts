@@ -34,7 +34,7 @@ export interface CredentialImportReq {
 
 export const credentialTypeLabels: Record<string, string> = {
 	git_ssh: 'Git SSH',
-	git_token: 'Git Token（GitHub/GitLab）',
+	github_token: 'GitHub Token',
 	gitee_token: 'Gitee 私人令牌',
 	registry_token: 'Registry Token',
 };

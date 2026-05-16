@@ -21,14 +21,6 @@ class PipelineRunRepositoryImpl(BaseRepository[PipelineRun, PipelineRunModel], P
         orm = self._session.query(PipelineRunModel).filter(PipelineRunModel.id == run_id).first()
         return self._mapper.to_domain(orm) if orm else None
 
-    def find_by_id_in_project(self, project_id: str, run_id: str) -> PipelineRun | None:
-        orm = (
-            self._session.query(PipelineRunModel)
-            .filter(PipelineRunModel.project_id == project_id, PipelineRunModel.id == run_id)
-            .first()
-        )
-        return self._mapper.to_domain(orm) if orm else None
-
     def find_paginated_with_filters(
         self,
         project_id: str,

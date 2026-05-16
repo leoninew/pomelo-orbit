@@ -206,7 +206,7 @@ def render_template(template: str, variables: dict[str, Any]) -> str:
     """使用 Jinja2 渲染模板字符串。"""
     try:
         env = Environment(autoescape=False, undefined=StrictUndefined)
-        return env.from_string(template).render(**variables)
+        return str(env.from_string(template).render(**variables))
     except TemplateSyntaxError as e:
         raise VariableError(f"模板语法错误: {e}") from e
     except UndefinedError as e:

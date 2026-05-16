@@ -256,7 +256,7 @@ class PipelineExecutorImpl(PipelineExecutor):
         if not context.credential_id:
             raise RuntimeError("clone stage requires git_credential_id on the project")
 
-        credential = self.credential_repo.find_by_id_in_project(context.project_id, context.credential_id)
+        credential = self.credential_repo.find_by_id(context.credential_id)
         if not credential:
             raise RuntimeError(f"Credential {context.credential_id} not found")
 

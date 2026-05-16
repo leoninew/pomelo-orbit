@@ -10,9 +10,6 @@ class RepositoryRepository(ABC):
     def find_by_id(self, repository_id: str) -> Repository | None: ...
 
     @abstractmethod
-    def find_by_id_in_project(self, project_id: str, repository_id: str) -> Repository | None: ...
-
-    @abstractmethod
     def find_by_code(self, project_id: str, code: str) -> Repository | None: ...
 
     @abstractmethod

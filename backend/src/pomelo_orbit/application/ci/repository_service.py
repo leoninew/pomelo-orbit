@@ -56,7 +56,7 @@ class RepositoryService:
         default_branch: str = "master",
     ) -> Repository:
         """创建项目"""
-        if git_credential_id and not self.credential_repo.find_by_id_in_project(project_id, git_credential_id):
+        if git_credential_id and not self.credential_repo.find_by_id(git_credential_id):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
 
         if self.repository_repo.find_by_code(project_id, code):
@@ -89,7 +89,7 @@ class RepositoryService:
         if (
             git_credential_id is not MISSING  # type: ignore[comparison-overlap]
             and git_credential_id
-            and not self.credential_repo.find_by_id_in_project(repository.project_id, git_credential_id)
+            and not self.credential_repo.find_by_id(git_credential_id)
         ):
             raise BusinessError(f"Credential {git_credential_id} not found", status_code=404)
 

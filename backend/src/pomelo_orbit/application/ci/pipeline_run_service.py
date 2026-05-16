@@ -110,9 +110,9 @@ class PipelineRunService:
         date_to: str | None = None,
     ) -> PaginatedRuns:
         """分页查询运行列表"""
-        if repository_id and not self.repository_repo.find_by_id_in_project(project_id, repository_id):
+        if repository_id and not self.repository_repo.find_by_id(repository_id):
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
-        if template_id and not self.template_repo.find_by_id_in_project(project_id, template_id):
+        if template_id and not self.template_repo.find_by_id(template_id):
             raise BusinessError(f"Template {template_id} not found", status_code=404)
         date_from_dt = from_iso8601(date_from) if date_from else None
         date_to_dt = from_iso8601(date_to) if date_to else None
@@ -149,9 +149,9 @@ class PipelineRunService:
         per_page: int = 20,
     ) -> tuple[list[Artifact], int]:
         """分页查询所有制品"""
-        if repository_id and not self.repository_repo.find_by_id_in_project(project_id, repository_id):
+        if repository_id and not self.repository_repo.find_by_id(repository_id):
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
-        if template_id and not self.template_repo.find_by_id_in_project(project_id, template_id):
+        if template_id and not self.template_repo.find_by_id(template_id):
             raise BusinessError(f"Template {template_id} not found", status_code=404)
         return self.artifact_repo.find_paginated_by_project_id(
             project_id=project_id,
@@ -205,11 +205,11 @@ class PipelineRunService:
         runtime_variables: dict[str, Any] | None = None,
     ) -> RunCreationResult:
         """创建运行"""
-        repository = self.repository_repo.find_by_id_in_project(project_id, repository_id)
+        repository = self.repository_repo.find_by_id(repository_id)
         if not repository:
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
 
-        template = self.template_repo.find_by_id_in_project(project_id, template_id)
+        template = self.template_repo.find_by_id(template_id)
         if not template:
             raise BusinessError(f"Template {template_id} not found", status_code=404)
 
@@ -299,11 +299,11 @@ class PipelineRunService:
         if original.status not in {TaskStatus.FAULTED, TaskStatus.RAN_TO_COMPLETION}:
             raise BusinessError(f"Cannot retry run with status {original.status.value}", status_code=400)
 
-        snapshot = self.snapshot_repo.find_by_id_in_project(original.project_id, original.snapshot_id)
+        snapshot = self.snapshot_repo.find_by_id(original.snapshot_id)
         if not snapshot:
             raise BusinessError(f"Snapshot {original.snapshot_id} not found", status_code=404)
 
-        repository = self.repository_repo.find_by_id_in_project(original.project_id, original.repository_id)
+        repository = self.repository_repo.find_by_id(original.repository_id)
         if not repository:
             raise BusinessError(f"Repository {original.repository_id} not found", status_code=404)
 

@@ -16,14 +16,6 @@ class RepositoryRepositoryImpl(BaseRepository[Repository, RepositoryModel], Repo
     def __init__(self, session: Session):
         super().__init__(session, RepositoryModel, RepositoryMapper())
 
-    def find_by_id_in_project(self, project_id: str, repository_id: str) -> Repository | None:
-        orm = (
-            self._session.query(RepositoryModel)
-            .filter(RepositoryModel.project_id == project_id, RepositoryModel.id == repository_id)
-            .first()
-        )
-        return self._mapper.to_domain(orm) if orm else None
-
     def find_paginated_by_project_id(
         self, project_id: str, page: int = 1, per_page: int = 20, search: str | None = None
     ) -> tuple[list[Repository], int]:

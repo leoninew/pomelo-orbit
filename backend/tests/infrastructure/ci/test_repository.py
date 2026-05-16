@@ -36,7 +36,7 @@ class TestProjectRepository:
         self.repo.save(project)
         self.session.commit()
 
-        found = self.repo.find_by_id_in_project(PROJECT_ID, project.id)
+        found = self.repo.find_by_id(project.id)
 
         assert found is not None
         assert found.id == project.id
@@ -84,7 +84,7 @@ class TestProjectRepository:
         self.repo.save(project)
         self.session.commit()
 
-        found = self.repo.find_by_id_in_project(PROJECT_ID, project.id)
+        found = self.repo.find_by_id(project.id)
 
         assert found is not None
         assert found.name == "updated-project"

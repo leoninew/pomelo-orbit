@@ -146,6 +146,7 @@
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
 	import type { Project } from '@/types/project';
+	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';

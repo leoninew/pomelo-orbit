@@ -28,7 +28,7 @@ class WebhookService:
 
     def list_webhooks(self, project_id: str, repository_id: str) -> list[RepositoryWebhook]:
         """查询项目的 webhook 列表"""
-        if not self.repository_repo.find_by_id_in_project(project_id, repository_id):
+        if not self.repository_repo.find_by_id(repository_id):
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
         return self.webhook_repo.find_by_repository(repository_id)
 
@@ -36,15 +36,6 @@ class WebhookService:
         """获取单个 webhook"""
         wh = self.webhook_repo.find_by_id(webhook_id)
         if not wh:
-            raise BusinessError(f"Webhook {webhook_id} not found", status_code=404)
-        return wh
-
-    def get_webhook_in_project(self, project_id: str, repository_id: str, webhook_id: str) -> RepositoryWebhook:
-        """获取项目内 webhook"""
-        if not self.repository_repo.find_by_id_in_project(project_id, repository_id):
-            raise BusinessError(f"Repository {repository_id} not found", status_code=404)
-        wh = self.get_webhook(webhook_id)
-        if wh.repository_id != repository_id:
             raise BusinessError(f"Webhook {webhook_id} not found", status_code=404)
         return wh
 
@@ -64,10 +55,10 @@ class WebhookService:
         branch_filter: str | None = None,
     ) -> RepositoryWebhook:
         """创建 webhook"""
-        if not self.repository_repo.find_by_id_in_project(project_id, repository_id):
+        if not self.repository_repo.find_by_id(repository_id):
             raise BusinessError(f"Repository {repository_id} not found", status_code=404)
 
-        if not self.template_repo.find_by_id_in_project(project_id, template_id):
+        if not self.template_repo.find_by_id(template_id):
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
 
         encrypted = self.security_service.encrypt_value(plain_secret)
@@ -93,9 +84,11 @@ class WebhookService:
         enabled: bool | None = None,
     ) -> RepositoryWebhook:
         """更新 webhook"""
-        wh = self.get_webhook_in_project(project_id, repository_id, webhook_id)
+        wh = self.get_webhook(webhook_id)
+        if wh.repository_id != repository_id:
+            raise BusinessError(f"Webhook {webhook_id} not found", status_code=404)
 
-        if template_id and not self.template_repo.find_by_id_in_project(project_id, template_id):
+        if template_id and not self.template_repo.find_by_id(template_id):
             raise BusinessError(f"PipelineTemplate {template_id} not found", status_code=404)
 
         encrypted_secret = self.security_service.encrypt_value(plain_secret) if plain_secret else None
@@ -111,7 +104,9 @@ class WebhookService:
 
     def delete_webhook(self, project_id: str, repository_id: str, webhook_id: str) -> None:
         """删除 webhook"""
-        wh = self.get_webhook_in_project(project_id, repository_id, webhook_id)
+        wh = self.get_webhook(webhook_id)
+        if wh.repository_id != repository_id:
+            raise BusinessError(f"Webhook {webhook_id} not found", status_code=404)
         self.webhook_repo.delete(wh)
 
     def decrypt_webhook_secret(self, webhook: RepositoryWebhook) -> str:

@@ -33,14 +33,6 @@ class BuildStageRepositoryImpl(BuildStageRepository):
         orm = self._session.query(BuildStageModel).filter(BuildStageModel.id == stage_id).first()
         return self._mapper.to_domain(orm) if orm else None
 
-    def find_by_id_in_project(self, project_id: str, stage_id: str) -> BuildStage | None:
-        orm = (
-            self._session.query(BuildStageModel)
-            .filter(BuildStageModel.project_id == project_id, BuildStageModel.id == stage_id)
-            .first()
-        )
-        return self._mapper.to_domain(orm) if orm else None
-
     def find_by_name(self, project_id: str, name: str) -> BuildStage | None:
         orm = (
             self._session.query(BuildStageModel)
@@ -123,14 +115,6 @@ class PipelineTemplateRepositoryImpl(PipelineTemplateRepository):
         orm = self._session.query(PipelineTemplateModel).filter(PipelineTemplateModel.id == template_id).first()
         return self._load(orm) if orm else None
 
-    def find_by_id_in_project(self, project_id: str, template_id: str) -> PipelineTemplate | None:
-        orm = (
-            self._session.query(PipelineTemplateModel)
-            .filter(PipelineTemplateModel.project_id == project_id, PipelineTemplateModel.id == template_id)
-            .first()
-        )
-        return self._load(orm) if orm else None
-
     def find_by_name(self, project_id: str, name: str) -> PipelineTemplate | None:
         orm = (
             self._session.query(PipelineTemplateModel)
@@ -185,12 +169,8 @@ class PipelineSnapshotRepositoryImpl(PipelineSnapshotRepository):
         self._session = session
         self._mapper = PipelineSnapshotMapper()
 
-    def find_by_id_in_project(self, project_id: str, snapshot_id: str) -> PipelineSnapshot | None:
-        orm = (
-            self._session.query(PipelineSnapshotModel)
-            .filter(PipelineSnapshotModel.project_id == project_id, PipelineSnapshotModel.id == snapshot_id)
-            .first()
-        )
+    def find_by_id(self, snapshot_id: str) -> PipelineSnapshot | None:
+        orm = self._session.query(PipelineSnapshotModel).filter(PipelineSnapshotModel.id == snapshot_id).first()
         return self._mapper.to_domain(orm) if orm else None
 
     def find_latest(self, project_id: str, template_id: str) -> PipelineSnapshot | None:

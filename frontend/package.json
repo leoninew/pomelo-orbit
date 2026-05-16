@@ -10,8 +10,8 @@
 		"test": "vitest run",
 		"test:cov": "vitest run --coverage",
 		"typecheck": "vue-tsc --noEmit",
-		"lint": "eslint .",
-		"lint:fix": "eslint . --fix",
+		"lint": "eslint . --cache",
+		"lint:fix": "eslint . --fix --cache",
 		"format": "prettier --write src",
 		"format:check": "prettier --check src"
 	},

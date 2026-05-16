@@ -15,14 +15,6 @@ class CredentialRepositoryImpl(BaseRepository[Credential, CredentialModel], Cred
     def __init__(self, session: Session):
         super().__init__(session, CredentialModel, CredentialMapper())
 
-    def find_by_id_in_project(self, project_id: str, credential_id: str) -> Credential | None:
-        model = (
-            self._session.query(CredentialModel)
-            .filter(CredentialModel.project_id == project_id, CredentialModel.id == credential_id)
-            .first()
-        )
-        return self._mapper.to_domain(model) if model else None
-
     def find_by_name(self, project_id: str, name: str) -> Credential | None:
         """按名称查找凭据"""
         model = (

@@ -11,9 +11,6 @@ class PipelineRunRepository(ABC):
     def find_by_id(self, run_id: str) -> PipelineRun | None: ...
 
     @abstractmethod
-    def find_by_id_in_project(self, project_id: str, run_id: str) -> PipelineRun | None: ...
-
-    @abstractmethod
     def find_paginated_with_filters(
         self,
         project_id: str,

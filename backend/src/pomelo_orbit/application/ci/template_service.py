@@ -166,9 +166,9 @@ class TemplateService:
         stages = self._load_stages_by_ids(project_id, [o.stage_id for o in orchestration]) if orchestration else []
         return self.variable_resolver.resolve_template_variables(stages, variable_declarations or [])
 
-    def get_snapshot(self, project_id: str, snapshot_id: str) -> PipelineSnapshot:
+    def get_snapshot(self, snapshot_id: str) -> PipelineSnapshot:
         """获取快照"""
-        snapshot = self.snapshot_repo.find_by_id_in_project(project_id, snapshot_id)
+        snapshot = self.snapshot_repo.find_by_id(snapshot_id)
         if not snapshot:
             raise BusinessError(f"PipelineSnapshot {snapshot_id} not found", status_code=404)
         return snapshot

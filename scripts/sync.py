@@ -26,6 +26,7 @@ PROJECT_DIR = SCRIPT_DIR.parent
 # send 排除规则（黑名单）：.gitignore 规则 + 固定排除项
 SEND_EXCLUDES = [
     "--exclude=.git",
+    "--exclude=.claude",
     "--filter=:- .gitignore",
     "--exclude=scripts",
     "--exclude=.kiro",

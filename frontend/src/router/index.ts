@@ -38,6 +38,12 @@ const router = createRouter({
 			component: () => import('@/views/UserPage.vue'),
 			meta: { title: '用户管理', menuKey: 'users' },
 		},
+		{
+			path: '/roles',
+			name: 'Roles',
+			component: () => import('@/views/RolePage.vue'),
+			meta: { title: '角色管理', menuKey: 'roles' },
+		},
 		// CD
 		{
 			path: '/cd/applications',

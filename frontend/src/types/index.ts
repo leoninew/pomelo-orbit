@@ -9,6 +9,7 @@ export type {
 	UserInfo,
 } from './auth';
 export type { Project, ProjectCreateReq, ProjectUpdateReq } from './project';
+export type { RoleCreateReq, RoleResp, RoleUpdateReq } from './role';
 export type { UserResp, UserCreateReq, UserUpdateReq } from './user';
 export type {
 	Application,

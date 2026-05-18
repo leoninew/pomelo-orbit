@@ -12,6 +12,7 @@ import {
 	Play,
 	Rocket,
 	Settings,
+	Shield,
 	Users,
 } from 'lucide-vue-next';
 import type { Component } from 'vue';
@@ -50,6 +51,13 @@ export const secondaryNavigation = {
 			labelKey: 'nav.users',
 			path: '/users',
 			icon: Users,
+		},
+		{
+			key: 'roles',
+			label: '角色管理',
+			labelKey: 'nav.roles',
+			path: '/roles',
+			icon: Shield,
 		},
 		{
 			key: 'loginhistory',
@@ -147,6 +155,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
 		path === '/home' ||
 		path === '/projects' ||
 		path === '/users' ||
+		path === '/roles' ||
 		path === '/login-history' ||
 		path === '/settings'
 	) {

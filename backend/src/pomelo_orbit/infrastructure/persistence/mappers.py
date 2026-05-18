@@ -2,7 +2,7 @@
 领域实体与 ORM 模型之间的映射器
 """
 
-from pomelo_orbit.domain.auth.entities import LoginAttempt, LoginHistory, User
+from pomelo_orbit.domain.auth.entities import LoginAttempt, LoginHistory, Role, User
 from pomelo_orbit.domain.cd.entities import (
     Application,
     ApplicationConfigFile,
@@ -22,6 +22,7 @@ from pomelo_orbit.infrastructure.persistence.models import (
     DeploymentModel,
     LoginAttemptModel,
     LoginHistoryModel,
+    RoleModel,
     RouteModel,
     UserModel,
 )
@@ -62,6 +63,32 @@ class UserMapper:
             created_at=entity.created_at,
             updated_at=entity.updated_at,
             last_login_at=entity.last_login_at,
+        )
+
+
+class RoleMapper:
+    @staticmethod
+    def to_domain(model: RoleModel) -> Role:
+        return Role(
+            id=model.id,
+            code=model.code,
+            name=model.name,
+            description=model.description,
+            is_active=model.is_active,
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+        )
+
+    @staticmethod
+    def to_orm(entity: Role) -> RoleModel:
+        return RoleModel(
+            id=entity.id,
+            code=entity.code,
+            name=entity.name,
+            description=entity.description,
+            is_active=entity.is_active,
+            created_at=entity.created_at,
+            updated_at=entity.updated_at,
         )
 
 

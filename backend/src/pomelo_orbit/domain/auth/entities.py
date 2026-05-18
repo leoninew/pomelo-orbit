@@ -24,6 +24,17 @@ class User:
 
 
 @dataclass
+class Role:
+    id: str
+    code: str
+    name: str
+    description: str | None
+    is_active: bool
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+
+
+@dataclass
 class LoginHistory:
     """登录历史"""
 

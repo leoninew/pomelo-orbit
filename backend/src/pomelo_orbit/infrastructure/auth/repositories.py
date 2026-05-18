@@ -1,12 +1,38 @@
 from datetime import timedelta
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from pomelo_orbit.domain.auth.entities import LoginAttempt
-from pomelo_orbit.domain.auth.repositories import LoginAttemptRepository
-from pomelo_orbit.infrastructure.persistence.mappers import LoginAttemptMapper
-from pomelo_orbit.infrastructure.persistence.models import LoginAttemptModel
+from pomelo_orbit.domain.auth.entities import LoginAttempt, Role
+from pomelo_orbit.domain.auth.repositories import LoginAttemptRepository, RoleRepository
+from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
+from pomelo_orbit.infrastructure.persistence.mappers import LoginAttemptMapper, RoleMapper
+from pomelo_orbit.infrastructure.persistence.models import LoginAttemptModel, RoleModel
 from pomelo_orbit.infrastructure.time_utils import utc_now
+
+
+class RoleRepositoryImpl(BaseRepository[Role, RoleModel], RoleRepository):
+    def __init__(self, db: Session):
+        super().__init__(db, RoleModel, RoleMapper)
+
+    def find_by_code(self, code: str) -> Role | None:
+        model = self._session.query(RoleModel).filter(RoleModel.code == code).first()
+        return self._mapper.to_domain(model) if model else None
+
+    def find_by_name(self, name: str) -> Role | None:
+        model = self._session.query(RoleModel).filter(RoleModel.name == name).first()
+        return self._mapper.to_domain(model) if model else None
+
+    def find_paginated(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[Role], int]:
+        query = self._session.query(RoleModel)
+        if search:
+            keyword = f"%{search}%"
+            query = query.filter(
+                or_(RoleModel.code.ilike(keyword), RoleModel.name.ilike(keyword), RoleModel.description.ilike(keyword))
+            )
+        total = query.count()
+        models = query.order_by(RoleModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        return [self._mapper.to_domain(model) for model in models], total
 
 
 class LoginAttemptRepositoryImpl(LoginAttemptRepository):

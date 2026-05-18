@@ -26,6 +26,7 @@ from pomelo_orbit.interfaces.api.auth.router import router as auth_router
 from pomelo_orbit.interfaces.api.cd import router as cd_router
 from pomelo_orbit.interfaces.api.ci import router as ci_router
 from pomelo_orbit.interfaces.api.project import router as project_router
+from pomelo_orbit.interfaces.api.role import router as role_router
 from pomelo_orbit.interfaces.api.settings.router import router as settings_router
 from pomelo_orbit.interfaces.api.user import router as user_router
 
@@ -68,6 +69,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(cd_router, prefix="/api")
 app.include_router(project_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
+app.include_router(role_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(ci_router, prefix="/api")
 

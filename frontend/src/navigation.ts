@@ -12,6 +12,7 @@ import {
 	Play,
 	Rocket,
 	Settings,
+	Users,
 } from 'lucide-vue-next';
 import type { Component } from 'vue';
 
@@ -42,6 +43,13 @@ export const secondaryNavigation = {
 			labelKey: 'nav.projects',
 			path: '/projects',
 			icon: FolderKanban,
+		},
+		{
+			key: 'users',
+			label: '用户管理',
+			labelKey: 'nav.users',
+			path: '/users',
+			icon: Users,
 		},
 		{
 			key: 'loginhistory',
@@ -138,6 +146,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
 		path === '/' ||
 		path === '/home' ||
 		path === '/projects' ||
+		path === '/users' ||
 		path === '/login-history' ||
 		path === '/settings'
 	) {

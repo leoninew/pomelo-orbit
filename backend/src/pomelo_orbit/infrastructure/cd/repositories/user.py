@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from pomelo_orbit.domain.auth.entities import LoginHistory, User
@@ -32,6 +33,15 @@ class UserRepositoryImpl(BaseRepository[User, UserModel], UserRepository):
             return None
         model = self._session.query(UserModel).filter(UserModel.email == email).first()
         return self._mapper.to_domain(model) if model else None
+
+    def find_paginated(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[User], int]:
+        query = self._session.query(UserModel)
+        if search:
+            keyword = f"%{search}%"
+            query = query.filter(or_(UserModel.username.ilike(keyword), UserModel.email.ilike(keyword)))
+        total = query.count()
+        models = query.order_by(UserModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        return [self._mapper.to_domain(m) for m in models], total
 
     def save_login_history(self, history: LoginHistory) -> None:
         model = LoginHistoryMapper.to_orm(history)

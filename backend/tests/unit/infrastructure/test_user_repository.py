@@ -55,6 +55,21 @@ class TestUserRepository:
         found = repo.find_by_username("nonexistent")
         assert found is None
 
+    def test_find_paginated_searches_username_and_email(self, db_session):
+        repo = UserRepositoryImpl(db_session)
+        repo.save(User(id="user-10", username="alice", password_hash="hashed", email="alice@example.com"))
+        repo.save(User(id="user-11", username="bob", password_hash="hashed", email="team@example.com"))
+        repo.save(User(id="user-12", username="carol", password_hash="hashed", email="carol@example.com"))
+
+        users, total = repo.find_paginated(page=1, per_page=10, search="example")
+
+        assert total == 3
+        assert {user.username for user in users} == {"alice", "bob", "carol"}
+
+        users, total = repo.find_paginated(page=1, per_page=10, search="team")
+        assert total == 1
+        assert users[0].username == "bob"
+
     def test_update_user(self, db_session):
         """测试更新用户"""
         repo = UserRepositoryImpl(db_session)

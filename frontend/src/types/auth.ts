@@ -21,11 +21,13 @@ export interface TokenResp {
 	token_type: string
 }
 
+export type AuthSource = 'password' | 'oauth';
+
 export interface UserInfo {
 	id: string
 	username: string
 	email: string | null
-	auth_source: string
+	auth_source: AuthSource
 	created_at: string
 	last_login_at: string | null
 }

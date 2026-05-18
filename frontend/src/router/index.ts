@@ -32,6 +32,12 @@ const router = createRouter({
 			component: () => import('@/views/ProjectPage.vue'),
 			meta: { title: '项目管理', menuKey: 'projects' },
 		},
+		{
+			path: '/users',
+			name: 'Users',
+			component: () => import('@/views/UserPage.vue'),
+			meta: { title: '用户管理', menuKey: 'users' },
+		},
 		// CD
 		{
 			path: '/cd/applications',

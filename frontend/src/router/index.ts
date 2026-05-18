@@ -36,13 +36,13 @@ const router = createRouter({
 			path: '/users',
 			name: 'Users',
 			component: () => import('@/views/UserPage.vue'),
-			meta: { title: '用户管理', menuKey: 'users' },
+			meta: { title: '用户管理', menuKey: 'users', permission: 'user:read' },
 		},
 		{
 			path: '/roles',
 			name: 'Roles',
 			component: () => import('@/views/RolePage.vue'),
-			meta: { title: '角色管理', menuKey: 'roles' },
+			meta: { title: '角色管理', menuKey: 'roles', permission: 'role:read' },
 		},
 		// CD
 		{
@@ -200,6 +200,12 @@ router.beforeEach(async (to, _from, next) => {
 			next({ name: 'Login', query: { redirect: to.fullPath } });
 			return;
 		}
+	}
+
+	const permission = to.meta.permission;
+	if (typeof permission === 'string' && !authStore.hasPermission(permission)) {
+		next({ name: 'Home' });
+		return;
 	}
 
 	next();

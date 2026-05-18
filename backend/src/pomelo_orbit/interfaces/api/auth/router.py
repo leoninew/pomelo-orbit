@@ -68,7 +68,7 @@ def get_current_user(
     if username is None:
         raise AuthorizationError("登录已过期, 请重新登录")
     user = user_repo.find_by_username(username)
-    if user is None:
+    if user is None or not user.is_active:
         raise AuthorizationError("登录已过期, 请重新登录")
     return user
 
@@ -121,7 +121,10 @@ def logout() -> dict:
 
 
 @router.get("/me", response_model=UserInfo)
-def get_me(current_user: Annotated[User, Depends(get_current_user)]) -> UserInfo:
+def get_me(
+    current_user: Annotated[User, Depends(get_current_user)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
+) -> UserInfo:
     """获取当前用户信息"""
     return UserInfo(
         id=current_user.id,
@@ -130,6 +133,8 @@ def get_me(current_user: Annotated[User, Depends(get_current_user)]) -> UserInfo
         auth_source=current_user.auth_source,
         created_at=current_user.created_at,
         last_login_at=current_user.last_login_at,
+        roles=[role.code for role in user_repo.find_roles(current_user.id)],
+        permissions=[permission.code for permission in user_repo.find_permissions(current_user.id)],
     )
 
 

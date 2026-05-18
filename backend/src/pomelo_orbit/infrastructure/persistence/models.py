@@ -46,6 +46,35 @@ class RoleModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
 
+class PermissionModel(Base):
+    __tablename__ = "permission"
+
+    id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
+    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class UserRoleModel(Base):
+    __tablename__ = "user_role"
+
+    user_id: Mapped[str] = mapped_column(String(26), ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    role_id: Mapped[str] = mapped_column(String(26), ForeignKey("role.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+
+
+class RolePermissionModel(Base):
+    __tablename__ = "role_permission"
+
+    role_id: Mapped[str] = mapped_column(String(26), ForeignKey("role.id", ondelete="CASCADE"), primary_key=True)
+    permission_id: Mapped[str] = mapped_column(
+        String(26), ForeignKey("permission.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
+
+
 class ProjectModel(Base):
     """项目模型"""
 

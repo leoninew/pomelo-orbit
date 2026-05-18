@@ -35,6 +35,16 @@ class Role:
 
 
 @dataclass
+class Permission:
+    id: str
+    code: str
+    name: str
+    description: str | None
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+
+
+@dataclass
 class LoginHistory:
     """登录历史"""
 

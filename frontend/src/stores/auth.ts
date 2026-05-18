@@ -11,6 +11,10 @@ export const useAuthStore = defineStore('auth', () => {
 
 	const isAuthenticated = computed(() => !!token.value);
 
+	function hasPermission(permission: string) {
+		return user.value?.permissions.includes(permission) ?? false;
+	}
+
 	// 设置 token
 	function setToken(newToken: string) {
 		token.value = newToken;
@@ -88,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
 		token,
 		user,
 		isAuthenticated,
+		hasPermission,
 		setToken,
 		setUser,
 		clearToken,

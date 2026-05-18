@@ -1,48 +1,45 @@
 import math
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, ConfigDict, Field
 
 from pomelo_orbit.application.auth.di import get_user_service
 from pomelo_orbit.application.auth.user_service import UserService
+from pomelo_orbit.domain import BusinessError
 from pomelo_orbit.domain.auth.entities import User
-from pomelo_orbit.interfaces.api.auth.dto import UserInfo
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.permissions import require_permission
 from pomelo_orbit.interfaces.api.common import PaginatedResp
+from pomelo_orbit.interfaces.api.dto.user import UserCreateReq, UserListResp, UserResp, UserUpdateReq
 
 router = APIRouter(prefix="/user", tags=["user"])
 
 
-class UserCreateReq(BaseModel):
-    username: str = Field(min_length=1, max_length=50)
-    password: str = Field(min_length=6, max_length=255)
-    email: str | None = Field(default=None, max_length=255)
+def _ensure_can_assign_roles(current_user: User, user_service: UserService) -> None:
+    if "role:write" not in user_service.get_user_permission_codes(current_user.id):
+        raise BusinessError("Permission denied", status_code=403)
 
 
-class UserUpdateReq(BaseModel):
-    password: str = Field(min_length=6, max_length=255)
+def _ensure_can_reset_password(current_user: User, target_user_id: str, user_service: UserService) -> None:
+    if current_user.id == target_user_id:
+        return
+    if "role:write" in user_service.get_user_permission_codes(current_user.id):
+        return
+    if "role:write" in user_service.get_user_permission_codes(target_user_id):
+        raise BusinessError("Permission denied", status_code=403)
 
 
-class UserResp(UserInfo):
-    is_active: bool
-    updated_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-@router.get("", response_model=PaginatedResp[UserResp])
+@router.get("", response_model=PaginatedResp[UserListResp])
 def list_users(
     user_service: Annotated[UserService, Depends(get_user_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    _current_user: Annotated[User, Depends(require_permission("user:read"))],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,
     search: Annotated[str | None, Query()] = None,
-) -> PaginatedResp[UserResp]:
+) -> PaginatedResp[UserListResp]:
     users, total = user_service.list_users(page=page, per_page=per_page, search=search)
+    roles_by_user_id = user_service.get_users_roles([user.id for user in users])
     return PaginatedResp(
-        items=[UserResp.model_validate(user) for user in users],
+        items=[UserListResp.from_domain(user, roles_by_user_id.get(user.id, [])) for user in users],
         total=total,
         page=page,
         per_page=per_page,
@@ -54,20 +51,26 @@ def list_users(
 def create_user(
     data: UserCreateReq,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
-    user = user_service.create_user(username=data.username, password=data.password, email=data.email)
-    return UserResp.model_validate(user)
+    if data.role_ids:
+        _ensure_can_assign_roles(current_user, user_service)
+    user = user_service.create_user(username=data.username, password=data.password, email=data.email, role_ids=data.role_ids)
+    roles = user_service.get_user_roles(user.id)
+    permission_codes = user_service.get_user_permission_codes(user.id)
+    return UserResp.from_domain(user, roles, permission_codes)
 
 
 @router.get("/{user_id}", response_model=UserResp)
 def get_user(
     user_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    _current_user: Annotated[User, Depends(require_permission("user:read"))],
 ) -> UserResp:
     user = user_service.get_user(user_id)
-    return UserResp.model_validate(user)
+    roles = user_service.get_user_roles(user.id)
+    permission_codes = user_service.get_user_permission_codes(user.id)
+    return UserResp.from_domain(user, roles, permission_codes)
 
 
 @router.put("/{user_id}", response_model=UserResp)
@@ -75,17 +78,23 @@ def update_user(
     user_id: str,
     data: UserUpdateReq,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
-    user = user_service.update_user(user_id, password=data.password)
-    return UserResp.model_validate(user)
+    if data.role_ids is not None:
+        _ensure_can_assign_roles(current_user, user_service)
+    if data.password is not None:
+        _ensure_can_reset_password(current_user, user_id, user_service)
+    user = user_service.update_user(user_id, password=data.password, role_ids=data.role_ids)
+    roles = user_service.get_user_roles(user.id)
+    permission_codes = user_service.get_user_permission_codes(user.id)
+    return UserResp.from_domain(user, roles, permission_codes)
 
 
 @router.post("/{user_id}/disable", status_code=204)
 def disable_user(
     user_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> None:
     user_service.disable_user(current_user.id, user_id)
 
@@ -94,7 +103,7 @@ def disable_user(
 def enable_user(
     user_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    _current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> None:
     user_service.enable_user(user_id)
 
@@ -103,6 +112,6 @@ def enable_user(
 def delete_user(
     user_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> None:
     user_service.delete_user(current_user.id, user_id)

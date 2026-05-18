@@ -67,8 +67,10 @@
 	import AppTopBar from '@/components/AppTopBar.vue';
 	import { useTheme } from '@/composables/useTheme';
 	import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
+	import { useAuthStore } from '@/stores/auth';
 
 	const route = useRoute();
+	const authStore = useAuthStore();
 	const { t } = useI18n({ useScope: 'global' });
 	useTheme();
 
@@ -81,10 +83,12 @@
 		if (!currentScope.value) {
 			return [];
 		}
-		return (secondaryNavigation[currentScope.value] ?? []).map((item) => ({
-			...item,
-			label: t(item.labelKey),
-		}));
+		return (secondaryNavigation[currentScope.value] ?? [])
+			.filter((item) => !item.permission || authStore.hasPermission(item.permission))
+			.map((item) => ({
+				...item,
+				label: t(item.labelKey),
+			}));
 	});
 
 	const isLoginPage = computed(() => route.name === 'Login');

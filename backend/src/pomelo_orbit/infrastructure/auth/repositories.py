@@ -3,11 +3,17 @@ from datetime import timedelta
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from pomelo_orbit.domain.auth.entities import LoginAttempt, Role
-from pomelo_orbit.domain.auth.repositories import LoginAttemptRepository, RoleRepository
+from pomelo_orbit.domain.auth.entities import LoginAttempt, Permission, Role
+from pomelo_orbit.domain.auth.repositories import LoginAttemptRepository, PermissionRepository, RoleRepository
 from pomelo_orbit.infrastructure.persistence.base_repository import BaseRepository
-from pomelo_orbit.infrastructure.persistence.mappers import LoginAttemptMapper, RoleMapper
-from pomelo_orbit.infrastructure.persistence.models import LoginAttemptModel, RoleModel
+from pomelo_orbit.infrastructure.persistence.mappers import LoginAttemptMapper, PermissionMapper, RoleMapper
+from pomelo_orbit.infrastructure.persistence.models import (
+    LoginAttemptModel,
+    PermissionModel,
+    RoleModel,
+    RolePermissionModel,
+    UserRoleModel,
+)
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 
@@ -33,6 +39,53 @@ class RoleRepositoryImpl(BaseRepository[Role, RoleModel], RoleRepository):
         total = query.count()
         models = query.order_by(RoleModel.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
         return [self._mapper.to_domain(model) for model in models], total
+
+
+class PermissionRepositoryImpl(PermissionRepository):
+    def __init__(self, db: Session):
+        self._session = db
+
+    def list_all(self) -> list[Permission]:
+        models = self._session.query(PermissionModel).order_by(PermissionModel.code.asc()).all()
+        return [PermissionMapper.to_domain(model) for model in models]
+
+    def find_by_codes(self, codes: list[str]) -> list[Permission]:
+        if not codes:
+            return []
+        models = self._session.query(PermissionModel).filter(PermissionModel.code.in_(codes)).all()
+        return [PermissionMapper.to_domain(model) for model in models]
+
+    def find_by_user_id(self, user_id: str) -> list[Permission]:
+        models = (
+            self._session.query(PermissionModel)
+            .join(RolePermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
+            .join(RoleModel, RoleModel.id == RolePermissionModel.role_id)
+            .filter(RoleModel.id.in_(self._role_ids_for_user(user_id)))
+            .distinct()
+            .order_by(PermissionModel.code.asc())
+            .all()
+        )
+        return [PermissionMapper.to_domain(model) for model in models]
+
+    def find_by_role_id(self, role_id: str) -> list[Permission]:
+        models = (
+            self._session.query(PermissionModel)
+            .join(RolePermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
+            .filter(RolePermissionModel.role_id == role_id)
+            .order_by(PermissionModel.code.asc())
+            .all()
+        )
+        return [PermissionMapper.to_domain(model) for model in models]
+
+    def set_role_permissions(self, role_id: str, permission_codes: list[str]) -> None:
+        permissions = self.find_by_codes(permission_codes)
+        self._session.query(RolePermissionModel).filter(RolePermissionModel.role_id == role_id).delete()
+        for permission in permissions:
+            self._session.add(RolePermissionModel(role_id=role_id, permission_id=permission.id))
+
+    def _role_ids_for_user(self, user_id: str) -> list[str]:
+        rows = self._session.query(UserRoleModel.role_id).filter(UserRoleModel.user_id == user_id).all()
+        return [row[0] for row in rows]
 
 
 class LoginAttemptRepositoryImpl(LoginAttemptRepository):

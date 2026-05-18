@@ -2,6 +2,12 @@
 
 from pomelo_orbit.domain.auth.entities import LoginHistory, User
 from pomelo_orbit.infrastructure.cd.repositories.user import UserRepositoryImpl
+from pomelo_orbit.infrastructure.persistence.models import (
+    PermissionModel,
+    RoleModel,
+    RolePermissionModel,
+    UserRoleModel,
+)
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 
@@ -88,6 +94,57 @@ class TestUserRepository:
         found = repo.find_by_id("user-3")
         assert found is not None
         assert found.password_hash == "new_hash"
+
+    def test_set_and_find_roles(self, db_session):
+        repo = UserRepositoryImpl(db_session)
+        repo.save(User(id="user-13", username="alice", password_hash="hashed"))
+        db_session.add(RoleModel(id="role-1", code="developer", name="Developer"))
+        db_session.add(RoleModel(id="role-2", code="admin", name="Admin"))
+        db_session.commit()
+
+        repo.set_roles("user-13", ["role-1", "role-2"])
+        db_session.commit()
+
+        roles = repo.find_roles("user-13")
+        assert [role.code for role in roles] == ["admin", "developer"]
+
+        repo.set_roles("user-13", ["role-1"])
+        db_session.commit()
+
+        roles = repo.find_roles("user-13")
+        assert [role.code for role in roles] == ["developer"]
+        assert db_session.get(UserRoleModel, ("user-13", "role-2")) is None
+
+    def test_find_roles_by_user_ids(self, db_session):
+        repo = UserRepositoryImpl(db_session)
+        repo.save(User(id="user-15", username="alice", password_hash="hashed"))
+        repo.save(User(id="user-16", username="bob", password_hash="hashed"))
+        db_session.add(RoleModel(id="role-5", code="developer", name="Developer"))
+        db_session.add(RoleModel(id="role-6", code="admin", name="Admin"))
+        db_session.add(UserRoleModel(user_id="user-15", role_id="role-5"))
+        db_session.add(UserRoleModel(user_id="user-15", role_id="role-6"))
+        db_session.commit()
+
+        roles_by_user_id = repo.find_roles_by_user_ids(["user-15", "user-16"])
+
+        assert [role.code for role in roles_by_user_id["user-15"]] == ["admin", "developer"]
+        assert roles_by_user_id["user-16"] == []
+
+    def test_find_permissions(self, db_session):
+        repo = UserRepositoryImpl(db_session)
+        repo.save(User(id="user-14", username="alice", password_hash="hashed"))
+        db_session.add(RoleModel(id="role-3", code="developer", name="Developer"))
+        db_session.add(RoleModel(id="role-4", code="viewer", name="Viewer"))
+        db_session.add(PermissionModel(id="perm-1", code="user:read", name="View Users"))
+        db_session.add(RolePermissionModel(role_id="role-3", permission_id="perm-1"))
+        db_session.add(RolePermissionModel(role_id="role-4", permission_id="perm-1"))
+        db_session.add(UserRoleModel(user_id="user-14", role_id="role-3"))
+        db_session.add(UserRoleModel(user_id="user-14", role_id="role-4"))
+        db_session.commit()
+
+        permissions = repo.find_permissions("user-14")
+
+        assert [permission.code for permission in permissions] == ["user:read"]
 
     def test_save_login_history(self, db_session):
         """测试保存登录历史"""

@@ -46,6 +46,8 @@ class UserInfo(BaseModel):
     auth_source: str
     created_at: datetime
     last_login_at: datetime | None = None
+    roles: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
 
 
 class PasswordChangeReq(BaseModel):

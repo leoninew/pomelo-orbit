@@ -1,5 +1,6 @@
 from pomelo_orbit.domain.auth.entities import Role
-from pomelo_orbit.infrastructure.auth.repositories import RoleRepositoryImpl
+from pomelo_orbit.infrastructure.auth.repositories import PermissionRepositoryImpl, RoleRepositoryImpl
+from pomelo_orbit.infrastructure.persistence.models import PermissionModel, RolePermissionModel, UserRoleModel
 
 
 def test_save_and_find_role_by_id(db_session):
@@ -47,3 +48,52 @@ def test_delete_role(db_session):
     repo.delete(role)
 
     assert repo.find_by_id("role-5") is None
+
+
+def test_list_permissions(db_session):
+    repo = PermissionRepositoryImpl(db_session)
+    db_session.add(PermissionModel(id="perm-1", code="role:read", name="View Roles"))
+    db_session.add(PermissionModel(id="perm-2", code="user:read", name="View Users"))
+    db_session.commit()
+
+    permissions = repo.list_all()
+
+    assert [permission.code for permission in permissions] == ["role:read", "user:read"]
+
+
+def test_set_and_find_role_permissions(db_session):
+    role_repo = RoleRepositoryImpl(db_session)
+    repo = PermissionRepositoryImpl(db_session)
+    role_repo.save(Role(id="role-6", code="viewer", name="Viewer", description=None, is_active=True))
+    db_session.add(PermissionModel(id="perm-3", code="user:read", name="View Users"))
+    db_session.add(PermissionModel(id="perm-4", code="user:write", name="Manage Users"))
+    db_session.commit()
+
+    repo.set_role_permissions("role-6", ["user:read", "user:write"])
+    db_session.commit()
+
+    permissions = repo.find_by_role_id("role-6")
+    assert [permission.code for permission in permissions] == ["user:read", "user:write"]
+
+    repo.set_role_permissions("role-6", ["user:read"])
+    db_session.commit()
+
+    permissions = repo.find_by_role_id("role-6")
+    assert [permission.code for permission in permissions] == ["user:read"]
+
+
+def test_find_permissions_by_user_id(db_session):
+    role_repo = RoleRepositoryImpl(db_session)
+    repo = PermissionRepositoryImpl(db_session)
+    role_repo.save(Role(id="role-7", code="viewer", name="Viewer", description=None, is_active=True))
+    role_repo.save(Role(id="role-8", code="auditor", name="Auditor", description=None, is_active=True))
+    db_session.add(PermissionModel(id="perm-5", code="user:read", name="View Users"))
+    db_session.add(RolePermissionModel(role_id="role-7", permission_id="perm-5"))
+    db_session.add(RolePermissionModel(role_id="role-8", permission_id="perm-5"))
+    db_session.add(UserRoleModel(user_id="user-1", role_id="role-7"))
+    db_session.add(UserRoleModel(user_id="user-1", role_id="role-8"))
+    db_session.commit()
+
+    permissions = repo.find_by_user_id("user-1")
+
+    assert [permission.code for permission in permissions] == ["user:read"]

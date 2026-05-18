@@ -13,6 +13,7 @@ from pomelo_orbit.infrastructure.persistence.mappers import (
     ApplicationServiceConfigMapper,
     DeploymentMapper,
     LoginHistoryMapper,
+    PermissionMapper,
     RoleMapper,
     RouteMapper,
     UserMapper,
@@ -24,9 +25,12 @@ from pomelo_orbit.infrastructure.persistence.models import (
     Base,
     DeploymentModel,
     LoginHistoryModel,
+    PermissionModel,
     RoleModel,
+    RolePermissionModel,
     RouteModel,
     UserModel,
+    UserRoleModel,
 )
 
 __all__ = [
@@ -43,12 +47,16 @@ __all__ = [
     "DeploymentModel",
     "LoginHistoryMapper",
     "LoginHistoryModel",
+    "PermissionMapper",
+    "PermissionModel",
     "RoleMapper",
     "RoleModel",
+    "RolePermissionModel",
     "RouteMapper",
     "RouteModel",
     "UserMapper",
     "UserModel",
+    "UserRoleModel",
     "get_db",
     "get_session_factory",
 ]

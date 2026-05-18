@@ -1,5 +1,5 @@
 import type { PaginatedResp } from '@/types/common';
-import type { UserResp, UserCreateReq, UserUpdateReq } from '@/types/user';
+import type { UserCreateReq, UserListResp, UserResp, UserUpdateReq } from '@/types/user';
 import request from '@/utils/request';
 
 export const userApi = {
@@ -7,7 +7,7 @@ export const userApi = {
 		page: number
 		per_page: number
 		search?: string
-	}): Promise<PaginatedResp<UserResp>> {
+	}): Promise<PaginatedResp<UserListResp>> {
 		return request.get('/api/user', { params });
 	},
 

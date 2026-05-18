@@ -30,6 +30,8 @@ export interface UserInfo {
 	auth_source: AuthSource
 	created_at: string
 	last_login_at: string | null
+	roles: string[]
+	permissions: string[]
 }
 
 export interface PasswordChangeReq {

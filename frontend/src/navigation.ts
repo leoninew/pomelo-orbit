@@ -26,6 +26,7 @@ export interface NavigationEntry {
 	labelKey: string
 	path: string
 	icon: Component
+	permission?: string
 }
 
 export interface PrimaryNavigationEntry {
@@ -35,7 +36,7 @@ export interface PrimaryNavigationEntry {
 	path: string
 }
 
-export const secondaryNavigation = {
+export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
 	home: [
 		{ key: 'home', label: '项目概述', labelKey: 'nav.home', path: '/', icon: LayoutGrid },
 		{
@@ -51,6 +52,7 @@ export const secondaryNavigation = {
 			labelKey: 'nav.users',
 			path: '/users',
 			icon: Users,
+			permission: 'user:read',
 		},
 		{
 			key: 'roles',
@@ -58,6 +60,7 @@ export const secondaryNavigation = {
 			labelKey: 'nav.roles',
 			path: '/roles',
 			icon: Shield,
+			permission: 'role:read',
 		},
 		{
 			key: 'loginhistory',
@@ -142,7 +145,7 @@ export const secondaryNavigation = {
 			icon: KeyRound,
 		},
 	],
-} satisfies Record<NavigationScope, NavigationEntry[]>;
+};
 
 export const primaryNavigation = [
 	{ key: 'ci', label: '持续集成', labelKey: 'nav.ci', path: secondaryNavigation.ci[0].path },

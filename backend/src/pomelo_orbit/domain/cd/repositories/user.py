@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from pomelo_orbit.domain.auth.entities import LoginHistory, User
+from pomelo_orbit.domain.auth.entities import LoginHistory, Permission, Role, User
 
 
 class UserRepository(ABC):
@@ -24,6 +24,18 @@ class UserRepository(ABC):
 
     @abstractmethod
     def delete(self, user: User) -> None: ...
+
+    @abstractmethod
+    def find_roles(self, user_id: str) -> list[Role]: ...
+
+    @abstractmethod
+    def find_roles_by_user_ids(self, user_ids: list[str]) -> dict[str, list[Role]]: ...
+
+    @abstractmethod
+    def find_permissions(self, user_id: str) -> list[Permission]: ...
+
+    @abstractmethod
+    def set_roles(self, user_id: str, role_ids: list[str]) -> None: ...
 
     @abstractmethod
     def save_login_history(self, history: LoginHistory) -> None: ...

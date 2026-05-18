@@ -8,7 +8,7 @@
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
-			<div class="flex items-center gap-3">
+			<div v-if="canWriteUsers" class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openCreateDialog">
 					<Plus class="size-4" />
 					{{ t('userManagement.create') }}
@@ -25,25 +25,27 @@
 				<p class="text-sm">{{ t('common.noData') }}</p>
 			</div>
 			<div v-else class="overflow-x-auto">
-				<table class="app-table-list min-w-[960px]">
+				<table class="app-table-list min-w-[1080px]">
 					<colgroup>
+						<col class="w-[14%]" />
 						<col class="w-[18%]" />
-						<col class="w-[22%]" />
-						<col class="w-[10%]" />
-						<col class="w-[10%]" />
 						<col class="w-[16%]" />
-						<col class="w-[16%]" />
-						<col class="w-[8%]" />
+						<col class="w-[9%]" />
+						<col class="w-[9%]" />
+						<col class="w-[14%]" />
+						<col class="w-[14%]" />
+						<col class="w-[6%]" />
 					</colgroup>
 					<thead>
 						<tr>
 							<th>{{ t('userManagement.username') }}</th>
 							<th>{{ t('userManagement.email') }}</th>
+							<th>{{ t('userManagement.roles') }}</th>
 							<th>{{ t('common.status') }}</th>
 							<th>{{ t('userManagement.authSource') }}</th>
 							<th>{{ t('common.createdAt') }}</th>
 							<th>{{ t('userManagement.lastLoginAt') }}</th>
-							<th>{{ t('common.operation') }}</th>
+							<th v-if="canWriteUsers">{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -53,6 +55,9 @@
 							</td>
 							<td class="max-w-0 truncate text-foreground" :title="user.email || undefined">
 								{{ user.email || '-' }}
+							</td>
+							<td class="max-w-0 truncate text-foreground" :title="formatRoleNames(user)">
+								{{ formatRoleNames(user) || '-' }}
 							</td>
 							<td>
 								<AppBadge v-if="user.is_active" variant="status" tone="success">
@@ -71,8 +76,11 @@
 							<td class="whitespace-nowrap text-foreground">
 								{{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
 							</td>
-							<td class="whitespace-nowrap">
+							<td v-if="canWriteUsers" class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
+									<button class="app-link" @click="openEditDialog(user)">
+										{{ t('common.edit') }}
+									</button>
 									<button
 										v-if="user.is_active"
 										class="app-link-danger"
@@ -100,7 +108,10 @@
 			/>
 		</div>
 
-		<AppDialog v-model:open="isDialogOpen" :title="t('userManagement.create')">
+		<AppDialog
+			v-model:open="isDialogOpen"
+			:title="editingUser ? t('userManagement.edit') : t('userManagement.create')"
+		>
 			<form id="user-form" class="space-y-4" @submit.prevent="handleSave">
 				<div class="space-y-1.5">
 					<label class="app-field-label block" for="username">
@@ -112,6 +123,7 @@
 						type="text"
 						class="app-input"
 						maxlength="50"
+						:disabled="!!editingUser"
 						required
 					/>
 				</div>
@@ -123,6 +135,7 @@
 						type="email"
 						class="app-input"
 						maxlength="255"
+						:disabled="!!editingUser"
 					/>
 				</div>
 				<div class="space-y-1.5">
@@ -136,14 +149,33 @@
 						class="app-input"
 						minlength="6"
 						maxlength="255"
-						required
+						:required="!editingUser"
 					/>
+					<p v-if="editingUser" class="text-xs text-muted-foreground">
+						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
+					</p>
+				</div>
+				<div v-if="canAssignRoles" class="space-y-2">
+					<span class="app-field-label block">{{ t('userManagement.roles') }}</span>
+					<div class="grid gap-2 sm:grid-cols-2">
+						<label
+							v-for="role in roleOptions"
+							:key="role.id"
+							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
+						>
+							<input v-model="form.roleIds" type="checkbox" :value="role.id" />
+							<span>
+								<span class="block text-foreground">{{ role.name }}</span>
+								<span class="block text-xs text-muted-foreground">{{ role.code }}</span>
+							</span>
+						</label>
+					</div>
 				</div>
 			</form>
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-primary" type="submit" form="user-form" :disabled="operating">
-					{{ t('userManagement.create') }}
+					{{ editingUser ? t('common.save') : t('userManagement.create') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -167,6 +199,7 @@
 	import { Plus } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { useI18n } from 'vue-i18n';
+	import { roleApi } from '@/api/role';
 	import { userApi } from '@/api/user';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -175,23 +208,32 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useAuthStore } from '@/stores/auth';
 	import type { AuthSource } from '@/types/auth';
-	import type { UserResp } from '@/types/user';
+	import type { RoleResp } from '@/types/role';
+	import type { UserListResp } from '@/types/user';
 	import { formatTime } from '@/utils/time';
 
 	const { t } = useI18n();
 	const toast = useToast();
+	const authStore = useAuthStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
-	const users = ref<UserResp[]>([]);
+	const users = ref<UserListResp[]>([]);
+	const roleOptions = ref<RoleResp[]>([]);
 	const searchText = ref('');
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
-	type ConfirmAction = { type: 'disable'; user: UserResp };
+	type ConfirmAction = { type: 'disable'; user: UserListResp };
 
+	const editingUser = ref<UserListResp | null>(null);
 	const confirmAction = ref<ConfirmAction | null>(null);
 	const isDialogOpen = ref(false);
-	const form = reactive({ username: '', email: '', password: '' });
+	const form = reactive({ username: '', email: '', password: '', roleIds: [] as string[] });
+	const canWriteUsers = computed(() => authStore.hasPermission('user:write'));
+	const canAssignRoles = computed(
+		() => authStore.hasPermission('role:read') && authStore.hasPermission('role:write')
+	);
 	const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
 	const confirmDialogOpen = computed({
 		get: () => confirmAction.value !== null,
@@ -205,10 +247,11 @@
 	const confirmMessage = computed(() => t('userManagement.disableConfirm'));
 	const confirmButtonText = computed(() => t('userManagement.disable'));
 
-	function resetForm(user?: UserResp) {
+	function resetForm(user?: UserListResp) {
 		form.username = user?.username ?? '';
 		form.email = user?.email ?? '';
 		form.password = '';
+		form.roleIds = user?.role_items.map((role) => role.id) ?? [];
 	}
 
 	function formatAuthSource(authSource: AuthSource) {
@@ -219,6 +262,22 @@
 			return t('userManagement.authSourcePassword');
 		default:
 			throw new Error(`Unsupported auth source: ${authSource}`);
+		}
+	}
+
+	function formatRoleNames(user: UserListResp) {
+		return user.role_items.map((role) => role.name).join(', ');
+	}
+
+	async function fetchRoleOptions() {
+		if (!canAssignRoles.value) {
+			return;
+		}
+		try {
+			const res = await roleApi.list({ page: 1, per_page: 100 });
+			roleOptions.value = res.items;
+		} catch {
+			toast.error(t('userManagement.loadRolesFailed'));
 		}
 	}
 
@@ -255,11 +314,18 @@
 	}
 
 	function openCreateDialog() {
+		editingUser.value = null;
 		resetForm();
 		isDialogOpen.value = true;
 	}
 
-	async function openConfirmDialog(type: ConfirmAction['type'], user: UserResp) {
+	function openEditDialog(user: UserListResp) {
+		editingUser.value = user;
+		resetForm(user);
+		isDialogOpen.value = true;
+	}
+
+	async function openConfirmDialog(type: ConfirmAction['type'], user: UserListResp) {
 		confirmAction.value = { type, user };
 		(document.activeElement as HTMLElement)?.blur();
 		await nextTick();
@@ -274,12 +340,25 @@
 	async function handleSave() {
 		try {
 			await executeOp(async () => {
-				await userApi.create({
-					username: form.username.trim(),
-					email: form.email.trim() || null,
-					password: form.password.trim(),
-				});
-				toast.success(t('userManagement.created'));
+				if (editingUser.value) {
+					const editedUserId = editingUser.value.id;
+					await userApi.update(editedUserId, {
+						password: form.password.trim() || null,
+						role_ids: canAssignRoles.value ? form.roleIds : undefined,
+					});
+					if (editedUserId === authStore.user?.id) {
+						await authStore.fetchUser();
+					}
+					toast.success(t('userManagement.updated'));
+				} else {
+					await userApi.create({
+						username: form.username.trim(),
+						email: form.email.trim() || null,
+						password: form.password.trim(),
+						role_ids: canAssignRoles.value ? form.roleIds : [],
+					});
+					toast.success(t('userManagement.created'));
+				}
 				isDialogOpen.value = false;
 				await fetchUsers();
 			});
@@ -288,7 +367,7 @@
 		}
 	}
 
-	async function handleEnable(user: UserResp) {
+	async function handleEnable(user: UserListResp) {
 		try {
 			await executeOp(async () => {
 				await userApi.enable(user.id);
@@ -317,5 +396,8 @@
 		}
 	}
 
-	onMounted(fetchUsers);
+	onMounted(() => {
+		fetchRoleOptions();
+		fetchUsers();
+	});
 </script>

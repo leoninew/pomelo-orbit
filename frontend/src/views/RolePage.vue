@@ -8,7 +8,7 @@
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
-			<div class="flex items-center gap-3">
+			<div v-if="canWriteRoles" class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openCreateDialog">
 					<Plus class="size-4" />
 					{{ t('roleManagement.create') }}
@@ -39,7 +39,7 @@
 							<th>{{ t('common.name') }}</th>
 							<th>{{ t('common.description') }}</th>
 							<th>{{ t('common.createdAt') }}</th>
-							<th>{{ t('common.operation') }}</th>
+							<th v-if="canWriteRoles">{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -56,7 +56,7 @@
 							<td class="whitespace-nowrap text-foreground">
 								{{ formatTime(role.created_at) }}
 							</td>
-							<td class="whitespace-nowrap">
+							<td v-if="canWriteRoles" class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
 									<button class="app-link" @click="openEditDialog(role)">
 										{{ t('common.edit') }}
@@ -122,6 +122,22 @@
 						maxlength="500"
 					/>
 				</div>
+				<div class="space-y-2">
+					<span class="app-field-label block">{{ t('roleManagement.permissions') }}</span>
+					<div class="grid gap-2 sm:grid-cols-2">
+						<label
+							v-for="permission in permissions"
+							:key="permission.code"
+							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
+						>
+							<input v-model="form.permissionCodes" type="checkbox" :value="permission.code" />
+							<span>
+								<span class="block text-foreground">{{ permission.name }}</span>
+								<span class="block text-xs text-muted-foreground">{{ permission.code }}</span>
+							</span>
+						</label>
+					</div>
+				</div>
 			</form>
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
@@ -157,15 +173,18 @@
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
-	import type { RoleResp } from '@/types/role';
+	import { useAuthStore } from '@/stores/auth';
+	import type { PermissionResp, RoleResp } from '@/types/role';
 	import { formatTime } from '@/utils/time';
 
 	const { t } = useI18n();
 	const toast = useToast();
+	const authStore = useAuthStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const roles = ref<RoleResp[]>([]);
+	const permissions = ref<PermissionResp[]>([]);
 	const searchText = ref('');
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	type ConfirmAction = { role: RoleResp };
@@ -173,7 +192,8 @@
 	const editingRole = ref<RoleResp | null>(null);
 	const confirmAction = ref<ConfirmAction | null>(null);
 	const isDialogOpen = ref(false);
-	const form = reactive({ code: '', name: '', description: '' });
+	const form = reactive({ code: '', name: '', description: '', permissionCodes: [] as string[] });
+	const canWriteRoles = computed(() => authStore.hasPermission('role:write'));
 	const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
 	const confirmDialogOpen = computed({
 		get: () => confirmAction.value !== null,
@@ -188,6 +208,18 @@
 		form.code = role?.code ?? '';
 		form.name = role?.name ?? '';
 		form.description = role?.description ?? '';
+		form.permissionCodes = role?.permission_codes ? [...role.permission_codes] : [];
+	}
+
+	async function fetchPermissions() {
+		if (!canWriteRoles.value) {
+			return;
+		}
+		try {
+			permissions.value = await roleApi.listPermissions();
+		} catch {
+			toast.error(t('roleManagement.loadPermissionsFailed'));
+		}
 	}
 
 	async function fetchRoles() {
@@ -247,9 +279,11 @@
 					code: form.code.trim(),
 					name: form.name.trim(),
 					description: form.description.trim() || null,
+					permission_codes: form.permissionCodes,
 				};
 				if (editingRole.value) {
 					await roleApi.update(editingRole.value.id, payload);
+					await authStore.fetchUser();
 					toast.success(t('roleManagement.updated'));
 				} else {
 					await roleApi.create(payload);
@@ -271,6 +305,7 @@
 		try {
 			await executeOp(async () => {
 				await roleApi.delete(action.role.id);
+				await authStore.fetchUser();
 				toast.success(t('roleManagement.deleted'));
 				confirmAction.value = null;
 				await fetchRoles();
@@ -280,5 +315,8 @@
 		}
 	}
 
-	onMounted(fetchRoles);
+	onMounted(() => {
+		fetchPermissions();
+		fetchRoles();
+	});
 </script>

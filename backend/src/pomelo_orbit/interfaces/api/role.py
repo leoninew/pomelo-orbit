@@ -103,7 +103,6 @@ def update_role(
     return _to_role_resp(role, role_service)
 
 
-
 @router.delete("/{role_id}", status_code=204)
 def delete_role(
     role_id: str,

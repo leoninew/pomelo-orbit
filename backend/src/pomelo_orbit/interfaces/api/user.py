@@ -55,7 +55,9 @@ def create_user(
 ) -> UserResp:
     if data.role_ids:
         _ensure_can_assign_roles(current_user, user_service)
-    user = user_service.create_user(username=data.username, password=data.password, email=data.email, role_ids=data.role_ids)
+    user = user_service.create_user(
+        username=data.username, password=data.password, email=data.email, role_ids=data.role_ids
+    )
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
     return UserResp.from_domain(user, roles, permission_codes)

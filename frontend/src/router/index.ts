@@ -39,6 +39,13 @@ const router = createRouter({
 			meta: { title: '用户管理', menuKey: 'users', permission: 'user:read' },
 		},
 		{
+			path: '/users/:id',
+			name: 'UserDetail',
+			component: () => import('@/views/UserDetail.vue'),
+			props: true,
+			meta: { title: '用户详情', menuKey: 'users', permission: 'user:read' },
+		},
+		{
 			path: '/roles',
 			name: 'Roles',
 			component: () => import('@/views/RolePage.vue'),
@@ -193,10 +200,8 @@ router.beforeEach(async (to, _from, next) => {
 	}
 
 	if (!authStore.user) {
-		try {
-			await authStore.fetchUser();
-		} catch {
-			authStore.clearToken();
+		await authStore.fetchUser();
+		if (!authStore.user) {
 			next({ name: 'Login', query: { redirect: to.fullPath } });
 			return;
 		}

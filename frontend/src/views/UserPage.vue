@@ -51,7 +51,9 @@
 					<tbody>
 						<tr v-for="user in users" :key="user.id">
 							<td class="max-w-0 truncate text-foreground" :title="user.username">
-								{{ user.username }}
+								<router-link :to="`/users/${user.id}`" class="app-link">
+									{{ user.username }}
+								</router-link>
 							</td>
 							<td class="max-w-0 truncate text-foreground" :title="user.email || undefined">
 								{{ user.email || '-' }}
@@ -78,9 +80,6 @@
 							</td>
 							<td v-if="canWriteUsers" class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
-									<button class="app-link" @click="openEditDialog(user)">
-										{{ t('common.edit') }}
-									</button>
 									<button
 										v-if="user.is_active"
 										class="app-link-danger"
@@ -108,10 +107,7 @@
 			/>
 		</div>
 
-		<AppDialog
-			v-model:open="isDialogOpen"
-			:title="editingUser ? t('userManagement.edit') : t('userManagement.create')"
-		>
+		<AppDialog v-model:open="isDialogOpen" :title="t('userManagement.create')">
 			<form id="user-form" class="space-y-4" @submit.prevent="handleSave">
 				<div class="space-y-1.5">
 					<label class="app-field-label block" for="username">
@@ -123,20 +119,12 @@
 						type="text"
 						class="app-input"
 						maxlength="50"
-						:disabled="!!editingUser"
 						required
 					/>
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block" for="email">{{ t('userManagement.email') }}</label>
-					<input
-						id="email"
-						v-model="form.email"
-						type="email"
-						class="app-input"
-						maxlength="255"
-						:disabled="!!editingUser"
-					/>
+					<input id="email" v-model="form.email" type="email" class="app-input" maxlength="255" />
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block" for="password">
@@ -149,11 +137,8 @@
 						class="app-input"
 						minlength="6"
 						maxlength="255"
-						:required="!editingUser"
+						required
 					/>
-					<p v-if="editingUser" class="text-xs text-muted-foreground">
-						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
-					</p>
 				</div>
 				<div v-if="canAssignRoles" class="space-y-2">
 					<span class="app-field-label block">{{ t('userManagement.roles') }}</span>
@@ -175,7 +160,7 @@
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-primary" type="submit" form="user-form" :disabled="operating">
-					{{ editingUser ? t('common.save') : t('userManagement.create') }}
+					{{ t('userManagement.create') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -226,7 +211,6 @@
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	type ConfirmAction = { type: 'disable'; user: UserListResp };
 
-	const editingUser = ref<UserListResp | null>(null);
 	const confirmAction = ref<ConfirmAction | null>(null);
 	const isDialogOpen = ref(false);
 	const form = reactive({ username: '', email: '', password: '', roleIds: [] as string[] });
@@ -247,11 +231,11 @@
 	const confirmMessage = computed(() => t('userManagement.disableConfirm'));
 	const confirmButtonText = computed(() => t('userManagement.disable'));
 
-	function resetForm(user?: UserListResp) {
-		form.username = user?.username ?? '';
-		form.email = user?.email ?? '';
+	function resetForm() {
+		form.username = '';
+		form.email = '';
 		form.password = '';
-		form.roleIds = user?.role_items.map((role) => role.id) ?? [];
+		form.roleIds = [];
 	}
 
 	function formatAuthSource(authSource: AuthSource) {
@@ -314,14 +298,7 @@
 	}
 
 	function openCreateDialog() {
-		editingUser.value = null;
 		resetForm();
-		isDialogOpen.value = true;
-	}
-
-	function openEditDialog(user: UserListResp) {
-		editingUser.value = user;
-		resetForm(user);
 		isDialogOpen.value = true;
 	}
 
@@ -340,25 +317,13 @@
 	async function handleSave() {
 		try {
 			await executeOp(async () => {
-				if (editingUser.value) {
-					const editedUserId = editingUser.value.id;
-					await userApi.update(editedUserId, {
-						password: form.password.trim() || null,
-						role_ids: canAssignRoles.value ? form.roleIds : undefined,
-					});
-					if (editedUserId === authStore.user?.id) {
-						await authStore.fetchUser();
-					}
-					toast.success(t('userManagement.updated'));
-				} else {
-					await userApi.create({
-						username: form.username.trim(),
-						email: form.email.trim() || null,
-						password: form.password.trim(),
-						role_ids: canAssignRoles.value ? form.roleIds : [],
-					});
-					toast.success(t('userManagement.created'));
-				}
+				await userApi.create({
+					username: form.username.trim(),
+					email: form.email.trim() || null,
+					password: form.password.trim(),
+					role_ids: canAssignRoles.value ? form.roleIds : [],
+				});
+				toast.success(t('userManagement.created'));
 				isDialogOpen.value = false;
 				await fetchUsers();
 			});

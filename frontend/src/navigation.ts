@@ -157,8 +157,8 @@ export function getNavigationScope(path: string): NavigationScope | null {
 		path === '/' ||
 		path === '/home' ||
 		path === '/projects' ||
-		path === '/users' ||
-		path === '/roles' ||
+		path.startsWith('/users') ||
+		path.startsWith('/roles') ||
 		path === '/login-history' ||
 		path === '/settings'
 	) {

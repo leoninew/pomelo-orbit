@@ -38,7 +38,9 @@ class RoleService:
         self.permission_repo.set_role_permissions(role.id, permission_codes)
         return role
 
-    def update_role(self, role_id: str, *, code: str, name: str, description: str | None, permission_codes: list[str]) -> Role:
+    def update_role(
+        self, role_id: str, *, code: str, name: str, description: str | None, permission_codes: list[str]
+    ) -> Role:
         role = self.get_role(role_id)
         self._ensure_code_available(code, role_id)
         self._ensure_name_available(name, role_id)

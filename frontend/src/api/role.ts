@@ -3,7 +3,11 @@ import type { PermissionResp, RoleCreateReq, RoleResp, RoleUpdateReq } from '@/t
 import request from '@/utils/request';
 
 export const roleApi = {
-	list(params: { page: number; per_page: number; search?: string }): Promise<PaginatedResp<RoleResp>> {
+	list(params: {
+		page: number
+		per_page: number
+		search?: string
+	}): Promise<PaginatedResp<RoleResp>> {
 		return request.get('/api/role', { params });
 	},
 	get(id: string): Promise<RoleResp> {

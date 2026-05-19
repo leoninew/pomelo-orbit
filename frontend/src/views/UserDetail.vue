@@ -97,8 +97,17 @@
 		</div>
 
 		<div class="app-surface">
-			<div class="app-section-header">
+			<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
 				<h2 class="font-semibold text-foreground">{{ t('userManagement.rolesAndPermissions') }}</h2>
+				<button
+					v-if="user && canAssignRoles"
+					class="app-button-primary h-8 px-3"
+					:disabled="operating"
+					@click="openRoleModal"
+				>
+					<Pencil class="size-4" />
+					{{ t('common.edit') }}
+				</button>
 			</div>
 
 			<div class="px-5 py-4 space-y-4">
@@ -145,6 +154,7 @@
 						class="app-input"
 						minlength="6"
 						maxlength="255"
+						:disabled="operating"
 					/>
 					<p class="app-field-hint">
 						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
@@ -152,27 +162,11 @@
 				</div>
 				<div class="space-y-1.5">
 					<label class="app-field-label block">{{ t('common.status') }}</label>
-					<SelectControl v-model="form.status" :options="userStatusOptions" />
-				</div>
-				<div v-if="canAssignRoles" class="space-y-2">
-					<span class="app-field-label block">{{ t('userManagement.roles') }}</span>
-					<div class="grid gap-2 sm:grid-cols-2">
-						<label
-							v-for="role in roleOptions"
-							:key="role.id"
-							class="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary/40"
-						>
-							<input v-model="form.roleIds" type="checkbox" :value="role.id" class="app-checkbox mt-0.5" />
-							<span>
-								<span class="block text-foreground">{{ role.name }}</span>
-								<span class="block text-xs text-muted-foreground">{{ role.code }}</span>
-							</span>
-						</label>
-					</div>
+					<SelectControl v-model="form.status" :options="userStatusOptions" :disabled="operating" />
 				</div>
 			</form>
 			<template #footer>
-				<button class="app-button" @click="isEditModalOpen = false">
+				<button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
 					{{ t('common.cancel') }}
 				</button>
 				<button
@@ -181,6 +175,36 @@
 					form="user-edit-form"
 					:disabled="operating"
 				>
+					{{ t('common.save') }}
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog
+			v-model:open="isRoleModalOpen"
+			:title="t('userManagement.roles')"
+			width-class="w-[min(600px,calc(100vw-32px))]"
+		>
+			<form id="user-role-form" class="space-y-4" @submit.prevent="handleRoleOk">
+				<div class="grid gap-2 sm:grid-cols-2">
+					<label
+						v-for="role in roleOptions"
+						:key="role.id"
+						class="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary/40"
+					>
+						<input v-model="roleForm.roleIds" type="checkbox" :value="role.id" class="app-checkbox mt-0.5" :disabled="operating" />
+						<span>
+							<span class="block text-foreground">{{ role.name }}</span>
+							<span class="block text-xs text-muted-foreground">{{ role.code }}</span>
+						</span>
+					</label>
+				</div>
+			</form>
+			<template #footer>
+				<button class="app-button" :disabled="operating" @click="isRoleModalOpen = false">
+					{{ t('common.cancel') }}
+				</button>
+				<button class="app-button-primary" type="submit" form="user-role-form" :disabled="operating">
 					{{ t('common.save') }}
 				</button>
 			</template>
@@ -196,7 +220,7 @@
 				<strong>{{ user?.username }}</strong>
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDisableModalOpen = false">
+				<button class="app-button" :disabled="operating" @click="isDisableModalOpen = false">
 					{{ t('common.cancel') }}
 				</button>
 				<button class="app-button-danger" :disabled="operating" @click="handleDisable">
@@ -215,7 +239,7 @@
 				<strong>{{ user?.username }}</strong>
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteModalOpen = false">
+				<button class="app-button" :disabled="operating" @click="isDeleteModalOpen = false">
 					{{ t('common.cancel') }}
 				</button>
 				<button class="app-button-danger" :disabled="operating" @click="handleDelete">
@@ -240,6 +264,7 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
+	import { PERMISSIONS } from '@/constants/permissions';
 	import type { AuthSource } from '@/types/auth';
 	import type { RoleResp } from '@/types/role';
 	import type { UserResp, UserStatus } from '@/types/user';
@@ -256,17 +281,18 @@
 	const user = ref<UserResp>();
 	const roleOptions = ref<RoleResp[]>([]);
 	const isEditModalOpen = ref(false);
+	const isRoleModalOpen = ref(false);
 	const isDisableModalOpen = ref(false);
 	const isDeleteModalOpen = ref(false);
-	const form = reactive<{ password: string; roleIds: string[]; status: UserStatus }>({
+	const form = reactive<{ password: string; status: UserStatus }>({
 		password: '',
-		roleIds: [],
 		status: 'enabled',
 	});
+	const roleForm = reactive<{ roleIds: string[] }>({ roleIds: [] });
 
-	const canWriteUsers = computed(() => authStore.hasPermission('user:write'));
+	const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
 	const canAssignRoles = computed(
-		() => authStore.hasPermission('role:read') && authStore.hasPermission('role:write')
+		() => authStore.hasPermission(PERMISSIONS.ROLE_READ) && authStore.hasPermission(PERMISSIONS.ROLE_WRITE)
 	);
 	const userStatusOptions = computed(() => [
 		{ value: 'enabled', label: t('userManagement.enabled') },
@@ -308,9 +334,13 @@
 
 	function openEditModal() {
 		form.password = '';
-		form.roleIds = user.value?.role_items.map((role) => role.id) ?? [];
 		form.status = user.value?.status ?? 'enabled';
 		isEditModalOpen.value = true;
+	}
+
+	function openRoleModal() {
+		roleForm.roleIds = user.value?.role_items.map((role) => role.id) ?? [];
+		isRoleModalOpen.value = true;
 	}
 
 	async function handleEditOk() {
@@ -318,7 +348,6 @@
 			await executeOp(async () => {
 				await userApi.update(props.id, {
 					password: form.password.trim() || null,
-					role_ids: canAssignRoles.value ? form.roleIds : undefined,
 					status: form.status,
 				});
 				if (props.id === authStore.user?.id) {
@@ -326,6 +355,22 @@
 				}
 				toast.success(t('userManagement.updated'));
 				isEditModalOpen.value = false;
+				await fetchUser();
+			});
+		} catch (e: unknown) {
+			toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
+		}
+	}
+
+	async function handleRoleOk() {
+		try {
+			await executeOp(async () => {
+				await userApi.updateRoles(props.id, { role_ids: roleForm.roleIds });
+				if (props.id === authStore.user?.id) {
+					await authStore.fetchUser();
+				}
+				toast.success(t('userManagement.updated'));
+				isRoleModalOpen.value = false;
 				await fetchUser();
 			});
 		} catch (e: unknown) {

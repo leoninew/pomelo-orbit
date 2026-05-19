@@ -94,6 +94,7 @@
 						maxlength="50"
 						pattern="[A-Za-z0-9_-]+"
 						required
+						:disabled="operating"
 					/>
 				</div>
 				<div class="space-y-1.5">
@@ -105,6 +106,7 @@
 						class="app-input"
 						maxlength="100"
 						required
+						:disabled="operating"
 					/>
 				</div>
 				<div class="space-y-1.5">
@@ -116,6 +118,7 @@
 						v-model="form.description"
 						class="app-input min-h-24"
 						maxlength="500"
+						:disabled="operating"
 					/>
 				</div>
 				<div class="space-y-2">
@@ -126,7 +129,7 @@
 							:key="permission.code"
 							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
 						>
-							<input v-model="form.permissionCodes" type="checkbox" :value="permission.code" />
+							<input v-model="form.permissionCodes" type="checkbox" :value="permission.code" :disabled="operating" />
 							<span>
 								<span class="block text-foreground">{{ permission.name }}</span>
 								<span class="block text-xs text-muted-foreground">{{ permission.code }}</span>
@@ -136,7 +139,7 @@
 				</div>
 			</form>
 			<template #footer>
-				<button class="app-button" @click="isEditModalOpen = false">
+				<button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
 					{{ t('common.cancel') }}
 				</button>
 				<button
@@ -160,7 +163,7 @@
 				<strong>{{ role?.name }}</strong>
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteModalOpen = false">
+				<button class="app-button" :disabled="operating" @click="isDeleteModalOpen = false">
 					{{ t('common.cancel') }}
 				</button>
 				<button class="app-button-danger" :disabled="operating" @click="handleDelete">
@@ -183,6 +186,7 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
+	import { PERMISSIONS } from '@/constants/permissions';
 	import type { PermissionResp, RoleResp } from '@/types/role';
 	import { formatTime } from '@/utils/time';
 
@@ -200,7 +204,7 @@
 	const isDeleteModalOpen = ref(false);
 	const form = reactive({ code: '', name: '', description: '', permissionCodes: [] as string[] });
 
-	const canWriteRoles = computed(() => authStore.hasPermission('role:write'));
+	const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
 
 	function getPermissionName(code: string): string {
 		const permission = permissions.value.find((p) => p.code === code);

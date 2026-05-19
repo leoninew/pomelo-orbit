@@ -16,6 +16,7 @@ import {
 	Users,
 } from 'lucide-vue-next';
 import type { Component } from 'vue';
+import { PERMISSIONS } from '@/constants/permissions';
 
 export type NavigationScope = 'home' | 'ci' | 'cd';
 export type PrimaryNavigationKey = 'ci' | 'cd';
@@ -52,7 +53,7 @@ export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
 			labelKey: 'nav.users',
 			path: '/users',
 			icon: Users,
-			permission: 'user:read',
+			permission: PERMISSIONS.USER_READ,
 		},
 		{
 			key: 'roles',
@@ -60,7 +61,7 @@ export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
 			labelKey: 'nav.roles',
 			path: '/roles',
 			icon: Shield,
-			permission: 'role:read',
+			permission: PERMISSIONS.ROLE_READ,
 		},
 		{
 			key: 'loginhistory',
@@ -156,7 +157,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
 	if (
 		path === '/' ||
 		path === '/home' ||
-		path === '/projects' ||
+		path.startsWith('/projects') ||
 		path.startsWith('/users') ||
 		path.startsWith('/roles') ||
 		path === '/login-history' ||

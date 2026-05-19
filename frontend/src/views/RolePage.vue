@@ -152,6 +152,7 @@
 	import { Plus } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { useI18n } from 'vue-i18n';
+	import { useRouter } from 'vue-router';
 	import { roleApi } from '@/api/role';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
@@ -160,10 +161,12 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
+	import { PERMISSIONS } from '@/constants/permissions';
 	import type { RoleResp } from '@/types/role';
 	import { formatTime } from '@/utils/time';
 
 	const { t } = useI18n();
+	const router = useRouter();
 	const toast = useToast();
 	const authStore = useAuthStore();
 	const { status, error, execute } = useStatusAsync();
@@ -178,7 +181,7 @@
 	const confirmAction = ref<ConfirmAction | null>(null);
 	const isDialogOpen = ref(false);
 	const form = reactive({ code: '', name: '', description: '' });
-	const canWriteRoles = computed(() => authStore.hasPermission('role:write'));
+	const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
 	const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
 	const confirmDialogOpen = computed({
 		get: () => confirmAction.value !== null,
@@ -258,12 +261,14 @@
 					await roleApi.update(editingRole.value.id, payload);
 					await authStore.fetchUser();
 					toast.success(t('roleManagement.updated'));
+					isDialogOpen.value = false;
+					await fetchRoles();
 				} else {
-					await roleApi.create(payload);
+					const role = await roleApi.create(payload);
 					toast.success(t('roleManagement.created'));
+					isDialogOpen.value = false;
+					router.push({ name: 'RoleDetail', params: { id: role.id } });
 				}
-				isDialogOpen.value = false;
-				await fetchRoles();
 			});
 		} catch (e: unknown) {
 			toast.error(e instanceof Error ? e.message : t('roleManagement.saveFailed'));

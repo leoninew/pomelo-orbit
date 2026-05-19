@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { PERMISSIONS } from '@/constants/permissions';
 
 const router = createRouter({
 	history: createWebHistory(),
@@ -39,30 +40,37 @@ const router = createRouter({
 			meta: { title: '项目管理', menuKey: 'projects' },
 		},
 		{
+			path: '/projects/:id',
+			name: 'ProjectDetail',
+			component: () => import('@/views/ProjectDetail.vue'),
+			props: true,
+			meta: { title: '项目详情', menuKey: 'projects' },
+		},
+		{
 			path: '/users',
 			name: 'Users',
 			component: () => import('@/views/UserPage.vue'),
-			meta: { title: '用户管理', menuKey: 'users', permission: 'user:read' },
+			meta: { title: '用户管理', menuKey: 'users', permission: PERMISSIONS.USER_READ },
 		},
 		{
 			path: '/users/:id',
 			name: 'UserDetail',
 			component: () => import('@/views/UserDetail.vue'),
 			props: true,
-			meta: { title: '用户详情', menuKey: 'users', permission: 'user:read' },
+			meta: { title: '用户详情', menuKey: 'users', permission: PERMISSIONS.USER_READ },
 		},
 		{
 			path: '/roles',
 			name: 'Roles',
 			component: () => import('@/views/RolePage.vue'),
-			meta: { title: '角色管理', menuKey: 'roles', permission: 'role:read' },
+			meta: { title: '角色管理', menuKey: 'roles', permission: PERMISSIONS.ROLE_READ },
 		},
 		{
 			path: '/roles/:id',
 			name: 'RoleDetail',
 			component: () => import('@/views/RoleDetail.vue'),
 			props: true,
-			meta: { title: '角色详情', menuKey: 'roles', permission: 'role:read' },
+			meta: { title: '角色详情', menuKey: 'roles', permission: PERMISSIONS.ROLE_READ },
 		},
 		// CD
 		{

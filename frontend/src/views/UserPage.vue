@@ -143,22 +143,6 @@
 						required
 					/>
 				</div>
-				<div v-if="canAssignRoles" class="space-y-2">
-					<span class="app-field-label block">{{ t('userManagement.roles') }}</span>
-					<div class="grid gap-2 sm:grid-cols-2">
-						<label
-							v-for="role in roleOptions"
-							:key="role.id"
-							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
-						>
-							<input v-model="form.roleIds" type="checkbox" :value="role.id" />
-							<span>
-								<span class="block text-foreground">{{ role.name }}</span>
-								<span class="block text-xs text-muted-foreground">{{ role.code }}</span>
-							</span>
-						</label>
-					</div>
-				</div>
 			</form>
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
@@ -229,7 +213,7 @@
 	import { Plus } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { useI18n } from 'vue-i18n';
-	import { roleApi } from '@/api/role';
+	import { useRouter } from 'vue-router';
 	import { userApi } from '@/api/user';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -240,19 +224,19 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
+	import { PERMISSIONS } from '@/constants/permissions';
 	import type { AuthSource } from '@/types/auth';
-	import type { RoleResp } from '@/types/role';
 	import type { UserListResp, UserStatus } from '@/types/user';
 	import { formatTime } from '@/utils/time';
 
 	const { t } = useI18n();
+	const router = useRouter();
 	const toast = useToast();
 	const authStore = useAuthStore();
 	const { status, error, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const users = ref<UserListResp[]>([]);
-	const roleOptions = ref<RoleResp[]>([]);
 	const searchText = ref('');
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	type ConfirmAction = { type: 'disable'; user: UserListResp };
@@ -261,12 +245,9 @@
 	const isDialogOpen = ref(false);
 	const isEditDialogOpen = ref(false);
 	const editingUser = ref<UserListResp | null>(null);
-	const form = reactive({ username: '', email: '', password: '', roleIds: [] as string[] });
+	const form = reactive({ username: '', email: '', password: '' });
 	const editForm = reactive<{ password: string; status: UserStatus }>({ password: '', status: 'enabled' });
-	const canWriteUsers = computed(() => authStore.hasPermission('user:write'));
-	const canAssignRoles = computed(
-		() => authStore.hasPermission('role:read') && authStore.hasPermission('role:write')
-	);
+	const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
 	const userStatusOptions = computed(() => [
 		{ value: 'enabled', label: t('userManagement.enabled') },
 		{ value: 'disabled', label: t('userManagement.disabled') },
@@ -288,7 +269,6 @@
 		form.username = '';
 		form.email = '';
 		form.password = '';
-		form.roleIds = [];
 	}
 
 	function formatAuthSource(authSource: AuthSource) {
@@ -304,18 +284,6 @@
 
 	function formatRoleNames(user: UserListResp) {
 		return user.role_items.map((role) => role.name).join(', ');
-	}
-
-	async function fetchRoleOptions() {
-		if (!canAssignRoles.value) {
-			return;
-		}
-		try {
-			const res = await roleApi.list({ page: 1, per_page: 100 });
-			roleOptions.value = res.items;
-		} catch {
-			toast.error(t('userManagement.loadRolesFailed'));
-		}
 	}
 
 	async function fetchUsers() {
@@ -368,15 +336,14 @@
 	async function handleSave() {
 		try {
 			await executeOp(async () => {
-				await userApi.create({
+				const user = await userApi.create({
 					username: form.username.trim(),
 					email: form.email.trim() || null,
 					password: form.password.trim(),
-					role_ids: canAssignRoles.value ? form.roleIds : [],
 				});
 				toast.success(t('userManagement.created'));
 				isDialogOpen.value = false;
-				await fetchUsers();
+				router.push({ name: 'UserDetail', params: { id: user.id } });
 			});
 		} catch (e: unknown) {
 			toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
@@ -443,7 +410,6 @@
 	}
 
 	onMounted(() => {
-		fetchRoleOptions();
 		fetchUsers();
 	});
 </script>

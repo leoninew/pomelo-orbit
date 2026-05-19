@@ -1,6 +1,7 @@
 """CI 项目 API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import RepositoryModel
+from pomelo_orbit.infrastructure.persistence.models import ProjectModel
 from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
@@ -11,6 +12,14 @@ class TestProjectList:
         data = resp.json()
         assert "items" in data
         assert data["total"] >= 1
+
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.get("/api/ci/repository?project_id=other-project-id")
+        assert resp.status_code == 403
 
 
 class TestProjectCreate:

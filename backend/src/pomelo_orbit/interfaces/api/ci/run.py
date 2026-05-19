@@ -10,6 +10,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
 from pomelo_orbit.application.ci.di import get_pipeline_run_service
 from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
+from pomelo_orbit.application.project.di import get_project_service
+from pomelo_orbit.application.project.project_service import ProjectService
+from pomelo_orbit.domain.auth.entities import User
+from pomelo_orbit.interfaces.api.auth.router import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
@@ -23,6 +27,8 @@ router = APIRouter(prefix="/run", tags=["run"])
 @router.get("", response_model=PaginatedResp[PipelineRunResp])
 def list_all_runs(
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -31,6 +37,7 @@ def list_all_runs(
     date_from: Annotated[str | None, Query()] = None,
     date_to: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineRunResp]:
+    project_service.get_project(current_user.id, project_id)
     result = pipeline_run_service.list_runs(
         project_id=project_id,
         repository_id=repository_id,

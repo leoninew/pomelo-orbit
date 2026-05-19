@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from pomelo_orbit.infrastructure.persistence.models import ProjectModel
 from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
@@ -24,6 +25,22 @@ class TestPipelineRunList:
         data = resp.json()
         assert "items" in data
         assert "total" in data
+
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.get("/api/ci/run?project_id=other-project-id")
+        assert resp.status_code == 403
+
+    def test_repository_runs_rejects_non_member_project(self, auth_client, db_session, test_project):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.get(f"/api/ci/repository/{test_project.id}/run?project_id=other-project-id")
+        assert resp.status_code == 403
 
 
 class TestPipelineRunGet:

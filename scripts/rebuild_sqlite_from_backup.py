@@ -57,7 +57,6 @@ PROJECT_ID_TABLES = {
 
 CURRENT_MIGRATION_FILES = [
     "v0.7.0__schema.sql",
-    "v0.7.2__business_data.json",
     "v0.8.0__auth_schema.sql",
     "v0.8.1__init_data.json",
 ]

@@ -151,6 +151,7 @@ export default {
 		delete: '删除角色',
 		code: '角色编码',
 		permissions: '权限',
+		basicInfo: '基本信息',
 		loadFailed: '加载角色失败',
 		loadPermissionsFailed: '加载权限失败',
 		saveFailed: '保存角色失败',

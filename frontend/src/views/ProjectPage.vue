@@ -50,7 +50,9 @@
 					<tbody>
 						<tr v-for="project in pagedProjects" :key="project.id">
 							<td class="max-w-0 truncate text-foreground" :title="project.name">
-								{{ project.name }}
+								<router-link :to="`/projects/${project.id}`" class="app-link">
+									{{ project.name }}
+								</router-link>
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ project.code }}</td>
 							<td>
@@ -184,6 +186,7 @@
 <script setup lang="ts">
 	import { Plus } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+	import { useRouter } from 'vue-router';
 	import { ToolbarRoot } from 'reka-ui';
 	import { projectApi } from '@/api/project';
 	import { userApi } from '@/api/user';
@@ -199,6 +202,7 @@
 	import { useProjectStore } from '@/stores/project';
 	import { formatTime } from '@/utils/time';
 
+	const router = useRouter();
 	const toast = useToast();
 	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
@@ -316,11 +320,13 @@
 					code: form.code.trim(),
 				});
 				toast.success('项目已更新');
+				isDialogOpen.value = false;
 			} else {
-				await projectStore.createProject({ name: form.name.trim(), code: form.code.trim() });
+				const project = await projectStore.createProject({ name: form.name.trim(), code: form.code.trim() });
 				toast.success('项目已创建');
+				isDialogOpen.value = false;
+				router.push({ name: 'ProjectDetail', params: { id: project.id } });
 			}
-			isDialogOpen.value = false;
 		});
 	}
 

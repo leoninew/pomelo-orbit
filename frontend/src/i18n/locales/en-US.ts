@@ -151,6 +151,7 @@ export default {
 		delete: 'Delete Role',
 		code: 'Role Code',
 		permissions: 'Permissions',
+		basicInfo: 'Basic Info',
 		loadFailed: 'Failed to load roles',
 		loadPermissionsFailed: 'Failed to load permissions',
 		saveFailed: 'Failed to save role',

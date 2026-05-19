@@ -42,7 +42,79 @@
 #### 权限系统
 
 权限模型、接入方式和新增权限流程见 [权限系统指引](./guides/permissions.md)。
-当前暂无权限系统待办。
+
+**新增登录历史与系统配置权限**
+
+目标：直接切换到更明确的权限模型，不做向后兼容分支，不保留“只登录即可访问”的旧行为。前端只做体验层隐藏和路由拦截，后端 `require_permission(...)` 作为安全边界。
+
+新增权限：
+- `login:read`：查看登录历史
+- `setting:read`：查询系统配置
+- `setting:write`：管理系统配置（更新、重置）
+
+实施事项：
+1. 新增迁移 `backend/migrations/v0.8.2__auth_permissions.sql`
+   - 插入 `login:read`、`setting:read`、`setting:write`
+   - 给 `admin` 角色绑定上述权限
+   - 不修改已有迁移文件，迁移需保持幂等
+2. 处理 `backend/src/pomelo_orbit/interfaces/api/auth/permissions.py` 的循环 import 风险
+   - 将 `get_current_user` 延迟导入到 `require_permission()` 内部
+   - 保持 `require_permission(permission_code)` 对外 API 不变
+3. 后端接口鉴权
+   - `backend/src/pomelo_orbit/interfaces/api/auth/router.py`
+     - `/api/auth/login-history` 改为 `require_permission("login:read")`
+   - `backend/src/pomelo_orbit/interfaces/api/settings/router.py`
+     - `GET /api/settings/config` 改为 `require_permission("setting:read")`
+     - `PUT /api/settings/config` 改为 `require_permission("setting:write")`
+     - `DELETE /api/settings/config` 改为 `require_permission("setting:write")`
+4. 前端权限接入
+   - `frontend/src/constants/permissions.ts` 新增三个权限常量
+   - `frontend/src/router/index.ts` 为 `/login-history`、`/settings` 增加 `meta.permission`
+   - `frontend/src/navigation.ts` 为登录历史、系统设置菜单增加 `permission`
+5. 系统设置页只保留系统配置
+   - `frontend/src/views/Settings.vue`
+     - 移除顶部用户信息卡片
+     - 移除修改密码按钮、弹窗、表单、校验和 `authStore.changePassword()` 调用
+     - 用 `setting:write` 控制配置编辑、保存、重置操作
+     - 在 `startEdit()`、`handleSave()`、`confirmReset()`、`handleReset()` 中增加权限保护
+6. 右上角用户下拉增加修改密码
+   - `frontend/src/components/AppTopBar.vue`
+     - 在用户图标下拉菜单中，项目切换区域和退出登录之间增加“修改密码”菜单项
+     - 点击后打开 `AppDialog` 修改密码弹窗
+     - 复用现有 `authStore.changePassword(oldPassword, newPassword)`
+     - 迁移 `Settings.vue` 中现有密码表单字段、校验逻辑、loading 状态和 toast 文案
+     - 修改密码只要求当前已登录，不受 `setting:*` 权限控制
+7. 后端测试
+   - `backend/tests/integration/conftest.py`
+     - `permission_names` 加入三个新权限
+     - `auth_client` 作为全权限测试客户端，补齐三个新权限
+     - `user_write_client` 保持只有 `user:read` / `user:write`，用于无权限 403 测试
+   - `backend/tests/integration/test_auth_api.py`
+     - 有 `login:read` 可查看登录历史
+     - 无 `login:read` 返回 403
+   - 新增或扩展 `backend/tests/integration/test_settings_api.py`
+     - 有 `setting:read` 可 GET 配置
+     - 无 `setting:read` GET 返回 403
+     - 有 `setting:write` 可 PUT/DELETE 配置
+     - 只有 `setting:read` 时 PUT/DELETE 返回 403
+     - 测试需 override `get_setting_service`，避免真实写 `.env`
+   - `backend/tests/integration/test_role_api.py`
+     - 更新权限列表断言，包含新增权限并按 code 升序
+
+验证命令：
+```bash
+cd backend && uv run ruff check --fix .
+cd backend && uv run mypy .
+cd backend && uv run pytest tests/integration/test_auth_api.py tests/integration/test_role_api.py tests/integration/test_settings_api.py
+cd frontend && yarn lint --fix && yarn typecheck
+```
+
+手动验证：
+- 无 `login:read` 用户访问登录历史页面和 API 均为 403
+- 有 `login:read` 用户可正常查看登录历史
+- 只有 `setting:read` 用户可查看系统配置，但看不到编辑/重置操作
+- 有 `setting:write` 用户可编辑和重置系统配置
+- 无 `setting:read` 的已登录用户仍可通过右上角用户菜单修改密码
 
 #### 架构说明
 

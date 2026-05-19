@@ -45,6 +45,11 @@ export default {
 		enUS: 'English',
 		switchTo: '切换到 {language}',
 	},
+	forbidden: {
+		title: '无权访问',
+		description: '当前账号没有访问该页面所需的权限。请返回首页，或联系管理员调整角色权限。',
+		backHome: '返回首页',
+	},
 	nav: {
 		home: '项目概览',
 		ci: '持续集成',

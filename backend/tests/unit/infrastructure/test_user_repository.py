@@ -73,9 +73,42 @@ class TestUserRepository:
 
     def test_find_paginated_searches_username_and_email(self, db_session):
         repo = UserRepositoryImpl(db_session)
-        repo.save(User(id="user-10", username="alice", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email="alice@example.com", auth_source="password"))
-        repo.save(User(id="user-11", username="bob", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email="team@example.com", auth_source="password"))
-        repo.save(User(id="user-12", username="carol", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email="carol@example.com", auth_source="password"))
+        repo.save(
+            User(
+                id="user-10",
+                username="alice",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email="alice@example.com",
+                auth_source="password",
+            )
+        )
+        repo.save(
+            User(
+                id="user-11",
+                username="bob",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email="team@example.com",
+                auth_source="password",
+            )
+        )
+        repo.save(
+            User(
+                id="user-12",
+                username="carol",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email="carol@example.com",
+                auth_source="password",
+            )
+        )
 
         users, total = repo.find_paginated(page=1, per_page=10, search="example")
 
@@ -112,7 +145,18 @@ class TestUserRepository:
 
     def test_set_and_find_roles(self, db_session):
         repo = UserRepositoryImpl(db_session)
-        repo.save(User(id="user-13", username="alice", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email=None, auth_source="password"))
+        repo.save(
+            User(
+                id="user-13",
+                username="alice",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email=None,
+                auth_source="password",
+            )
+        )
         db_session.add(RoleModel(id="role-1", code="developer", name="Developer"))
         db_session.add(RoleModel(id="role-2", code="admin", name="Admin"))
         db_session.commit()
@@ -132,8 +176,30 @@ class TestUserRepository:
 
     def test_find_roles_by_user_ids(self, db_session):
         repo = UserRepositoryImpl(db_session)
-        repo.save(User(id="user-15", username="alice", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email=None, auth_source="password"))
-        repo.save(User(id="user-16", username="bob", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email=None, auth_source="password"))
+        repo.save(
+            User(
+                id="user-15",
+                username="alice",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email=None,
+                auth_source="password",
+            )
+        )
+        repo.save(
+            User(
+                id="user-16",
+                username="bob",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email=None,
+                auth_source="password",
+            )
+        )
         db_session.add(RoleModel(id="role-5", code="developer", name="Developer"))
         db_session.add(RoleModel(id="role-6", code="admin", name="Admin"))
         db_session.add(UserRoleModel(user_id="user-15", role_id="role-5"))
@@ -147,7 +213,18 @@ class TestUserRepository:
 
     def test_find_permissions(self, db_session):
         repo = UserRepositoryImpl(db_session)
-        repo.save(User(id="user-14", username="alice", password_hash="hashed", status="enabled", oauth_provider="", oauth_provider_id="", email=None, auth_source="password"))
+        repo.save(
+            User(
+                id="user-14",
+                username="alice",
+                password_hash="hashed",
+                status="enabled",
+                oauth_provider="",
+                oauth_provider_id="",
+                email=None,
+                auth_source="password",
+            )
+        )
         db_session.add(RoleModel(id="role-3", code="developer", name="Developer"))
         db_session.add(RoleModel(id="role-4", code="viewer", name="Viewer"))
         db_session.add(PermissionModel(id="perm-1", code="user:read", name="View Users"))

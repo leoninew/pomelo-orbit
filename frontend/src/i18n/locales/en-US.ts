@@ -45,6 +45,11 @@ export default {
 		enUS: 'English',
 		switchTo: 'Switch to {language}',
 	},
+	forbidden: {
+		title: 'Access Denied',
+		description: 'Your account does not have permission to access this page. Return home or contact an administrator to update your role.',
+		backHome: 'Back Home',
+	},
 	nav: {
 		home: 'Overview',
 		ci: 'CI',

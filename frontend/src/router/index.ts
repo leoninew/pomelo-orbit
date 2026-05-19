@@ -17,6 +17,12 @@ const router = createRouter({
 			meta: { title: 'Google 登录', public: true },
 		},
 		{
+			path: '/403',
+			name: 'Forbidden',
+			component: () => import('@/views/ForbiddenPage.vue'),
+			meta: { title: '无权访问' },
+		},
+		{
 			path: '/',
 			name: 'Home',
 			component: () => import('@/views/Home.vue'),
@@ -216,7 +222,7 @@ router.beforeEach(async (to, _from, next) => {
 
 	const permission = to.meta.permission;
 	if (typeof permission === 'string' && !authStore.hasPermission(permission)) {
-		next({ name: 'Home' });
+		next({ name: 'Forbidden', query: { from: to.fullPath } });
 		return;
 	}
 

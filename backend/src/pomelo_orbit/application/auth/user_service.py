@@ -119,9 +119,7 @@ class UserService:
         if "role:write" in self.get_user_permission_codes(current_user_id):
             return True
         # 否则，不能重置拥有 role:write 权限用户的密码
-        if "role:write" in self.get_user_permission_codes(target_user_id):
-            return False
-        return True
+        return "role:write" not in self.get_user_permission_codes(target_user_id)
 
     def _ensure_username_available(self, username: str, user_id: str | None = None) -> None:
         existing = self.user_repo.find_by_username(username)

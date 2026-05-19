@@ -5,7 +5,6 @@ from datetime import datetime
 
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
-
 # 用户状态常量
 USER_STATUS_ENABLED = "enabled"
 USER_STATUS_DISABLED = "disabled"

@@ -5,9 +5,11 @@ import pytest
 from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.infrastructure.persistence.models import (
     PermissionModel,
+    ProjectMemberModel,
     ProjectModel,
     RoleModel,
     RolePermissionModel,
+    UserModel,
     UserRoleModel,
 )
 
@@ -34,6 +36,12 @@ def mock_user():
         email=None,
         auth_source="password",
     )
+
+
+def seed_user(db_session, user_id: str, username: str = "testuser") -> None:
+    if db_session.get(UserModel, user_id):
+        return
+    db_session.add(UserModel(id=user_id, username=username, password_hash="hashed", status="enabled"))
 
 
 def seed_auth_permissions(db_session, user_id: str, permission_codes: list[str]) -> None:
@@ -68,9 +76,10 @@ def seed_project(db_session, user_id: str) -> None:
             id=DEFAULT_CI_PROJECT_ID,
             name="Test Project",
             code="test",
-            owner_user_id=user_id,
+            is_active=True
         )
     )
+    db_session.add(ProjectMemberModel(project_id=DEFAULT_CI_PROJECT_ID, user_id=user_id))
 
 
 @pytest.fixture
@@ -78,6 +87,7 @@ def auth_client(client, db_session, mock_user):
     from pomelo_orbit.interfaces.api.auth.router import get_current_user
     from pomelo_orbit.main import app
 
+    seed_user(db_session, mock_user.id)
     seed_auth_permissions(db_session, mock_user.id, ["user:read", "user:write", "role:read", "role:write"])
     seed_project(db_session, mock_user.id)
     db_session.commit()
@@ -92,6 +102,7 @@ def user_write_client(client, db_session, mock_user):
     from pomelo_orbit.interfaces.api.auth.router import get_current_user
     from pomelo_orbit.main import app
 
+    seed_user(db_session, mock_user.id)
     seed_auth_permissions(db_session, mock_user.id, ["user:read", "user:write"])
     seed_project(db_session, mock_user.id)
     db_session.commit()

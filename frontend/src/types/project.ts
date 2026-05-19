@@ -2,10 +2,15 @@ export interface Project {
 	id: string
 	name: string
 	code: string
-	owner_user_id: string
 	is_active: boolean
 	created_at: string
 	updated_at: string
+}
+
+export interface ProjectMember {
+	id: string
+	username: string
+	email: string | null
 }
 
 export interface ProjectCreateReq {
@@ -16,4 +21,8 @@ export interface ProjectCreateReq {
 export interface ProjectUpdateReq {
 	name: string
 	code: string
+}
+
+export interface ProjectMemberReq {
+	user_id: string
 }

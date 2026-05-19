@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
+import logging
 import sqlite3
 import sys
 from pathlib import Path
@@ -14,10 +16,12 @@ BACKEND_ROOT = REPO_ROOT / "backend"
 MIGRATIONS_DIR = BACKEND_ROOT / "migrations"
 SCHEMA_FILE = MIGRATIONS_DIR / "v0.7.0__schema.sql"
 DEFAULT_PROJECT_ID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+logger = logging.getLogger(__name__)
 
 COPY_ORDER = [
     "user",
     "project",
+    "project_member",
     "login_history",
     "login_attempt",
     "application",
@@ -53,8 +57,9 @@ PROJECT_ID_TABLES = {
 
 CURRENT_MIGRATION_FILES = [
     "v0.7.0__schema.sql",
-    "v0.7.1__init_data.json",
     "v0.7.2__business_data.json",
+    "v0.8.0__auth_schema.sql",
+    "v0.8.1__init_data.json",
 ]
 
 
@@ -107,6 +112,7 @@ def create_history_table(conn: sqlite3.Connection) -> None:
 
 
 def calculate_current_history(migrations_dir: Path) -> list[dict[str, object]]:
+    logger.info("Calculating migration history: migrations_dir=%s", migrations_dir)
     rows = []
     for filename in CURRENT_MIGRATION_FILES:
         migration_file = migrations_dir / filename
@@ -123,13 +129,14 @@ def calculate_current_history(migrations_dir: Path) -> list[dict[str, object]]:
     return rows
 
 
-def choose_owner_user_id(old: sqlite3.Connection) -> str:
-    owner = old.execute("SELECT id FROM user WHERE username = 'admin' ORDER BY created_at LIMIT 1").fetchone()
-    if owner is None:
-        owner = old.execute("SELECT id FROM user ORDER BY created_at LIMIT 1").fetchone()
-    if owner is None:
-        raise RuntimeError("Backup database has no user rows; cannot create default project")
-    return owner["id"]
+def choose_default_member_user_id(old: sqlite3.Connection) -> str:
+    user = old.execute("SELECT id FROM user WHERE username = 'admin' ORDER BY created_at LIMIT 1").fetchone()
+    if user is None:
+        user = old.execute("SELECT id FROM user ORDER BY created_at LIMIT 1").fetchone()
+    if user is None:
+        raise RuntimeError("Backup database has no user rows; cannot create default project member")
+    logger.info("Selected default project member: user_id=%s", user["id"])
+    return user["id"]
 
 
 def collect_rows(
@@ -141,8 +148,9 @@ def collect_rows(
     default_project_code: str,
 ) -> list[tuple[str, list[dict[str, object]], list[str]]]:
     old_tables = table_names(old)
+    logger.info("Collecting rows from backup: tables=%s", len(old_tables))
     result = []
-    owner_user_id = choose_owner_user_id(old)
+    default_member_user_id = choose_default_member_user_id(old)
 
     for table in COPY_ORDER:
         new_cols = table_columns(new, table)
@@ -154,13 +162,28 @@ def collect_rows(
                 "id": default_project_id,
                 "name": default_project_name,
                 "code": default_project_code,
-                "owner_user_id": owner_user_id,
                 "created_at": "2024-03-16T00:00:00Z",
                 "updated_at": "2024-03-16T00:00:00Z",
                 "is_active": 1,
             }
             columns = [column for column in new_cols if column in row]
             result.append((table, [row], columns))
+            logger.info("Prepared default project row: project_id=%s", default_project_id)
+            continue
+
+        if table == "project_member" and table not in old_tables:
+            row = {
+                "project_id": default_project_id,
+                "user_id": default_member_user_id,
+                "created_at": "2024-03-16T00:00:00Z",
+            }
+            columns = [column for column in new_cols if column in row]
+            result.append((table, [row], columns))
+            logger.info(
+                "Prepared default project member row: project_id=%s, user_id=%s",
+                default_project_id,
+                default_member_user_id,
+            )
             continue
 
         if table not in old_tables:
@@ -176,14 +199,19 @@ def collect_rows(
             for row in rows:
                 row["project_id"] = default_project_id
             columns.append("project_id")
+            logger.info("Filled default project for table: table=%s, rows=%s", table, len(rows))
 
         result.append((table, rows, columns))
+        logger.info("Prepared table rows: table=%s, rows=%s, columns=%s", table, len(rows), len(columns))
 
-    result.append(("__migration_history", current_history, ["filename", "checksum", "executed_at", "execution_time_ms"]))
+    result.append(
+        ("__migration_history", current_history, ["filename", "checksum", "executed_at", "execution_time_ms"])
+    )
     return result
 
 
 def write_json_output(path: Path, rows_by_table: list[tuple[str, list[dict[str, object]], list[str]]]) -> None:
+    logger.info("Writing import JSON: path=%s", path)
     operations = []
     for table, rows, columns in rows_by_table:
         if rows:
@@ -199,12 +227,14 @@ def write_json_output(path: Path, rows_by_table: list[tuple[str, list[dict[str, 
 
 
 def validate_database(output: Path, migrations_dir: Path) -> None:
+    logger.info("Validating rebuilt database: output=%s", output)
     conn = sqlite3.connect(output)
     conn.row_factory = sqlite3.Row
     fk_errors = list(conn.execute("PRAGMA foreign_key_check"))
     if fk_errors:
         details = "; ".join(str(tuple(row)) for row in fk_errors[:20])
         raise RuntimeError(f"Foreign key check failed: {details}")
+    logger.info("Foreign key validation passed")
 
     for table in sorted(PROJECT_ID_TABLES):
         columns = table_columns(conn, table)
@@ -222,12 +252,14 @@ def validate_database(output: Path, migrations_dir: Path) -> None:
     expected = {row["filename"]: row["checksum"] for row in calculate_current_history(migrations_dir)}
     if history != expected:
         raise RuntimeError(f"Migration history mismatch: expected={expected}, actual={history}")
+    logger.info("Migration history validation passed: migrations=%s", len(history))
 
     sys.path.insert(0, str(BACKEND_ROOT / "src"))
-    from pomelo_orbit.infrastructure.migration.migrator import run_migrations
+    migrator = importlib.import_module("pomelo_orbit.infrastructure.migration.migrator")
 
     engine = create_engine(f"sqlite:///{output.resolve()}")
-    run_migrations(engine, migrations_dir=str(migrations_dir))
+    migrator.run_migrations(engine, migrations_dir=str(migrations_dir))
+    logger.info("Migration replay validation passed")
 
 
 def ensure_writable(path: Path, force: bool) -> None:
@@ -235,11 +267,20 @@ def ensure_writable(path: Path, force: bool) -> None:
         if not force:
             raise RuntimeError(f"Output already exists: {path}. Use --force to overwrite.")
         path.unlink()
+        logger.info("Removed existing output: path=%s", path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     args = parse_args()
+    logger.info(
+        "Starting SQLite rebuild: backup=%s, output=%s, schema=%s, migrations_dir=%s",
+        args.backup,
+        args.output,
+        args.schema,
+        args.migrations_dir,
+    )
     ensure_writable(args.output, args.force)
     if args.json_output:
         ensure_writable(args.json_output, args.force)
@@ -249,6 +290,7 @@ def main() -> None:
     new = sqlite3.connect(args.output)
     new.row_factory = sqlite3.Row
     new.execute("PRAGMA foreign_keys = OFF")
+    logger.info("Applying base schema: schema=%s", args.schema)
     new.executescript(args.schema.read_text(encoding="utf-8"))
     create_history_table(new)
 
@@ -265,8 +307,10 @@ def main() -> None:
     counts = {}
     for table, rows, columns in rows_by_table:
         counts[table] = insert_rows(new, table, rows, columns)
+        logger.info("Imported table rows: table=%s, rows=%s", table, counts[table])
 
     new.commit()
+    logger.info("Rebuilt database committed: output=%s", args.output)
     new.close()
     old.close()
 
@@ -274,6 +318,7 @@ def main() -> None:
         write_json_output(args.json_output, rows_by_table)
 
     validate_database(args.output, args.migrations_dir)
+    logger.info("SQLite rebuild completed successfully: output=%s", args.output)
 
     print(f"Rebuilt database: {args.output}")
     if args.json_output:

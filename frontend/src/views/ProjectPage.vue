@@ -65,6 +65,7 @@
 							</td>
 							<td class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
+									<button class="app-link" @click="openMemberDialog(project)">成员</button>
 									<button class="app-link" @click="openEditDialog(project)">编辑</button>
 									<button
 										v-if="project.is_active"
@@ -138,6 +139,45 @@
 				</button>
 			</template>
 		</AppDialog>
+		<AppDialog v-model:open="isMemberDialogOpen" :title="`${memberProject?.name ?? ''} 成员管理`">
+			<div class="space-y-4">
+				<div class="flex gap-3">
+					<select v-model="selectedUserId" class="app-input">
+						<option value="">选择用户</option>
+						<option v-for="user in availableUsers" :key="user.id" :value="user.id">
+							{{ user.username }}{{ user.email ? ` (${user.email})` : '' }}
+						</option>
+					</select>
+					<button class="app-button-primary shrink-0" :disabled="operating || !selectedUserId" @click="handleAddMember">
+						添加
+					</button>
+				</div>
+
+				<div v-if="projectMembers.length === 0" class="py-8 text-center text-sm text-muted-foreground">
+					暂无成员
+				</div>
+				<table v-else class="app-table-detail">
+					<thead>
+						<tr>
+							<th>用户名</th>
+							<th>邮箱</th>
+							<th>操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="member in projectMembers" :key="member.id">
+							<td>{{ member.username }}</td>
+							<td>{{ member.email || '—' }}</td>
+							<td class="text-right">
+								<button class="app-link-danger" :disabled="operating" @click="handleRemoveMember(member.id)">
+									移除
+								</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</AppDialog>
 	</div>
 </template>
 
@@ -145,7 +185,10 @@
 	import { Plus } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { ToolbarRoot } from 'reka-ui';
-	import type { Project } from '@/types/project';
+	import { projectApi } from '@/api/project';
+	import { userApi } from '@/api/user';
+	import type { Project, ProjectMember } from '@/types/project';
+	import type { UserListResp } from '@/types/user';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
@@ -164,8 +207,13 @@
 	const searchText = ref('');
 	const isDialogOpen = ref(false);
 	const isDeprecateDialogOpen = ref(false);
+	const isMemberDialogOpen = ref(false);
 	const editingProject = ref<Project | null>(null);
 	const deprecatingProject = ref<Project | null>(null);
+	const memberProject = ref<Project | null>(null);
+	const projectMembers = ref<ProjectMember[]>([]);
+	const users = ref<UserListResp[]>([]);
+	const selectedUserId = ref('');
 	const pagination = reactive({ current: 1, pageSize: 10 });
 	const form = reactive({ name: '', code: '' });
 	const errors = reactive({ name: '', code: '' });
@@ -186,6 +234,10 @@
 	const pagedProjects = computed(() => {
 		const start = (pagination.current - 1) * pagination.pageSize;
 		return filteredProjects.value.slice(start, start + pagination.pageSize);
+	});
+	const availableUsers = computed(() => {
+		const memberIds = new Set(projectMembers.value.map((member) => member.id));
+		return users.value.filter((user) => user.status === 'enabled' && !memberIds.has(user.id));
 	});
 
 	function resetForm(project?: Project) {
@@ -218,6 +270,20 @@
 		(document.activeElement as HTMLElement)?.blur();
 		await nextTick();
 		isDeprecateDialogOpen.value = true;
+	}
+
+	async function openMemberDialog(project: Project) {
+		memberProject.value = project;
+		selectedUserId.value = '';
+		await executeOp(async () => {
+			const [members, userPage] = await Promise.all([
+				projectApi.listMembers(project.id),
+				userApi.list({ page: 1, per_page: 100 }),
+			]);
+			projectMembers.value = members;
+			users.value = userPage.items;
+		});
+		isMemberDialogOpen.value = true;
 	}
 
 	function handleSearch() {
@@ -267,6 +333,29 @@
 			await projectStore.deprecateProject(projectId);
 			toast.success('项目已废弃');
 			isDeprecateDialogOpen.value = false;
+		});
+	}
+
+	async function handleAddMember() {
+		const project = memberProject.value;
+		if (!project || !selectedUserId.value) {
+			return;
+		}
+		await executeOp(async () => {
+			projectMembers.value = await projectApi.addMember(project.id, { user_id: selectedUserId.value });
+			selectedUserId.value = '';
+			toast.success('成员已添加');
+		});
+	}
+
+	async function handleRemoveMember(userId: string) {
+		const project = memberProject.value;
+		if (!project) {
+			return;
+		}
+		await executeOp(async () => {
+			projectMembers.value = await projectApi.removeMember(project.id, userId);
+			toast.success('成员已移除');
 		});
 	}
 

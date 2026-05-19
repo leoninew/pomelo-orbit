@@ -1,4 +1,4 @@
-import type { Project, ProjectCreateReq, ProjectUpdateReq } from '@/types/project';
+import type { Project, ProjectCreateReq, ProjectMember, ProjectMemberReq, ProjectUpdateReq } from '@/types/project';
 import request from '@/utils/request';
 
 export const projectApi = {
@@ -20,5 +20,17 @@ export const projectApi = {
 
 	deprecate(id: string): Promise<void> {
 		return request.post(`/api/project/${id}/deprecate`);
+	},
+
+	listMembers(id: string): Promise<ProjectMember[]> {
+		return request.get(`/api/project/${id}/member`);
+	},
+
+	addMember(id: string, data: ProjectMemberReq): Promise<ProjectMember[]> {
+		return request.post(`/api/project/${id}/member`, data);
+	},
+
+	removeMember(id: string, userId: string): Promise<ProjectMember[]> {
+		return request.delete(`/api/project/${id}/member/${userId}`);
 	},
 };

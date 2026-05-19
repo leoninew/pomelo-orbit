@@ -12,11 +12,11 @@ CREATE TABLE IF NOT EXISTS user (
     oauth_provider_id TEXT NOT NULL DEFAULT '',
     email TEXT DEFAULT NULL,
     auth_source TEXT NOT NULL DEFAULT 'password',
-    is_active INTEGER NOT NULL DEFAULT 1
+    status TEXT NOT NULL DEFAULT 'enabled' CHECK (status IN ('enabled', 'disabled'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_email ON user(email);
-CREATE INDEX IF NOT EXISTS idx_user_is_active ON user(is_active);
+CREATE INDEX IF NOT EXISTS idx_user_status ON user(status);
 CREATE INDEX IF NOT EXISTS idx_user_oauth_account ON user(oauth_provider, oauth_provider_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_email ON user(email) WHERE email IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_user_oauth_account ON user(oauth_provider, oauth_provider_id)
@@ -55,16 +55,12 @@ CREATE INDEX IF NOT EXISTS idx_login_attempt_created ON login_attempt(created_at
 CREATE TABLE IF NOT EXISTS project (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    code TEXT NOT NULL,
-    owner_user_id TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    is_active BOOLEAN NOT NULL DEFAULT 1,
-    FOREIGN KEY (owner_user_id) REFERENCES user(id) ON DELETE CASCADE,
-    UNIQUE(owner_user_id, code)
+    is_active BOOLEAN NOT NULL DEFAULT 1
 );
 
-CREATE INDEX IF NOT EXISTS idx_project_owner_user_id ON project(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_project_code ON project(code);
 
 -- Application table

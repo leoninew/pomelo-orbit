@@ -14,9 +14,11 @@ UserStatus = Literal["enabled", "disabled"]
 
 
 def user_status(user: User) -> UserStatus:
-    if user.status not in ("enabled", "disabled"):
-        raise ValueError(f"Unsupported user status: {user.status}")
-    return user.status
+    if user.status == "enabled":
+        return "enabled"
+    if user.status == "disabled":
+        return "disabled"
+    raise ValueError(f"Unsupported user status: {user.status}")
 
 
 class UserCreateReq(BaseModel):

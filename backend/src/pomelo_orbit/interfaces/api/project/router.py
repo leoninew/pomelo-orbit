@@ -6,7 +6,13 @@ from pomelo_orbit.application.project.di import get_project_service
 from pomelo_orbit.application.project.project_service import ProjectService
 from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.interfaces.api.auth.router import get_current_user
-from pomelo_orbit.interfaces.api.project.dto import ProjectCreateReq, ProjectResp, ProjectUpdateReq
+from pomelo_orbit.interfaces.api.project.dto import (
+    ProjectCreateReq,
+    ProjectMemberReq,
+    ProjectMemberResp,
+    ProjectResp,
+    ProjectUpdateReq,
+)
 
 router = APIRouter(prefix="/project", tags=["project"])
 
@@ -27,7 +33,7 @@ def create_project(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectResp:
     project = project_service.create_project(
-        owner_user_id=current_user.id,
+        user_id=current_user.id,
         name=data.name,
         code=data.code,
     )
@@ -52,7 +58,7 @@ def update_project(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> ProjectResp:
     project = project_service.update_project(
-        owner_user_id=current_user.id,
+        user_id=current_user.id,
         project_id=project_id,
         name=data.name,
         code=data.code,
@@ -67,3 +73,35 @@ def deprecate_project(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
     project_service.deprecate_project(current_user.id, project_id)
+
+
+@router.get("/{project_id}/member", response_model=list[ProjectMemberResp])
+def list_project_members(
+    project_id: str,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[ProjectMemberResp]:
+    members = project_service.list_members(current_user.id, project_id)
+    return [ProjectMemberResp.from_domain(member) for member in members]
+
+
+@router.post("/{project_id}/member", response_model=list[ProjectMemberResp])
+def add_project_member(
+    project_id: str,
+    data: ProjectMemberReq,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[ProjectMemberResp]:
+    members = project_service.add_member(current_user.id, project_id, data.user_id)
+    return [ProjectMemberResp.from_domain(member) for member in members]
+
+
+@router.delete("/{project_id}/member/{user_id}", response_model=list[ProjectMemberResp])
+def remove_project_member(
+    project_id: str,
+    user_id: str,
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[ProjectMemberResp]:
+    members = project_service.remove_member(current_user.id, project_id, user_id)
+    return [ProjectMemberResp.from_domain(member) for member in members]

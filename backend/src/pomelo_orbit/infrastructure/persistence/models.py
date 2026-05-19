@@ -78,17 +78,21 @@ class ProjectModel(Base):
     """项目模型"""
 
     __tablename__ = "project"
-    __table_args__ = (UniqueConstraint("owner_user_id", "code", name="uq_project_owner_code"),)
 
     id: Mapped[str] = mapped_column(String(26), primary_key=True, default=lambda: str(ulid.ULID()))
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    code: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    owner_user_id: Mapped[str] = mapped_column(
-        String(26), ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    code: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+
+class ProjectMemberModel(Base):
+    __tablename__ = "project_member"
+
+    project_id: Mapped[str] = mapped_column(String(26), ForeignKey("project.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(26), ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
 
 class LoginHistoryModel(Base):

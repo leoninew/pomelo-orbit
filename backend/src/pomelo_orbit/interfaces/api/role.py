@@ -28,7 +28,6 @@ def _to_role_resp(role: Role, role_service: RoleService) -> RoleResp:
         code=role.code,
         name=role.name,
         description=role.description,
-        is_active=role.is_active,
         created_at=role.created_at,
         updated_at=role.updated_at,
         permission_codes=role_service.get_role_permission_codes(role.id),
@@ -52,8 +51,22 @@ def list_roles(
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[RoleResp]:
     roles, total = role_service.list_roles(page=page, per_page=per_page, search=search)
+    # 批量查询所有角色的权限码，避免 N+1 查询
+    role_ids = [role.id for role in roles]
+    permissions_by_role = role_service.get_roles_permission_codes(role_ids)
     return PaginatedResp(
-        items=[_to_role_resp(role, role_service) for role in roles],
+        items=[
+            RoleResp(
+                id=role.id,
+                code=role.code,
+                name=role.name,
+                description=role.description,
+                created_at=role.created_at,
+                updated_at=role.updated_at,
+                permission_codes=permissions_by_role.get(role.id, []),
+            )
+            for role in roles
+        ],
         total=total,
         page=page,
         per_page=per_page,

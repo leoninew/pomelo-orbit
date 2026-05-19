@@ -30,7 +30,6 @@ class RoleService:
             code=code,
             name=name,
             description=description,
-            is_active=True,
             created_at=now,
             updated_at=now,
         )
@@ -62,6 +61,10 @@ class RoleService:
 
     def get_role_permission_codes(self, role_id: str) -> list[str]:
         return [permission.code for permission in self.permission_repo.find_by_role_id(role_id)]
+
+    def get_roles_permission_codes(self, role_ids: list[str]) -> dict[str, list[str]]:
+        permissions_by_role = self.permission_repo.find_by_role_ids(role_ids)
+        return {role_id: [p.code for p in permissions] for role_id, permissions in permissions_by_role.items()}
 
     def _ensure_code_available(self, code: str, role_id: str | None = None) -> None:
         existing = self.role_repo.find_by_code(code)

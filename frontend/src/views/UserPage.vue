@@ -62,7 +62,7 @@
 								{{ formatRoleNames(user) || '-' }}
 							</td>
 							<td>
-								<AppBadge v-if="user.is_active" variant="status" tone="success">
+								<AppBadge v-if="user.status === 'enabled'" variant="status" tone="success">
 									{{ t('userManagement.enabled') }}
 								</AppBadge>
 								<AppBadge v-else variant="status" tone="default">
@@ -80,8 +80,11 @@
 							</td>
 							<td v-if="canWriteUsers" class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
+									<button class="app-link" @click="openEditDialog(user)">
+										{{ t('common.edit') }}
+									</button>
 									<button
-										v-if="user.is_active"
+										v-if="user.status === 'enabled'"
 										class="app-link-danger"
 										@click="openConfirmDialog('disable', user)"
 									>
@@ -165,6 +168,48 @@
 			</template>
 		</AppDialog>
 
+		<AppDialog
+			v-model:open="isEditDialogOpen"
+			:title="t('userManagement.edit')"
+			width-class="w-[min(600px,calc(100vw-32px))]"
+		>
+			<form id="user-edit-form" class="space-y-5" @submit.prevent="handleEditSave">
+				<div class="space-y-1.5">
+					<label class="app-field-label block" for="edit-password">
+						{{ t('userManagement.password') }}
+					</label>
+					<input
+						id="edit-password"
+						v-model="editForm.password"
+						type="password"
+						class="app-input"
+						minlength="6"
+						maxlength="255"
+					/>
+					<p class="app-field-hint">
+						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
+					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">{{ t('common.status') }}</label>
+					<SelectControl v-model="editForm.status" :options="userStatusOptions" />
+				</div>
+			</form>
+			<template #footer>
+				<button class="app-button" @click="isEditDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
+				<button
+					class="app-button-primary"
+					type="submit"
+					form="user-edit-form"
+					:disabled="operating"
+				>
+					{{ t('common.save') }}
+				</button>
+			</template>
+		</AppDialog>
+
 		<AppDialog v-model:open="confirmDialogOpen" :title="confirmTitle">
 			<p class="text-sm text-foreground">
 				{{ confirmMessage }}
@@ -191,12 +236,13 @@
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
+	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
 	import type { AuthSource } from '@/types/auth';
 	import type { RoleResp } from '@/types/role';
-	import type { UserListResp } from '@/types/user';
+	import type { UserListResp, UserStatus } from '@/types/user';
 	import { formatTime } from '@/utils/time';
 
 	const { t } = useI18n();
@@ -213,11 +259,18 @@
 
 	const confirmAction = ref<ConfirmAction | null>(null);
 	const isDialogOpen = ref(false);
+	const isEditDialogOpen = ref(false);
+	const editingUser = ref<UserListResp | null>(null);
 	const form = reactive({ username: '', email: '', password: '', roleIds: [] as string[] });
+	const editForm = reactive<{ password: string; status: UserStatus }>({ password: '', status: 'enabled' });
 	const canWriteUsers = computed(() => authStore.hasPermission('user:write'));
 	const canAssignRoles = computed(
 		() => authStore.hasPermission('role:read') && authStore.hasPermission('role:write')
 	);
+	const userStatusOptions = computed(() => [
+		{ value: 'enabled', label: t('userManagement.enabled') },
+		{ value: 'disabled', label: t('userManagement.disabled') },
+	]);
 	const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
 	const confirmDialogOpen = computed({
 		get: () => confirmAction.value !== null,
@@ -308,10 +361,8 @@
 		await nextTick();
 	}
 
-	function updateUserStatus(userId: string, isActive: boolean) {
-		users.value = users.value.map((user) =>
-			user.id === userId ? { ...user, is_active: isActive } : user
-		);
+	function updateUserStatus(userId: string, status: UserStatus) {
+		users.value = users.value.map((user) => (user.id === userId ? { ...user, status } : user));
 	}
 
 	async function handleSave() {
@@ -332,11 +383,41 @@
 		}
 	}
 
+	function openEditDialog(user: UserListResp) {
+		editingUser.value = user;
+		editForm.password = '';
+		editForm.status = user.status;
+		isEditDialogOpen.value = true;
+	}
+
+	async function handleEditSave() {
+		const user = editingUser.value;
+		if (!user) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				await userApi.update(user.id, {
+					password: editForm.password.trim() || null,
+					status: editForm.status,
+				});
+				updateUserStatus(user.id, editForm.status);
+				if (user.id === authStore.user?.id) {
+					await authStore.fetchUser();
+				}
+				toast.success(t('userManagement.updated'));
+				isEditDialogOpen.value = false;
+			});
+		} catch (e: unknown) {
+			toast.error(e instanceof Error ? e.message : t('userManagement.saveFailed'));
+		}
+	}
+
 	async function handleEnable(user: UserListResp) {
 		try {
 			await executeOp(async () => {
 				await userApi.enable(user.id);
-				updateUserStatus(user.id, true);
+				updateUserStatus(user.id, 'enabled');
 				toast.success(t('userManagement.enabledToast'));
 			});
 		} catch (e: unknown) {
@@ -352,7 +433,7 @@
 		try {
 			await executeOp(async () => {
 				await userApi.disable(action.user.id);
-				updateUserStatus(action.user.id, false);
+				updateUserStatus(action.user.id, 'disabled');
 				toast.success(t('userManagement.disabledToast'));
 				confirmAction.value = null;
 			});

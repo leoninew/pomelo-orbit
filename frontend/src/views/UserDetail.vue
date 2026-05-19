@@ -13,7 +13,7 @@
 					{{ t('common.edit') }}
 				</button>
 				<button
-					v-if="user && canWriteUsers && user.is_active"
+					v-if="user && canWriteUsers && user.status === 'enabled'"
 					class="app-button-danger h-9 px-3"
 					:disabled="operating"
 					@click="openDisableModal"
@@ -22,7 +22,7 @@
 					{{ t('userManagement.disable') }}
 				</button>
 				<button
-					v-if="user && canWriteUsers && !user.is_active"
+					v-if="user && canWriteUsers && user.status === 'disabled'"
 					class="app-button h-9 px-3"
 					:disabled="operating"
 					@click="handleEnable"
@@ -67,7 +67,7 @@
 				<div class="flex gap-2">
 					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
 					<dd>
-						<AppBadge v-if="user.is_active" variant="status" tone="success">
+						<AppBadge v-if="user.status === 'enabled'" variant="status" tone="success">
 							{{ t('userManagement.enabled') }}
 						</AppBadge>
 						<AppBadge v-else variant="status" tone="default">
@@ -133,7 +133,7 @@
 			:title="t('userManagement.edit')"
 			width-class="w-[min(600px,calc(100vw-32px))]"
 		>
-			<form id="user-edit-form" class="space-y-4" @submit.prevent="handleEditOk">
+			<form id="user-edit-form" class="space-y-5" @submit.prevent="handleEditOk">
 				<div class="space-y-1.5">
 					<label class="app-field-label block" for="password">
 						{{ t('userManagement.password') }}
@@ -146,9 +146,13 @@
 						minlength="6"
 						maxlength="255"
 					/>
-					<p class="text-xs text-muted-foreground">
+					<p class="app-field-hint">
 						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
 					</p>
+				</div>
+				<div class="space-y-1.5">
+					<label class="app-field-label block">{{ t('common.status') }}</label>
+					<SelectControl v-model="form.status" :options="userStatusOptions" />
 				</div>
 				<div v-if="canAssignRoles" class="space-y-2">
 					<span class="app-field-label block">{{ t('userManagement.roles') }}</span>
@@ -156,9 +160,9 @@
 						<label
 							v-for="role in roleOptions"
 							:key="role.id"
-							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
+							class="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary/40"
 						>
-							<input v-model="form.roleIds" type="checkbox" :value="role.id" />
+							<input v-model="form.roleIds" type="checkbox" :value="role.id" class="app-checkbox mt-0.5" />
 							<span>
 								<span class="block text-foreground">{{ role.name }}</span>
 								<span class="block text-xs text-muted-foreground">{{ role.code }}</span>
@@ -232,12 +236,13 @@
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
+	import SelectControl from '@/components/SelectControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
 	import type { AuthSource } from '@/types/auth';
 	import type { RoleResp } from '@/types/role';
-	import type { UserResp } from '@/types/user';
+	import type { UserResp, UserStatus } from '@/types/user';
 	import { formatTime } from '@/utils/time';
 
 	const props = defineProps<{ id: string }>();
@@ -253,12 +258,20 @@
 	const isEditModalOpen = ref(false);
 	const isDisableModalOpen = ref(false);
 	const isDeleteModalOpen = ref(false);
-	const form = reactive({ password: '', roleIds: [] as string[] });
+	const form = reactive<{ password: string; roleIds: string[]; status: UserStatus }>({
+		password: '',
+		roleIds: [],
+		status: 'enabled',
+	});
 
 	const canWriteUsers = computed(() => authStore.hasPermission('user:write'));
 	const canAssignRoles = computed(
 		() => authStore.hasPermission('role:read') && authStore.hasPermission('role:write')
 	);
+	const userStatusOptions = computed(() => [
+		{ value: 'enabled', label: t('userManagement.enabled') },
+		{ value: 'disabled', label: t('userManagement.disabled') },
+	]);
 
 	function formatAuthSource(authSource: AuthSource) {
 		switch (authSource) {
@@ -296,6 +309,7 @@
 	function openEditModal() {
 		form.password = '';
 		form.roleIds = user.value?.role_items.map((role) => role.id) ?? [];
+		form.status = user.value?.status ?? 'enabled';
 		isEditModalOpen.value = true;
 	}
 
@@ -305,6 +319,7 @@
 				await userApi.update(props.id, {
 					password: form.password.trim() || null,
 					role_ids: canAssignRoles.value ? form.roleIds : undefined,
+					status: form.status,
 				});
 				if (props.id === authStore.user?.id) {
 					await authStore.fetchUser();

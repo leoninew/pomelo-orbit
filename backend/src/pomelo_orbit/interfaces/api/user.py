@@ -14,20 +14,6 @@ from pomelo_orbit.interfaces.api.dto.user import UserCreateReq, UserListResp, Us
 router = APIRouter(prefix="/user", tags=["user"])
 
 
-def _ensure_can_assign_roles(current_user: User, user_service: UserService) -> None:
-    if "role:write" not in user_service.get_user_permission_codes(current_user.id):
-        raise BusinessError("Permission denied", status_code=403)
-
-
-def _ensure_can_reset_password(current_user: User, target_user_id: str, user_service: UserService) -> None:
-    if current_user.id == target_user_id:
-        return
-    if "role:write" in user_service.get_user_permission_codes(current_user.id):
-        return
-    if "role:write" in user_service.get_user_permission_codes(target_user_id):
-        raise BusinessError("Permission denied", status_code=403)
-
-
 @router.get("", response_model=PaginatedResp[UserListResp])
 def list_users(
     user_service: Annotated[UserService, Depends(get_user_service)],
@@ -53,8 +39,8 @@ def create_user(
     user_service: Annotated[UserService, Depends(get_user_service)],
     current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
-    if data.role_ids:
-        _ensure_can_assign_roles(current_user, user_service)
+    if data.role_ids and not user_service.can_assign_roles(current_user.id):
+        raise BusinessError("Permission denied", status_code=403)
     user = user_service.create_user(
         username=data.username, password=data.password, email=data.email, role_ids=data.role_ids
     )
@@ -82,11 +68,15 @@ def update_user(
     user_service: Annotated[UserService, Depends(get_user_service)],
     current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
-    if data.role_ids is not None:
-        _ensure_can_assign_roles(current_user, user_service)
-    if data.password is not None:
-        _ensure_can_reset_password(current_user, user_id, user_service)
-    user = user_service.update_user(user_id, password=data.password, role_ids=data.role_ids)
+    if data.role_ids is not None and not user_service.can_assign_roles(current_user.id):
+        raise BusinessError("Permission denied", status_code=403)
+    if data.password is not None and not user_service.can_reset_password(current_user.id, user_id):
+        raise BusinessError("Permission denied", status_code=403)
+    if current_user.id == user_id and data.status == "disabled":
+        raise BusinessError("Cannot disable current user", status_code=400)
+    user = user_service.update_user(
+        user_id, password=data.password, role_ids=data.role_ids, status=data.status
+    )
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
     return UserResp.from_domain(user, roles, permission_codes)

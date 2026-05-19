@@ -6,6 +6,12 @@ from datetime import datetime
 from pomelo_orbit.infrastructure.time_utils import utc_now
 
 
+# 用户状态常量
+USER_STATUS_ENABLED = "enabled"
+USER_STATUS_DISABLED = "disabled"
+VALID_USER_STATUSES = {USER_STATUS_ENABLED, USER_STATUS_DISABLED}
+
+
 @dataclass
 class User:
     """用户实体"""
@@ -13,14 +19,19 @@ class User:
     id: str
     username: str
     password_hash: str
-    is_active: bool = True  # 账号状态：True=启用, False=禁用
-    oauth_provider: str = ""  # OAuth 提供商（google, github 等）
-    oauth_provider_id: str = ""  # OAuth 提供商的用户 ID
-    email: str | None = None
-    auth_source: str = "password"  # password | oauth
+    status: str
+    oauth_provider: str
+    oauth_provider_id: str
+    email: str | None
+    auth_source: str
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
     last_login_at: datetime | None = None
+
+    def __post_init__(self):
+        """验证状态字段"""
+        if self.status not in VALID_USER_STATUSES:
+            raise ValueError(f"Invalid user status: {self.status}. Must be one of {VALID_USER_STATUSES}")
 
 
 @dataclass
@@ -29,7 +40,6 @@ class Role:
     code: str
     name: str
     description: str | None
-    is_active: bool
     created_at: datetime = field(default_factory=utc_now)
     updated_at: datetime = field(default_factory=utc_now)
 

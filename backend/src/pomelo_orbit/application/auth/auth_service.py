@@ -76,7 +76,7 @@ class AuthService:
             raise AuthenticationError("用户名或密码错误")
 
         # 4.1. 检查账号状态
-        if not user.is_active:
+        if user.status == "disabled":
             # 记录失败尝试（账号已禁用）
             self._record_login_attempt_immediately(
                 username=cmd.username,
@@ -264,6 +264,7 @@ class AuthService:
                 id=str(ULID()),
                 username=username,
                 password_hash=hash_password(""),  # OAuth 用户无密码
+                status="enabled",
                 oauth_provider=OAuthProvider.GOOGLE,
                 oauth_provider_id=provider_id,
                 email=email,

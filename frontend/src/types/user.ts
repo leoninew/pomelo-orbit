@@ -1,5 +1,7 @@
 import type { UserInfo } from './auth';
 
+export type UserStatus = 'enabled' | 'disabled';
+
 export interface UserRoleResp {
 	id: string
 	code: string
@@ -13,13 +15,13 @@ export interface UserListResp {
 	auth_source: UserInfo['auth_source']
 	created_at: string
 	last_login_at: string | null
-	is_active: boolean
+	status: UserStatus
 	updated_at: string
 	role_items: UserRoleResp[]
 }
 
 export interface UserResp extends UserInfo {
-	is_active: boolean
+	status: UserStatus
 	updated_at: string
 	role_items: UserRoleResp[]
 }
@@ -34,4 +36,5 @@ export interface UserCreateReq {
 export interface UserUpdateReq {
 	password?: string | null
 	role_ids?: string[] | null
+	status: UserStatus
 }

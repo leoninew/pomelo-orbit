@@ -51,6 +51,13 @@ const router = createRouter({
 			component: () => import('@/views/RolePage.vue'),
 			meta: { title: '角色管理', menuKey: 'roles', permission: 'role:read' },
 		},
+		{
+			path: '/roles/:id',
+			name: 'RoleDetail',
+			component: () => import('@/views/RoleDetail.vue'),
+			props: true,
+			meta: { title: '角色详情', menuKey: 'roles', permission: 'role:read' },
+		},
 		// CD
 		{
 			path: '/cd/applications',

@@ -39,7 +39,7 @@ class UserMapper:
             id=model.id,
             username=model.username,
             password_hash=model.password_hash,
-            is_active=model.is_active,
+            status=model.status,
             oauth_provider=model.oauth_provider,
             oauth_provider_id=model.oauth_provider_id,
             email=model.email,
@@ -56,7 +56,7 @@ class UserMapper:
             id=entity.id,
             username=entity.username,
             password_hash=entity.password_hash,
-            is_active=entity.is_active,
+            status=entity.status,
             oauth_provider=entity.oauth_provider,
             oauth_provider_id=entity.oauth_provider_id,
             email=entity.email,
@@ -75,7 +75,6 @@ class RoleMapper:
             code=model.code,
             name=model.name,
             description=model.description,
-            is_active=model.is_active,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
@@ -87,7 +86,6 @@ class RoleMapper:
             code=entity.code,
             name=entity.name,
             description=entity.description,
-            is_active=entity.is_active,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )

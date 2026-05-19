@@ -24,7 +24,16 @@ class AuthClient:
 
 @pytest.fixture
 def mock_user():
-    return User(id="test-user-id", username="testuser", password_hash="")
+    return User(
+        id="test-user-id",
+        username="testuser",
+        password_hash="",
+        status="enabled",
+        oauth_provider="",
+        oauth_provider_id="",
+        email=None,
+        auth_source="password",
+    )
 
 
 def seed_auth_permissions(db_session, user_id: str, permission_codes: list[str]) -> None:

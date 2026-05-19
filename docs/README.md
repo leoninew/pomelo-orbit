@@ -5,6 +5,7 @@
 ### 开发指南
 - [开发流程](./development/workflow.md) - Git 工作流、代码审查、发布流程
 - [运行时配置与 OAuth 配置](./guides/runtime-configuration.md) - 前端运行时注入、API Base URL、Google OAuth 回调
+- [权限系统指引](./guides/permissions.md) - RBAC 数据模型、前后端接入方式、权限码维护流程
 - [编码规范](../CLAUDE.md) - 代码规范和最佳实践（项目根目录）
 
 ### 前端文档
@@ -18,8 +19,7 @@
 - [API 设计规范](./backend/api-design.md) - RESTful API 设计约定
 
 ### 项目管理
-- [开发进度](../todo.md) - 当前开发任务和进度跟踪
-- [变更日志](./project/changelog.md) - 版本历史和重要变更
+- [开发进度](./todo.md) - 当前开发任务和进度跟踪
 
 ### 归档文档
 - [前端技术选型对比](./archive/frontend-comparison.md) - 历史技术选型讨论

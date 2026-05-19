@@ -31,7 +31,7 @@ def test_create_and_list_roles(auth_client, db_session):
     assert body["code"] == "manager"
     assert body["name"] == "Manager"
     assert body["description"] == "Team manager"
-    assert body["is_active"] is True
+    assert "is_active" not in body
     assert body["permission_codes"] == ["user:read"]
 
     response = auth_client.get("/api/role", params={"search": "manager"})
@@ -39,6 +39,7 @@ def test_create_and_list_roles(auth_client, db_session):
     body = response.json()
     assert body["total"] == 1
     assert body["items"][0]["code"] == "manager"
+    assert "is_active" not in body["items"][0]
     assert body["items"][0]["permission_codes"] == ["user:read"]
 
 

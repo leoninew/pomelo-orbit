@@ -68,7 +68,7 @@ def get_current_user(
     if username is None:
         raise AuthorizationError("登录已过期, 请重新登录")
     user = user_repo.find_by_username(username)
-    if user is None or not user.is_active:
+    if user is None or user.status == "disabled":
         raise AuthorizationError("登录已过期, 请重新登录")
     return user
 

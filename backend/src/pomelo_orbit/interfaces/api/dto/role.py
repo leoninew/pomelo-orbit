@@ -29,7 +29,6 @@ class RoleResp(BaseModel):
     code: str
     name: str
     description: str | None
-    is_active: bool
     created_at: datetime
     updated_at: datetime
     permission_codes: list[str] = Field(default_factory=list)

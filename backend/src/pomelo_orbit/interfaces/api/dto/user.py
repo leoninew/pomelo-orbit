@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -9,6 +9,14 @@ from pomelo_orbit.interfaces.api.auth.dto import UserInfo
 
 if TYPE_CHECKING:
     from pomelo_orbit.domain.auth.entities import Role, User
+
+UserStatus = Literal["enabled", "disabled"]
+
+
+def user_status(user: User) -> UserStatus:
+    if user.status not in ("enabled", "disabled"):
+        raise ValueError(f"Unsupported user status: {user.status}")
+    return user.status
 
 
 class UserCreateReq(BaseModel):
@@ -28,6 +36,7 @@ class UserCreateReq(BaseModel):
 class UserUpdateReq(BaseModel):
     password: str | None = Field(default=None, min_length=6, max_length=255)
     role_ids: list[str] | None = None
+    status: UserStatus
 
     @field_validator("role_ids")
     @classmethod
@@ -54,7 +63,7 @@ class UserListResp(BaseModel):
     auth_source: str
     created_at: datetime
     last_login_at: datetime | None
-    is_active: bool
+    status: UserStatus
     updated_at: datetime
     role_items: list[UserRoleResp] = Field(default_factory=list)
 
@@ -67,14 +76,14 @@ class UserListResp(BaseModel):
             auth_source=user.auth_source,
             created_at=user.created_at,
             last_login_at=user.last_login_at,
-            is_active=user.is_active,
+            status=user_status(user),
             updated_at=user.updated_at,
             role_items=[UserRoleResp.from_domain(role) for role in roles],
         )
 
 
 class UserResp(UserInfo):
-    is_active: bool
+    status: UserStatus
     updated_at: datetime
     role_items: list[UserRoleResp] = Field(default_factory=list)
 
@@ -91,7 +100,7 @@ class UserResp(UserInfo):
             last_login_at=user.last_login_at,
             roles=[role.code for role in roles],
             permissions=permission_codes,
-            is_active=user.is_active,
+            status=user_status(user),
             updated_at=user.updated_at,
             role_items=[UserRoleResp.from_domain(role) for role in roles],
         )

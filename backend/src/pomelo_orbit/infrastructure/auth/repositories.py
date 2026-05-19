@@ -77,6 +77,26 @@ class PermissionRepositoryImpl(PermissionRepository):
         )
         return [PermissionMapper.to_domain(model) for model in models]
 
+    def find_by_role_ids(self, role_ids: list[str]) -> dict[str, list[Permission]]:
+        if not role_ids:
+            return {}
+
+        # 批量查询所有角色的权限
+        rows = (
+            self._session.query(RolePermissionModel.role_id, PermissionModel)
+            .join(PermissionModel, RolePermissionModel.permission_id == PermissionModel.id)
+            .filter(RolePermissionModel.role_id.in_(role_ids))
+            .order_by(RolePermissionModel.role_id, PermissionModel.code.asc())
+            .all()
+        )
+
+        # 按角色 ID 分组
+        result: dict[str, list[Permission]] = {role_id: [] for role_id in role_ids}
+        for role_id, permission_model in rows:
+            result[role_id].append(PermissionMapper.to_domain(permission_model))
+
+        return result
+
     def set_role_permissions(self, role_id: str, permission_codes: list[str]) -> None:
         permissions = self.find_by_codes(permission_codes)
         self._session.query(RolePermissionModel).filter(RolePermissionModel.role_id == role_id).delete()

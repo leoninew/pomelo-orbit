@@ -1,3 +1,5 @@
+from typing import Literal
+
 from ulid import ULID
 
 from pomelo_orbit.domain import BusinessError
@@ -32,9 +34,11 @@ class UserService:
             id=str(ULID()),
             username=username,
             password_hash=hash_password(password),
+            status="enabled",
+            oauth_provider="",
+            oauth_provider_id="",
             email=email,
             auth_source=AuthSource.PASSWORD,
-            is_active=True,
             created_at=now,
             updated_at=now,
         )
@@ -42,7 +46,14 @@ class UserService:
         self.user_repo.set_roles(user.id, role_ids)
         return user
 
-    def update_user(self, user_id: str, *, password: str | None, role_ids: list[str] | None) -> User:
+    def update_user(
+        self,
+        user_id: str,
+        *,
+        password: str | None,
+        role_ids: list[str] | None,
+        status: Literal["enabled", "disabled"],
+    ) -> User:
         user = self.get_user(user_id)
         should_save = False
         if role_ids is not None:
@@ -54,6 +65,10 @@ class UserService:
             user.password_hash = hash_password(password)
             user.updated_at = utc_now()
             should_save = True
+        if user.status != status:
+            user.status = status
+            user.updated_at = utc_now()
+            should_save = True
         if should_save:
             self.user_repo.save(user)
         return user
@@ -62,17 +77,17 @@ class UserService:
         if current_user_id == user_id:
             raise BusinessError("Cannot disable current user", status_code=400)
         user = self.get_user(user_id)
-        if not user.is_active:
+        if user.status == "disabled":
             return
-        user.is_active = False
+        user.status = "disabled"
         user.updated_at = utc_now()
         self.user_repo.save(user)
 
     def enable_user(self, user_id: str) -> None:
         user = self.get_user(user_id)
-        if user.is_active:
+        if user.status == "enabled":
             return
-        user.is_active = True
+        user.status = "enabled"
         user.updated_at = utc_now()
         self.user_repo.save(user)
 
@@ -90,6 +105,23 @@ class UserService:
 
     def get_user_permission_codes(self, user_id: str) -> list[str]:
         return [permission.code for permission in self.user_repo.find_permissions(user_id)]
+
+    def can_assign_roles(self, user_id: str) -> bool:
+        """检查用户是否有权限分配角色"""
+        return "role:write" in self.get_user_permission_codes(user_id)
+
+    def can_reset_password(self, current_user_id: str, target_user_id: str) -> bool:
+        """检查用户是否有权限重置目标用户的密码"""
+        # 用户可以重置自己的密码
+        if current_user_id == target_user_id:
+            return True
+        # 拥有 role:write 权限的用户可以重置任何人的密码
+        if "role:write" in self.get_user_permission_codes(current_user_id):
+            return True
+        # 否则，不能重置拥有 role:write 权限用户的密码
+        if "role:write" in self.get_user_permission_codes(target_user_id):
+            return False
+        return True
 
     def _ensure_username_available(self, username: str, user_id: str | None = None) -> None:
         existing = self.user_repo.find_by_username(username)

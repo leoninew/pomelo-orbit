@@ -45,9 +45,11 @@
 					<tbody>
 						<tr v-for="role in roles" :key="role.id">
 							<td class="max-w-0 truncate text-foreground" :title="role.code">
-								{{ role.code }}
+								<router-link :to="`/roles/${role.id}`" class="app-link">
+									{{ role.code }}
+								</router-link>
 							</td>
-							<td class="max-w-0 truncate text-foreground" :title="role.name">
+							<td class="max-w-0 truncate" :title="role.name">
 								{{ role.name }}
 							</td>
 							<td class="max-w-0 truncate text-foreground" :title="role.description || undefined">
@@ -122,22 +124,6 @@
 						maxlength="500"
 					/>
 				</div>
-				<div class="space-y-2">
-					<span class="app-field-label block">{{ t('roleManagement.permissions') }}</span>
-					<div class="grid gap-2 sm:grid-cols-2">
-						<label
-							v-for="permission in permissions"
-							:key="permission.code"
-							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
-						>
-							<input v-model="form.permissionCodes" type="checkbox" :value="permission.code" />
-							<span>
-								<span class="block text-foreground">{{ permission.name }}</span>
-								<span class="block text-xs text-muted-foreground">{{ permission.code }}</span>
-							</span>
-						</label>
-					</div>
-				</div>
 			</form>
 			<template #footer>
 				<button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
@@ -174,7 +160,7 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useAuthStore } from '@/stores/auth';
-	import type { PermissionResp, RoleResp } from '@/types/role';
+	import type { RoleResp } from '@/types/role';
 	import { formatTime } from '@/utils/time';
 
 	const { t } = useI18n();
@@ -184,7 +170,6 @@
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const roles = ref<RoleResp[]>([]);
-	const permissions = ref<PermissionResp[]>([]);
 	const searchText = ref('');
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
 	type ConfirmAction = { role: RoleResp };
@@ -192,7 +177,7 @@
 	const editingRole = ref<RoleResp | null>(null);
 	const confirmAction = ref<ConfirmAction | null>(null);
 	const isDialogOpen = ref(false);
-	const form = reactive({ code: '', name: '', description: '', permissionCodes: [] as string[] });
+	const form = reactive({ code: '', name: '', description: '' });
 	const canWriteRoles = computed(() => authStore.hasPermission('role:write'));
 	const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
 	const confirmDialogOpen = computed({
@@ -208,18 +193,6 @@
 		form.code = role?.code ?? '';
 		form.name = role?.name ?? '';
 		form.description = role?.description ?? '';
-		form.permissionCodes = role?.permission_codes ? [...role.permission_codes] : [];
-	}
-
-	async function fetchPermissions() {
-		if (!canWriteRoles.value) {
-			return;
-		}
-		try {
-			permissions.value = await roleApi.listPermissions();
-		} catch {
-			toast.error(t('roleManagement.loadPermissionsFailed'));
-		}
 	}
 
 	async function fetchRoles() {
@@ -279,7 +252,7 @@
 					code: form.code.trim(),
 					name: form.name.trim(),
 					description: form.description.trim() || null,
-					permission_codes: form.permissionCodes,
+					permission_codes: editingRole.value?.permission_codes ?? [],
 				};
 				if (editingRole.value) {
 					await roleApi.update(editingRole.value.id, payload);
@@ -316,7 +289,6 @@
 	}
 
 	onMounted(() => {
-		fetchPermissions();
 		fetchRoles();
 	});
 </script>

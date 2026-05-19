@@ -25,10 +25,9 @@ class UserService:
             raise BusinessError(f"User {user_id} not found", status_code=404)
         return user
 
-    def create_user(self, *, username: str, password: str, email: str | None, role_ids: list[str]) -> User:
+    def create_user(self, *, username: str, password: str, email: str | None) -> User:
         self._ensure_username_available(username)
         self._ensure_email_available(email)
-        self._ensure_roles_exist(role_ids)
         now = utc_now()
         user = User(
             id=str(ULID()),
@@ -43,7 +42,6 @@ class UserService:
             updated_at=now,
         )
         self.user_repo.save(user)
-        self.user_repo.set_roles(user.id, role_ids)
         return user
 
     def update_user(
@@ -51,16 +49,10 @@ class UserService:
         user_id: str,
         *,
         password: str | None,
-        role_ids: list[str] | None,
         status: Literal["enabled", "disabled"],
     ) -> User:
         user = self.get_user(user_id)
         should_save = False
-        if role_ids is not None:
-            self._ensure_roles_exist(role_ids)
-            self.user_repo.set_roles(user_id, role_ids)
-            user.updated_at = utc_now()
-            should_save = True
         if password is not None:
             user.password_hash = hash_password(password)
             user.updated_at = utc_now()
@@ -99,6 +91,14 @@ class UserService:
 
     def get_user_roles(self, user_id: str) -> list[Role]:
         return self.user_repo.find_roles(user_id)
+
+    def update_user_roles(self, user_id: str, role_ids: list[str]) -> User:
+        user = self.get_user(user_id)
+        self._ensure_roles_exist(role_ids)
+        self.user_repo.set_roles(user_id, role_ids)
+        user.updated_at = utc_now()
+        self.user_repo.save(user)
+        return user
 
     def get_users_roles(self, user_ids: list[str]) -> dict[str, list[Role]]:
         return self.user_repo.find_roles_by_user_ids(user_ids)

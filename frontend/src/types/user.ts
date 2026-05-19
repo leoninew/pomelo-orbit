@@ -30,11 +30,13 @@ export interface UserCreateReq {
 	username: string
 	password: string
 	email?: string | null
-	role_ids: string[]
 }
 
 export interface UserUpdateReq {
 	password?: string | null
-	role_ids?: string[] | null
 	status: UserStatus
+}
+
+export interface UserRoleUpdateReq {
+	role_ids: string[]
 }

@@ -32,15 +32,12 @@ def create_role(db_session, code: str = "developer", name: str = "Developer") ->
 
 
 def test_create_and_list_users(auth_client, db_session):
-    role = create_role(db_session)
-
     response = auth_client.post(
         "/api/user",
         json={
             "username": "alice",
             "email": "alice@example.com",
             "password": "secret",
-            "role_ids": [role.id],
         },
     )
 
@@ -50,8 +47,8 @@ def test_create_and_list_users(auth_client, db_session):
     assert body["email"] == "alice@example.com"
     assert body["status"] == "enabled"
     assert "is_active" not in body
-    assert body["roles"] == ["developer"]
-    assert body["role_items"] == [{"id": role.id, "code": "developer", "name": "Developer"}]
+    assert body["roles"] == []
+    assert body["role_items"] == []
     assert "password_hash" not in body
 
     response = auth_client.get("/api/user", params={"search": "alice"})
@@ -61,7 +58,7 @@ def test_create_and_list_users(auth_client, db_session):
     assert body["items"][0]["username"] == "alice"
     assert body["items"][0]["status"] == "enabled"
     assert "is_active" not in body["items"][0]
-    assert body["items"][0]["role_items"] == [{"id": role.id, "code": "developer", "name": "Developer"}]
+    assert body["items"][0]["role_items"] == []
     assert "roles" not in body["items"][0]
     assert "permissions" not in body["items"][0]
 
@@ -99,14 +96,14 @@ def test_update_user_resets_password(auth_client, db_session):
     assert verify_password("new-password", user.password_hash)
 
 
-def test_update_user_sets_roles(auth_client, db_session):
+def test_update_user_roles(auth_client, db_session):
     user = create_user(db_session, "alice")
     role = create_role(db_session)
     old_updated_at = datetime(2024, 1, 1)
     user.updated_at = old_updated_at
     db_session.commit()
 
-    response = auth_client.put(f"/api/user/{user.id}", json={"role_ids": [role.id], "status": "enabled"})
+    response = auth_client.put(f"/api/user/{user.id}/role", json={"role_ids": [role.id]})
 
     assert response.status_code == 200
     body = response.json()
@@ -130,13 +127,7 @@ def test_update_user_sets_status(auth_client, db_session):
 
 
 def test_cannot_disable_current_user_via_update(auth_client, db_session):
-    user = UserModel(
-        id="test-user-id",
-        username="current",
-        password_hash=hash_password("password"),
-    )
-    db_session.add(user)
-    db_session.commit()
+    user = db_session.get(UserModel, "test-user-id")
 
     response = auth_client.put("/api/user/test-user-id", json={"status": "disabled"})
 
@@ -149,13 +140,8 @@ def test_user_role_ids_must_be_unique(auth_client, db_session):
     user = create_user(db_session, "alice")
     role = create_role(db_session)
 
-    response = auth_client.post(
-        "/api/user",
-        json={"username": "bob", "password": "secret", "role_ids": [role.id, role.id]},
-    )
-    assert response.status_code == 422
+    response = auth_client.put(f"/api/user/{user.id}/role", json={"role_ids": [role.id, role.id]})
 
-    response = auth_client.put(f"/api/user/{user.id}", json={"role_ids": [role.id, role.id], "status": "enabled"})
     assert response.status_code == 422
 
 
@@ -163,7 +149,7 @@ def test_user_write_cannot_assign_roles_without_role_write(user_write_client, db
     user = create_user(db_session, "alice")
     role = create_role(db_session)
 
-    response = user_write_client.put(f"/api/user/{user.id}", json={"role_ids": [role.id], "status": "enabled"})
+    response = user_write_client.put(f"/api/user/{user.id}/role", json={"role_ids": [role.id]})
 
     assert response.status_code == 403
     assert db_session.get(UserRoleModel, (user.id, role.id)) is None
@@ -204,16 +190,11 @@ def test_disable_enable_and_delete_user(auth_client, db_session):
 
 
 def test_cannot_disable_or_delete_current_user(auth_client, db_session):
-    user = UserModel(
-        id="test-user-id",
-        username="current",
-        password_hash=hash_password("password"),
-    )
-    db_session.add(user)
-    db_session.commit()
+    user = db_session.get(UserModel, "test-user-id")
 
     response = auth_client.post("/api/user/test-user-id/disable")
     assert response.status_code == 400
 
     response = auth_client.delete("/api/user/test-user-id")
     assert response.status_code == 400
+    assert db_session.get(UserModel, user.id) is not None

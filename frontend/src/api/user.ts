@@ -1,5 +1,5 @@
 import type { PaginatedResp } from '@/types/common';
-import type { UserCreateReq, UserListResp, UserResp, UserUpdateReq } from '@/types/user';
+import type { UserCreateReq, UserListResp, UserResp, UserRoleUpdateReq, UserUpdateReq } from '@/types/user';
 import request from '@/utils/request';
 
 export const userApi = {
@@ -21,6 +21,10 @@ export const userApi = {
 
 	update(id: string, data: UserUpdateReq): Promise<UserResp> {
 		return request.put(`/api/user/${id}`, data);
+	},
+
+	updateRoles(id: string, data: UserRoleUpdateReq): Promise<UserResp> {
+		return request.put(`/api/user/${id}/role`, data);
 	},
 
 	disable(id: string): Promise<void> {

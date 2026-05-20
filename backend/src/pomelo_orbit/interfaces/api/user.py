@@ -3,7 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from pomelo_orbit.application.auth.di import get_user_service
+from pomelo_orbit.application.auth.di import get_role_service, get_user_service
+from pomelo_orbit.application.auth.role_service import RoleService
 from pomelo_orbit.application.auth.user_service import UserService
 from pomelo_orbit.domain import BusinessError
 from pomelo_orbit.domain.auth.entities import User
@@ -37,24 +38,28 @@ def list_users(
 def create_user(
     data: UserCreateReq,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    role_service: Annotated[RoleService, Depends(get_role_service)],
     current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
     user = user_service.create_user(username=data.username, password=data.password, email=data.email)
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
-    return UserResp.from_domain(user, roles, permission_codes)
+    roles_permissions = role_service.get_roles_permission_codes([role.id for role in roles])
+    return UserResp.from_domain(user, roles, permission_codes, roles_permissions)
 
 
 @router.get("/{user_id}", response_model=UserResp)
 def get_user(
     user_id: str,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    role_service: Annotated[RoleService, Depends(get_role_service)],
     _current_user: Annotated[User, Depends(require_permission("user:read"))],
 ) -> UserResp:
     user = user_service.get_user(user_id)
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
-    return UserResp.from_domain(user, roles, permission_codes)
+    roles_permissions = role_service.get_roles_permission_codes([role.id for role in roles])
+    return UserResp.from_domain(user, roles, permission_codes, roles_permissions)
 
 
 @router.put("/{user_id}", response_model=UserResp)
@@ -62,12 +67,14 @@ def update_user(
     user_id: str,
     data: UserUpdateReq,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    role_service: Annotated[RoleService, Depends(get_role_service)],
     current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
     user = user_service.update_user(current_user.id, user_id, username=data.username, password=data.password, status=data.status)
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
-    return UserResp.from_domain(user, roles, permission_codes)
+    roles_permissions = role_service.get_roles_permission_codes([role.id for role in roles])
+    return UserResp.from_domain(user, roles, permission_codes, roles_permissions)
 
 
 @router.put("/{user_id}/role", response_model=UserResp)
@@ -75,6 +82,7 @@ def update_user_roles(
     user_id: str,
     data: UserRoleUpdateReq,
     user_service: Annotated[UserService, Depends(get_user_service)],
+    role_service: Annotated[RoleService, Depends(get_role_service)],
     current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
     if not user_service.can_assign_roles(current_user.id):
@@ -82,7 +90,8 @@ def update_user_roles(
     user = user_service.update_user_roles(user_id, data.role_ids)
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
-    return UserResp.from_domain(user, roles, permission_codes)
+    roles_permissions = role_service.get_roles_permission_codes([role.id for role in roles])
+    return UserResp.from_domain(user, roles, permission_codes, roles_permissions)
 
 
 @router.post("/{user_id}/disable", status_code=204)

@@ -1,3 +1,5 @@
+import type { AuthSource } from './auth'
+
 export interface Project {
 	id: string
 	name: string
@@ -11,6 +13,9 @@ export interface ProjectMember {
 	id: string
 	username: string
 	email: string | null
+	status: string
+	auth_source: AuthSource
+	last_login_at: string | null
 }
 
 export interface ProjectCreateReq {

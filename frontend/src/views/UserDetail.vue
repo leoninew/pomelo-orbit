@@ -110,30 +110,35 @@
 				</button>
 			</div>
 
-			<div class="px-5 py-4 space-y-4">
-				<div>
-					<h3 class="text-sm font-medium text-muted-foreground mb-2">
-						{{ t('userManagement.roles') }}
-					</h3>
-					<div v-if="user && user.role_items.length > 0" class="flex flex-wrap gap-2">
-						<AppBadge v-for="role in user.role_items" :key="role.id">
+			<div v-if="user && user.role_items.length > 0" class="px-5 py-4">
+				<TabsRoot :default-value="user.role_items[0]?.id">
+					<TabsList class="flex gap-1 border-b border-border">
+						<TabsTrigger
+							v-for="role in user.role_items"
+							:key="role.id"
+							:value="role.id"
+							class="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+						>
 							{{ role.name }}
-						</AppBadge>
-					</div>
-					<p v-else class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
-				</div>
-
-				<div>
-					<h3 class="text-sm font-medium text-muted-foreground mb-2">
-						{{ t('userManagement.permissions') }}
-					</h3>
-					<div v-if="user && user.permissions.length > 0" class="flex flex-wrap gap-2">
-						<AppBadge v-for="permission in user.permissions" :key="permission">
-							{{ permission }}
-						</AppBadge>
-					</div>
-					<p v-else class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
-				</div>
+						</TabsTrigger>
+					</TabsList>
+					<TabsContent
+						v-for="role in user.role_items"
+						:key="role.id"
+						:value="role.id"
+						class="pt-4"
+					>
+						<div v-if="role.permission_codes.length > 0" class="flex flex-wrap gap-2">
+							<AppBadge v-for="permission in role.permission_codes" :key="permission">
+								{{ permission }}
+							</AppBadge>
+						</div>
+						<p v-else class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
+					</TabsContent>
+				</TabsRoot>
+			</div>
+			<div v-else class="px-5 py-4">
+				<p class="text-sm text-muted-foreground">{{ t('common.noData') }}</p>
 			</div>
 		</div>
 
@@ -278,6 +283,7 @@
 <script setup lang="ts">
 	import { ArrowLeft, Ban, CheckCircle, Pencil, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
 	import { useI18n } from 'vue-i18n';
 	import { useRouter } from 'vue-router';
 	import { roleApi } from '@/api/role';

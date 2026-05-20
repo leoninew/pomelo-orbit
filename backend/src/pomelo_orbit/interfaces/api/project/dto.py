@@ -34,7 +34,17 @@ class ProjectMemberResp(BaseModel):
     id: str
     username: str
     email: str | None
+    status: str
+    auth_source: str
+    last_login_at: datetime | None
 
     @classmethod
     def from_domain(cls, user: User) -> "ProjectMemberResp":
-        return cls(id=user.id, username=user.username, email=user.email)
+        return cls(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            status=user.status,
+            auth_source=user.auth_source,
+            last_login_at=user.last_login_at,
+        )

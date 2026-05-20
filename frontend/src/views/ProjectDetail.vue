@@ -74,6 +74,9 @@
 						<tr>
 							<th>用户名</th>
 							<th>邮箱</th>
+							<th>状态</th>
+							<th>来源</th>
+							<th>上次登录</th>
 							<th class="text-right">操作</th>
 						</tr>
 					</thead>
@@ -81,6 +84,16 @@
 						<tr v-for="member in members" :key="member.id">
 							<td>{{ member.username }}</td>
 							<td>{{ member.email || '—' }}</td>
+							<td>
+								<AppBadge v-if="member.status === 'enabled'" variant="status" tone="success">
+									{{ t('userManagement.enabled') }}
+								</AppBadge>
+								<AppBadge v-else variant="status" tone="default">
+									{{ t('userManagement.disabled') }}
+								</AppBadge>
+							</td>
+							<td>{{ formatAuthSource(member.auth_source) }}</td>
+							<td>{{ member.last_login_at ? formatTime(member.last_login_at) : '—' }}</td>
 							<td class="text-right">
 								<button
 									class="app-link-danger"
@@ -180,6 +193,7 @@
 <script setup lang="ts">
 	import { ArrowLeft, Pencil, UserPlus } from 'lucide-vue-next';
 	import { onMounted, reactive, ref, computed } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRouter } from 'vue-router';
 	import { projectApi } from '@/api/project';
 	import { userApi } from '@/api/user';
@@ -190,11 +204,13 @@
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
+	import type { AuthSource } from '@/types/auth';
 	import type { Project, ProjectMember } from '@/types/project';
 	import type { UserListResp } from '@/types/user';
 	import { formatTime } from '@/utils/time';
 
 	const props = defineProps<{ id: string }>();
+	const { t } = useI18n();
 	const router = useRouter();
 	const toast = useToast();
 	const projectStore = useProjectStore();
@@ -223,6 +239,17 @@
 			description: u.email || undefined,
 		}))
 	);
+
+	function formatAuthSource(authSource: AuthSource) {
+		switch (authSource) {
+		case 'oauth':
+			return t('userManagement.authSourceOAuth');
+		case 'password':
+			return t('userManagement.authSourcePassword');
+		default:
+			throw new Error(`Unsupported auth source: ${authSource}`);
+		}
+	}
 
 	function resetForm() {
 		form.name = project.value?.name ?? '';

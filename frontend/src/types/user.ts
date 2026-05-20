@@ -6,6 +6,7 @@ export interface UserRoleResp {
 	id: string
 	code: string
 	name: string
+	permission_codes: string[]
 }
 
 export interface UserListResp {

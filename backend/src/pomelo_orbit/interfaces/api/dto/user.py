@@ -48,10 +48,16 @@ class UserRoleResp(BaseModel):
     id: str
     code: str
     name: str
+    permission_codes: list[str] = Field(default_factory=list)
 
     @classmethod
-    def from_domain(cls, role: Role) -> UserRoleResp:
-        return cls(id=role.id, code=role.code, name=role.name)
+    def from_domain(cls, role: Role, permission_codes: list[str] | None = None) -> UserRoleResp:
+        return cls(
+            id=role.id,
+            code=role.code,
+            name=role.name,
+            permission_codes=permission_codes or [],
+        )
 
 
 class UserListResp(BaseModel):
@@ -76,7 +82,7 @@ class UserListResp(BaseModel):
             last_login_at=user.last_login_at,
             status=user_status(user),
             updated_at=user.updated_at,
-            role_items=[UserRoleResp.from_domain(role) for role in roles],
+            role_items=[UserRoleResp.from_domain(role, None) for role in roles],
         )
 
 
@@ -88,7 +94,9 @@ class UserResp(UserInfo):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_domain(cls, user: User, roles: list[Role], permission_codes: list[str]) -> UserResp:
+    def from_domain(
+        cls, user: User, roles: list[Role], permission_codes: list[str], roles_permissions: dict[str, list[str]] | None = None
+    ) -> UserResp:
         return cls(
             id=user.id,
             username=user.username,
@@ -100,5 +108,8 @@ class UserResp(UserInfo):
             permissions=permission_codes,
             status=user_status(user),
             updated_at=user.updated_at,
-            role_items=[UserRoleResp.from_domain(role) for role in roles],
+            role_items=[
+                UserRoleResp.from_domain(role, roles_permissions.get(role.id) if roles_permissions else None)
+                for role in roles
+            ],
         )

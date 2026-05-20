@@ -14,13 +14,16 @@ from sqlalchemy import create_engine
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_ROOT = REPO_ROOT / "backend"
 MIGRATIONS_DIR = BACKEND_ROOT / "migrations"
-SCHEMA_FILE = MIGRATIONS_DIR / "v0.7.0__schema.sql"
 DEFAULT_PROJECT_ID = "01KRRKK0K3T519ZQZES3M4QA9Z"
 logger = logging.getLogger(__name__)
 
 COPY_ORDER = [
     "user",
     "project",
+    "role",
+    "permission",
+    "user_role",
+    "role_permission",
     "project_member",
     "login_history",
     "login_attempt",
@@ -55,11 +58,15 @@ PROJECT_ID_TABLES = {
     "route",
 }
 
-CURRENT_MIGRATION_FILES = [
+SCHEMA_MIGRATION_FILES = [
     "v0.7.0__schema.sql",
     "v0.8.0__auth_schema.sql",
-    "v0.8.1__init_data.json",
 ]
+AUTH_INIT_DATA_FILE = "v0.8.1__init_data.json"
+POST_COPY_SQL_MIGRATION_FILES = [
+    "v0.8.2__auth_permissions.sql",
+]
+AUTH_INIT_TABLES = {"permission", "role", "role_permission", "user_role"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -67,7 +74,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backup", type=Path, required=True, help="Old SQLite backup database")
     parser.add_argument("--output", type=Path, required=True, help="Rebuilt SQLite database path")
     parser.add_argument("--json-output", type=Path, help="Optional structured insert JSON output")
-    parser.add_argument("--schema", type=Path, default=SCHEMA_FILE, help="Current schema migration SQL file")
     parser.add_argument("--migrations-dir", type=Path, default=MIGRATIONS_DIR, help="Current migrations directory")
     parser.add_argument("--default-project-id", default=DEFAULT_PROJECT_ID, help="Default project id for migrated rows")
     parser.add_argument("--default-project-name", default="默认项目", help="Default project name")
@@ -110,16 +116,35 @@ def create_history_table(conn: sqlite3.Connection) -> None:
     )
 
 
-def calculate_current_history(migrations_dir: Path) -> list[dict[str, object]]:
-    logger.info("Calculating migration history: migrations_dir=%s", migrations_dir)
-    rows = []
-    for filename in CURRENT_MIGRATION_FILES:
+def apply_schema_migrations(conn: sqlite3.Connection, migrations_dir: Path) -> None:
+    for filename in SCHEMA_MIGRATION_FILES:
         migration_file = migrations_dir / filename
         if not migration_file.exists():
             raise RuntimeError(f"Migration file not found: {migration_file}")
+        logger.info("Applying schema migration: filename=%s", filename)
+        conn.executescript(migration_file.read_text(encoding="utf-8"))
+
+
+def apply_post_copy_migrations(conn: sqlite3.Connection, migrations_dir: Path) -> None:
+    for filename in POST_COPY_SQL_MIGRATION_FILES:
+        migration_file = migrations_dir / filename
+        if not migration_file.exists():
+            raise RuntimeError(f"Migration file not found: {migration_file}")
+        logger.info("Applying post-copy migration: filename=%s", filename)
+        conn.executescript(migration_file.read_text(encoding="utf-8"))
+
+
+def migration_files(migrations_dir: Path) -> list[Path]:
+    return sorted(list(migrations_dir.glob("*.sql")) + list(migrations_dir.glob("*.json")))
+
+
+def calculate_current_history(migrations_dir: Path) -> list[dict[str, object]]:
+    logger.info("Calculating migration history: migrations_dir=%s", migrations_dir)
+    rows = []
+    for migration_file in migration_files(migrations_dir):
         rows.append(
             {
-                "filename": filename,
+                "filename": migration_file.name,
                 "checksum": hashlib.md5(migration_file.read_bytes()).hexdigest(),
                 "executed_at": "2026-05-18T00:00:00Z",
                 "execution_time_ms": 0,
@@ -138,10 +163,38 @@ def choose_default_member_user_id(old: sqlite3.Connection) -> str:
     return user["id"]
 
 
+def parse_auth_init_rows(migrations_dir: Path) -> dict[str, list[dict[str, object]]]:
+    path = migrations_dir / AUTH_INIT_DATA_FILE
+    operations = json.loads(path.read_text(encoding="utf-8"))
+    rows_by_table: dict[str, list[dict[str, object]]] = {table: [] for table in AUTH_INIT_TABLES}
+    for operation in operations:
+        if operation.get("type") == "insert" and operation.get("table") in AUTH_INIT_TABLES:
+            rows_by_table[operation["table"]].extend(operation["data"])
+    return rows_by_table
+
+
+def append_missing_rows(rows: list[dict[str, object]], seed_rows: list[dict[str, object]], key_columns: list[str]) -> None:
+    existing_keys = {tuple(row[column] for column in key_columns) for row in rows}
+    for seed_row in seed_rows:
+        key = tuple(seed_row[column] for column in key_columns)
+        if key not in existing_keys:
+            rows.append(seed_row)
+            existing_keys.add(key)
+
+
+def auth_init_key_columns(table: str) -> list[str]:
+    if table in {"permission", "role"}:
+        return ["id"]
+    if table == "user_role":
+        return ["user_id", "role_id"]
+    return ["role_id", "permission_id"]
+
+
 def collect_rows(
     old: sqlite3.Connection,
     new: sqlite3.Connection,
     current_history: list[dict[str, object]],
+    auth_init_rows: dict[str, list[dict[str, object]]],
     default_project_id: str,
     default_project_name: str,
     default_project_code: str,
@@ -186,13 +239,13 @@ def collect_rows(
             continue
 
         if table not in old_tables:
-            result.append((table, [], new_cols))
-            continue
-
-        old_cols = table_columns(old, table)
-        columns = [column for column in new_cols if column in old_cols]
-        select_cols = ", ".join(f'"{column}"' for column in columns)
-        rows = [dict(row) for row in old.execute(f'SELECT {select_cols} FROM "{table}"')]
+            rows = []
+            columns = new_cols
+        else:
+            old_cols = table_columns(old, table)
+            columns = [column for column in new_cols if column in old_cols]
+            select_cols = ", ".join(f'"{column}"' for column in columns)
+            rows = [dict(row) for row in old.execute(f'SELECT {select_cols} FROM "{table}"')]
 
         if table in PROJECT_ID_TABLES and "project_id" in new_cols and "project_id" not in columns:
             for row in rows:
@@ -200,12 +253,28 @@ def collect_rows(
             columns.append("project_id")
             logger.info("Filled default project for table: table=%s, rows=%s", table, len(rows))
 
+        if table in auth_init_rows:
+            append_missing_rows(rows, auth_init_rows[table], auth_init_key_columns(table))
+            columns = new_cols
+
         result.append((table, rows, columns))
         logger.info("Prepared table rows: table=%s, rows=%s, columns=%s", table, len(rows), len(columns))
 
     result.append(
         ("__migration_history", current_history, ["filename", "checksum", "executed_at", "execution_time_ms"])
     )
+    return result
+
+
+def collect_json_rows(conn: sqlite3.Connection) -> list[tuple[str, list[dict[str, object]], list[str]]]:
+    result = []
+    for table in [*COPY_ORDER, "__migration_history"]:
+        columns = table_columns(conn, table)
+        if not columns:
+            continue
+        select_cols = ", ".join(f'"{column}"' for column in columns)
+        rows = [dict(row) for row in conn.execute(f'SELECT {select_cols} FROM "{table}"')]
+        result.append((table, rows, columns))
     return result
 
 
@@ -274,10 +343,9 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     args = parse_args()
     logger.info(
-        "Starting SQLite rebuild: backup=%s, output=%s, schema=%s, migrations_dir=%s",
+        "Starting SQLite rebuild: backup=%s, output=%s, migrations_dir=%s",
         args.backup,
         args.output,
-        args.schema,
         args.migrations_dir,
     )
     ensure_writable(args.output, args.force)
@@ -289,15 +357,16 @@ def main() -> None:
     new = sqlite3.connect(args.output)
     new.row_factory = sqlite3.Row
     new.execute("PRAGMA foreign_keys = OFF")
-    logger.info("Applying base schema: schema=%s", args.schema)
-    new.executescript(args.schema.read_text(encoding="utf-8"))
+    apply_schema_migrations(new, args.migrations_dir)
     create_history_table(new)
 
     current_history = calculate_current_history(args.migrations_dir)
+    auth_init_rows = parse_auth_init_rows(args.migrations_dir)
     rows_by_table = collect_rows(
         old=old,
         new=new,
         current_history=current_history,
+        auth_init_rows=auth_init_rows,
         default_project_id=args.default_project_id,
         default_project_name=args.default_project_name,
         default_project_code=args.default_project_code,
@@ -308,13 +377,17 @@ def main() -> None:
         counts[table] = insert_rows(new, table, rows, columns)
         logger.info("Imported table rows: table=%s, rows=%s", table, counts[table])
 
+    apply_post_copy_migrations(new, args.migrations_dir)
     new.commit()
     logger.info("Rebuilt database committed: output=%s", args.output)
     new.close()
     old.close()
 
     if args.json_output:
-        write_json_output(args.json_output, rows_by_table)
+        exported = sqlite3.connect(args.output)
+        exported.row_factory = sqlite3.Row
+        write_json_output(args.json_output, collect_json_rows(exported))
+        exported.close()
 
     validate_database(args.output, args.migrations_dir)
     logger.info("SQLite rebuild completed successfully: output=%s", args.output)

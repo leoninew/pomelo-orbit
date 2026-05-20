@@ -8,13 +8,14 @@
 
 脚本会执行以下步骤：
 
-1. 使用当前 schema 文件创建一个全新的 SQLite 库。
+1. 使用当前 schema 迁移文件创建一个全新的 SQLite 库。
 2. 从旧备份库只读复制业务数据。
 3. 如果旧库没有 `project` 表，则创建默认项目。
 4. 为新增 `project_id` 的表回填默认项目 ID。
-5. 不复制旧库的 `__migration_history`。
-6. 计算当前迁移文件 checksum，并写入新的 `__migration_history`。
-7. 执行校验：
+5. 从当前 auth 初始化迁移补齐角色、权限和绑定数据。
+6. 不复制旧库的 `__migration_history`。
+7. 计算当前迁移文件 checksum，并写入新的 `__migration_history`。
+8. 执行校验：
    - `PRAGMA foreign_key_check`
    - `project_id` 非空检查
    - 当前迁移历史 checksum 检查
@@ -57,9 +58,9 @@ tar -xOzf "scripts/backup/data-<时间戳>.tar.gz" "./data/db/pomelo-orbit.db" >
 
 ```bash
 python scripts/rebuild_sqlite_from_backup.py \
-  --backup backend/data/db/pomelo-orbit.db \
-  --output backend/data/db/pomelo-orbit.rebuilt.db \
-  --json-output backend/data/db/pomelo-orbit.import.json
+  --backup scripts/backup/pomelo-orbit.db \
+  --output backend/data/db/pomelo-orbit.db \
+  --force
 ```
 
 ## 参数说明
@@ -69,7 +70,6 @@ python scripts/rebuild_sqlite_from_backup.py \
 | `--backup` | 是 | 旧 SQLite 备份库路径。脚本以只读方式打开该文件。 |
 | `--output` | 是 | 生成的新 SQLite 库路径。默认不允许覆盖已有文件。 |
 | `--json-output` | 否 | 生成结构化 insert JSON 的路径。可用于远程导入。 |
-| `--schema` | 否 | 当前 schema SQL 文件，默认 `backend/migrations/v0.7.0__schema.sql`。 |
 | `--migrations-dir` | 否 | 当前迁移目录，默认 `backend/migrations`。 |
 | `--default-project-id` | 否 | 旧数据回填使用的默认项目 ID。 |
 | `--default-project-name` | 否 | 默认项目名称，默认 `默认项目`。 |
@@ -115,17 +115,9 @@ Validation: ok
 - `__migration_history` 只有当前迁移文件记录
 - `run_migrations()` 校验通过
 
-当前脚本写入的迁移历史来自 `CURRENT_MIGRATION_FILES`：
+当前脚本会自动发现 `backend/migrations` 下的 `.sql` 和 `.json` 迁移文件，并把对应 checksum 写入迁移历史。
 
-```python
-CURRENT_MIGRATION_FILES = [
-    "v0.7.0__schema.sql",
-    "v0.7.1__init_data.json",
-    "v0.7.2__business_data.json",
-]
-```
-
-如果后续迁移文件发生变化，需要同步更新脚本中的 `CURRENT_MIGRATION_FILES`，或改造成自动发现策略。
+如果后续新增 schema 迁移或需要在复制数据前/后特殊处理的迁移，需要同步更新脚本中的 `SCHEMA_MIGRATION_FILES` 或 `POST_COPY_SQL_MIGRATION_FILES`。
 
 ## 注意事项
 

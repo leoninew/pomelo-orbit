@@ -86,6 +86,7 @@ def test_deployment(db_session, test_app):
 @pytest.fixture
 def test_route(db_session):
     route = RouteModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         name="test-route",
         domain="test.example.com",
         path_prefix="/api",
@@ -102,6 +103,7 @@ def test_route(db_session):
 @pytest.fixture
 def disabled_route(db_session):
     route = RouteModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
         name="disabled-route",
         domain="disabled.example.com",
         path_prefix="/",

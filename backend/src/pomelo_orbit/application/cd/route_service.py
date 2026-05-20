@@ -39,12 +39,13 @@ class RouteService:
         container_name = self.settings.traefik.container_name
         return config_dir, cert_dir, container_name
 
-    def list_routes(self, page: int, per_page: int, search: str | None = None) -> tuple[list[Route], int]:
+    def list_routes(self, project_id: str, page: int, per_page: int, search: str | None = None) -> tuple[list[Route], int]:
         """列出所有路由（分页，支持搜索）"""
-        return self.route_repo.find_paginated(page, per_page, search)
+        return self.route_repo.find_paginated(project_id, page, per_page, search)
 
     def create_route(
         self,
+        project_id: str,
         name: str,
         domain: str,
         path_prefix: str,
@@ -54,6 +55,7 @@ class RouteService:
         """创建路由"""
         route = Route(
             id=str(ulid.ULID()),
+            project_id=project_id,
             name=name,
             domain=domain,
             path_prefix=path_prefix,
@@ -152,9 +154,9 @@ class RouteService:
         config_dir, _, container_name = self._get_traefik_config()
         self.traefik_manager.revoke_route(route, config_dir, container_name)
 
-    def sync_routes(self) -> None:
+    def sync_routes(self, project_id: str) -> None:
         """同步路由配置（含证书文件重建）"""
-        routes = self.route_repo.find_all()
+        routes, _total = self.route_repo.find_paginated(project_id=project_id, page=1, per_page=10000)
         config_dir, cert_dir, container_name = self._get_traefik_config()
 
         for route in routes:

@@ -137,6 +137,7 @@ class Route:
     target_url: str
     enabled: bool
     https_enabled: bool
+    project_id: str | None = None
     cert_pem: str | None = None
     cert_key: str | None = None
     cert_type: CertType = CertType.MANUAL

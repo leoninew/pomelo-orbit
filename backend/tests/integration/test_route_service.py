@@ -112,6 +112,7 @@ class TestRouteApplicationService:
     def test_create_route_with_enabled(self, route_service: RouteService, db_session: Session):
         """Test creating a route with enabled=True."""
         created = route_service.create_route(
+            project_id="test-project-id",
             name="test-route",
             domain="test.example.com",
             path_prefix="/",
@@ -124,6 +125,7 @@ class TestRouteApplicationService:
     def test_create_route_with_disabled(self, route_service: RouteService, db_session: Session):
         """Test creating a route with enabled=False."""
         created = route_service.create_route(
+            project_id="test-project-id",
             name="test-route",
             domain="test.example.com",
             path_prefix="/",

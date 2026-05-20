@@ -14,9 +14,11 @@ class RouteRepositoryImpl(BaseRepository[Route, RouteModel], RouteRepository):
     def __init__(self, db: Session):
         super().__init__(db, RouteModel, RouteMapper)
 
-    def find_paginated(self, page: int = 1, per_page: int = 20, search: str | None = None) -> tuple[list[Route], int]:
+    def find_paginated(  # type: ignore[override]
+        self, project_id: str, page: int = 1, per_page: int = 20, search: str | None = None
+    ) -> tuple[list[Route], int]:
         """分页查询路由（支持按名称/域名/目标地址搜索）"""
-        query = self._session.query(RouteModel)
+        query = self._session.query(RouteModel).filter(RouteModel.project_id == project_id)
         if search:
             pattern = f"%{search}%"
             query = query.filter(

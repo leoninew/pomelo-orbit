@@ -60,6 +60,7 @@ class TestCreateRoute:
     def test_saves_route_to_repository(self, route_service, route_repo, sample_route):
         """Should save route to repository."""
         route_service.create_route(
+            project_id="test-project-id",
             name=sample_route.name,
             domain=sample_route.domain,
             path_prefix=sample_route.path_prefix,
@@ -71,6 +72,7 @@ class TestCreateRoute:
     def test_deploys_route_when_enabled(self, route_service, sample_route):
         """Should deploy route configuration when enabled."""
         route_service.create_route(
+            project_id="test-project-id",
             name=sample_route.name,
             domain=sample_route.domain,
             path_prefix=sample_route.path_prefix,
@@ -82,6 +84,7 @@ class TestCreateRoute:
     def test_skips_deploy_when_disabled(self, route_service, sample_route):
         """Should not deploy route when disabled."""
         route_service.create_route(
+            project_id="test-project-id",
             name=sample_route.name,
             domain=sample_route.domain,
             path_prefix=sample_route.path_prefix,

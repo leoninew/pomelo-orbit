@@ -123,13 +123,11 @@ def create_test_route():
         cert_pem: str | None = None,
         cert_key: str | None = None,
         cert_type: CertType = CertType.MANUAL,
+        project_id: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
         **kwargs,
     ) -> Route:
-        defaults = {
-            "created_at": utc_now(),
-            "updated_at": utc_now(),
-        }
-        defaults.update(kwargs)
         return Route(
             id=id,
             name=name,
@@ -141,7 +139,10 @@ def create_test_route():
             cert_pem=cert_pem,
             cert_key=cert_key,
             cert_type=cert_type,
-            **defaults,
+            project_id=project_id,
+            created_at=created_at or utc_now(),
+            updated_at=updated_at or utc_now(),
+            **kwargs,
         )
 
     return _create

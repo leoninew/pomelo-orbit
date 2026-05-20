@@ -4,11 +4,14 @@ import logging
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from pomelo_orbit.application.cd.di import get_traefik_service
 from pomelo_orbit.application.cd.dto.traefik import TraefikConfigResp, TraefikRouteListResp
 from pomelo_orbit.application.cd.traefik_service import TraefikService
+from pomelo_orbit.application.project.di import get_project_service
+from pomelo_orbit.application.project.project_service import ProjectService
+from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -18,18 +21,24 @@ router = APIRouter(prefix="/traefik-route", tags=["traefik-route"])
 @router.get("/config", response_model=TraefikConfigResp)
 def get_traefik_config(
     traefik_service: Annotated[TraefikService, Depends(get_traefik_service)],
-    _current_user=Depends(get_current_user),
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    project_id: Annotated[str, Query()],
 ) -> TraefikConfigResp:
     """获取 Traefik 配置"""
+    project_service.get_project(current_user.id, project_id)
     return traefik_service.get_config()
 
 
 @router.get("", response_model=TraefikRouteListResp)
 def list_traefik_routes(
     traefik_service: Annotated[TraefikService, Depends(get_traefik_service)],
-    _current_user=Depends(get_current_user),
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    project_id: Annotated[str, Query()],
 ) -> TraefikRouteListResp:
     """列出所有 Traefik 路由"""
+    project_service.get_project(current_user.id, project_id)
     try:
         return traefik_service.list_routes()
     except (httpx.ConnectError, httpx.TimeoutException) as e:

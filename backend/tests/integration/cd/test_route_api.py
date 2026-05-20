@@ -4,7 +4,8 @@
 
 from unittest.mock import patch
 
-from pomelo_orbit.infrastructure.persistence.models import RouteModel
+from pomelo_orbit.infrastructure.persistence.models import ProjectModel, RouteModel
+from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
 class TestRouteAPI:
@@ -14,7 +15,7 @@ class TestRouteAPI:
     def test_create_route(self, mock_deploy, auth_client, db_session, test_route):
         """测试创建路由"""
         response = auth_client.post(
-            "/api/cd/route",
+            f"/api/cd/route?project_id={DEFAULT_CI_PROJECT_ID}",
             json={
                 "name": "new-route",
                 "domain": "new.example.com",
@@ -32,12 +33,22 @@ class TestRouteAPI:
 
     def test_list_routes(self, auth_client, test_route):
         """测试列出路由"""
-        response = auth_client.get("/api/cd/route")
+        response = auth_client.get(f"/api/cd/route?project_id={DEFAULT_CI_PROJECT_ID}")
 
         assert response.status_code == 200
         data = response.json()
         assert data["total"] >= 1
         assert len(data["items"]) >= 1
+
+    def test_list_routes_rejects_non_member_project(self, auth_client, db_session):
+        """非项目成员不能列出路由"""
+        db_session.add(ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True))
+        db_session.commit()
+
+        response = auth_client.get("/api/cd/route?project_id=other-project-id")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Permission denied"
 
     def test_get_route(self, auth_client, test_route):
         """测试获取路由详情"""
@@ -47,6 +58,27 @@ class TestRouteAPI:
         data = response.json()
         assert data["id"] == test_route.id
         assert data["name"] == "test-route"
+
+    def test_get_route_rejects_non_member_project(self, auth_client, db_session):
+        """非项目成员不能查看其他项目路由"""
+        db_session.add(ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True))
+        route = RouteModel(
+            project_id="other-project-id",
+            name="other-route",
+            domain="other.example.com",
+            path_prefix="/",
+            target_url="http://other:8080",
+            enabled=False,
+            https_enabled=False,
+        )
+        db_session.add(route)
+        db_session.commit()
+        db_session.refresh(route)
+
+        response = auth_client.get(f"/api/cd/route/{route.id}")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Permission denied"
 
     @patch("pomelo_orbit.infrastructure.cd.traefik.manager.TraefikManager.revoke_cert")
     @patch("pomelo_orbit.infrastructure.cd.traefik.manager.TraefikManager.deploy_route")

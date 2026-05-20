@@ -14,6 +14,10 @@ from fastapi.responses import StreamingResponse
 
 from pomelo_orbit.application.cd.deployment_service import DeploymentService
 from pomelo_orbit.application.cd.di import get_deployment_service
+from pomelo_orbit.application.project.di import get_project_service
+from pomelo_orbit.application.project.project_service import ProjectService
+from pomelo_orbit.domain.auth.entities import User
+from pomelo_orbit.domain.cd.entities import Deployment
 from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.cd.dto.deployment import DeploymentDetailResp, DeploymentResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
@@ -23,9 +27,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/deployment", tags=["deployment"])
 
 
+def _authorize_deployment_project(
+    deployment_service: DeploymentService,
+    project_service: ProjectService,
+    current_user: User,
+    deployment_id: str,
+) -> Deployment:
+    deployment = deployment_service.get_deployment(deployment_id)
+    project_service.get_project(current_user.id, deployment.project_id)
+    return deployment
+
+
 @router.get("", response_model=PaginatedResp[DeploymentResp])
 def list_deployments(
     deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,
@@ -36,6 +53,7 @@ def list_deployments(
     date_to: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[DeploymentResp]:
     """列出所有部署"""
+    project_service.get_project(current_user.id, project_id)
     deployments, total = deployment_service.list_deployments(
         project_id=project_id,
         page=page,
@@ -59,10 +77,11 @@ def list_deployments(
 def get_deployment(
     deployment_id: str,
     deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
-    _current_user=Depends(get_current_user),
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> DeploymentDetailResp:
     """获取部署详情"""
-    deployment = deployment_service.get_deployment(deployment_id)
+    deployment = _authorize_deployment_project(deployment_service, project_service, current_user, deployment_id)
     return DeploymentDetailResp.model_validate(deployment)
 
 
@@ -70,12 +89,13 @@ def get_deployment(
 async def get_deployment_logs(
     deployment_id: str,
     deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
-    _current_user=Depends(get_current_user),
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """获取部署日志（增量读取）"""
+    deployment = _authorize_deployment_project(deployment_service, project_service, current_user, deployment_id)
     logs, current_offset, is_complete = deployment_service.read_deployment_log(deployment_id, offset)
-    deployment = deployment_service.get_deployment(deployment_id)
 
     return {
         "logs": logs,
@@ -89,9 +109,11 @@ async def get_deployment_logs(
 async def stream_deployment_log(
     deployment_id: str,
     deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
-    _current_user=Depends(get_current_user),
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> StreamingResponse:
     """SSE 流式推送部署日志"""
+    _authorize_deployment_project(deployment_service, project_service, current_user, deployment_id)
 
     async def event_generator() -> AsyncGenerator[str, None]:
         offset = 0
@@ -125,8 +147,10 @@ async def stream_deployment_log(
 def cancel_deployment(
     deployment_id: str,
     deployment_service: Annotated[DeploymentService, Depends(get_deployment_service)],
-    _current_user=Depends(get_current_user),
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ):
     """取消正在进行的部署"""
+    _authorize_deployment_project(deployment_service, project_service, current_user, deployment_id)
     deployment_service.cancel_deployment(deployment_id)
     return {"message": "Deployment cancelled"}

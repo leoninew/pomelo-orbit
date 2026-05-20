@@ -347,6 +347,7 @@ class RouteMapper:
     def to_domain(model: RouteModel) -> Route:
         return Route(
             id=model.id,
+            project_id=model.project_id,
             name=model.name,
             domain=model.domain,
             path_prefix=model.path_prefix,
@@ -364,6 +365,7 @@ class RouteMapper:
     def to_orm(entity: Route) -> RouteModel:
         return RouteModel(
             id=entity.id,
+            project_id=entity.project_id,
             name=entity.name,
             domain=entity.domain,
             path_prefix=entity.path_prefix,
@@ -372,7 +374,7 @@ class RouteMapper:
             https_enabled=entity.https_enabled,
             cert_pem=entity.cert_pem,
             cert_key=entity.cert_key,
-            cert_type=str(entity.cert_type),
+            cert_type=entity.cert_type.value,
             created_at=entity.created_at,
             updated_at=entity.updated_at,
         )

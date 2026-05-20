@@ -8,6 +8,7 @@ from pomelo_orbit.infrastructure.persistence.models import (
     ApplicationConfigFileModel,
     ApplicationModel,
     ApplicationServiceConfigModel,
+    ProjectModel,
 )
 
 
@@ -26,7 +27,10 @@ class TestApplicationAPI:
 
     def test_create_application_directly(self, db_session):
         """直接创建应用（不通过 API）"""
+        from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
+
         app = ApplicationModel(
+            project_id=DEFAULT_CI_PROJECT_ID,
             name="direct-app",
             code="direct-app",
             image_pull_policy="missing",
@@ -69,6 +73,16 @@ class TestApplicationAPI:
         assert data["total"] >= 1
         assert len(data["items"]) >= 1
 
+    def test_list_applications_rejects_non_member_project(self, auth_client, db_session):
+        """非项目成员不能列出应用"""
+        db_session.add(ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True))
+        db_session.commit()
+
+        response = auth_client.get("/api/cd/application?project_id=other-project-id")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Permission denied"
+
     def test_get_application(self, auth_client, test_app):
         """测试获取应用详情"""
         response = auth_client.get(f"/api/cd/application/{test_app.id}")
@@ -77,6 +91,24 @@ class TestApplicationAPI:
         data = response.json()
         assert data["id"] == test_app.id
         assert data["name"] == "test-app"
+
+    def test_get_application_rejects_non_member_project(self, auth_client, db_session):
+        """非项目成员不能查看其他项目应用"""
+        db_session.add(ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True))
+        app = ApplicationModel(
+            project_id="other-project-id",
+            name="other-app",
+            code="other-app",
+            image_pull_policy="missing",
+        )
+        db_session.add(app)
+        db_session.commit()
+        db_session.refresh(app)
+
+        response = auth_client.get(f"/api/cd/application/{app.id}")
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Permission denied"
 
     def test_update_application(self, auth_client, db_session, test_app):
         """测试更新应用（验证持久化）"""

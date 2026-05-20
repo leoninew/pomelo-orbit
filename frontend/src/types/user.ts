@@ -33,8 +33,9 @@ export interface UserCreateReq {
 }
 
 export interface UserUpdateReq {
+	username?: string
 	password?: string | null
-	status: UserStatus
+	status?: UserStatus
 }
 
 export interface UserRoleUpdateReq {

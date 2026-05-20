@@ -18,9 +18,6 @@
 
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || t('roleManagement.loadFailed') }}</p>
-			</div>
 			<AppEmptyState v-else-if="roles.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[760px]">
@@ -168,7 +165,7 @@
 	const router = useRouter();
 	const toast = useToast();
 	const authStore = useAuthStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const roles = ref<RoleResp[]>([]);

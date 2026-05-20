@@ -55,6 +55,47 @@
 			</dl>
 		</div>
 
+		<div class="app-surface">
+			<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
+				<h2 class="font-semibold text-foreground">项目成员</h2>
+				<button class="app-button-primary h-8 px-3" :disabled="operating" @click="openMemberModal">
+					<UserPlus class="size-4" />
+					添加
+				</button>
+			</div>
+
+			<AppSpinner v-if="loadingMembers" class="px-5 py-10" />
+			<div v-else-if="members.length === 0" class="px-5 py-4">
+				<p class="text-sm text-muted-foreground">暂无成员</p>
+			</div>
+			<div v-else class="px-5 py-4">
+				<table class="app-table-detail">
+					<thead>
+						<tr>
+							<th>用户名</th>
+							<th>邮箱</th>
+							<th class="text-right">操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr v-for="member in members" :key="member.id">
+							<td>{{ member.username }}</td>
+							<td>{{ member.email || '—' }}</td>
+							<td class="text-right">
+								<button
+									class="app-link-danger"
+									:disabled="operating"
+									@click="handleRemoveMember(member.id)"
+								>
+									移除
+								</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
 		<AppDialog
 			v-model:open="isEditModalOpen"
 			title="编辑项目"
@@ -93,7 +134,9 @@
 				</div>
 			</form>
 			<template #footer>
-				<button class="app-button" :disabled="operating" @click="isEditModalOpen = false">取消</button>
+				<button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
+					取消
+				</button>
 				<button
 					class="app-button-primary"
 					type="submit"
@@ -104,21 +147,51 @@
 				</button>
 			</template>
 		</AppDialog>
+
+		<AppDialog v-model:open="isMemberModalOpen" title="添加成员">
+			<div class="space-y-4">
+				<div class="space-y-1.5">
+					<label class="app-field-label block">选择用户</label>
+					<ComboboxSelect
+						v-model="selectedUserId"
+						:options="userOptions"
+						placeholder="搜索用户"
+						empty-text="暂无可用用户"
+						:disabled="operating"
+					/>
+				</div>
+			</div>
+			<template #footer>
+				<button class="app-button" :disabled="operating" @click="isMemberModalOpen = false">
+					取消
+				</button>
+				<button
+					class="app-button-primary"
+					:disabled="operating || !selectedUserId"
+					@click="handleAddMember"
+				>
+					添加
+				</button>
+			</template>
+		</AppDialog>
 	</div>
 </template>
 
 <script setup lang="ts">
-	import { ArrowLeft, Pencil } from 'lucide-vue-next';
-	import { onMounted, reactive, ref } from 'vue';
+	import { ArrowLeft, Pencil, UserPlus } from 'lucide-vue-next';
+	import { onMounted, reactive, ref, computed } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { projectApi } from '@/api/project';
+	import { userApi } from '@/api/user';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
+	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
-	import type { Project } from '@/types/project';
+	import type { Project, ProjectMember } from '@/types/project';
+	import type { UserListResp } from '@/types/user';
 	import { formatTime } from '@/utils/time';
 
 	const props = defineProps<{ id: string }>();
@@ -130,8 +203,26 @@
 
 	const project = ref<Project>();
 	const isEditModalOpen = ref(false);
+	const isMemberModalOpen = ref(false);
+	const members = ref<ProjectMember[]>([]);
+	const users = ref<UserListResp[]>([]);
+	const selectedUserId = ref('');
 	const form = reactive({ name: '', code: '' });
 	const errors = reactive({ name: '', code: '' });
+	const { loading: loadingMembers, execute: executeMembers } = useStatusAsync();
+
+	const availableUsers = computed(() => {
+		const memberIds = new Set(members.value.map((m) => m.id));
+		return users.value.filter((u) => u.status === 'enabled' && !memberIds.has(u.id));
+	});
+
+	const userOptions = computed(() =>
+		availableUsers.value.map((u) => ({
+			value: u.id,
+			label: u.username,
+			description: u.email || undefined,
+		}))
+	);
 
 	function resetForm() {
 		form.name = project.value?.name ?? '';
@@ -153,6 +244,21 @@
 			});
 		} catch {
 			toast.error('加载项目失败');
+		}
+	}
+
+	async function fetchMembers() {
+		try {
+			await executeMembers(async () => {
+				const [memberList, userPage] = await Promise.all([
+					projectApi.listMembers(props.id),
+					userApi.list({ page: 1, per_page: 100 }),
+				]);
+				members.value = memberList;
+				users.value = userPage.items;
+			});
+		} catch {
+			toast.error('加载成员失败');
 		}
 	}
 
@@ -179,5 +285,40 @@
 		}
 	}
 
-	onMounted(fetchProject);
+	function openMemberModal() {
+		selectedUserId.value = '';
+		isMemberModalOpen.value = true;
+	}
+
+	async function handleAddMember() {
+		if (!selectedUserId.value) {
+			return;
+		}
+		try {
+			await executeOp(async () => {
+				members.value = await projectApi.addMember(props.id, { user_id: selectedUserId.value });
+				selectedUserId.value = '';
+				toast.success('成员已添加');
+				isMemberModalOpen.value = false;
+			});
+		} catch (e: unknown) {
+			toast.error(e instanceof Error ? e.message : '添加成员失败');
+		}
+	}
+
+	async function handleRemoveMember(userId: string) {
+		try {
+			await executeOp(async () => {
+				members.value = await projectApi.removeMember(props.id, userId);
+				toast.success('成员已移除');
+			});
+		} catch (e: unknown) {
+			toast.error(e instanceof Error ? e.message : '移除成员失败');
+		}
+	}
+
+	onMounted(() => {
+		fetchProject();
+		fetchMembers();
+	});
 </script>

@@ -20,6 +20,7 @@ export default {
 		createdAt: 'Created At',
 		updatedAt: 'Updated At',
 		reset: 'Reset',
+		emptyKeepUnchanged: 'Leave empty to keep unchanged',
 	},
 	app: {
 		homeAria: 'Pomelo Orbit home',
@@ -47,7 +48,8 @@ export default {
 	},
 	forbidden: {
 		title: 'Access Denied',
-		description: 'Your account does not have permission to access this page. Return home or contact an administrator to update your role.',
+		description:
+			'Your account does not have permission to access this page. Return home or contact an administrator to update your role.',
 		backHome: 'Back Home',
 	},
 	nav: {
@@ -151,6 +153,7 @@ export default {
 		delete: 'Delete Role',
 		code: 'Role Code',
 		permissions: 'Permissions',
+		editPermissions: 'Edit Permissions',
 		basicInfo: 'Basic Info',
 		loadFailed: 'Failed to load roles',
 		loadPermissionsFailed: 'Failed to load permissions',
@@ -212,7 +215,6 @@ export default {
 			passwordMismatch: 'Passwords do not match',
 			changeSuccess: 'Password changed successfully',
 			changeFailed: 'Failed to change password',
-			emptyKeepUnchanged: 'Leave empty to keep unchanged',
 		},
 		resetDialog: {
 			title: 'Confirm Reset',

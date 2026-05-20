@@ -18,9 +18,6 @@
 
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || t('userManagement.loadFailed') }}</p>
-			</div>
 			<AppEmptyState v-else-if="users.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[1080px]">
@@ -157,6 +154,19 @@
 		>
 			<form id="user-edit-form" class="space-y-5" @submit.prevent="handleEditSave">
 				<div class="space-y-1.5">
+					<label class="app-field-label block" for="edit-username">
+						{{ t('userManagement.username') }}
+					</label>
+					<input
+						id="edit-username"
+						v-model="editForm.username"
+						type="text"
+						class="app-input"
+						maxlength="50"
+						required
+					/>
+				</div>
+				<div class="space-y-1.5">
 					<label class="app-field-label block" for="edit-password">
 						{{ t('userManagement.password') }}
 					</label>
@@ -169,7 +179,7 @@
 						maxlength="255"
 					/>
 					<p class="app-field-hint">
-						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
+						{{ t('common.emptyKeepUnchanged') }}
 					</p>
 				</div>
 				<div class="space-y-1.5">
@@ -232,7 +242,7 @@
 	const router = useRouter();
 	const toast = useToast();
 	const authStore = useAuthStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const users = ref<UserListResp[]>([]);
@@ -245,7 +255,11 @@
 	const isEditDialogOpen = ref(false);
 	const editingUser = ref<UserListResp | null>(null);
 	const form = reactive({ username: '', email: '', password: '' });
-	const editForm = reactive<{ password: string; status: UserStatus }>({ password: '', status: 'enabled' });
+	const editForm = reactive<{ username: string; password: string; status: UserStatus }>({
+		username: '',
+		password: '',
+		status: 'enabled',
+	});
 	const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
 	const userStatusOptions = computed(() => [
 		{ value: 'enabled', label: t('userManagement.enabled') },
@@ -351,6 +365,7 @@
 
 	function openEditDialog(user: UserListResp) {
 		editingUser.value = user;
+		editForm.username = user.username;
 		editForm.password = '';
 		editForm.status = user.status;
 		isEditDialogOpen.value = true;
@@ -364,6 +379,7 @@
 		try {
 			await executeOp(async () => {
 				await userApi.update(user.id, {
+					username: editForm.username.trim(),
 					password: editForm.password.trim() || null,
 					status: editForm.status,
 				});

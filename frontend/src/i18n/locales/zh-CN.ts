@@ -20,6 +20,7 @@ export default {
 		createdAt: '创建时间',
 		updatedAt: '更新时间',
 		reset: '重置',
+		emptyKeepUnchanged: '留空表示不修改',
 	},
 	app: {
 		homeAria: 'Pomelo Orbit 首页',
@@ -151,6 +152,7 @@ export default {
 		delete: '删除角色',
 		code: '角色编码',
 		permissions: '权限',
+		editPermissions: '编辑权限',
 		basicInfo: '基本信息',
 		loadFailed: '加载角色失败',
 		loadPermissionsFailed: '加载权限失败',
@@ -212,7 +214,6 @@ export default {
 			passwordMismatch: '两次输入的密码不一致',
 			changeSuccess: '密码修改成功',
 			changeFailed: '密码修改失败',
-			emptyKeepUnchanged: '留空表示不修改',
 		},
 		resetDialog: {
 			title: '确认重置',

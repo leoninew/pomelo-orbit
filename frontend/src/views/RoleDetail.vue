@@ -62,8 +62,17 @@
 		</div>
 
 		<div class="app-surface">
-			<div class="app-section-header">
+			<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
 				<h2 class="font-semibold text-foreground">{{ t('roleManagement.permissions') }}</h2>
+				<button
+					v-if="role && canWriteRoles"
+					class="app-button-primary h-8 px-3"
+					:disabled="operating"
+					@click="openPermissionModal"
+				>
+					<Pencil class="size-4" />
+					{{ t('common.edit') }}
+				</button>
 			</div>
 
 			<div class="px-5 py-4">
@@ -121,22 +130,6 @@
 						:disabled="operating"
 					/>
 				</div>
-				<div class="space-y-2">
-					<span class="app-field-label block">{{ t('roleManagement.permissions') }}</span>
-					<div class="grid gap-2 sm:grid-cols-2">
-						<label
-							v-for="permission in permissions"
-							:key="permission.code"
-							class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
-						>
-							<input v-model="form.permissionCodes" type="checkbox" :value="permission.code" :disabled="operating" />
-							<span>
-								<span class="block text-foreground">{{ permission.name }}</span>
-								<span class="block text-xs text-muted-foreground">{{ permission.code }}</span>
-							</span>
-						</label>
-					</div>
-				</div>
 			</form>
 			<template #footer>
 				<button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
@@ -146,6 +139,46 @@
 					class="app-button-primary"
 					type="submit"
 					form="role-edit-form"
+					:disabled="operating"
+				>
+					{{ t('common.save') }}
+				</button>
+			</template>
+		</AppDialog>
+
+		<AppDialog
+			v-model:open="isPermissionModalOpen"
+			:title="t('roleManagement.editPermissions')"
+			width-class="w-[min(600px,calc(100vw-32px))]"
+		>
+			<form id="role-permission-form" class="space-y-2" @submit.prevent="handlePermissionOk">
+				<div class="grid gap-2 sm:grid-cols-2">
+					<label
+						v-for="permission in permissions"
+						:key="permission.code"
+						class="flex items-start gap-2 rounded-md border border-border px-3 py-2 text-sm"
+					>
+						<input
+							v-model="permissionForm.codes"
+							type="checkbox"
+							:value="permission.code"
+							:disabled="operating"
+						/>
+						<span>
+							<span class="block text-foreground">{{ permission.name }}</span>
+							<span class="block text-xs text-muted-foreground">{{ permission.code }}</span>
+						</span>
+					</label>
+				</div>
+			</form>
+			<template #footer>
+				<button class="app-button" :disabled="operating" @click="isPermissionModalOpen = false">
+					{{ t('common.cancel') }}
+				</button>
+				<button
+					class="app-button-primary"
+					type="submit"
+					form="role-permission-form"
 					:disabled="operating"
 				>
 					{{ t('common.save') }}
@@ -202,7 +235,9 @@
 	const permissions = ref<PermissionResp[]>([]);
 	const isEditModalOpen = ref(false);
 	const isDeleteModalOpen = ref(false);
-	const form = reactive({ code: '', name: '', description: '', permissionCodes: [] as string[] });
+	const isPermissionModalOpen = ref(false);
+	const form = reactive({ code: '', name: '', description: '' });
+	const permissionForm = reactive({ codes: [] as string[] });
 
 	const canWriteRoles = computed(() => authStore.hasPermission(PERMISSIONS.ROLE_WRITE));
 
@@ -236,22 +271,56 @@
 		form.code = role.value?.code ?? '';
 		form.name = role.value?.name ?? '';
 		form.description = role.value?.description ?? '';
-		form.permissionCodes = role.value?.permission_codes ? [...role.value.permission_codes] : [];
 		isEditModalOpen.value = true;
 	}
 
 	async function handleEditOk() {
+		if (!role.value) {
+			return;
+		}
+		const permissionCodes = role.value.permission_codes;
 		try {
 			await executeOp(async () => {
 				await roleApi.update(props.id, {
 					code: form.code.trim(),
 					name: form.name.trim(),
 					description: form.description.trim() || null,
-					permission_codes: form.permissionCodes,
+					permission_codes: permissionCodes,
+				});
+				toast.success(t('roleManagement.updated'));
+				isEditModalOpen.value = false;
+				await fetchRole();
+			});
+		} catch (e: unknown) {
+			toast.error(e instanceof Error ? e.message : t('roleManagement.saveFailed'));
+		}
+	}
+
+	function openPermissionModal() {
+		permissionForm.codes = role.value?.permission_codes ? [...role.value.permission_codes] : [];
+		isPermissionModalOpen.value = true;
+	}
+
+	async function handlePermissionOk() {
+		if (!role.value) {
+			return;
+		}
+		const currentRole = {
+			code: role.value.code,
+			name: role.value.name,
+			description: role.value.description,
+		};
+		try {
+			await executeOp(async () => {
+				await roleApi.update(props.id, {
+					code: currentRole.code,
+					name: currentRole.name,
+					description: currentRole.description,
+					permission_codes: permissionForm.codes,
 				});
 				await authStore.fetchUser();
 				toast.success(t('roleManagement.updated'));
-				isEditModalOpen.value = false;
+				isPermissionModalOpen.value = false;
 				await fetchRole();
 			});
 		} catch (e: unknown) {

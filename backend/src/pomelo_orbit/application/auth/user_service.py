@@ -46,18 +46,28 @@ class UserService:
 
     def update_user(
         self,
+        current_user_id: str,
         user_id: str,
         *,
+        username: str | None,
         password: str | None,
-        status: Literal["enabled", "disabled"],
+        status: Literal["enabled", "disabled"] | None,
     ) -> User:
         user = self.get_user(user_id)
+        if password is not None and not self.can_reset_password(current_user_id, user_id):
+            raise BusinessError("Permission denied", status_code=403)
+        if current_user_id == user_id and status == "disabled":
+            raise BusinessError("Cannot disable current user", status_code=400)
         should_save = False
+        if username is not None and user.username != username:
+            user.username = username
+            user.updated_at = utc_now()
+            should_save = True
         if password is not None:
             user.password_hash = hash_password(password)
             user.updated_at = utc_now()
             should_save = True
-        if user.status != status:
+        if status is not None and user.status != status:
             user.status = status
             user.updated_at = utc_now()
             should_save = True

@@ -34,10 +34,13 @@ export const pipelineTemplateApi = {
 		return request.put(`/api/ci/template/${id}`, data);
 	},
 
-	resolveVariables(data: {
-		orchestration: StageOrchestration[]
-		variable_declarations?: VariableDeclaration[]
-	}, params: { project_id: string }): Promise<VariableDeclaration[]> {
+	resolveVariables(
+		data: {
+			orchestration: StageOrchestration[]
+			variable_declarations?: VariableDeclaration[]
+		},
+		params: { project_id: string }
+	): Promise<VariableDeclaration[]> {
 		return request.post('/api/ci/template/resolve-variables', data, { params });
 	},
 

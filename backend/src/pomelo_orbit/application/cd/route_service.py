@@ -39,7 +39,9 @@ class RouteService:
         container_name = self.settings.traefik.container_name
         return config_dir, cert_dir, container_name
 
-    def list_routes(self, project_id: str, page: int, per_page: int, search: str | None = None) -> tuple[list[Route], int]:
+    def list_routes(
+        self, project_id: str, page: int, per_page: int, search: str | None = None
+    ) -> tuple[list[Route], int]:
         """列出所有路由（分页，支持搜索）"""
         return self.route_repo.find_paginated(project_id, page, per_page, search)
 

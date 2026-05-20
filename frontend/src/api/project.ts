@@ -1,4 +1,10 @@
-import type { Project, ProjectCreateReq, ProjectMember, ProjectMemberReq, ProjectUpdateReq } from '@/types/project';
+import type {
+	Project,
+	ProjectCreateReq,
+	ProjectMember,
+	ProjectMemberReq,
+	ProjectUpdateReq,
+} from '@/types/project';
 import request from '@/utils/request';
 
 export const projectApi = {

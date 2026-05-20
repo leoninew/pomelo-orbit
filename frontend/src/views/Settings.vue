@@ -64,7 +64,7 @@
 										:type="secretKeys.has(item.key) ? 'password' : 'text'"
 										:placeholder="
 											secretKeys.has(item.key)
-												? t('settings.passwordDialog.emptyKeepUnchanged')
+												? t('common.emptyKeepUnchanged')
 												: ''
 										"
 										class="app-input h-9"

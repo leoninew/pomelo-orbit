@@ -1,5 +1,11 @@
 import type { PaginatedResp } from '@/types/common';
-import type { UserCreateReq, UserListResp, UserResp, UserRoleUpdateReq, UserUpdateReq } from '@/types/user';
+import type {
+	UserCreateReq,
+	UserListResp,
+	UserResp,
+	UserRoleUpdateReq,
+	UserUpdateReq,
+} from '@/types/user';
 import request from '@/utils/request';
 
 export const userApi = {

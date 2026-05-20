@@ -12,9 +12,6 @@
 		<!-- Table Card -->
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || t('loginHistory.loadFailed') }}</p>
-			</div>
 			<AppEmptyState v-else-if="history.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[920px]">
@@ -78,7 +75,7 @@
 
 	const { t } = useI18n();
 	const toast = useToast();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const history = ref<LoginHistory[]>([]);
 	const searchText = ref('');
 	const pagination = reactive({ current: 1, pageSize: 10, total: 0 });

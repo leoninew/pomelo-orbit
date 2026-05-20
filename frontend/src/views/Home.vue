@@ -173,6 +173,7 @@
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useAuthStore } from '@/stores/auth';
 	import { useProjectStore } from '@/stores/project';
 	import type { Deployment } from '@/types/cd/deployment';
 	import type { PipelineRun } from '@/types/ci/run';
@@ -187,6 +188,7 @@
 
 	const router = useRouter();
 	const toast = useToast();
+	const authStore = useAuthStore();
 	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
 	const { t } = useI18n({ useScope: 'global' });
@@ -304,5 +306,8 @@
 		}
 	}
 
-	onMounted(refresh);
+	onMounted(async () => {
+		await authStore.fetchUser();
+		refresh();
+	});
 </script>

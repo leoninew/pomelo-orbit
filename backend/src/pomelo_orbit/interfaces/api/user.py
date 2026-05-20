@@ -64,11 +64,7 @@ def update_user(
     user_service: Annotated[UserService, Depends(get_user_service)],
     current_user: Annotated[User, Depends(require_permission("user:write"))],
 ) -> UserResp:
-    if data.password is not None and not user_service.can_reset_password(current_user.id, user_id):
-        raise BusinessError("Permission denied", status_code=403)
-    if current_user.id == user_id and data.status == "disabled":
-        raise BusinessError("Cannot disable current user", status_code=400)
-    user = user_service.update_user(user_id, password=data.password, status=data.status)
+    user = user_service.update_user(current_user.id, user_id, username=data.username, password=data.password, status=data.status)
     roles = user_service.get_user_roles(user.id)
     permission_codes = user_service.get_user_permission_codes(user.id)
     return UserResp.from_domain(user, roles, permission_codes)

@@ -617,13 +617,16 @@
 			return;
 		}
 		try {
-			declarations.value = await pipelineTemplateApi.resolveVariables({
-				orchestration: sortableOrch.value.map((item, index) => ({
-					...item,
-					sort_order: index,
-				})),
-				variable_declarations: declarations.value,
-			}, { project_id: projectId });
+			declarations.value = await pipelineTemplateApi.resolveVariables(
+				{
+					orchestration: sortableOrch.value.map((item, index) => ({
+						...item,
+						sort_order: index,
+					})),
+					variable_declarations: declarations.value,
+				},
+				{ project_id: projectId }
+			);
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : '同步变量失败');
 		}

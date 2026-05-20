@@ -25,6 +25,6 @@ export interface RoleCreateReq {
 export interface RoleUpdateReq {
 	code: string
 	name: string
-	description: string | null
-	permission_codes: string[]
+	description?: string | null
+	permission_codes?: string[]
 }

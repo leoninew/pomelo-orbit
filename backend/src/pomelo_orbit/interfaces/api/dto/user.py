@@ -28,8 +28,9 @@ class UserCreateReq(BaseModel):
 
 
 class UserUpdateReq(BaseModel):
+    username: str | None = Field(default=None, min_length=1, max_length=50)
     password: str | None = Field(default=None, min_length=6, max_length=255)
-    status: UserStatus
+    status: UserStatus | None = None
 
 
 class UserRoleUpdateReq(BaseModel):

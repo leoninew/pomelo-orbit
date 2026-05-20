@@ -144,6 +144,20 @@
 		>
 			<form id="user-edit-form" class="space-y-5" @submit.prevent="handleEditOk">
 				<div class="space-y-1.5">
+					<label class="app-field-label block" for="username">
+						{{ t('userManagement.username') }}
+					</label>
+					<input
+						id="username"
+						v-model="form.username"
+						type="text"
+						class="app-input"
+						maxlength="50"
+						required
+						:disabled="operating"
+					/>
+				</div>
+				<div class="space-y-1.5">
 					<label class="app-field-label block" for="password">
 						{{ t('userManagement.password') }}
 					</label>
@@ -157,7 +171,7 @@
 						:disabled="operating"
 					/>
 					<p class="app-field-hint">
-						{{ t('settings.passwordDialog.emptyKeepUnchanged') }}
+						{{ t('common.emptyKeepUnchanged') }}
 					</p>
 				</div>
 				<div class="space-y-1.5">
@@ -192,7 +206,13 @@
 						:key="role.id"
 						class="flex items-start gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm transition-colors hover:border-primary/40"
 					>
-						<input v-model="roleForm.roleIds" type="checkbox" :value="role.id" class="app-checkbox mt-0.5" :disabled="operating" />
+						<input
+							v-model="roleForm.roleIds"
+							type="checkbox"
+							:value="role.id"
+							class="app-checkbox mt-0.5"
+							:disabled="operating"
+						/>
 						<span>
 							<span class="block text-foreground">{{ role.name }}</span>
 							<span class="block text-xs text-muted-foreground">{{ role.code }}</span>
@@ -204,7 +224,12 @@
 				<button class="app-button" :disabled="operating" @click="isRoleModalOpen = false">
 					{{ t('common.cancel') }}
 				</button>
-				<button class="app-button-primary" type="submit" form="user-role-form" :disabled="operating">
+				<button
+					class="app-button-primary"
+					type="submit"
+					form="user-role-form"
+					:disabled="operating"
+				>
 					{{ t('common.save') }}
 				</button>
 			</template>
@@ -284,7 +309,8 @@
 	const isRoleModalOpen = ref(false);
 	const isDisableModalOpen = ref(false);
 	const isDeleteModalOpen = ref(false);
-	const form = reactive<{ password: string; status: UserStatus }>({
+	const form = reactive<{ username: string; password: string; status: UserStatus }>({
+		username: '',
 		password: '',
 		status: 'enabled',
 	});
@@ -292,7 +318,9 @@
 
 	const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
 	const canAssignRoles = computed(
-		() => authStore.hasPermission(PERMISSIONS.ROLE_READ) && authStore.hasPermission(PERMISSIONS.ROLE_WRITE)
+		() =>
+			authStore.hasPermission(PERMISSIONS.ROLE_READ) &&
+			authStore.hasPermission(PERMISSIONS.ROLE_WRITE)
 	);
 	const userStatusOptions = computed(() => [
 		{ value: 'enabled', label: t('userManagement.enabled') },
@@ -333,6 +361,7 @@
 	}
 
 	function openEditModal() {
+		form.username = user.value?.username ?? '';
 		form.password = '';
 		form.status = user.value?.status ?? 'enabled';
 		isEditModalOpen.value = true;
@@ -347,6 +376,7 @@
 		try {
 			await executeOp(async () => {
 				await userApi.update(props.id, {
+					username: form.username.trim(),
 					password: form.password.trim() || null,
 					status: form.status,
 				});

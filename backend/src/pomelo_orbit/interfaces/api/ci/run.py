@@ -13,7 +13,7 @@ from pomelo_orbit.application.ci.pipeline_run_service import PipelineRunService
 from pomelo_orbit.application.project.di import get_project_service
 from pomelo_orbit.application.project.project_service import ProjectService
 from pomelo_orbit.domain.auth.entities import User
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.artifact import ArtifactResp
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp

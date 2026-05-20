@@ -37,8 +37,8 @@ export const pipelineTemplateApi = {
 	resolveVariables(data: {
 		orchestration: StageOrchestration[]
 		variable_declarations?: VariableDeclaration[]
-	}): Promise<VariableDeclaration[]> {
-		return request.post('/api/ci/template/resolve-variables', data);
+	}, params: { project_id: string }): Promise<VariableDeclaration[]> {
+		return request.post('/api/ci/template/resolve-variables', data, { params });
 	},
 
 	delete(id: string): Promise<void> {

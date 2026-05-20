@@ -136,6 +136,7 @@
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
 	import type { BuildStage } from '@/types/ci/template';
+	import { ApiError } from '@/utils/request';
 	import { formatTime } from '@/utils/time';
 
 	const router = useRouter();
@@ -168,12 +169,22 @@
 		}
 		try {
 			await execute(async () => {
-				const res = await buildStageApi.list({
-					page: pagination.current,
-					per_page: pagination.pageSize,
-					search: searchText.value || undefined,
-					project_id: projectId,
-				});
+				let res;
+				try {
+					res = await buildStageApi.list({
+						page: pagination.current,
+						per_page: pagination.pageSize,
+						search: searchText.value || undefined,
+						project_id: projectId,
+					});
+				} catch (error) {
+					if (error instanceof ApiError && error.status === 403) {
+						stages.value = [];
+						pagination.total = 0;
+						return;
+					}
+					throw error;
+				}
 				stages.value = res.items;
 				pagination.total = res.total;
 			});

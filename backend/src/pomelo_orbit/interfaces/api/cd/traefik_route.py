@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pomelo_orbit.application.cd.di import get_traefik_service
 from pomelo_orbit.application.cd.dto.traefik import TraefikConfigResp, TraefikRouteListResp
 from pomelo_orbit.application.cd.traefik_service import TraefikService
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/traefik-route", tags=["traefik-route"])

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query, UploadFile
 
 from pomelo_orbit.application.cd.di import get_route_service
 from pomelo_orbit.application.cd.route_service import RouteService
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.cd.dto.route import RouteCreateReq, RouteResp, RouteUpdateReq
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 

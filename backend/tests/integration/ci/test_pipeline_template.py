@@ -1,6 +1,7 @@
 """流水线模板 API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import PipelineTemplateModel
+from pomelo_orbit.infrastructure.persistence.models import ProjectModel
 from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 STAGE_JSON = '[{"name": "build", "image": "alpine:latest", "script": "echo build"}]'
@@ -42,6 +43,15 @@ class TestPipelineTemplateList:
         assert len(data["items"]) == 2
         assert data["total"] >= 5
 
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.get("/api/ci/template?project_id=other-project-id")
+
+        assert resp.status_code == 403
+
 
 class TestPipelineTemplateCreate:
     def test_creates_template(self, auth_client):
@@ -57,6 +67,21 @@ class TestPipelineTemplateCreate:
         assert data["name"] == "new-template"
         assert isinstance(data["variable_declarations"], list)
 
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.post(
+            "/api/ci/template?project_id=other-project-id",
+            json={
+                "name": "new-template",
+                "description": "desc",
+            },
+        )
+
+        assert resp.status_code == 403
+
 
 class TestPipelineTemplateGet:
     def test_returns_template(self, auth_client, test_template):
@@ -69,6 +94,36 @@ class TestPipelineTemplateGet:
     def test_not_found(self, auth_client):
         resp = auth_client.get("/api/ci/template/nonexistent-id")
         assert resp.status_code == 404
+
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        template = PipelineTemplateModel(
+            project_id=project.id,
+            name="other-template",
+            description="",
+            variable_declarations="[]",
+        )
+        db_session.add(template)
+        db_session.commit()
+
+        resp = auth_client.get(f"/api/ci/template/{template.id}")
+
+        assert resp.status_code == 403
+
+
+class TestPipelineTemplateResolveVariables:
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.post(
+            "/api/ci/template/resolve-variables?project_id=other-project-id",
+            json={"orchestration": [], "variable_declarations": []},
+        )
+
+        assert resp.status_code == 403
 
 
 class TestPipelineTemplateUpdate:

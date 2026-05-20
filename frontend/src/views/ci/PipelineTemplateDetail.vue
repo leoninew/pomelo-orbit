@@ -627,7 +627,7 @@
 					sort_order: index,
 				})),
 				variable_declarations: declarations.value,
-			});
+			}, { project_id: projectId });
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : '同步变量失败');
 		}

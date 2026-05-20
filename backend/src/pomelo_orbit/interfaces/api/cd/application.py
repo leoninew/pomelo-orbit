@@ -13,7 +13,7 @@ from pomelo_orbit.application.cd.application_service import ApplicationService
 from pomelo_orbit.application.cd.di import get_application_service
 from pomelo_orbit.domain.cd.entities import TriggerType
 from pomelo_orbit.domain.cd.value_objects import OperationType
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.cd.dto.application import (
     ApplicationCreateReq,
     ApplicationExportResp,

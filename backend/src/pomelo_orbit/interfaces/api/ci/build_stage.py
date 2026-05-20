@@ -7,6 +7,10 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.build_stage_service import BuildStageService
 from pomelo_orbit.application.ci.di import get_stage_service
+from pomelo_orbit.application.project.di import get_project_service
+from pomelo_orbit.application.project.project_service import ProjectService
+from pomelo_orbit.domain.auth.entities import User
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.build_stage import (
     BuildStageCreateReq,
     BuildStageResp,
@@ -20,11 +24,14 @@ router = APIRouter(prefix="/build-stage", tags=["build-stage"])
 @router.get("", response_model=PaginatedResp[BuildStageResp])
 def list_stages(
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[BuildStageResp]:
+    project_service.get_project(current_user.id, project_id)
     stages, total = stage_service.list_stages(project_id, page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[BuildStageResp.model_validate(s) for s in stages],
@@ -39,8 +46,11 @@ def list_stages(
 def create_stage(
     data: BuildStageCreateReq,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
 ) -> BuildStageResp:
+    project_service.get_project(current_user.id, project_id)
     stage = stage_service.create_stage(
         project_id=project_id,
         name=data.name,
@@ -56,8 +66,12 @@ def create_stage(
 def get_stage(
     stage_id: str,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> BuildStageResp:
-    return BuildStageResp.model_validate(stage_service.get_stage(stage_id))
+    stage = stage_service.get_stage(stage_id)
+    project_service.get_project(current_user.id, stage.project_id)
+    return BuildStageResp.model_validate(stage)
 
 
 @router.put("/{stage_id}", response_model=BuildStageResp)
@@ -65,7 +79,11 @@ def update_stage(
     stage_id: str,
     data: BuildStageUpdateReq,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> BuildStageResp:
+    existing = stage_service.get_stage(stage_id)
+    project_service.get_project(current_user.id, existing.project_id)
     stage = stage_service.update_stage(
         stage_id=stage_id,
         name=data.name,
@@ -81,7 +99,11 @@ def update_stage(
 def delete_stage(
     stage_id: str,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
+    stage = stage_service.get_stage(stage_id)
+    project_service.get_project(current_user.id, stage.project_id)
     stage_service.delete_stage(stage_id)
 
 
@@ -89,6 +111,10 @@ def delete_stage(
 def duplicate_stage(
     stage_id: str,
     stage_service: Annotated[BuildStageService, Depends(get_stage_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> BuildStageResp:
+    existing = stage_service.get_stage(stage_id)
+    project_service.get_project(current_user.id, existing.project_id)
     stage = stage_service.duplicate_stage(stage_id)
     return BuildStageResp.model_validate(stage)

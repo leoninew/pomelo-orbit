@@ -69,6 +69,7 @@ export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
 			labelKey: 'nav.loginHistory',
 			path: '/login-history',
 			icon: History,
+			permission: PERMISSIONS.LOGIN_READ,
 		},
 		{
 			key: 'settings',
@@ -76,6 +77,7 @@ export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
 			labelKey: 'nav.settings',
 			path: '/settings',
 			icon: Settings,
+			permission: PERMISSIONS.SETTING_READ,
 		},
 	],
 	cd: [

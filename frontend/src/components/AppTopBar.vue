@@ -132,6 +132,13 @@
 					<div class="my-1 h-px bg-border" />
 					<DropdownMenuItem
 						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+						@select="isPasswordDialogOpen = true"
+					>
+						<KeyRound class="size-4" />
+						{{ t('user.changePassword') }}
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
 						@select="handleLogout"
 					>
 						<LogOut class="size-4" />
@@ -141,6 +148,64 @@
 			</DropdownMenuPortal>
 		</DropdownMenuRoot>
 	</header>
+
+	<AppDialog v-model:open="isPasswordDialogOpen" :title="t('settings.passwordDialog.title')">
+		<div class="space-y-4">
+			<div class="space-y-1.5">
+				<label class="app-field-label block">
+					{{ t('settings.passwordDialog.oldPassword') }}
+				</label>
+				<input
+					v-model="passwordForm.old_password"
+					type="password"
+					:placeholder="t('settings.passwordDialog.oldPasswordPlaceholder')"
+					class="app-input"
+					:class="passwordErrors.old_password ? 'app-input-error' : ''"
+				/>
+				<p v-if="passwordErrors.old_password" class="app-field-error text-xs">
+					{{ passwordErrors.old_password }}
+				</p>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">
+					{{ t('settings.passwordDialog.newPassword') }}
+				</label>
+				<input
+					v-model="passwordForm.new_password"
+					type="password"
+					:placeholder="t('settings.passwordDialog.newPasswordPlaceholder')"
+					class="app-input"
+					:class="passwordErrors.new_password ? 'app-input-error' : ''"
+				/>
+				<p v-if="passwordErrors.new_password" class="app-field-error text-xs">
+					{{ passwordErrors.new_password }}
+				</p>
+			</div>
+			<div class="space-y-1.5">
+				<label class="app-field-label block">
+					{{ t('settings.passwordDialog.confirmPassword') }}
+				</label>
+				<input
+					v-model="passwordForm.confirm_password"
+					type="password"
+					:placeholder="t('settings.passwordDialog.confirmPasswordPlaceholder')"
+					class="app-input"
+					:class="passwordErrors.confirm_password ? 'app-input-error' : ''"
+				/>
+				<p v-if="passwordErrors.confirm_password" class="app-field-error text-xs">
+					{{ passwordErrors.confirm_password }}
+				</p>
+			</div>
+		</div>
+		<template #footer>
+			<button class="app-button" @click="closePasswordDialog">
+				{{ t('common.cancel') }}
+			</button>
+			<button class="app-button-primary" :disabled="passwordLoading" @click="handleChangePassword">
+				{{ t('settings.changePassword') }}
+			</button>
+		</template>
+	</AppDialog>
 </template>
 
 <script setup lang="ts">
@@ -148,21 +213,24 @@
 		ChevronDown,
 		ChevronRight,
 		FolderKanban,
+		KeyRound,
 		Languages,
 		LogOut,
 		Monitor,
 		Moon,
 		Sun,
 	} from 'lucide-vue-next';
-	import { computed } from 'vue';
+	import { computed, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';
+	import AppDialog from '@/components/AppDialog.vue';
 	import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
 	import { useAuthStore } from '@/stores/auth';
 	import { useProjectStore } from '@/stores/project';
 	import { useTheme } from '@/composables/useTheme';
 	import { setLocale, type Locale } from '@/i18n';
 	import { useToast } from '@/composables/useToast';
+	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import config from '@/config';
 	import {
 		DropdownMenuContent,
@@ -191,6 +259,19 @@
 	const { theme, cycleTheme } = useTheme();
 	const { t, locale } = useI18n({ useScope: 'global' });
 	const toast = useToast();
+	const { loading: passwordLoading, execute: executeChangePassword } = useStatusAsync();
+
+	const isPasswordDialogOpen = ref(false);
+	const passwordForm = reactive({
+		old_password: '',
+		new_password: '',
+		confirm_password: '',
+	});
+	const passwordErrors = reactive({
+		old_password: '',
+		new_password: '',
+		confirm_password: '',
+	});
 
 	const activeProjectLabel = computed(() => {
 		const project = projectStore.activeProject;
@@ -237,6 +318,58 @@
 		if (projectId !== projectStore.activeProjectId) {
 			projectStore.setActiveProject(projectId);
 			router.go(0);
+		}
+	}
+
+	function resetPasswordForm() {
+		Object.assign(passwordForm, {
+			old_password: '',
+			new_password: '',
+			confirm_password: '',
+		});
+		Object.assign(passwordErrors, {
+			old_password: '',
+			new_password: '',
+			confirm_password: '',
+		});
+	}
+
+	function closePasswordDialog() {
+		isPasswordDialogOpen.value = false;
+		resetPasswordForm();
+	}
+
+	function validatePassword() {
+		passwordErrors.old_password = passwordForm.old_password
+			? ''
+			: t('settings.passwordDialog.oldPasswordRequired');
+		passwordErrors.new_password =
+			passwordForm.new_password.length >= 6 ? '' : t('settings.passwordDialog.newPasswordTooShort');
+		passwordErrors.confirm_password =
+			passwordForm.confirm_password === passwordForm.new_password
+				? ''
+				: t('settings.passwordDialog.passwordMismatch');
+		return (
+			!passwordErrors.old_password &&
+			!passwordErrors.new_password &&
+			!passwordErrors.confirm_password
+		);
+	}
+
+	async function handleChangePassword() {
+		if (!validatePassword()) {
+			return;
+		}
+		try {
+			await executeChangePassword(async () => {
+				await authStore.changePassword(passwordForm.old_password, passwordForm.new_password);
+				toast.success(t('settings.passwordDialog.changeSuccess'));
+				closePasswordDialog();
+			});
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t('settings.passwordDialog.changeFailed')
+			);
 		}
 	}
 

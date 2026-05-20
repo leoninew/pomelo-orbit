@@ -24,7 +24,7 @@ from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.domain.ci.value_objects import PipelineRunTrigger
 from pomelo_orbit.domain.ci.variable_resolver import VariableResolver
 from pomelo_orbit.domain.exceptions import BusinessError
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_run import PipelineRunResp, TriggerPipelineReq
 from pomelo_orbit.interfaces.api.ci.dto.repository import (
     RepositoryCreateReq,

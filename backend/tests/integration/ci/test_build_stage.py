@@ -1,6 +1,7 @@
 """Stage API 集成测试"""
 
 from pomelo_orbit.infrastructure.ci.models import BuildStageModel
+from pomelo_orbit.infrastructure.persistence.models import ProjectModel
 from tests.integration.conftest import DEFAULT_CI_PROJECT_ID
 
 
@@ -28,6 +29,15 @@ class TestStageList:
         assert "items" in data
         assert isinstance(data["items"], list)
         assert len(data["items"]) >= 3
+
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.get("/api/ci/build-stage?project_id=other-project-id")
+
+        assert resp.status_code == 403
 
 
 class TestStageCreate:
@@ -80,6 +90,22 @@ class TestStageCreate:
         )
         assert resp.status_code == 409
 
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        db_session.add(project)
+        db_session.commit()
+
+        resp = auth_client.post(
+            "/api/ci/build-stage?project_id=other-project-id",
+            json={
+                "name": "other-build",
+                "image": "alpine:latest",
+                "script": "echo test",
+            },
+        )
+
+        assert resp.status_code == 403
+
 
 class TestStageGet:
     def test_returns_stage(self, auth_client, db_session):
@@ -107,6 +133,24 @@ class TestStageGet:
     def test_not_found(self, auth_client):
         resp = auth_client.get("/api/ci/build-stage/nonexistent-id")
         assert resp.status_code == 404
+
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        stage = BuildStageModel(
+            project_id=project.id,
+            name="other-stage",
+            image="alpine:latest",
+            script="echo test",
+            artifacts="[]",
+            description="",
+        )
+        db_session.add(project)
+        db_session.add(stage)
+        db_session.commit()
+
+        resp = auth_client.get(f"/api/ci/build-stage/{stage.id}")
+
+        assert resp.status_code == 403
 
 
 class TestStageUpdate:
@@ -164,6 +208,24 @@ class TestStageUpdate:
         assert data["description"] == "new description"
         assert data["name"] == "partial-test"
 
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        stage = BuildStageModel(
+            project_id=project.id,
+            name="other-update-stage",
+            image="alpine:latest",
+            script="echo test",
+            artifacts="[]",
+            description="",
+        )
+        db_session.add(project)
+        db_session.add(stage)
+        db_session.commit()
+
+        resp = auth_client.put(f"/api/ci/build-stage/{stage.id}", json={"name": "updated"})
+
+        assert resp.status_code == 403
+
 
 class TestStageDelete:
     def test_deletes_unreferenced_stage(self, auth_client, db_session):
@@ -207,6 +269,45 @@ class TestStageDelete:
         resp = auth_client.delete(f"/api/ci/build-stage/{stage.id}")
         # 如果 stage 没被引用，可以删除；如果被引用，应该返回 409
         assert resp.status_code in (204, 409)
+
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        stage = BuildStageModel(
+            project_id=project.id,
+            name="other-delete-stage",
+            image="alpine:latest",
+            script="echo test",
+            artifacts="[]",
+            description="",
+        )
+        db_session.add(project)
+        db_session.add(stage)
+        db_session.commit()
+
+        resp = auth_client.delete(f"/api/ci/build-stage/{stage.id}")
+
+        assert resp.status_code == 403
+        assert db_session.get(BuildStageModel, stage.id) is not None
+
+
+class TestStageDuplicate:
+    def test_rejects_non_member_project(self, auth_client, db_session):
+        project = ProjectModel(id="other-project-id", name="Other Project", code="other", is_active=True)
+        stage = BuildStageModel(
+            project_id=project.id,
+            name="other-duplicate-stage",
+            image="alpine:latest",
+            script="echo test",
+            artifacts="[]",
+            description="",
+        )
+        db_session.add(project)
+        db_session.add(stage)
+        db_session.commit()
+
+        resp = auth_client.post(f"/api/ci/build-stage/{stage.id}/duplicate")
+
+        assert resp.status_code == 403
 
 
 class TestStageUsage:

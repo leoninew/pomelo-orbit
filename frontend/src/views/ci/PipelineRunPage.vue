@@ -148,6 +148,7 @@
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { PipelineTemplate } from '@/types/ci/template';
+	import { ApiError } from '@/utils/request';
 	import { statusTone } from '@/utils/status';
 	import { formatTime, formatDuration } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
@@ -188,13 +189,23 @@
 		}
 		try {
 			await execute(async () => {
-				const res = await pipelineRunApi.list({
-					page: pagination.current,
-					per_page: pagination.pageSize,
-					repository_id: query.repository_id || undefined,
-					template_id: query.template_id || undefined,
-					project_id: projectId,
-				});
+				let res;
+				try {
+					res = await pipelineRunApi.list({
+						page: pagination.current,
+						per_page: pagination.pageSize,
+						repository_id: query.repository_id || undefined,
+						template_id: query.template_id || undefined,
+						project_id: projectId,
+					});
+				} catch (error) {
+					if (error instanceof ApiError && error.status === 403) {
+						runs.value = [];
+						pagination.total = 0;
+						return;
+					}
+					throw error;
+				}
 				runs.value = res.items;
 				pagination.total = res.total;
 			});

@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 
 from pomelo_orbit.application.cd.deployment_service import DeploymentService
 from pomelo_orbit.application.cd.di import get_deployment_service
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.cd.dto.deployment import DeploymentDetailResp, DeploymentResp
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 

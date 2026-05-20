@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, Query
 
 from pomelo_orbit.application.ci.di import get_template_service
 from pomelo_orbit.application.ci.template_service import TemplateService
+from pomelo_orbit.application.project.di import get_project_service
+from pomelo_orbit.application.project.project_service import ProjectService
+from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.domain.ci.value_objects import StageOrchestration, VariableDeclaration
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.ci.dto.pipeline_template import (
     PipelineTemplateCreateReq,
     PipelineTemplateResp,
@@ -26,11 +30,14 @@ router = APIRouter(prefix="/template", tags=["template"])
 @router.get("", response_model=PaginatedResp[PipelineTemplateResp])
 def list_templates(
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 20,
     search: Annotated[str | None, Query()] = None,
 ) -> PaginatedResp[PipelineTemplateResp]:
+    project_service.get_project(current_user.id, project_id)
     items, total = template_service.list_templates(project_id, page=page, per_page=per_page, search=search)
     return PaginatedResp(
         items=[PipelineTemplateResp.model_validate(t) for t in items],
@@ -45,8 +52,11 @@ def list_templates(
 def create_template(
     data: PipelineTemplateCreateReq,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
 ) -> PipelineTemplateResp:
+    project_service.get_project(current_user.id, project_id)
     decls = [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
     tmpl = template_service.create_template(
         project_id=project_id,
@@ -61,8 +71,11 @@ def create_template(
 def get_template(
     template_id: str,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> PipelineTemplateResp:
     tmpl = template_service.get_template(template_id)
+    project_service.get_project(current_user.id, tmpl.project_id)
     return PipelineTemplateResp.from_domain(tmpl, template_service.get_template_variables(tmpl))
 
 
@@ -71,7 +84,11 @@ def update_template(
     template_id: str,
     data: PipelineTemplateUpdateReq,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> PipelineTemplateResp:
+    existing = template_service.get_template(template_id)
+    project_service.get_project(current_user.id, existing.project_id)
     decls = (
         [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
         if data.variable_declarations is not None
@@ -94,8 +111,11 @@ def update_template(
 def resolve_template_variables(
     data: TemplateVariableResolveReq,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
 ) -> list[VariableDeclarationDto]:
+    project_service.get_project(current_user.id, project_id)
     decls = [VariableDeclaration(**d.model_dump()) for d in data.variable_declarations]
     orch = [StageOrchestration(**o.model_dump()) for o in data.orchestration]
     resolved = template_service.resolve_template_variables(project_id, orch, decls)
@@ -106,7 +126,11 @@ def resolve_template_variables(
 def delete_template(
     template_id: str,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
+    tmpl = template_service.get_template(template_id)
+    project_service.get_project(current_user.id, tmpl.project_id)
     template_service.delete_template(template_id)
 
 
@@ -114,6 +138,10 @@ def delete_template(
 def duplicate_template(
     template_id: str,
     template_service: Annotated[TemplateService, Depends(get_template_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> PipelineTemplateResp:
+    existing = template_service.get_template(template_id)
+    project_service.get_project(current_user.id, existing.project_id)
     tmpl = template_service.duplicate_template(template_id)
     return PipelineTemplateResp.from_domain(tmpl, template_service.get_template_variables(tmpl))

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from pomelo_orbit.application.project.di import get_project_service
 from pomelo_orbit.application.project.project_service import ProjectService
 from pomelo_orbit.domain.auth.entities import User
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.project.dto import (
     ProjectCreateReq,
     ProjectMemberReq,

@@ -194,13 +194,13 @@ const router = createRouter({
 			path: '/login-history',
 			name: 'LoginHistory',
 			component: () => import('@/views/LoginHistoryPage.vue'),
-			meta: { title: '登录历史', menuKey: 'loginhistory' },
+			meta: { title: '登录历史', menuKey: 'loginhistory', permission: PERMISSIONS.LOGIN_READ },
 		},
 		{
 			path: '/settings',
 			name: 'Settings',
 			component: () => import('@/views/Settings.vue'),
-			meta: { title: '系统设置', menuKey: 'settings' },
+			meta: { title: '系统设置', menuKey: 'settings', permission: PERMISSIONS.SETTING_READ },
 		},
 	],
 });

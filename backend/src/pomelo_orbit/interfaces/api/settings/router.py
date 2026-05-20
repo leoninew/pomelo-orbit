@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from pomelo_orbit.application.cd.di import get_setting_service
 from pomelo_orbit.application.settings.setting_service import SettingService
 from pomelo_orbit.domain.auth.entities import User
-from pomelo_orbit.interfaces.api.auth.router import get_current_user
+from pomelo_orbit.interfaces.api.auth.permissions import require_permission
 from pomelo_orbit.interfaces.api.settings.dto import SystemConfigResetReq, SystemConfigResp, SystemConfigUpdateReq
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -18,9 +18,9 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 @router.get("/config", response_model=SystemConfigResp)
 def get_config(
     setting_service: Annotated[SettingService, Depends(get_setting_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    _current_user: Annotated[User, Depends(require_permission("setting:read"))],
 ) -> SystemConfigResp:
-    """获取运行时配置列表（需要登录）"""
+    """获取运行时配置列表"""
     return SystemConfigResp.model_validate(setting_service.get_config())
 
 
@@ -28,7 +28,7 @@ def get_config(
 def update_config(
     req: SystemConfigUpdateReq,
     setting_service: Annotated[SettingService, Depends(get_setting_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    _current_user: Annotated[User, Depends(require_permission("setting:write"))],
 ) -> SystemConfigResp:
     """新增或更新单个配置项，写入 .env（需要重启服务生效）"""
     result = setting_service.update_config(req.key, req.value)
@@ -39,7 +39,7 @@ def update_config(
 def reset_config(
     req: SystemConfigResetReq,
     setting_service: Annotated[SettingService, Depends(get_setting_service)],
-    _current_user: Annotated[User, Depends(get_current_user)],
+    _current_user: Annotated[User, Depends(require_permission("setting:write"))],
 ) -> SystemConfigResp:
     """重置指定配置项为默认值（从 .env 删除对应行）"""
     result = setting_service.reset_config(req.keys)

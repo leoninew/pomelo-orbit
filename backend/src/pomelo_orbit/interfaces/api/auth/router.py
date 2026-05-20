@@ -11,12 +11,11 @@ import httpx
 from dynaconf import Dynaconf
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from pomelo_orbit.application.auth import AuthService
 from pomelo_orbit.application.auth.di import get_auth_service
 from pomelo_orbit.application.auth.dtos import LoginReq as AppLoginReq
-from pomelo_orbit.domain import AuthenticationError, AuthorizationError, BusinessError
+from pomelo_orbit.domain import AuthenticationError, BusinessError
 from pomelo_orbit.domain.auth.entities import User
 from pomelo_orbit.domain.cd.repositories import UserRepository
 from pomelo_orbit.infrastructure import SecurityService, get_security_service, hash_password, verify_password
@@ -26,6 +25,7 @@ from pomelo_orbit.infrastructure.config import get_settings
 from pomelo_orbit.infrastructure.csrf import generate_csrf_token
 from pomelo_orbit.infrastructure.persistence.mappers import LoginHistoryMapper
 from pomelo_orbit.infrastructure.time_utils import utc_now
+from pomelo_orbit.interfaces.api.auth.dependencies import get_current_user
 from pomelo_orbit.interfaces.api.auth.dto import (
     CaptchaResp,
     CsrfTokenResp,
@@ -36,10 +36,10 @@ from pomelo_orbit.interfaces.api.auth.dto import (
     TokenResp,
     UserInfo,
 )
+from pomelo_orbit.interfaces.api.auth.permissions import require_permission
 from pomelo_orbit.interfaces.api.common import PaginatedResp
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-security = HTTPBearer()
 logger = logging.getLogger(__name__)
 
 
@@ -52,25 +52,6 @@ def _get_client_ip(request: Request) -> str:
     if real_ip:
         return real_ip
     return request.client.host if request.client else ""
-
-
-def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    user_repo: Annotated[UserRepository, Depends(get_user_repo)],
-    security_service: Annotated[SecurityService, Depends(get_security_service)],
-) -> User:
-    """获取当前用户"""
-    token = credentials.credentials
-    payload = security_service.decode_access_token(token)
-    if payload is None:
-        raise AuthorizationError("登录已过期, 请重新登录")
-    username = payload.get("sub")
-    if username is None:
-        raise AuthorizationError("登录已过期, 请重新登录")
-    user = user_repo.find_by_username(username)
-    if user is None or user.status == "disabled":
-        raise AuthorizationError("登录已过期, 请重新登录")
-    return user
 
 
 @router.get("/csrf-token", response_model=CsrfTokenResp)
@@ -155,7 +136,7 @@ def change_password(
 @router.get("/login-history", response_model=PaginatedResp[LoginHistoryResp])
 def list_login_history(
     user_repo: Annotated[UserRepository, Depends(get_user_repo)],
-    _current_user=Depends(get_current_user),
+    _current_user: Annotated[User, Depends(require_permission("login:read"))],
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=100)] = 10,
     search: Annotated[str | None, Query()] = None,

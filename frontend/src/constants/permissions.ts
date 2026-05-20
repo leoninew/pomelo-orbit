@@ -5,6 +5,9 @@
  */
 
 export const PERMISSIONS = {
+	// 登录历史权限
+	LOGIN_READ: 'login:read',
+
 	// 用户管理权限
 	USER_READ: 'user:read',
 	USER_WRITE: 'user:write',
@@ -12,6 +15,10 @@ export const PERMISSIONS = {
 	// 角色管理权限
 	ROLE_READ: 'role:read',
 	ROLE_WRITE: 'role:write',
+
+	// 系统配置权限
+	SETTING_READ: 'setting:read',
+	SETTING_WRITE: 'setting:write',
 } as const;
 
 /**

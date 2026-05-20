@@ -82,7 +82,15 @@ def test_list_permissions(auth_client):
 
     assert response.status_code == 200
     body = response.json()
-    assert [item["code"] for item in body] == ["role:read", "role:write", "user:read", "user:write"]
+    assert [item["code"] for item in body] == [
+        "login:read",
+        "role:read",
+        "role:write",
+        "setting:read",
+        "setting:write",
+        "user:read",
+        "user:write",
+    ]
 
 
 def test_role_code_rejects_invalid_characters(auth_client):

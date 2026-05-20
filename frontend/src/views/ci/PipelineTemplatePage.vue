@@ -49,7 +49,7 @@
 		<div v-else-if="templates.length === 0" class="app-surface">
 			<div class="flex flex-col items-center justify-center py-16">
 				<Inbox class="size-12 text-muted-foreground" />
-				<p class="mt-2 text-sm text-muted-foreground">暂无模板</p>
+				<p class="mt-2 text-sm text-muted-foreground">暂无数据</p>
 			</div>
 		</div>
 
@@ -196,6 +196,7 @@
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
 	import type { PipelineTemplate } from '@/types/ci/template';
+	import { ApiError } from '@/utils/request';
 	import { formatTime } from '@/utils/time';
 	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
@@ -224,12 +225,22 @@
 		}
 		try {
 			await execute(async () => {
-				const res = await pipelineTemplateApi.list({
-					page: pagination.current,
-					per_page: pagination.pageSize,
-					search: searchText.value || undefined,
-					project_id: projectId,
-				});
+				let res;
+				try {
+					res = await pipelineTemplateApi.list({
+						page: pagination.current,
+						per_page: pagination.pageSize,
+						search: searchText.value || undefined,
+						project_id: projectId,
+					});
+				} catch (error) {
+					if (error instanceof ApiError && error.status === 403) {
+						templates.value = [];
+						pagination.total = 0;
+						return;
+					}
+					throw error;
+				}
 				templates.value = res.items;
 				pagination.total = res.total;
 			});

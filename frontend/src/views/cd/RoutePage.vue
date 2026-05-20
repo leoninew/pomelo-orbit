@@ -22,12 +22,7 @@
 
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || '加载失败' }}</p>
-			</div>
-			<div v-else-if="routes.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
-			</div>
+			<AppEmptyState v-else-if="routes.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[1200px]">
 					<colgroup>
@@ -182,6 +177,7 @@
 	import { routeApi } from '@/api/cd/route';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
@@ -192,7 +188,7 @@
 
 	const toast = useToast();
 	const projectStore = useProjectStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const routes = ref<Route[]>([]);
@@ -222,12 +218,18 @@
 	}
 
 	async function fetchData() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('未选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
 				const res = await routeApi.list({
 					page: pagination.current,
 					per_page: pagination.pageSize,
 					search: searchText.value || undefined,
+					project_id: projectId,
 				});
 				routes.value = res.items;
 				pagination.total = res.total;
@@ -311,9 +313,14 @@
 	}
 
 	async function handleSync() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('未选择项目');
+			return;
+		}
 		try {
 			await executeOp(async () => {
-				await routeApi.sync();
+				await routeApi.sync({ project_id: projectId });
 				toast.success('同步成功');
 				fetchData();
 			});

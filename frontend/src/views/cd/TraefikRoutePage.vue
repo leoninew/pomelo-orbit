@@ -26,9 +26,7 @@
 				<p class="mt-1 text-xs text-muted-foreground">请检查 Traefik 服务是否正常运行</p>
 				<button class="app-link mx-auto mt-3 block text-sm" @click="fetchRoutes">重试</button>
 			</div>
-			<div v-else-if="filteredRoutes.length === 0" class="py-16 text-center text-muted-foreground">
-				<p class="text-sm">{{ searchText ? '未找到匹配的路由' : '暂无路由' }}</p>
-			</div>
+			<AppEmptyState v-else-if="filteredRoutes.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[1080px]">
 					<colgroup>
@@ -100,12 +98,15 @@
 	import type { TraefikRouter } from '@/api/cd/traefik-route';
 	import { traefikRouteApi } from '@/api/cd/traefik-route';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';
+	import { useProjectStore } from '@/stores/project';
 
 	const toast = useToast();
+	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 	const routes = ref<TraefikRouter[]>([]);
 	const searchText = ref('');
@@ -125,9 +126,14 @@
 	});
 
 	async function fetchRoutes() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('未选择项目');
+			return;
+		}
 		try {
 			await execute(async () => {
-				const data = await traefikRouteApi.list();
+				const data = await traefikRouteApi.list({ project_id: projectId });
 				routes.value = data.items;
 			});
 		} catch {
@@ -144,8 +150,13 @@
 	}
 
 	async function openDashboard() {
+		const projectId = projectStore.activeProjectId;
+		if (!projectId) {
+			toast.error('未选择项目');
+			return;
+		}
 		try {
-			const config = await traefikRouteApi.getConfig();
+			const config = await traefikRouteApi.getConfig({ project_id: projectId });
 			window.open(
 				`${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
 				'_blank'

@@ -35,7 +35,7 @@ export const routeApi = {
 		page?: number
 		per_page?: number
 		search?: string
-		project_id?: string
+		project_id: string
 	}): Promise<PaginatedResp<Route>> {
 		return request.get('/api/cd/route', { params });
 	},
@@ -64,8 +64,8 @@ export const routeApi = {
 		return request.post(`/api/cd/route/${id}/disable`);
 	},
 
-	sync(): Promise<void> {
-		return request.post('/api/cd/route/sync');
+	sync(params: { project_id: string }): Promise<void> {
+		return request.post('/api/cd/route/sync', undefined, { params });
 	},
 
 	uploadCert(id: string, certFile: File): Promise<Route> {

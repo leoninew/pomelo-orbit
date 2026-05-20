@@ -21,9 +21,7 @@
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || t('userManagement.loadFailed') }}</p>
 			</div>
-			<div v-else-if="users.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">{{ t('common.noData') }}</p>
-			</div>
+			<AppEmptyState v-else-if="users.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[1080px]">
 					<colgroup>
@@ -217,6 +215,7 @@
 	import { userApi } from '@/api/user';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

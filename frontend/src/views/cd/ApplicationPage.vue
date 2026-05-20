@@ -52,23 +52,15 @@
 			</div>
 		</ToolbarRoot>
 
-		<!-- 加载 / 错误 -->
+		<!-- 加载 -->
 		<div v-if="status === 'loading'" class="app-surface">
 			<AppSpinner class="py-16" />
-		</div>
-		<div v-else-if="status === 'error'" class="app-surface">
-			<div class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || '加载失败' }}</p>
-			</div>
 		</div>
 
 		<!-- 卡片视图 -->
 		<div v-else-if="viewMode === 'card'" class="space-y-6">
 			<div v-if="applications.length === 0" class="app-surface">
-				<div class="flex flex-col items-center justify-center py-16">
-					<Inbox class="size-12 text-muted-foreground" />
-					<p class="mt-2 text-sm text-muted-foreground">暂无应用</p>
-				</div>
+				<AppEmptyState />
 			</div>
 			<template v-else>
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -154,9 +146,7 @@
 		<!-- 表格视图 -->
 		<template v-else>
 			<div class="app-surface">
-				<div v-if="applications.length === 0" class="text-center py-16 text-muted-foreground">
-					<p class="text-sm">暂无应用</p>
-				</div>
+				<AppEmptyState v-if="applications.length === 0" />
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-list min-w-[1040px]">
 						<thead>
@@ -259,12 +249,13 @@
 </template>
 
 <script setup lang="ts">
-	import { Inbox, LayoutGrid, List, Plus, Upload } from 'lucide-vue-next';
+	import { LayoutGrid, List, Plus, Upload } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import AppBadge from '@/components/AppBadge.vue';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
@@ -285,7 +276,7 @@
 	const router = useRouter();
 	const toast = useToast();
 	const projectStore = useProjectStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 
 	const applications = ref<Application[]>([]);

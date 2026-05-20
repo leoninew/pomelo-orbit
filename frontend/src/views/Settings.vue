@@ -18,9 +18,7 @@
 			<AppSpinner class="py-16" />
 		</div>
 		<div v-else-if="filteredConfig.length === 0" class="app-surface">
-			<div class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">{{ searchText ? t('settings.noMatch') : t('settings.noConfig') }}</p>
-			</div>
+			<AppEmptyState />
 		</div>
 		<div v-else class="app-surface">
 			<div class="overflow-x-auto">
@@ -139,6 +137,7 @@
 	import { useI18n } from 'vue-i18n';
 	import { settingApi } from '@/api/settings';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import SearchControl from '@/components/SearchControl.vue';
 	import SelectControl from '@/components/SelectControl.vue';

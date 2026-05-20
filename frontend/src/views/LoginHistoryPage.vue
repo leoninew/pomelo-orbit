@@ -15,9 +15,7 @@
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || t('loginHistory.loadFailed') }}</p>
 			</div>
-			<div v-else-if="history.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">{{ t('common.noData') }}</p>
-			</div>
+			<AppEmptyState v-else-if="history.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[920px]">
 					<thead>
@@ -68,6 +66,7 @@
 	import { useI18n } from 'vue-i18n';
 	import { authApi } from '@/api/auth';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

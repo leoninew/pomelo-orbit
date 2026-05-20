@@ -40,17 +40,8 @@
 			<AppSpinner class="py-16" />
 		</div>
 
-		<div v-else-if="status === 'error'" class="app-surface">
-			<div class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || '加载失败' }}</p>
-			</div>
-		</div>
-
 		<div v-else-if="templates.length === 0" class="app-surface">
-			<div class="flex flex-col items-center justify-center py-16">
-				<Inbox class="size-12 text-muted-foreground" />
-				<p class="mt-2 text-sm text-muted-foreground">暂无数据</p>
-			</div>
+			<AppEmptyState />
 		</div>
 
 		<template v-else-if="viewMode === 'card'">
@@ -183,12 +174,13 @@
 </template>
 
 <script setup lang="ts">
-	import { Inbox, LayoutGrid, List, Plus } from 'lucide-vue-next';
+	import { LayoutGrid, List, Plus } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
@@ -196,14 +188,13 @@
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
 	import type { PipelineTemplate } from '@/types/ci/template';
-	import { ApiError } from '@/utils/request';
 	import { formatTime } from '@/utils/time';
 	import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
 	const router = useRouter();
 	const toast = useToast();
 	const projectStore = useProjectStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
@@ -225,22 +216,12 @@
 		}
 		try {
 			await execute(async () => {
-				let res;
-				try {
-					res = await pipelineTemplateApi.list({
-						page: pagination.current,
-						per_page: pagination.pageSize,
-						search: searchText.value || undefined,
-						project_id: projectId,
-					});
-				} catch (error) {
-					if (error instanceof ApiError && error.status === 403) {
-						templates.value = [];
-						pagination.total = 0;
-						return;
-					}
-					throw error;
-				}
+				const res = await pipelineTemplateApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+					project_id: projectId,
+				});
 				templates.value = res.items;
 				pagination.total = res.total;
 			});

@@ -255,15 +255,12 @@
 					<h2 class="font-semibold text-foreground">制品</h2>
 				</div>
 				<AppSpinner v-if="artifactsLoading" class="py-16" />
-				<div
+				<AppEmptyState
 					v-else-if="!isTerminalStatus(run.status)"
-					class="text-center py-16 text-muted-foreground"
-				>
-					<p class="text-sm">运行完成后展示</p>
-				</div>
-				<div v-else-if="artifacts.length === 0" class="text-center py-16 text-muted-foreground">
-					<p class="text-sm">暂无制品</p>
-				</div>
+					message="运行完成后展示"
+					size="compact"
+				/>
+				<AppEmptyState v-else-if="artifacts.length === 0" size="compact" />
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-detail min-w-[760px]">
 						<thead>
@@ -358,6 +355,7 @@
 	import { pipelineRunApi, pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import AppDrawer from '@/components/AppDrawer.vue';
 	import ViewModeToggle from '@/components/ViewModeToggle.vue';

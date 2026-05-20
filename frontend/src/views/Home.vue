@@ -59,9 +59,7 @@
 					</button>
 				</div>
 				<AppSpinner v-if="status === 'loading'" class="py-16" />
-				<div v-else-if="recentRuns.length === 0" class="text-center py-16 text-muted-foreground">
-					<p class="text-sm">{{ t('home.noBuilds') }}</p>
-				</div>
+				<AppEmptyState v-else-if="recentRuns.length === 0" />
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-list table-fixed min-w-[560px]">
 						<colgroup>
@@ -116,9 +114,7 @@
 					</button>
 				</div>
 				<AppSpinner v-if="status === 'loading'" class="py-16" />
-				<div v-else-if="recentDeploys.length === 0" class="text-center py-16 text-muted-foreground">
-					<p class="text-sm">{{ t('home.noDeploys') }}</p>
-				</div>
+				<AppEmptyState v-else-if="recentDeploys.length === 0" />
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-list table-fixed min-w-[560px]">
 						<colgroup>
@@ -173,6 +169,7 @@
 	import { deploymentApi } from '@/api/cd/deployments';
 	import { pipelineRunApi, repositoryApi } from '@/api/ci';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import { useStatusAsync } from '@/composables/useStatusAsync';
 	import { useToast } from '@/composables/useToast';

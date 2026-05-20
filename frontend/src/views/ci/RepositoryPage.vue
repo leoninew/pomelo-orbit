@@ -16,9 +16,7 @@
 		<!-- Table Card -->
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="repositories.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">暂无数据</p>
-			</div>
+			<AppEmptyState v-else-if="repositories.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[1120px]">
 					<thead>
@@ -151,6 +149,7 @@
 	import { useRouter } from 'vue-router';
 	import { credentialApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';

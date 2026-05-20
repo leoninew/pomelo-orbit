@@ -171,12 +171,7 @@
 				<div class="app-section-header">
 					<h2 class="font-semibold text-foreground">制品声明</h2>
 				</div>
-				<div
-					v-if="artifactDeclarations.length === 0"
-					class="px-5 py-12 text-center text-sm text-muted-foreground"
-				>
-					暂无制品
-				</div>
+				<AppEmptyState v-if="artifactDeclarations.length === 0" size="compact" />
 				<div v-else class="overflow-x-auto">
 					<table class="app-table-detail min-w-[720px]">
 						<thead>
@@ -405,6 +400,7 @@
 	import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ViewModeToggle from '@/components/ViewModeToggle.vue';
 	import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';

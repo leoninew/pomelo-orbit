@@ -33,9 +33,7 @@
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || '加载失败' }}</p>
 			</div>
-			<div v-else-if="artifacts.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">暂无数据</p>
-			</div>
+			<AppEmptyState v-else-if="artifacts.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list table-fixed">
 					<colgroup>
@@ -122,6 +120,7 @@
 	import { ToolbarRoot } from 'reka-ui';
 	import { artifactApi, repositoryApi, pipelineTemplateApi } from '@/api/ci';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';

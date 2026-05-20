@@ -29,12 +29,7 @@
 
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || '加载失败' }}</p>
-			</div>
-			<div v-else-if="runs.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">暂无数据</p>
-			</div>
+			<AppEmptyState v-else-if="runs.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list table-fixed min-w-[900px]">
 					<colgroup>
@@ -139,6 +134,7 @@
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ComboboxSelect from '@/components/ComboboxSelect.vue';
 	import ListPagination from '@/components/ListPagination.vue';
@@ -148,7 +144,6 @@
 	import type { Repository } from '@/types/ci/repository';
 	import type { PipelineRun } from '@/types/ci/run';
 	import type { PipelineTemplate } from '@/types/ci/template';
-	import { ApiError } from '@/utils/request';
 	import { statusTone } from '@/utils/status';
 	import { formatTime, formatDuration } from '@/utils/time';
 	import { ToolbarRoot } from 'reka-ui';
@@ -157,7 +152,7 @@
 	const router = useRouter();
 	const toast = useToast();
 	const projectStore = useProjectStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 
 	const runs = ref<PipelineRun[]>([]);
 	const repositories = ref<Repository[]>([]);
@@ -189,23 +184,13 @@
 		}
 		try {
 			await execute(async () => {
-				let res;
-				try {
-					res = await pipelineRunApi.list({
-						page: pagination.current,
-						per_page: pagination.pageSize,
-						repository_id: query.repository_id || undefined,
-						template_id: query.template_id || undefined,
-						project_id: projectId,
-					});
-				} catch (error) {
-					if (error instanceof ApiError && error.status === 403) {
-						runs.value = [];
-						pagination.total = 0;
-						return;
-					}
-					throw error;
-				}
+				const res = await pipelineRunApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					repository_id: query.repository_id || undefined,
+					template_id: query.template_id || undefined,
+					project_id: projectId,
+				});
 				runs.value = res.items;
 				pagination.total = res.total;
 			});

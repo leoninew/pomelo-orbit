@@ -21,9 +21,7 @@
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
 				<p class="text-sm">{{ error || t('roleManagement.loadFailed') }}</p>
 			</div>
-			<div v-else-if="roles.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">{{ t('common.noData') }}</p>
-			</div>
+			<AppEmptyState v-else-if="roles.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[760px]">
 					<colgroup>
@@ -155,6 +153,7 @@
 	import { useRouter } from 'vue-router';
 	import { roleApi } from '@/api/role';
 	import AppDialog from '@/components/AppDialog.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';

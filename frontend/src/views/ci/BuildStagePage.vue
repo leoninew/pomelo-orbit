@@ -15,12 +15,7 @@
 
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
-			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error }}</p>
-			</div>
-			<div v-else-if="stages.length === 0" class="text-center py-16 text-muted-foreground">
-				<p class="text-sm">暂无数据</p>
-			</div>
+			<AppEmptyState v-else-if="stages.length === 0" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[920px]">
 					<thead>
@@ -129,6 +124,7 @@
 	import { buildStageApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
 	import AppBadge from '@/components/AppBadge.vue';
+	import AppEmptyState from '@/components/AppEmptyState.vue';
 	import AppSpinner from '@/components/AppSpinner.vue';
 	import ListPagination from '@/components/ListPagination.vue';
 	import SearchControl from '@/components/SearchControl.vue';
@@ -136,13 +132,12 @@
 	import { useToast } from '@/composables/useToast';
 	import { useProjectStore } from '@/stores/project';
 	import type { BuildStage } from '@/types/ci/template';
-	import { ApiError } from '@/utils/request';
 	import { formatTime } from '@/utils/time';
 
 	const router = useRouter();
 	const toast = useToast();
 	const projectStore = useProjectStore();
-	const { status, error, execute } = useStatusAsync();
+	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
 	const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
@@ -169,22 +164,12 @@
 		}
 		try {
 			await execute(async () => {
-				let res;
-				try {
-					res = await buildStageApi.list({
-						page: pagination.current,
-						per_page: pagination.pageSize,
-						search: searchText.value || undefined,
-						project_id: projectId,
-					});
-				} catch (error) {
-					if (error instanceof ApiError && error.status === 403) {
-						stages.value = [];
-						pagination.total = 0;
-						return;
-					}
-					throw error;
-				}
+				const res = await buildStageApi.list({
+					page: pagination.current,
+					per_page: pagination.pageSize,
+					search: searchText.value || undefined,
+					project_id: projectId,
+				});
 				stages.value = res.items;
 				pagination.total = res.total;
 			});

@@ -57,15 +57,15 @@
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
 			>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('userManagement.username') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.username') }}</dt>
 					<dd class="text-foreground">{{ user.username }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('userManagement.email') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.email') }}</dt>
 					<dd class="text-foreground">{{ user.email || '-' }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
 					<dd>
 						<AppBadge v-if="user.status === 'enabled'" variant="status" tone="success">
 							{{ t('userManagement.enabled') }}
@@ -76,19 +76,19 @@
 					</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('userManagement.authSource') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.authSource') }}</dt>
 					<dd class="text-foreground">{{ formatAuthSource(user.auth_source) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(user.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(user.updated_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('userManagement.lastLoginAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.lastLoginAt') }}</dt>
 					<dd class="text-muted-foreground">
 						{{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
 					</dd>

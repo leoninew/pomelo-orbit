@@ -39,23 +39,23 @@
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
 			>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('roleManagement.code') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('roleManagement.code') }}</dt>
 					<dd class="text-foreground">{{ role.code }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
 					<dd class="text-foreground">{{ role.name }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
 					<dd class="text-foreground">{{ role.description || '-' }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(role.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(role.updated_at) }}</dd>
 				</div>
 			</dl>

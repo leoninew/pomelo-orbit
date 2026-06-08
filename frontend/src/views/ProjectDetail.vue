@@ -30,26 +30,26 @@
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
 			>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('project.name') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('project.name') }}</dt>
 					<dd class="text-foreground">{{ project.name }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('project.code') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('project.code') }}</dt>
 					<dd class="text-foreground">{{ project.code }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
 					<dd>
 						<AppBadge v-if="project.is_active" variant="status" tone="success">{{ t('project.active') }}</AppBadge>
 						<AppBadge v-else variant="status" tone="default">{{ t('project.deprecated') }}</AppBadge>
 					</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(project.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(project.updated_at) }}</dd>
 				</div>
 			</dl>

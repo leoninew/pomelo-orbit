@@ -56,11 +56,11 @@
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.name') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.name') }}</dt>
 						<dd class="text-foreground">{{ routeData.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.domain') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.domain') }}</dt>
 						<dd>
 							<a
 								:href="`${routeData.https_enabled ? 'https' : 'http'}://${routeData.domain}`"
@@ -73,15 +73,15 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.pathPrefix') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.pathPrefix') }}</dt>
 						<dd class="text-foreground">{{ routeData.path_prefix }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.targetUrl') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('route.fields.targetUrl') }}</dt>
 						<dd class="text-foreground">{{ routeData.target_url }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
 						<dd>
 							<AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
 								{{ routeData.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
@@ -89,11 +89,11 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.updated_at) }}</dd>
 					</div>
 				</dl>

@@ -18,11 +18,11 @@
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">快照 ID</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">快照 ID</dt>
 						<dd class="min-w-0 break-all text-foreground">{{ snapshot.id }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">模板</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">模板</dt>
 						<dd>
 							<router-link :to="`/ci/template/${snapshot.template_id}`" class="app-link">
 								{{ snapshot.template_name }}
@@ -30,15 +30,15 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">快照版本</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">快照版本</dt>
 						<dd class="text-foreground">v{{ snapshot.version }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">模板版本</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">模板版本</dt>
 						<dd class="text-foreground">v{{ snapshot.template_version }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(snapshot.created_at) }}</dd>
 					</div>
 				</dl>

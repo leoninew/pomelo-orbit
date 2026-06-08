@@ -49,11 +49,11 @@
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">运行 ID</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">运行 ID</dt>
 						<dd class="min-w-0 text-foreground">{{ runId }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
 							<AppBadge variant="pill" :tone="pipelineStatusTone">
 								{{ pipelineStatusLabel }}
@@ -61,7 +61,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">代码仓库</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">代码仓库</dt>
 						<dd>
 							<router-link :to="`/ci/repository/${run.repository_id}`" class="app-link">
 								{{ run.repository_name }}
@@ -69,7 +69,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
 						<dd>
 							<AppBadge variant="pill">
 								{{ run.trigger }}
@@ -77,11 +77,11 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">触发分支</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">触发分支</dt>
 						<dd class="text-foreground">{{ run.trigger_ref }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">模板</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">模板</dt>
 						<dd>
 							<router-link :to="`/ci/template/${run.template_id}`" class="app-link">
 								{{ run.template_name }} v{{ run.template_version }}
@@ -89,7 +89,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">快照</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">快照</dt>
 						<dd>
 							<router-link
 								v-if="run.snapshot_id"
@@ -102,7 +102,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">重试自</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">重试自</dt>
 						<dd>
 							<router-link v-if="run.retry_of" :to="`/ci/run/${run.retry_of}`" class="app-link">
 								查看
@@ -111,23 +111,23 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">开始时间</dt>
 						<dd class="text-muted-foreground">
 							{{ run.started_at ? formatTime(run.started_at) : '—' }}
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">结束时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">结束时间</dt>
 						<dd class="text-muted-foreground">
 							{{ run.finished_at ? formatTime(run.finished_at) : '—' }}
 						</dd>
 					</div>
 					<div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">错误信息</dt>
 						<dd class="min-w-0 text-destructive">
 							<span class="block truncate" :title="run.error_message">
 								{{ run.error_message }}

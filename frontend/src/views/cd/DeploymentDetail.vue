@@ -30,11 +30,11 @@
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">部署 ID</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">部署 ID</dt>
 						<dd class="min-w-0 break-all text-foreground">{{ deploymentId }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">应用</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">应用</dt>
 						<dd>
 							<router-link :to="`/cd/applications/${deployment.application_id}`" class="app-link">
 								{{ deployment.application_name || deployment.application_id }}
@@ -42,7 +42,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">状态</dt>
 						<dd>
 							<AppBadge variant="pill" :tone="deploymentStatusTone">
 								{{ deploymentStatusLabel }}
@@ -50,7 +50,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">操作类型</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">操作类型</dt>
 						<dd class="text-foreground">
 							{{
 								deployment.operation_type === 'deploy'
@@ -62,29 +62,29 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">触发方式</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
 						<dd class="text-foreground">{{ deployment.trigger_type }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">耗时</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">耗时</dt>
 						<dd class="text-muted-foreground">
 							{{ formatDuration(deployment.started_at, deployment.finished_at) }}
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">开始时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">开始时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">完成时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">完成时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(deployment.finished_at) }}</dd>
 					</div>
 					<div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">错误信息</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">错误信息</dt>
 						<dd class="min-w-0 text-destructive">
 							<span class="block truncate" :title="deployment.error_message">
 								{{ deployment.error_message }}

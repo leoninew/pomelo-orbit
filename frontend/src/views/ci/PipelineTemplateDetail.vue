@@ -56,11 +56,11 @@
 						<dd class="text-foreground">{{ template.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('pipelineTemplate.version') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('pipelineTemplate.version') }}</dt>
 						<dd class="text-foreground">v{{ template.version }}</dd>
 					</div>
 					<div class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
 						<dd class="text-foreground">{{ template.description || t('pipelineTemplate.noDescription') }}</dd>
 					</div>
 				</dl>

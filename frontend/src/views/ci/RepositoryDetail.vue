@@ -52,25 +52,25 @@
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">名称</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">名称</dt>
 						<dd class="min-w-0 text-foreground">{{ repository.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">编码</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">编码</dt>
 						<dd class="min-w-0 text-foreground">{{ repository.code }}</dd>
 					</div>
 					<div class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">仓库地址</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">仓库地址</dt>
 						<dd class="min-w-0 truncate text-foreground" :title="repository.repository_url">
 							{{ repository.repository_url }}
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">默认分支</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">默认分支</dt>
 						<dd class="text-foreground">{{ repository.default_branch || 'master' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">Git 凭据</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">Git 凭据</dt>
 						<dd>
 							<router-link
 								v-if="repository.git_credential_id"
@@ -83,7 +83,7 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">流水线记录</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">流水线记录</dt>
 						<dd>
 							<router-link :to="`/ci/run?repository_id=${repository.id}`" class="app-link">
 								查看所有记录
@@ -91,11 +91,11 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(repository.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">更新时间</dt>
 						<dd class="text-muted-foreground">{{ formatTime(repository.updated_at) }}</dd>
 					</div>
 				</dl>

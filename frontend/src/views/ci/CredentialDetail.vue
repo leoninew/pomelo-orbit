@@ -48,11 +48,11 @@
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
 			>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">凭据名称</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">凭据名称</dt>
 					<dd class="text-foreground">{{ credential.name }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">类型</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">类型</dt>
 					<dd>
 						<AppBadge>
 							{{ credentialTypeLabels[credential.type] ?? credential.type }}
@@ -60,11 +60,11 @@
 					</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
 					<dd class="text-muted-foreground">{{ formatTime(credential.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+					<dt class="w-32 shrink-0 text-muted-foreground">更新时间</dt>
 					<dd class="text-muted-foreground">{{ formatTime(credential.updated_at) }}</dd>
 				</div>
 			</dl>

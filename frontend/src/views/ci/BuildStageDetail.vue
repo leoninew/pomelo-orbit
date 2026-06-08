@@ -51,27 +51,27 @@
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.name') }}</dt>
 						<dd class="text-foreground">{{ stage.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('buildStageDetail.version') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('buildStageDetail.version') }}</dt>
 						<dd class="text-foreground">v{{ stage.version }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('buildStageDetail.image') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('buildStageDetail.image') }}</dt>
 						<dd class="text-foreground">{{ stage.image }}</dd>
 					</div>
 					<div class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
 						<dd class="text-foreground">{{ stage.description || '—' }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
 					</div>
 				</dl>

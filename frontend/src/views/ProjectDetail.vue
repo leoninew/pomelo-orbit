@@ -1,7 +1,7 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold text-foreground">{{ project?.name ?? '项目详情' }}</h1>
+			<h1 class="text-xl font-semibold text-foreground">{{ project?.name ?? t('project.detailTitle') }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					v-if="project"
@@ -10,18 +10,18 @@
 					@click="openEditModal"
 				>
 					<Pencil class="size-4" />
-					编辑
+					{{ t('common.edit') }}
 				</button>
 				<button class="app-button h-9 px-4" @click="router.push('/projects')">
 					<ArrowLeft class="size-4" />
-					返回
+					{{ t('common.back') }}
 				</button>
 			</div>
 		</div>
 
 		<div class="app-surface">
 			<div class="app-section-header">
-				<h2 class="font-semibold text-foreground">基本信息</h2>
+				<h2 class="font-semibold text-foreground">{{ t('userManagement.basicInfo') }}</h2>
 			</div>
 
 			<AppSpinner v-if="loading" class="px-5 py-10" />
@@ -30,26 +30,26 @@
 				class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2"
 			>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">项目名称</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('project.name') }}</dt>
 					<dd class="text-foreground">{{ project.name }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">项目编码</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('project.code') }}</dt>
 					<dd class="text-foreground">{{ project.code }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
 					<dd>
-						<AppBadge v-if="project.is_active" variant="status" tone="success">活跃</AppBadge>
-						<AppBadge v-else variant="status" tone="default">已废弃</AppBadge>
+						<AppBadge v-if="project.is_active" variant="status" tone="success">{{ t('project.active') }}</AppBadge>
+						<AppBadge v-else variant="status" tone="default">{{ t('project.deprecated') }}</AppBadge>
 					</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(project.created_at) }}</dd>
 				</div>
 				<div class="flex gap-2">
-					<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+					<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 					<dd class="text-muted-foreground">{{ formatTime(project.updated_at) }}</dd>
 				</div>
 			</dl>
@@ -57,27 +57,27 @@
 
 		<div class="app-surface">
 			<div class="app-section-header flex flex-wrap items-center justify-between gap-3">
-				<h2 class="font-semibold text-foreground">项目成员</h2>
+				<h2 class="font-semibold text-foreground">{{ t('project.members') }}</h2>
 				<button class="app-button-primary h-8 px-3" :disabled="operating" @click="openMemberModal">
 					<UserPlus class="size-4" />
-					添加
+					{{ t('common.add') }}
 				</button>
 			</div>
 
 			<AppSpinner v-if="loadingMembers" class="px-5 py-10" />
 			<div v-else-if="members.length === 0" class="px-5 py-4">
-				<p class="text-sm text-muted-foreground">暂无成员</p>
+				<p class="text-sm text-muted-foreground">{{ t('project.noMembers') }}</p>
 			</div>
 			<div v-else class="px-5 py-4">
 				<table class="app-table-detail">
 					<thead>
 						<tr>
-							<th>用户名</th>
-							<th>邮箱</th>
-							<th>状态</th>
-							<th>来源</th>
-							<th>上次登录</th>
-							<th class="text-right">操作</th>
+							<th>{{ t('userManagement.username') }}</th>
+							<th>{{ t('userManagement.email') }}</th>
+							<th>{{ t('common.status') }}</th>
+							<th>{{ t('userManagement.authSource') }}</th>
+							<th>{{ t('userManagement.lastLoginAt') }}</th>
+							<th class="text-right">{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -100,7 +100,7 @@
 									:disabled="operating"
 									@click="handleRemoveMember(member.id)"
 								>
-									移除
+									{{ t('project.removeMember') }}
 								</button>
 							</td>
 						</tr>
@@ -111,12 +111,12 @@
 
 		<AppDialog
 			v-model:open="isEditModalOpen"
-			title="编辑项目"
+			:title="t('project.editProject')"
 			width-class="w-[min(600px,calc(100vw-32px))]"
 		>
 			<form id="project-edit-form" class="space-y-4" @submit.prevent="handleEditOk">
 				<div class="space-y-1.5">
-					<label class="app-field-label block" for="project-name">项目名称</label>
+					<label class="app-field-label block" for="project-name">{{ t('project.name') }}</label>
 					<input
 						id="project-name"
 						v-model="form.name"
@@ -130,7 +130,7 @@
 					<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block" for="project-code">项目编码</label>
+					<label class="app-field-label block" for="project-code">{{ t('project.code') }}</label>
 					<input
 						id="project-code"
 						v-model="form.code"
@@ -143,12 +143,12 @@
 						:disabled="operating"
 					/>
 					<p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-					<p v-else class="app-field-hint">只能包含小写字母、数字、下划线和连字符</p>
+					<p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
 				</div>
 			</form>
 			<template #footer>
 				<button class="app-button" :disabled="operating" @click="isEditModalOpen = false">
-					取消
+					{{ t('common.cancel') }}
 				</button>
 				<button
 					class="app-button-primary"
@@ -156,34 +156,34 @@
 					form="project-edit-form"
 					:disabled="operating"
 				>
-					保存
+					{{ t('common.save') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isMemberModalOpen" title="添加成员">
+		<AppDialog v-model:open="isMemberModalOpen" :title="t('project.addMember')">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">选择用户</label>
+					<label class="app-field-label block">{{ t('project.selectUser') }}</label>
 					<ComboboxSelect
 						v-model="selectedUserId"
 						:options="userOptions"
-						placeholder="搜索用户"
-						empty-text="暂无可用用户"
+						:placeholder="t('project.searchUser')"
+						:empty-text="t('project.noAvailableUsers')"
 						:disabled="operating"
 					/>
 				</div>
 			</div>
 			<template #footer>
 				<button class="app-button" :disabled="operating" @click="isMemberModalOpen = false">
-					取消
+					{{ t('common.cancel') }}
 				</button>
 				<button
 					class="app-button-primary"
 					:disabled="operating || !selectedUserId"
 					@click="handleAddMember"
 				>
-					添加
+					{{ t('common.add') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -259,8 +259,8 @@
 	}
 
 	function validate() {
-		errors.name = form.name.trim() ? '' : '请输入项目名称';
-		errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : '只能包含小写字母、数字、下划线和连字符';
+		errors.name = form.name.trim() ? '' : t('project.nameRequired');
+		errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
 		return !errors.name && !errors.code;
 	}
 
@@ -270,7 +270,7 @@
 				project.value = await projectApi.get(props.id);
 			});
 		} catch {
-			toast.error('加载项目失败');
+			toast.error(t('project.loadProjectFailed'));
 		}
 	}
 
@@ -285,7 +285,7 @@
 				users.value = userPage.items;
 			});
 		} catch {
-			toast.error('加载成员失败');
+			toast.error(t('project.loadMembersFailed'));
 		}
 	}
 
@@ -304,11 +304,11 @@
 					name: form.name.trim(),
 					code: form.code.trim(),
 				});
-				toast.success('项目已更新');
+				toast.success(t('project.updated'));
 				isEditModalOpen.value = false;
 			});
 		} catch (e: unknown) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			toast.error(e instanceof Error ? e.message : t('project.saveFailed'));
 		}
 	}
 
@@ -325,11 +325,11 @@
 			await executeOp(async () => {
 				members.value = await projectApi.addMember(props.id, { user_id: selectedUserId.value });
 				selectedUserId.value = '';
-				toast.success('成员已添加');
+				toast.success(t('project.memberAdded'));
 				isMemberModalOpen.value = false;
 			});
 		} catch (e: unknown) {
-			toast.error(e instanceof Error ? e.message : '添加成员失败');
+			toast.error(e instanceof Error ? e.message : t('project.addMemberFailed'));
 		}
 	}
 
@@ -337,10 +337,10 @@
 		try {
 			await executeOp(async () => {
 				members.value = await projectApi.removeMember(props.id, userId);
-				toast.success('成员已移除');
+				toast.success(t('project.memberRemoved'));
 			});
 		} catch (e: unknown) {
-			toast.error(e instanceof Error ? e.message : '移除成员失败');
+			toast.error(e instanceof Error ? e.message : t('project.removeMemberFailed'));
 		}
 	}
 

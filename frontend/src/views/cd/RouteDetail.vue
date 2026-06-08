@@ -3,12 +3,12 @@
 		<!-- Header -->
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div class="flex items-center gap-3">
-				<h1 class="text-xl font-semibold text-foreground">{{ routeData?.name ?? '路由详情' }}</h1>
+				<h1 class="text-xl font-semibold text-foreground">{{ routeData?.name ?? t('route.detailTitle') }}</h1>
 			</div>
 			<div class="flex flex-wrap items-center gap-2">
 				<button v-if="routeData" class="app-button-primary h-9 px-3" @click="openEditModal">
 					<Pencil class="size-4" />
-					编辑
+					{{ t('common.edit') }}
 				</button>
 				<button
 					v-if="routeData && !routeData.enabled"
@@ -17,7 +17,7 @@
 					@click="handleEnable"
 				>
 					<Power class="size-4" />
-					启用
+					{{ t('route.status.enabled') }}
 				</button>
 				<button
 					v-else-if="routeData"
@@ -26,7 +26,7 @@
 					@click="handleDisable"
 				>
 					<PowerOff class="size-4" />
-					停用
+					{{ t('route.status.disabled') }}
 				</button>
 				<button
 					v-if="routeData"
@@ -35,11 +35,11 @@
 					@click="isDeleteDialogOpen = true"
 				>
 					<Trash2 class="size-4" />
-					删除
+					{{ t('common.delete') }}
 				</button>
 				<button class="app-button h-9 px-4" @click="router.push('/cd/routes')">
 					<ArrowLeft class="size-4" />
-					返回
+					{{ t('common.back') }}
 				</button>
 			</div>
 		</div>
@@ -52,15 +52,15 @@
 			<!-- Basic Info Card -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">基本信息</h2>
+					<h2 class="font-semibold text-foreground">{{ t('route.basicInfo') }}</h2>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">名称</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.name') }}</dt>
 						<dd class="text-foreground">{{ routeData.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">域名</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.domain') }}</dt>
 						<dd>
 							<a
 								:href="`${routeData.https_enabled ? 'https' : 'http'}://${routeData.domain}`"
@@ -73,27 +73,27 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">路径前缀</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.pathPrefix') }}</dt>
 						<dd class="text-foreground">{{ routeData.path_prefix }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">目标地址</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('route.fields.targetUrl') }}</dt>
 						<dd class="text-foreground">{{ routeData.target_url }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
 						<dd>
 							<AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
-								{{ routeData.enabled ? '启用' : '停用' }}
+								{{ routeData.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
 							</AppBadge>
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(routeData.updated_at) }}</dd>
 					</div>
 				</dl>
@@ -102,14 +102,14 @@
 			<!-- HTTPS Config Card -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">HTTPS 配置</h2>
+					<h2 class="font-semibold text-foreground">{{ t('route.httpsConfig') }}</h2>
 				</div>
 				<div class="space-y-4 px-5 py-4">
 					<div class="flex items-center justify-between rounded-md bg-muted/30 p-3">
 						<div>
-							<p class="text-sm text-foreground">当前状态</p>
+							<p class="text-sm text-foreground">{{ t('route.currentStatus') }}</p>
 							<p class="text-sm text-muted-foreground">
-								{{ routeData.https_enabled ? 'HTTPS 已启用' : 'HTTPS 未启用' }}
+								{{ routeData.https_enabled ? t('route.httpsEnabled') : t('route.httpsDisabled') }}
 							</p>
 						</div>
 						<AppBadge variant="status" :tone="routeData.https_enabled ? 'info' : 'default'">
@@ -124,33 +124,33 @@
 							:disabled="operating"
 							@click="handleEnableLetsencrypt"
 						>
-							<p class="text-sm text-foreground">Let's Encrypt 自动证书</p>
-							<p class="text-sm text-muted-foreground">自动申请并续期免费 SSL 证书</p>
+							<p class="text-sm text-foreground">{{ t('route.enableLetsencrypt') }}</p>
+							<p class="text-sm text-muted-foreground">{{ t('route.letsencryptHint') }}</p>
 						</button>
 						<button class="app-action-item" :disabled="operating" @click="handleEnableMkcert">
-							<p class="text-sm text-foreground">mkcert 本地证书</p>
-							<p class="text-sm text-muted-foreground">生成本地开发用的自签名证书</p>
+							<p class="text-sm text-foreground">{{ t('route.enableMkcert') }}</p>
+							<p class="text-sm text-muted-foreground">{{ t('route.mkcertHint') }}</p>
 						</button>
 						<label class="app-action-item cursor-pointer">
-							<p class="text-sm text-foreground">上传自定义证书</p>
-							<p class="text-sm text-muted-foreground">上传 .pem 格式的证书文件</p>
+							<p class="text-sm text-foreground">{{ t('route.uploadCustomCert') }}</p>
+							<p class="text-sm text-muted-foreground">{{ t('route.uploadCustomCertHint') }}</p>
 							<input type="file" accept=".pem" class="hidden" @change="handleCertUpload" />
 						</label>
 					</div>
 
 					<div v-else class="flex justify-end">
 						<button class="app-button-danger" :disabled="operating" @click="handleDisableHttps">
-							禁用 HTTPS
+							{{ t('route.disableHttps') }}
 						</button>
 					</div>
 				</div>
 			</div>
 		</template>
 
-		<AppDialog v-model:open="isEditDialogOpen" title="编辑路由">
+		<AppDialog v-model:open="isEditDialogOpen" :title="t('route.editRoute')">
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">域名</label>
+					<label class="app-field-label block">{{ t('route.fields.domain') }}</label>
 					<input
 						v-model="form.domain"
 						type="text"
@@ -161,11 +161,11 @@
 					<p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">路径前缀</label>
+					<label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
 					<input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">目标地址</label>
+					<label class="app-field-label block">{{ t('route.fields.targetUrl') }}</label>
 					<input
 						v-model="form.target_url"
 						type="text"
@@ -177,25 +177,23 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button class="app-button-primary" :disabled="operating" @click="handleSave">保存</button>
+				<button class="app-button" @click="isEditDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button class="app-button-primary" :disabled="operating" @click="handleSave">{{ t('common.save') }}</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
-			title="删除路由"
+			:title="t('route.deleteRoute')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定删除路由「
-				<strong>{{ routeData?.domain }}</strong>
-				」？此操作不可恢复。
+				{{ t('route.deleteConfirm', { domain: routeData?.domain }) }}
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleDelete">
-					删除
+					{{ t('common.delete') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -206,6 +204,7 @@
 	import { ArrowLeft, ExternalLink, Pencil, Power, PowerOff, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
 	import { useRoute, useRouter } from 'vue-router';
+	import { useI18n } from 'vue-i18n';
 	import type { Route } from '@/api/cd/route';
 	import { routeApi } from '@/api/cd/route';
 	import AppBadge from '@/components/AppBadge.vue';
@@ -219,6 +218,7 @@
 	const router = useRouter();
 	const routeId = currentRoute.params.id as string;
 	const toast = useToast();
+	const { t } = useI18n();
 
 	const { loading: basicInfoLoading, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -263,7 +263,7 @@
 				});
 			});
 		} catch {
-			toast.error('获取路由详情失败');
+			toast.error(t('route.toast.loadDetailFailed'));
 			router.push('/cd/routes');
 		}
 	}
@@ -274,10 +274,10 @@
 	}
 
 	async function handleSave() {
-		errors.domain = form.domain.trim() ? '' : '请输入域名';
+		errors.domain = form.domain.trim() ? '' : t('route.validation.domainRequired');
 		errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
 			? ''
-			: '格式应为 http://host:port';
+			: t('route.validation.targetUrlInvalid');
 		if (errors.domain || errors.target_url) {
 			return;
 		}
@@ -290,12 +290,12 @@
 					enabled: form.enabled,
 				};
 				await routeApi.update(routeId, updateData);
-				toast.success('更新成功');
+				toast.success(t('route.toast.updateSuccess'));
 				isEditDialogOpen.value = false;
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '更新失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.updateFailed'));
 		}
 	}
 
@@ -303,11 +303,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.enable(routeId);
-				toast.success('路由已启用');
+				toast.success(t('route.toast.enableSuccess'));
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '启用失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
 		}
 	}
 
@@ -315,11 +315,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.disable(routeId);
-				toast.success('路由已停用');
+				toast.success(t('route.toast.disableSuccess'));
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '停用失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
 		}
 	}
 
@@ -327,11 +327,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.delete(routeId);
-				toast.success('删除成功');
+				toast.success(t('route.toast.deleteSuccess'));
 				router.push('/cd/routes');
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '删除失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.deleteFailed'));
 		}
 	}
 
@@ -343,11 +343,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.uploadCert(routeId, file);
-				toast.success('证书上传成功，HTTPS 已启用');
+				toast.success(t('route.toast.certUploadSuccess'));
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '证书上传失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.certUploadFailed'));
 		}
 	}
 
@@ -355,11 +355,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.disableHttps(routeId);
-				toast.success('HTTPS 已禁用');
+				toast.success(t('route.toast.httpsDisabled'));
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '操作失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
 		}
 	}
 
@@ -367,11 +367,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.enableLetsencrypt(routeId);
-				toast.success("Let's Encrypt 证书已启用");
+				toast.success(t('route.toast.letsencryptEnabled'));
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '操作失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
 		}
 	}
 
@@ -379,11 +379,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.enableMkcert(routeId);
-				toast.success('mkcert 证书已生成并启用');
+				toast.success(t('route.toast.mkcertEnabled'));
 				fetchRoute();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '操作失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
 		}
 	}
 

@@ -1,19 +1,19 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-simple" aria-label="Traefik 工具栏">
+		<ToolbarRoot class="app-toolbar-simple" :aria-label="t('traefikRoute.toolbar')">
 			<SearchControl
 				v-model="searchText"
-				placeholder="搜索名称/规则/服务/提供者"
+				:placeholder="t('traefikRoute.searchPlaceholder')"
 				:loading="status === 'loading'"
 			/>
 			<div class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openDashboard">
 					<ExternalLink class="size-4" />
-					打开 Dashboard
+					{{ t('traefikRoute.openDashboard') }}
 				</button>
 				<button class="app-button px-5" :disabled="status === 'loading'" @click="fetchRoutes">
 					<RefreshCw class="size-4" :class="{ 'animate-spin': status === 'loading' }" />
-					刷新
+					{{ t('common.refresh') }}
 				</button>
 			</div>
 		</ToolbarRoot>
@@ -22,9 +22,9 @@
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="py-16 text-center">
-				<p class="text-sm text-destructive">{{ error || '获取路由失败' }}</p>
-				<p class="mt-1 text-xs text-muted-foreground">请检查 Traefik 服务是否正常运行</p>
-				<button class="app-link mx-auto mt-3 block text-sm" @click="fetchRoutes">重试</button>
+				<p class="text-sm text-destructive">{{ error || t('traefikRoute.toast.loadFailed') }}</p>
+				<p class="mt-1 text-xs text-muted-foreground">{{ t('traefikRoute.serviceCheckHint') }}</p>
+				<button class="app-link mx-auto mt-3 block text-sm" @click="fetchRoutes">{{ t('traefikRoute.retry') }}</button>
 			</div>
 			<AppEmptyState v-else-if="filteredRoutes.length === 0" />
 			<div v-else class="overflow-x-auto">
@@ -40,13 +40,13 @@
 					</colgroup>
 					<thead>
 						<tr>
-							<th>名称</th>
-							<th>提供者</th>
-							<th>状态</th>
-							<th>规则</th>
-							<th>服务</th>
-							<th>入口点</th>
-							<th>协议</th>
+							<th>{{ t('traefikRoute.fields.name') }}</th>
+							<th>{{ t('traefikRoute.fields.provider') }}</th>
+							<th>{{ t('common.status') }}</th>
+							<th>{{ t('traefikRoute.fields.rule') }}</th>
+							<th>{{ t('traefikRoute.fields.service') }}</th>
+							<th>{{ t('traefikRoute.fields.entrypoints') }}</th>
+							<th>{{ t('traefikRoute.fields.protocol') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -94,6 +94,7 @@
 <script setup lang="ts">
 	import { ExternalLink, RefreshCw } from 'lucide-vue-next';
 	import { computed, onMounted, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { ToolbarRoot } from 'reka-ui';
 	import type { TraefikRouter } from '@/api/cd/traefik-route';
 	import { traefikRouteApi } from '@/api/cd/traefik-route';
@@ -106,6 +107,7 @@
 	import { useProjectStore } from '@/stores/project';
 
 	const toast = useToast();
+	const { t } = useI18n();
 	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
 	const routes = ref<TraefikRouter[]>([]);
@@ -128,7 +130,7 @@
 	async function fetchRoutes() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('未选择项目');
+			toast.error(t('traefikRoute.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -152,7 +154,7 @@
 	async function openDashboard() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('未选择项目');
+			toast.error(t('traefikRoute.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -162,7 +164,7 @@
 				'_blank'
 			);
 		} catch {
-			toast.error('打开 Dashboard 失败');
+			toast.error(t('traefikRoute.toast.openDashboardFailed'));
 		}
 	}
 

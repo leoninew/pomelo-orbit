@@ -1,21 +1,21 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-simple" aria-label="路由工具栏">
+		<ToolbarRoot class="app-toolbar-simple" :aria-label="t('route.toolbar')">
 			<SearchControl
 				v-model="searchText"
 				class="shrink-0"
-				placeholder="搜索名称/域名/目标地址"
+				:placeholder="t('route.searchPlaceholder')"
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
 			<div class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openCreateModal">
 					<Plus class="size-4" />
-					添加路由
+					{{ t('route.addRoute') }}
 				</button>
 				<button class="app-button px-5" :disabled="operating" @click="handleSync">
 					<RefreshCw class="size-4" :class="{ 'animate-spin': operating }" />
-					同步全部
+					{{ t('route.syncAll') }}
 				</button>
 			</div>
 		</ToolbarRoot>
@@ -37,14 +37,14 @@
 					</colgroup>
 					<thead>
 						<tr>
-							<th>名称</th>
-							<th>域名</th>
-							<th>路径前缀</th>
-							<th>目标地址</th>
-							<th>状态</th>
-							<th>协议</th>
-							<th>创建时间</th>
-							<th>操作</th>
+							<th>{{ t('route.fields.name') }}</th>
+							<th>{{ t('route.fields.domain') }}</th>
+							<th>{{ t('route.fields.pathPrefix') }}</th>
+							<th>{{ t('route.fields.targetUrl') }}</th>
+							<th>{{ t('common.status') }}</th>
+							<th>{{ t('route.fields.protocol') }}</th>
+							<th>{{ t('common.createdAt') }}</th>
+							<th>{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -70,7 +70,7 @@
 							</td>
 							<td>
 								<AppBadge variant="status" :tone="route.enabled ? 'success' : 'default'">
-									{{ route.enabled ? '启用' : '停用' }}
+									{{ route.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
 								</AppBadge>
 							</td>
 							<td>
@@ -81,16 +81,16 @@
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
 							<td class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
-									<router-link :to="`/cd/routes/${route.id}`" class="app-link">查看</router-link>
+									<router-link :to="`/cd/routes/${route.id}`" class="app-link">{{ t('application.view') }}</router-link>
 									<button
 										v-if="!route.enabled"
 										class="app-link-success"
 										@click="handleEnable(route.id)"
 									>
-										启用
+										{{ t('route.status.enabled') }}
 									</button>
 									<button v-else class="app-link-warning" @click="handleDisable(route.id)">
-										停用
+										{{ t('route.status.disabled') }}
 									</button>
 								</div>
 							</td>
@@ -110,10 +110,10 @@
 		</div>
 	</div>
 
-	<AppDialog v-model:open="isCreateDialogOpen" title="添加路由">
+	<AppDialog v-model:open="isCreateDialogOpen" :title="t('route.addRoute')">
 		<div class="space-y-4">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">名称</label>
+				<label class="app-field-label block">{{ t('route.fields.name') }}</label>
 				<input
 					v-model="form.name"
 					type="text"
@@ -122,10 +122,10 @@
 					placeholder="example-route"
 				/>
 				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
-				<p v-else class="app-field-hint">小写字母开头，可含数字、点号、下划线和连字符</p>
+				<p v-else class="app-field-hint">{{ t('route.hints.name') }}</p>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">域名</label>
+				<label class="app-field-label block">{{ t('route.fields.domain') }}</label>
 				<input
 					v-model="form.domain"
 					type="text"
@@ -136,12 +136,12 @@
 				<p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">路径前缀</label>
+				<label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
 				<input v-model="form.path_prefix" type="text" class="app-input" placeholder="/" />
-				<p class="app-field-hint">匹配以该前缀开头的请求路径，默认 /</p>
+				<p class="app-field-hint">{{ t('route.hints.pathPrefix') }}</p>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">目标地址</label>
+				<label class="app-field-label block">{{ t('route.fields.targetUrl') }}</label>
 				<input
 					v-model="form.target_url"
 					type="text"
@@ -152,19 +152,19 @@
 				<p v-if="errors.target_url" class="app-field-error text-xs">
 					{{ errors.target_url }}
 				</p>
-				<p v-else class="app-field-hint">格式：http://host:port，例如 http://127.0.0.1:8080</p>
+				<p v-else class="app-field-hint">{{ t('route.hints.targetUrl') }}</p>
 			</div>
 			<label class="flex cursor-pointer items-center gap-3">
 				<SwitchRoot v-model:checked="form.enabled" class="app-switch-root">
 					<SwitchThumb class="app-switch-thumb" />
 				</SwitchRoot>
-				<span class="text-sm text-foreground">启用</span>
+				<span class="text-sm text-foreground">{{ t('route.status.enabled') }}</span>
 			</label>
 		</div>
 
 		<template #footer>
-			<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleSave">添加</button>
+			<button class="app-button" @click="isCreateDialogOpen = false">{{ t('common.cancel') }}</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleSave">{{ t('common.add') }}</button>
 		</template>
 	</AppDialog>
 </template>
@@ -172,6 +172,7 @@
 <script setup lang="ts">
 	import { ExternalLink, Plus, RefreshCw } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
 	import type { Route } from '@/api/cd/route';
 	import { routeApi } from '@/api/cd/route';
@@ -187,6 +188,7 @@
 	import { formatTime } from '@/utils/time';
 
 	const toast = useToast();
+	const { t } = useI18n();
 	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -209,18 +211,18 @@
 	function validate() {
 		errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name)
 			? ''
-			: '必须以小写字母开头，只能包含小写字母、数字、点号、下划线和连字符';
-		errors.domain = form.domain.trim() ? '' : '请输入域名';
+			: t('route.validation.nameInvalid');
+		errors.domain = form.domain.trim() ? '' : t('route.validation.domainRequired');
 		errors.target_url = /^https?:\/\/[a-zA-Z0-9.-]+:\d+$/.test(form.target_url)
 			? ''
-			: '格式应为 http://host:port';
+			: t('route.validation.targetUrlInvalid');
 		return !errors.name && !errors.domain && !errors.target_url;
 	}
 
 	async function fetchData() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('未选择项目');
+			toast.error(t('route.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -235,7 +237,7 @@
 				pagination.total = res.total;
 			});
 		} catch {
-			toast.error('获取路由失败');
+			toast.error(t('route.toast.loadFailed'));
 		}
 	}
 
@@ -273,18 +275,18 @@
 		}
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('未选择项目');
+			toast.error(t('route.toast.selectProjectRequired'));
 			return;
 		}
 		try {
 			await executeOp(async () => {
 				await routeApi.create(form, { project_id: projectId });
-				toast.success('添加成功');
+				toast.success(t('route.toast.addSuccess'));
 				isCreateDialogOpen.value = false;
 				fetchData();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '添加失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.addFailed'));
 		}
 	}
 
@@ -292,11 +294,11 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.enable(id);
-				toast.success('启用成功');
+				toast.success(t('route.toast.enableSuccess'));
 				fetchData();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '启用失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.enableFailed'));
 		}
 	}
 
@@ -304,28 +306,28 @@
 		try {
 			await executeOp(async () => {
 				await routeApi.disable(id);
-				toast.success('停用成功');
+				toast.success(t('route.toast.disableSuccess'));
 				fetchData();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '停用失败');
+			toast.error(error instanceof Error ? error.message : t('route.toast.disableFailed'));
 		}
 	}
 
 	async function handleSync() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('未选择项目');
+			toast.error(t('route.toast.selectProjectRequired'));
 			return;
 		}
 		try {
 			await executeOp(async () => {
 				await routeApi.sync({ project_id: projectId });
-				toast.success('同步成功');
+				toast.success(t('route.syncSuccess'));
 				fetchData();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '同步失败');
+			toast.error(error instanceof Error ? error.message : t('route.syncFailed'));
 		}
 	}
 

@@ -2,7 +2,7 @@
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground flex items-center gap-2">
-				{{ application?.name || '应用详情' }}
+				{{ application?.name || t('application.detail.title') }}
 				<AppBadge v-if="application" variant="pill" :tone="statusTone">
 					{{ statusText }}
 				</AppBadge>
@@ -10,7 +10,7 @@
 			<div class="flex flex-wrap items-center gap-2">
 				<button v-if="application" class="app-button-primary h-9 px-3" @click="openEditModal">
 					<Pencil class="size-4" />
-					编辑
+					{{ t('common.edit') }}
 				</button>
 				<button
 					v-if="application"
@@ -19,7 +19,7 @@
 					@click="handleDeploy"
 				>
 					<Play class="size-4" />
-					部署
+					{{ t('application.deploy') }}
 				</button>
 				<button
 					v-if="application"
@@ -28,7 +28,7 @@
 					@click="handleStop"
 				>
 					<Square class="size-4" />
-					停止
+					{{ t('application.stop') }}
 				</button>
 				<button
 					v-if="application"
@@ -37,11 +37,11 @@
 					@click="handleRestart"
 				>
 					<RotateCcw class="size-4" />
-					重启
+					{{ t('application.detail.actions.restart') }}
 				</button>
 				<button v-if="application" class="app-button h-9 px-3" @click="handleExport">
 					<Download class="size-4" />
-					导出
+					{{ t('application.detail.actions.export') }}
 				</button>
 				<button
 					v-if="application"
@@ -52,11 +52,11 @@
 					@click="openDeleteModal"
 				>
 					<Trash2 class="size-4" />
-					删除
+					{{ t('common.delete') }}
 				</button>
 				<button class="app-button h-9 px-4" @click="router.push('/cd/applications')">
 					<ArrowLeft class="size-4" />
-					返回
+					{{ t('common.back') }}
 				</button>
 			</div>
 		</div>
@@ -69,19 +69,19 @@
 			<!-- 基本信息卡片 -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">基本信息</h2>
+					<h2 class="font-semibold text-foreground">{{ t('application.detail.sections.basicInfo') }}</h2>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">应用名称</dt>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('application.name') }}</dt>
 						<dd class="text-foreground">{{ application.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">应用代码</dt>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('application.code') }}</dt>
 						<dd class="text-foreground">{{ application.code }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">状态</dt>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('common.status') }}</dt>
 						<dd>
 							<AppBadge variant="pill" :tone="statusTone">
 								{{ statusText }}
@@ -89,30 +89,32 @@
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">拉取策略</dt>
-						<dd class="text-foreground">{{ application.image_pull_policy }}</dd>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('application.imagePullPolicy') }}</dt>
+						<dd class="text-foreground">{{ t('application.imagePullPolicyLabels.' + application.image_pull_policy) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">路由管理</dt>
-						<dd class="text-foreground">{{ application.route_managed ? '已启用' : '未启用' }}</dd>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('application.routeManaged') }}</dt>
+						<dd class="text-foreground">
+							{{ application.route_managed ? t('application.routeManagedLabels.enabled') : t('application.routeManagedLabels.disabled') }}
+						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">部署记录</dt>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('application.detail.fields.deployments') }}</dt>
 						<dd>
 							<router-link
 								:to="`/cd/deployments?application_id=${application.id}`"
 								class="text-primary hover:underline"
 							>
-								查看所有部署
+								{{ t('application.detail.actions.viewAllDeployments') }}
 							</router-link>
 						</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">创建时间</dt>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('common.createdAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">更新时间</dt>
+						<dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">{{ t('common.updatedAt') }}</dt>
 						<dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
 					</div>
 				</dl>
@@ -121,15 +123,15 @@
 			<!-- 配置文件 -->
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">配置文件</h2>
+					<h2 class="font-semibold text-foreground">{{ t('application.detail.sections.configFiles') }}</h2>
 					<div class="flex items-center gap-2">
 						<button class="app-button-primary h-8 px-3" @click="openAddFileDrawer">
 							<Plus class="size-4" />
-							添加文件
+							{{ t('application.detail.actions.addFile') }}
 						</button>
 						<button class="app-button h-8 px-3" @click="openComposePreview">
 							<Eye class="size-4" />
-							预览
+							{{ t('application.detail.actions.preview') }}
 						</button>
 					</div>
 				</div>
@@ -137,9 +139,9 @@
 					<table class="app-table-detail min-w-[760px]">
 						<thead>
 							<tr>
-								<th>文件路径</th>
-								<th>创建时间</th>
-								<th>操作</th>
+								<th>{{ t('application.detail.fields.filePath') }}</th>
+								<th>{{ t('common.createdAt') }}</th>
+								<th>{{ t('common.operation') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -149,7 +151,7 @@
 								</td>
 							</tr>
 							<tr v-else-if="files.length === 0">
-								<td colspan="3" class="text-center text-muted-foreground">暂无配置文件</td>
+								<td colspan="3" class="text-center text-muted-foreground">{{ t('application.detail.empty.configFiles') }}</td>
 							</tr>
 							<tr v-for="file in files" :key="file.id">
 								<td class="max-w-md truncate text-foreground" :title="file.path">
@@ -158,10 +160,10 @@
 								<td class="text-muted-foreground">{{ formatTime(file.created_at) }}</td>
 								<td>
 									<div class="flex items-center gap-3">
-										<button class="app-link" @click="openFileDrawer(file.id, false)">查看</button>
-										<button class="app-link" @click="openFileDrawer(file.id, true)">编辑</button>
+										<button class="app-link" @click="openFileDrawer(file.id, false)">{{ t('application.view') }}</button>
+										<button class="app-link" @click="openFileDrawer(file.id, true)">{{ t('common.edit') }}</button>
 										<button class="app-link-danger" @click="confirmDeleteFile(file.id)">
-											删除
+											{{ t('common.delete') }}
 										</button>
 									</div>
 								</td>
@@ -174,20 +176,20 @@
 			<!-- 镜像配置 -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">镜像配置</h2>
+					<h2 class="font-semibold text-foreground">{{ t('application.detail.sections.imageConfig') }}</h2>
 				</div>
 				<div class="overflow-x-auto">
 					<table class="app-table-detail min-w-[960px]">
 						<thead>
 							<tr>
-								<th>服务</th>
-								<th>默认域名</th>
-								<th>默认端口</th>
-								<th>基础镜像</th>
-								<th>当前镜像</th>
-								<th>已覆盖</th>
-								<th>更新时间</th>
-								<th>操作</th>
+								<th>{{ t('application.detail.fields.service') }}</th>
+								<th>{{ t('application.detail.fields.defaultDomain') }}</th>
+								<th>{{ t('application.detail.fields.defaultPort') }}</th>
+								<th>{{ t('application.detail.fields.baseImage') }}</th>
+								<th>{{ t('application.detail.fields.currentImage') }}</th>
+								<th>{{ t('application.detail.fields.overridden') }}</th>
+								<th>{{ t('common.updatedAt') }}</th>
+								<th>{{ t('common.operation') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -202,7 +204,7 @@
 								</td>
 							</tr>
 							<tr v-else-if="serviceConfigs.length === 0">
-								<td colspan="8" class="text-center text-muted-foreground">暂无镜像配置</td>
+								<td colspan="8" class="text-center text-muted-foreground">{{ t('application.detail.empty.imageConfig') }}</td>
 							</tr>
 							<tr v-for="config in serviceConfigs" :key="config.service_name">
 								<td class="text-foreground">{{ config.service_name }}</td>
@@ -222,7 +224,7 @@
 								</td>
 								<td>
 									<AppBadge v-if="isServiceOverridden(config)" variant="pill" tone="primary">
-										已覆盖
+										{{ t('application.detail.fields.overridden') }}
 									</AppBadge>
 									<span v-else class="text-muted-foreground">—</span>
 								</td>
@@ -232,14 +234,14 @@
 								<td>
 									<div class="flex items-center gap-3">
 										<button class="app-link" @click="openEditServiceConfigModal(config)">
-											编辑
+											{{ t('common.edit') }}
 										</button>
 										<button
 											v-if="canResetServiceConfig(config)"
 											class="app-link-danger"
 											@click="confirmResetServiceConfig(config)"
 										>
-											重置
+											{{ t('common.reset') }}
 										</button>
 										<span v-else class="text-muted-foreground">—</span>
 									</div>
@@ -253,29 +255,29 @@
 			<!-- 路由配置 -->
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">路由配置</h2>
+					<h2 class="font-semibold text-foreground">{{ t('application.detail.sections.routeConfig') }}</h2>
 					<button
 						class="app-button-primary h-8 px-3"
 						:disabled="!application.route_managed"
-						:title="!application.route_managed ? '请先在基本信息中启用路由管理' : undefined"
+						:title="!application.route_managed ? t('application.detail.hints.routeDisabledTitle') : undefined"
 						@click="openAddRouteModal"
 					>
 						<Plus class="size-4" />
-						添加路由
+						{{ t('application.detail.actions.addRoute') }}
 					</button>
 				</div>
 				<div v-if="!application.route_managed" class="px-5 pt-4">
-					<div class="app-tip">请先在基本信息中启用路由管理，再添加或编辑路由配置。</div>
+					<div class="app-tip">{{ t('application.detail.hints.routeDisabledTip') }}</div>
 				</div>
 				<div class="overflow-x-auto">
 					<table class="app-table-detail min-w-[760px]">
 						<thead>
 							<tr>
-								<th>域名</th>
-								<th>服务</th>
-								<th>端口</th>
-								<th>创建时间</th>
-								<th>操作</th>
+								<th>{{ t('application.detail.fields.domain') }}</th>
+								<th>{{ t('application.detail.fields.service') }}</th>
+								<th>{{ t('application.detail.fields.port') }}</th>
+								<th>{{ t('common.createdAt') }}</th>
+								<th>{{ t('common.operation') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -285,7 +287,7 @@
 								</td>
 							</tr>
 							<tr v-else-if="appRoutes.length === 0">
-								<td colspan="5" class="text-center text-muted-foreground">暂无路由配置</td>
+								<td colspan="5" class="text-center text-muted-foreground">{{ t('application.detail.empty.routeConfig') }}</td>
 							</tr>
 							<tr v-for="r in appRoutes" :key="r.id">
 								<td class="text-foreground">{{ r.domain }}</td>
@@ -299,9 +301,9 @@
 											:disabled="!application.route_managed"
 											@click="openEditRouteModal(r)"
 										>
-											编辑
+											{{ t('common.edit') }}
 										</button>
-										<button class="app-link-danger" @click="confirmDeleteRoute(r.id)">删除</button>
+										<button class="app-link-danger" @click="confirmDeleteRoute(r.id)">{{ t('common.delete') }}</button>
 									</div>
 								</td>
 							</tr>
@@ -320,17 +322,17 @@
 		>
 			<div class="flex h-full flex-col gap-4 p-6">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">文件路径</label>
+					<label class="app-field-label block">{{ t('application.detail.fields.filePath') }}</label>
 					<input
 						v-model="currentFilePath"
 						type="text"
 						:disabled="!isEditingInDrawer"
-						placeholder="例如: docker-compose.yml"
+						:placeholder="t('application.detail.placeholders.filePath')"
 						class="app-input"
 					/>
 				</div>
 				<div class="min-h-0 flex-1">
-					<label class="app-field-label mb-1.5 block">文件内容</label>
+					<label class="app-field-label mb-1.5 block">{{ t('application.detail.fields.fileContent') }}</label>
 					<div v-if="fileContentLoading" class="flex h-full items-center justify-center">
 						<AppSpinner />
 					</div>
@@ -345,32 +347,32 @@
 			</div>
 			<template #footer>
 				<template v-if="!isEditingInDrawer && currentFileId">
-					<button class="app-button" @click="handleDrawerClose">关闭</button>
+					<button class="app-button" @click="handleDrawerClose">{{ t('application.detail.actions.close') }}</button>
 					<button
 						class="app-button-primary"
 						:disabled="fileContentLoading"
 						@click="isEditingInDrawer = true"
 					>
-						编辑
+						{{ t('common.edit') }}
 					</button>
 				</template>
 				<template v-else>
-					<button class="app-button" @click="handleDrawerClose">取消</button>
+					<button class="app-button" @click="handleDrawerClose">{{ t('common.cancel') }}</button>
 					<button
 						:disabled="fileContentLoading"
 						class="app-button-primary"
 						@click="saveCurrentFile"
 					>
-						保存
+						{{ t('common.save') }}
 					</button>
 				</template>
 			</template>
 		</AppDrawer>
 
-		<AppDialog v-model:open="isEditDialogOpen" title="编辑应用">
+		<AppDialog v-model:open="isEditDialogOpen" :title="t('application.detail.dialog.editApplication')">
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					应用名称
+					{{ t('application.name') }}
 					<span class="text-destructive">*</span>
 				</label>
 				<input
@@ -382,118 +384,120 @@
 				<p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
 			</div>
 			<div>
-				<label class="app-field-label mb-1.5 block">应用代码</label>
+				<label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
 				<input v-model="editForm.code" type="text" disabled class="app-input" />
 			</div>
 			<div>
-				<label class="app-field-label mb-1.5 block">镜像拉取策略</label>
+				<label class="app-field-label mb-1.5 block">{{ t('application.imagePullPolicy') }}</label>
 				<SelectControl v-model="editForm.image_pull_policy" :options="imagePullPolicyOptions" />
 			</div>
 			<div class="space-y-1.5">
 				<label class="flex items-center gap-2">
 					<input v-model="editForm.route_managed" type="checkbox" class="app-checkbox" />
-					<span class="text-sm font-medium text-foreground">启用路由管理</span>
+					<span class="text-sm font-medium text-foreground">{{ t('application.enableRouteManaged') }}</span>
 				</label>
-				<p class="app-field-hint ml-6">启用后，部署时将自动生成 Traefik 路由配置。</p>
+				<p class="app-field-hint ml-6">{{ t('application.detail.hints.editRouteManaged') }}</p>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditDialogOpen = false">取消</button>
-				<button :disabled="operating" class="app-button-primary" @click="handleEditOk">保存</button>
+				<button class="app-button" @click="isEditDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button :disabled="operating" class="app-button-primary" @click="handleEditOk">{{ t('common.save') }}</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
-			title="确认删除"
+			:title="t('application.detail.dialog.confirmDelete')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="mb-4 text-sm text-muted-foreground">
-				确定要删除应用「{{ application?.name || '当前应用' }}」吗？此操作不可恢复。
+				{{ t('application.detail.dialog.deleteApplicationConfirm', { name: application?.name || '-' }) }}
 			</p>
 			<label class="flex items-center gap-2">
 				<input v-model="deleteDir" type="checkbox" class="app-checkbox" />
 				<span class="text-sm text-foreground">
-					同时删除应用工作目录（data/apps/{{ application?.code || '-' }}）
+					{{ t('application.detail.dialog.deleteWorkDir', { code: application?.code || '-' }) }}
 				</span>
 			</label>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button :disabled="operating" class="app-button-destructive" @click="handleDeleteOk">
-					删除
+					{{ t('common.delete') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteFileDialogOpen"
-			title="确认删除"
+			:title="t('application.detail.dialog.confirmDelete')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
-			<p class="text-sm text-muted-foreground">确定要删除这个配置文件吗？此操作无法撤销。</p>
+			<p class="text-sm text-muted-foreground">{{ t('application.detail.dialog.deleteConfigFileConfirm') }}</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteFileDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteFileDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button
 					:disabled="fileListLoading"
 					class="app-button-destructive"
 					@click="executeDeleteFile"
 				>
-					删除
+					{{ t('common.delete') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isServiceConfigDialogOpen" title="编辑服务镜像">
+		<AppDialog v-model:open="isServiceConfigDialogOpen" :title="t('application.detail.dialog.editServiceImage')">
 			<div>
-				<label class="app-field-label mb-1.5 block">服务</label>
+				<label class="app-field-label mb-1.5 block">{{ t('application.detail.fields.service') }}</label>
 				<input :value="selectedServiceName" type="text" disabled class="app-input" />
 			</div>
 			<div>
-				<label class="app-field-label mb-1.5 block">镜像</label>
+				<label class="app-field-label mb-1.5 block">{{ t('application.detail.fields.image') }}</label>
 				<input
 					v-model="serviceConfigForm.image"
 					type="text"
 					class="app-input"
-					placeholder="例如: nginx:1.28"
+					:placeholder="t('application.detail.placeholders.image')"
 				/>
-				<p class="app-field-hint mt-1.5">留空会移除单独覆盖，回退到 compose 中的 image。</p>
+				<p class="app-field-hint mt-1.5">{{ t('application.detail.hints.serviceImageEmpty') }}</p>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isServiceConfigDialogOpen = false">取消</button>
+				<button class="app-button" @click="isServiceConfigDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button
 					:disabled="!serviceConfigDirty || serviceConfigSaving"
 					class="app-button-primary"
 					@click="saveServiceConfig"
 				>
-					保存
+					{{ t('common.save') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteServiceConfigDialogOpen"
-			title="确认重置"
+			:title="t('application.detail.dialog.confirmReset')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-muted-foreground">
-				确定要重置「{{ pendingDeleteServiceName || '当前服务' }}」的镜像覆盖并回退到 compose
-				原值吗？
+				{{ t('application.detail.dialog.resetServiceImageConfirm', { name: pendingDeleteServiceName || '-' }) }}
 			</p>
 			<template #footer>
-				<button class="app-button" @click="cancelResetServiceConfig">取消</button>
+				<button class="app-button" @click="cancelResetServiceConfig">{{ t('common.cancel') }}</button>
 				<button
 					:disabled="serviceConfigSaving"
 					class="app-button-destructive"
 					@click="executeResetServiceConfig"
 				>
-					重置
+					{{ t('common.reset') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isRouteDialogOpen" :title="editingRouteId ? '编辑路由' : '添加路由'">
+		<AppDialog
+			v-model:open="isRouteDialogOpen"
+			:title="editingRouteId ? t('application.detail.dialog.editRoute') : t('application.detail.dialog.addRoute')"
+		>
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					选择服务
+					{{ t('application.detail.fields.service') }}
 					<span class="text-destructive">*</span>
 				</label>
 				<ComboboxSelect
@@ -501,8 +505,8 @@
 					:options="composeServiceOptions"
 					:invalid="Boolean(routeFormErrors.service_name)"
 					:portal="false"
-					placeholder="搜索服务..."
-					empty-text="未找到服务"
+					:placeholder="t('application.detail.placeholders.serviceSearch')"
+					:empty-text="t('application.detail.placeholders.noService')"
 					@update:model-value="handleRouteServiceChange"
 				/>
 				<p v-if="routeFormErrors.service_name" class="app-field-error mt-1 text-xs">
@@ -511,7 +515,7 @@
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					域名
+					{{ t('application.detail.fields.domain') }}
 					<span class="text-destructive">*</span>
 				</label>
 				<input
@@ -527,7 +531,7 @@
 			</div>
 			<div>
 				<label class="app-field-label mb-1.5 block">
-					容器端口
+					{{ t('application.detail.fields.containerPort') }}
 					<span class="text-destructive">*</span>
 				</label>
 				<input
@@ -535,7 +539,7 @@
 					type="number"
 					min="1"
 					max="65535"
-					placeholder="例如: 80"
+					:placeholder="t('application.detail.placeholders.port')"
 					class="app-input"
 					:class="routeFormErrors.port ? 'app-input-error' : ''"
 				/>
@@ -544,37 +548,37 @@
 				</p>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isRouteDialogOpen = false">取消</button>
+				<button class="app-button" @click="isRouteDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button :disabled="routeLoading" class="app-button-primary" @click="handleRouteOk">
-					{{ editingRouteId ? '保存' : '添加' }}
+					{{ editingRouteId ? t('common.save') : t('common.add') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteRouteDialogOpen"
-			title="确认删除"
+			:title="t('application.detail.dialog.confirmDelete')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
-			<p class="text-sm text-muted-foreground">确定要删除这个路由配置吗？此操作无法撤销。</p>
+			<p class="text-sm text-muted-foreground">{{ t('application.detail.dialog.deleteRouteConfirm') }}</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteRouteDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteRouteDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button :disabled="routeLoading" class="app-button-destructive" @click="executeDeleteRoute">
-					删除
+					{{ t('common.delete') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDrawer
 			:open="composePreviewDrawerOpen"
-			title="docker-compose 预览"
+			:title="t('application.detail.drawer.composePreview')"
 			width-class="w-[min(960px,100vw)]"
 			body-class="min-h-0 flex-1 overflow-hidden p-0"
 			@update:open="handleComposePreviewDrawerOpenChange"
 		>
 			<div class="flex h-full flex-col gap-3 p-6">
 				<p class="text-sm text-muted-foreground">
-					与部署时写入的 docker-compose.yml 一致：模板渲染、服务镜像覆盖、路由托管 labels。
+					{{ t('application.detail.drawer.composePreviewDescription') }}
 				</p>
 				<div v-if="composePreviewLoading" class="flex flex-1 items-center justify-center">
 					<AppSpinner />
@@ -595,7 +599,7 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="composePreviewDrawerOpen = false">关闭</button>
+				<button class="app-button" @click="composePreviewDrawerOpen = false">{{ t('application.detail.actions.close') }}</button>
 			</template>
 		</AppDrawer>
 	</div>
@@ -614,6 +618,7 @@
 		Trash2,
 	} from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRoute, useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
@@ -638,6 +643,7 @@
 
 	const route = useRoute();
 	const router = useRouter();
+	const { t } = useI18n();
 	const applicationId = route.params.id as string;
 	const toast = useToast();
 
@@ -692,11 +698,11 @@
 		route_managed: false,
 	});
 	const editErrors = reactive({ name: '' });
-	const imagePullPolicyOptions = [
-		{ value: 'missing', label: '缺失时拉取 (missing)' },
-		{ value: 'always', label: '总是拉取 (always)' },
-		{ value: 'never', label: '从不拉取 (never)' },
-	];
+	const imagePullPolicyOptions = computed(() => [
+		{ value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
+		{ value: 'always', label: t('application.imagePullPolicyOptions.always') },
+		{ value: 'never', label: t('application.imagePullPolicyOptions.never') },
+	]);
 
 	const activeServiceConfig = computed(() =>
 		serviceConfigs.value.find((item) => item.service_name === selectedServiceName.value)
@@ -714,9 +720,11 @@
 	);
 	const fileDrawerTitle = computed(() => {
 		if (!currentFileId.value) {
-			return '添加文件';
+			return t('application.detail.drawer.addFile');
 		}
-		const action = isEditingInDrawer.value ? '编辑文件' : '查看文件';
+		const action = isEditingInDrawer.value
+			? t('application.detail.drawer.editFile')
+			: t('application.detail.drawer.viewFile');
 		return currentFilePath.value ? `${action}: ${currentFilePath.value}` : action;
 	});
 	const serviceConfigDirty = computed(
@@ -726,7 +734,9 @@
 	const statusTone = computed(() =>
 		application.value ? appStatusTone(application.value.status) : 'default'
 	);
-	const statusText = computed(() => (application.value ? application.value.status : ''));
+	const statusText = computed(() =>
+		application.value ? t('status.' + application.value.status) : ''
+	);
 
 	async function fetchApplication() {
 		try {
@@ -744,7 +754,7 @@
 				pollActiveDeployment();
 			}
 		} catch {
-			toast.error('获取应用信息失败');
+			toast.error(t('application.toast.loadDetailFailed'));
 			router.push('/cd/applications');
 		}
 	}
@@ -783,14 +793,14 @@
 		try {
 			await executeOp(async () => {
 				const res = await applicationApi.deploy(applicationId);
-				toast.success('部署已触发');
+				toast.success(t('application.toast.deployTriggeredDetail'));
 				router.push({
 					path: `/cd/deployments/${res.deployment_id}`,
 					query: { from: 'application' },
 				});
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '触发部署失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
 		}
 	}
 
@@ -798,7 +808,7 @@
 		try {
 			await executeOp(async () => {
 				const res = await applicationApi.stop(applicationId);
-				toast.success('停止操作已提交');
+				toast.success(t('application.toast.stopSubmitted'));
 				const maxAttempts = 20; // 最多轮询 20 次（60 秒）
 				let attempts = 0;
 				while (attempts < maxAttempts) {
@@ -816,7 +826,7 @@
 				}
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '停止失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.stopFailed'));
 		}
 	}
 
@@ -824,14 +834,14 @@
 		try {
 			await executeOp(async () => {
 				const res = await applicationApi.restart(applicationId);
-				toast.success('重启操作已提交');
+				toast.success(t('application.toast.restartSubmitted'));
 				router.push({
 					path: `/cd/deployments/${res.deployment_id}`,
 					query: { from: 'application' },
 				});
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '重启失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.restartFailed'));
 		}
 	}
 
@@ -847,9 +857,9 @@
 			a.download = `${data.code || 'application'}.json`;
 			a.click();
 			URL.revokeObjectURL(url);
-			toast.success('导出成功');
+			toast.success(t('application.toast.exportSuccess'));
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '导出失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.exportFailed'));
 		}
 	}
 
@@ -867,7 +877,7 @@
 	}
 
 	async function handleEditOk() {
-		editErrors.name = editForm.name.trim() ? '' : '请输入应用名称';
+		editErrors.name = editForm.name.trim() ? '' : t('application.validation.nameRequired');
 		if (editErrors.name) {
 			return;
 		}
@@ -878,7 +888,7 @@
 					image_pull_policy: editForm.image_pull_policy,
 					route_managed: editForm.route_managed,
 				});
-				toast.success('更新成功');
+				toast.success(t('application.toast.updateSuccess'));
 				isEditDialogOpen.value = false;
 				await fetchApplication();
 				if (application.value?.route_managed) {
@@ -888,7 +898,7 @@
 				}
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '更新失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
 		}
 	}
 
@@ -901,11 +911,11 @@
 		try {
 			await executeOp(async () => {
 				await applicationApi.delete(applicationId, deleteDir.value);
-				toast.success('删除成功');
+				toast.success(t('application.toast.deleteSuccess'));
 				router.push('/cd/applications');
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '删除失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.deleteFailed'));
 		}
 	}
 
@@ -915,7 +925,7 @@
 				files.value = await applicationApi.listFiles(applicationId);
 			});
 		} catch {
-			toast.error('加载配置文件失败');
+			toast.error(t('application.toast.loadConfigFilesFailed'));
 		}
 	}
 
@@ -927,7 +937,7 @@
 			});
 		} catch (error) {
 			serviceConfigs.value = [];
-			serviceConfigError.value = error instanceof Error ? error.message : '加载 service 配置失败';
+			serviceConfigError.value = error instanceof Error ? error.message : t('application.toast.loadServiceConfigFailed');
 		}
 	}
 
@@ -989,10 +999,10 @@
 				}
 				isDeleteServiceConfigDialogOpen.value = false;
 				pendingDeleteServiceName.value = '';
-				toast.success('服务镜像已重置');
+				toast.success(t('application.toast.resetServiceImageSuccess'));
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '重置服务镜像失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.resetServiceImageFailed'));
 		}
 	}
 
@@ -1019,10 +1029,10 @@
 				selectedServiceName.value = saved.service_name;
 				serviceConfigForm.image = getServiceDisplayImage(saved);
 				isServiceConfigDialogOpen.value = false;
-				toast.success('服务镜像保存成功');
+				toast.success(t('application.toast.saveServiceImageSuccess'));
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '保存服务镜像失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.saveServiceImageFailed'));
 		}
 	}
 
@@ -1039,7 +1049,7 @@
 				currentFilePath.value = result.path || '';
 			});
 		} catch {
-			toast.error('加载文件内容失败');
+			toast.error(t('application.toast.loadFileContentFailed'));
 		}
 	}
 
@@ -1065,7 +1075,7 @@
 
 	async function saveCurrentFile() {
 		if (!currentFilePath.value.trim()) {
-			toast.error('请输入文件路径');
+			toast.error(t('application.validation.filePathRequired'));
 			return;
 		}
 		const lowerPath = currentFilePath.value.toLowerCase();
@@ -1086,10 +1096,10 @@
 					if (idx >= 0) {
 						files.value[idx] = updated;
 					}
-					toast.success('保存成功');
+					toast.success(t('application.toast.saveSuccess'));
 				} else {
 					await applicationApi.createFile(applicationId, currentFilePath.value, content);
-					toast.success('添加成功');
+					toast.success(t('application.toast.addSuccess'));
 				}
 				fileDrawerVisible.value = false;
 				isEditingInDrawer.value = false;
@@ -1097,7 +1107,7 @@
 				await loadServiceConfigs();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '保存失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.saveFailed'));
 		}
 	}
 
@@ -1110,13 +1120,13 @@
 		try {
 			await executeFileList(async () => {
 				await applicationApi.deleteFile(applicationId, pendingDeleteFileId.value);
-				toast.success('删除成功');
+				toast.success(t('application.toast.deleteSuccess'));
 				isDeleteFileDialogOpen.value = false;
 				await loadFiles();
 				await loadServiceConfigs();
 			});
 		} catch {
-			toast.error('删除失败');
+			toast.error(t('application.toast.deleteFailed'));
 		}
 	}
 
@@ -1130,7 +1140,7 @@
 				composePreviewYaml.value = compose_yaml;
 			});
 		} catch (error) {
-			composePreviewError.value = error instanceof Error ? error.message : '加载预览失败';
+			composePreviewError.value = error instanceof Error ? error.message : t('application.toast.loadPreviewFailed');
 		}
 	}
 
@@ -1150,7 +1160,7 @@
 				appRoutes.value = await applicationApi.listRoutes(applicationId);
 			});
 		} catch {
-			toast.error('加载路由配置失败');
+			toast.error(t('application.toast.loadRouteConfigFailed'));
 		}
 	}
 
@@ -1160,7 +1170,7 @@
 			composeServices.value = await applicationApi.listComposeServices(applicationId);
 		} catch (error) {
 			toast.error(
-				error instanceof Error ? error.message : '解析 docker-compose 失败，无法配置路由'
+				error instanceof Error ? error.message : t('application.toast.parseComposeFailed')
 			);
 		}
 	}
@@ -1207,9 +1217,9 @@
 	}
 
 	function validateRouteForm() {
-		routeFormErrors.service_name = routeForm.service_name ? '' : '请选择 service';
-		routeFormErrors.domain = routeForm.domain.trim() ? '' : '请输入域名';
-		routeFormErrors.port = routeForm.port >= 1 && routeForm.port <= 65535 ? '' : '端口范围 1-65535';
+		routeFormErrors.service_name = routeForm.service_name ? '' : t('application.validation.serviceRequired');
+		routeFormErrors.domain = routeForm.domain.trim() ? '' : t('application.validation.domainRequired');
+		routeFormErrors.port = routeForm.port >= 1 && routeForm.port <= 65535 ? '' : t('application.validation.portRange');
 		return !routeFormErrors.service_name && !routeFormErrors.domain && !routeFormErrors.port;
 	}
 
@@ -1229,12 +1239,12 @@
 				} else {
 					await applicationApi.createRoute(applicationId, data);
 				}
-				toast.success('保存成功');
+				toast.success(t('application.toast.saveSuccess'));
 				isRouteDialogOpen.value = false;
 				await loadRoutes();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '保存失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.saveFailed'));
 		}
 	}
 
@@ -1247,12 +1257,12 @@
 		try {
 			await executeRoute(async () => {
 				await applicationApi.deleteRoute(applicationId, pendingDeleteRouteId.value);
-				toast.success('删除成功');
+				toast.success(t('application.toast.deleteSuccess'));
 				isDeleteRouteDialogOpen.value = false;
 				await loadRoutes();
 			});
 		} catch {
-			toast.error('删除失败');
+			toast.error(t('application.toast.deleteFailed'));
 		}
 	}
 

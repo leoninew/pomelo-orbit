@@ -1,18 +1,18 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-scroll" aria-label="流水线记录工具栏">
+		<ToolbarRoot class="app-toolbar-scroll" :aria-label="t('pipelineRun.toolbar')">
 			<div class="app-toolbar-row">
 				<ComboboxSelect
 					:model-value="query.repository_id"
 					:options="repositoryOptions"
-					placeholder="筛选项目"
+					:placeholder="t('pipelineRun.filterRepository')"
 					width-class="app-toolbar-select"
 					@update:model-value="handleRepositoryChange"
 				/>
 				<ComboboxSelect
 					:model-value="query.template_id"
 					:options="templateOptions"
-					placeholder="筛选模板"
+					:placeholder="t('pipelineRun.filterTemplate')"
 					width-class="app-toolbar-select"
 					@update:model-value="handleTemplateChange"
 				/>
@@ -22,7 +22,7 @@
 					@click="handleSearch"
 				>
 					<Search class="size-4" />
-					搜索
+					{{ t('common.search') }}
 				</button>
 			</div>
 		</ToolbarRoot>
@@ -45,15 +45,15 @@
 					</colgroup>
 					<thead>
 						<tr>
-							<th>仓库</th>
-							<th>模板</th>
-							<th>版本</th>
-							<th>触发 Ref</th>
-							<th>状态</th>
-							<th>错误信息</th>
-							<th>开始时间</th>
-							<th>耗时</th>
-							<th>操作</th>
+							<th>{{ t('pipelineRun.fields.repository') }}</th>
+							<th>{{ t('pipelineRun.fields.template') }}</th>
+							<th>{{ t('pipelineRun.fields.version') }}</th>
+							<th>{{ t('pipelineRun.fields.triggerRef') }}</th>
+							<th>{{ t('common.status') }}</th>
+							<th>{{ t('pipelineRun.fields.errorMessage') }}</th>
+							<th>{{ t('pipelineRun.fields.startTime') }}</th>
+							<th>{{ t('pipelineRun.fields.duration') }}</th>
+							<th>{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -84,7 +84,7 @@
 							</td>
 							<td>
 								<AppBadge variant="status" :tone="statusTone(run.status)">
-									{{ run.status }}
+									{{ t(`pipelineRun.status.${run.status}`) }}
 								</AppBadge>
 							</td>
 							<td
@@ -108,7 +108,7 @@
 									class="app-link whitespace-nowrap"
 									@click="router.push(`/ci/run/${run.id}`)"
 								>
-									查看
+									{{ t('application.view') }}
 								</button>
 							</td>
 						</tr>
@@ -131,6 +131,7 @@
 <script setup lang="ts">
 	import { Search } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRoute, useRouter } from 'vue-router';
 	import { pipelineRunApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppBadge from '@/components/AppBadge.vue';
@@ -150,6 +151,7 @@
 
 	const route = useRoute();
 	const router = useRouter();
+	const { t } = useI18n();
 	const toast = useToast();
 	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
@@ -179,7 +181,7 @@
 	async function fetchRuns() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('pipelineRun.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -195,7 +197,7 @@
 				pagination.total = res.total;
 			});
 		} catch {
-			toast.error('获取流水线记录失败');
+			toast.error(t('pipelineRun.toast.loadFailed'));
 		}
 	}
 
@@ -208,7 +210,7 @@
 			const res = await repositoryApi.list({ per_page: 100, project_id: projectId });
 			repositories.value = res.items;
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+			toast.error(err instanceof Error ? err.message : t('pipelineRun.toast.loadRepositoriesFailed'));
 		}
 	}
 
@@ -221,7 +223,7 @@
 			const res = await pipelineTemplateApi.list({ per_page: 100, project_id: projectId });
 			templates.value = res.items;
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : '获取模板列表失败');
+			toast.error(err instanceof Error ? err.message : t('pipelineRun.toast.loadTemplatesFailed'));
 		}
 	}
 

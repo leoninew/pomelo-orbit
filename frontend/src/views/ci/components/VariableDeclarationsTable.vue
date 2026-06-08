@@ -1,16 +1,16 @@
 <template>
 	<div class="overflow-hidden">
 		<div v-if="declarations.length === 0" class="px-5 py-10 text-center text-muted-foreground">
-			<p class="text-sm">暂无变量</p>
+			<p class="text-sm">{{ t('variableDeclaration.noVariable') }}</p>
 		</div>
 		<table v-else class="app-table-detail">
 			<thead>
 				<tr>
-					<th>变量名</th>
-					<th>说明</th>
-					<th>变量值</th>
-					<th>来源</th>
-					<th v-if="!readonly">操作</th>
+					<th>{{ t('variableDeclaration.name') }}</th>
+					<th>{{ t('variableDeclaration.description') }}</th>
+					<th>{{ t('variableDeclaration.value') }}</th>
+					<th>{{ t('variableDeclaration.source') }}</th>
+					<th v-if="!readonly">{{ t('common.operation') }}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -32,20 +32,20 @@
 					</td>
 					<td>
 						<AppBadge variant="status" :tone="getSourceTone(requireSource(decl))">
-							{{ getSourceLabel(requireSource(decl)) }}
+							{{ t(`variableDeclaration.sourceLabels.${requireSource(decl)}`) }}
 						</AppBadge>
 					</td>
 					<td v-if="!readonly">
 						<div class="flex items-center gap-2">
 							<button v-if="canEdit(decl)" class="app-link" @click="emit('edit', decl.name)">
-								编辑
+								{{ t('common.edit') }}
 							</button>
 							<button
 								v-if="canEdit(decl)"
 								class="app-link-danger"
 								@click="emit('delete', decl.name)"
 							>
-								重置
+								{{ t('common.reset') }}
 							</button>
 							<span v-if="!canEdit(decl)" class="text-muted-foreground">—</span>
 						</div>
@@ -57,9 +57,10 @@
 </template>
 
 <script setup lang="ts">
+	import { useI18n } from 'vue-i18n';
 	import AppBadge from '@/components/AppBadge.vue';
 	import type { VariableDeclaration } from '@/types/ci/template';
-	import { getSourceLabel, getSourceTone, isVariableEditable } from '@/utils/variableSource';
+	import { getSourceTone, isVariableEditable } from '@/utils/variableSource';
 
 	withDefaults(
 		defineProps<{
@@ -70,6 +71,8 @@
 			readonly: false,
 		}
 	);
+
+	const { t } = useI18n();
 
 	const emit = defineEmits<{
 		(e: 'edit', name: string): void

@@ -1,9 +1,9 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-simple" aria-label="应用工具栏">
+		<ToolbarRoot class="app-toolbar-simple" :aria-label="t('application.toolbar')">
 			<SearchControl
 				v-model="searchText"
-				placeholder="搜索应用名称"
+				:placeholder="t('application.searchPlaceholder')"
 				:loading="status === 'loading'"
 				class="shrink-0"
 				@search="handleSearch"
@@ -13,19 +13,19 @@
 					v-model="viewMode"
 					type="single"
 					class="flex h-10 overflow-hidden rounded-md border border-border bg-background"
-					aria-label="应用视图"
+					:aria-label="t('application.viewMode')"
 				>
 					<ToggleGroupItem
 						value="card"
 						class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-						aria-label="卡片视图"
+						:aria-label="t('application.cardView')"
 					>
 						<LayoutGrid class="size-4" />
 					</ToggleGroupItem>
 					<ToggleGroupItem
 						value="table"
 						class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-						aria-label="表格视图"
+						:aria-label="t('application.tableView')"
 					>
 						<List class="size-4" />
 					</ToggleGroupItem>
@@ -36,11 +36,11 @@
 					@click="openCreateDialog"
 				>
 					<Plus class="size-4" />
-					新建应用
+					{{ t('application.createApplication') }}
 				</button>
 				<button class="app-button px-5" @click="triggerImport">
 					<Upload class="size-4" />
-					导入
+					{{ t('application.import') }}
 				</button>
 				<input
 					ref="fileInput"
@@ -86,20 +86,20 @@
 								</div>
 							</div>
 							<AppBadge variant="status" :tone="appStatusTone(app.status)">
-								{{ app.status }}
+								{{ t('status.' + app.status) }}
 							</AppBadge>
 						</div>
 
 						<div class="mt-5 grid gap-3 text-sm">
 							<div class="flex items-center justify-between gap-3">
-								<span class="text-muted-foreground">镜像拉取</span>
-								<span class="font-medium text-foreground">
+								<span class="text-muted-foreground">{{ t('application.imagePull') }}</span>
+								<span class="text-foreground">
 									{{ pullPolicyLabel(app.image_pull_policy) }}
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-3">
-								<span class="text-muted-foreground">路由托管</span>
-								<span class="font-medium text-foreground">
+								<span class="text-muted-foreground">{{ t('application.routeManaged') }}</span>
+								<span class="text-foreground">
 									{{ routeManagedLabel(app.route_managed) }}
 								</span>
 							</div>
@@ -110,7 +110,7 @@
 							@click.stop
 						>
 							<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
-								查看
+								{{ t('application.view') }}
 							</button>
 							<button
 								v-if="app.status === 'deployed'"
@@ -118,7 +118,7 @@
 								:disabled="isAppOperating(app)"
 								@click="handleStop(app)"
 							>
-								停止
+								{{ t('application.stop') }}
 							</button>
 							<button
 								v-else
@@ -126,7 +126,7 @@
 								:disabled="app.status === 'deploying' || isAppOperating(app)"
 								@click="handleDeploy(app)"
 							>
-								部署
+								{{ t('application.deploy') }}
 							</button>
 						</div>
 					</div>
@@ -151,13 +151,13 @@
 					<table class="app-table-list min-w-[1040px]">
 						<thead>
 							<tr>
-								<th>名称</th>
-								<th>编码</th>
-								<th>拉取策略</th>
-								<th>状态</th>
-								<th>路由管理</th>
-								<th>创建时间</th>
-								<th>操作</th>
+								<th>{{ t('common.name') }}</th>
+								<th>{{ t('application.code') }}</th>
+								<th>{{ t('application.imagePullPolicy') }}</th>
+								<th>{{ t('common.status') }}</th>
+								<th>{{ t('application.routeManaged') }}</th>
+								<th>{{ t('common.createdAt') }}</th>
+								<th>{{ t('common.operation') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -168,18 +168,18 @@
 									</button>
 								</td>
 								<td class="text-foreground">{{ app.code }}</td>
-								<td class="text-foreground">{{ app.image_pull_policy }}</td>
+								<td class="text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</td>
 								<td>
-									<AppBadge variant="status" :tone="appStatusTone(app.status)">
-										{{ app.status }}
+									<AppBadge variant="status" :tone="appStatusTone(app.status)" class="font-normal">
+										{{ t('status.' + app.status) }}
 									</AppBadge>
 								</td>
-								<td class="text-foreground">{{ app.route_managed ? '启用' : '未启用' }}</td>
+								<td class="text-foreground">{{ routeManagedLabel(app.route_managed) }}</td>
 								<td class="text-foreground">{{ formatTime(app.created_at) }}</td>
 								<td>
 									<div class="flex items-center gap-3">
 										<button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
-											查看
+											{{ t('application.view') }}
 										</button>
 										<button
 											v-if="app.status === 'deployed'"
@@ -187,7 +187,7 @@
 											:disabled="operating"
 											@click="handleStop(app)"
 										>
-											停止
+											{{ t('application.stop') }}
 										</button>
 										<button
 											v-else
@@ -195,7 +195,7 @@
 											:disabled="app.status === 'deploying' || operating"
 											@click="handleDeploy(app)"
 										>
-											部署
+											{{ t('application.deploy') }}
 										</button>
 									</div>
 								</td>
@@ -215,21 +215,21 @@
 			</div>
 		</template>
 
-		<AppDialog v-model:open="isCreateDialogOpen" title="新建应用">
+		<AppDialog v-model:open="isCreateDialogOpen" :title="t('application.createApplication')">
 			<ApplicationFormFields
 				:form="form"
 				:errors="formErrors"
 				@update:form="Object.assign(form, $event)"
 			/>
 			<template #footer>
-				<button class="app-button" @click="isCreateDialogOpen = false">取消</button>
+				<button class="app-button" @click="isCreateDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-					创建
+					{{ t('application.create') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isImportDialogOpen" title="导入应用">
+		<AppDialog v-model:open="isImportDialogOpen" :title="t('application.importApplication')">
 			<ApplicationFormFields
 				:form="importForm"
 				:errors="importErrors"
@@ -239,9 +239,9 @@
 				{{ importSummary }}
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isImportDialogOpen = false">取消</button>
+				<button class="app-button" @click="isImportDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleImportOk">
-					导入
+					{{ t('application.import') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -251,6 +251,7 @@
 <script setup lang="ts">
 	import { LayoutGrid, List, Plus, Upload } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import AppBadge from '@/components/AppBadge.vue';
@@ -274,6 +275,7 @@
 	import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
 
 	const router = useRouter();
+	const { t } = useI18n();
 	const toast = useToast();
 	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
@@ -307,24 +309,19 @@
 	});
 	const importErrors = reactive({ name: '', code: '' });
 	const importSummary = computed(() =>
-		[
-			`配置文件 ${importForm.config_files.length}`,
-			`镜像配置 ${importForm.service_configs.length}`,
-			`路由 ${importForm.routes.length}`,
-		].join(' / ')
+		t('application.importSummary', {
+			configFiles: importForm.config_files.length,
+			serviceConfigs: importForm.service_configs.length,
+			routes: importForm.routes.length,
+		})
 	);
 
 	function pullPolicyLabel(policy: string) {
-		const map: Record<string, string> = {
-			missing: '缺失时拉取',
-			always: '总是拉取',
-			never: '从不拉取',
-		};
-		return map[policy] ?? policy;
+		return t(`application.imagePullPolicyLabels.${policy}`);
 	}
 
 	function routeManagedLabel(enabled: boolean) {
-		return enabled ? '已启用' : '未启用';
+		return t(enabled ? 'application.routeManagedLabels.enabled' : 'application.routeManagedLabels.disabled');
 	}
 
 	function isAppOperating(app: Application) {
@@ -334,7 +331,7 @@
 	async function fetchApplications() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('application.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -349,7 +346,7 @@
 				pagination.total = res.total;
 			});
 		} catch {
-			toast.error('获取应用列表失败');
+			toast.error(t('application.toast.loadFailed'));
 		}
 	}
 
@@ -370,10 +367,10 @@
 	}
 
 	function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
-		errors.name = target.name.trim() ? '' : '请输入应用名称';
+		errors.name = target.name.trim() ? '' : t('application.validation.nameRequired');
 		errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
 			? ''
-			: '必须以小写字母开头，只能包含小写字母、数字和连字符';
+			: t('application.validation.codeInvalid');
 		return !errors.name && !errors.code;
 	}
 
@@ -398,7 +395,7 @@
 		}
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('application.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -412,12 +409,12 @@
 					},
 					{ project_id: projectId }
 				);
-				toast.success('创建成功');
+				toast.success(t('application.toast.createSuccess'));
 				isCreateDialogOpen.value = false;
 				await fetchApplications();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '创建失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.createFailed'));
 		}
 	}
 
@@ -434,7 +431,7 @@
 		try {
 			const data = JSON.parse(await file.text()) as ApplicationImportReq;
 			if (!data.name || !data.code) {
-				toast.error('文件格式错误：缺少必填字段 name 或 code');
+				toast.error(t('application.validation.importMissingRequiredFields'));
 				return;
 			}
 			Object.assign(importForm, {
@@ -450,7 +447,7 @@
 			Object.assign(importErrors, { name: '', code: '' });
 			isImportDialogOpen.value = true;
 		} catch {
-			toast.error('解析文件失败');
+			toast.error(t('application.toast.parseImportFailed'));
 		} finally {
 			target.value = '';
 		}
@@ -462,7 +459,7 @@
 		}
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('application.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -480,12 +477,12 @@
 					},
 					{ project_id: projectId }
 				);
-				toast.success('导入成功');
+				toast.success(t('application.toast.importSuccess'));
 				isImportDialogOpen.value = false;
 				await fetchApplications();
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '导入失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.importFailed'));
 		}
 	}
 
@@ -494,11 +491,11 @@
 		try {
 			await executeOp(async () => {
 				const { deployment_id } = await applicationApi.deploy(app.id);
-				toast.success(`${app.name} 部署已触发`);
+				toast.success(t('application.toast.deployTriggered', { name: app.name }));
 				router.push(`/cd/deployments/${deployment_id}`);
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '部署失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
 		} finally {
 			operatingAppId.value = null;
 		}
@@ -509,11 +506,11 @@
 		try {
 			await executeOp(async () => {
 				const { deployment_id } = await applicationApi.stop(app.id);
-				toast.success(`${app.name} 停止已触发`);
+				toast.success(t('application.toast.stopTriggered', { name: app.name }));
 				router.push(`/cd/deployments/${deployment_id}`);
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '停止失败');
+			toast.error(error instanceof Error ? error.message : t('application.toast.stopFailed'));
 		} finally {
 			operatingAppId.value = null;
 		}

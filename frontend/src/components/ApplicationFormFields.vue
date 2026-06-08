@@ -1,15 +1,14 @@
 <template>
 	<div class="space-y-4">
-		<!-- 应用名称 -->
 		<div class="space-y-1.5">
 			<label class="app-field-label block">
-				应用名称
+				{{ t('application.name') }}
 				<span class="text-destructive">*</span>
 			</label>
 			<input
 				:value="form.name"
 				type="text"
-				placeholder="输入应用名称"
+				:placeholder="t('application.namePlaceholder')"
 				class="app-input"
 				:class="errors.name ? 'app-input-error' : ''"
 				@input="updateField('name', ($event.target as HTMLInputElement).value)"
@@ -17,36 +16,33 @@
 			<p v-if="errors.name" class="app-field-error mt-1 text-xs">{{ errors.name }}</p>
 		</div>
 
-		<!-- 应用代码 -->
 		<div class="space-y-1.5">
 			<label class="app-field-label block">
-				应用代码
+				{{ t('application.code') }}
 				<span class="text-destructive">*</span>
 			</label>
 			<input
 				:value="form.code"
 				type="text"
-				placeholder="输入应用代码（以小写字母开头，可含数字和连字符）"
+				:placeholder="t('application.codePlaceholder')"
 				class="app-input"
 				:class="errors.code ? 'app-input-error' : ''"
 				@input="updateField('code', ($event.target as HTMLInputElement).value)"
 			/>
 			<p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
-			<p class="app-field-hint">应用代码用于生成工作目录，创建后不可修改</p>
+			<p class="app-field-hint">{{ t('application.codeHint') }}</p>
 		</div>
 
-		<!-- 镜像拉取策略 -->
 		<div class="space-y-1.5">
-			<label class="app-field-label block">镜像拉取策略</label>
+			<label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
 			<SelectControl
 				:model-value="form.image_pull_policy"
 				:options="imagePullPolicyOptions"
-				placeholder="选择镜像拉取策略"
+				:placeholder="t('application.imagePullPolicyPlaceholder')"
 				@update:model-value="updateField('image_pull_policy', String($event))"
 			/>
 		</div>
 
-		<!-- 路由管理 -->
 		<div class="flex items-center gap-2">
 			<input
 				id="route_managed"
@@ -55,13 +51,17 @@
 				class="app-checkbox"
 				@change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
 			/>
-			<label for="route_managed" class="text-sm font-medium text-foreground">启用路由管理</label>
+			<label for="route_managed" class="text-sm font-medium text-foreground">
+				{{ t('application.enableRouteManaged') }}
+			</label>
 		</div>
-		<p class="app-field-hint">启用后可为应用配置 HTTP 路由，自动生成 Traefik 配置</p>
+		<p class="app-field-hint">{{ t('application.routeManagedHint') }}</p>
 	</div>
 </template>
 
 <script setup lang="ts">
+	import { computed } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import SelectControl from '@/components/SelectControl.vue';
 	import type { ApplicationFormState } from '@/types/cd/application';
 
@@ -74,6 +74,8 @@
 		'update:form': [value: ApplicationFormState]
 	}>();
 
+	const { t } = useI18n();
+
 	function updateField<K extends keyof ApplicationFormState>(
 		field: K,
 		value: ApplicationFormState[K]
@@ -81,9 +83,9 @@
 		emit('update:form', { ...props.form, [field]: value });
 	}
 
-	const imagePullPolicyOptions = [
-		{ value: 'missing', label: '缺失时拉取 (missing)' },
-		{ value: 'always', label: '总是拉取 (always)' },
-		{ value: 'never', label: '从不拉取 (never)' },
-	];
+	const imagePullPolicyOptions = computed(() => [
+		{ value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
+		{ value: 'always', label: t('application.imagePullPolicyOptions.always') },
+		{ value: 'never', label: t('application.imagePullPolicyOptions.never') },
+	]);
 </script>

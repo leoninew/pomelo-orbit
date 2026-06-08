@@ -1,11 +1,11 @@
 <template>
 	<div class="flex flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || '模板详情' }}</h1>
+			<h1 class="text-xl font-semibold text-foreground">{{ template?.name || t('pipelineTemplate.detailTitle') }}</h1>
 			<div class="flex flex-wrap items-center gap-2">
 				<button v-if="template" class="app-button-primary h-9 px-3" @click="openEditInfoModal">
 					<Pencil class="size-4" />
-					编辑
+					{{ t('common.edit') }}
 				</button>
 				<button
 					v-if="template && (isDirty || hasStageUpdates)"
@@ -14,11 +14,11 @@
 					@click="handleSave"
 				>
 					<Save class="size-4" />
-					{{ hasStageUpdates && !isDirty ? '更新' : '保存' }}
+					{{ hasStageUpdates && !isDirty ? t('pipelineTemplate.updated') : t('common.save') }}
 				</button>
 				<button v-if="template" class="app-button h-9 px-3" @click="openRunModal">
 					<Play class="size-4" />
-					运行
+					{{ t('pipelineTemplate.runPipeline') }}
 				</button>
 				<button
 					v-if="template"
@@ -27,73 +27,73 @@
 					@click="handleDuplicate"
 				>
 					<Copy class="size-4" />
-					复制
+					{{ t('common.copy') }}
 				</button>
 				<button v-if="template" class="app-button-danger h-9 px-3" @click="openDeleteModal">
 					<Trash2 class="size-4" />
-					删除
+					{{ t('common.delete') }}
 				</button>
 				<button class="app-button h-9 px-4" @click="router.push('/ci/template')">
 					<ArrowLeft class="size-4" />
-					返回
+					{{ t('common.back') }}
 				</button>
 			</div>
 		</div>
 
-		<!-- 加载状态 -->
+		<!-- Loading State -->
 		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
-		<!-- 内容 -->
+		<!-- Content -->
 		<div v-else-if="template" class="flex flex-col gap-4">
-			<!-- 基本信息卡片 -->
+			<!-- Basic Info Card -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">基本信息</h2>
+					<h2 class="font-semibold text-foreground">{{ t('pipelineTemplate.basicInfo') }}</h2>
 				</div>
 				<dl class="grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2">
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">模板名称</dt>
+						<dt class="w-32 shrink-0 text-muted-foreground">{{ t('pipelineTemplate.templateName') }}</dt>
 						<dd class="text-foreground">{{ template.name }}</dd>
 					</div>
 					<div class="flex gap-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">版本</dt>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('pipelineTemplate.version') }}</dt>
 						<dd class="text-foreground">v{{ template.version }}</dd>
 					</div>
 					<div class="flex gap-2 sm:col-span-2">
-						<dt class="w-24 shrink-0 text-muted-foreground">描述</dt>
-						<dd class="text-foreground">{{ template.description || '无' }}</dd>
+						<dt class="w-24 shrink-0 text-muted-foreground">{{ t('common.description') }}</dt>
+						<dd class="text-foreground">{{ template.description || t('pipelineTemplate.noDescription') }}</dd>
 					</div>
 				</dl>
 			</div>
 
-			<!-- Stage 编排 -->
+			<!-- Stage Orchestration -->
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">阶段编排</h2>
+					<h2 class="font-semibold text-foreground">{{ t('pipelineTemplate.stageOrchestration') }}</h2>
 					<div class="flex items-center gap-2">
 						<ViewModeToggle v-model="viewMode" />
 						<button class="app-button-primary h-8 px-3" @click="openAddOrchModal">
 							<Plus class="size-4" />
-							添加阶段
+							{{ t('pipelineTemplate.addStage') }}
 						</button>
 					</div>
 				</div>
-				<!-- 列表视图 -->
+				<!-- List View -->
 				<div v-if="viewMode === 'list'" class="overflow-x-auto">
 					<table class="app-table-detail min-w-[760px]">
 						<thead>
 							<tr>
-								<th>阶段</th>
-								<th>版本</th>
-								<th>依赖</th>
-								<th>制品</th>
-								<th>操作</th>
+								<th>{{ t('pipelineTemplate.stage') }}</th>
+								<th>{{ t('pipelineTemplate.version') }}</th>
+								<th>{{ t('pipelineTemplate.dependency') }}</th>
+								<th>{{ t('pipelineTemplate.artifact') }}</th>
+								<th>{{ t('common.operation') }}</th>
 							</tr>
 						</thead>
 						<tbody>
 							<tr v-if="sortableOrch.length === 0">
 								<td colspan="5" class="text-center text-muted-foreground">
-									暂无 Stage，点击上方按钮添加
+									{{ t('pipelineTemplate.noStageHint') }}
 								</td>
 							</tr>
 							<tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_id">
@@ -109,7 +109,7 @@
 											"
 											tone="warning"
 										>
-											有更新
+											{{ t('pipelineTemplate.updated') }}
 										</AppBadge>
 									</div>
 								</td>
@@ -127,8 +127,8 @@
 								</td>
 								<td>
 									<div class="flex items-center gap-3">
-										<button class="app-link" @click="openEditOrchModal(idx)">编辑</button>
-										<button class="app-link-danger" @click="confirmRemoveOrch(idx)">移除</button>
+										<button class="app-link" @click="openEditOrchModal(idx)">{{ t('common.edit') }}</button>
+										<button class="app-link-danger" @click="confirmRemoveOrch(idx)">{{ t('common.remove') }}</button>
 									</div>
 								</td>
 							</tr>
@@ -136,26 +136,26 @@
 					</table>
 				</div>
 
-				<!-- DAG 视图 -->
+				<!-- DAG View -->
 				<div v-else-if="viewMode === 'dag'" class="p-6">
 					<div v-if="dagStages.length === 0" class="text-center text-muted-foreground">
-						暂无 Stage，点击上方按钮添加
+						{{ t('pipelineTemplate.noStageHint') }}
 					</div>
 					<div v-else class="h-[500px]">
 						<StageDAGView :stages="dagStages" :animated="true" />
 					</div>
 				</div>
-				<!-- 无效状态 -->
-				<div v-else class="p-6 text-center text-destructive">无效的视图模式</div>
+				<!-- Invalid State -->
+				<div v-else class="p-6 text-center text-destructive">{{ t('pipelineTemplate.invalidViewMode') }}</div>
 			</div>
 
-			<!-- 变量声明 -->
+			<!-- {{ t('pipelineTemplate.variableDeclarations') }} -->
 			<div class="app-surface">
 				<div class="app-section-header flex items-center justify-between">
-					<h2 class="font-semibold text-foreground">变量声明</h2>
+					<h2 class="font-semibold text-foreground">{{ t('pipelineTemplate.variableDeclarations') }}</h2>
 					<button class="app-button-primary h-8 px-3" @click="openAddVarModal">
 						<Plus class="size-4" />
-						添加变量
+						{{ t('pipelineTemplate.addVariable') }}
 					</button>
 				</div>
 				<VariableDeclarationsTable
@@ -166,10 +166,10 @@
 				/>
 			</div>
 
-			<!-- 制品声明 -->
+			<!-- {{ t('pipelineTemplate.artifactDeclarations') }} -->
 			<div class="app-surface">
 				<div class="app-section-header">
-					<h2 class="font-semibold text-foreground">制品声明</h2>
+					<h2 class="font-semibold text-foreground">{{ t('pipelineTemplate.artifactDeclarations') }}</h2>
 				</div>
 				<AppEmptyState v-if="artifactDeclarations.length === 0" size="compact" />
 				<div v-else class="overflow-x-auto">
@@ -177,9 +177,9 @@
 						<thead>
 							<tr>
 								<th>Stage</th>
-								<th>类型</th>
-								<th>名称</th>
-								<th>路径/镜像</th>
+								<th>{{ t('common.type') }}</th>
+								<th>{{ t('common.name') }}</th>
+								<th>{{ t('pipelineTemplate.pathOrImage') }}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -199,37 +199,37 @@
 			</div>
 		</div>
 
-		<AppDialog v-model:open="isEditInfoDialogOpen" title="编辑基本信息">
+		<AppDialog v-model:open="isEditInfoDialogOpen" :title="t('pipelineTemplate.editBasicInfo')">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">模板名称</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.templateName') }}</label>
 				<input v-model="editForm.name" type="text" class="app-input" />
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">描述</label>
+				<label class="app-field-label block">{{ t('common.description') }}</label>
 				<textarea v-model="editForm.description" rows="3" class="app-textarea"></textarea>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="cancelEditInfo">取消</button>
+				<button class="app-button" @click="cancelEditInfo">{{ t('common.cancel') }}</button>
 				<button :disabled="saving" class="app-button-primary" @click="handleEditInfoOk">
-					保存
+					{{ t('common.save') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isAddOrchDialogOpen" title="添加 Stage">
+		<AppDialog v-model:open="isAddOrchDialogOpen" :title="t('pipelineTemplate.addStage')">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">选择 Stage</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.selectStage') }}</label>
 				<ComboboxSelect
 					:model-value="addOrchForm.stageId"
 					:options="stageSelectOptions"
 					:portal="false"
-					placeholder="搜索 Stage..."
-					empty-text="未找到 Stage"
+					:placeholder="t('pipelineTemplate.searchStage')"
+					:empty-text="t('pipelineTemplate.noStageFound')"
 					@update:model-value="handleStageSelection"
 				/>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">依赖 Stage（可选）</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.dependsOnStageOptional') }}</label>
 				<div class="space-y-2">
 					<label v-for="orch in sortableOrch" :key="orch.stage_id" class="flex items-center gap-2">
 						<input
@@ -243,16 +243,16 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isAddOrchDialogOpen = false">取消</button>
+				<button class="app-button" @click="isAddOrchDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button :disabled="!addOrchForm.stageId" class="app-button-primary" @click="confirmAddOrch">
-					添加
+					{{ t('common.add') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isEditOrchDialogOpen" title="编辑依赖">
+		<AppDialog v-model:open="isEditOrchDialogOpen" :title="t('pipelineTemplate.editDependencies')">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">依赖 Stage</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.dependsOnStage') }}</label>
 				<div class="space-y-2">
 					<label
 						v-for="orch in editableOrchOptions"
@@ -270,31 +270,31 @@
 				</div>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditOrchDialogOpen = false">取消</button>
-				<button class="app-button-primary" @click="confirmEditOrch">保存</button>
+				<button class="app-button" @click="isEditOrchDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button class="app-button-primary" @click="confirmEditOrch">{{ t('common.save') }}</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isRunDialogOpen" title="运行流水线">
+		<AppDialog v-model:open="isRunDialogOpen" :title="t('pipelineTemplate.runPipeline')">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">选择项目</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.selectRepository') }}</label>
 				<ComboboxSelect
 					:model-value="runForm.repositoryId"
 					:options="repoSelectOptions"
 					:portal="false"
-					placeholder="搜索项目..."
-					empty-text="未找到项目"
+					:placeholder="t('pipelineTemplate.searchRepository')"
+					:empty-text="t('pipelineTemplate.noRepositoryFound')"
 					@update:model-value="handleRepoSelection"
 				/>
 				<p
 					v-if="selectedRepository && !selectedRepository.git_credential_id"
 					class="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
 				>
-					该项目未配置 Git 凭据，请先在仓库详情配置后再运行。
+					{{ t('pipelineTemplate.repositoryMissingCredential') }}
 				</p>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">触发分支</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.triggerBranch') }}</label>
 				<input
 					v-model="runForm.triggerRef"
 					type="text"
@@ -303,90 +303,90 @@
 				/>
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isRunDialogOpen = false">取消</button>
+				<button class="app-button" @click="isRunDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button
 					:disabled="!runForm.repositoryId || !selectedRepository?.git_credential_id || running"
 					class="app-button-primary"
 					@click="handleRunOk"
 				>
-					运行
+					{{ t('pipelineTemplate.runPipeline') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isAddVarDialogOpen" title="添加变量">
+		<AppDialog v-model:open="isAddVarDialogOpen" :title="t('pipelineTemplate.addVariableTitle')">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">变量名</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.variableName') }}</label>
 				<input v-model="varForm.name" type="text" class="app-input" />
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">变量值</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.variableValue') }}</label>
 				<input v-model="varForm.value" type="text" class="app-input" />
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">说明</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.variableDescription') }}</label>
 				<input v-model="varForm.description" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isAddVarDialogOpen = false">取消</button>
-				<button class="app-button-primary" @click="handleAddVarOk">添加</button>
+				<button class="app-button" @click="isAddVarDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button class="app-button-primary" @click="handleAddVarOk">{{ t('common.add') }}</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isEditVarDialogOpen" title="编辑变量">
+		<AppDialog v-model:open="isEditVarDialogOpen" :title="t('pipelineTemplate.editVariableTitle')">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">变量名</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.variableName') }}</label>
 				<input v-model="varForm.name" type="text" disabled class="app-input" />
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">变量值</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.variableValue') }}</label>
 				<input v-model="varForm.value" type="text" class="app-input" />
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">说明</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.variableDescription') }}</label>
 				<input v-model="varForm.description" type="text" class="app-input" />
 			</div>
 			<template #footer>
-				<button class="app-button" @click="isEditVarDialogOpen = false">取消</button>
-				<button class="app-button-primary" @click="handleEditVarOk">保存</button>
+				<button class="app-button" @click="isEditVarDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button class="app-button-primary" @click="handleEditVarOk">{{ t('common.save') }}</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteDialogOpen"
-			title="确认删除"
+			:title="t('pipelineTemplate.confirmDelete')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
-			<p class="text-sm text-muted-foreground">确定要删除此模板吗？此操作不可恢复。</p>
+			<p class="text-sm text-muted-foreground">{{ t('pipelineTemplate.deleteTemplateConfirm') }}</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeleteDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button :disabled="deleting" class="app-button-destructive" @click="handleDeleteOk">
-					确认删除
+					{{ t('pipelineTemplate.confirmDeleteAction') }}
 				</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteOrchDialogOpen"
-			title="确认移除"
+			:title="t('pipelineTemplate.confirmRemove')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
-			<p class="text-sm text-muted-foreground">确定要移除此 Stage 吗？</p>
+			<p class="text-sm text-muted-foreground">{{ t('pipelineTemplate.removeStageConfirm') }}</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteOrchDialogOpen = false">取消</button>
-				<button class="app-button-destructive" @click="removeOrch">确认移除</button>
+				<button class="app-button" @click="isDeleteOrchDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button class="app-button-destructive" @click="removeOrch">{{ t('pipelineTemplate.confirmRemoveAction') }}</button>
 			</template>
 		</AppDialog>
 
 		<AppDialog
 			v-model:open="isDeleteVarDialogOpen"
-			title="确认删除"
+			:title="t('pipelineTemplate.confirmDelete')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
-			<p class="text-sm text-muted-foreground">确定要删除变量 {{ varToDelete }} 吗？</p>
+			<p class="text-sm text-muted-foreground">{{ t('pipelineTemplate.deleteVariableConfirm', { name: varToDelete }) }}</p>
 			<template #footer>
-				<button class="app-button" @click="isDeleteVarDialogOpen = false">取消</button>
-				<button class="app-button-destructive" @click="deleteVariable">确认删除</button>
+				<button class="app-button" @click="isDeleteVarDialogOpen = false">{{ t('common.cancel') }}</button>
+				<button class="app-button-destructive" @click="deleteVariable">{{ t('pipelineTemplate.confirmDeleteAction') }}</button>
 			</template>
 		</AppDialog>
 	</div>
@@ -396,6 +396,7 @@
 	import { ArrowLeft, Copy, Pencil, Play, Plus, Save, Trash2 } from 'lucide-vue-next';
 	import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 	// import { VueDraggable } from 'vue-draggable-plus';
+	import { useI18n } from 'vue-i18n';
 	import { useRoute, useRouter } from 'vue-router';
 	import { buildStageApi, pipelineTemplateApi, repositoryApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -423,6 +424,7 @@
 	const router = useRouter();
 	const templateId = computed(() => route.params.id as string);
 	const toast = useToast();
+	const { t } = useI18n();
 	const projectStore = useProjectStore();
 
 	const { status, execute } = useStatusAsync();
@@ -455,11 +457,11 @@
 		repoOptions.value.map((repo) => ({
 			value: repo.id,
 			label: repo.name,
-			description: repo.git_credential_id ? repo.repository_url : '未配置 Git 凭据',
+			description: repo.git_credential_id ? repo.repository_url : t('pipelineTemplate.missingGitCredential'),
 		}))
 	);
 
-	// 已保存的快照，用于 dirty 检测
+	// Saved snapshots for dirty detection
 	const savedOrch = ref<string>('[]');
 	const savedDeclarations = ref<string>('[]');
 
@@ -545,7 +547,7 @@
 		})
 	);
 
-	// 监听项目选择，自动填充默认分支
+	// Watch repository selection and fill default branch
 	watch(
 		() => runForm.repositoryId,
 		(newRepoId) => {
@@ -562,7 +564,7 @@
 		template.value = tmpl;
 		sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
 		declarations.value = [...tmpl.variable_declarations];
-		// 更新已保存快照
+		// Update saved snapshots
 		savedOrch.value = JSON.stringify(sortableOrch.value.map((o, i) => ({ ...o, sort_order: i })));
 		savedDeclarations.value = JSON.stringify(declarations.value);
 		Object.keys(stageCache).forEach((key) => delete stageCache[key]);
@@ -580,7 +582,7 @@
 				applyTemplateState(tmpl);
 			});
 		} catch {
-			toast.error('获取模板信息失败');
+			toast.error(t('pipelineTemplate.toast.loadDetailFailed'));
 			router.push('/ci/template');
 		}
 	}
@@ -588,7 +590,7 @@
 	async function searchStages() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('pipelineTemplate.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -598,7 +600,7 @@
 			});
 			stageOptions.value = resp.items;
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : '获取 Stage 列表失败');
+			toast.error(err instanceof Error ? err.message : t('pipelineTemplate.toast.loadStagesFailed'));
 		}
 	}
 
@@ -613,7 +615,7 @@
 	async function syncDeclarations() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('pipelineTemplate.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -628,7 +630,7 @@
 				{ project_id: projectId }
 			);
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '同步变量失败');
+			toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.syncVariablesFailed'));
 		}
 	}
 
@@ -650,23 +652,23 @@
 
 	async function handleEditInfoOk() {
 		if (!editForm.name.trim()) {
-			toast.error('模板名称不能为空');
+			toast.error(t('pipelineTemplate.validation.nameNotEmpty'));
 			return;
 		}
 
 		try {
 			await executeSave(async () => {
-				// 只保存基本信息，不传递 orchestration 和 variable_declarations
+				// Save basic info only; orchestration and variable_declarations are unchanged
 				const data = await pipelineTemplateApi.update(templateId.value, {
 					name: editForm.name,
 					description: editForm.description,
 				});
 				applyTemplateState(data);
-				toast.success('保存成功');
+				toast.success(t('pipelineTemplate.toast.saveSuccess'));
 			});
 			isEditInfoDialogOpen.value = false;
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			toast.error(e instanceof Error ? e.message : t('pipelineTemplate.toast.saveFailed'));
 		}
 	}
 
@@ -677,13 +679,13 @@
 		}));
 		const cycle = detectCircularDependencies(orchForCheck);
 		if (cycle) {
-			toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+			toast.error(t('pipelineTemplate.cycleDetected', { cycle: cycle.join(' → ') }));
 			return;
 		}
 
 		try {
 			await executeSave(async () => {
-				// 自动更新编排中的 stage_version
+				// Auto-update stage_version in orchestration
 				for (const orch of sortableOrch.value) {
 					const stage = stageCache[orch.stage_id];
 					if (stage && stage.version > orch.stage_version) {
@@ -701,10 +703,10 @@
 					variable_declarations: declarations.value,
 				});
 				applyTemplateState(data);
-				toast.success(`保存成功，快照 v${data.version}`);
+				toast.success(t('pipelineTemplate.toast.saveSnapshotSuccess', { version: data.version }));
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '保存失败');
+			toast.error(e instanceof Error ? e.message : t('pipelineTemplate.toast.saveFailed'));
 		}
 	}
 
@@ -712,11 +714,11 @@
 		try {
 			await executeDuplicate(async () => {
 				const newTemplate = await pipelineTemplateApi.duplicate(templateId.value);
-				toast.success('复制成功');
+				toast.success(t('pipelineTemplate.toast.duplicateSuccess'));
 				router.push(`/ci/template/${newTemplate.id}`);
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '复制失败');
+			toast.error(e instanceof Error ? e.message : t('pipelineTemplate.toast.duplicateFailed'));
 		}
 	}
 
@@ -728,15 +730,15 @@
 		try {
 			await executeDelete(async () => {
 				await pipelineTemplateApi.delete(templateId.value);
-				toast.success('删除成功');
+				toast.success(t('pipelineTemplate.toast.deleteSuccess'));
 				router.push('/ci/template');
 			});
 		} catch (e) {
-			toast.error(e instanceof Error ? e.message : '删除失败');
+			toast.error(e instanceof Error ? e.message : t('pipelineTemplate.toast.deleteFailed'));
 		}
 	}
 
-	// ── 编排操作 ──────────────────────────────────────────────────────────────────
+	// ── Orchestration operations ────────────────────────────────────────────────────
 
 	async function openAddOrchModal() {
 		addOrchForm.stageId = '';
@@ -768,7 +770,7 @@
 		}));
 		const cycle = detectCircularDependencies(orchForCheck);
 		if (cycle) {
-			toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+			toast.error(t('pipelineTemplate.cycleDetected', { cycle: cycle.join(' → ') }));
 			return;
 		}
 		sortableOrch.value.push(newOrch);
@@ -819,7 +821,7 @@
 		}));
 		const cycle = detectCircularDependencies(orchForCheck);
 		if (cycle) {
-			toast.error(`检测到循环依赖: ${cycle.join(' → ')}`);
+			toast.error(t('pipelineTemplate.cycleDetected', { cycle: cycle.join(' → ') }));
 			return;
 		}
 		orch.depends_on = editOrchForm.dependsOn;
@@ -828,12 +830,12 @@
 		isEditOrchDialogOpen.value = false;
 	}
 
-	// ── 运行流水线 ──────────────────────────────────────────────────────────────────
+	// ── Run pipeline ────────────────────────────────────────────────────────────────
 
 	async function searchRepos() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('pipelineTemplate.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -843,7 +845,7 @@
 			});
 			repoOptions.value = resp.items;
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+			toast.error(err instanceof Error ? err.message : t('pipelineTemplate.toast.loadRepositoriesFailed'));
 		}
 	}
 
@@ -853,7 +855,7 @@
 
 	async function openRunModal() {
 		if (isDirty.value) {
-			toast.error('有未保存的变更，请先保存后再运行');
+			toast.error(t('pipelineTemplate.toast.unsavedChanges'));
 			return;
 		}
 		runForm.repositoryId = '';
@@ -864,13 +866,13 @@
 
 	async function handleRunOk() {
 		if (!runForm.repositoryId) {
-			toast.error('请选择项目');
+			toast.error(t('pipelineTemplate.toast.selectRepositoryRequired'));
 			return;
 		}
 
 		const repo = selectedRepository.value;
 		if (!repo?.git_credential_id) {
-			toast.error('该项目未配置 Git 凭据');
+			toast.error(t('pipelineTemplate.toast.repositoryMissingCredential'));
 			return;
 		}
 
@@ -882,16 +884,16 @@
 					trigger_ref: triggerRef,
 					variables: {},
 				});
-				toast.success('触发成功');
+				toast.success(t('pipelineTemplate.toast.runTriggered'));
 				isRunDialogOpen.value = false;
 				router.push(`/ci/run/${run.id}`);
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '触发失败');
+			toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.runFailed'));
 		}
 	}
 
-	// ── 变量管理 ──────────────────────────────────────────────────────────────────
+	// ── Variable management ─────────────────────────────────────────────────────────
 
 	function openAddVarModal() {
 		varForm.name = '';
@@ -902,13 +904,13 @@
 
 	function handleAddVarOk() {
 		if (!varForm.name.trim()) {
-			toast.error('变量名不能为空');
+			toast.error(t('pipelineTemplate.validation.variableNameRequired'));
 			return;
 		}
 
-		// 检查是否已存在
+		// Check duplicates
 		if (declarations.value.some((d) => d.name === varForm.name)) {
-			toast.error('变量名已存在');
+			toast.error(t('pipelineTemplate.validation.variableNameExists'));
 			return;
 		}
 

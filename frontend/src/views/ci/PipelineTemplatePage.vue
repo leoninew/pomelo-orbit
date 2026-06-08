@@ -1,9 +1,9 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-simple" aria-label="模板工具栏">
+		<ToolbarRoot class="app-toolbar-simple" :aria-label="t('pipelineTemplate.toolbar')">
 			<SearchControl
 				v-model="searchText"
-				placeholder="搜索模板名称"
+				:placeholder="t('pipelineTemplate.searchPlaceholder')"
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
@@ -12,26 +12,26 @@
 					v-model="viewMode"
 					type="single"
 					class="flex h-10 overflow-hidden rounded-md border border-border bg-background"
-					aria-label="模板视图"
+					:aria-label="t('pipelineTemplate.viewMode')"
 				>
 					<ToggleGroupItem
 						value="card"
 						class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-						aria-label="卡片视图"
+						:aria-label="t('pipelineTemplate.cardView')"
 					>
 						<LayoutGrid class="size-4" />
 					</ToggleGroupItem>
 					<ToggleGroupItem
 						value="table"
 						class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-						aria-label="表格视图"
+						:aria-label="t('pipelineTemplate.tableView')"
 					>
 						<List class="size-4" />
 					</ToggleGroupItem>
 				</ToggleGroupRoot>
 				<button class="app-button-primary px-5" @click="openCreateModal">
 					<Plus class="size-4" />
-					新建模板
+					{{ t('pipelineTemplate.createTemplate') }}
 				</button>
 			</div>
 		</ToolbarRoot>
@@ -63,7 +63,7 @@
 							class="app-link shrink-0 text-sm"
 							@click.stop="handleDuplicate(tpl.id)"
 						>
-							复制
+							{{ t('common.copy') }}
 						</button>
 					</div>
 					<p class="mb-4 min-h-10 text-sm text-muted-foreground">
@@ -71,8 +71,8 @@
 					</p>
 					<div class="mb-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
 						<AppBadge>v{{ tpl.version }}</AppBadge>
-						<AppBadge>{{ tpl.orchestration.length }} 阶段</AppBadge>
-						<AppBadge>{{ tpl.variable_declarations.length }} 变量</AppBadge>
+						<AppBadge>{{ t('pipelineTemplate.stageCount', { count: tpl.orchestration.length }) }}</AppBadge>
+						<AppBadge>{{ t('pipelineTemplate.variableCount', { count: tpl.variable_declarations.length }) }}</AppBadge>
 					</div>
 					<div class="text-sm text-muted-foreground">
 						{{ formatTime(tpl.updated_at) }}
@@ -96,11 +96,11 @@
 				<table class="app-table-list min-w-[780px]">
 					<thead>
 						<tr>
-							<th>名称</th>
-							<th>版本</th>
-							<th>描述</th>
-							<th>创建时间</th>
-							<th>操作</th>
+							<th>{{ t('common.name') }}</th>
+							<th>{{ t('pipelineTemplate.version') }}</th>
+							<th>{{ t('common.description') }}</th>
+							<th>{{ t('common.createdAt') }}</th>
+							<th>{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -118,13 +118,13 @@
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
 							<td>
-								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">查看</router-link>
+								<router-link :to="`/ci/template/${tpl.id}`" class="app-link">{{ t('application.view') }}</router-link>
 								<button
 									:disabled="duplicating"
 									class="app-link ml-3"
 									@click="handleDuplicate(tpl.id)"
 								>
-									复制
+									{{ t('common.copy') }}
 								</button>
 							</td>
 						</tr>
@@ -143,32 +143,32 @@
 		</div>
 	</div>
 
-	<AppDialog v-model:open="showCreateDialog" title="新建流水线模板">
+	<AppDialog v-model:open="showCreateDialog" :title="t('pipelineTemplate.createTemplate')">
 		<div class="space-y-4">
 			<div class="space-y-1.5">
-				<label class="app-field-label block">模板名称</label>
+				<label class="app-field-label block">{{ t('pipelineTemplate.templateName') }}</label>
 				<input
 					v-model="form.name"
 					type="text"
-					placeholder="输入模板名称"
+					:placeholder="t('pipelineTemplate.templateNamePlaceholder')"
 					class="app-input"
 					:class="errors.name ? 'app-input-error' : ''"
 				/>
 				<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
 			</div>
 			<div class="space-y-1.5">
-				<label class="app-field-label block">描述</label>
+				<label class="app-field-label block">{{ t('common.description') }}</label>
 				<textarea
 					v-model="form.description"
 					rows="3"
-					placeholder="输入模板描述"
+					:placeholder="t('pipelineTemplate.templateDescriptionPlaceholder')"
 					class="app-textarea"
 				/>
 			</div>
 		</div>
 		<template #footer>
-			<button class="app-button" @click="showCreateDialog = false">取消</button>
-			<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">创建</button>
+			<button class="app-button" @click="showCreateDialog = false">{{ t('common.cancel') }}</button>
+			<button class="app-button-primary" :disabled="operating" @click="handleCreateOk">{{ t('application.create') }}</button>
 		</template>
 	</AppDialog>
 </template>
@@ -176,6 +176,7 @@
 <script setup lang="ts">
 	import { LayoutGrid, List, Plus } from 'lucide-vue-next';
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRouter } from 'vue-router';
 	import { pipelineTemplateApi } from '@/api/ci';
 	import AppDialog from '@/components/AppDialog.vue';
@@ -193,6 +194,7 @@
 
 	const router = useRouter();
 	const toast = useToast();
+	const { t } = useI18n();
 	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
 	const { loading: operating, execute: executeOp } = useStatusAsync();
@@ -211,7 +213,7 @@
 	async function fetchTemplates() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('pipelineTemplate.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -226,7 +228,7 @@
 				pagination.total = res.total;
 			});
 		} catch {
-			toast.error('获取模板列表失败');
+			toast.error(t('pipelineTemplate.toast.loadFailed'));
 		}
 	}
 
@@ -256,13 +258,13 @@
 	}
 
 	async function handleCreateOk() {
-		errors.name = form.name.trim() ? '' : '请输入模板名称';
+		errors.name = form.name.trim() ? '' : t('pipelineTemplate.validation.nameRequired');
 		if (errors.name) {
 			return;
 		}
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('pipelineTemplate.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -275,12 +277,12 @@
 					},
 					{ project_id: projectId }
 				);
-				toast.success('创建成功');
+				toast.success(t('pipelineTemplate.toast.createSuccess'));
 				showCreateDialog.value = false;
 				router.push(`/ci/template/${tpl.id}`);
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '创建失败');
+			toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.createFailed'));
 		}
 	}
 
@@ -288,11 +290,11 @@
 		try {
 			await executeDuplicate(async () => {
 				const newTemplate = await pipelineTemplateApi.duplicate(id);
-				toast.success('复制成功');
+				toast.success(t('pipelineTemplate.toast.duplicateSuccess'));
 				router.push(`/ci/template/${newTemplate.id}`);
 			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : '复制失败');
+			toast.error(error instanceof Error ? error.message : t('pipelineTemplate.toast.duplicateFailed'));
 		}
 	}
 

@@ -309,6 +309,44 @@ export default {
 			parseComposeFailed: 'Failed to parse docker-compose; unable to configure routes',
 		},
 	},
+	deployment: {
+		toolbar: 'Deployment history toolbar',
+		filterApplication: 'Filter application',
+		searchPlaceholder: 'Search application',
+		fields: {
+			application: 'Application',
+			operationType: 'Operation Type',
+			triggerType: 'Trigger Type',
+			errorMessage: 'Error Message',
+			startTime: 'Start Time',
+			duration: 'Duration',
+		},
+		operationType: {
+			deploy: 'Deploy',
+			stop: 'Stop',
+			restart: 'Restart',
+		},
+		triggerType: {
+			manual: 'Manual',
+		},
+		status: {
+			waiting_to_run: 'Waiting',
+			running: 'Running',
+			ran_to_completion: 'Success',
+			faulted: 'Faulted',
+			canceled: 'Canceled',
+		},
+		dialog: {
+			confirmCancel: 'Confirm Cancel',
+			cancelConfirm: 'Cancel deployment for "{name}"?',
+			currentApplication: 'this application',
+		},
+		toast: {
+			loadFailed: 'Failed to load deployments',
+			cancelSuccess: 'Deployment canceled',
+			cancelFailed: 'Failed to cancel',
+		},
+	},
 	userManagement: {
 		searchPlaceholder: 'Search username/email',
 		create: 'New User',

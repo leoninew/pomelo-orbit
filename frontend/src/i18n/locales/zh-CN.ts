@@ -308,6 +308,44 @@ export default {
 			parseComposeFailed: '解析 docker-compose 失败，无法配置路由',
 		},
 	},
+	deployment: {
+		toolbar: '部署记录工具栏',
+		filterApplication: '筛选应用',
+		searchPlaceholder: '搜索应用',
+		fields: {
+			application: '应用',
+			operationType: '操作类型',
+			triggerType: '触发方式',
+			errorMessage: '错误信息',
+			startTime: '开始时间',
+			duration: '耗时',
+		},
+		operationType: {
+			deploy: '部署',
+			stop: '停止',
+			restart: '重启',
+		},
+		triggerType: {
+			manual: '手动',
+		},
+		status: {
+			waiting_to_run: '待运行',
+			running: '运行中',
+			ran_to_completion: '成功',
+			faulted: '异常',
+			canceled: '已取消',
+		},
+		dialog: {
+			confirmCancel: '确认取消',
+			cancelConfirm: '确定要取消「{name}」的部署吗？',
+			currentApplication: '该应用',
+		},
+		toast: {
+			loadFailed: '获取部署记录失败',
+			cancelSuccess: '已取消部署',
+			cancelFailed: '取消失败',
+		},
+	},
 	userManagement: {
 		searchPlaceholder: '搜索用户名/邮箱',
 		create: '新建用户',

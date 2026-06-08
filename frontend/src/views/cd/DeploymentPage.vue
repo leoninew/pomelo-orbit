@@ -1,17 +1,17 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-scroll" aria-label="部署记录工具栏">
+		<ToolbarRoot class="app-toolbar-scroll" :aria-label="t('deployment.toolbar')">
 			<div class="app-toolbar-row">
 				<ComboboxSelect
 					:model-value="query.application_id"
 					:options="appSelectOptions"
-					placeholder="筛选应用"
+					:placeholder="t('deployment.filterApplication')"
 					width-class="app-toolbar-select"
 					@update:model-value="handleApplicationChange"
 				/>
 				<SearchControl
 					v-model="query.search"
-					placeholder="搜索应用"
+					:placeholder="t('deployment.searchPlaceholder')"
 					:loading="status === 'loading'"
 					class="shrink-0"
 					@search="handleSearch"
@@ -27,14 +27,14 @@
 				<table class="app-table-list min-w-[1120px]">
 					<thead>
 						<tr>
-							<th>应用</th>
-							<th>操作类型</th>
-							<th>触发方式</th>
-							<th>状态</th>
-							<th>错误信息</th>
-							<th>开始时间</th>
-							<th>耗时</th>
-							<th>操作</th>
+							<th>{{ t('deployment.fields.application') }}</th>
+							<th>{{ t('deployment.fields.operationType') }}</th>
+							<th>{{ t('deployment.fields.triggerType') }}</th>
+							<th>{{ t('common.status') }}</th>
+							<th>{{ t('deployment.fields.errorMessage') }}</th>
+							<th>{{ t('deployment.fields.startTime') }}</th>
+							<th>{{ t('deployment.fields.duration') }}</th>
+							<th>{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -51,7 +51,7 @@
 							<td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
 							<td>
 								<AppBadge variant="status" :tone="statusTone(deployment.status)">
-									{{ deployment.status }}
+									{{ deploymentStatusLabel(deployment.status) }}
 								</AppBadge>
 							</td>
 							<td
@@ -68,7 +68,7 @@
 							<td>
 								<div class="flex items-center gap-3">
 									<button class="app-link" @click="router.push(`/cd/deployments/${deployment.id}`)">
-										查看
+										{{ t('application.view') }}
 									</button>
 									<button
 										v-if="isCancelable(deployment)"
@@ -76,7 +76,7 @@
 										:disabled="operating"
 										@click="openCancelDialog(deployment)"
 									>
-										取消
+										{{ t('common.cancel') }}
 									</button>
 								</div>
 							</td>
@@ -97,18 +97,16 @@
 
 		<AppDialog
 			v-model:open="isCancelDialogOpen"
-			title="确认取消"
+			:title="t('deployment.dialog.confirmCancel')"
 			width-class="w-[min(420px,calc(100vw-32px))]"
 		>
 			<p class="text-sm text-foreground">
-				确定要取消「
-				<strong>{{ deploymentToCancel?.application_name || '该应用' }}</strong>
-				」的部署吗？
+				{{ t('deployment.dialog.cancelConfirm', { name: deploymentToCancel?.application_name || t('deployment.dialog.currentApplication') }) }}
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isCancelDialogOpen = false">取消</button>
+				<button class="app-button" @click="isCancelDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-destructive" :disabled="operating" @click="handleCancelOk">
-					确认取消
+					{{ t('deployment.dialog.confirmCancel') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -117,6 +115,7 @@
 
 <script setup lang="ts">
 	import { computed, onMounted, reactive, ref } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import { useRoute, useRouter } from 'vue-router';
 	import { applicationApi } from '@/api/cd/application';
 	import { deploymentApi } from '@/api/cd/deployments';
@@ -138,6 +137,7 @@
 
 	const router = useRouter();
 	const route = useRoute();
+	const { t, te } = useI18n();
 	const toast = useToast();
 	const projectStore = useProjectStore();
 	const { status, execute } = useStatusAsync();
@@ -172,30 +172,29 @@
 			const resp = await applicationApi.list({ per_page: 100, project_id: projectId });
 			appOptions.value = resp.items;
 		} catch (err: unknown) {
-			toast.error(err instanceof Error ? err.message : '获取应用列表失败');
+			toast.error(err instanceof Error ? err.message : t('application.toast.loadFailed'));
 		}
 	}
 
 	function operationTypeLabel(type: string) {
-		const map: Record<string, string> = {
-			deploy: '部署',
-			stop: '停止',
-			restart: '重启',
-		};
-		return map[type] ?? type;
+		const key = `deployment.operationType.${type}`;
+		return te(key) ? t(key) : type;
 	}
 
 	function triggerTypeLabel(type: string) {
-		const map: Record<string, string> = {
-			manual: '手动',
-		};
-		return map[type] ?? type;
+		const key = `deployment.triggerType.${type}`;
+		return te(key) ? t(key) : type;
+	}
+
+	function deploymentStatusLabel(status: string) {
+		const key = `deployment.status.${status}`;
+		return te(key) ? t(key) : status;
 	}
 
 	async function fetchDeployments() {
 		const projectId = projectStore.activeProjectId;
 		if (!projectId) {
-			toast.error('请先选择项目');
+			toast.error(t('application.toast.selectProjectRequired'));
 			return;
 		}
 		try {
@@ -211,7 +210,7 @@
 				pagination.total = res.total;
 			});
 		} catch {
-			toast.error('获取部署记录失败');
+			toast.error(t('deployment.toast.loadFailed'));
 		}
 	}
 
@@ -257,13 +256,13 @@
 		try {
 			await executeOp(async () => {
 				await deploymentApi.cancel(target.id);
-				toast.success('已取消部署');
+				toast.success(t('deployment.toast.cancelSuccess'));
 				isCancelDialogOpen.value = false;
 				deploymentToCancel.value = null;
 				await fetchDeployments();
 			});
 		} catch {
-			toast.error('取消失败');
+			toast.error(t('deployment.toast.cancelFailed'));
 		}
 	}
 

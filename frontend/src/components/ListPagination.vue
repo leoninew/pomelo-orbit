@@ -67,7 +67,10 @@
 <script setup lang="ts">
 	import { ChevronLeft, ChevronRight } from 'lucide-vue-next';
 	import { computed } from 'vue';
+	import { useI18n } from 'vue-i18n';
 	import SelectControl from '@/components/SelectControl.vue';
+
+	const { t } = useI18n();
 
 	const props = withDefaults(
 		defineProps<{
@@ -99,7 +102,7 @@
 	const pageSizeSelectOptions = computed(() =>
 		props.pageSizeOptions.map((size) => ({
 			value: size,
-			label: `${size} 条/页`,
+			label: t('common.perPage', { size }),
 		}))
 	);
 

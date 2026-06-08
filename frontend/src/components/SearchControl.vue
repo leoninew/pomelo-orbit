@@ -7,7 +7,7 @@
 			<input
 				:value="modelValue"
 				type="text"
-				:placeholder="placeholder"
+				:placeholder="placeholder || t('common.search')"
 				class="app-search-input"
 				:disabled="disabled || loading"
 				@input="handleInput"
@@ -16,7 +16,7 @@
 			<button
 				v-if="modelValue"
 				type="button"
-				aria-label="清空搜索"
+				:aria-label="t('common.clearSearch')"
 				class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
 				:disabled="disabled || loading"
 				@click="clearSearch"
@@ -30,13 +30,16 @@
 			:disabled="disabled || loading"
 			@click="emit('search')"
 		>
-			搜索
+			{{ t('common.search') }}
 		</button>
 	</div>
 </template>
 
 <script setup lang="ts">
 	import { Search, X } from 'lucide-vue-next';
+	import { useI18n } from 'vue-i18n';
+
+	const { t } = useI18n();
 
 	withDefaults(
 		defineProps<{
@@ -46,7 +49,6 @@
 			loading?: boolean
 		}>(),
 		{
-			placeholder: '搜索',
 			disabled: false,
 			loading: false,
 		}

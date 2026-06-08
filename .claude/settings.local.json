@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(dev-feature)",
+      "Bash(yarn lint:*)",
+      "Bash(yarn typecheck:*)",
+      "Bash(yarn --cwd frontend lint --fix)",
+      "Bash(yarn --cwd frontend typecheck)"
+    ]
+  }
+}

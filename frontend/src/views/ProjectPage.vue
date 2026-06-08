@@ -1,17 +1,17 @@
 <template>
 	<div class="space-y-6">
-		<ToolbarRoot class="app-toolbar-simple" aria-label="项目工具栏">
+		<ToolbarRoot class="app-toolbar-simple" :aria-label="t('project.toolbar')">
 			<SearchControl
 				v-model="searchText"
 				class="shrink-0"
-				placeholder="搜索项目名称/编码"
+				:placeholder="t('project.searchPlaceholder')"
 				:loading="status === 'loading'"
 				@search="handleSearch"
 			/>
 			<div class="flex items-center gap-3">
 				<button class="app-button-primary px-5" @click="openCreateDialog">
 					<Plus class="size-4" />
-					新建项目
+					{{ t('project.createProject') }}
 				</button>
 			</div>
 		</ToolbarRoot>
@@ -19,9 +19,9 @@
 		<div class="app-surface">
 			<AppSpinner v-if="status === 'loading'" class="py-16" />
 			<div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
-				<p class="text-sm">{{ error || '加载失败' }}</p>
+				<p class="text-sm">{{ error || t('project.loadFailed') }}</p>
 			</div>
-			<AppEmptyState v-else-if="filteredProjects.length === 0" />
+			<AppEmptyState v-else-if="filteredProjects.length === 0" :message="t('project.noProjects')" />
 			<div v-else class="overflow-x-auto">
 				<table class="app-table-list min-w-[900px]">
 					<colgroup>
@@ -34,12 +34,12 @@
 					</colgroup>
 					<thead>
 						<tr>
-							<th>项目名称</th>
-							<th>项目编码</th>
-							<th>状态</th>
-							<th>创建时间</th>
-							<th>更新时间</th>
-							<th>操作</th>
+							<th>{{ t('project.name') }}</th>
+							<th>{{ t('project.code') }}</th>
+							<th>{{ t('common.status') }}</th>
+							<th>{{ t('common.createdAt') }}</th>
+							<th>{{ t('common.updatedAt') }}</th>
+							<th>{{ t('common.operation') }}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -51,8 +51,12 @@
 							</td>
 							<td class="whitespace-nowrap text-foreground">{{ project.code }}</td>
 							<td>
-								<AppBadge v-if="project.is_active" variant="status" tone="success">活跃</AppBadge>
-								<AppBadge v-else variant="status" tone="default">已废弃</AppBadge>
+								<AppBadge v-if="project.is_active" variant="status" tone="success">
+									{{ t('project.active') }}
+								</AppBadge>
+								<AppBadge v-else variant="status" tone="default">
+									{{ t('project.deprecated') }}
+								</AppBadge>
 							</td>
 							<td class="whitespace-nowrap text-foreground">
 								{{ formatTime(project.created_at) }}
@@ -62,13 +66,15 @@
 							</td>
 							<td class="whitespace-nowrap">
 								<div class="flex items-center gap-3">
-									<button class="app-link" @click="openEditDialog(project)">编辑</button>
+									<button class="app-link" @click="openEditDialog(project)">
+										{{ t('common.edit') }}
+									</button>
 									<button
 										v-if="project.is_active"
 										class="app-link-danger"
 										@click="openDeprecateDialog(project)"
 									>
-										废弃
+										{{ t('project.deprecate') }}
 									</button>
 								</div>
 							</td>
@@ -87,10 +93,13 @@
 			/>
 		</div>
 
-		<AppDialog v-model:open="isDialogOpen" :title="editingProject ? '编辑项目' : '新建项目'">
+		<AppDialog
+			v-model:open="isDialogOpen"
+			:title="editingProject ? t('project.editProject') : t('project.createProject')"
+		>
 			<div class="space-y-4">
 				<div class="space-y-1.5">
-					<label class="app-field-label block">项目名称</label>
+					<label class="app-field-label block">{{ t('project.name') }}</label>
 					<input
 						v-model="form.name"
 						type="text"
@@ -101,7 +110,7 @@
 					<p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
 				</div>
 				<div class="space-y-1.5">
-					<label class="app-field-label block">项目编码</label>
+					<label class="app-field-label block">{{ t('project.code') }}</label>
 					<input
 						v-model="form.code"
 						type="text"
@@ -110,28 +119,30 @@
 						placeholder="default"
 					/>
 					<p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-					<p v-else class="app-field-hint">只能包含小写字母、数字、下划线和连字符</p>
+					<p v-else class="app-field-hint">{{ t('project.codeHint') }}</p>
 				</div>
 			</div>
 
 			<template #footer>
-				<button class="app-button" @click="isDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDialogOpen = false">{{ t('common.cancel') }}</button>
 				<button class="app-button-primary" :disabled="operating" @click="handleSave">
-					{{ editingProject ? '保存' : '创建' }}
+					{{ editingProject ? t('common.save') : t('project.create') }}
 				</button>
 			</template>
 		</AppDialog>
 
-		<AppDialog v-model:open="isDeprecateDialogOpen" title="废弃项目">
+		<AppDialog v-model:open="isDeprecateDialogOpen" :title="t('project.deprecateProject')">
 			<p class="text-sm text-foreground">
-				确定要废弃项目
+				{{ t('project.deprecateConfirmPrefix') }}
 				<strong>{{ deprecatingProject?.name }}</strong>
-				吗？废弃后将无法切换到该项目。
+				{{ t('project.deprecateConfirmSuffix') }}
 			</p>
 			<template #footer>
-				<button class="app-button" @click="isDeprecateDialogOpen = false">取消</button>
+				<button class="app-button" @click="isDeprecateDialogOpen = false">
+					{{ t('common.cancel') }}
+				</button>
 				<button class="app-button-danger" :disabled="operating" @click="handleDeprecate">
-					废弃
+					{{ t('project.deprecate') }}
 				</button>
 			</template>
 		</AppDialog>
@@ -142,6 +153,7 @@
 	import { Plus } from 'lucide-vue-next';
 	import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
+	import { useI18n } from 'vue-i18n';
 	import { ToolbarRoot } from 'reka-ui';
 	import type { Project } from '@/types/project';
 	import AppBadge from '@/components/AppBadge.vue';
@@ -156,6 +168,7 @@
 	import { formatTime } from '@/utils/time';
 
 	const router = useRouter();
+	const { t } = useI18n();
 	const toast = useToast();
 	const projectStore = useProjectStore();
 	const { status, error, execute } = useStatusAsync();
@@ -196,8 +209,8 @@
 	}
 
 	function validate() {
-		errors.name = form.name.trim() ? '' : '请输入项目名称';
-		errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : '只能包含小写字母、数字、下划线和连字符';
+		errors.name = form.name.trim() ? '' : t('project.nameRequired');
+		errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
 		return !errors.name && !errors.code;
 	}
 
@@ -249,14 +262,14 @@
 					name: form.name.trim(),
 					code: form.code.trim(),
 				});
-				toast.success('项目已更新');
+				toast.success(t('project.updated'));
 				isDialogOpen.value = false;
 			} else {
 				const project = await projectStore.createProject({
 					name: form.name.trim(),
 					code: form.code.trim(),
 				});
-				toast.success('项目已创建');
+				toast.success(t('project.created'));
 				isDialogOpen.value = false;
 				router.push({ name: 'ProjectDetail', params: { id: project.id } });
 			}
@@ -270,7 +283,7 @@
 		const projectId = deprecatingProject.value.id;
 		await executeOp(async () => {
 			await projectStore.deprecateProject(projectId);
-			toast.success('项目已废弃');
+			toast.success(t('project.deprecatedToast'));
 			isDeprecateDialogOpen.value = false;
 		});
 	}

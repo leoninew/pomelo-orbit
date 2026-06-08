@@ -1,0 +1,39 @@
+app:
+  name: Pomelo Orbit Backend Go
+  version: 0.1.0
+  debug: false
+
+server:
+  host: localhost
+  port: 8080
+
+logging:
+  level: info
+  file: logs/backend-go.log
+
+database:
+  sqlite:
+    path: data/db/pomelo-orbit.db
+
+orbit:
+  root: .
+
+jwt:
+  secret_key: ""
+
+traefik:
+  domain_suffix: lvh.me
+
+cert:
+  letsencrypt:
+    enabled: false
+    email: ""
+    challenge: http
+    dns_provider: ""
+
+worker:
+  id: default
+  poll_interval: 1s
+  lease_duration: 5m
+  max_attempts: 3
+  concurrency: 2

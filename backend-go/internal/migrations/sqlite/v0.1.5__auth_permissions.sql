@@ -1,4 +1,4 @@
--- v0.1.3: Add login history and system setting permissions aligned with backend v0.8.2
+-- v0.1.5: Add login history and system setting permissions aligned with backend v0.8.2
 
 INSERT INTO permission (id, code, name, description, created_at, updated_at)
 SELECT

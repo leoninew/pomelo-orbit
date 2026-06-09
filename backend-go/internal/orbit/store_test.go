@@ -21,7 +21,7 @@ func TestNewId(t *testing.T) {
 func TestStorePipelineRunRepositorySnapshot(t *testing.T) {
 	database := openStoreDB(t)
 	defer func() { _ = database.Close() }()
-	store := NewStore(database)
+	store := NewStore(database, "sqlite")
 	ctx := context.Background()
 
 	run, err := store.PipelineRun(ctx, "run-1")
@@ -50,7 +50,7 @@ func TestStorePipelineRunRepositorySnapshot(t *testing.T) {
 func TestStoreStatusUpdates(t *testing.T) {
 	database := openStoreDB(t)
 	defer func() { _ = database.Close() }()
-	store := NewStore(database)
+	store := NewStore(database, "sqlite")
 	ctx := context.Background()
 
 	if err := store.MarkPipelineRunRunning(ctx, "run-1"); err != nil {
@@ -76,8 +76,8 @@ func openStoreDB(t *testing.T) *sqlx.DB {
 	}
 	schema := []string{
 		`CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT, repository_id TEXT, repository_name TEXT, snapshot_id TEXT, template_id TEXT, template_name TEXT, template_version INTEGER, trigger TEXT, trigger_ref TEXT, variables_snapshot TEXT, status TEXT, retry_of TEXT, started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL DEFAULT (datetime('now')))`,
-		`CREATE TABLE repository (id TEXT PRIMARY KEY, project_id TEXT, name TEXT, code TEXT, repository_url TEXT, git_credential_id TEXT, variable_overrides TEXT, default_branch TEXT)`,
-		`CREATE TABLE pipeline_snapshot (id TEXT PRIMARY KEY, project_id TEXT, template_id TEXT, version INTEGER, stages_snapshot TEXT, variables_snapshot TEXT)`,
+		`CREATE TABLE repository (id TEXT PRIMARY KEY, project_id TEXT, name TEXT, code TEXT, repository_url TEXT, git_credential_id TEXT, variable_overrides TEXT, default_branch TEXT, created_at DATETIME NOT NULL DEFAULT (datetime('now')), updated_at DATETIME NOT NULL DEFAULT (datetime('now')))`,
+		`CREATE TABLE pipeline_snapshot (id TEXT PRIMARY KEY, project_id TEXT, template_id TEXT, version INTEGER, stages_snapshot TEXT, variables_snapshot TEXT, created_at DATETIME NOT NULL DEFAULT (datetime('now')))`,
 		`INSERT INTO repository (id, name, code, repository_url, variable_overrides, default_branch) VALUES ('repo-1', 'Repo', 'demo', 'https://example.invalid/repo.git', '{}', 'main')`,
 		`INSERT INTO pipeline_snapshot (id, template_id, version, stages_snapshot, variables_snapshot) VALUES ('snapshot-1', 'template-1', 1, '[]', '[]')`,
 		`INSERT INTO pipeline_run (id, repository_id, repository_name, snapshot_id, template_id, template_name, template_version, trigger, trigger_ref, variables_snapshot, status) VALUES ('run-1', 'repo-1', 'Repo', 'snapshot-1', 'template-1', 'Template', 1, 'manual', '', '{}', 'waiting_to_run')`,

@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS credential (
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     encrypted_data TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id)
 );
 
@@ -177,8 +177,8 @@ CREATE TABLE IF NOT EXISTS pipeline_template (
     description TEXT NOT NULL DEFAULT '',
     variable_declarations TEXT NOT NULL DEFAULT '[]',
     version INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id)
 );
 
@@ -193,8 +193,8 @@ CREATE TABLE IF NOT EXISTS build_stage (
     artifacts TEXT,
     description TEXT NOT NULL DEFAULT '',
     version INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id)
 );
 
@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS pipeline_snapshot (
     version INTEGER NOT NULL,
     stages_snapshot TEXT NOT NULL DEFAULT '[]',
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id),
     FOREIGN KEY (template_id) REFERENCES pipeline_template(id),
     UNIQUE (template_id, version)
@@ -240,8 +240,8 @@ CREATE TABLE IF NOT EXISTS repository (
     git_credential_id TEXT,
     variable_overrides TEXT NOT NULL DEFAULT '[]',
     default_branch TEXT NOT NULL DEFAULT 'master',
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id),
     FOREIGN KEY (git_credential_id) REFERENCES credential(id)
 );
@@ -259,8 +259,8 @@ CREATE TABLE IF NOT EXISTS repository_webhook (
     branch_filter TEXT,
     encrypted_secret TEXT NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (repository_id) REFERENCES repository(id) ON DELETE CASCADE,
     FOREIGN KEY (template_id) REFERENCES pipeline_template(id) ON DELETE RESTRICT
 );
@@ -280,10 +280,10 @@ CREATE TABLE IF NOT EXISTS pipeline_run (
     variables_snapshot TEXT NOT NULL DEFAULT '[]',
     status TEXT NOT NULL,
     retry_of TEXT,
-    started_at TEXT,
-    finished_at TEXT,
+    started_at DATETIME,
+    finished_at DATETIME,
     error_message TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id),
     FOREIGN KEY (repository_id) REFERENCES repository(id),
     FOREIGN KEY (snapshot_id) REFERENCES pipeline_snapshot(id),
@@ -302,8 +302,8 @@ CREATE TABLE IF NOT EXISTS stage_run (
     stage_id TEXT NOT NULL,
     stage_name TEXT NOT NULL,
     status TEXT NOT NULL,
-    started_at TEXT,
-    finished_at TEXT,
+    started_at DATETIME,
+    finished_at DATETIME,
     exit_code INTEGER,
     error_message TEXT,
     FOREIGN KEY (pipeline_run_id) REFERENCES pipeline_run(id)
@@ -319,7 +319,7 @@ CREATE TABLE IF NOT EXISTS artifact (
     type TEXT NOT NULL,
     name TEXT NOT NULL,
     path TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     repository_id TEXT NOT NULL DEFAULT '',
     repository_name TEXT NOT NULL DEFAULT '',
     template_id TEXT NOT NULL DEFAULT '',

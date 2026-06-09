@@ -19,7 +19,7 @@ func openTestDB(t *testing.T) *sqlx.DB {
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.NewMigrator(database).Up(); err != nil {
+	if err := db.NewMigrator(database, "sqlite").Up(); err != nil {
 		t.Fatal(err)
 	}
 	return database
@@ -29,7 +29,7 @@ func TestRepositoryClaimComplete(t *testing.T) {
 	database := openTestDB(t)
 	defer func() { _ = database.Close() }()
 
-	repo := NewRepository(database)
+	repo := NewRepository(database, "sqlite")
 	ctx := context.Background()
 	if err := repo.Enqueue(ctx, "task-1", status.TaskTypeCIPipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 3); err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestRepositoryFailRetriesUntilMaxAttempts(t *testing.T) {
 	database := openTestDB(t)
 	defer func() { _ = database.Close() }()
 
-	repo := NewRepository(database)
+	repo := NewRepository(database, "sqlite")
 	ctx := context.Background()
 	if err := repo.Enqueue(ctx, "task-1", status.TaskTypeCIPipelineRunExecute, `{}`, 2); err != nil {
 		t.Fatal(err)

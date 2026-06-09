@@ -15,13 +15,21 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"backend/internal/config"
+	"backend/internal/orbit"
 	"backend/internal/status"
 	"backend/internal/task"
 )
 
+type chiRouter interface {
+	Get(pattern string, handlerFn http.HandlerFunc)
+	Post(pattern string, handlerFn http.HandlerFunc)
+}
+
 type Server struct {
+	appCfg             config.Config
 	cfg                config.ServerConfig
 	logger             *slog.Logger
+	store              orbit.Store
 	tasks              task.Repository
 	defaultMaxAttempts int
 }
@@ -34,8 +42,8 @@ type createTaskReq struct {
 	MaxAttempts int             `json:"max_attempts"`
 }
 
-func New(cfg config.ServerConfig, logger *slog.Logger, tasks task.Repository, defaultMaxAttempts int) Server {
-	return Server{cfg: cfg, logger: logger, tasks: tasks, defaultMaxAttempts: defaultMaxAttempts}
+func New(cfg config.Config, logger *slog.Logger, store orbit.Store, tasks task.Repository, defaultMaxAttempts int) Server {
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, tasks: tasks, defaultMaxAttempts: defaultMaxAttempts}
 }
 
 func (s Server) Handler() http.Handler {
@@ -48,6 +56,9 @@ func (s Server) Handler() http.Handler {
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	s.registerAuthRoutes(r)
+	s.registerProjectRoutes(r)
+	s.registerDashboardRoutes(r)
 	r.Post("/api/background/task", s.createTask)
 	r.Post("/api/background/ci/pipeline-run/{run_id}/execute", s.enqueueCIPipelineRun)
 	r.Post("/api/background/cd/application/{app_id}/deploy/{deployment_id}", s.enqueueCDApplicationDeploy)
@@ -210,6 +221,10 @@ func newTaskId() (string, error) {
 		return "", err
 	}
 	return "task_" + hex.EncodeToString(b[:]), nil
+}
+
+func urlParam(r *http.Request, key string) string {
+	return strings.TrimSpace(chi.URLParam(r, key))
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

@@ -15,7 +15,7 @@ func TestWorkerRunOnceCompletesTask(t *testing.T) {
 	database := openTestDB(t)
 	defer func() { _ = database.Close() }()
 
-	repo := NewRepository(database)
+	repo := NewRepository(database, "sqlite")
 	if err := repo.Enqueue(context.Background(), "task-1", status.TaskTypeCIPipelineRunExecute, `{}`, 1); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestWorkerRunOnceRequeuesFailedTask(t *testing.T) {
 	database := openTestDB(t)
 	defer func() { _ = database.Close() }()
 
-	repo := NewRepository(database)
+	repo := NewRepository(database, "sqlite")
 	if err := repo.Enqueue(context.Background(), "task-1", status.TaskTypeCIPipelineRunExecute, `{}`, 2); err != nil {
 		t.Fatal(err)
 	}

@@ -10,12 +10,14 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"backend/internal/config"
 	"backend/internal/migrations"
 	"backend/internal/templatex"
 )
 
 type Migrator struct {
 	db      *sqlx.DB
+	driver  string
 	context map[string]any
 }
 
@@ -25,12 +27,12 @@ type MigrationStatus struct {
 	Applied  bool
 }
 
-func NewMigrator(db *sqlx.DB) Migrator {
-	return Migrator{db: db, context: map[string]any{}}
+func NewMigrator(db *sqlx.DB, driver string) Migrator {
+	return Migrator{db: db, driver: driver, context: map[string]any{}}
 }
 
-func NewMigratorWithContext(db *sqlx.DB, context map[string]any) Migrator {
-	return Migrator{db: db, context: context}
+func NewMigratorWithContext(db *sqlx.DB, driver string, context map[string]any) Migrator {
+	return Migrator{db: db, driver: driver, context: context}
 }
 
 func (m Migrator) Up() error {
@@ -38,7 +40,7 @@ func (m Migrator) Up() error {
 		return err
 	}
 
-	files, err := migrationFiles()
+	files, err := migrationFiles(m.driver)
 	if err != nil {
 		return err
 	}
@@ -69,7 +71,7 @@ func (m Migrator) Status() ([]MigrationStatus, error) {
 		return nil, err
 	}
 
-	files, err := migrationFiles()
+	files, err := migrationFiles(m.driver)
 	if err != nil {
 		return nil, err
 	}
@@ -90,8 +92,8 @@ func (m Migrator) Status() ([]MigrationStatus, error) {
 	return statuses, nil
 }
 
-func migrationFiles() ([]string, error) {
-	files, err := fs.Glob(migrations.Files, "*.sql")
+func migrationFiles(driver string) ([]string, error) {
+	files, err := fs.Glob(migrations.Files, driver+"/*.sql")
 	if err != nil {
 		return nil, fmt.Errorf("list migrations: %w", err)
 	}
@@ -119,13 +121,23 @@ func renderMigrationContent(filename string, content string, context map[string]
 }
 
 func (m Migrator) ensureHistoryTable() error {
-	_, err := m.db.Exec(`CREATE TABLE IF NOT EXISTS __migration_history (
+	statement := `CREATE TABLE IF NOT EXISTS __migration_history (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		filename TEXT NOT NULL UNIQUE,
 		checksum TEXT NOT NULL,
 		executed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
 		execution_time_ms INTEGER NOT NULL
-	)`)
+	)`
+	if m.driver == config.DatabaseDriverMySQL {
+		statement = `CREATE TABLE IF NOT EXISTS __migration_history (
+			id BIGINT AUTO_INCREMENT PRIMARY KEY,
+			filename VARCHAR(255) NOT NULL UNIQUE,
+			checksum VARCHAR(64) NOT NULL,
+			executed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+			execution_time_ms BIGINT NOT NULL
+		)`
+	}
+	_, err := m.db.Exec(statement)
 	if err != nil {
 		return fmt.Errorf("ensure migration history: %w", err)
 	}

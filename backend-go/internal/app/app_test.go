@@ -11,7 +11,7 @@ import (
 
 func TestMigrateAndMigrationStatus(t *testing.T) {
 	cfg := config.Config{
-		Database: config.DatabaseConfig{SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "backend-go.db")}},
+		Database: config.DatabaseConfig{Driver: config.DatabaseDriverSQLite, SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "backend-go.db")}},
 		Worker:   config.WorkerConfig{MaxAttempts: 3},
 	}
 	app := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))

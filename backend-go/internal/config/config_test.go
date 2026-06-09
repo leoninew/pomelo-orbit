@@ -4,12 +4,33 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
-func TestLoadConfig(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "config.yaml")
-	content := []byte(`logging:
+func TestLoadDefaultConfigFile(t *testing.T) {
+	setupDefaultConfig(t)
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Database.Driver != DatabaseDriverSQLite {
+		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
+	}
+	if cfg.App.Name != "Pomelo Orbit Backend Go" {
+		t.Fatalf("unexpected app name: %s", cfg.App.Name)
+	}
+	if cfg.Server.Port != 8080 {
+		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
+	}
+	if cfg.Worker.PollInterval != time.Second {
+		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
+	}
+}
+
+func TestLoadConfigMergesCustomConfig(t *testing.T) {
+	setupDefaultConfig(t)
+	path := writeConfig(t, `logging:
   level: "DEBUG"
 database:
   sqlite:
@@ -18,14 +39,9 @@ orbit:
   root: "../.."
 worker:
   id: "worker-1"
-  poll_interval: "1s"
-  lease_duration: "5m"
   max_attempts: 4
   concurrency: 3
 `)
-	if err := os.WriteFile(path, content, 0o644); err != nil {
-		t.Fatal(err)
-	}
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -40,4 +56,171 @@ worker:
 	if cfg.Worker.Concurrency != 3 {
 		t.Fatalf("unexpected concurrency: %d", cfg.Worker.Concurrency)
 	}
+	if cfg.Worker.PollInterval != time.Second {
+		t.Fatalf("unexpected poll interval from defaults: %s", cfg.Worker.PollInterval)
+	}
+	if cfg.Worker.LeaseDuration != 5*time.Minute {
+		t.Fatalf("unexpected lease duration from defaults: %s", cfg.Worker.LeaseDuration)
+	}
 }
+
+func TestLoadConfigEnvOverrides(t *testing.T) {
+	setupDefaultConfig(t)
+	path := writeConfig(t, `server:
+  host: "127.0.0.1"
+  port: 9000
+database:
+  sqlite:
+    path: "data/test.db"
+worker:
+  concurrency: 1
+`)
+	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__HOST", "0.0.0.0")
+	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__PORT", "8088")
+	t.Setenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH", "/data/pomelo-orbit.db")
+	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__CONCURRENCY", "4")
+	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__POLL_INTERVAL", "2s")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Server.Host != "0.0.0.0" {
+		t.Fatalf("unexpected server host: %s", cfg.Server.Host)
+	}
+	if cfg.Server.Port != 8088 {
+		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
+	}
+	if cfg.Database.SQLite.Path != "/data/pomelo-orbit.db" {
+		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
+	}
+	if cfg.Worker.Concurrency != 4 {
+		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
+	}
+	if cfg.Worker.PollInterval != 2*time.Second {
+		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
+	}
+}
+
+func TestLoadConfigJWTEnvOverride(t *testing.T) {
+	setupDefaultConfig(t)
+	path := writeConfig(t, `database:
+  sqlite:
+    path: "data/test.db"
+jwt:
+  secret_key: "from-yaml"
+`)
+	t.Setenv("POMELO_ORBIT_BACKEND__JWT__SECRET_KEY", "from-env")
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.JWT.SecretKey != "from-env" {
+		t.Fatalf("unexpected jwt secret: %s", cfg.JWT.SecretKey)
+	}
+}
+
+func TestLoadConfigMySQL(t *testing.T) {
+	setupDefaultConfig(t)
+	path := writeConfig(t, `database:
+  driver: mysql
+  mysql:
+    dsn: "user:pass@tcp(127.0.0.1:3306)/pomelo_orbit?parseTime=true"
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Database.Driver != DatabaseDriverMySQL {
+		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
+	}
+	if cfg.Database.MySQL.DSN == "" {
+		t.Fatal("expected mysql dsn")
+	}
+}
+
+func TestLoadConfigDerivesDatabasePath(t *testing.T) {
+	setupDefaultConfig(t)
+	path := writeConfig(t, `database:
+  sqlite:
+    path: ""
+orbit:
+  root: "/opt/pomelo-orbit"
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	want := filepath.Join("/opt/pomelo-orbit", "data", "db", "pomelo-orbit.db")
+	if cfg.Database.SQLite.Path != want {
+		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
+	}
+}
+
+func setupDefaultConfig(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatal(err)
+		}
+	})
+	if err := os.WriteFile(defaultConfigFile, []byte(defaultConfigContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeConfig(t *testing.T, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+const defaultConfigContent = `app:
+  name: Pomelo Orbit Backend Go
+  version: 0.1.0
+  debug: false
+server:
+  host: localhost
+  port: 8080
+logging:
+  level: info
+  file: logs/backend-go.log
+database:
+  driver: sqlite
+  sqlite:
+    path: data/db/pomelo-orbit.db
+  mysql:
+    dsn: ""
+orbit:
+  root: .
+jwt:
+  secret_key: ""
+traefik:
+  domain_suffix: lvh.me
+cert:
+  letsencrypt:
+    enabled: false
+    email: ""
+    challenge: http
+    dns_provider: ""
+worker:
+  id: ""
+  poll_interval: 1s
+  lease_duration: 5m
+  max_attempts: 3
+  concurrency: 1
+`

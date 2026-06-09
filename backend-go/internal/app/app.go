@@ -33,7 +33,7 @@ func (a App) Migrate() error {
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.NewMigrator(database).Up(); err != nil {
+	if err := db.NewMigrator(database, a.cfg.Database.Driver).Up(); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 	return nil
@@ -46,12 +46,12 @@ func (a App) RunWorker(ctx context.Context) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.NewMigrator(database).Up(); err != nil {
+	if err := db.NewMigrator(database, a.cfg.Database.Driver).Up(); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
-	repository := task.NewRepository(database)
-	store := orbit.NewStore(database)
+	repository := task.NewRepository(database, a.cfg.Database.Driver)
+	store := orbit.NewStore(database, a.cfg.Database.Driver)
 	router := task.NewRouter()
 	registerHandlers(router, store, a.cfg, a.logger)
 
@@ -70,7 +70,7 @@ func (a App) MigrationStatus() ([]db.MigrationStatus, error) {
 		return nil, err
 	}
 	defer func() { _ = database.Close() }()
-	return db.NewMigrator(database).Status()
+	return db.NewMigrator(database, a.cfg.Database.Driver).Status()
 }
 
 func (a App) Serve(ctx context.Context) error {
@@ -80,12 +80,13 @@ func (a App) Serve(ctx context.Context) error {
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.NewMigrator(database).Up(); err != nil {
+	if err := db.NewMigrator(database, a.cfg.Database.Driver).Up(); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
-	repository := task.NewRepository(database)
-	server := httpserver.New(a.cfg.Server, a.logger, repository, a.cfg.Worker.MaxAttempts)
+	repository := task.NewRepository(database, a.cfg.Database.Driver)
+	store := orbit.NewStore(database, a.cfg.Database.Driver)
+	server := httpserver.New(a.cfg, a.logger, store, repository, a.cfg.Worker.MaxAttempts)
 	httpServer := &http.Server{Addr: server.Addr(), Handler: server.Handler()}
 
 	go func() {

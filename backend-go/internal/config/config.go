@@ -5,96 +5,111 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"gopkg.in/yaml.v3"
+	mapstructure "github.com/go-viper/mapstructure/v2"
+	"github.com/spf13/viper"
 )
 
 const defaultConfigFile = "config.defaults.yaml"
 
 type Config struct {
-	App      AppConfig      `yaml:"app"`
-	Server   ServerConfig   `yaml:"server"`
-	Logging  LoggingConfig  `yaml:"logging"`
-	Database DatabaseConfig `yaml:"database"`
-	Worker   WorkerConfig   `yaml:"worker"`
-	Orbit    OrbitConfig    `yaml:"orbit"`
-	JWT      JWTConfig      `yaml:"jwt"`
-	Traefik  TraefikConfig  `yaml:"traefik"`
-	Cert     CertConfig     `yaml:"cert"`
+	App      AppConfig      `mapstructure:"app" yaml:"app"`
+	Server   ServerConfig   `mapstructure:"server" yaml:"server"`
+	Logging  LoggingConfig  `mapstructure:"logging" yaml:"logging"`
+	Database DatabaseConfig `mapstructure:"database" yaml:"database"`
+	Worker   WorkerConfig   `mapstructure:"worker" yaml:"worker"`
+	Orbit    OrbitConfig    `mapstructure:"orbit" yaml:"orbit"`
+	JWT      JWTConfig      `mapstructure:"jwt" yaml:"jwt"`
+	Traefik  TraefikConfig  `mapstructure:"traefik" yaml:"traefik"`
+	Cert     CertConfig     `mapstructure:"cert" yaml:"cert"`
 }
 
 type AppConfig struct {
-	Name    string `yaml:"name"`
-	Version string `yaml:"version"`
-	Debug   bool   `yaml:"debug"`
+	Name    string `mapstructure:"name" yaml:"name"`
+	Version string `mapstructure:"version" yaml:"version"`
+	Debug   bool   `mapstructure:"debug" yaml:"debug"`
 }
 
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host string `mapstructure:"host" yaml:"host"`
+	Port int    `mapstructure:"port" yaml:"port"`
 }
 
 type LoggingConfig struct {
-	Level string `yaml:"level"`
-	File  string `yaml:"file"`
+	Level string `mapstructure:"level" yaml:"level"`
+	File  string `mapstructure:"file" yaml:"file"`
 }
 
+const (
+	DatabaseDriverSQLite = "sqlite"
+	DatabaseDriverMySQL  = "mysql"
+)
+
 type DatabaseConfig struct {
-	SQLite SQLiteConfig `yaml:"sqlite"`
+	Driver string       `mapstructure:"driver" yaml:"driver"`
+	SQLite SQLiteConfig `mapstructure:"sqlite" yaml:"sqlite"`
+	MySQL  MySQLConfig  `mapstructure:"mysql" yaml:"mysql"`
 }
 
 type SQLiteConfig struct {
-	Path string `yaml:"path"`
+	Path string `mapstructure:"path" yaml:"path"`
+}
+
+type MySQLConfig struct {
+	DSN string `mapstructure:"dsn" yaml:"dsn"`
 }
 
 type WorkerConfig struct {
-	Id            string        `yaml:"id"`
-	PollInterval  time.Duration `yaml:"poll_interval"`
-	LeaseDuration time.Duration `yaml:"lease_duration"`
-	MaxAttempts   int           `yaml:"max_attempts"`
-	Concurrency   int           `yaml:"concurrency"`
+	Id            string        `mapstructure:"id" yaml:"id"`
+	PollInterval  time.Duration `mapstructure:"poll_interval" yaml:"poll_interval"`
+	LeaseDuration time.Duration `mapstructure:"lease_duration" yaml:"lease_duration"`
+	MaxAttempts   int           `mapstructure:"max_attempts" yaml:"max_attempts"`
+	Concurrency   int           `mapstructure:"concurrency" yaml:"concurrency"`
 }
 
 type OrbitConfig struct {
-	Root string `yaml:"root"`
+	Root string `mapstructure:"root" yaml:"root"`
 }
 
 type JWTConfig struct {
-	SecretKey string `yaml:"secret_key"`
+	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
 }
 
 type TraefikConfig struct {
-	DomainSuffix string `yaml:"domain_suffix"`
+	DomainSuffix string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
 }
 
 type CertConfig struct {
-	LetsEncrypt LetsEncryptConfig `yaml:"letsencrypt"`
+	LetsEncrypt LetsEncryptConfig `mapstructure:"letsencrypt" yaml:"letsencrypt"`
 }
 
 type LetsEncryptConfig struct {
-	Enabled     bool   `yaml:"enabled"`
-	Email       string `yaml:"email"`
-	Challenge   string `yaml:"challenge"`
-	DNSProvider string `yaml:"dns_provider"`
+	Enabled     bool   `mapstructure:"enabled" yaml:"enabled"`
+	Email       string `mapstructure:"email" yaml:"email"`
+	Challenge   string `mapstructure:"challenge" yaml:"challenge"`
+	DNSProvider string `mapstructure:"dns_provider" yaml:"dns_provider"`
 }
 
 func Load(path string) (Config, error) {
-	if path == "" {
-		path = defaultConfigFile
+	loader := newLoader()
+	loader.SetConfigFile(defaultConfigFile)
+	if err := loader.ReadInConfig(); err != nil {
+		return Config{}, fmt.Errorf("read default config: %w", err)
 	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return Config{}, fmt.Errorf("read config: %w", err)
+	if path != "" {
+		loader.SetConfigFile(path)
+		if err := loader.MergeInConfig(); err != nil {
+			return Config{}, fmt.Errorf("read config: %w", err)
+		}
 	}
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	if err := loader.Unmarshal(&cfg, viper.DecodeHook(mapstructure.StringToTimeDurationHookFunc())); err != nil {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
 
-	applyEnv(&cfg)
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -102,24 +117,10 @@ func Load(path string) (Config, error) {
 		}
 		cfg.Worker.Id = fmt.Sprintf("%s-%d", hostname, os.Getpid())
 	}
-
-	if cfg.Worker.PollInterval == 0 {
-		cfg.Worker.PollInterval = time.Second
+	if cfg.Database.Driver == "" {
+		cfg.Database.Driver = DatabaseDriverSQLite
 	}
-	if cfg.Worker.LeaseDuration == 0 {
-		cfg.Worker.LeaseDuration = 5 * time.Minute
-	}
-	if cfg.Worker.MaxAttempts == 0 {
-		cfg.Worker.MaxAttempts = 3
-	}
-	if cfg.Worker.Concurrency == 0 {
-		cfg.Worker.Concurrency = 1
-	}
-
-	if cfg.Orbit.Root == "" {
-		cfg.Orbit.Root = "."
-	}
-	if cfg.Database.SQLite.Path == "" {
+	if cfg.Database.Driver == DatabaseDriverSQLite && cfg.Database.SQLite.Path == "" {
 		cfg.Database.SQLite.Path = filepath.Join(cfg.Orbit.Root, "data", "db", "pomelo-orbit.db")
 	}
 
@@ -129,9 +130,56 @@ func Load(path string) (Config, error) {
 	return cfg, nil
 }
 
+func newLoader() *viper.Viper {
+	loader := viper.New()
+	loader.SetConfigType("yaml")
+	bindEnv(loader)
+	return loader
+}
+
+func bindEnv(loader *viper.Viper) {
+	keys := []string{
+		"app.name",
+		"app.version",
+		"app.debug",
+		"server.host",
+		"server.port",
+		"logging.level",
+		"logging.file",
+		"database.driver",
+		"database.sqlite.path",
+		"database.mysql.dsn",
+		"orbit.root",
+		"jwt.secret_key",
+		"traefik.domain_suffix",
+		"cert.letsencrypt.enabled",
+		"cert.letsencrypt.email",
+		"cert.letsencrypt.challenge",
+		"cert.letsencrypt.dns_provider",
+		"worker.id",
+		"worker.poll_interval",
+		"worker.lease_duration",
+		"worker.max_attempts",
+		"worker.concurrency",
+	}
+	for _, key := range keys {
+		envName := "POMELO_ORBIT_BACKEND__" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))
+		_ = loader.BindEnv(key, envName)
+	}
+}
+
 func (c Config) Validate() error {
-	if c.Database.SQLite.Path == "" {
-		return errors.New("database.sqlite.path is required")
+	switch c.Database.Driver {
+	case DatabaseDriverSQLite:
+		if c.Database.SQLite.Path == "" {
+			return errors.New("database.sqlite.path is required")
+		}
+	case DatabaseDriverMySQL:
+		if c.Database.MySQL.DSN == "" {
+			return errors.New("database.mysql.dsn is required")
+		}
+	default:
+		return fmt.Errorf("database.driver must be %s or %s", DatabaseDriverSQLite, DatabaseDriverMySQL)
 	}
 	if c.Worker.PollInterval <= 0 {
 		return errors.New("worker.poll_interval must be positive")
@@ -158,24 +206,4 @@ func (c Config) DataRoot() string {
 
 func (c Config) SQLitePath() string {
 	return filepath.Clean(c.Database.SQLite.Path)
-}
-
-func applyEnv(cfg *Config) {
-	if v := os.Getenv("POMELO_ORBIT_BACKEND__LOGGING__LEVEL"); v != "" {
-		cfg.Logging.Level = v
-	}
-	if v := os.Getenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH"); v != "" {
-		cfg.Database.SQLite.Path = v
-	} else if v := os.Getenv("POMELO_ORBIT_DATABASE__SQLITE__PATH"); v != "" {
-		cfg.Database.SQLite.Path = v
-	}
-	if v := os.Getenv("POMELO_ORBIT_JWT__SECRET_KEY"); v != "" {
-		cfg.JWT.SecretKey = v
-	}
-	if v := os.Getenv("POMELO_ORBIT_BACKEND__ORBIT__ROOT"); v != "" {
-		cfg.Orbit.Root = v
-	}
-	if v := os.Getenv("POMELO_ORBIT_BACKEND__WORKER__ID"); v != "" {
-		cfg.Worker.Id = v
-	}
 }

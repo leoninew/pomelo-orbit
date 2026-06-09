@@ -12,8 +12,11 @@ logging:
   file: logs/backend-go.log
 
 database:
+  driver: sqlite
   sqlite:
     path: data/db/pomelo-orbit.db
+  mysql:
+    dsn: ""
 
 orbit:
   root: .

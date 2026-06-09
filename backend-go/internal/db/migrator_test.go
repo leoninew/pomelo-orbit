@@ -5,6 +5,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
+
+	"backend/internal/config"
 )
 
 func openMemoryDB(t *testing.T) *sqlx.DB {
@@ -21,7 +23,7 @@ func TestMigratorUpAndStatus(t *testing.T) {
 	database := openMemoryDB(t)
 	defer func() { _ = database.Close() }()
 
-	migrator := NewMigrator(database)
+	migrator := NewMigrator(database, config.DatabaseDriverSQLite)
 	if err := migrator.Up(); err != nil {
 		t.Fatal(err)
 	}
@@ -29,8 +31,8 @@ func TestMigratorUpAndStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(statuses) != 4 {
-		t.Fatalf("expected 4 migrations, got %d", len(statuses))
+	if len(statuses) != 6 {
+		t.Fatalf("expected 6 migrations, got %d", len(statuses))
 	}
 	for _, status := range statuses {
 		if !status.Applied {
@@ -66,15 +68,28 @@ func TestMigratorDetectsChecksumMismatch(t *testing.T) {
 	database := openMemoryDB(t)
 	defer func() { _ = database.Close() }()
 
-	migrator := NewMigrator(database)
+	migrator := NewMigrator(database, config.DatabaseDriverSQLite)
 	if err := migrator.ensureHistoryTable(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec("INSERT INTO __migration_history (filename, checksum, execution_time_ms) VALUES (?, ?, ?)", "v0.1.0__background_task.sql", "bad", 0); err != nil {
+	if _, err := database.Exec("INSERT INTO __migration_history (filename, checksum, execution_time_ms) VALUES (?, ?, ?)", "sqlite/v0.1.0__background_task.sql", "bad", 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := migrator.Up(); err == nil {
 		t.Fatal("expected checksum mismatch")
+	}
+}
+
+func TestMigratorListsMySQLMigrations(t *testing.T) {
+	files, err := migrationFiles(config.DatabaseDriverMySQL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 6 {
+		t.Fatalf("expected 6 mysql migrations, got %d", len(files))
+	}
+	if files[0] != "mysql/v0.1.0__background_task.sql" {
+		t.Fatalf("unexpected first mysql migration: %s", files[0])
 	}
 }
 

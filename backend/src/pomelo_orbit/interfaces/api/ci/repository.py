@@ -40,6 +40,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/repository", tags=["repository"])
 
 
+def _authorize_repository_project(
+    repository_service: RepositoryService,
+    project_service: ProjectService,
+    current_user: User,
+    repository_id: str,
+):
+    repository = repository_service.get_repository(repository_id)
+    project_service.get_project(current_user.id, repository.project_id)
+    return repository
+
+
 @router.get("", response_model=PaginatedResp[RepositoryListResp])
 def list_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
@@ -76,8 +87,11 @@ def create_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     project_id: Annotated[str, Query()],
 ) -> RepositoryResp:
+    project_service.get_project(current_user.id, project_id)
     repository = repository_service.create_repository(
         project_id=project_id,
         name=data.name,
@@ -100,8 +114,10 @@ def get_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> RepositoryResp:
-    repository = repository_service.get_repository(repository_id)
+    repository = _authorize_repository_project(repository_service, project_service, current_user, repository_id)
     return RepositoryResp.from_domain(
         repository,
         _resolve_cred_name(repository.git_credential_id, credential_service),
@@ -116,7 +132,10 @@ def update_repository(
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
     credential_service: Annotated[CredentialService, Depends(get_credential_service)],
     variable_resolver: Annotated[VariableResolver, Depends(get_variable_resolver)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> RepositoryResp:
+    _authorize_repository_project(repository_service, project_service, current_user, repository_id)
     repository_service.update_repository(
         repository_id=repository_id,
         name=data.name,
@@ -142,8 +161,11 @@ def update_repository(
 def delete_repository(
     repository_id: str,
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     delete_workspace: Annotated[bool, Query()] = False,
 ) -> None:
+    _authorize_repository_project(repository_service, project_service, current_user, repository_id)
     repository_service.delete_repository(repository_id, delete_workspace=delete_workspace)
 
 
@@ -178,10 +200,12 @@ async def trigger_pipeline(
     background_tasks: BackgroundTasks,
     pipeline_run_service: Annotated[PipelineRunService, Depends(get_pipeline_run_service)],
     repository_service: Annotated[RepositoryService, Depends(get_repository_service)],
+    project_service: Annotated[ProjectService, Depends(get_project_service)],
+    current_user: Annotated[User, Depends(get_current_user)],
     container: FromDishka[AsyncContainer],
 ) -> PipelineRunResp:
     # 从 repository 获取 project_id
-    repository = repository_service.get_repository(repository_id)
+    repository = _authorize_repository_project(repository_service, project_service, current_user, repository_id)
 
     result = pipeline_run_service.create_run(
         project_id=repository.project_id,

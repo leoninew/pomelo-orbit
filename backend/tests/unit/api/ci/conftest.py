@@ -1,0 +1,73 @@
+"""CI 集成测试共用 fixtures"""
+
+import pytest
+
+from pomelo_orbit.infrastructure.ci.models import (  # noqa: F401 - 触发 CI 表注册
+    CredentialModel,
+    PipelineRunModel,
+    PipelineSnapshotModel,
+    PipelineTemplateModel,
+    RepositoryModel,
+)
+from tests.unit.api.conftest import DEFAULT_CI_PROJECT_ID
+
+STAGE_JSON = '[{"name": "build", "image": "alpine:latest", "commands": ["echo build"]}]'
+
+
+@pytest.fixture
+def test_template(db_session):
+    tmpl = PipelineTemplateModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
+        name="test-template",
+        description="A test template",
+        variable_declarations="[]",
+    )
+    db_session.add(tmpl)
+    db_session.commit()
+    db_session.refresh(tmpl)
+    return tmpl
+
+
+@pytest.fixture
+def test_snapshot(db_session, test_template):
+    snapshot = PipelineSnapshotModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
+        template_id=test_template.id,
+        version=1,
+        stages_snapshot="[]",
+        variables_snapshot=test_template.variable_declarations,
+    )
+    db_session.add(snapshot)
+    db_session.commit()
+    db_session.refresh(snapshot)
+    return snapshot
+
+
+@pytest.fixture
+def test_credential(db_session):
+    cred = CredentialModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
+        name="test-cred",
+        type="github_token",
+        encrypted_data="encrypted-token",
+    )
+    db_session.add(cred)
+    db_session.commit()
+    db_session.refresh(cred)
+    return cred
+
+
+@pytest.fixture
+def test_project(db_session, test_credential):
+    project = RepositoryModel(
+        project_id=DEFAULT_CI_PROJECT_ID,
+        name="test-project",
+        code="test-project",
+        repository_url="https://github.com/test/repo.git",
+        git_credential_id=test_credential.id,
+        variable_overrides="[]",
+    )
+    db_session.add(project)
+    db_session.commit()
+    db_session.refresh(project)
+    return project

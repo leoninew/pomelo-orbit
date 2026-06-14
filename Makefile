@@ -44,7 +44,7 @@ install:
 	@echo "✓ 所有依赖安装完成"
 
 dev:
-	@bash scripts/dev.sh
+	@python scripts/dev.py
 
 lint:
 	@echo "后端代码检查..."

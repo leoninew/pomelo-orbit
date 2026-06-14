@@ -83,9 +83,10 @@ func TestMySQLE2E(t *testing.T) {
 		t.Fatalf("unexpected task status: %s", queued.Status)
 	}
 
+	cfg.Turnstile.Enabled = false
 	store := orbit.NewStore(database, cfg.Database.Driver)
 	server := httpserver.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), store, repository, cfg.Worker.MaxAttempts)
-	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf","captcha_token":"captcha","captcha_answer":"1234"}`)
+	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
 	loginRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
 	if loginRecorder.Code != http.StatusOK {

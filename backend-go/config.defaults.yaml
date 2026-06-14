@@ -29,6 +29,12 @@ jwt:
 traefik:
   domain_suffix: lvh.me
 
+turnstile:
+  enabled: true
+  site_key: "1x00000000000000000000AA"
+  secret_key: "1x0000000000000000000000000000000AA"
+  verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+
 cert:
   letsencrypt:
     enabled: false

@@ -49,29 +49,12 @@
 						<p v-if="errors.password" class="app-field-error text-xs">{{ errors.password }}</p>
 					</div>
 
-					<div class="space-y-1.5">
-						<label for="captcha" class="app-field-label block">{{ t('login.captcha') }}</label>
-						<div class="flex gap-2">
-							<input
-								id="captcha"
-								v-model="form.captchaAnswer"
-								type="text"
-								class="app-input flex-1"
-								:class="errors.captcha ? 'app-input-error' : ''"
-								:placeholder="t('login.captchaPlaceholder')"
-								maxlength="4"
-								@input="errors.captcha = ''"
-							/>
-							<img
-								v-if="captchaImage"
-								:src="captchaImage"
-								:alt="t('login.captcha')"
-								class="h-10 cursor-pointer rounded border border-border"
-								:title="t('login.captchaRefresh')"
-								@click="fetchCaptcha"
-							/>
-						</div>
-						<p v-if="errors.captcha" class="app-field-error text-xs">{{ errors.captcha }}</p>
+					<div v-if="turnstileEnabled" class="space-y-1.5">
+						<label class="app-field-label block">{{ t('login.verification') }}</label>
+						<div ref="turnstileContainer"></div>
+						<p v-if="errors.verification" class="app-field-error text-xs">
+							{{ errors.verification }}
+						</p>
 					</div>
 
 					<button
@@ -124,7 +107,7 @@
 
 <script setup lang="ts">
 	import { Eye, EyeOff } from 'lucide-vue-next';
-	import { onMounted, reactive, ref } from 'vue';
+	import { nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 	import { useRouter } from 'vue-router';
 	import { useI18n } from 'vue-i18n';
 	import { authApi } from '@/api/auth';
@@ -132,6 +115,10 @@
 	import { useAuthStore } from '@/stores/auth';
 	import { useToast } from '@/composables/useToast';
 	import { ApiError } from '@/utils/request';
+	import type { TurnstileConfigResp } from '@/types/auth';
+
+	const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-script';
+	const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 	const { t } = useI18n();
 	const router = useRouter();
@@ -141,43 +128,109 @@
 	const form = reactive({
 		username: '',
 		password: '',
-		captchaAnswer: '',
 	});
 
 	const errors = reactive({
 		username: '',
 		password: '',
-		captcha: '',
+		verification: '',
 	});
 
 	const showPassword = ref(false);
 	const loading = ref(false);
 	const csrfToken = ref('');
-	const captchaToken = ref('');
-	const captchaImage = ref('');
+	const turnstileEnabled = ref(false);
+	const turnstileSiteKey = ref('');
+	const turnstileToken = ref('');
+	const turnstileContainer = ref<HTMLElement>();
+	const turnstileWidgetId = ref('');
 
-	// 页面加载时获取 CSRF Token 和验证码
 	onMounted(async () => {
 		try {
-			const response = await authApi.getCsrfToken();
-			csrfToken.value = response.token;
-			await fetchCaptcha();
+			const [csrfResponse, turnstileConfig] = await Promise.all([
+				authApi.getCsrfToken(),
+				authApi.getTurnstileConfig(),
+			]);
+			csrfToken.value = csrfResponse.token;
+			applyTurnstileConfig(turnstileConfig);
+			await renderTurnstile();
 		} catch (err) {
-			console.error('Failed to fetch CSRF token:', err);
+			console.error('Failed to initialize login:', err);
 			toast.error('初始化失败，请刷新页面重试');
 		}
 	});
 
-	async function fetchCaptcha() {
-		try {
-			const response = await authApi.getCaptcha();
-			captchaToken.value = response.token;
-			captchaImage.value = response.image;
-			form.captchaAnswer = '';
-			errors.captcha = '';
-		} catch (err) {
-			console.error('Failed to fetch captcha:', err);
-			toast.error('获取验证码失败');
+	onBeforeUnmount(() => {
+		if (turnstileWidgetId.value && window.turnstile) {
+			window.turnstile.remove(turnstileWidgetId.value);
+		}
+	});
+
+	function applyTurnstileConfig(config: TurnstileConfigResp) {
+		turnstileEnabled.value = config.enabled;
+		turnstileSiteKey.value = config.site_key;
+	}
+
+	async function renderTurnstile() {
+		if (!turnstileEnabled.value) {
+			return;
+		}
+		await nextTick();
+		await loadTurnstileScript();
+		if (!window.turnstile || !turnstileContainer.value) {
+			throw new Error('Turnstile failed to load');
+		}
+		turnstileWidgetId.value = window.turnstile.render(turnstileContainer.value, {
+			sitekey: turnstileSiteKey.value,
+			callback: (token: string) => {
+				turnstileToken.value = token;
+				errors.verification = '';
+			},
+			'expired-callback': () => {
+				turnstileToken.value = '';
+				errors.verification = t('login.verificationExpired');
+			},
+			'error-callback': () => {
+				turnstileToken.value = '';
+				errors.verification = t('login.verificationFailed');
+			},
+		});
+	}
+
+	function loadTurnstileScript() {
+		if (window.turnstile) {
+			return Promise.resolve();
+		}
+		const existingScript = document.getElementById(TURNSTILE_SCRIPT_ID) as HTMLScriptElement | null;
+		if (existingScript) {
+			return waitForTurnstile(existingScript);
+		}
+		const script = document.createElement('script');
+		script.id = TURNSTILE_SCRIPT_ID;
+		script.src = TURNSTILE_SCRIPT_SRC;
+		script.async = true;
+		script.defer = true;
+		document.head.appendChild(script);
+		return waitForTurnstile(script);
+	}
+
+	function waitForTurnstile(script: HTMLScriptElement) {
+		return new Promise<void>((resolve, reject) => {
+			if (window.turnstile) {
+				resolve();
+				return;
+			}
+			script.addEventListener('load', () => resolve(), { once: true });
+			script.addEventListener('error', () => reject(new Error('Turnstile script failed to load')), {
+				once: true,
+			});
+		});
+	}
+
+	function resetTurnstile() {
+		turnstileToken.value = '';
+		if (turnstileEnabled.value && window.turnstile && turnstileWidgetId.value) {
+			window.turnstile.reset(turnstileWidgetId.value);
 		}
 	}
 
@@ -188,8 +241,9 @@
 	function validate() {
 		errors.username = form.username.trim() ? '' : t('login.usernameRequired');
 		errors.password = form.password.trim() ? '' : t('login.passwordRequired');
-		errors.captcha = form.captchaAnswer.trim() ? '' : t('login.captchaRequired');
-		return !errors.username && !errors.password && !errors.captcha;
+		errors.verification =
+			turnstileEnabled.value && !turnstileToken.value ? t('login.verificationRequired') : '';
+		return !errors.username && !errors.password && !errors.verification;
 	}
 
 	async function handleLogin() {
@@ -204,28 +258,18 @@
 
 		loading.value = true;
 		try {
-			await authStore.login(
-				form.username,
-				form.password,
-				csrfToken.value,
-				captchaToken.value,
-				form.captchaAnswer
-			);
+			await authStore.login(form.username, form.password, csrfToken.value, turnstileToken.value);
 			toast.success(t('login.loginSuccess'));
 			router.push('/');
 		} catch (err: unknown) {
 			toast.error(err instanceof Error ? err.message : t('login.loginFailed'));
+			resetTurnstile();
 
-			// 刷新验证码
-			await fetchCaptcha();
-
-			// 如果是速率限制错误（429），不要重新获取 CSRF Token
 			const isRateLimited = err instanceof ApiError && err.status === 429;
 			if (isRateLimited) {
 				return;
 			}
 
-			// 其他登录失败，重新获取 CSRF Token
 			try {
 				const response = await authApi.getCsrfToken();
 				csrfToken.value = response.token;

@@ -1,4 +1,4 @@
-.PHONY: help install dev lint test test-backend test-frontend build clean
+.PHONY: help install dev backend frontend lint test test-backend test-frontend build clean
 
 help:
 	@echo "Pomelo Orbit - 开发命令"
@@ -9,6 +9,8 @@ help:
 	@echo ""
 	@echo "开发服务:"
 	@echo "  make dev             - 启动前端和后端服务器"
+	@echo "  make backend         - 启动后端服务器 (backend-go)"
+	@echo "  make frontend        - 启动前端服务器"
 	@echo ""
 	@echo "代码检查:"
 	@echo "  make lint            - 检查代码问题"
@@ -45,6 +47,12 @@ install:
 
 dev:
 	@python scripts/dev.py
+
+backend:
+	@cd backend-go && POMELO_ORBIT_BACKEND__SERVER__HOST=127.0.0.1 POMELO_ORBIT_BACKEND__SERVER__PORT=9001 go run ./cmd/backend-go serve
+
+frontend:
+	@cd frontend && yarn dev
 
 lint:
 	@echo "后端代码检查..."

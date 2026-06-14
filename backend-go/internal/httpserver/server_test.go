@@ -2,7 +2,9 @@ package httpserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +20,14 @@ import (
 	"backend/internal/task"
 )
 
+type fakeTurnstileVerifier struct {
+	err error
+}
+
+func (v fakeTurnstileVerifier) Verify(ctx context.Context, token string, remoteIP string) error {
+	return v.err
+}
+
 func newTestServer(t *testing.T) (Server, *sqlx.DB) {
 	t.Helper()
 	database, err := sqlx.Open("sqlite", ":memory:")
@@ -30,7 +40,9 @@ func newTestServer(t *testing.T) (Server, *sqlx.DB) {
 	}
 	cfg := config.Config{Server: config.ServerConfig{Host: "127.0.0.1", Port: 0}}
 	cfg.JWT.SecretKey = "test-secret"
+	cfg.Turnstile = config.TurnstileConfig{Enabled: true, SiteKey: "test-site-key", SecretKey: "test-secret-key", VerifyURL: "https://turnstile.example.test"}
 	server := New(cfg, slog.Default(), orbit.NewStore(database, config.DatabaseDriverSQLite), task.NewRepository(database, config.DatabaseDriverSQLite), 3)
+	server.turnstileVerifier = fakeTurnstileVerifier{}
 	return server, database
 }
 
@@ -151,13 +163,13 @@ func TestAuthLoginAndMe(t *testing.T) {
 		t.Fatalf("expected csrf status 200, got %d", csrfRecorder.Code)
 	}
 
-	captchaRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(captchaRecorder, httptest.NewRequest(http.MethodGet, "/api/auth/captcha", nil))
-	if captchaRecorder.Code != http.StatusOK {
-		t.Fatalf("expected captcha status 200, got %d", captchaRecorder.Code)
+	turnstileConfigRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(turnstileConfigRecorder, httptest.NewRequest(http.MethodGet, "/api/auth/turnstile-config", nil))
+	if turnstileConfigRecorder.Code != http.StatusOK {
+		t.Fatalf("expected turnstile config status 200, got %d", turnstileConfigRecorder.Code)
 	}
 
-	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf","captcha_token":"captcha","captcha_answer":"1234"}`)
+	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf","turnstile_token":"turnstile"}`)
 	loginRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
 	if loginRecorder.Code != http.StatusOK {
@@ -184,6 +196,56 @@ func TestAuthLoginAndMe(t *testing.T) {
 	}
 	if me.Username != "admin" || len(me.Roles) == 0 || len(me.Permissions) == 0 {
 		t.Fatalf("unexpected me response: %+v", me)
+	}
+}
+
+func TestAuthLoginRequiresTurnstileToken(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+
+	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
+	loginRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
+	if loginRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected login status 400, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
+	}
+}
+
+func TestAuthLoginRejectsInvalidTurnstileToken(t *testing.T) {
+	server, database := newTestServer(t)
+	server.turnstileVerifier = fakeTurnstileVerifier{err: errors.New("invalid token")}
+	defer func() { _ = database.Close() }()
+
+	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf","turnstile_token":"bad-token"}`)
+	loginRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
+	if loginRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("expected login status 400, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
+	}
+}
+
+func TestAuthLoginSkipsTurnstileWhenDisabled(t *testing.T) {
+	server, database := newTestServer(t)
+	server.appCfg.Turnstile.Enabled = false
+	server.turnstileVerifier = fakeTurnstileVerifier{err: errors.New("should not be called")}
+	defer func() { _ = database.Close() }()
+
+	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
+	loginRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))
+	if loginRecorder.Code != http.StatusOK {
+		t.Fatalf("expected login status 200, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
+	}
+}
+
+func TestAuthCaptchaRouteIsRemoved(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/auth/captcha", nil))
+	if recorder.Code != http.StatusNotFound {
+		t.Fatalf("expected captcha status 404, got %d", recorder.Code)
 	}
 }
 

@@ -1,11 +1,11 @@
 import type {
-	CaptchaResp,
 	CsrfTokenResp,
 	GoogleCallbackReq,
 	LoginHistory,
 	LoginReq,
 	PasswordChangeReq,
 	TokenResp,
+	TurnstileConfigResp,
 	UserInfo,
 } from '@/types/auth';
 import type { PaginatedResp } from '@/types/common';
@@ -18,9 +18,9 @@ export const authApi = {
 		return request.get('/api/auth/csrf-token');
 	},
 
-	// 获取验证码
-	getCaptcha(): Promise<CaptchaResp> {
-		return request.get('/api/auth/captcha');
+	// 获取 Turnstile 配置
+	getTurnstileConfig(): Promise<TurnstileConfigResp> {
+		return request.get('/api/auth/turnstile-config');
 	},
 
 	// 登录

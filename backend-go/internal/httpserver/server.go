@@ -39,6 +39,7 @@ type Server struct {
 	store              orbit.Store
 	tasks              task.Repository
 	defaultMaxAttempts int
+	turnstileVerifier  turnstileVerifier
 }
 
 type createTaskReq struct {
@@ -50,7 +51,7 @@ type createTaskReq struct {
 }
 
 func New(cfg config.Config, logger *slog.Logger, store orbit.Store, tasks task.Repository, defaultMaxAttempts int) Server {
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, tasks: tasks, defaultMaxAttempts: defaultMaxAttempts}
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, tasks: tasks, defaultMaxAttempts: defaultMaxAttempts, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {

@@ -3,17 +3,16 @@ export interface CsrfTokenResp {
 	token: string
 }
 
-export interface CaptchaResp {
-	token: string
-	image: string
+export interface TurnstileConfigResp {
+	enabled: boolean
+	site_key: string
 }
 
 export interface LoginReq {
 	username: string
 	password: string
 	csrf_token: string
-	captcha_token: string
-	captcha_answer: string
+	turnstile_token?: string
 }
 
 export interface TokenResp {

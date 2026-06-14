@@ -32,6 +32,18 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.MaxBackups != 7 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
+	if !cfg.Turnstile.Enabled {
+		t.Fatal("expected turnstile enabled")
+	}
+	if cfg.Turnstile.SiteKey != "1x00000000000000000000AA" {
+		t.Fatalf("unexpected turnstile site key: %s", cfg.Turnstile.SiteKey)
+	}
+	if cfg.Turnstile.SecretKey != "1x0000000000000000000000000000000AA" {
+		t.Fatalf("unexpected turnstile secret key: %s", cfg.Turnstile.SecretKey)
+	}
+	if cfg.Turnstile.VerifyURL != "https://challenges.cloudflare.com/turnstile/v0/siteverify" {
+		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyURL)
+	}
 	if cfg.Worker.PollInterval != time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
 	}
@@ -97,6 +109,10 @@ worker:
 	t.Setenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH", "/data/pomelo-orbit.db")
 	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_BACKUPS", "4")
+	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__ENABLED", "false")
+	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__SITE_KEY", "site-from-env")
+	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__SECRET_KEY", "secret-from-env")
+	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
 	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__POLL_INTERVAL", "2s")
 
@@ -118,6 +134,18 @@ worker:
 	}
 	if cfg.Logging.MaxBackups != 4 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
+	}
+	if cfg.Turnstile.Enabled {
+		t.Fatal("expected turnstile disabled")
+	}
+	if cfg.Turnstile.SiteKey != "site-from-env" {
+		t.Fatalf("unexpected turnstile site key: %s", cfg.Turnstile.SiteKey)
+	}
+	if cfg.Turnstile.SecretKey != "secret-from-env" {
+		t.Fatalf("unexpected turnstile secret key: %s", cfg.Turnstile.SecretKey)
+	}
+	if cfg.Turnstile.VerifyURL != "https://turnstile.example.test" {
+		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyURL)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -209,6 +237,41 @@ func TestLoadConfigValidatesLogging(t *testing.T) {
 	}
 }
 
+func TestLoadConfigValidatesTurnstile(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		wantErr bool
+	}{
+		{name: "missing site key", content: `turnstile:
+  site_key: ""
+`, wantErr: true},
+		{name: "missing secret key", content: `turnstile:
+  secret_key: ""
+`, wantErr: true},
+		{name: "missing verify url", content: `turnstile:
+  verify_url: ""
+`, wantErr: true},
+		{name: "disabled without keys", content: `turnstile:
+  enabled: false
+  site_key: ""
+  secret_key: ""
+  verify_url: ""
+`, wantErr: false},
+	}
+	for _, tc := range cases {
+		setupDefaultConfig(t)
+		path := writeConfig(t, tc.content)
+		_, err := Load(path)
+		if tc.wantErr && err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
+		if !tc.wantErr && err != nil {
+			t.Fatalf("unexpected error for %s: %v", tc.name, err)
+		}
+	}
+}
+
 func setupDefaultConfig(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -262,6 +325,11 @@ jwt:
   secret_key: ""
 traefik:
   domain_suffix: lvh.me
+turnstile:
+  enabled: true
+  site_key: "1x00000000000000000000AA"
+  secret_key: "1x0000000000000000000000000000000AA"
+  verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 cert:
   letsencrypt:
     enabled: false

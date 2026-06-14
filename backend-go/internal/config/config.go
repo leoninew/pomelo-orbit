@@ -15,15 +15,16 @@ import (
 const defaultConfigFile = "config.defaults.yaml"
 
 type Config struct {
-	App      AppConfig      `mapstructure:"app" yaml:"app"`
-	Server   ServerConfig   `mapstructure:"server" yaml:"server"`
-	Logging  LoggingConfig  `mapstructure:"logging" yaml:"logging"`
-	Database DatabaseConfig `mapstructure:"database" yaml:"database"`
-	Worker   WorkerConfig   `mapstructure:"worker" yaml:"worker"`
-	Orbit    OrbitConfig    `mapstructure:"orbit" yaml:"orbit"`
-	JWT      JWTConfig      `mapstructure:"jwt" yaml:"jwt"`
-	Traefik  TraefikConfig  `mapstructure:"traefik" yaml:"traefik"`
-	Cert     CertConfig     `mapstructure:"cert" yaml:"cert"`
+	App       AppConfig       `mapstructure:"app" yaml:"app"`
+	Server    ServerConfig    `mapstructure:"server" yaml:"server"`
+	Logging   LoggingConfig   `mapstructure:"logging" yaml:"logging"`
+	Database  DatabaseConfig  `mapstructure:"database" yaml:"database"`
+	Worker    WorkerConfig    `mapstructure:"worker" yaml:"worker"`
+	Orbit     OrbitConfig     `mapstructure:"orbit" yaml:"orbit"`
+	JWT       JWTConfig       `mapstructure:"jwt" yaml:"jwt"`
+	Traefik   TraefikConfig   `mapstructure:"traefik" yaml:"traefik"`
+	Turnstile TurnstileConfig `mapstructure:"turnstile" yaml:"turnstile"`
+	Cert      CertConfig      `mapstructure:"cert" yaml:"cert"`
 }
 
 type AppConfig struct {
@@ -81,6 +82,13 @@ type JWTConfig struct {
 
 type TraefikConfig struct {
 	DomainSuffix string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
+}
+
+type TurnstileConfig struct {
+	Enabled   bool   `mapstructure:"enabled" yaml:"enabled"`
+	SiteKey   string `mapstructure:"site_key" yaml:"site_key"`
+	SecretKey string `mapstructure:"secret_key" yaml:"secret_key"`
+	VerifyURL string `mapstructure:"verify_url" yaml:"verify_url"`
 }
 
 type CertConfig struct {
@@ -156,6 +164,10 @@ func bindEnv(loader *viper.Viper) {
 		"orbit.root",
 		"jwt.secret_key",
 		"traefik.domain_suffix",
+		"turnstile.enabled",
+		"turnstile.site_key",
+		"turnstile.secret_key",
+		"turnstile.verify_url",
 		"cert.letsencrypt.enabled",
 		"cert.letsencrypt.email",
 		"cert.letsencrypt.challenge",
@@ -193,6 +205,17 @@ func (c Config) Validate() error {
 	}
 	if c.Logging.MaxBackups <= 0 {
 		return errors.New("logging.max_backups must be positive")
+	}
+	if c.Turnstile.Enabled {
+		if strings.TrimSpace(c.Turnstile.SiteKey) == "" {
+			return errors.New("turnstile.site_key is required when turnstile is enabled")
+		}
+		if strings.TrimSpace(c.Turnstile.SecretKey) == "" {
+			return errors.New("turnstile.secret_key is required when turnstile is enabled")
+		}
+		if strings.TrimSpace(c.Turnstile.VerifyURL) == "" {
+			return errors.New("turnstile.verify_url is required when turnstile is enabled")
+		}
 	}
 	if c.Worker.PollInterval <= 0 {
 		return errors.New("worker.poll_interval must be positive")

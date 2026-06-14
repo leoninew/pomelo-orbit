@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -18,19 +19,21 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const captchaAnswer = "1234"
-
 type loginReq struct {
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	CSRFToken     string `json:"csrf_token"`
-	CaptchaToken  string `json:"captcha_token"`
-	CaptchaAnswer string `json:"captcha_answer"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	CSRFToken      string `json:"csrf_token"`
+	TurnstileToken string `json:"turnstile_token"`
 }
 
 type tokenResp struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
+}
+
+type turnstileConfigResp struct {
+	Enabled bool   `json:"enabled"`
+	SiteKey string `json:"site_key"`
 }
 
 type userInfoResp struct {
@@ -52,7 +55,7 @@ type jwtClaims struct {
 
 func (s Server) registerAuthRoutes(r chiRouter) {
 	r.Get("/api/auth/csrf-token", s.getCSRFToken)
-	r.Get("/api/auth/captcha", s.getCaptcha)
+	r.Get("/api/auth/turnstile-config", s.getTurnstileConfig)
 	r.Post("/api/auth/login", s.login)
 	r.Post("/api/auth/logout", s.logout)
 	r.Get("/api/auth/me", s.getMe)
@@ -68,15 +71,8 @@ func (s Server) getCSRFToken(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"token": token})
 }
 
-func (s Server) getCaptcha(w http.ResponseWriter, r *http.Request) {
-	token, err := randomHex(16)
-	if err != nil {
-		s.logger.Error("generate captcha token failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to generate captcha"})
-		return
-	}
-	image := base64.StdEncoding.EncodeToString([]byte(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40"><rect width="120" height="40" fill="#f8fafc"/><text x="36" y="26" font-size="20" fill="#0f172a">1234</text></svg>`))
-	writeJSON(w, http.StatusOK, map[string]string{"token": token, "image": "data:image/svg+xml;base64," + image})
+func (s Server) getTurnstileConfig(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, turnstileConfigResp{Enabled: s.appCfg.Turnstile.Enabled, SiteKey: s.appCfg.Turnstile.SiteKey})
 }
 
 func (s Server) login(w http.ResponseWriter, r *http.Request) {
@@ -85,13 +81,21 @@ func (s Server) login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
-	if strings.TrimSpace(req.Username) == "" || req.Password == "" || strings.TrimSpace(req.CSRFToken) == "" || strings.TrimSpace(req.CaptchaToken) == "" || strings.TrimSpace(req.CaptchaAnswer) == "" {
+	if strings.TrimSpace(req.Username) == "" || req.Password == "" || strings.TrimSpace(req.CSRFToken) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Missing required login fields"})
 		return
 	}
-	if strings.TrimSpace(req.CaptchaAnswer) != captchaAnswer {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid captcha"})
-		return
+	if s.appCfg.Turnstile.Enabled {
+		turnstileToken := strings.TrimSpace(req.TurnstileToken)
+		if turnstileToken == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Missing required login fields"})
+			return
+		}
+		if err := s.turnstileVerifier.Verify(r.Context(), turnstileToken, clientIP(r)); err != nil {
+			s.logger.Warn("turnstile verification failed", "error", err)
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid verification"})
+			return
+		}
 	}
 	user, err := s.store.UserByUsername(r.Context(), strings.TrimSpace(req.Username))
 	if err != nil || user.Status != "enabled" || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
@@ -222,6 +226,14 @@ func (s Server) jwtSecret() string {
 		return s.appCfg.JWT.SecretKey
 	}
 	return "pomelo-orbit-dev-secret"
+}
+
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 func randomHex(size int) (string, error) {

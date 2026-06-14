@@ -252,9 +252,10 @@ func TestAuthCaptchaRouteIsRemoved(t *testing.T) {
 func TestProjectAndDashboardLists(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
+	token := testToken(t, server)
 
 	projectRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(projectRecorder, httptest.NewRequest(http.MethodGet, "/api/project", nil))
+	server.Handler().ServeHTTP(projectRecorder, authedRequest(http.MethodGet, "/api/project", nil, token))
 	if projectRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project status 200, got %d", projectRecorder.Code)
 	}

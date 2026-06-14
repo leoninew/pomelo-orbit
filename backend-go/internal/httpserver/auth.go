@@ -26,6 +26,25 @@ type loginReq struct {
 	TurnstileToken string `json:"turnstile_token"`
 }
 
+type passwordChangeReq struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
+type googleCallbackReq struct {
+	Code string `json:"code"`
+}
+
+type loginHistoryResp struct {
+	Id        string  `json:"id"`
+	UserId    string  `json:"user_id"`
+	Username  string  `json:"username"`
+	IpAddress *string `json:"ip_address"`
+	UserAgent *string `json:"user_agent"`
+	LoginAt   string  `json:"login_at"`
+	Success   bool    `json:"success"`
+}
+
 type tokenResp struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
@@ -59,6 +78,10 @@ func (s Server) registerAuthRoutes(r chiRouter) {
 	r.Post("/api/auth/login", s.login)
 	r.Post("/api/auth/logout", s.logout)
 	r.Get("/api/auth/me", s.getMe)
+	r.Put("/api/auth/password", s.changePassword)
+	r.Get("/api/auth/login-history", s.listLoginHistory)
+	r.Get("/api/auth/google", s.googleOAuth)
+	r.Post("/api/auth/google/callback", s.googleCallback)
 }
 
 func (s Server) getCSRFToken(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +125,12 @@ func (s Server) login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid username or password"})
 		return
 	}
+	if err := s.store.MarkUserLoggedIn(r.Context(), user.Id); err != nil {
+		s.logger.Warn("mark user login time failed", "user_id", user.Id, "error", err)
+	}
+	if err := s.store.SaveLoginHistory(r.Context(), orbit.LoginHistory{Id: orbit.NewId(), UserId: user.Id, Username: user.Username, IpAddress: stringPtr(clientIP(r)), UserAgent: stringPtr(r.UserAgent()), LoginAt: time.Now().UTC(), Success: true}); err != nil {
+		s.logger.Warn("save login history failed", "user_id", user.Id, "error", err)
+	}
 	token, err := s.signToken(user)
 	if err != nil {
 		s.logger.Error("sign token failed", "user_id", user.Id, "error", err)
@@ -133,6 +162,67 @@ func (s Server) getMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, userInfo(user, roles, permissions))
+}
+
+func (s Server) changePassword(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.currentUser(w, r)
+	if !ok {
+		return
+	}
+	var req passwordChangeReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		return
+	}
+	if req.OldPassword == "" || len(req.NewPassword) < 6 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid password fields"})
+		return
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)) != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid username or password"})
+		return
+	}
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		s.logger.Error("hash password failed", "user_id", user.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to hash password"})
+		return
+	}
+	user.PasswordHash = string(passwordHash)
+	if err := s.store.UpdateUser(r.Context(), user); err != nil {
+		s.logger.Error("change password failed", "user_id", user.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to change password"})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s Server) listLoginHistory(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requirePermission(w, r, "login:read"); !ok {
+		return
+	}
+	page, perPage := pageParams(r)
+	history, err := s.store.ListLoginHistory(r.Context(), page, perPage, r.URL.Query().Get("search"))
+	if err != nil {
+		s.logger.Error("list login history failed", "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list login history"})
+		return
+	}
+	resp := mapPage(history, loginHistoryResponse)
+	writeJSON(w, http.StatusOK, newPaginatedResp(resp))
+}
+
+func (s Server) googleOAuth(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{"detail": "Google OAuth is not configured"})
+}
+
+func (s Server) googleCallback(w http.ResponseWriter, r *http.Request) {
+	var req googleCallbackReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		return
+	}
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{"detail": "Google OAuth is not configured"})
 }
 
 func (s Server) currentUser(w http.ResponseWriter, r *http.Request) (orbit.User, bool) {
@@ -229,11 +319,31 @@ func (s Server) jwtSecret() string {
 }
 
 func clientIP(r *http.Request) string {
+	forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
+	if forwarded != "" {
+		parts := strings.Split(forwarded, ",")
+		return strings.TrimSpace(parts[0])
+	}
+	realIP := strings.TrimSpace(r.Header.Get("X-Real-IP"))
+	if realIP != "" {
+		return realIP
+	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
 	}
 	return host
+}
+
+func loginHistoryResponse(history orbit.LoginHistory) loginHistoryResp {
+	return loginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: formatTime(history.LoginAt), Success: history.Success}
+}
+
+func stringPtr(value string) *string {
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return &value
 }
 
 func randomHex(size int) (string, error) {

@@ -167,6 +167,38 @@ func (s Store) DeleteUser(ctx context.Context, userId string) error {
 	return nil
 }
 
+func (s Store) MarkUserLoggedIn(ctx context.Context, userId string) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`UPDATE user SET last_login_at = %s, updated_at = %s WHERE id = ?`, db.NowExpr(s.driver), db.NowExpr(s.driver)), userId)
+	if err != nil {
+		return fmt.Errorf("mark user logged in %s: %w", userId, err)
+	}
+	return nil
+}
+
+func (s Store) SaveLoginHistory(ctx context.Context, history LoginHistory) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO login_history (id, user_id, username, ip_address, user_agent, login_at, success) VALUES (?, ?, ?, ?, ?, ?, ?)`, history.Id, history.UserId, history.Username, history.IpAddress, history.UserAgent, history.LoginAt, history.Success)
+	if err != nil {
+		return fmt.Errorf("save login history %s: %w", history.Id, err)
+	}
+	return nil
+}
+
+func (s Store) ListLoginHistory(ctx context.Context, page int, perPage int, search string) (Page[LoginHistory], error) {
+	page, perPage = NormalizePage(page, perPage)
+	where, args := loginHistorySearchWhere(search)
+	var total int
+	if err := s.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM login_history`+where, args...); err != nil {
+		return Page[LoginHistory]{}, fmt.Errorf("count login history: %w", err)
+	}
+	args = append(args, perPage, (page-1)*perPage)
+	var items []LoginHistory
+	err := s.db.SelectContext(ctx, &items, `SELECT id, user_id, username, ip_address, user_agent, login_at, success FROM login_history`+where+` ORDER BY login_at DESC, id DESC LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return Page[LoginHistory]{}, fmt.Errorf("list login history: %w", err)
+	}
+	return Page[LoginHistory]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
 func (s Store) RoleById(ctx context.Context, id string) (Role, error) {
 	var role Role
 	err := s.db.GetContext(ctx, &role, `SELECT id, code, name, description, created_at, updated_at FROM role WHERE id = ?`, id)
@@ -187,6 +219,15 @@ func userSearchWhere(search string) (string, []any) {
 	}
 	like := "%" + strings.ToLower(search) + "%"
 	return " WHERE LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?", []any{like, like}
+}
+
+func loginHistorySearchWhere(search string) (string, []any) {
+	search = strings.TrimSpace(search)
+	if search == "" {
+		return "", nil
+	}
+	like := "%" + strings.ToLower(search) + "%"
+	return " WHERE LOWER(username) LIKE ?", []any{like}
 }
 
 func sqlIn(query string, values []string) (string, []any, error) {

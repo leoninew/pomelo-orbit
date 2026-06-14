@@ -69,6 +69,7 @@ func (s Server) Handler() http.Handler {
 	s.registerAuthRoutes(r)
 	s.registerUserRoutes(r)
 	s.registerRoleRoutes(r)
+	s.registerSettingsRoutes(r)
 	s.registerProjectRoutes(r)
 	s.registerDashboardRoutes(r)
 	r.Post("/api/background/task", s.createTask)

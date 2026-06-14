@@ -30,6 +30,8 @@ const maxResponseBodyLogLength = 4096
 type chiRouter interface {
 	Get(pattern string, handlerFn http.HandlerFunc)
 	Post(pattern string, handlerFn http.HandlerFunc)
+	Put(pattern string, handlerFn http.HandlerFunc)
+	Delete(pattern string, handlerFn http.HandlerFunc)
 }
 
 type Server struct {
@@ -65,6 +67,8 @@ func (s Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	s.registerAuthRoutes(r)
+	s.registerUserRoutes(r)
+	s.registerRoleRoutes(r)
 	s.registerProjectRoutes(r)
 	s.registerDashboardRoutes(r)
 	r.Post("/api/background/task", s.createTask)

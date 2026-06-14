@@ -132,6 +132,12 @@ type deploymentResp struct {
 }
 
 func (s Server) registerDashboardRoutes(r chiRouter) {
+	r.Get("/api/ci/build-stage", s.listBuildStages)
+	r.Post("/api/ci/build-stage", s.createBuildStage)
+	r.Get("/api/ci/build-stage/{stage_id}", s.getBuildStage)
+	r.Put("/api/ci/build-stage/{stage_id}", s.updateBuildStage)
+	r.Delete("/api/ci/build-stage/{stage_id}", s.deleteBuildStage)
+	r.Post("/api/ci/build-stage/{stage_id}/duplicate", s.duplicateBuildStage)
 	r.Get("/api/ci/repository", s.listRepositories)
 	r.Post("/api/ci/repository", s.createRepository)
 	r.Get("/api/ci/repository/{repository_id}", s.getRepository)

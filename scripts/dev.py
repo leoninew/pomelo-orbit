@@ -21,6 +21,19 @@ def command_path(command: str) -> str:
     return path
 
 
+def build_backend() -> Path:
+    """Build backend-go and return the executable path."""
+    binary = ROOT_DIR / "backend-go" / "bin" / ("backend-go.exe" if os.name == "nt" else "backend-go")
+    binary.parent.mkdir(parents=True, exist_ok=True)
+    print("构建后端服务器...", flush=True)
+    subprocess.run(
+        [command_path("go"), "build", "-o", str(binary), "./cmd/backend-go"],
+        cwd=ROOT_DIR / "backend-go",
+        check=True,
+    )
+    return binary
+
+
 class DevProcess:
     """Development server process."""
 
@@ -53,7 +66,7 @@ class DevProcess:
 
         print(f"停止{self.name}服务器...", flush=True)
         if os.name == "nt":
-            self.process.send_signal(signal.CTRL_BREAK_EVENT)
+            self.kill_process_tree(force=False)
         else:
             os.killpg(self.process.pid, signal.SIGTERM)
 
@@ -63,9 +76,17 @@ class DevProcess:
             return
 
         if os.name == "nt":
-            self.process.kill()
+            self.kill_process_tree(force=True)
         else:
             os.killpg(self.process.pid, signal.SIGKILL)
+
+    def kill_process_tree(self, force: bool) -> None:
+        """Kill the Windows process tree started by this process."""
+        assert self.process is not None
+        command = ["taskkill", "/PID", str(self.process.pid), "/T"]
+        if force:
+            command.append("/F")
+        subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
 
 def stop_all(processes: list[DevProcess]) -> None:
@@ -98,12 +119,13 @@ def main() -> int:
     backend_env = os.environ.copy()
     backend_env["POMELO_ORBIT_BACKEND__SERVER__HOST"] = "127.0.0.1"
     backend_env["POMELO_ORBIT_BACKEND__SERVER__PORT"] = "9001"
+    backend_binary = build_backend()
 
     processes = [
         DevProcess(
             name="后端",
             cwd=ROOT_DIR / "backend-go",
-            command=[command_path("go"), "run", "./cmd/backend-go", "serve"],
+            command=[str(backend_binary), "serve"],
             env=backend_env,
         ),
         DevProcess(

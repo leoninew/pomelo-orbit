@@ -270,7 +270,11 @@ func TestProjectAndDashboardLists(t *testing.T) {
 	paths := []string{"/api/ci/repository", "/api/ci/run", "/api/cd/application", "/api/cd/deployment"}
 	for _, path := range paths {
 		recorder := httptest.NewRecorder()
-		server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		if path == "/api/ci/repository" {
+			request.Header.Set("Authorization", "Bearer "+token)
+		}
+		server.Handler().ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("expected %s status 200, got %d: %s", path, recorder.Code, recorder.Body.String())
 		}

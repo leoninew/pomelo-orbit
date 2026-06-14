@@ -23,6 +23,15 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Server.Port != 8080 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
+	if cfg.Logging.File != "logs/backend-go.log" {
+		t.Fatalf("unexpected logging file: %s", cfg.Logging.File)
+	}
+	if cfg.Logging.MaxSizeMB != 100 {
+		t.Fatalf("unexpected logging max size: %d", cfg.Logging.MaxSizeMB)
+	}
+	if cfg.Logging.MaxBackups != 7 {
+		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
+	}
 	if cfg.Worker.PollInterval != time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
 	}
@@ -32,6 +41,8 @@ func TestLoadConfigMergesCustomConfig(t *testing.T) {
 	setupDefaultConfig(t)
 	path := writeConfig(t, `logging:
   level: "DEBUG"
+  max_size_mb: 50
+  max_backups: 3
 database:
   sqlite:
     path: "data/test.db"
@@ -49,6 +60,12 @@ worker:
 	}
 	if cfg.Logging.Level != "DEBUG" {
 		t.Fatalf("unexpected logging level: %s", cfg.Logging.Level)
+	}
+	if cfg.Logging.MaxSizeMB != 50 {
+		t.Fatalf("unexpected logging max size: %d", cfg.Logging.MaxSizeMB)
+	}
+	if cfg.Logging.MaxBackups != 3 {
+		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
 	if cfg.Worker.Id != "worker-1" {
 		t.Fatalf("unexpected worker id: %s", cfg.Worker.Id)
@@ -78,6 +95,8 @@ worker:
 	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__HOST", "0.0.0.0")
 	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__PORT", "8088")
 	t.Setenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH", "/data/pomelo-orbit.db")
+	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_SIZE_MB", "25")
+	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_BACKUPS", "4")
 	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__POLL_INTERVAL", "2s")
 
@@ -93,6 +112,12 @@ worker:
 	}
 	if cfg.Database.SQLite.Path != "/data/pomelo-orbit.db" {
 		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
+	}
+	if cfg.Logging.MaxSizeMB != 25 {
+		t.Fatalf("unexpected logging max size: %d", cfg.Logging.MaxSizeMB)
+	}
+	if cfg.Logging.MaxBackups != 4 {
+		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -160,6 +185,30 @@ orbit:
 	}
 }
 
+func TestLoadConfigValidatesLogging(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+	}{
+		{name: "missing file", content: `logging:
+  file: ""
+`},
+		{name: "missing max size", content: `logging:
+  max_size_mb: 0
+`},
+		{name: "missing max backups", content: `logging:
+  max_backups: 0
+`},
+	}
+	for _, tc := range cases {
+		setupDefaultConfig(t)
+		path := writeConfig(t, tc.content)
+		if _, err := Load(path); err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
+	}
+}
+
 func setupDefaultConfig(t *testing.T) {
 	t.Helper()
 	dir := t.TempDir()
@@ -199,6 +248,8 @@ server:
 logging:
   level: info
   file: logs/backend-go.log
+  max_size_mb: 100
+  max_backups: 7
 database:
   driver: sqlite
   sqlite:

@@ -38,8 +38,10 @@ type ServerConfig struct {
 }
 
 type LoggingConfig struct {
-	Level string `mapstructure:"level" yaml:"level"`
-	File  string `mapstructure:"file" yaml:"file"`
+	Level      string `mapstructure:"level" yaml:"level"`
+	File       string `mapstructure:"file" yaml:"file"`
+	MaxSizeMB  int    `mapstructure:"max_size_mb" yaml:"max_size_mb"`
+	MaxBackups int    `mapstructure:"max_backups" yaml:"max_backups"`
 }
 
 const (
@@ -146,6 +148,8 @@ func bindEnv(loader *viper.Viper) {
 		"server.port",
 		"logging.level",
 		"logging.file",
+		"logging.max_size_mb",
+		"logging.max_backups",
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
@@ -180,6 +184,15 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("database.driver must be %s or %s", DatabaseDriverSQLite, DatabaseDriverMySQL)
+	}
+	if strings.TrimSpace(c.Logging.File) == "" {
+		return errors.New("logging.file is required")
+	}
+	if c.Logging.MaxSizeMB <= 0 {
+		return errors.New("logging.max_size_mb must be positive")
+	}
+	if c.Logging.MaxBackups <= 0 {
+		return errors.New("logging.max_backups must be positive")
 	}
 	if c.Worker.PollInterval <= 0 {
 		return errors.New("worker.poll_interval must be positive")

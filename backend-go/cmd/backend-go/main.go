@@ -34,7 +34,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := logging.New(cfg.Logging.Level)
+	logger, closeLogger, err := logging.New(cfg.Logging)
+	if err != nil {
+		slog.Error("init logger failed", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		if err := closeLogger(); err != nil {
+			slog.Error("close logger failed", "error", err)
+		}
+	}()
 	backgroundApp := app.New(cfg, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

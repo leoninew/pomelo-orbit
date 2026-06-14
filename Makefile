@@ -1,4 +1,4 @@
-.PHONY: help install backend frontend lint test test-backend test-frontend build clean
+.PHONY: help install dev lint test test-backend test-frontend build clean
 
 help:
 	@echo "Pomelo Orbit - 开发命令"
@@ -8,10 +8,7 @@ help:
 	@echo "  make install force=1 - 强制重新安装所有依赖"
 	@echo ""
 	@echo "开发服务:"
-	@echo "  make backend         - 启动后端服务器 (端口 9001)"
-	@echo "  make frontend        - 启动前端服务器 (端口 9002)"
-	@echo "  make frontend remote=1 - 启动前端连接远程后端"
-	@echo "                           (需先启动隧道: python scripts/manage.py tunnel start 9001)"
+	@echo "  make dev             - 启动前端和后端服务器"
 	@echo ""
 	@echo "代码检查:"
 	@echo "  make lint            - 检查代码问题"
@@ -46,15 +43,8 @@ install:
 		cd frontend && yarn install)
 	@echo "✓ 所有依赖安装完成"
 
-backend:
-	@echo "启动后端服务器 (端口 9001)..."
-	cd backend && PYTHONUTF8=1 uv run python -m pomelo_orbit.main --port 9001 --reload
-
-frontend:
-	@$(if $(remote), \
-		echo "启动前端服务器 (端口 9002, 连接远程后端)...", \
-		echo "启动前端服务器 (端口 9002)...")
-	cd frontend && $(if $(remote), yarn dev:remote, yarn dev)
+dev:
+	@bash scripts/dev.sh
 
 lint:
 	@echo "后端代码检查..."

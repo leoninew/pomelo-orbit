@@ -13,6 +13,7 @@ from pomelo_orbit.infrastructure.logging import RequestLoggingMiddleware
 from pomelo_orbit.infrastructure.security import (
     SecurityService,
     hash_password,
+    validate_security_config,
     verify_github_signature,
     verify_password,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "get_security_service",
     "get_settings",
     "hash_password",
+    "validate_security_config",
     "verify_github_signature",
     "verify_password",
 ]

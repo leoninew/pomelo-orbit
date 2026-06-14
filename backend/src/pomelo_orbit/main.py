@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from pomelo_orbit.domain import BusinessError
-from pomelo_orbit.infrastructure import get_cors_config, get_settings
+from pomelo_orbit.infrastructure import get_cors_config, get_settings, validate_security_config
 from pomelo_orbit.infrastructure.container import create_container
 from pomelo_orbit.infrastructure.logging import LOGGING_CONFIG, RequestLoggingMiddleware
 from pomelo_orbit.infrastructure.migration.migrator import run_migrations
@@ -36,6 +36,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
+    logger.info("Validating startup configuration...")
+    validate_security_config(get_settings())
+    logger.info("Startup configuration validated successfully!")
+
     logger.info("Running database migrations...")
     run_migrations(get_engine())
     logger.info("Database migrations completed successfully!")

@@ -29,25 +29,26 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
+def validate_security_config(settings: Dynaconf) -> None:
+    """验证安全配置"""
+    secret_key = settings.jwt.secret_key
+    assert secret_key, "jwt.secret_key 未配置, 请设置 POMELO_ORBIT_JWT__SECRET_KEY 环境变量"
+
+    # 验证 Fernet 格式
+    try:
+        Fernet(secret_key.encode() if isinstance(secret_key, str) else secret_key)
+    except Exception as e:
+        raise AssertionError(
+            "jwt.secret_key 不是有效的 Fernet 格式。请参考 .env.example 文件中的说明生成有效的密钥。"
+        ) from e
+
+
 class SecurityService:
     """安全服务 - 处理 JWT、加密、签名验证"""
 
     def __init__(self, settings: Dynaconf):
         self.settings = settings
-        self._validate_secret_key()
-
-    def _validate_secret_key(self) -> None:
-        """验证密钥配置"""
-        secret_key = self.settings.jwt.secret_key
-        assert secret_key, "jwt.secret_key 未配置, 请设置 POMELO_ORBIT_JWT__SECRET_KEY 环境变量"
-
-        # 验证 Fernet 格式
-        try:
-            Fernet(secret_key.encode() if isinstance(secret_key, str) else secret_key)
-        except Exception as e:
-            raise AssertionError(
-                "jwt.secret_key 不是有效的 Fernet 格式。请参考 .env.example 文件中的说明生成有效的密钥。"
-            ) from e
+        validate_security_config(settings)
 
     def create_access_token(self, data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
         """创建 JWT 访问令牌"""
@@ -131,6 +132,7 @@ def verify_github_signature(payload: bytes, signature: str, secret: str) -> bool
 __all__ = [
     "SecurityService",
     "hash_password",
+    "validate_security_config",
     "verify_github_signature",
     "verify_password",
 ]

@@ -84,6 +84,49 @@ func (s Store) RepositoryHasRunningPipelines(ctx context.Context, repositoryId s
 	return count > 0, nil
 }
 
+func (s Store) ListRepositoryWebhooks(ctx context.Context, repositoryId string) ([]RepositoryWebhook, error) {
+	var items []RepositoryWebhook
+	err := s.db.SelectContext(ctx, &items, `SELECT id, repository_id, name, template_id, branch_filter, encrypted_secret, enabled, created_at, updated_at FROM repository_webhook WHERE repository_id = ? ORDER BY created_at DESC, id`, repositoryId)
+	if err != nil {
+		return nil, fmt.Errorf("list repository webhooks %s: %w", repositoryId, err)
+	}
+	return items, nil
+}
+
+func (s Store) RepositoryWebhook(ctx context.Context, id string) (RepositoryWebhook, error) {
+	var webhook RepositoryWebhook
+	err := s.db.GetContext(ctx, &webhook, `SELECT id, repository_id, name, template_id, branch_filter, encrypted_secret, enabled, created_at, updated_at FROM repository_webhook WHERE id = ?`, id)
+	if err != nil {
+		return RepositoryWebhook{}, fmt.Errorf("load repository webhook %s: %w", id, err)
+	}
+	return webhook, nil
+}
+
+func (s Store) CreateRepositoryWebhook(ctx context.Context, webhook RepositoryWebhook) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO repository_webhook (id, repository_id, name, template_id, branch_filter, encrypted_secret, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(s.driver), db.NowExpr(s.driver)), webhook.Id, webhook.RepositoryId, webhook.Name, webhook.TemplateId, webhook.BranchFilter, webhook.EncryptedSecret, webhook.Enabled)
+	if err != nil {
+		return fmt.Errorf("create repository webhook %s: %w", webhook.Name, err)
+	}
+	return nil
+}
+
+func (s Store) UpdateRepositoryWebhook(ctx context.Context, webhook RepositoryWebhook) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`UPDATE repository_webhook SET name = ?, template_id = ?, branch_filter = ?, encrypted_secret = ?, enabled = ?, updated_at = %s WHERE id = ?`, db.NowExpr(s.driver)), webhook.Name, webhook.TemplateId, webhook.BranchFilter, webhook.EncryptedSecret, webhook.Enabled, webhook.Id)
+	if err != nil {
+		return fmt.Errorf("update repository webhook %s: %w", webhook.Id, err)
+	}
+	return nil
+}
+
+func (s Store) DeleteRepositoryWebhook(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM repository_webhook WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete repository webhook %s: %w", id, err)
+	}
+	return nil
+}
+
 func (s Store) LatestPipelineSnapshot(ctx context.Context, templateId string) (PipelineSnapshot, error) {
 	var snapshot PipelineSnapshot
 	err := s.db.GetContext(ctx, &snapshot, `SELECT id, project_id, template_id, version, stages_snapshot, variables_snapshot, created_at FROM pipeline_snapshot WHERE template_id = ? ORDER BY version DESC LIMIT 1`, templateId)

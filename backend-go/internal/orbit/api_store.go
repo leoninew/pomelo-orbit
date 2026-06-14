@@ -125,6 +125,22 @@ func (s Store) ListPipelineRuns(ctx context.Context, projectId *string, page int
 	return Page[PipelineRun]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
 }
 
+func (s Store) ListPipelineRunsByRepository(ctx context.Context, repositoryId string, page int, perPage int) (Page[PipelineRun], error) {
+	page, perPage = NormalizePage(page, perPage)
+	var total int
+	if err := s.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM pipeline_run WHERE repository_id = ?`, repositoryId); err != nil {
+		return Page[PipelineRun]{}, fmt.Errorf("count repository pipeline runs %s: %w", repositoryId, err)
+	}
+	var items []PipelineRun
+	err := s.db.SelectContext(ctx, &items, fmt.Sprintf(`SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
+		template_name, template_version, %s, trigger_ref, variables_snapshot, status, retry_of,
+		started_at, finished_at, error_message, created_at FROM pipeline_run WHERE repository_id = ? ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, db.QuoteIdent(s.driver, "trigger")), repositoryId, perPage, (page-1)*perPage)
+	if err != nil {
+		return Page[PipelineRun]{}, fmt.Errorf("list repository pipeline runs %s: %w", repositoryId, err)
+	}
+	return Page[PipelineRun]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
 func (s Store) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (Page[Application], error) {
 	page, perPage = NormalizePage(page, perPage)
 	where, args := projectSearchWhere(projectId, search, []string{"name", "code"})

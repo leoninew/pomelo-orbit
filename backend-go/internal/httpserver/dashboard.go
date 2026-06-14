@@ -1,9 +1,13 @@
 package httpserver
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -50,6 +54,32 @@ type pipelineRunTriggerReq struct {
 	TemplateId string            `json:"template_id"`
 	TriggerRef string            `json:"trigger_ref"`
 	Variables  map[string]string `json:"variables"`
+}
+
+type repositoryWebhookResp struct {
+	Id           string  `json:"id"`
+	RepositoryId string  `json:"repository_id"`
+	Name         string  `json:"name"`
+	TemplateId   string  `json:"template_id"`
+	BranchFilter *string `json:"branch_filter"`
+	Enabled      bool    `json:"enabled"`
+	CreatedAt    string  `json:"created_at"`
+	UpdatedAt    string  `json:"updated_at"`
+}
+
+type repositoryWebhookCreateReq struct {
+	Name         string  `json:"name"`
+	TemplateId   string  `json:"template_id"`
+	Secret       string  `json:"secret"`
+	BranchFilter *string `json:"branch_filter"`
+}
+
+type repositoryWebhookUpdateReq struct {
+	Name         *string `json:"name"`
+	TemplateId   *string `json:"template_id"`
+	Secret       *string `json:"secret"`
+	BranchFilter *string `json:"branch_filter"`
+	Enabled      *bool   `json:"enabled"`
 }
 
 type pipelineRunResp struct {
@@ -107,7 +137,14 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Get("/api/ci/repository/{repository_id}", s.getRepository)
 	r.Put("/api/ci/repository/{repository_id}", s.updateRepository)
 	r.Delete("/api/ci/repository/{repository_id}", s.deleteRepository)
+	r.Get("/api/ci/repository/{repository_id}/run", s.listRepositoryRuns)
+	r.Get("/api/ci/repository/{repository_id}/webhook", s.listRepositoryWebhooks)
+	r.Post("/api/ci/repository/{repository_id}/webhook", s.createRepositoryWebhook)
+	r.Put("/api/ci/repository/{repository_id}/webhook/{webhook_id}", s.updateRepositoryWebhook)
+	r.Delete("/api/ci/repository/{repository_id}/webhook/{webhook_id}", s.deleteRepositoryWebhook)
 	r.Post("/api/ci/repository/{repository_id}/trigger", s.triggerRepository)
+	r.Get("/api/ci/webhook/{webhook_id}", s.getRepositoryWebhook)
+	r.Post("/api/ci/webhook/{webhook_id}", s.receiveRepositoryWebhook)
 	r.Get("/api/ci/run", s.listPipelineRuns)
 	r.Get("/api/cd/application", s.listApplications)
 	r.Get("/api/cd/deployment", s.listDeployments)
@@ -274,6 +311,216 @@ func (s Server) deleteRepository(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (s Server) listRepositoryRuns(w http.ResponseWriter, r *http.Request) {
+	repo, ok := s.loadRepositoryForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	page, perPage := pageParams(r)
+	items, err := s.store.ListPipelineRunsByRepository(r.Context(), repo.Id, page, perPage)
+	if err != nil {
+		s.logger.Error("list repository runs failed", "repository_id", repo.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list repository runs"})
+		return
+	}
+	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, pipelineRunResponse)))
+}
+
+func (s Server) listRepositoryWebhooks(w http.ResponseWriter, r *http.Request) {
+	repo, ok := s.loadRepositoryForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	items, err := s.store.ListRepositoryWebhooks(r.Context(), repo.Id)
+	if err != nil {
+		s.logger.Error("list repository webhooks failed", "repository_id", repo.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list repository webhooks"})
+		return
+	}
+	resp := make([]repositoryWebhookResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, repositoryWebhookResponse(item))
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s Server) createRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
+	repo, ok := s.loadRepositoryForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	var req repositoryWebhookCreateReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		return
+	}
+	if !normalizeRepositoryWebhookCreateReq(w, &req) || !s.ensurePipelineTemplate(w, r, req.TemplateId) {
+		return
+	}
+	webhook := orbit.RepositoryWebhook{Id: orbit.NewId(), RepositoryId: repo.Id, Name: req.Name, TemplateId: req.TemplateId, BranchFilter: req.BranchFilter, EncryptedSecret: req.Secret, Enabled: true}
+	if err := s.store.CreateRepositoryWebhook(r.Context(), webhook); err != nil {
+		s.logger.Error("create repository webhook failed", "repository_id", repo.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create repository webhook"})
+		return
+	}
+	created, err := s.store.RepositoryWebhook(r.Context(), webhook.Id)
+	if err != nil {
+		s.logger.Error("load created repository webhook failed", "webhook_id", webhook.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository webhook"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, repositoryWebhookResponse(created))
+}
+
+func (s Server) getRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
+	webhook, ok := s.loadRepositoryWebhookForCurrentUser(w, r, urlParam(r, "webhook_id"))
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, repositoryWebhookResponse(webhook))
+}
+
+func (s Server) updateRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
+	repo, ok := s.loadRepositoryForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	webhook, ok := s.loadRepositoryWebhook(w, r, urlParam(r, "webhook_id"))
+	if !ok {
+		return
+	}
+	if webhook.RepositoryId != repo.Id {
+		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Webhook " + webhook.Id + " not found"})
+		return
+	}
+	var req map[string]json.RawMessage
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		return
+	}
+	if !applyRepositoryWebhookUpdateReq(w, r, s, &webhook, req) {
+		return
+	}
+	if err := s.store.UpdateRepositoryWebhook(r.Context(), webhook); err != nil {
+		s.logger.Error("update repository webhook failed", "webhook_id", webhook.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to update repository webhook"})
+		return
+	}
+	updated, err := s.store.RepositoryWebhook(r.Context(), webhook.Id)
+	if err != nil {
+		s.logger.Error("load updated repository webhook failed", "webhook_id", webhook.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository webhook"})
+		return
+	}
+	writeJSON(w, http.StatusOK, repositoryWebhookResponse(updated))
+}
+
+func (s Server) deleteRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
+	repo, ok := s.loadRepositoryForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	webhook, ok := s.loadRepositoryWebhook(w, r, urlParam(r, "webhook_id"))
+	if !ok {
+		return
+	}
+	if webhook.RepositoryId != repo.Id {
+		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Webhook " + webhook.Id + " not found"})
+		return
+	}
+	if err := s.store.DeleteRepositoryWebhook(r.Context(), webhook.Id); err != nil {
+		s.logger.Error("delete repository webhook failed", "webhook_id", webhook.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to delete repository webhook"})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s Server) receiveRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
+	webhook, ok := s.loadRepositoryWebhook(w, r, urlParam(r, "webhook_id"))
+	if !ok {
+		return
+	}
+	if !webhook.Enabled {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "webhook disabled"})
+		return
+	}
+	payload, err := io.ReadAll(r.Body)
+	if err != nil {
+		s.logger.Error("read webhook payload failed", "webhook_id", webhook.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read webhook payload"})
+		return
+	}
+	var body map[string]any
+	if err := json.Unmarshal(payload, &body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON payload"})
+		return
+	}
+	branch, commitSha, author, ok := s.parseWebhookEvent(w, r, webhook, payload, body)
+	if !ok {
+		return
+	}
+	if webhook.BranchFilter == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "branch filtered"})
+		return
+	}
+	if *webhook.BranchFilter != "*" && !matchBranchFilter(branch, *webhook.BranchFilter) {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ignored", "reason": "branch filtered"})
+		return
+	}
+	repo, err := s.store.Repository(r.Context(), webhook.RepositoryId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + webhook.RepositoryId + " not found"})
+			return
+		}
+		s.logger.Error("load repository failed", "repository_id", webhook.RepositoryId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository"})
+		return
+	}
+	template, err := s.store.PipelineTemplate(r.Context(), webhook.TemplateId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline template " + webhook.TemplateId + " not found"})
+			return
+		}
+		s.logger.Error("load pipeline template failed", "template_id", webhook.TemplateId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline template"})
+		return
+	}
+	snapshot, err := s.store.LatestPipelineSnapshot(r.Context(), webhook.TemplateId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline snapshot for template " + webhook.TemplateId + " not found"})
+			return
+		}
+		s.logger.Error("load pipeline snapshot failed", "template_id", webhook.TemplateId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline snapshot"})
+		return
+	}
+	variablesSnapshot, ok := marshalTriggerVariables(w, map[string]string{"commit_sha": commitSha, "author": author, "event_type": "push"})
+	if !ok {
+		return
+	}
+	triggerRef := branch
+	if triggerRef == "" {
+		triggerRef = commitSha
+	}
+	run := orbit.PipelineRun{Id: orbit.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "webhook", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: orbit.WorkStatusWaitingToRun}
+	if err := s.store.CreatePipelineRun(r.Context(), run); err != nil {
+		s.logger.Error("create webhook pipeline run failed", "webhook_id", webhook.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create pipeline run"})
+		return
+	}
+	payloadJSON, _ := json.Marshal(map[string]any{"pipeline_run_id": run.Id, "variables": map[string]string{"commit_sha": commitSha, "author": author, "event_type": "push"}})
+	if err := s.tasks.Enqueue(r.Context(), orbit.NewId(), status.TaskTypeCIPipelineRunExecute, string(payloadJSON), s.defaultMaxAttempts); err != nil {
+		s.logger.Error("enqueue webhook pipeline run failed", "run_id", run.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to enqueue pipeline run"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "triggered", "run_id": run.Id})
+}
+
 func (s Server) triggerRepository(w http.ResponseWriter, r *http.Request) {
 	repo, ok := s.loadRepositoryForCurrentUser(w, r)
 	if !ok {
@@ -408,6 +655,10 @@ func (s Server) repositoryCredentialName(r *http.Request, credentialId *string) 
 	return s.store.CredentialName(r.Context(), *credentialId)
 }
 
+func repositoryWebhookResponse(item orbit.RepositoryWebhook) repositoryWebhookResp {
+	return repositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Enabled: item.Enabled, CreatedAt: formatTime(item.CreatedAt), UpdatedAt: formatTime(item.UpdatedAt)}
+}
+
 func (s Server) loadRepositoryForCurrentUser(w http.ResponseWriter, r *http.Request) (orbit.Repository, bool) {
 	current, ok := s.currentUser(w, r)
 	if !ok {
@@ -428,6 +679,45 @@ func (s Server) loadRepositoryForCurrentUser(w http.ResponseWriter, r *http.Requ
 		return orbit.Repository{}, false
 	}
 	return repo, true
+}
+
+func (s Server) loadRepositoryWebhookForCurrentUser(w http.ResponseWriter, r *http.Request, webhookId string) (orbit.RepositoryWebhook, bool) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return orbit.RepositoryWebhook{}, false
+	}
+	webhook, ok := s.loadRepositoryWebhook(w, r, webhookId)
+	if !ok {
+		return orbit.RepositoryWebhook{}, false
+	}
+	repo, err := s.store.Repository(r.Context(), webhook.RepositoryId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + webhook.RepositoryId + " not found"})
+			return orbit.RepositoryWebhook{}, false
+		}
+		s.logger.Error("load repository failed", "repository_id", webhook.RepositoryId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository"})
+		return orbit.RepositoryWebhook{}, false
+	}
+	if repo.ProjectId != nil && !s.ensureProjectMembership(w, r, *repo.ProjectId, current.Id) {
+		return orbit.RepositoryWebhook{}, false
+	}
+	return webhook, true
+}
+
+func (s Server) loadRepositoryWebhook(w http.ResponseWriter, r *http.Request, webhookId string) (orbit.RepositoryWebhook, bool) {
+	webhook, err := s.store.RepositoryWebhook(r.Context(), webhookId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Webhook " + webhookId + " not found"})
+			return orbit.RepositoryWebhook{}, false
+		}
+		s.logger.Error("load repository webhook failed", "webhook_id", webhookId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository webhook"})
+		return orbit.RepositoryWebhook{}, false
+	}
+	return webhook, true
 }
 
 func (s Server) ensureProjectMembership(w http.ResponseWriter, r *http.Request, projectId string, userId string) bool {
@@ -484,6 +774,19 @@ func (s Server) ensureRepositoryCredential(w http.ResponseWriter, r *http.Reques
 	return true
 }
 
+func (s Server) ensurePipelineTemplate(w http.ResponseWriter, r *http.Request, templateId string) bool {
+	if _, err := s.store.PipelineTemplate(r.Context(), templateId); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline template " + templateId + " not found"})
+			return false
+		}
+		s.logger.Error("load pipeline template failed", "template_id", templateId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline template"})
+		return false
+	}
+	return true
+}
+
 func normalizeRepositoryCreateReq(w http.ResponseWriter, req *repositoryCreateReq) bool {
 	req.Name = strings.TrimSpace(req.Name)
 	req.Code = strings.TrimSpace(req.Code)
@@ -505,6 +808,151 @@ func normalizeRepositoryCreateReq(w http.ResponseWriter, req *repositoryCreateRe
 		return false
 	}
 	return true
+}
+
+func normalizeRepositoryWebhookCreateReq(w http.ResponseWriter, req *repositoryWebhookCreateReq) bool {
+	req.Name = strings.TrimSpace(req.Name)
+	req.TemplateId = strings.TrimSpace(req.TemplateId)
+	req.Secret = strings.TrimSpace(req.Secret)
+	req.BranchFilter = normalizeOptionalString(req.BranchFilter)
+	if req.Name == "" || req.TemplateId == "" || req.Secret == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+		return false
+	}
+	return true
+}
+
+func (s Server) parseWebhookEvent(w http.ResponseWriter, r *http.Request, webhook orbit.RepositoryWebhook, payload []byte, body map[string]any) (string, string, string, bool) {
+	if signature := strings.TrimSpace(r.Header.Get("X-Hub-Signature-256")); signature != "" {
+		if !verifyGithubWebhookSignature(payload, signature, webhook.EncryptedSecret) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid signature"})
+			return "", "", "", false
+		}
+		return strings.TrimPrefix(stringMapValue(body, "ref"), "refs/heads/"), stringMapValue(body, "after"), nestedStringMapValue(body, "pusher", "name"), true
+	}
+	if token := strings.TrimSpace(r.Header.Get("X-Gitlab-Token")); token != "" {
+		if token != webhook.EncryptedSecret {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
+			return "", "", "", false
+		}
+		return strings.TrimPrefix(stringMapValue(body, "ref"), "refs/heads/"), stringMapValue(body, "checkout_sha"), stringMapValue(body, "user_name"), true
+	}
+	writeJSON(w, http.StatusUnauthorized, map[string]string{"detail": "Missing signature header"})
+	return "", "", "", false
+}
+
+func verifyGithubWebhookSignature(payload []byte, signature string, secret string) bool {
+	if secret == "" || !strings.HasPrefix(signature, "sha256=") {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write(payload)
+	computed := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(computed), []byte(strings.TrimPrefix(signature, "sha256=")))
+}
+
+func stringMapValue(values map[string]any, key string) string {
+	value, _ := values[key].(string)
+	return value
+}
+
+func nestedStringMapValue(values map[string]any, key string, nestedKey string) string {
+	nested, _ := values[key].(map[string]any)
+	return stringMapValue(nested, nestedKey)
+}
+
+func matchBranchFilter(branch string, filter string) bool {
+	if !strings.Contains(filter, "*") {
+		return branch == filter
+	}
+	parts := strings.Split(filter, "*")
+	if len(parts) == 2 {
+		return strings.HasPrefix(branch, parts[0]) && strings.HasSuffix(branch, parts[1])
+	}
+	position := 0
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		index := strings.Index(branch[position:], part)
+		if index < 0 {
+			return false
+		}
+		position += index + len(part)
+	}
+	return true
+}
+
+func applyRepositoryWebhookUpdateReq(w http.ResponseWriter, r *http.Request, s Server, webhook *orbit.RepositoryWebhook, req map[string]json.RawMessage) bool {
+	var value string
+	if raw, exists := req["name"]; exists {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+		value = strings.TrimSpace(value)
+		if value == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+		webhook.Name = value
+	}
+	if raw, exists := req["template_id"]; exists {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+		value = strings.TrimSpace(value)
+		if value == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+		if !s.ensurePipelineTemplate(w, r, value) {
+			return false
+		}
+		webhook.TemplateId = value
+	}
+	if raw, exists := req["secret"]; exists {
+		if err := json.Unmarshal(raw, &value); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+		value = strings.TrimSpace(value)
+		if value == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+		webhook.EncryptedSecret = value
+	}
+	if raw, exists := req["branch_filter"]; exists {
+		var branchFilter *string
+		if string(raw) != "null" {
+			if err := json.Unmarshal(raw, &value); err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+				return false
+			}
+			branchFilter = &value
+		}
+		webhook.BranchFilter = normalizeOptionalString(branchFilter)
+	}
+	if raw, exists := req["enabled"]; exists {
+		if err := json.Unmarshal(raw, &webhook.Enabled); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid repository webhook fields"})
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeOptionalString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 func marshalVariableOverrides(w http.ResponseWriter, variables []map[string]any) (string, bool) {

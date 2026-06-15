@@ -199,6 +199,251 @@ CD 模块（Application、Deployment、Route）从设计之初就采用了简化
 - 合并 `docs/discussions/tood.md` 到 `docs/todo.md`
 - 完成文档重组：建立 development/、frontend/、backend/ 目录结构
 
+---
+
+## Backend API Migration TODO
+
+> 目标：以 Python `backend` 现有业务 API 为源清单，逐步补齐 `backend-go`。  
+> 统计口径：仅统计 `/api` 下业务接口；不包含 Python 自动文档、静态资源、SPA fallback 等非业务路由。
+
+### 统计摘要
+
+- Python backend API：119 个
+- backend-go 已有同 method/path 路由：100 个
+- 明确无须迁移：1 个
+- backend-go 待迁移或待补齐路由：18 个
+
+### 图例
+
+- `[x]`：backend-go 已注册同 method/path 路由，或已明确无须迁移
+- `[ ]`：backend-go 缺失，待迁移或待补齐
+- `Go only`：backend-go 额外提供的后台任务、webhook 查询等接口，不计入 Python backend 缺失项
+
+### Health
+
+来源：`backend/src/pomelo_orbit/main.py`
+
+- [x] `GET /api/health` — backend-go 已有：`backend-go/internal/httpserver/server.go`
+
+### Auth
+
+来源：`backend/src/pomelo_orbit/interfaces/api/auth/router.py`
+
+- [x] `GET /api/auth/csrf-token` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `GET /api/auth/captcha` — 无须迁移：已迁移到 Cloudflare/Turnstile 方案，backend-go 提供 `GET /api/auth/turnstile-config`
+- [x] `POST /api/auth/login` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `POST /api/auth/logout` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `GET /api/auth/me` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `PUT /api/auth/password` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `GET /api/auth/login-history` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `GET /api/auth/google` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+- [x] `POST /api/auth/google/callback` — backend-go 已有：`backend-go/internal/httpserver/auth.go`
+
+### Settings
+
+来源：`backend/src/pomelo_orbit/interfaces/api/settings/router.py`
+
+- [x] `GET /api/settings/config` — backend-go 已有：`backend-go/internal/httpserver/settings.go`
+- [x] `PUT /api/settings/config` — backend-go 已有：`backend-go/internal/httpserver/settings.go`
+- [x] `DELETE /api/settings/config` — backend-go 已有：`backend-go/internal/httpserver/settings.go`
+
+### User
+
+来源：`backend/src/pomelo_orbit/interfaces/api/user.py`
+
+- [x] `GET /api/user` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `POST /api/user` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `GET /api/user/{user_id}` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `PUT /api/user/{user_id}` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `PUT /api/user/{user_id}/role` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `POST /api/user/{user_id}/disable` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `POST /api/user/{user_id}/enable` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+- [x] `DELETE /api/user/{user_id}` — backend-go 已有：`backend-go/internal/httpserver/user.go`
+
+### Role
+
+来源：`backend/src/pomelo_orbit/interfaces/api/role.py`
+
+- [x] `GET /api/role/permission` — backend-go 已有：`backend-go/internal/httpserver/role.go`
+- [x] `GET /api/role` — backend-go 已有：`backend-go/internal/httpserver/role.go`
+- [x] `POST /api/role` — backend-go 已有：`backend-go/internal/httpserver/role.go`
+- [x] `GET /api/role/{role_id}` — backend-go 已有：`backend-go/internal/httpserver/role.go`
+- [x] `PUT /api/role/{role_id}` — backend-go 已有：`backend-go/internal/httpserver/role.go`
+- [x] `DELETE /api/role/{role_id}` — backend-go 已有：`backend-go/internal/httpserver/role.go`
+
+### Project
+
+来源：`backend/src/pomelo_orbit/interfaces/api/project/router.py`
+
+- [x] `GET /api/project` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `POST /api/project` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `GET /api/project/{project_id}` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `PUT /api/project/{project_id}` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `POST /api/project/{project_id}/deprecate` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `GET /api/project/{project_id}/member` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `POST /api/project/{project_id}/member` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+- [x] `DELETE /api/project/{project_id}/member/{user_id}` — backend-go 已有：`backend-go/internal/httpserver/project.go`
+
+### CI
+
+#### Artifact
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/artifact.py`
+
+- [x] `GET /api/ci/artifact` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+
+#### Build Stage
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/build_stage.py`
+
+- [x] `GET /api/ci/build-stage` — backend-go 已有：`backend-go/internal/httpserver/build_stage.go`
+- [x] `POST /api/ci/build-stage` — backend-go 已有：`backend-go/internal/httpserver/build_stage.go`
+- [x] `GET /api/ci/build-stage/{stage_id}` — backend-go 已有：`backend-go/internal/httpserver/build_stage.go`
+- [x] `PUT /api/ci/build-stage/{stage_id}` — backend-go 已有：`backend-go/internal/httpserver/build_stage.go`
+- [x] `DELETE /api/ci/build-stage/{stage_id}` — backend-go 已有：`backend-go/internal/httpserver/build_stage.go`
+- [x] `POST /api/ci/build-stage/{stage_id}/duplicate` — backend-go 已有：`backend-go/internal/httpserver/build_stage.go`
+
+#### Credential
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/credential.py`
+
+- [x] `GET /api/ci/credential` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+- [x] `POST /api/ci/credential` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+- [x] `GET /api/ci/credential/{credential_id}` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+- [x] `PUT /api/ci/credential/{credential_id}` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+- [x] `DELETE /api/ci/credential/{credential_id}` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+- [x] `GET /api/ci/credential/{credential_id}/export` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+- [x] `POST /api/ci/credential/import` — backend-go 已有：`backend-go/internal/httpserver/credential.go`
+
+#### Repository
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/repository.py`
+
+- [x] `GET /api/ci/repository` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/ci/repository` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/ci/repository/{repository_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `PUT /api/ci/repository/{repository_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `DELETE /api/ci/repository/{repository_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/ci/repository/{repository_id}/run` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/ci/repository/{repository_id}/trigger` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+
+#### Snapshot
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/snapshot.py`
+
+- [x] `GET /api/ci/snapshot/{snapshot_id}` — backend-go 已有：`backend-go/internal/httpserver/snapshot.go`
+
+#### Template
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/template.py`
+
+- [x] `GET /api/ci/template` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+- [x] `POST /api/ci/template` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+- [x] `GET /api/ci/template/{template_id}` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+- [x] `PUT /api/ci/template/{template_id}` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+- [x] `POST /api/ci/template/resolve-variables` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+- [x] `DELETE /api/ci/template/{template_id}` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+- [x] `POST /api/ci/template/{template_id}/duplicate` — backend-go 已有：`backend-go/internal/httpserver/template.go`
+
+#### Run
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/run.py`
+
+- [x] `GET /api/ci/run` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/ci/run/{run_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/ci/run/{run_id}/artifacts` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/ci/run/{run_id}/stages/{stage_run_id}/log` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/ci/run/{run_id}/cancel` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/ci/run/{run_id}/retry` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+
+#### Webhook
+
+来源：`backend/src/pomelo_orbit/interfaces/api/ci/webhook.py`
+
+- [x] `GET /api/ci/repository/{repository_id}/webhook` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/ci/repository/{repository_id}/webhook` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `PUT /api/ci/repository/{repository_id}/webhook/{webhook_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `DELETE /api/ci/repository/{repository_id}/webhook/{webhook_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/ci/webhook/{webhook_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+
+### CD
+
+#### Application
+
+来源：`backend/src/pomelo_orbit/interfaces/api/cd/application.py`
+
+- [x] `GET /api/cd/application` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/cd/application` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/cd/application/import` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/cd/application/{app_id}/export` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `PUT /api/cd/application/{app_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `DELETE /api/cd/application/{app_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/cd/application/{app_id}/compose-preview` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/files` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `POST /api/cd/application/{app_id}/file` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/file/{file_id}` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `PUT /api/cd/application/{app_id}/file/{file_id}` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `DELETE /api/cd/application/{app_id}/file/{file_id}` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `POST /api/cd/application/{app_id}/deploy` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `POST /api/cd/application/{app_id}/stop` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `POST /api/cd/application/{app_id}/restart` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/status` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/logs` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/route` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `POST /api/cd/application/{app_id}/route` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `PUT /api/cd/application/{app_id}/route/{route_id}` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `DELETE /api/cd/application/{app_id}/route/{route_id}` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/compose-service` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `GET /api/cd/application/{app_id}/service-config` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+- [x] `PUT /api/cd/application/{app_id}/service-config/{service_name}` — backend-go 已有：`backend-go/internal/httpserver/application_routes_extra.go`
+
+#### Deployment
+
+来源：`backend/src/pomelo_orbit/interfaces/api/cd/deployment.py`
+
+- [x] `GET /api/cd/deployment` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [ ] `GET /api/cd/deployment/{deployment_id}` — 待迁移
+- [ ] `GET /api/cd/deployment/{deployment_id}/logs` — 待迁移
+- [ ] `GET /api/cd/deployment/{deployment_id}/stream-log` — 待迁移
+- [ ] `POST /api/cd/deployment/{deployment_id}/cancel` — 待迁移
+
+#### Route
+
+来源：`backend/src/pomelo_orbit/interfaces/api/cd/route.py`
+
+- [ ] `GET /api/cd/route` — 待迁移
+- [ ] `POST /api/cd/route` — 待迁移
+- [ ] `GET /api/cd/route/{route_id}` — 待迁移
+- [ ] `PUT /api/cd/route/{route_id}` — 待迁移
+- [ ] `DELETE /api/cd/route/{route_id}` — 待迁移
+- [ ] `POST /api/cd/route/{route_id}/enable` — 待迁移
+- [ ] `POST /api/cd/route/{route_id}/disable` — 待迁移
+- [ ] `POST /api/cd/route/sync` — 待迁移
+- [ ] `POST /api/cd/route/{route_id}/cert` — 待迁移
+- [ ] `DELETE /api/cd/route/{route_id}/https` — 待迁移
+- [ ] `POST /api/cd/route/{route_id}/letsencrypt` — 待迁移
+- [ ] `POST /api/cd/route/{route_id}/mkcert` — 待迁移
+
+#### Traefik Route
+
+来源：`backend/src/pomelo_orbit/interfaces/api/cd/traefik_route.py`
+
+- [ ] `GET /api/cd/traefik-route/config` — 待迁移
+- [ ] `GET /api/cd/traefik-route` — 待迁移
+
+### backend-go only / background routes
+
+以下接口当前只存在于 `backend-go`，不计入 Python backend 迁移缺失项：
+
+- `GET /api/auth/turnstile-config` — `backend-go/internal/httpserver/auth.go`
+- `GET /api/ci/webhook/{webhook_id}` — `backend-go/internal/httpserver/dashboard.go`
+- `POST /api/background/task` — `backend-go/internal/httpserver/server.go`
+- `POST /api/background/ci/pipeline-run/{run_id}/execute` — `backend-go/internal/httpserver/server.go`
+- `POST /api/background/cd/application/{app_id}/deploy/{deployment_id}` — `backend-go/internal/httpserver/server.go`
+- `POST /api/background/cd/application/{app_id}/restart/{deployment_id}` — `backend-go/internal/httpserver/server.go`
+- `GET /api/background/task/{id}` — `backend-go/internal/httpserver/server.go`
+
 ### 2026-05-09
 - 新增 `docs/style.md`，承载风格一致性规范
 - 统一脚本抽屉风格（960px 宽度）

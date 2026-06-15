@@ -91,18 +91,19 @@ Web UI 配置路由
 ## 快速开始
 
 ```bash
-make install   # 安装依赖
-make backend   # 启动后端（端口 9001）
-make frontend  # 启动前端（端口 9002）
+just install       # 安装 frontend 和 backend-go 依赖
+just dev-backend   # 启动 Go 后端（端口 9001）
+just dev-worker    # 启动 Go 后台任务 worker
+just dev-frontend  # 启动前端（端口 9002）
 ```
 
 访问 [localhost:9002](http://localhost:9002)，默认账号：admin / admin
 
 ```bash
-make help    # 查看所有命令
-make lint    # 代码检查
-make test    # 单元测试
-make build   # 镜像构建
+just --list  # 查看所有命令
+just check   # 代码检查、格式化和类型检查
+just test    # 单元测试
+just build   # 镜像构建
 ```
 
 ## 许可证

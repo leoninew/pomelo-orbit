@@ -147,6 +147,13 @@ type deploymentResp struct {
 
 func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Get("/api/ci/artifact", s.listArtifacts)
+	r.Get("/api/ci/credential", s.listCredentials)
+	r.Post("/api/ci/credential", s.createCredential)
+	r.Post("/api/ci/credential/import", s.importCredential)
+	r.Get("/api/ci/credential/{credential_id}", s.getCredential)
+	r.Put("/api/ci/credential/{credential_id}", s.updateCredential)
+	r.Delete("/api/ci/credential/{credential_id}", s.deleteCredential)
+	r.Get("/api/ci/credential/{credential_id}/export", s.exportCredential)
 	r.Get("/api/ci/build-stage", s.listBuildStages)
 	r.Post("/api/ci/build-stage", s.createBuildStage)
 	r.Get("/api/ci/build-stage/{stage_id}", s.getBuildStage)

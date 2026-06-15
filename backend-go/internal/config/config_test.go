@@ -32,6 +32,9 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.MaxBackups != 7 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
+	if cfg.Traefik.APIURL != "http://traefik:8080" {
+		t.Fatalf("unexpected traefik api url: %s", cfg.Traefik.APIURL)
+	}
 	if !cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile enabled")
 	}
@@ -113,6 +116,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__SECRET_KEY", "secret-from-env")
 	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
+	t.Setenv("POMELO_ORBIT_BACKEND__TRAEFIK__API_URL", "http://traefik.example.test:8080")
 	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__POLL_INTERVAL", "2s")
 
@@ -146,6 +150,9 @@ worker:
 	}
 	if cfg.Turnstile.VerifyURL != "https://turnstile.example.test" {
 		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyURL)
+	}
+	if cfg.Traefik.APIURL != "http://traefik.example.test:8080" {
+		t.Fatalf("unexpected traefik api url: %s", cfg.Traefik.APIURL)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -324,6 +331,7 @@ orbit:
 jwt:
   secret_key: ""
 traefik:
+  api_url: http://traefik:8080
   domain_suffix: lvh.me
   dynamic_route_dir: data/cd/traefik/data/dynamic
   cert_dir: data/cd/traefik/data/certs

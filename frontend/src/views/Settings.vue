@@ -26,6 +26,7 @@
 					<thead>
 						<tr>
 							<th>{{ t('settings.configKey') }}</th>
+							<th>{{ t('common.description') }}</th>
 							<th>{{ t('settings.currentValue') }}</th>
 							<th>{{ t('settings.defaultValue') }}</th>
 							<th>{{ t('settings.updatedAt') }}</th>
@@ -34,12 +35,8 @@
 					</thead>
 					<tbody>
 						<tr v-for="item in filteredConfig" :key="item.key">
-							<td>
-								<div class="text-foreground">{{ item.key }}</div>
-								<div v-if="item.description" class="mt-1 text-xs text-muted-foreground">
-									{{ item.description }}
-								</div>
-							</td>
+							<td class="text-foreground">{{ item.key }}</td>
+							<td class="text-muted-foreground">{{ item.description || '-' }}</td>
 							<td>
 								<!-- Editing Mode -->
 								<div v-if="editingState.key === item.key">

@@ -306,6 +306,8 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Delete("/api/cd/route/{route_id}/https", s.disableRouteHTTPS)
 	r.Post("/api/cd/route/{route_id}/letsencrypt", s.enableRouteLetsEncrypt)
 	r.Post("/api/cd/route/{route_id}/mkcert", s.enableRouteMkcert)
+	r.Get("/api/cd/traefik-route/config", s.getTraefikRouteConfig)
+	r.Get("/api/cd/traefik-route", s.listTraefikRoutes)
 	r.Get("/api/cd/application", s.listApplications)
 	r.Post("/api/cd/application", s.createApplication)
 	r.Post("/api/cd/application/import", s.importApplication)

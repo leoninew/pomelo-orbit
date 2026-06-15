@@ -2,6 +2,8 @@ package orbit
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -273,6 +275,18 @@ func (s Store) Route(ctx context.Context, id string) (Route, error) {
 	err := s.db.GetContext(ctx, &route, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at FROM route WHERE id = ?`, id)
 	if err != nil {
 		return Route{}, fmt.Errorf("load route %s: %w", id, err)
+	}
+	return route, nil
+}
+
+func (s Store) RouteByDomain(ctx context.Context, domain string) (Route, error) {
+	var route Route
+	err := s.db.GetContext(ctx, &route, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at FROM route WHERE domain = ?`, strings.TrimSpace(domain))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Route{}, sql.ErrNoRows
+		}
+		return Route{}, fmt.Errorf("load route by domain %s: %w", domain, err)
 	}
 	return route, nil
 }

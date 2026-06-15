@@ -81,6 +81,7 @@ type JWTConfig struct {
 }
 
 type TraefikConfig struct {
+	APIURL          string `mapstructure:"api_url" yaml:"api_url"`
 	DomainSuffix    string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
 	DynamicRouteDir string `mapstructure:"dynamic_route_dir" yaml:"dynamic_route_dir"`
 	CertDir         string `mapstructure:"cert_dir" yaml:"cert_dir"`
@@ -166,6 +167,7 @@ func bindEnv(loader *viper.Viper) {
 		"database.mysql.dsn",
 		"orbit.root",
 		"jwt.secret_key",
+		"traefik.api_url",
 		"traefik.domain_suffix",
 		"traefik.dynamic_route_dir",
 		"traefik.cert_dir",

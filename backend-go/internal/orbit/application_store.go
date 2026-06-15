@@ -198,6 +198,14 @@ func (s Store) UpsertApplicationServiceConfig(ctx context.Context, config Applic
 	return nil
 }
 
+func (s Store) CancelDeployment(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`UPDATE deployment SET status = ?, finished_at = %s, duration_ms = %s, error_message = ? WHERE id = ?`, db.NowExpr(s.driver), db.DurationMillisExpr(s.driver, "started_at")), WorkStatusCanceled, "Cancelled by user", id)
+	if err != nil {
+		return fmt.Errorf("cancel deployment %s: %w", id, err)
+	}
+	return nil
+}
+
 func (s Store) CreateDeployment(ctx context.Context, deployment Deployment) error {
 	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO deployment (id, project_id, application_id, application_name, operation_type, trigger_type, status, started_at, is_rollback, rollback_from_deployment_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, %s, ?, ?)`, db.NowExpr(s.driver)), deployment.Id, deployment.ProjectId, deployment.ApplicationId, deployment.ApplicationName, deployment.OperationType, deployment.TriggerType, deployment.Status, deployment.IsRollback, deployment.RollbackFromDeploymentId)

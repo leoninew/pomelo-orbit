@@ -9,8 +9,11 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"backend/internal/orbit"
 	"backend/internal/status"
@@ -83,23 +86,36 @@ type repositoryWebhookUpdateReq struct {
 }
 
 type pipelineRunResp struct {
-	Id                string  `json:"id"`
-	ProjectId         *string `json:"project_id"`
-	RepositoryId      string  `json:"repository_id"`
-	RepositoryName    string  `json:"repository_name"`
-	SnapshotId        string  `json:"snapshot_id"`
-	TemplateId        string  `json:"template_id"`
-	TemplateName      string  `json:"template_name"`
-	TemplateVersion   int     `json:"template_version"`
-	Trigger           string  `json:"trigger"`
-	TriggerRef        string  `json:"trigger_ref"`
-	VariablesSnapshot string  `json:"variables_snapshot"`
-	Status            string  `json:"status"`
-	RetryOf           *string `json:"retry_of"`
-	StartedAt         *string `json:"started_at"`
-	FinishedAt        *string `json:"finished_at"`
-	ErrorMessage      *string `json:"error_message"`
-	CreatedAt         string  `json:"created_at"`
+	Id                string                      `json:"id"`
+	ProjectId         *string                     `json:"project_id,omitempty"`
+	RepositoryId      string                      `json:"repository_id"`
+	RepositoryName    string                      `json:"repository_name"`
+	SnapshotId        string                      `json:"snapshot_id"`
+	TemplateId        string                      `json:"template_id"`
+	TemplateName      string                      `json:"template_name"`
+	TemplateVersion   int                         `json:"template_version"`
+	Trigger           string                      `json:"trigger"`
+	TriggerRef        string                      `json:"trigger_ref"`
+	VariablesSnapshot []orbit.VariableDeclaration `json:"variables_snapshot"`
+	Status            string                      `json:"status"`
+	RetryOf           *string                     `json:"retry_of"`
+	StartedAt         *string                     `json:"started_at"`
+	FinishedAt        *string                     `json:"finished_at"`
+	ErrorMessage      *string                     `json:"error_message"`
+	CreatedAt         string                      `json:"created_at"`
+	StageRuns         []stageRunResp              `json:"stage_runs"`
+}
+
+type stageRunResp struct {
+	Id            string  `json:"id"`
+	PipelineRunId string  `json:"pipeline_run_id"`
+	StageId       string  `json:"stage_id"`
+	StageName     string  `json:"stage_name"`
+	Status        string  `json:"status"`
+	StartedAt     *string `json:"started_at"`
+	FinishedAt    *string `json:"finished_at"`
+	ExitCode      *int    `json:"exit_code"`
+	ErrorMessage  *string `json:"error_message"`
 }
 
 type artifactResp struct {
@@ -182,7 +198,11 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Get("/api/ci/webhook/{webhook_id}", s.getRepositoryWebhook)
 	r.Post("/api/ci/webhook/{webhook_id}", s.receiveRepositoryWebhook)
 	r.Get("/api/ci/run", s.listPipelineRuns)
+	r.Get("/api/ci/run/{run_id}", s.getPipelineRun)
 	r.Get("/api/ci/run/{run_id}/artifacts", s.listPipelineRunArtifacts)
+	r.Get("/api/ci/run/{run_id}/stages/{stage_run_id}/log", s.getPipelineStageLog)
+	r.Post("/api/ci/run/{run_id}/cancel", s.cancelPipelineRun)
+	r.Post("/api/ci/run/{run_id}/retry", s.retryPipelineRun)
 	r.Get("/api/cd/application", s.listApplications)
 	r.Get("/api/cd/deployment", s.listDeployments)
 }
@@ -360,7 +380,15 @@ func (s Server) listRepositoryRuns(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list repository runs"})
 		return
 	}
-	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, pipelineRunResponse)))
+	responses := make([]pipelineRunResp, 0, len(items.Items))
+	for _, item := range items.Items {
+		resp, ok := s.pipelineRunResponse(w, r, item, false)
+		if !ok {
+			return
+		}
+		responses = append(responses, resp)
+	}
+	writeJSON(w, http.StatusOK, newPaginatedResp(orbit.Page[pipelineRunResp]{Items: responses, Total: items.Total, Page: items.Page, PerPage: items.PerPage}))
 }
 
 func (s Server) listRepositoryWebhooks(w http.ResponseWriter, r *http.Request) {
@@ -619,7 +647,11 @@ func (s Server) triggerRepository(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, pipelineRunResponse(created))
+	resp, ok := s.pipelineRunResponse(w, r, created, false)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (s Server) listArtifacts(w http.ResponseWriter, r *http.Request) {
@@ -646,33 +678,62 @@ func (s Server) listArtifacts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
-	page, perPage := pageParams(r)
-	items, err := s.store.ListPipelineRuns(r.Context(), queryProjectId(r.URL.Query().Get("project_id")), page, perPage)
-	if err != nil {
-		s.logger.Error("list pipeline runs failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list pipeline runs"})
-		return
-	}
-	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, pipelineRunResponse)))
-}
-
-func (s Server) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request) {
 	current, ok := s.currentUser(w, r)
 	if !ok {
 		return
 	}
-	runId := urlParam(r, "run_id")
-	run, err := s.store.PipelineRun(r.Context(), runId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline run " + runId + " not found"})
-			return
-		}
-		s.logger.Error("load pipeline run failed", "run_id", runId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
+	projectId := strings.TrimSpace(r.URL.Query().Get("project_id"))
+	if projectId == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "project_id is required"})
 		return
 	}
-	if run.ProjectId != nil && !s.ensureProjectMembership(w, r, *run.ProjectId, current.Id) {
+	if !s.ensureProjectMembership(w, r, projectId, current.Id) {
+		return
+	}
+	dateFrom, ok := parseOptionalRunTime(w, r.URL.Query().Get("date_from"), "date_from")
+	if !ok {
+		return
+	}
+	dateTo, ok := parseOptionalRunTime(w, r.URL.Query().Get("date_to"), "date_to")
+	if !ok {
+		return
+	}
+	if !s.ensurePipelineRunRepositoryFilter(w, r, projectId, r.URL.Query().Get("repository_id")) || !s.ensurePipelineRunTemplateFilter(w, r, projectId, r.URL.Query().Get("template_id")) {
+		return
+	}
+	page, perPage := artifactPageParams(r)
+	items, err := s.store.ListPipelineRuns(r.Context(), projectId, r.URL.Query().Get("repository_id"), r.URL.Query().Get("template_id"), dateFrom, dateTo, page, perPage)
+	if err != nil {
+		s.logger.Error("list pipeline runs failed", "project_id", projectId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list pipeline runs"})
+		return
+	}
+	responses := make([]pipelineRunResp, 0, len(items.Items))
+	for _, item := range items.Items {
+		resp, ok := s.pipelineRunResponse(w, r, item, false)
+		if !ok {
+			return
+		}
+		responses = append(responses, resp)
+	}
+	writeJSON(w, http.StatusOK, newPaginatedResp(orbit.Page[pipelineRunResp]{Items: responses, Total: items.Total, Page: items.Page, PerPage: items.PerPage}))
+}
+
+func (s Server) getPipelineRun(w http.ResponseWriter, r *http.Request) {
+	run, ok := s.loadPipelineRunForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	resp, ok := s.pipelineRunResponse(w, r, run, true)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s Server) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request) {
+	run, ok := s.loadPipelineRunForCurrentUser(w, r)
+	if !ok {
 		return
 	}
 	items, err := s.store.ListArtifactsByRun(r.Context(), run.ProjectId, run.Id)
@@ -686,6 +747,138 @@ func (s Server) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request)
 		responses = append(responses, artifactResponse(item))
 	}
 	writeJSON(w, http.StatusOK, responses)
+}
+
+func (s Server) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
+	run, ok := s.loadPipelineRunForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	stageRunId := urlParam(r, "stage_run_id")
+	stageRun, err := s.store.StageRun(r.Context(), stageRunId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusOK, map[string]any{"logs": "", "offset": queryInt(r.URL.Query().Get("offset"), 0), "is_complete": true})
+			return
+		}
+		s.logger.Error("load stage run failed", "stage_run_id", stageRunId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load stage run"})
+		return
+	}
+	offset := queryInt(r.URL.Query().Get("offset"), 0)
+	if offset < 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "offset must be greater than or equal to 0"})
+		return
+	}
+	if stageRun.PipelineRunId != run.Id {
+		writeJSON(w, http.StatusOK, map[string]any{"logs": "", "offset": offset, "is_complete": true})
+		return
+	}
+	logPath := filepath.Join(s.appCfg.DataRoot(), "ci", "runs", run.Id, "stages", stageRun.Id+".log")
+	file, err := os.Open(logPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			writeJSON(w, http.StatusOK, map[string]any{"logs": "", "offset": offset, "is_complete": pipelineRunStatusComplete(stageRun.Status)})
+			return
+		}
+		s.logger.Error("open stage log failed", "run_id", run.Id, "stage_run_id", stageRun.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read stage log"})
+		return
+	}
+	defer func() { _ = file.Close() }()
+	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
+		s.logger.Error("seek stage log failed", "run_id", run.Id, "stage_run_id", stageRun.Id, "offset", offset, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read stage log"})
+		return
+	}
+	content, err := io.ReadAll(file)
+	if err != nil {
+		s.logger.Error("read stage log failed", "run_id", run.Id, "stage_run_id", stageRun.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read stage log"})
+		return
+	}
+	newOffset := offset + len(content)
+	writeJSON(w, http.StatusOK, map[string]any{"logs": string(content), "offset": newOffset, "is_complete": pipelineRunStatusComplete(stageRun.Status)})
+}
+
+func (s Server) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
+	run, ok := s.loadPipelineRunForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	if run.Status != orbit.WorkStatusWaitingToRun && run.Status != orbit.WorkStatusRunning {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot cancel run with status " + run.Status})
+		return
+	}
+	if err := s.store.CancelPipelineRun(r.Context(), run.Id); err != nil {
+		s.logger.Error("cancel pipeline run failed", "run_id", run.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to cancel pipeline run"})
+		return
+	}
+	updated, err := s.store.PipelineRun(r.Context(), run.Id)
+	if err != nil {
+		s.logger.Error("load canceled pipeline run failed", "run_id", run.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
+		return
+	}
+	resp, ok := s.pipelineRunResponse(w, r, updated, true)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (s Server) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
+	original, ok := s.loadPipelineRunForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	if original.Status != orbit.WorkStatusFaulted && original.Status != orbit.WorkStatusRanToCompletion {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot retry run with status " + original.Status})
+		return
+	}
+	if _, err := s.store.PipelineSnapshot(r.Context(), original.SnapshotId); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Snapshot " + original.SnapshotId + " not found"})
+			return
+		}
+		s.logger.Error("load retry snapshot failed", "snapshot_id", original.SnapshotId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline snapshot"})
+		return
+	}
+	repo, err := s.store.Repository(r.Context(), original.RepositoryId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + original.RepositoryId + " not found"})
+			return
+		}
+		s.logger.Error("load retry repository failed", "repository_id", original.RepositoryId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository"})
+		return
+	}
+	newRun := orbit.PipelineRun{Id: orbit.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: orbit.WorkStatusWaitingToRun, RetryOf: &original.Id}
+	if err := s.store.CreatePipelineRun(r.Context(), newRun); err != nil {
+		s.logger.Error("create retry pipeline run failed", "run_id", original.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create retry pipeline run"})
+		return
+	}
+	payload, _ := json.Marshal(map[string]string{"pipeline_run_id": newRun.Id})
+	if err := s.tasks.Enqueue(r.Context(), orbit.NewId(), status.TaskTypeCIPipelineRunExecute, string(payload), s.defaultMaxAttempts); err != nil {
+		s.logger.Error("enqueue retry pipeline run failed", "run_id", newRun.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to enqueue pipeline run"})
+		return
+	}
+	created, err := s.store.PipelineRun(r.Context(), newRun.Id)
+	if err != nil {
+		s.logger.Error("load retry pipeline run failed", "run_id", newRun.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
+		return
+	}
+	resp, ok := s.pipelineRunResponse(w, r, created, true)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (s Server) listApplications(w http.ResponseWriter, r *http.Request) {
@@ -874,8 +1067,8 @@ func (s Server) ensureRepositoryCredential(w http.ResponseWriter, r *http.Reques
 	return true
 }
 
-func (s Server) ensureArtifactRepositoryFilter(w http.ResponseWriter, r *http.Request, projectId string) bool {
-	repositoryId := strings.TrimSpace(r.URL.Query().Get("repository_id"))
+func (s Server) ensurePipelineRunRepositoryFilter(w http.ResponseWriter, r *http.Request, projectId string, repositoryId string) bool {
+	repositoryId = strings.TrimSpace(repositoryId)
 	if repositoryId == "" {
 		return true
 	}
@@ -896,8 +1089,12 @@ func (s Server) ensureArtifactRepositoryFilter(w http.ResponseWriter, r *http.Re
 	return true
 }
 
-func (s Server) ensureArtifactTemplateFilter(w http.ResponseWriter, r *http.Request, projectId string) bool {
-	templateId := strings.TrimSpace(r.URL.Query().Get("template_id"))
+func (s Server) ensureArtifactRepositoryFilter(w http.ResponseWriter, r *http.Request, projectId string) bool {
+	return s.ensurePipelineRunRepositoryFilter(w, r, projectId, r.URL.Query().Get("repository_id"))
+}
+
+func (s Server) ensurePipelineRunTemplateFilter(w http.ResponseWriter, r *http.Request, projectId string, templateId string) bool {
+	templateId = strings.TrimSpace(templateId)
 	if templateId == "" {
 		return true
 	}
@@ -916,6 +1113,49 @@ func (s Server) ensureArtifactTemplateFilter(w http.ResponseWriter, r *http.Requ
 		return false
 	}
 	return true
+}
+
+func (s Server) ensureArtifactTemplateFilter(w http.ResponseWriter, r *http.Request, projectId string) bool {
+	return s.ensurePipelineRunTemplateFilter(w, r, projectId, r.URL.Query().Get("template_id"))
+}
+
+func (s Server) loadPipelineRunForCurrentUser(w http.ResponseWriter, r *http.Request) (orbit.PipelineRun, bool) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return orbit.PipelineRun{}, false
+	}
+	runId := urlParam(r, "run_id")
+	run, err := s.store.PipelineRun(r.Context(), runId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "PipelineRun " + runId + " not found"})
+			return orbit.PipelineRun{}, false
+		}
+		s.logger.Error("load pipeline run failed", "run_id", runId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
+		return orbit.PipelineRun{}, false
+	}
+	if run.ProjectId != nil && !s.ensureProjectMembership(w, r, *run.ProjectId, current.Id) {
+		return orbit.PipelineRun{}, false
+	}
+	return run, true
+}
+
+func parseOptionalRunTime(w http.ResponseWriter, value string, name string) (*time.Time, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, true
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": name + " must be ISO 8601"})
+		return nil, false
+	}
+	return &parsed, true
+}
+
+func pipelineRunStatusComplete(status string) bool {
+	return status == orbit.WorkStatusRanToCompletion || status == orbit.WorkStatusFaulted || status == orbit.WorkStatusCanceled
 }
 
 func (s Server) ensurePipelineTemplate(w http.ResponseWriter, r *http.Request, templateId string) bool {
@@ -1135,8 +1375,49 @@ func marshalTriggerVariables(w http.ResponseWriter, variables map[string]string)
 	return string(data), true
 }
 
-func pipelineRunResponse(item orbit.PipelineRun) pipelineRunResp {
-	return pipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: item.VariablesSnapshot, Status: item.Status, RetryOf: item.RetryOf, StartedAt: formatOptionalTime(item.StartedAt), FinishedAt: formatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: formatTime(item.CreatedAt)}
+func (s Server) pipelineRunResponse(w http.ResponseWriter, r *http.Request, item orbit.PipelineRun, includeStages bool) (pipelineRunResp, bool) {
+	variables, ok := pipelineRunVariables(w, item.VariablesSnapshot)
+	if !ok {
+		return pipelineRunResp{}, false
+	}
+	stageRuns := []stageRunResp{}
+	if includeStages {
+		items, err := s.store.ListStageRuns(r.Context(), item.Id)
+		if err != nil {
+			s.logger.Error("list stage runs failed", "run_id", item.Id, "error", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list stage runs"})
+			return pipelineRunResp{}, false
+		}
+		stageRuns = make([]stageRunResp, 0, len(items))
+		for _, stage := range items {
+			stageRuns = append(stageRuns, stageRunResponse(stage))
+		}
+	}
+	return pipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: variables, Status: item.Status, RetryOf: item.RetryOf, StartedAt: formatOptionalTime(item.StartedAt), FinishedAt: formatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: formatTime(item.CreatedAt), StageRuns: stageRuns}, true
+}
+
+func stageRunResponse(item orbit.StageRun) stageRunResp {
+	return stageRunResp{Id: item.Id, PipelineRunId: item.PipelineRunId, StageId: item.StageId, StageName: item.StageName, Status: item.Status, StartedAt: formatOptionalTime(item.StartedAt), FinishedAt: formatOptionalTime(item.FinishedAt), ExitCode: item.ExitCode, ErrorMessage: item.ErrorMessage}
+}
+
+func pipelineRunVariables(w http.ResponseWriter, value string) ([]orbit.VariableDeclaration, bool) {
+	if strings.TrimSpace(value) == "" {
+		return []orbit.VariableDeclaration{}, true
+	}
+	var variables []orbit.VariableDeclaration
+	if err := json.Unmarshal([]byte(value), &variables); err == nil {
+		return variables, true
+	}
+	var legacy map[string]any
+	if err := json.Unmarshal([]byte(value), &legacy); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Invalid pipeline run variables"})
+		return nil, false
+	}
+	variables = make([]orbit.VariableDeclaration, 0, len(legacy))
+	for name, value := range legacy {
+		variables = append(variables, orbit.VariableDeclaration{Name: name, Value: value, Source: "runtime", Editable: true})
+	}
+	return variables, true
 }
 
 func applicationResponse(item orbit.Application) applicationResp {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"backend/internal/db"
 )
@@ -107,9 +108,9 @@ func (s Store) ListRepositories(ctx context.Context, projectId *string, page int
 	return Page[Repository]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
 }
 
-func (s Store) ListPipelineRuns(ctx context.Context, projectId *string, page int, perPage int) (Page[PipelineRun], error) {
+func (s Store) ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (Page[PipelineRun], error) {
 	page, perPage = NormalizePage(page, perPage)
-	where, args := projectSearchWhere(projectId, "", nil)
+	where, args := pipelineRunWhere(projectId, repositoryId, templateId, dateFrom, dateTo)
 	var total int
 	if err := s.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM pipeline_run`+where, args...); err != nil {
 		return Page[PipelineRun]{}, fmt.Errorf("count pipeline runs: %w", err)
@@ -118,7 +119,7 @@ func (s Store) ListPipelineRuns(ctx context.Context, projectId *string, page int
 	var items []PipelineRun
 	err := s.db.SelectContext(ctx, &items, fmt.Sprintf(`SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
 		template_name, template_version, %s, trigger_ref, variables_snapshot, status, retry_of,
-		started_at, finished_at, error_message, created_at FROM pipeline_run`+where+` ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, db.QuoteIdent(s.driver, "trigger")), args...)
+		started_at, finished_at, error_message, created_at FROM pipeline_run`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, db.QuoteIdent(s.driver, "trigger")), args...)
 	if err != nil {
 		return Page[PipelineRun]{}, fmt.Errorf("list pipeline runs: %w", err)
 	}
@@ -172,6 +173,28 @@ func (s Store) ListArtifactsByRun(ctx context.Context, projectId *string, runId 
 		return nil, fmt.Errorf("list run artifacts %s: %w", runId, err)
 	}
 	return items, nil
+}
+
+func pipelineRunWhere(projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time) (string, []any) {
+	clauses := []string{"project_id = ?"}
+	args := []any{strings.TrimSpace(projectId)}
+	if strings.TrimSpace(repositoryId) != "" {
+		clauses = append(clauses, "repository_id = ?")
+		args = append(args, strings.TrimSpace(repositoryId))
+	}
+	if strings.TrimSpace(templateId) != "" {
+		clauses = append(clauses, "template_id = ?")
+		args = append(args, strings.TrimSpace(templateId))
+	}
+	if dateFrom != nil {
+		clauses = append(clauses, "created_at >= ?")
+		args = append(args, *dateFrom)
+	}
+	if dateTo != nil {
+		clauses = append(clauses, "created_at < ?")
+		args = append(args, *dateTo)
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
 }
 
 func artifactWhere(projectId string, repositoryId string, templateId string, search string) (string, []any) {

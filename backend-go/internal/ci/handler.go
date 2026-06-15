@@ -73,8 +73,7 @@ func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
 	}
 	variables := payload.Variables
 	if variables == nil {
-		variables = map[string]any{}
-		_ = json.Unmarshal([]byte(run.VariablesSnapshot), &variables)
+		variables = pipelineRunVariables(run.VariablesSnapshot)
 	}
 
 	stages, err = resolveStages(stages, variables)
@@ -91,6 +90,13 @@ func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
 
 	executor := Executor(h)
 	ok, message := executor.Execute(ctx, run, repo, variables, stages)
+	current, err := h.store.PipelineRun(ctx, run.Id)
+	if err != nil {
+		return err
+	}
+	if current.Status == orbit.WorkStatusCanceled {
+		return nil
+	}
 	if ok {
 		return h.store.CompletePipelineRun(ctx, run.Id, orbit.WorkStatusRanToCompletion, "")
 	}
@@ -127,6 +133,22 @@ func resolveStages(stages []orbit.StageDefinition, variables map[string]any) ([]
 		}
 	}
 	return resolved, nil
+}
+
+func pipelineRunVariables(value string) map[string]any {
+	variables := map[string]any{}
+	if strings.TrimSpace(value) == "" {
+		return variables
+	}
+	var declarations []orbit.VariableDeclaration
+	if err := json.Unmarshal([]byte(value), &declarations); err == nil {
+		for _, declaration := range declarations {
+			variables[declaration.Name] = declaration.Value
+		}
+		return variables
+	}
+	_ = json.Unmarshal([]byte(value), &variables)
+	return variables
 }
 
 func createWorkspace(dataRoot string, projectCode string, runId string) error {

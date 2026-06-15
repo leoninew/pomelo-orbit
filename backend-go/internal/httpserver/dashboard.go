@@ -20,6 +20,8 @@ import (
 )
 
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
+var applicationCreateCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+var applicationUpdateCodePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 type repositoryResp struct {
 	Id                   string           `json:"id"`
@@ -144,6 +146,19 @@ type applicationResp struct {
 	UpdatedAt       string  `json:"updated_at"`
 }
 
+type applicationCreateReq struct {
+	Name            string `json:"name"`
+	Code            string `json:"code"`
+	ImagePullPolicy string `json:"image_pull_policy"`
+}
+
+type applicationUpdateReq struct {
+	Name            *string `json:"name"`
+	Code            *string `json:"code"`
+	ImagePullPolicy *string `json:"image_pull_policy"`
+	RouteManaged    *bool   `json:"route_managed"`
+}
+
 type deploymentResp struct {
 	Id                       string  `json:"id"`
 	ProjectId                *string `json:"project_id"`
@@ -204,6 +219,10 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Post("/api/ci/run/{run_id}/cancel", s.cancelPipelineRun)
 	r.Post("/api/ci/run/{run_id}/retry", s.retryPipelineRun)
 	r.Get("/api/cd/application", s.listApplications)
+	r.Post("/api/cd/application", s.createApplication)
+	r.Get("/api/cd/application/{app_id}", s.getApplication)
+	r.Put("/api/cd/application/{app_id}", s.updateApplication)
+	r.Delete("/api/cd/application/{app_id}", s.deleteApplication)
 	r.Get("/api/cd/deployment", s.listDeployments)
 }
 
@@ -882,14 +901,147 @@ func (s Server) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) listApplications(w http.ResponseWriter, r *http.Request) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return
+	}
+	projectId := queryProjectId(r.URL.Query().Get("project_id"))
+	if projectId != nil {
+		if !s.ensureProjectMembership(w, r, *projectId, current.Id) {
+			return
+		}
+	}
 	page, perPage := pageParams(r)
-	items, err := s.store.ListApplications(r.Context(), queryProjectId(r.URL.Query().Get("project_id")), page, perPage, r.URL.Query().Get("search"))
+	items, err := s.store.ListApplications(r.Context(), projectId, page, perPage, r.URL.Query().Get("search"))
 	if err != nil {
 		s.logger.Error("list applications failed", "error", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list applications"})
 		return
 	}
 	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, applicationResponse)))
+}
+
+func (s Server) createApplication(w http.ResponseWriter, r *http.Request) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return
+	}
+	projectId := strings.TrimSpace(r.URL.Query().Get("project_id"))
+	if projectId == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "project_id is required"})
+		return
+	}
+	if !s.ensureProjectMembership(w, r, projectId, current.Id) {
+		return
+	}
+	var req applicationCreateReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		return
+	}
+	if !normalizeApplicationCreateReq(w, &req) || !s.ensureApplicationNameAvailable(w, r, req.Name) {
+		return
+	}
+	app := orbit.Application{Id: orbit.NewId(), ProjectId: &projectId, Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, Status: orbit.ApplicationStatusUndeployed}
+	if err := s.store.CreateApplication(r.Context(), app); err != nil {
+		s.logger.Error("create application failed", "application_code", app.Code, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create application"})
+		return
+	}
+	created, err := s.store.Application(r.Context(), app.Id)
+	if err != nil {
+		s.logger.Error("load created application failed", "application_id", app.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load application"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, applicationResponse(created))
+}
+
+func (s Server) getApplication(w http.ResponseWriter, r *http.Request) {
+	app, ok := s.loadApplicationForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, applicationResponse(app))
+}
+
+func (s Server) updateApplication(w http.ResponseWriter, r *http.Request) {
+	app, ok := s.loadApplicationForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	var req applicationUpdateReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		return
+	}
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if name == "" || len(name) > 100 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid application fields"})
+			return
+		}
+		app.Name = name
+	}
+	if req.Code != nil {
+		code := strings.TrimSpace(*req.Code)
+		if code == "" || len(code) > 100 || !applicationUpdateCodePattern.MatchString(code) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid application fields"})
+			return
+		}
+		app.Code = code
+	}
+	if req.ImagePullPolicy != nil {
+		policy := strings.TrimSpace(*req.ImagePullPolicy)
+		if !validImagePullPolicy(policy) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid application fields"})
+			return
+		}
+		app.ImagePullPolicy = policy
+	}
+	if req.RouteManaged != nil {
+		app.RouteManaged = *req.RouteManaged
+	}
+	if err := s.store.UpdateApplication(r.Context(), app); err != nil {
+		s.logger.Error("update application failed", "application_id", app.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to update application"})
+		return
+	}
+	updated, err := s.store.Application(r.Context(), app.Id)
+	if err != nil {
+		s.logger.Error("load updated application failed", "application_id", app.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load application"})
+		return
+	}
+	writeJSON(w, http.StatusOK, applicationResponse(updated))
+}
+
+func (s Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
+	app, ok := s.loadApplicationForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	if app.Status == orbit.ApplicationStatusDeploying {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "应用正在部署中, 请稍后再试"})
+		return
+	}
+	if app.Status == orbit.ApplicationStatusDeployed {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "应用正在运行中, 请先停止后再删除"})
+		return
+	}
+	if r.URL.Query().Get("remove_dir") == "true" {
+		if err := os.RemoveAll(filepath.Join(s.appCfg.DataRoot(), "cd", app.Code)); err != nil {
+			s.logger.Error("remove application directory failed", "application_id", app.Id, "application_code", app.Code, "error", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to remove application directory"})
+			return
+		}
+	}
+	if err := s.store.DeleteApplication(r.Context(), app.Id); err != nil {
+		s.logger.Error("delete application failed", "application_id", app.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to delete application"})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s Server) listDeployments(w http.ResponseWriter, r *http.Request) {
@@ -950,6 +1102,28 @@ func (s Server) repositoryCredentialName(r *http.Request, credentialId *string) 
 
 func repositoryWebhookResponse(item orbit.RepositoryWebhook) repositoryWebhookResp {
 	return repositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Enabled: item.Enabled, CreatedAt: formatTime(item.CreatedAt), UpdatedAt: formatTime(item.UpdatedAt)}
+}
+
+func (s Server) loadApplicationForCurrentUser(w http.ResponseWriter, r *http.Request) (orbit.Application, bool) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return orbit.Application{}, false
+	}
+	applicationId := urlParam(r, "app_id")
+	app, err := s.store.Application(r.Context(), applicationId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Application " + applicationId + " not found"})
+			return orbit.Application{}, false
+		}
+		s.logger.Error("load application failed", "application_id", applicationId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load application"})
+		return orbit.Application{}, false
+	}
+	if app.ProjectId != nil && !s.ensureProjectMembership(w, r, *app.ProjectId, current.Id) {
+		return orbit.Application{}, false
+	}
+	return app, true
 }
 
 func (s Server) loadRepositoryForCurrentUser(w http.ResponseWriter, r *http.Request) (orbit.Repository, bool) {
@@ -1045,6 +1219,20 @@ func (s Server) ensureRepositoryCodeAvailable(w http.ResponseWriter, r *http.Req
 	if !errors.Is(err, sql.ErrNoRows) {
 		s.logger.Error("check repository code failed", "repository_code", code, "error", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to check repository code"})
+		return false
+	}
+	return true
+}
+
+func (s Server) ensureApplicationNameAvailable(w http.ResponseWriter, r *http.Request, name string) bool {
+	existing, err := s.store.ApplicationByName(r.Context(), name)
+	if err == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Application '" + existing.Name + "' already exists"})
+		return false
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		s.logger.Error("check application name failed", "application_name", name, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to check application name"})
 		return false
 	}
 	return true
@@ -1169,6 +1357,21 @@ func (s Server) ensurePipelineTemplate(w http.ResponseWriter, r *http.Request, t
 		return false
 	}
 	return true
+}
+
+func normalizeApplicationCreateReq(w http.ResponseWriter, req *applicationCreateReq) bool {
+	req.Name = strings.TrimSpace(req.Name)
+	req.Code = strings.TrimSpace(req.Code)
+	req.ImagePullPolicy = strings.TrimSpace(req.ImagePullPolicy)
+	if req.Name == "" || len(req.Name) > 100 || req.Code == "" || len(req.Code) > 100 || !applicationCreateCodePattern.MatchString(req.Code) || !validImagePullPolicy(req.ImagePullPolicy) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid application fields"})
+		return false
+	}
+	return true
+}
+
+func validImagePullPolicy(value string) bool {
+	return value == "always" || value == "missing" || value == "never"
 }
 
 func normalizeRepositoryCreateReq(w http.ResponseWriter, req *repositoryCreateReq) bool {

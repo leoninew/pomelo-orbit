@@ -271,7 +271,7 @@ func TestProjectAndDashboardLists(t *testing.T) {
 	for _, path := range paths {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, path, nil)
-		if path == "/api/ci/repository" || path == "/api/ci/run" {
+		if path == "/api/ci/repository" || path == "/api/ci/run" || path == "/api/cd/application" {
 			request.Header.Set("Authorization", "Bearer "+token)
 		}
 		if path == "/api/ci/run" {

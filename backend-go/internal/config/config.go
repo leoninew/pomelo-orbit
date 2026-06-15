@@ -81,7 +81,10 @@ type JWTConfig struct {
 }
 
 type TraefikConfig struct {
-	DomainSuffix string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
+	DomainSuffix    string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
+	DynamicRouteDir string `mapstructure:"dynamic_route_dir" yaml:"dynamic_route_dir"`
+	CertDir         string `mapstructure:"cert_dir" yaml:"cert_dir"`
+	ContainerName   string `mapstructure:"container_name" yaml:"container_name"`
 }
 
 type TurnstileConfig struct {
@@ -164,6 +167,9 @@ func bindEnv(loader *viper.Viper) {
 		"orbit.root",
 		"jwt.secret_key",
 		"traefik.domain_suffix",
+		"traefik.dynamic_route_dir",
+		"traefik.cert_dir",
+		"traefik.container_name",
 		"turnstile.enabled",
 		"turnstile.site_key",
 		"turnstile.secret_key",

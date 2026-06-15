@@ -233,9 +233,78 @@ func (s Store) ListApplications(ctx context.Context, projectId *string, page int
 	return Page[Application]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
 }
 
-func (s Store) ListDeployments(ctx context.Context, projectId *string, page int, perPage int) (Page[Deployment], error) {
+func (s Store) ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (Page[Route], error) {
 	page, perPage = NormalizePage(page, perPage)
-	where, args := projectSearchWhere(projectId, "", nil)
+	clauses := []string{"project_id = ?"}
+	args := []any{strings.TrimSpace(projectId)}
+	search = strings.TrimSpace(search)
+	if search != "" {
+		like := "%" + search + "%"
+		clauses = append(clauses, "(name LIKE ? OR domain LIKE ? OR target_url LIKE ?)")
+		args = append(args, like, like, like)
+	}
+	where := " WHERE " + strings.Join(clauses, " AND ")
+	var total int
+	if err := s.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM route`+where, args...); err != nil {
+		return Page[Route]{}, fmt.Errorf("count routes: %w", err)
+	}
+	args = append(args, perPage, (page-1)*perPage)
+	var items []Route
+	err := s.db.SelectContext(ctx, &items, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+		FROM route`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return Page[Route]{}, fmt.Errorf("list routes: %w", err)
+	}
+	return Page[Route]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
+func (s Store) ListAllRoutes(ctx context.Context, projectId string) ([]Route, error) {
+	var items []Route
+	err := s.db.SelectContext(ctx, &items, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+		FROM route WHERE project_id = ? ORDER BY id DESC`, strings.TrimSpace(projectId))
+	if err != nil {
+		return nil, fmt.Errorf("list all routes: %w", err)
+	}
+	return items, nil
+}
+
+func (s Store) Route(ctx context.Context, id string) (Route, error) {
+	var route Route
+	err := s.db.GetContext(ctx, &route, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at FROM route WHERE id = ?`, id)
+	if err != nil {
+		return Route{}, fmt.Errorf("load route %s: %w", id, err)
+	}
+	return route, nil
+}
+
+func (s Store) CreateRoute(ctx context.Context, route Route) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO route (id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(s.driver), db.NowExpr(s.driver)), route.Id, route.ProjectId, route.Name, route.Domain, route.PathPrefix, route.TargetURL, route.Enabled, route.HTTPSEnabled, route.CertPEM, route.CertKey, route.CertType)
+	if err != nil {
+		return fmt.Errorf("create route %s: %w", route.Name, err)
+	}
+	return nil
+}
+
+func (s Store) UpdateRoute(ctx context.Context, route Route) error {
+	_, err := s.db.ExecContext(ctx, fmt.Sprintf(`UPDATE route SET name = ?, domain = ?, path_prefix = ?, target_url = ?, enabled = ?, https_enabled = ?, cert_pem = ?, cert_key = ?, cert_type = ?, updated_at = %s WHERE id = ?`, db.NowExpr(s.driver)), route.Name, route.Domain, route.PathPrefix, route.TargetURL, route.Enabled, route.HTTPSEnabled, route.CertPEM, route.CertKey, route.CertType, route.Id)
+	if err != nil {
+		return fmt.Errorf("update route %s: %w", route.Id, err)
+	}
+	return nil
+}
+
+func (s Store) DeleteRoute(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM route WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete route %s: %w", id, err)
+	}
+	return nil
+}
+
+func (s Store) ListDeployments(ctx context.Context, projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (Page[Deployment], error) {
+	page, perPage = NormalizePage(page, perPage)
+	where, args := deploymentWhere(projectId, applicationId, status, search, dateFrom, dateTo)
 	var total int
 	if err := s.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM deployment`+where, args...); err != nil {
 		return Page[Deployment]{}, fmt.Errorf("count deployments: %w", err)
@@ -249,6 +318,32 @@ func (s Store) ListDeployments(ctx context.Context, projectId *string, page int,
 		return Page[Deployment]{}, fmt.Errorf("list deployments: %w", err)
 	}
 	return Page[Deployment]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
+func deploymentWhere(projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time) (string, []any) {
+	clauses := []string{"project_id = ?"}
+	args := []any{strings.TrimSpace(projectId)}
+	if strings.TrimSpace(applicationId) != "" {
+		clauses = append(clauses, "application_id = ?")
+		args = append(args, strings.TrimSpace(applicationId))
+	}
+	if strings.TrimSpace(status) != "" {
+		clauses = append(clauses, "status = ?")
+		args = append(args, strings.TrimSpace(status))
+	}
+	if strings.TrimSpace(search) != "" {
+		clauses = append(clauses, "application_name LIKE ?")
+		args = append(args, "%"+strings.TrimSpace(search)+"%")
+	}
+	if dateFrom != nil {
+		clauses = append(clauses, "started_at >= ?")
+		args = append(args, *dateFrom)
+	}
+	if dateTo != nil {
+		clauses = append(clauses, "started_at < ?")
+		args = append(args, *dateTo)
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
 }
 
 func projectSearchWhere(projectId *string, search string, searchColumns []string) (string, []any) {

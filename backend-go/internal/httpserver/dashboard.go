@@ -294,6 +294,18 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Get("/api/ci/run/{run_id}/stages/{stage_run_id}/log", s.getPipelineStageLog)
 	r.Post("/api/ci/run/{run_id}/cancel", s.cancelPipelineRun)
 	r.Post("/api/ci/run/{run_id}/retry", s.retryPipelineRun)
+	r.Get("/api/cd/route", s.listRoutes)
+	r.Post("/api/cd/route", s.createRoute)
+	r.Post("/api/cd/route/sync", s.syncRoutes)
+	r.Get("/api/cd/route/{route_id}", s.getRoute)
+	r.Put("/api/cd/route/{route_id}", s.updateRoute)
+	r.Delete("/api/cd/route/{route_id}", s.deleteRoute)
+	r.Post("/api/cd/route/{route_id}/enable", s.enableRoute)
+	r.Post("/api/cd/route/{route_id}/disable", s.disableRoute)
+	r.Post("/api/cd/route/{route_id}/cert", s.uploadRouteCert)
+	r.Delete("/api/cd/route/{route_id}/https", s.disableRouteHTTPS)
+	r.Post("/api/cd/route/{route_id}/letsencrypt", s.enableRouteLetsEncrypt)
+	r.Post("/api/cd/route/{route_id}/mkcert", s.enableRouteMkcert)
 	r.Get("/api/cd/application", s.listApplications)
 	r.Post("/api/cd/application", s.createApplication)
 	r.Post("/api/cd/application/import", s.importApplication)
@@ -320,6 +332,10 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Get("/api/cd/application/{app_id}/service-config", s.listApplicationServiceConfigs)
 	r.Put("/api/cd/application/{app_id}/service-config/{service_name}", s.updateApplicationServiceConfig)
 	r.Get("/api/cd/deployment", s.listDeployments)
+	r.Get("/api/cd/deployment/{deployment_id}", s.getDeployment)
+	r.Get("/api/cd/deployment/{deployment_id}/logs", s.getDeploymentLogs)
+	r.Get("/api/cd/deployment/{deployment_id}/stream-log", s.streamDeploymentLog)
+	r.Post("/api/cd/deployment/{deployment_id}/cancel", s.cancelDeployment)
 }
 
 func (s Server) listRepositories(w http.ResponseWriter, r *http.Request) {
@@ -1141,14 +1157,133 @@ func (s Server) deleteApplication(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) listDeployments(w http.ResponseWriter, r *http.Request) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return
+	}
+	projectId := strings.TrimSpace(r.URL.Query().Get("project_id"))
+	if projectId == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "project_id is required"})
+		return
+	}
+	if !s.ensureProjectMembership(w, r, projectId, current.Id) {
+		return
+	}
+	dateFrom, ok := parseOptionalRunTime(w, r.URL.Query().Get("date_from"), "date_from")
+	if !ok {
+		return
+	}
+	dateTo, ok := parseOptionalRunTime(w, r.URL.Query().Get("date_to"), "date_to")
+	if !ok {
+		return
+	}
 	page, perPage := pageParams(r)
-	items, err := s.store.ListDeployments(r.Context(), queryProjectId(r.URL.Query().Get("project_id")), page, perPage)
+	items, err := s.store.ListDeployments(r.Context(), projectId, r.URL.Query().Get("application_id"), r.URL.Query().Get("status"), r.URL.Query().Get("search"), dateFrom, dateTo, page, perPage)
 	if err != nil {
-		s.logger.Error("list deployments failed", "error", err)
+		s.logger.Error("list deployments failed", "project_id", projectId, "error", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list deployments"})
 		return
 	}
 	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, deploymentResponse)))
+}
+
+func (s Server) getDeployment(w http.ResponseWriter, r *http.Request) {
+	deployment, ok := s.loadDeploymentForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, deploymentResponse(deployment))
+}
+
+func (s Server) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
+	deployment, ok := s.loadDeploymentForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	offset := queryInt(r.URL.Query().Get("offset"), 0)
+	if offset < 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "offset must be greater than or equal to 0"})
+		return
+	}
+	logs, newOffset, ok := s.readDeploymentLog(w, r, deployment, offset)
+	if !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"logs": logs, "offset": newOffset, "is_complete": deploymentStatusComplete(deployment.Status), "status": deployment.Status})
+}
+
+func (s Server) streamDeploymentLog(w http.ResponseWriter, r *http.Request) {
+	deployment, ok := s.loadDeploymentForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Streaming is not supported"})
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	offset := 0
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		logs, newOffset, ok := s.readDeploymentLog(w, r, deployment, offset)
+		if !ok {
+			return
+		}
+		if logs != "" {
+			data, err := json.Marshal(map[string]any{"logs": logs, "offset": newOffset})
+			if err != nil {
+				s.logger.Error("marshal deployment log event failed", "deployment_id", deployment.Id, "error", err)
+				return
+			}
+			_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
+			flusher.Flush()
+			offset = newOffset
+		}
+		if deploymentStatusComplete(deployment.Status) {
+			_, _ = w.Write([]byte("event: complete\ndata: {}\n\n"))
+			flusher.Flush()
+			return
+		}
+		select {
+		case <-r.Context().Done():
+			return
+		case <-ticker.C:
+			updated, err := s.store.Deployment(r.Context(), deployment.Id)
+			if err != nil {
+				s.logger.Error("load streaming deployment failed", "deployment_id", deployment.Id, "error", err)
+				return
+			}
+			deployment = updated
+		}
+	}
+}
+
+func (s Server) cancelDeployment(w http.ResponseWriter, r *http.Request) {
+	deployment, ok := s.loadDeploymentForCurrentUser(w, r)
+	if !ok {
+		return
+	}
+	if deployment.Status != orbit.WorkStatusWaitingToRun && deployment.Status != orbit.WorkStatusRunning {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot cancel deployment with status " + deployment.Status})
+		return
+	}
+	if err := s.store.CancelDeployment(r.Context(), deployment.Id); err != nil {
+		s.logger.Error("cancel deployment failed", "deployment_id", deployment.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to cancel deployment"})
+		return
+	}
+	updated, err := s.store.Deployment(r.Context(), deployment.Id)
+	if err != nil {
+		s.logger.Error("load canceled deployment failed", "deployment_id", deployment.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load deployment"})
+		return
+	}
+	writeJSON(w, http.StatusOK, deploymentResponse(updated))
 }
 
 func pageParams(r *http.Request) (int, int) {
@@ -1198,6 +1333,46 @@ func (s Server) repositoryCredentialName(r *http.Request, credentialId *string) 
 
 func repositoryWebhookResponse(item orbit.RepositoryWebhook) repositoryWebhookResp {
 	return repositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Enabled: item.Enabled, CreatedAt: formatTime(item.CreatedAt), UpdatedAt: formatTime(item.UpdatedAt)}
+}
+
+func (s Server) loadDeploymentForCurrentUser(w http.ResponseWriter, r *http.Request) (orbit.Deployment, bool) {
+	current, ok := s.currentUser(w, r)
+	if !ok {
+		return orbit.Deployment{}, false
+	}
+	deploymentId := urlParam(r, "deployment_id")
+	deployment, err := s.store.Deployment(r.Context(), deploymentId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Deployment " + deploymentId + " not found"})
+			return orbit.Deployment{}, false
+		}
+		s.logger.Error("load deployment failed", "deployment_id", deploymentId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load deployment"})
+		return orbit.Deployment{}, false
+	}
+	if deployment.ProjectId != nil {
+		if !s.ensureProjectMembership(w, r, *deployment.ProjectId, current.Id) {
+			return orbit.Deployment{}, false
+		}
+		return deployment, true
+	}
+	if deployment.ApplicationId != nil {
+		app, err := s.store.Application(r.Context(), *deployment.ApplicationId)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Application " + *deployment.ApplicationId + " not found"})
+				return orbit.Deployment{}, false
+			}
+			s.logger.Error("load deployment application failed", "deployment_id", deployment.Id, "application_id", *deployment.ApplicationId, "error", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load application"})
+			return orbit.Deployment{}, false
+		}
+		if app.ProjectId != nil && !s.ensureProjectMembership(w, r, *app.ProjectId, current.Id) {
+			return orbit.Deployment{}, false
+		}
+	}
+	return deployment, true
 }
 
 func (s Server) loadApplicationForCurrentUser(w http.ResponseWriter, r *http.Request) (orbit.Application, bool) {
@@ -1438,7 +1613,51 @@ func parseOptionalRunTime(w http.ResponseWriter, value string, name string) (*ti
 	return &parsed, true
 }
 
+func (s Server) readDeploymentLog(w http.ResponseWriter, r *http.Request, deployment orbit.Deployment, offset int) (string, int, bool) {
+	if deployment.ApplicationId == nil || strings.TrimSpace(*deployment.ApplicationId) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Deployment " + deployment.Id + " has no associated application"})
+		return "", offset, false
+	}
+	app, err := s.store.Application(r.Context(), *deployment.ApplicationId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Application " + *deployment.ApplicationId + " not found"})
+			return "", offset, false
+		}
+		s.logger.Error("load deployment application failed", "deployment_id", deployment.Id, "application_id", *deployment.ApplicationId, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load application"})
+		return "", offset, false
+	}
+	logPath := filepath.Join(s.appCfg.DataRoot(), "cd", app.Code, "deployments", deployment.Id+".log")
+	file, err := os.Open(logPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", offset, true
+		}
+		s.logger.Error("open deployment log failed", "deployment_id", deployment.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read deployment log"})
+		return "", offset, false
+	}
+	defer func() { _ = file.Close() }()
+	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
+		s.logger.Error("seek deployment log failed", "deployment_id", deployment.Id, "offset", offset, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read deployment log"})
+		return "", offset, false
+	}
+	content, err := io.ReadAll(file)
+	if err != nil {
+		s.logger.Error("read deployment log failed", "deployment_id", deployment.Id, "error", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read deployment log"})
+		return "", offset, false
+	}
+	return string(content), offset + len(content), true
+}
+
 func pipelineRunStatusComplete(status string) bool {
+	return status == orbit.WorkStatusRanToCompletion || status == orbit.WorkStatusFaulted || status == orbit.WorkStatusCanceled
+}
+
+func deploymentStatusComplete(status string) bool {
 	return status == orbit.WorkStatusRanToCompletion || status == orbit.WorkStatusFaulted || status == orbit.WorkStatusCanceled
 }
 

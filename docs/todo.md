@@ -403,27 +403,27 @@ CD 模块（Application、Deployment、Route）从设计之初就采用了简化
 来源：`backend/src/pomelo_orbit/interfaces/api/cd/deployment.py`
 
 - [x] `GET /api/cd/deployment` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
-- [ ] `GET /api/cd/deployment/{deployment_id}` — 待迁移
-- [ ] `GET /api/cd/deployment/{deployment_id}/logs` — 待迁移
-- [ ] `GET /api/cd/deployment/{deployment_id}/stream-log` — 待迁移
-- [ ] `POST /api/cd/deployment/{deployment_id}/cancel` — 待迁移
+- [x] `GET /api/cd/deployment/{deployment_id}` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/cd/deployment/{deployment_id}/logs` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `GET /api/cd/deployment/{deployment_id}/stream-log` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
+- [x] `POST /api/cd/deployment/{deployment_id}/cancel` — backend-go 已有：`backend-go/internal/httpserver/dashboard.go`
 
 #### Route
 
 来源：`backend/src/pomelo_orbit/interfaces/api/cd/route.py`
 
-- [ ] `GET /api/cd/route` — 待迁移
-- [ ] `POST /api/cd/route` — 待迁移
-- [ ] `GET /api/cd/route/{route_id}` — 待迁移
-- [ ] `PUT /api/cd/route/{route_id}` — 待迁移
-- [ ] `DELETE /api/cd/route/{route_id}` — 待迁移
-- [ ] `POST /api/cd/route/{route_id}/enable` — 待迁移
-- [ ] `POST /api/cd/route/{route_id}/disable` — 待迁移
-- [ ] `POST /api/cd/route/sync` — 待迁移
-- [ ] `POST /api/cd/route/{route_id}/cert` — 待迁移
-- [ ] `DELETE /api/cd/route/{route_id}/https` — 待迁移
-- [ ] `POST /api/cd/route/{route_id}/letsencrypt` — 待迁移
-- [ ] `POST /api/cd/route/{route_id}/mkcert` — 待迁移
+- [x] `GET /api/cd/route` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `GET /api/cd/route/{route_id}` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `PUT /api/cd/route/{route_id}` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `DELETE /api/cd/route/{route_id}` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route/{route_id}/enable` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route/{route_id}/disable` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route/sync` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route/{route_id}/cert` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `DELETE /api/cd/route/{route_id}/https` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route/{route_id}/letsencrypt` — backend-go 已有：`backend-go/internal/httpserver/route.go`
+- [x] `POST /api/cd/route/{route_id}/mkcert` — backend-go 已有：`backend-go/internal/httpserver/route.go`
 
 #### Traefik Route
 

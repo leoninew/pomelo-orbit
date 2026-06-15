@@ -141,6 +141,58 @@ func (s Store) ListPipelineRunsByRepository(ctx context.Context, repositoryId st
 	return Page[PipelineRun]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
 }
 
+func (s Store) ListArtifacts(ctx context.Context, projectId string, repositoryId string, templateId string, page int, perPage int, search string) (Page[Artifact], error) {
+	page, perPage = NormalizePage(page, perPage)
+	where, args := artifactWhere(projectId, repositoryId, templateId, search)
+	var total int
+	if err := s.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM artifact`+where, args...); err != nil {
+		return Page[Artifact]{}, fmt.Errorf("count artifacts: %w", err)
+	}
+	args = append(args, perPage, (page-1)*perPage)
+	var items []Artifact
+	err := s.db.SelectContext(ctx, &items, `SELECT id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at
+		FROM artifact`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return Page[Artifact]{}, fmt.Errorf("list artifacts: %w", err)
+	}
+	return Page[Artifact]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
+func (s Store) ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]Artifact, error) {
+	clauses := []string{"pipeline_run_id = ?"}
+	args := []any{runId}
+	if projectId != nil && strings.TrimSpace(*projectId) != "" {
+		clauses = append(clauses, "project_id = ?")
+		args = append(args, strings.TrimSpace(*projectId))
+	}
+	var items []Artifact
+	err := s.db.SelectContext(ctx, &items, `SELECT id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at
+		FROM artifact WHERE `+strings.Join(clauses, " AND ")+` ORDER BY created_at, id`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list run artifacts %s: %w", runId, err)
+	}
+	return items, nil
+}
+
+func artifactWhere(projectId string, repositoryId string, templateId string, search string) (string, []any) {
+	clauses := []string{"project_id = ?"}
+	args := []any{strings.TrimSpace(projectId)}
+	if strings.TrimSpace(repositoryId) != "" {
+		clauses = append(clauses, "repository_id = ?")
+		args = append(args, strings.TrimSpace(repositoryId))
+	}
+	if strings.TrimSpace(templateId) != "" {
+		clauses = append(clauses, "template_id = ?")
+		args = append(args, strings.TrimSpace(templateId))
+	}
+	if strings.TrimSpace(search) != "" {
+		like := "%" + strings.TrimSpace(search) + "%"
+		clauses = append(clauses, "(name LIKE ? OR path LIKE ?)")
+		args = append(args, like, like)
+	}
+	return " WHERE " + strings.Join(clauses, " AND "), args
+}
+
 func (s Store) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (Page[Application], error) {
 	page, perPage = NormalizePage(page, perPage)
 	where, args := projectSearchWhere(projectId, search, []string{"name", "code"})

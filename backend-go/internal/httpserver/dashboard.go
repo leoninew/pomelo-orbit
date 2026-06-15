@@ -167,6 +167,7 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Put("/api/ci/template/{template_id}", s.updatePipelineTemplate)
 	r.Delete("/api/ci/template/{template_id}", s.deletePipelineTemplate)
 	r.Post("/api/ci/template/{template_id}/duplicate", s.duplicatePipelineTemplate)
+	r.Get("/api/ci/snapshot/{snapshot_id}", s.getPipelineSnapshot)
 	r.Get("/api/ci/repository", s.listRepositories)
 	r.Post("/api/ci/repository", s.createRepository)
 	r.Get("/api/ci/repository/{repository_id}", s.getRepository)

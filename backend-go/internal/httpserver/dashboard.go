@@ -159,6 +159,82 @@ type applicationUpdateReq struct {
 	RouteManaged    *bool   `json:"route_managed"`
 }
 
+type configFileReq struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+type configFileResp struct {
+	Id        string `json:"id"`
+	Path      string `json:"path"`
+	CreatedAt string `json:"created_at"`
+}
+
+type applicationRouteReq struct {
+	ServiceName string `json:"service_name"`
+	Domain      string `json:"domain"`
+	Port        int    `json:"port"`
+}
+
+type applicationRouteResp struct {
+	Id          string `json:"id"`
+	ServiceName string `json:"service_name"`
+	Domain      string `json:"domain"`
+	Port        int    `json:"port"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type applicationServiceConfigUpdateReq struct {
+	Image *string `json:"image"`
+}
+
+type applicationServiceConfigResp struct {
+	ServiceName   string  `json:"service_name"`
+	DefaultDomain string  `json:"default_domain"`
+	DefaultPort   int     `json:"default_port"`
+	BaseImage     *string `json:"base_image"`
+	Image         *string `json:"image"`
+	ConfigId      *string `json:"config_id"`
+	CreatedAt     *string `json:"created_at"`
+	UpdatedAt     *string `json:"updated_at"`
+}
+
+type composeServiceResp struct {
+	ServiceName   string `json:"service_name"`
+	DefaultDomain string `json:"default_domain"`
+	DefaultPort   int    `json:"default_port"`
+}
+
+type applicationExportResp struct {
+	Version         string                              `json:"version"`
+	Name            string                              `json:"name"`
+	Code            string                              `json:"code"`
+	ImagePullPolicy string                              `json:"image_pull_policy"`
+	RouteManaged    bool                                `json:"route_managed"`
+	ConfigFiles     []configFileReq                     `json:"config_files"`
+	ServiceConfigs  []applicationServiceConfigImportReq `json:"service_configs"`
+	Routes          []applicationRouteReq               `json:"routes"`
+}
+
+type applicationImportReq struct {
+	Version         string                              `json:"version"`
+	Name            string                              `json:"name"`
+	Code            string                              `json:"code"`
+	ImagePullPolicy string                              `json:"image_pull_policy"`
+	RouteManaged    bool                                `json:"route_managed"`
+	ConfigFiles     []configFileReq                     `json:"config_files"`
+	ServiceConfigs  []applicationServiceConfigImportReq `json:"service_configs"`
+	Routes          []applicationRouteReq               `json:"routes"`
+}
+
+type applicationServiceConfigImportReq struct {
+	ServiceName string  `json:"service_name"`
+	Image       *string `json:"image"`
+	Environment *string `json:"environment"`
+	Volumes     *string `json:"volumes"`
+}
+
 type deploymentResp struct {
 	Id                       string  `json:"id"`
 	ProjectId                *string `json:"project_id"`
@@ -220,9 +296,29 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Post("/api/ci/run/{run_id}/retry", s.retryPipelineRun)
 	r.Get("/api/cd/application", s.listApplications)
 	r.Post("/api/cd/application", s.createApplication)
+	r.Post("/api/cd/application/import", s.importApplication)
 	r.Get("/api/cd/application/{app_id}", s.getApplication)
+	r.Get("/api/cd/application/{app_id}/export", s.exportApplication)
 	r.Put("/api/cd/application/{app_id}", s.updateApplication)
 	r.Delete("/api/cd/application/{app_id}", s.deleteApplication)
+	r.Post("/api/cd/application/{app_id}/compose-preview", s.previewApplicationCompose)
+	r.Get("/api/cd/application/{app_id}/files", s.listApplicationFiles)
+	r.Post("/api/cd/application/{app_id}/file", s.createApplicationFile)
+	r.Get("/api/cd/application/{app_id}/file/{file_id}", s.readApplicationFile)
+	r.Put("/api/cd/application/{app_id}/file/{file_id}", s.updateApplicationFile)
+	r.Delete("/api/cd/application/{app_id}/file/{file_id}", s.deleteApplicationFile)
+	r.Post("/api/cd/application/{app_id}/deploy", s.deployApplication)
+	r.Post("/api/cd/application/{app_id}/stop", s.stopApplication)
+	r.Post("/api/cd/application/{app_id}/restart", s.restartApplication)
+	r.Get("/api/cd/application/{app_id}/status", s.getApplicationStatus)
+	r.Get("/api/cd/application/{app_id}/logs", s.getApplicationLogs)
+	r.Get("/api/cd/application/{app_id}/route", s.listApplicationRoutes)
+	r.Post("/api/cd/application/{app_id}/route", s.createApplicationRoute)
+	r.Put("/api/cd/application/{app_id}/route/{route_id}", s.updateApplicationRoute)
+	r.Delete("/api/cd/application/{app_id}/route/{route_id}", s.deleteApplicationRoute)
+	r.Get("/api/cd/application/{app_id}/compose-service", s.listApplicationComposeServices)
+	r.Get("/api/cd/application/{app_id}/service-config", s.listApplicationServiceConfigs)
+	r.Put("/api/cd/application/{app_id}/service-config/{service_name}", s.updateApplicationServiceConfig)
 	r.Get("/api/cd/deployment", s.listDeployments)
 }
 

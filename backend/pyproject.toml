@@ -43,14 +43,9 @@ packages = ["src/pomelo_orbit"]
 
 [dependency-groups]
 dev = [
-    "mypy>=1.19.1",
+    "ruff>=0.15.17",
+    "mypy>=2.1.0",
     "pytest>=9.0.2",
-    "pytest-asyncio>=0.24.0",
-    "pytest-cov>=6.0.0",
-    "pytest-env>=1.6.0",
-    "ruff>=0.15.7",
-    "types-Markdown>=3.0.0",
-    "types-pyyaml>=6.0.12.20250915",
 ]
 
 # Ruff、Mypy、Pytest 配置已移至独立文件：

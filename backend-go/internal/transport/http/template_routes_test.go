@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 func TestPipelineTemplateRoutes(t *testing.T) {
@@ -20,7 +22,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected template create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created pipelineTemplateResp
+	var created cihandler.PipelineTemplateResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +35,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var templates paginatedResp[pipelineTemplateResp]
+	var templates paginatedResp[cihandler.PipelineTemplateResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&templates); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +54,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated pipelineTemplateResp
+	var updated cihandler.PipelineTemplateResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +67,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if duplicateRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected template duplicate status 201, got %d: %s", duplicateRecorder.Code, duplicateRecorder.Body.String())
 	}
-	var duplicated pipelineTemplateResp
+	var duplicated cihandler.PipelineTemplateResp
 	if err := json.NewDecoder(duplicateRecorder.Body).Decode(&duplicated); err != nil {
 		t.Fatal(err)
 	}

@@ -105,9 +105,9 @@ Review status: Accepted
 ### 8. CI HTTP/API 模块迁移
 
 - [ ] 拆分 `internal/httpserver/dashboard.go` 中 CI 相关 DTO 和 handler。
-- [ ] 将 repository API 迁移到 `transport/http/handler/ci` + `service/ci`。
-- [ ] 将 webhook API 迁移到 `handler/ci` + `service/ci`。
-- [ ] 将 pipeline template API 迁移到 `handler/ci` + `service/ci`。
+- [x] 将 repository API 迁移到 `transport/http/handler/ci` + `service/ci`。
+- [x] 将 webhook API 迁移到 `handler/ci` + `service/ci`。
+- [x] 将 pipeline template API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 build stage API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 pipeline run API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 snapshot API 迁移到 `handler/ci` + `service/ci`。

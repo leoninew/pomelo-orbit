@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 func TestRepositoryRoutes(t *testing.T) {
@@ -19,7 +21,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created repositoryResp
+	var created cihandler.RepositoryResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var repositories paginatedResp[repositoryResp]
+	var repositories paginatedResp[cihandler.RepositoryResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&repositories); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +69,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated repositoryResp
+	var updated cihandler.RepositoryResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +96,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected webhook create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created repositoryWebhookResp
+	var created cihandler.RepositoryWebhookResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +109,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var webhooks []repositoryWebhookResp
+	var webhooks []cihandler.RepositoryWebhookResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&webhooks); err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +128,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated repositoryWebhookResp
+	var updated cihandler.RepositoryWebhookResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}

@@ -16,6 +16,7 @@ import (
 	taskrepo "backend/internal/repository/task"
 	userrepo "backend/internal/repository/user"
 	authsvc "backend/internal/service/auth"
+	cisvc "backend/internal/service/ci"
 	projectsvc "backend/internal/service/project"
 	rolesvc "backend/internal/service/role"
 	settingssvc "backend/internal/service/settings"
@@ -23,6 +24,7 @@ import (
 	usersvc "backend/internal/service/user"
 	authhandler "backend/internal/transport/http/handler/auth"
 	"backend/internal/transport/http/handler/authz"
+	cihandler "backend/internal/transport/http/handler/ci"
 	projecthandler "backend/internal/transport/http/handler/project"
 	rolehandler "backend/internal/transport/http/handler/role"
 	settingshandler "backend/internal/transport/http/handler/settings"
@@ -48,6 +50,7 @@ type Server struct {
 	userService       usersvc.Service
 	projectService    projectsvc.Service
 	settingsService   settingssvc.Service
+	ciService         cisvc.Service
 	tokenService      authsvc.TokenService
 	taskService       tasksvc.Service
 	userRepository    userrepo.Repository
@@ -60,7 +63,8 @@ func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks t
 	userRepository := userrepo.NewRepository(store.DB(), store.Driver())
 	roleRepository := rolerepo.NewRepository(store.DB(), store.Driver())
 	projectRepository := projectrepo.NewRepository(store.DB(), store.Driver())
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), tokenService: tokenService, taskService: tasksvc.New(tasks, defaultMaxAttempts), userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+	taskService := tasksvc.New(tasks, defaultMaxAttempts)
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(store, taskService), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {
@@ -79,6 +83,9 @@ func (s Server) Handler() http.Handler {
 	rolehandler.New(s.logger, s.roleService, authenticator, s.roleRepository).Register(r)
 	settingshandler.New(s.logger, s.settingsService, authenticator).Register(r)
 	projecthandler.New(s.logger, s.projectService, authenticator).Register(r)
+	ciHandler := cihandler.New(s.logger, s.ciService, authenticator)
+	ciHandler.RegisterRepositoryRoutes(r)
+	ciHandler.RegisterTemplateRoutes(r)
 	s.registerDashboardRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"backend/internal/config"
-	"backend/internal/orbit"
+	"backend/internal/repository"
 )
 
 func TestRenderTemplateUsesGoTemplateWithJinjaSyntax(t *testing.T) {
@@ -43,7 +43,7 @@ func TestInjectRouteLabelsMatchesManagedRouteSemantics(t *testing.T) {
 
 func TestInjectRouteLabelsRejectsMissingService(t *testing.T) {
 	compose := "services:\n  web:\n    image: nginx\n"
-	_, err := injectRouteLabels(compose, []orbit.ApplicationRoute{{ServiceName: "api", Domain: "api.example.com", Port: 8080}}, false)
+	_, err := injectRouteLabels(compose, []repository.ApplicationRoute{{ServiceName: "api", Domain: "api.example.com", Port: 8080}}, false)
 	if err == nil {
 		t.Fatal("expected missing service error")
 	}

@@ -21,19 +21,6 @@ def command_path(command: str) -> str:
     return path
 
 
-def build_backend() -> Path:
-    """Build backend-go and return the executable path."""
-    binary = ROOT_DIR / "backend-go" / "bin" / ("backend-go.exe" if os.name == "nt" else "backend-go")
-    binary.parent.mkdir(parents=True, exist_ok=True)
-    print("构建后端服务器...", flush=True)
-    subprocess.run(
-        [command_path("go"), "build", "-o", str(binary), "./cmd/backend-go"],
-        cwd=ROOT_DIR / "backend-go",
-        check=True,
-    )
-    return binary
-
-
 class DevProcess:
     """Development server process."""
 
@@ -46,7 +33,7 @@ class DevProcess:
 
     def start(self) -> None:
         """Start process in its own process group."""
-        print(f"启动{self.name}服务器...", flush=True)
+        print(f"启动{self.name}...", flush=True)
         kwargs: dict[str, object] = {
             "cwd": self.cwd,
             "env": self.env,
@@ -64,7 +51,7 @@ class DevProcess:
         if self.process is None or self.process.poll() is not None:
             return
 
-        print(f"停止{self.name}服务器...", flush=True)
+        print(f"停止{self.name}...", flush=True)
         if os.name == "nt":
             self.kill_process_tree(force=False)
         else:
@@ -119,17 +106,22 @@ def main() -> int:
     backend_env = os.environ.copy()
     backend_env["POMELO_ORBIT_BACKEND__SERVER__HOST"] = "127.0.0.1"
     backend_env["POMELO_ORBIT_BACKEND__SERVER__PORT"] = "9001"
-    backend_binary = build_backend()
 
     processes = [
         DevProcess(
-            name="后端",
+            name="后端服务",
             cwd=ROOT_DIR / "backend-go",
-            command=[str(backend_binary), "serve"],
+            command=[command_path("air"), "-c", ".air.api.toml"],
             env=backend_env,
         ),
         DevProcess(
-            name="前端",
+            name="后端 Worker",
+            cwd=ROOT_DIR / "backend-go",
+            command=[command_path("air"), "-c", ".air.worker.toml"],
+            env=backend_env,
+        ),
+        DevProcess(
+            name="前端服务",
             cwd=ROOT_DIR / "frontend",
             command=[command_path("yarn"), "dev"],
         ),
@@ -138,7 +130,7 @@ def main() -> int:
     try:
         for process in processes:
             process.start()
-        print("前后端已启动，按 Ctrl+C 退出。", flush=True)
+        print("前端、后端 API hot reload 和 Worker hot reload 已启动，按 Ctrl+C 退出。", flush=True)
         exit_code = wait_any(processes)
         print("开发服务器已退出，正在停止剩余进程...", flush=True)
         return exit_code

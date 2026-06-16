@@ -109,7 +109,7 @@ worker:
 `)
 	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__HOST", "0.0.0.0")
 	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__PORT", "8088")
-	t.Setenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH", "/data/pomelo-orbit.db")
+	t.Setenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
 	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_BACKUPS", "4")
 	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__ENABLED", "false")
@@ -130,7 +130,7 @@ worker:
 	if cfg.Server.Port != 8088 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
-	if cfg.Database.SQLite.Path != "/data/pomelo-orbit.db" {
+	if cfg.Database.SQLite.Path != "/data/pomelo-repository.db" {
 		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
 	}
 	if cfg.Logging.MaxSizeMB != 25 {
@@ -214,7 +214,7 @@ orbit:
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	want := filepath.Join("/opt/pomelo-orbit", "data", "db", "pomelo-orbit.db")
+	want := filepath.Join("/opt/pomelo-orbit", "data", "db", "pomelo-repository.db")
 	if cfg.Database.SQLite.Path != want {
 		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
 	}
@@ -323,7 +323,7 @@ logging:
 database:
   driver: sqlite
   sqlite:
-    path: data/db/pomelo-orbit.db
+    path: data/db/pomelo-repository.db
   mysql:
     dsn: ""
 orbit:

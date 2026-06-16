@@ -7,14 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"backend/internal/cd"
-	"backend/internal/ci"
+	"backend/internal/bootstrap"
 	"backend/internal/config"
 	"backend/internal/db"
-	"backend/internal/httpserver"
-	"backend/internal/orbit"
-	"backend/internal/status"
-	"backend/internal/task"
 )
 
 type App struct {
@@ -27,66 +22,56 @@ func New(cfg config.Config, logger *slog.Logger) App {
 }
 
 func (a App) Migrate() error {
-	database, err := db.Open(a.cfg.Database)
+	database, err := bootstrap.OpenDatabase(a.cfg)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.NewMigrator(database, a.cfg.Database.Driver).Up(); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
-	}
-	return nil
+	return bootstrap.RunMigrations(database, a.cfg.Database.Driver)
 }
 
 func (a App) RunWorker(ctx context.Context) error {
-	database, err := db.Open(a.cfg.Database)
+	database, err := bootstrap.OpenDatabase(a.cfg)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.NewMigrator(database, a.cfg.Database.Driver).Up(); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
+	if err := bootstrap.RunMigrations(database, a.cfg.Database.Driver); err != nil {
+		return err
 	}
 
-	repository := task.NewRepository(database, a.cfg.Database.Driver)
-	store := orbit.NewStore(database, a.cfg.Database.Driver)
-	router := task.NewRouter()
-	registerHandlers(router, store, a.cfg, a.logger)
-
-	worker := task.NewWorker(repository, router, a.logger, task.WorkerConfig{
-		WorkerId:      a.cfg.Worker.Id,
-		PollInterval:  a.cfg.Worker.PollInterval,
-		LeaseDuration: a.cfg.Worker.LeaseDuration,
-		Concurrency:   a.cfg.Worker.Concurrency,
-	})
+	taskRepo := bootstrap.NewTaskRepository(database, a.cfg.Database.Driver)
+	store := bootstrap.NewRepositoryStore(database, a.cfg.Database.Driver)
+	router := bootstrap.NewTaskRouter(store, a.cfg, a.logger)
+	worker := bootstrap.NewWorker(a.cfg, a.logger, taskRepo, router)
 	return worker.Run(ctx)
 }
 
 func (a App) MigrationStatus() ([]db.MigrationStatus, error) {
-	database, err := db.Open(a.cfg.Database)
+	database, err := bootstrap.OpenDatabase(a.cfg)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = database.Close() }()
-	return db.NewMigrator(database, a.cfg.Database.Driver).Status()
+	return bootstrap.MigrationStatus(database, a.cfg.Database.Driver)
 }
 
 func (a App) Serve(ctx context.Context) error {
-	database, err := db.Open(a.cfg.Database)
+	database, err := bootstrap.OpenDatabase(a.cfg)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.NewMigrator(database, a.cfg.Database.Driver).Up(); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
+	if err := bootstrap.RunMigrations(database, a.cfg.Database.Driver); err != nil {
+		return err
 	}
 
-	repository := task.NewRepository(database, a.cfg.Database.Driver)
-	store := orbit.NewStore(database, a.cfg.Database.Driver)
-	server := httpserver.New(a.cfg, a.logger, store, repository, a.cfg.Worker.MaxAttempts)
+	taskRepo := bootstrap.NewTaskRepository(database, a.cfg.Database.Driver)
+	store := bootstrap.NewRepositoryStore(database, a.cfg.Database.Driver)
+	server := bootstrap.NewHTTPServer(a.cfg, a.logger, store, taskRepo)
 	httpServer := &http.Server{Addr: server.Addr(), Handler: server.Handler()}
 
 	go func() {
@@ -101,10 +86,4 @@ func (a App) Serve(ctx context.Context) error {
 		return fmt.Errorf("serve http: %w", err)
 	}
 	return ctx.Err()
-}
-
-func registerHandlers(router *task.Router, store orbit.Store, cfg config.Config, logger *slog.Logger) {
-	router.Register(status.TaskTypeCIPipelineRunExecute, ci.NewHandler(store, cfg, logger))
-	router.Register(status.TaskTypeCDApplicationDeploy, cd.NewDeployHandler(store, cfg, logger))
-	router.Register(status.TaskTypeCDApplicationRestart, cd.NewRestartHandler(store, cfg, logger))
 }

@@ -135,7 +135,7 @@ func Load(path string) (Config, error) {
 		cfg.Database.Driver = DatabaseDriverSQLite
 	}
 	if cfg.Database.Driver == DatabaseDriverSQLite && cfg.Database.SQLite.Path == "" {
-		cfg.Database.SQLite.Path = filepath.Join(cfg.Orbit.Root, "data", "db", "pomelo-orbit.db")
+		cfg.Database.SQLite.Path = filepath.Join(cfg.Orbit.Root, "data", "db", "pomelo-repository.db")
 	}
 
 	if err := cfg.Validate(); err != nil {
@@ -165,7 +165,7 @@ func bindEnv(loader *viper.Viper) {
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
-		"orbit.root",
+		"repository.root",
 		"jwt.secret_key",
 		"traefik.api_url",
 		"traefik.domain_suffix",

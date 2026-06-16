@@ -9,67 +9,67 @@ import (
 	"testing"
 
 	"backend/internal/config"
-	"backend/internal/orbit"
-	"backend/internal/task"
+	"backend/internal/repository"
+	taskrepo "backend/internal/repository/task"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {
-	handler := Handler{store: orbit.Store{}, cfg: config.Config{}, logger: slog.Default()}
-	err := handler.Handle(context.Background(), task.Task{PayloadJSON: `{invalid`})
+	handler := Handler{store: repository.Store{}, cfg: config.Config{}, logger: slog.Default()}
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
 	if err == nil || !strings.Contains(err.Error(), "parse cd task payload") {
 		t.Fatalf("expected parse error, got %v", err)
 	}
 }
 
 func TestHandleRequiresApplicationAndDeploymentId(t *testing.T) {
-	handler := Handler{store: orbit.Store{}, cfg: config.Config{}, logger: slog.Default()}
-	err := handler.Handle(context.Background(), task.Task{PayloadJSON: `{}`})
+	handler := Handler{store: repository.Store{}, cfg: config.Config{}, logger: slog.Default()}
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
 	if err == nil || !strings.Contains(err.Error(), "application_id and deployment_id are required") {
 		t.Fatalf("expected required field error, got %v", err)
 	}
 }
 
 func TestHandleRestartsApplication(t *testing.T) {
-	store := &fakeStore{app: orbit.Application{Id: "app-1", Code: "demo"}, deployment: orbit.Deployment{Id: "deploy-1"}}
+	store := &fakeStore{app: repository.Application{Id: "app-1", Code: "demo"}, deployment: repository.Deployment{Id: "deploy-1"}}
 	handler := Handler{store: store, cfg: config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, logger: slog.Default(), runner: fakeCommandRunner{}, restart: true}
 
-	err := handler.Handle(context.Background(), task.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
-	if store.appStatus != orbit.ApplicationStatusDeployed {
+	if store.appStatus != repository.ApplicationStatusDeployed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
 	}
-	if store.deploymentStatus != orbit.WorkStatusRanToCompletion {
+	if store.deploymentStatus != repository.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
 func TestHandleMarksDeploymentFaultedOnRunnerError(t *testing.T) {
 	store := &fakeStore{
-		app:        orbit.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: orbit.Deployment{Id: "deploy-1"},
-		files:      []orbit.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
+		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: repository.Deployment{Id: "deploy-1"},
+		files:      []repository.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
 	}
 	handler := Handler{store: store, cfg: config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, logger: slog.Default(), runner: failingCommandRunner{}}
 
-	err := handler.Handle(context.Background(), task.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err == nil {
 		t.Fatal("expected runner error")
 	}
-	if store.appStatus != orbit.ApplicationStatusDeployFailed {
+	if store.appStatus != repository.ApplicationStatusDeployFailed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
 	}
-	if store.deploymentStatus != orbit.WorkStatusFaulted {
+	if store.deploymentStatus != repository.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
 func TestHandleDeploysApplication(t *testing.T) {
 	store := &fakeStore{
-		app:        orbit.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: orbit.Deployment{Id: "deploy-1"},
-		files: []orbit.ApplicationConfigFile{
+		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: repository.Deployment{Id: "deploy-1"},
+		files: []repository.ApplicationConfigFile{
 			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
 		},
 	}
@@ -80,43 +80,43 @@ func TestHandleDeploysApplication(t *testing.T) {
 		runner: fakeCommandRunner{},
 	}
 
-	err := handler.Handle(context.Background(), task.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
-	if store.appStatus != orbit.ApplicationStatusDeployed {
+	if store.appStatus != repository.ApplicationStatusDeployed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
 	}
-	if store.deploymentStatus != orbit.WorkStatusRanToCompletion {
+	if store.deploymentStatus != repository.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
 type fakeStore struct {
-	app              orbit.Application
-	deployment       orbit.Deployment
-	files            []orbit.ApplicationConfigFile
+	app              repository.Application
+	deployment       repository.Deployment
+	files            []repository.ApplicationConfigFile
 	appStatus        string
 	deploymentStatus string
 }
 
-func (s *fakeStore) Application(_ context.Context, id string) (orbit.Application, error) {
+func (s *fakeStore) Application(_ context.Context, id string) (repository.Application, error) {
 	return s.app, nil
 }
 
-func (s *fakeStore) Deployment(_ context.Context, id string) (orbit.Deployment, error) {
+func (s *fakeStore) Deployment(_ context.Context, id string) (repository.Deployment, error) {
 	return s.deployment, nil
 }
 
-func (s *fakeStore) ConfigFiles(_ context.Context, applicationId string) ([]orbit.ApplicationConfigFile, error) {
+func (s *fakeStore) ConfigFiles(_ context.Context, applicationId string) ([]repository.ApplicationConfigFile, error) {
 	return s.files, nil
 }
 
-func (s *fakeStore) ServiceConfigs(ctx context.Context, applicationId string) ([]orbit.ApplicationServiceConfig, error) {
+func (s *fakeStore) ServiceConfigs(ctx context.Context, applicationId string) ([]repository.ApplicationServiceConfig, error) {
 	return nil, nil
 }
 
-func (s *fakeStore) Routes(ctx context.Context, applicationId string) ([]orbit.ApplicationRoute, error) {
+func (s *fakeStore) Routes(ctx context.Context, applicationId string) ([]repository.ApplicationRoute, error) {
 	return nil, nil
 }
 
@@ -126,7 +126,7 @@ func (s *fakeStore) MarkApplicationStatus(ctx context.Context, id string, status
 }
 
 func (s *fakeStore) MarkDeploymentRunning(ctx context.Context, id string) error {
-	s.deploymentStatus = orbit.WorkStatusRunning
+	s.deploymentStatus = repository.WorkStatusRunning
 	return nil
 }
 

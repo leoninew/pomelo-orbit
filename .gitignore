@@ -17,3 +17,7 @@ Thumbs.db
 
 # pomelo-pw
 .pomelo-pw
+
+# backend-go build/dev artifacts
+backend-go/tmp/
+backend-go/bin/

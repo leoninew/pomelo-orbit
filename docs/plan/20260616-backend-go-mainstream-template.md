@@ -38,43 +38,43 @@ Review status: Accepted
 
 ### 1. 分层目录和公共基础
 
-- [ ] 创建 `internal/transport/http` 分层目录：`handler`、`middleware`、`response`。
-- [ ] 创建 `internal/service` 分层目录。
-- [ ] 创建 `internal/repository` 分层目录及 `internal/repository/model`。
-- [ ] 创建 `internal/bootstrap`。
-- [ ] 创建 `internal/worker`。
-- [ ] 引入轻量应用错误包或等价机制，用于 `validation / unauthorized / forbidden / not found / conflict / internal`。
-- [ ] 将通用 JSON 响应、错误响应、分页响应、时间格式化迁移到 `transport/http/response`。
-- [ ] 确保新公共包不 import 旧 `internal/httpserver` 或 `internal/orbit`。
+- [x] 创建 `internal/transport/http` 分层目录：`handler`、`middleware`、`response`。
+- [x] 创建 `internal/service` 分层目录。
+- [x] 创建 `internal/repository` 分层目录及 `internal/repository/model`。
+- [x] 创建 `internal/bootstrap`。
+- [x] 创建 `internal/worker`。
+- [x] 引入轻量应用错误包或等价机制，用于 `validation / unauthorized / forbidden / not found / conflict / internal`。
+- [x] 将通用 JSON 响应、错误响应、分页响应、时间格式化迁移到 `transport/http/response`。
+- [x] 确保新公共包不 import 旧 `internal/httpserver` 或 `internal/orbit`。
 
 ### 2. HTTP server / router 骨架
 
-- [ ] 将 `internal/httpserver/server.go` 的 server 壳和 router 注册职责迁移到 `internal/transport/http`。
-- [ ] 将 request logging / recover / auth context 等 HTTP 横切能力迁移到 `transport/http/middleware`。
-- [ ] 保持 `/api/health` 行为不变。
-- [ ] 保持 NotFound 响应结构为 `{"detail":"Not Found"}`。
-- [ ] 新 router 通过 handler 的 `Register` 方法注册路由，而不是在一个巨型 server 文件中集中堆 handler 方法。
+- [x] 将 `internal/httpserver/server.go` 的 server 壳和 router 注册职责迁移到 `internal/transport/http`。
+- [x] 将 request logging / recover / auth context 等 HTTP 横切能力迁移到 `transport/http/middleware`。
+- [x] 保持 `/api/health` 行为不变。
+- [x] 保持 NotFound 响应结构为 `{"detail":"Not Found"}`。
+- [x] 新 router 通过 handler 的 `Register` 方法注册路由，而不是在一个巨型 server 文件中集中堆 handler 方法。
 
 ### 3. Bootstrap / app 组装
 
-- [ ] 将 `internal/app/app.go` 中 DB、migrator、repository、service、handler、router、worker 的散装逻辑迁移到 `internal/bootstrap`。
-- [ ] 保留 `app.App` 的外部命令入口：`Serve`、`RunWorker`、`Migrate`、`MigrationStatus`。
-- [ ] `Serve` 通过 bootstrap 构建 HTTP server，不再直接创建 `orbit.Store`。
-- [ ] `RunWorker` 通过 bootstrap 构建 worker，不再直接创建 `orbit.Store`。
-- [ ] 保持现有 CLI 命令和生产启动方式不变。
+- [x] 将 `internal/app/app.go` 中 DB、migrator、repository、service、handler、router、worker 的散装逻辑迁移到 `internal/bootstrap`。
+- [x] 保留 `app.App` 的外部命令入口：`Serve`、`RunWorker`、`Migrate`、`MigrationStatus`。
+- [x] `Serve` 通过 bootstrap 构建 HTTP server，不再直接创建 `orbit.Store`。
+- [x] `RunWorker` 通过 bootstrap 构建 worker，不再直接创建 `orbit.Store`。
+- [x] 保持现有 CLI 命令和生产启动方式不变。
 
 ### 4. Auth / User / Role 模块迁移
 
-- [ ] 将 `internal/httpserver/auth.go` 拆到 `transport/http/handler/auth` 和 `service/auth`。
-- [ ] 将 JWT、CSRF、login、logout、password、login-history 的业务编排从 handler 下沉到 service。
-- [ ] 将 Turnstile HTTP 配置读取和验证保留在合适的 handler/service 边界，避免 handler 直接访问全局 Store。
-- [ ] 将 `internal/httpserver/user.go` 拆到 `handler/user` 和 `service/user`。
-- [ ] 将 `internal/httpserver/role.go` 拆到 `handler/role` 和 `service/role`。
-- [ ] 将 `internal/orbit/user_store.go` 迁移到 `repository/user` 或 `repository/auth`。
-- [ ] 将 `internal/orbit/role_store.go` 迁移到 `repository/role`。
-- [ ] 将相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
-- [ ] 保持 auth/user/role API 路径、响应字段和主要错误语义不变。
-- [ ] 更新 auth/user/role 相关测试包和 imports。
+- [x] 将 `internal/httpserver/auth.go` 拆到 `transport/http/handler/auth` 和 `service/auth`。
+- [x] 将 JWT、CSRF、login、logout、password、login-history 的业务编排从 handler 下沉到 service。
+- [x] 将 Turnstile HTTP 配置读取和验证保留在合适的 handler/service 边界，避免 handler 直接访问全局 Store。
+- [x] 将 `internal/httpserver/user.go` 拆到 `handler/user` 和 `service/user`。
+- [x] 将 `internal/httpserver/role.go` 拆到 `handler/role` 和 `service/role`。
+- [x] 将 `internal/orbit/user_store.go` 迁移到 `repository/user` 或 `repository/auth`。
+- [x] 将 `internal/orbit/role_store.go` 迁移到 `repository/role`。
+- [x] 将相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
+- [x] 保持 auth/user/role API 路径、响应字段和主要错误语义不变。
+- [x] 更新 auth/user/role 相关测试包和 imports。
 
 ### 5. Project 模块迁移
 
@@ -94,13 +94,13 @@ Review status: Accepted
 
 ### 7. Task / background task 模块迁移
 
-- [ ] 将 `internal/task/repository.go` 中 SQL repository 迁移到 `repository/task`。
-- [ ] 将 task model 迁移到 `repository/model` 或 `service/task` 的输出结构。
-- [ ] 创建 `service/task`，封装 enqueue、find/query 等用例。
-- [ ] 将 `internal/task/worker.go` 和 `internal/task/router.go` 迁移到 `internal/worker`。
-- [ ] 将 background task HTTP endpoints 迁移到 `transport/http/handler/task`。
-- [ ] 保持 `/api/background/task` 和 typed enqueue endpoints 行为不变。
-- [ ] 更新 task repository / worker / HTTP 测试。
+- [x] 将 `internal/task/repository.go` 中 SQL repository 迁移到 `repository/task`。
+- [x] 将 task model 迁移到 `repository/model` 或 `service/task` 的输出结构。
+- [x] 创建 `service/task`，封装 enqueue、find/query 等用例。
+- [x] 将 `internal/task/worker.go` 和 `internal/task/router.go` 迁移到 `internal/worker`。
+- [x] 将 background task HTTP endpoints 迁移到 `transport/http/handler/task`。
+- [x] 保持 `/api/background/task` 和 typed enqueue endpoints 行为不变。
+- [x] 更新 task repository / worker / HTTP 测试。
 
 ### 8. CI HTTP/API 模块迁移
 
@@ -160,38 +160,38 @@ Review status: Accepted
 - [ ] 将 `orbit/model.go` 中所有仍被使用的结构迁移到新归属包。
 - [ ] 将 `orbit/status.go` 中状态常量迁移到 `internal/status` 或模块内常量。
 - [ ] 将 `orbit/store.go` 中 worker/CI/CD 通用方法迁移到对应 repository。
-- [ ] 删除所有对 `backend/internal/orbit` 的 import。
-- [ ] 删除 `internal/orbit` 包及其测试，或确认该目录为空并移除。
-- [ ] 运行全局搜索确认没有 `internal/orbit`、`orbit.` 残留。
+- [x] 删除所有对 `backend/internal/orbit` 的 import。
+- [x] 删除 `internal/orbit` 包及其测试，或确认该目录为空并移除。
+- [x] 运行全局搜索确认没有 `internal/orbit`、`orbit.` 残留。
 
 ### 13. 旧 `internal/httpserver` 退出和清理
 
-- [ ] 将所有 HTTP handler 和 test 迁移到 `internal/transport/http`。
-- [ ] 删除所有对 `backend/internal/httpserver` 的 import。
-- [ ] 删除旧 `internal/httpserver` 包及其测试，或确认该目录为空并移除。
-- [ ] 运行全局搜索确认没有 `internal/httpserver` 残留。
+- [x] 将所有 HTTP handler 和 test 迁移到 `internal/transport/http`。
+- [x] 删除所有对 `backend/internal/httpserver` 的 import。
+- [x] 删除旧 `internal/httpserver` 包及其测试，或确认该目录为空并移除。
+- [x] 运行全局搜索确认没有 `internal/httpserver` 残留。
 
 ### 14. Air hot reload
 
-- [ ] 新增 `backend-go/.air.api.toml`，构建 `./cmd/backend-go` 并运行 `serve`。
-- [ ] 新增 `backend-go/.air.worker.toml`，构建 `./cmd/backend-go` 并运行 `worker`。
-- [ ] API 和 worker 使用不同输出文件，例如 `./tmp/air/api.exe` 与 `./tmp/air/worker.exe`。
-- [ ] air 配置排除 `tmp`、`bin`、`data`、日志目录和其它构建产物目录。
-- [ ] 更新 `.gitignore`，忽略 air 临时产物，例如 `backend-go/tmp/` 和 `backend-go/bin/`（如当前未被忽略）。
-- [ ] 更新 `justfile`：将 `dev-backend` 切换或新增为 `air -c .air.api.toml`。
-- [ ] 更新 `justfile`：将 `dev-worker` 切换或新增为 `air -c .air.worker.toml`。
-- [ ] 评估并更新 `scripts/dev.py`：开发组合启动时是否直接调用 air API/worker，或继续使用一次性 build binary。若改用 air，应保持前端/API/worker 同时启动和退出清理行为。
-- [ ] 记录 `air` 安装前置条件；若项目不 vendoring 工具，则不把 air 加入生产依赖。
+- [x] 新增 `backend-go/.air.api.toml`，构建 `./cmd/backend-go` 并运行 `serve`。
+- [x] 新增 `backend-go/.air.worker.toml`，构建 `./cmd/backend-go` 并运行 `worker`。
+- [x] API 和 worker 使用不同输出文件，例如 `./tmp/air/api.exe` 与 `./tmp/air/worker.exe`。
+- [x] air 配置排除 `tmp`、`bin`、`data`、日志目录和其它构建产物目录。
+- [x] 更新 `.gitignore`，忽略 air 临时产物，例如 `backend-go/tmp/` 和 `backend-go/bin/`（如当前未被忽略）。
+- [x] 更新 `justfile`：将 `dev-backend` 切换或新增为 `air -c .air.api.toml`。
+- [x] 更新 `justfile`：将 `dev-worker` 切换或新增为 `air -c .air.worker.toml`。
+- [x] 评估并更新 `scripts/dev.py`：开发组合启动时是否直接调用 air API/worker，或继续使用一次性 build binary。若改用 air，应保持前端/API/worker 同时启动和退出清理行为。
+- [x] 记录 `air` 安装前置条件；若项目不 vendoring 工具，则不把 air 加入生产依赖。
 
 ### 15. Imports、格式化和测试迁移
 
-- [ ] 更新所有 Go import 路径。
-- [ ] 运行 `gofmt` / `go fmt ./...`。
-- [ ] 运行 `go vet ./...`。
-- [ ] 运行 `go test ./...`。
-- [ ] 若 route tests 因包路径变更失败，迁移测试 helper 并保持原断言语义。
-- [ ] 确认无 migration SQL diff。
-- [ ] 确认无 frontend diff，除非用户另行授权。
+- [x] 更新所有 Go import 路径。
+- [x] 运行 `gofmt` / `go fmt ./...`。
+- [x] 运行 `go vet ./...`。
+- [x] 运行 `go test ./...`。
+- [x] 若 route tests 因包路径变更失败，迁移测试 helper 并保持原断言语义。
+- [x] 确认无 migration SQL diff。
+- [x] 确认无 frontend diff，除非用户另行授权。
 
 ## Files to change
 

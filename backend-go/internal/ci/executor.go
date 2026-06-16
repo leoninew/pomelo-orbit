@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"backend/internal/config"
-	"backend/internal/orbit"
+	"backend/internal/repository"
 )
 
 type Executor struct {
@@ -22,13 +22,13 @@ type Executor struct {
 	runner ContainerRunner
 }
 
-func (e Executor) Execute(ctx context.Context, run orbit.PipelineRun, repo orbit.Repository, variables map[string]any, stages []orbit.StageDefinition) (bool, string) {
+func (e Executor) Execute(ctx context.Context, run repository.PipelineRun, repo repository.Repository, variables map[string]any, stages []repository.StageDefinition) (bool, string) {
 	layers, err := topologicalLayers(stages)
 	if err != nil {
 		e.logger.Error("cyclic dependency", "run", run.Id, "error", err)
 		return false, fmt.Sprintf("Cyclic dependency detected: %v", err)
 	}
-	stageById := map[string]orbit.StageDefinition{}
+	stageById := map[string]repository.StageDefinition{}
 	for _, stage := range stages {
 		stageById[stage.Id] = stage
 	}
@@ -51,7 +51,7 @@ func (e Executor) Execute(ctx context.Context, run orbit.PipelineRun, repo orbit
 	return true, ""
 }
 
-func (e Executor) executeLayer(ctx context.Context, run orbit.PipelineRun, repo orbit.Repository, variables map[string]any, layer []string, stages map[string]orbit.StageDefinition) map[string]bool {
+func (e Executor) executeLayer(ctx context.Context, run repository.PipelineRun, repo repository.Repository, variables map[string]any, layer []string, stages map[string]repository.StageDefinition) map[string]bool {
 	results := make(map[string]bool, len(layer))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -70,8 +70,8 @@ func (e Executor) executeLayer(ctx context.Context, run orbit.PipelineRun, repo 
 	return results
 }
 
-func (e Executor) executeStage(ctx context.Context, run orbit.PipelineRun, repo orbit.Repository, variables map[string]any, stage orbit.StageDefinition) bool {
-	stageRun := orbit.StageRun{Id: orbit.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: orbit.WorkStatusWaitingToRun}
+func (e Executor) executeStage(ctx context.Context, run repository.PipelineRun, repo repository.Repository, variables map[string]any, stage repository.StageDefinition) bool {
+	stageRun := repository.StageRun{Id: repository.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusWaitingToRun}
 	if err := e.store.InsertStageRun(ctx, stageRun); err != nil {
 		e.logger.Error("stage run insert failed", "run", run.Id, "stage", stage.Name, "error", err)
 		return false
@@ -79,7 +79,7 @@ func (e Executor) executeStage(ctx context.Context, run orbit.PipelineRun, repo 
 
 	started := now()
 	stageRun.StartedAt = &started
-	stageRun.Status = orbit.WorkStatusRunning
+	stageRun.Status = repository.WorkStatusRunning
 	_ = e.store.UpdateStageRun(ctx, stageRun)
 
 	logPath := filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "stages", stageRun.Id+".log")
@@ -111,7 +111,7 @@ func (e Executor) executeStage(ctx context.Context, run orbit.PipelineRun, repo 
 
 	finished := now()
 	stageRun.FinishedAt = &finished
-	stageRun.Status = orbit.WorkStatusRanToCompletion
+	stageRun.Status = repository.WorkStatusRanToCompletion
 	stageRun.ExitCode = &exitCode
 	if err := e.saveArtifacts(ctx, run, stage); err != nil {
 		return e.failStage(ctx, stageRun, err.Error())
@@ -124,10 +124,10 @@ func (e Executor) executeStage(ctx context.Context, run orbit.PipelineRun, repo 
 	return true
 }
 
-func (e Executor) completeStageFailed(ctx context.Context, stageRun orbit.StageRun, exitCode int, message string) bool {
+func (e Executor) completeStageFailed(ctx context.Context, stageRun repository.StageRun, exitCode int, message string) bool {
 	finished := now()
 	stageRun.FinishedAt = &finished
-	stageRun.Status = orbit.WorkStatusFaulted
+	stageRun.Status = repository.WorkStatusFaulted
 	stageRun.ExitCode = &exitCode
 	stageRun.ErrorMessage = &message
 	_ = e.store.UpdateStageRun(ctx, stageRun)
@@ -135,26 +135,26 @@ func (e Executor) completeStageFailed(ctx context.Context, stageRun orbit.StageR
 	return false
 }
 
-func (e Executor) failStage(ctx context.Context, stageRun orbit.StageRun, message string) bool {
+func (e Executor) failStage(ctx context.Context, stageRun repository.StageRun, message string) bool {
 	finished := now()
 	stageRun.FinishedAt = &finished
-	stageRun.Status = orbit.WorkStatusFaulted
+	stageRun.Status = repository.WorkStatusFaulted
 	stageRun.ErrorMessage = &message
 	_ = e.store.UpdateStageRun(ctx, stageRun)
 	e.logger.Error("stage faulted", "run", stageRun.PipelineRunId, "stage", stageRun.StageName, "error", message)
 	return false
 }
 
-func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]string, start int, stages map[string]orbit.StageDefinition) {
+func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]string, start int, stages map[string]repository.StageDefinition) {
 	for i := start; i < len(layers); i++ {
 		for _, stageId := range layers[i] {
 			stage := stages[stageId]
-			_ = e.store.InsertStageRun(ctx, orbit.StageRun{Id: orbit.NewId(), PipelineRunId: runId, StageId: stage.Id, StageName: stage.Name, Status: orbit.WorkStatusCanceled})
+			_ = e.store.InsertStageRun(ctx, repository.StageRun{Id: repository.NewId(), PipelineRunId: runId, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusCanceled})
 		}
 	}
 }
 
-func (e Executor) saveArtifacts(ctx context.Context, run orbit.PipelineRun, stage orbit.StageDefinition) error {
+func (e Executor) saveArtifacts(ctx context.Context, run repository.PipelineRun, stage repository.StageDefinition) error {
 	artifactRoot := filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "artifacts")
 	for _, artifact := range stage.Artifacts {
 		artifactPath := artifact.Path
@@ -172,7 +172,7 @@ func (e Executor) saveArtifacts(ctx context.Context, run orbit.PipelineRun, stag
 	return nil
 }
 
-func topologicalLayers(stages []orbit.StageDefinition) ([][]string, error) {
+func topologicalLayers(stages []repository.StageDefinition) ([][]string, error) {
 	stageIds := map[string]bool{}
 	inDegree := map[string]int{}
 	children := map[string][]string{}

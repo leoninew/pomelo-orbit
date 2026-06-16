@@ -92,8 +92,9 @@ Web UI 配置路由
 
 ```bash
 just install       # 安装 frontend 和 backend-go 依赖
-just dev-backend   # 启动 Go 后端（端口 9001）
-just dev-worker    # 启动 Go 后台任务 worker
+go install github.com/air-verse/air@latest  # 安装开发热重载工具
+just dev-backend   # 通过 air 启动 Go 后端（端口 9001）
+just dev-worker    # 通过 air 启动 Go 后台任务 worker
 just dev-frontend  # 启动前端（端口 9002）
 ```
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"backend/internal/config"
-	"backend/internal/orbit"
+	"backend/internal/repository"
 	"backend/internal/templatex"
 	"gopkg.in/yaml.v3"
 )
@@ -33,7 +33,7 @@ func renderTemplate(content string, appCode string, cfg config.Config) (string, 
 	return templatex.Render(content, context)
 }
 
-func applyServiceConfigs(compose string, configs []orbit.ApplicationServiceConfig) string {
+func applyServiceConfigs(compose string, configs []repository.ApplicationServiceConfig) string {
 	if len(configs) == 0 {
 		return compose
 	}
@@ -59,7 +59,7 @@ func applyServiceConfigs(compose string, configs []orbit.ApplicationServiceConfi
 	return string(out)
 }
 
-func injectRouteLabels(compose string, routes []orbit.ApplicationRoute, letsEncrypt bool) (string, error) {
+func injectRouteLabels(compose string, routes []repository.ApplicationRoute, letsEncrypt bool) (string, error) {
 	var data map[string]any
 	if err := yaml.Unmarshal([]byte(compose), &data); err != nil {
 		return "", err

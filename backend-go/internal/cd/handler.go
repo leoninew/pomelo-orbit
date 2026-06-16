@@ -10,16 +10,16 @@ import (
 	"strings"
 
 	"backend/internal/config"
-	"backend/internal/orbit"
-	"backend/internal/task"
+	"backend/internal/repository"
+	taskrepo "backend/internal/repository/task"
 )
 
 type Store interface {
-	Application(ctx context.Context, id string) (orbit.Application, error)
-	Deployment(ctx context.Context, id string) (orbit.Deployment, error)
-	ConfigFiles(ctx context.Context, applicationId string) ([]orbit.ApplicationConfigFile, error)
-	ServiceConfigs(ctx context.Context, applicationId string) ([]orbit.ApplicationServiceConfig, error)
-	Routes(ctx context.Context, applicationId string) ([]orbit.ApplicationRoute, error)
+	Application(ctx context.Context, id string) (repository.Application, error)
+	Deployment(ctx context.Context, id string) (repository.Deployment, error)
+	ConfigFiles(ctx context.Context, applicationId string) ([]repository.ApplicationConfigFile, error)
+	ServiceConfigs(ctx context.Context, applicationId string) ([]repository.ApplicationServiceConfig, error)
+	Routes(ctx context.Context, applicationId string) ([]repository.ApplicationRoute, error)
 	MarkApplicationStatus(ctx context.Context, id string, status string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
@@ -46,7 +46,7 @@ func NewRestartHandler(store Store, cfg config.Config, logger *slog.Logger) Hand
 	return Handler{store: store, cfg: cfg, logger: logger, runner: ShellRunner{}, restart: true}
 }
 
-func (h Handler) Handle(ctx context.Context, item task.Task) error {
+func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 	var payload Payload
 	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
 		return fmt.Errorf("parse cd task payload: %w", err)
@@ -65,7 +65,7 @@ func (h Handler) deploy(ctx context.Context, payload Payload) error {
 	if err != nil {
 		return err
 	}
-	if err := h.store.MarkApplicationStatus(ctx, app.Id, orbit.ApplicationStatusDeploying); err != nil {
+	if err := h.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeploying); err != nil {
 		return err
 	}
 	if err := h.store.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
@@ -73,14 +73,14 @@ func (h Handler) deploy(ctx context.Context, payload Payload) error {
 	}
 
 	if err := h.writeAndDeploy(ctx, app, deployment.Id); err != nil {
-		_ = h.store.MarkApplicationStatus(ctx, app.Id, orbit.ApplicationStatusDeployFailed)
-		_ = h.store.CompleteDeployment(ctx, deployment.Id, orbit.WorkStatusFaulted, err.Error())
+		_ = h.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployFailed)
+		_ = h.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := h.store.MarkApplicationStatus(ctx, app.Id, orbit.ApplicationStatusDeployed); err != nil {
+	if err := h.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployed); err != nil {
 		return err
 	}
-	return h.store.CompleteDeployment(ctx, deployment.Id, orbit.WorkStatusRanToCompletion, "")
+	return h.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusRanToCompletion, "")
 }
 
 func (h Handler) restartApplication(ctx context.Context, payload Payload) error {
@@ -88,7 +88,7 @@ func (h Handler) restartApplication(ctx context.Context, payload Payload) error 
 	if err != nil {
 		return err
 	}
-	if err := h.store.MarkApplicationStatus(ctx, app.Id, orbit.ApplicationStatusDeploying); err != nil {
+	if err := h.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeploying); err != nil {
 		return err
 	}
 	if err := h.store.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
@@ -102,29 +102,29 @@ func (h Handler) restartApplication(ctx context.Context, payload Payload) error 
 	}
 	defer closeLog()
 	if err := h.runner.Run(ctx, appDir, logFile, "docker", "compose", "-f", "docker-compose.yml", "restart"); err != nil {
-		_ = h.store.MarkApplicationStatus(ctx, app.Id, orbit.ApplicationStatusDeployFailed)
-		_ = h.store.CompleteDeployment(ctx, deployment.Id, orbit.WorkStatusFaulted, err.Error())
+		_ = h.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployFailed)
+		_ = h.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := h.store.MarkApplicationStatus(ctx, app.Id, orbit.ApplicationStatusDeployed); err != nil {
+	if err := h.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployed); err != nil {
 		return err
 	}
-	return h.store.CompleteDeployment(ctx, deployment.Id, orbit.WorkStatusRanToCompletion, "")
+	return h.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusRanToCompletion, "")
 }
 
-func (h Handler) load(ctx context.Context, payload Payload) (orbit.Application, orbit.Deployment, error) {
+func (h Handler) load(ctx context.Context, payload Payload) (repository.Application, repository.Deployment, error) {
 	app, err := h.store.Application(ctx, payload.ApplicationId)
 	if err != nil {
-		return orbit.Application{}, orbit.Deployment{}, err
+		return repository.Application{}, repository.Deployment{}, err
 	}
 	deployment, err := h.store.Deployment(ctx, payload.DeploymentId)
 	if err != nil {
-		return orbit.Application{}, orbit.Deployment{}, err
+		return repository.Application{}, repository.Deployment{}, err
 	}
 	return app, deployment, nil
 }
 
-func (h Handler) writeAndDeploy(ctx context.Context, app orbit.Application, deploymentId string) error {
+func (h Handler) writeAndDeploy(ctx context.Context, app repository.Application, deploymentId string) error {
 	files, err := h.store.ConfigFiles(ctx, app.Id)
 	if err != nil {
 		return err
@@ -133,7 +133,7 @@ func (h Handler) writeAndDeploy(ctx context.Context, app orbit.Application, depl
 	if err != nil {
 		return err
 	}
-	var routes []orbit.ApplicationRoute
+	var routes []repository.ApplicationRoute
 	if app.RouteManaged {
 		routes, err = h.store.Routes(ctx, app.Id)
 		if err != nil {

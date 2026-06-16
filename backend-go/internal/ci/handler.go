@@ -10,20 +10,20 @@ import (
 	"strings"
 
 	"backend/internal/config"
-	"backend/internal/orbit"
-	"backend/internal/task"
+	"backend/internal/repository"
+	taskrepo "backend/internal/repository/task"
 	"backend/internal/templatex"
 )
 
 type Store interface {
-	PipelineRun(ctx context.Context, id string) (orbit.PipelineRun, error)
-	Repository(ctx context.Context, id string) (orbit.Repository, error)
-	PipelineSnapshot(ctx context.Context, id string) (orbit.PipelineSnapshot, error)
+	PipelineRun(ctx context.Context, id string) (repository.PipelineRun, error)
+	Repository(ctx context.Context, id string) (repository.Repository, error)
+	PipelineSnapshot(ctx context.Context, id string) (repository.PipelineSnapshot, error)
 	MarkPipelineRunRunning(ctx context.Context, id string) error
 	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
-	InsertStageRun(ctx context.Context, stage orbit.StageRun) error
-	UpdateStageRun(ctx context.Context, stage orbit.StageRun) error
-	InsertArtifact(ctx context.Context, projectId *string, run orbit.PipelineRun, stageName string, artifact orbit.ArtifactConfig, path string) error
+	InsertStageRun(ctx context.Context, stage repository.StageRun) error
+	UpdateStageRun(ctx context.Context, stage repository.StageRun) error
+	InsertArtifact(ctx context.Context, projectId *string, run repository.PipelineRun, stageName string, artifact repository.ArtifactConfig, path string) error
 }
 
 type ExecutePayload struct {
@@ -42,7 +42,7 @@ func NewHandler(store Store, cfg config.Config, logger *slog.Logger) Handler {
 	return Handler{store: store, cfg: cfg, logger: logger, runner: DockerRunner{}}
 }
 
-func (h Handler) Handle(ctx context.Context, item task.Task) error {
+func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 	var payload ExecutePayload
 	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
 		return fmt.Errorf("parse ci task payload: %w", err)
@@ -67,7 +67,7 @@ func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
 		return err
 	}
 
-	var stages []orbit.StageDefinition
+	var stages []repository.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return h.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
@@ -94,24 +94,24 @@ func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
 	if err != nil {
 		return err
 	}
-	if current.Status == orbit.WorkStatusCanceled {
+	if current.Status == repository.WorkStatusCanceled {
 		return nil
 	}
 	if ok {
-		return h.store.CompletePipelineRun(ctx, run.Id, orbit.WorkStatusRanToCompletion, "")
+		return h.store.CompletePipelineRun(ctx, run.Id, repository.WorkStatusRanToCompletion, "")
 	}
 	return h.failRun(ctx, run.Id, message)
 }
 
 func (h Handler) failRun(ctx context.Context, runId string, message string) error {
-	if err := h.store.CompletePipelineRun(ctx, runId, orbit.WorkStatusFaulted, message); err != nil {
+	if err := h.store.CompletePipelineRun(ctx, runId, repository.WorkStatusFaulted, message); err != nil {
 		return err
 	}
 	return nil
 }
 
-func resolveStages(stages []orbit.StageDefinition, variables map[string]any) ([]orbit.StageDefinition, error) {
-	resolved := make([]orbit.StageDefinition, len(stages))
+func resolveStages(stages []repository.StageDefinition, variables map[string]any) ([]repository.StageDefinition, error) {
+	resolved := make([]repository.StageDefinition, len(stages))
 	copy(resolved, stages)
 	for i := range resolved {
 		script, err := templatex.Render(resolved[i].Script, variables)
@@ -140,7 +140,7 @@ func pipelineRunVariables(value string) map[string]any {
 	if strings.TrimSpace(value) == "" {
 		return variables
 	}
-	var declarations []orbit.VariableDeclaration
+	var declarations []repository.VariableDeclaration
 	if err := json.Unmarshal([]byte(value), &declarations); err == nil {
 		for _, declaration := range declarations {
 			variables[declaration.Name] = declaration.Value

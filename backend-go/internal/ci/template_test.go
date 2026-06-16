@@ -3,15 +3,15 @@ package ci
 import (
 	"testing"
 
-	"backend/internal/orbit"
+	"backend/internal/repository"
 )
 
 func TestResolveStagesRendersScriptAndArtifacts(t *testing.T) {
-	stages := []orbit.StageDefinition{{
+	stages := []repository.StageDefinition{{
 		Id:     "stage-1",
 		Name:   "build",
 		Script: "docker build -t {{ IMAGE }} .",
-		Artifacts: []orbit.ArtifactConfig{
+		Artifacts: []repository.ArtifactConfig{
 			{Type: "docker_image", Name: "{{ IMAGE }}", Path: "{{ IMAGE }}:latest"},
 		},
 	}}
@@ -29,7 +29,7 @@ func TestResolveStagesRendersScriptAndArtifacts(t *testing.T) {
 }
 
 func TestResolveStagesRejectsMissingVariable(t *testing.T) {
-	_, err := resolveStages([]orbit.StageDefinition{{Id: "stage-1", Script: "{{ MISSING }}"}}, map[string]any{})
+	_, err := resolveStages([]repository.StageDefinition{{Id: "stage-1", Script: "{{ MISSING }}"}}, map[string]any{})
 	if err == nil {
 		t.Fatal("expected missing variable error")
 	}

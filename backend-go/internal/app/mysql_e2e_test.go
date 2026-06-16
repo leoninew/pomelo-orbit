@@ -14,10 +14,10 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/db"
-	"backend/internal/httpserver"
-	"backend/internal/orbit"
+	"backend/internal/repository"
+	taskrepo "backend/internal/repository/task"
 	"backend/internal/status"
-	"backend/internal/task"
+	transporthttp "backend/internal/transport/http"
 )
 
 func TestMySQLE2E(t *testing.T) {
@@ -69,13 +69,13 @@ func TestMySQLE2E(t *testing.T) {
 		t.Fatalf("expected admin user, got %d", userCount)
 	}
 
-	repository := task.NewRepository(database, cfg.Database.Driver)
-	taskId := orbit.NewId()
+	taskRepo := taskrepo.NewRepository(database, cfg.Database.Driver)
+	taskId := repository.NewId()
 	ctx := context.Background()
-	if err := repository.Enqueue(ctx, taskId, status.TaskTypeCIPipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 1); err != nil {
+	if err := taskRepo.Enqueue(ctx, taskId, status.TaskTypeCIPipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 1); err != nil {
 		t.Fatal(err)
 	}
-	queued, err := repository.FindById(ctx, taskId)
+	queued, err := taskRepo.FindById(ctx, taskId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,8 +84,8 @@ func TestMySQLE2E(t *testing.T) {
 	}
 
 	cfg.Turnstile.Enabled = false
-	store := orbit.NewStore(database, cfg.Database.Driver)
-	server := httpserver.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), store, repository, cfg.Worker.MaxAttempts)
+	store := repository.NewStore(database, cfg.Database.Driver)
+	server := transporthttp.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), store, taskRepo, cfg.Worker.MaxAttempts)
 	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
 	loginRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))

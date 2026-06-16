@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend/internal/db"
+	"backend/internal/repository/model"
 )
 
 type Page[T any] struct {
@@ -31,8 +32,8 @@ func NormalizePage(page int, perPage int) (int, int) {
 	return page, perPage
 }
 
-func (s Store) ListProjects(ctx context.Context) ([]Project, error) {
-	var projects []Project
+func (s Store) ListProjects(ctx context.Context) ([]model.Project, error) {
+	var projects []model.Project
 	err := s.db.SelectContext(ctx, &projects, `SELECT id, name, code, is_active, created_at, updated_at
 		FROM project ORDER BY created_at DESC, id`)
 	if err != nil {
@@ -41,13 +42,21 @@ func (s Store) ListProjects(ctx context.Context) ([]Project, error) {
 	return projects, nil
 }
 
-func (s Store) Project(ctx context.Context, id string) (Project, error) {
-	var project Project
+func (s Store) Project(ctx context.Context, id string) (model.Project, error) {
+	var project model.Project
 	err := s.db.GetContext(ctx, &project, `SELECT id, name, code, is_active, created_at, updated_at FROM project WHERE id = ?`, id)
 	if err != nil {
-		return Project{}, fmt.Errorf("load project %s: %w", id, err)
+		return model.Project{}, fmt.Errorf("load project %s: %w", id, err)
 	}
 	return project, nil
+}
+
+func (s Store) IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error) {
+	var count int
+	if err := s.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM project_member WHERE project_id = ? AND user_id = ?`, projectId, userId); err != nil {
+		return false, fmt.Errorf("check project member %s/%s: %w", projectId, userId, err)
+	}
+	return count > 0, nil
 }
 
 func (s Store) ListRepositories(ctx context.Context, projectId *string, page int, perPage int, search string) (Page[Repository], error) {

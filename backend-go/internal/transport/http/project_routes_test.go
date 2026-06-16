@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	projecthandler "backend/internal/transport/http/handler/project"
 	userhandler "backend/internal/transport/http/handler/user"
 )
 
@@ -20,7 +21,7 @@ func TestProjectRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected project create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created projectResp
+	var created projecthandler.ProjectResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +40,7 @@ func TestProjectRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated projectResp
+	var updated projecthandler.ProjectResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestProjectRoutes(t *testing.T) {
 	if memberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project member list status 200, got %d: %s", memberRecorder.Code, memberRecorder.Body.String())
 	}
-	var members []projectMemberResp
+	var members []projecthandler.ProjectMemberResp
 	if err := json.NewDecoder(memberRecorder.Body).Decode(&members); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +76,7 @@ func TestProjectRoutes(t *testing.T) {
 	if addMemberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected add member status 200, got %d: %s", addMemberRecorder.Code, addMemberRecorder.Body.String())
 	}
-	members = []projectMemberResp{}
+	members = []projecthandler.ProjectMemberResp{}
 	if err := json.NewDecoder(addMemberRecorder.Body).Decode(&members); err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +89,7 @@ func TestProjectRoutes(t *testing.T) {
 	if removeMemberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected remove member status 200, got %d: %s", removeMemberRecorder.Code, removeMemberRecorder.Body.String())
 	}
-	members = []projectMemberResp{}
+	members = []projecthandler.ProjectMemberResp{}
 	if err := json.NewDecoder(removeMemberRecorder.Body).Decode(&members); err != nil {
 		t.Fatal(err)
 	}

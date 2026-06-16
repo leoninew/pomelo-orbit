@@ -11,16 +11,21 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/repository"
+	projectrepo "backend/internal/repository/project"
 	rolerepo "backend/internal/repository/role"
 	taskrepo "backend/internal/repository/task"
 	userrepo "backend/internal/repository/user"
 	authsvc "backend/internal/service/auth"
+	projectsvc "backend/internal/service/project"
 	rolesvc "backend/internal/service/role"
+	settingssvc "backend/internal/service/settings"
 	tasksvc "backend/internal/service/task"
 	usersvc "backend/internal/service/user"
 	authhandler "backend/internal/transport/http/handler/auth"
 	"backend/internal/transport/http/handler/authz"
+	projecthandler "backend/internal/transport/http/handler/project"
 	rolehandler "backend/internal/transport/http/handler/role"
+	settingshandler "backend/internal/transport/http/handler/settings"
 	taskhandler "backend/internal/transport/http/handler/task"
 	userhandler "backend/internal/transport/http/handler/user"
 	transportmiddleware "backend/internal/transport/http/middleware"
@@ -41,6 +46,8 @@ type Server struct {
 	authService       authsvc.Service
 	roleService       rolesvc.Service
 	userService       usersvc.Service
+	projectService    projectsvc.Service
+	settingsService   settingssvc.Service
 	tokenService      authsvc.TokenService
 	taskService       tasksvc.Service
 	userRepository    userrepo.Repository
@@ -52,7 +59,8 @@ func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks t
 	tokenService := authsvc.NewTokenService(jwtSecret(cfg))
 	userRepository := userrepo.NewRepository(store.DB(), store.Driver())
 	roleRepository := rolerepo.NewRepository(store.DB(), store.Driver())
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), tokenService: tokenService, taskService: tasksvc.New(tasks, defaultMaxAttempts), userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+	projectRepository := projectrepo.NewRepository(store.DB(), store.Driver())
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), tokenService: tokenService, taskService: tasksvc.New(tasks, defaultMaxAttempts), userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {
@@ -69,8 +77,8 @@ func (s Server) Handler() http.Handler {
 	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)
 	userhandler.New(s.logger, s.userService, authenticator, s.userRepository, s.roleRepository).Register(r)
 	rolehandler.New(s.logger, s.roleService, authenticator, s.roleRepository).Register(r)
-	s.registerSettingsRoutes(r)
-	s.registerProjectRoutes(r)
+	settingshandler.New(s.logger, s.settingsService, authenticator).Register(r)
+	projecthandler.New(s.logger, s.projectService, authenticator).Register(r)
 	s.registerDashboardRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

@@ -78,19 +78,19 @@ Review status: Accepted
 
 ### 5. Project 模块迁移
 
-- [ ] 将 `internal/httpserver/project.go` 拆到 `transport/http/handler/project` 和 `service/project`。
-- [ ] 将项目创建、更新、deprecate、成员管理规则迁移到 service。
-- [ ] 将 `internal/orbit/project_store.go` 迁移到 `repository/project`。
-- [ ] 将 `Project`、`ProjectMember` 相关 DB model 迁移到 `repository/model`。
-- [ ] 保持 `/api/project` 及 member 路由行为不变。
-- [ ] 更新 project route/service/repository 测试。
+- [x] 将 `internal/httpserver/project.go` 拆到 `transport/http/handler/project` 和 `service/project`。
+- [x] 将项目创建、更新、deprecate、成员管理规则迁移到 service。
+- [x] 将 `internal/orbit/project_store.go` 迁移到 `repository/project`。
+- [x] 将 `Project`、`ProjectMember` 相关 DB model 迁移到 `repository/model`。
+- [x] 保持 `/api/project` 及 member 路由行为不变。
+- [x] 更新 project route/service/repository 测试。
 
 ### 6. Settings 模块迁移
 
-- [ ] 将 `internal/httpserver/settings.go` 拆到 `handler/settings` 和 `service/settings`。
-- [ ] 保持配置读取/写入行为不变。
-- [ ] 保持权限语义和错误响应不变。
-- [ ] 更新 settings 测试。
+- [x] 将 `internal/httpserver/settings.go` 拆到 `handler/settings` 和 `service/settings`。
+- [x] 保持配置读取/写入行为不变。
+- [x] 保持权限语义和错误响应不变。
+- [x] 更新 settings 测试。
 
 ### 7. Task / background task 模块迁移
 

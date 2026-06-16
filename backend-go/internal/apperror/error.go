@@ -1,6 +1,9 @@
 package apperror
 
-import "errors"
+import (
+	"errors"
+	"net/http"
+)
 
 type Kind string
 
@@ -44,4 +47,25 @@ func (e Error) Unwrap() error {
 func IsKind(err error, kind Kind) bool {
 	var appErr Error
 	return errors.As(err, &appErr) && appErr.Kind == kind
+}
+
+func StatusCode(err error) int {
+	var appErr Error
+	if !errors.As(err, &appErr) {
+		return http.StatusInternalServerError
+	}
+	switch appErr.Kind {
+	case KindValidation:
+		return http.StatusBadRequest
+	case KindUnauthorized:
+		return http.StatusUnauthorized
+	case KindForbidden:
+		return http.StatusForbidden
+	case KindNotFound:
+		return http.StatusNotFound
+	case KindConflict:
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
 }

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	settingshandler "backend/internal/transport/http/handler/settings"
 )
 
 func TestSettingsConfigRoutes(t *testing.T) {
@@ -19,7 +21,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	if getRecorder.Code != http.StatusOK {
 		t.Fatalf("expected settings get status 200, got %d: %s", getRecorder.Code, getRecorder.Body.String())
 	}
-	var initial systemConfigResp
+	var initial settingshandler.SystemConfigResp
 	if err := json.NewDecoder(getRecorder.Body).Decode(&initial); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected settings update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated systemConfigResp
+	var updated settingshandler.SystemConfigResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +48,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	if resetRecorder.Code != http.StatusOK {
 		t.Fatalf("expected settings reset status 200, got %d: %s", resetRecorder.Code, resetRecorder.Body.String())
 	}
-	var reset systemConfigResp
+	var reset settingshandler.SystemConfigResp
 	if err := json.NewDecoder(resetRecorder.Body).Decode(&reset); err != nil {
 		t.Fatal(err)
 	}
@@ -68,11 +70,11 @@ func TestSettingsConfigRequiresAuth(t *testing.T) {
 	}
 }
 
-func findConfigItem(items []configItemResp, key string) (configItemResp, bool) {
+func findConfigItem(items []settingshandler.ConfigItemResp, key string) (settingshandler.ConfigItemResp, bool) {
 	for _, item := range items {
 		if item.Key == key {
 			return item, true
 		}
 	}
-	return configItemResp{}, false
+	return settingshandler.ConfigItemResp{}, false
 }

@@ -1,21 +1,21 @@
-package transporthttp
+package settingssvc
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
+	"backend/internal/apperror"
 	"backend/internal/config"
 )
 
-const settingsEnvPrefix = "POMELO_ORBIT_BACKEND__"
+const envPrefix = "POMELO_ORBIT_BACKEND__"
 
-type configItemResp struct {
+type ConfigItem struct {
 	Key          string `json:"key"`
 	Value        any    `json:"value"`
 	Default      any    `json:"default"`
@@ -23,110 +23,32 @@ type configItemResp struct {
 	Description  string `json:"description,omitempty"`
 }
 
-type systemConfigResp struct {
-	Items []configItemResp `json:"items"`
+type SystemConfig struct {
+	Items []ConfigItem `json:"items"`
 }
 
-type systemConfigUpdateReq struct {
-	Key   string `json:"key"`
-	Value any    `json:"value"`
-}
-
-type systemConfigResetReq struct {
-	Keys []string `json:"keys"`
-}
-
-type settingDefinition struct {
+type Definition struct {
 	Key         string
 	Default     any
 	Description string
 	Secret      bool
 }
 
-func (s Server) registerSettingsRoutes(r chiRouter) {
-	r.Get("/api/settings/config", s.getSettingsConfig)
-	r.Put("/api/settings/config", s.updateSettingsConfig)
-	r.Delete("/api/settings/config", s.resetSettingsConfig)
+type Service struct {
+	cfg config.Config
 }
 
-func (s Server) getSettingsConfig(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, "setting:read"); !ok {
-		return
-	}
-	resp, err := s.settingsConfigResp()
-	if err != nil {
-		s.logger.Error("load settings config failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load settings config"})
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
+func New(cfg config.Config) Service {
+	return Service{cfg: cfg}
 }
 
-func (s Server) updateSettingsConfig(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, "setting:write"); !ok {
-		return
-	}
-	var req systemConfigUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
-		return
-	}
-	req.Key = strings.TrimSpace(req.Key)
-	if req.Key == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "key is required"})
-		return
-	}
-	if err := writeEnvValues(s.settingsEnvPath(), map[string]string{settingEnvKey(req.Key): settingValueString(req.Value)}); err != nil {
-		s.logger.Error("update settings config failed", "key", req.Key, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to update settings config"})
-		return
-	}
-	resp, err := s.settingsConfigResp()
+func (s Service) Config(context.Context) (SystemConfig, error) {
+	envMap, err := readEnvFile(s.envPath())
 	if err != nil {
-		s.logger.Error("load settings config failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load settings config"})
-		return
+		return SystemConfig{}, err
 	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (s Server) resetSettingsConfig(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.requirePermission(w, r, "setting:write"); !ok {
-		return
-	}
-	var req systemConfigResetReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
-		return
-	}
-	envKeys := make([]string, 0, len(req.Keys))
-	for _, key := range req.Keys {
-		key = strings.TrimSpace(key)
-		if key != "" {
-			envKeys = append(envKeys, settingEnvKey(key))
-		}
-	}
-	if err := deleteEnvValues(s.settingsEnvPath(), envKeys); err != nil {
-		s.logger.Error("reset settings config failed", "keys", req.Keys, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to reset settings config"})
-		return
-	}
-	resp, err := s.settingsConfigResp()
-	if err != nil {
-		s.logger.Error("load settings config failed", "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load settings config"})
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (s Server) settingsConfigResp() (systemConfigResp, error) {
-	envMap, err := readEnvFile(s.settingsEnvPath())
-	if err != nil {
-		return systemConfigResp{}, err
-	}
-	definitions := settingDefinitions(s.appCfg)
-	definitionByKey := make(map[string]settingDefinition, len(definitions))
+	definitions := settingDefinitions(s.cfg)
+	definitionByKey := make(map[string]Definition, len(definitions))
 	orderedKeys := make([]string, 0, len(definitions))
 	for _, definition := range definitions {
 		definitionByKey[definition.Key] = definition
@@ -148,7 +70,7 @@ func (s Server) settingsConfigResp() (systemConfigResp, error) {
 	sort.Strings(extraKeys)
 	orderedKeys = append(orderedKeys, extraKeys...)
 
-	items := make([]configItemResp, 0, len(orderedKeys))
+	items := make([]ConfigItem, 0, len(orderedKeys))
 	for _, key := range orderedKeys {
 		definition, hasDefinition := definitionByKey[key]
 		envKey := settingEnvKey(key)
@@ -168,17 +90,42 @@ func (s Server) settingsConfigResp() (systemConfigResp, error) {
 		if secret && valueString(value) != "" {
 			value = "****"
 		}
-		items = append(items, configItemResp{Key: key, Value: value, Default: defaultValue, IsOverridden: overridden, Description: description})
+		items = append(items, ConfigItem{Key: key, Value: value, Default: defaultValue, IsOverridden: overridden, Description: description})
 	}
-	return systemConfigResp{Items: items}, nil
+	return SystemConfig{Items: items}, nil
 }
 
-func (s Server) settingsEnvPath() string {
-	return filepath.Join(s.appCfg.OrbitRoot(), ".env")
+func (s Service) Update(ctx context.Context, key string, value any) (SystemConfig, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return SystemConfig{}, apperror.New(apperror.KindValidation, "key is required")
+	}
+	if err := writeEnvValues(s.envPath(), map[string]string{settingEnvKey(key): settingValueString(value)}); err != nil {
+		return SystemConfig{}, err
+	}
+	return s.Config(ctx)
 }
 
-func settingDefinitions(cfg config.Config) []settingDefinition {
-	return []settingDefinition{
+func (s Service) Reset(ctx context.Context, keys []string) (SystemConfig, error) {
+	envKeys := make([]string, 0, len(keys))
+	for _, key := range keys {
+		key = strings.TrimSpace(key)
+		if key != "" {
+			envKeys = append(envKeys, settingEnvKey(key))
+		}
+	}
+	if err := deleteEnvValues(s.envPath(), envKeys); err != nil {
+		return SystemConfig{}, err
+	}
+	return s.Config(ctx)
+}
+
+func (s Service) envPath() string {
+	return filepath.Join(s.cfg.OrbitRoot(), ".env")
+}
+
+func settingDefinitions(cfg config.Config) []Definition {
+	return []Definition{
 		{Key: "server__host", Default: cfg.Server.Host, Description: "HTTP server bind host"},
 		{Key: "server__port", Default: cfg.Server.Port, Description: "HTTP server bind port"},
 		{Key: "logging__level", Default: cfg.Logging.Level, Description: "Application log level"},
@@ -274,14 +221,14 @@ func writeEnvFile(path string, envMap map[string]string) error {
 }
 
 func settingEnvKey(key string) string {
-	return settingsEnvPrefix + strings.ToUpper(key)
+	return envPrefix + strings.ToUpper(key)
 }
 
 func settingKeyFromEnv(envKey string) (string, bool) {
-	if !strings.HasPrefix(envKey, settingsEnvPrefix) {
+	if !strings.HasPrefix(envKey, envPrefix) {
 		return "", false
 	}
-	return strings.ToLower(strings.TrimPrefix(envKey, settingsEnvPrefix)), true
+	return strings.ToLower(strings.TrimPrefix(envKey, envPrefix)), true
 }
 
 func settingValueString(value any) string {

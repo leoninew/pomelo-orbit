@@ -19,6 +19,7 @@ import (
 	taskrepo "backend/internal/repository/task"
 	"backend/internal/status"
 	authhandler "backend/internal/transport/http/handler/auth"
+	projecthandler "backend/internal/transport/http/handler/project"
 )
 
 type fakeTurnstileVerifier struct {
@@ -260,7 +261,7 @@ func TestProjectAndDashboardLists(t *testing.T) {
 	if projectRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project status 200, got %d", projectRecorder.Code)
 	}
-	var projects []projectResp
+	var projects []projecthandler.ProjectResp
 	if err := json.NewDecoder(projectRecorder.Body).Decode(&projects); err != nil {
 		t.Fatal(err)
 	}

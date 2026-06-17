@@ -3,25 +3,15 @@ package ci
 import (
 	"context"
 	"log/slog"
-	"strings"
 	"sync"
 	"testing"
 
 	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
-	taskrepo "backend/internal/repository/task"
 )
 
-func TestHandleRejectsInvalidPayload(t *testing.T) {
-	handler := Handler{store: &fakeStore{}, cfg: config.Config{}, logger: slog.Default()}
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
-	if err == nil || !strings.Contains(err.Error(), "parse ci task payload") {
-		t.Fatalf("expected parse error, got %v", err)
-	}
-}
-
-func TestHandleMarksRunFaultedWhenStageFails(t *testing.T) {
+func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
 	store := &fakeStore{
 		run:  model.PipelineRun{Id: "run-1", RepositoryId: "repo-1", SnapshotId: "snapshot-1", VariablesSnapshot: `{}`},
 		repo: model.Repository{Id: "repo-1", Code: "repo"},
@@ -30,11 +20,11 @@ func TestHandleMarksRunFaultedWhenStageFails(t *testing.T) {
 			{"id":"stage-2","name":"deploy","image":"alpine","depends_on":["stage-1"],"script":"echo deploy"}
 		]`},
 	}
-	handler := Handler{store: store, cfg: config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, logger: slog.Default(), runner: failingContainerRunner{}}
+	engine := Engine{store: store, cfg: config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, logger: slog.Default(), runner: failingContainerRunner{}}
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"pipeline_run_id":"run-1"}`})
+	err := engine.Execute(context.Background(), ExecuteInput{PipelineRunId: "run-1"})
 	if err != nil {
-		t.Fatalf("Handle returned error: %v", err)
+		t.Fatalf("Execute returned error: %v", err)
 	}
 	if store.runStatus != repository.WorkStatusFaulted {
 		t.Fatalf("unexpected final run status: %s", store.runStatus)
@@ -53,15 +43,7 @@ func TestHandleMarksRunFaultedWhenStageFails(t *testing.T) {
 	}
 }
 
-func TestHandleRequiresPipelineRunId(t *testing.T) {
-	handler := Handler{store: &fakeStore{}, cfg: config.Config{}, logger: slog.Default()}
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
-	if err == nil || !strings.Contains(err.Error(), "pipeline_run_id is required") {
-		t.Fatalf("expected required field error, got %v", err)
-	}
-}
-
-func TestHandleExecutesPipelineRun(t *testing.T) {
+func TestEngineExecutesPipelineRun(t *testing.T) {
 	store := &fakeStore{
 		run: model.PipelineRun{
 			Id:                "run-1",
@@ -75,16 +57,16 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 		repo:     model.Repository{Id: "repo-1", Code: "repo"},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
 	}
-	handler := Handler{
+	engine := Engine{
 		store:  store,
 		cfg:    config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}},
 		logger: slog.Default(),
 		runner: fakeContainerRunner{},
 	}
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"pipeline_run_id":"run-1"}`})
+	err := engine.Execute(context.Background(), ExecuteInput{PipelineRunId: "run-1"})
 	if err != nil {
-		t.Fatalf("Handle returned error: %v", err)
+		t.Fatalf("Execute returned error: %v", err)
 	}
 	if !store.runStarted {
 		t.Fatal("expected run to be marked running")

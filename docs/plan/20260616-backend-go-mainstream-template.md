@@ -1,5 +1,5 @@
 # backend-go 主流模板架构改进计划
-最后修改时间: 2026-06-17 15:25:28
+最后修改时间: 2026-06-17 16:07:01
 
 Review status: Accepted
 
@@ -125,12 +125,12 @@ Review status: Accepted
 
 ### 9. CI worker / executor 迁移
 
-- [ ] 调整 `internal/ci/handler.go`，使其不依赖 `orbit.Store`。
-- [ ] 将 CI task handler 迁移到 `internal/worker/handler/ci` 或按 Spec 中等价位置组织。
-- [ ] 保留 `internal/ci` 中 executor / runner / template resolution 等底层执行能力。
-- [ ] 将 CI 执行所需数据访问改为依赖 `service/ci` 或 `repository/ci` 的最小接口。
-- [ ] 保持 pipeline run 状态流转、stage run、artifact 写入行为不变。
-- [ ] 更新 CI handler/executor 测试。
+- [x] 调整 `internal/ci/handler.go`，使其不依赖 `orbit.Store`。
+- [x] 将 CI task handler 迁移到 `internal/worker/handler/ci` 或按 Spec 中等价位置组织。
+- [x] 保留 `internal/ci` 中 executor / runner / template resolution 等底层执行能力。
+- [x] 将 CI 执行所需数据访问改为依赖 `service/ci` 或 `repository/ci` 的最小接口。
+- [x] 保持 pipeline run 状态流转、stage run、artifact 写入行为不变。
+- [x] 更新 CI handler/executor 测试。
 
 ### 10. CD HTTP/API 模块迁移
 

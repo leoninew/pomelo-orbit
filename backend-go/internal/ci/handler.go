@@ -12,7 +12,6 @@ import (
 	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
-	taskrepo "backend/internal/repository/task"
 	"backend/internal/templatex"
 )
 
@@ -27,71 +26,60 @@ type Store interface {
 	InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error
 }
 
-type ExecutePayload struct {
-	PipelineRunId string         `json:"pipeline_run_id"`
-	Variables     map[string]any `json:"variables"`
+type ExecuteInput struct {
+	PipelineRunId string
+	Variables     map[string]any
 }
 
-type Handler struct {
+type Engine struct {
 	store  Store
 	cfg    config.Config
 	logger *slog.Logger
 	runner ContainerRunner
 }
 
-func NewHandler(store Store, cfg config.Config, logger *slog.Logger) Handler {
-	return Handler{store: store, cfg: cfg, logger: logger, runner: DockerRunner{}}
+func NewEngine(store Store, cfg config.Config, logger *slog.Logger) Engine {
+	return Engine{store: store, cfg: cfg, logger: logger, runner: DockerRunner{}}
 }
 
-func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
-	var payload ExecutePayload
-	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
-		return fmt.Errorf("parse ci task payload: %w", err)
-	}
-	if payload.PipelineRunId == "" {
-		return fmt.Errorf("pipeline_run_id is required")
-	}
-	return h.Execute(ctx, payload)
-}
-
-func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
-	run, err := h.store.PipelineRun(ctx, payload.PipelineRunId)
+func (e Engine) Execute(ctx context.Context, input ExecuteInput) error {
+	run, err := e.store.PipelineRun(ctx, input.PipelineRunId)
 	if err != nil {
 		return err
 	}
-	repo, err := h.store.Repository(ctx, run.RepositoryId)
+	repo, err := e.store.Repository(ctx, run.RepositoryId)
 	if err != nil {
 		return err
 	}
-	snapshot, err := h.store.PipelineSnapshot(ctx, run.SnapshotId)
+	snapshot, err := e.store.PipelineSnapshot(ctx, run.SnapshotId)
 	if err != nil {
 		return err
 	}
 
 	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
-		return h.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
+		return e.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
-	variables := payload.Variables
+	variables := input.Variables
 	if variables == nil {
 		variables = pipelineRunVariables(run.VariablesSnapshot)
 	}
 
 	stages, err = resolveStages(stages, variables)
 	if err != nil {
-		return h.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
+		return e.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 
-	if err := createWorkspace(h.cfg.DataRoot(), repo.Code, run.Id); err != nil {
+	if err := createWorkspace(e.cfg.DataRoot(), repo.Code, run.Id); err != nil {
 		return err
 	}
-	if err := h.store.MarkPipelineRunRunning(ctx, run.Id); err != nil {
+	if err := e.store.MarkPipelineRunRunning(ctx, run.Id); err != nil {
 		return err
 	}
 
-	executor := Executor(h)
-	ok, message := executor.Execute(ctx, run, repo, variables, stages)
-	current, err := h.store.PipelineRun(ctx, run.Id)
+	stageExecutor := Executor(e)
+	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
+	current, err := e.store.PipelineRun(ctx, run.Id)
 	if err != nil {
 		return err
 	}
@@ -99,13 +87,13 @@ func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
 		return nil
 	}
 	if ok {
-		return h.store.CompletePipelineRun(ctx, run.Id, repository.WorkStatusRanToCompletion, "")
+		return e.store.CompletePipelineRun(ctx, run.Id, repository.WorkStatusRanToCompletion, "")
 	}
-	return h.failRun(ctx, run.Id, message)
+	return e.failRun(ctx, run.Id, message)
 }
 
-func (h Handler) failRun(ctx context.Context, runId string, message string) error {
-	if err := h.store.CompletePipelineRun(ctx, runId, repository.WorkStatusFaulted, message); err != nil {
+func (e Engine) failRun(ctx context.Context, runId string, message string) error {
+	if err := e.store.CompletePipelineRun(ctx, runId, repository.WorkStatusFaulted, message); err != nil {
 		return err
 	}
 	return nil

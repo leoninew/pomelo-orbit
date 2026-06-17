@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 func TestPipelineSnapshotGetRoute(t *testing.T) {
@@ -19,7 +21,7 @@ func TestPipelineSnapshotGetRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline snapshot get status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var snapshot pipelineSnapshotResp
+	var snapshot cihandler.PipelineSnapshotResp
 	if err := json.NewDecoder(recorder.Body).Decode(&snapshot); err != nil {
 		t.Fatal(err)
 	}

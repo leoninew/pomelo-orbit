@@ -159,7 +159,6 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Put("/api/ci/credential/{credential_id}", s.updateCredential)
 	r.Delete("/api/ci/credential/{credential_id}", s.deleteCredential)
 	r.Get("/api/ci/credential/{credential_id}/export", s.exportCredential)
-	r.Get("/api/ci/snapshot/{snapshot_id}", s.getPipelineSnapshot)
 	r.Get("/api/cd/route", s.listRoutes)
 	r.Post("/api/cd/route", s.createRoute)
 	r.Post("/api/cd/route/sync", s.syncRoutes)

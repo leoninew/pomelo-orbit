@@ -89,6 +89,7 @@ func (s Server) Handler() http.Handler {
 	ciHandler.RegisterTemplateRoutes(r)
 	ciHandler.RegisterBuildStageRoutes(r)
 	ciHandler.RegisterPipelineRunRoutes(r)
+	ciHandler.RegisterSnapshotRoutes(r)
 	s.registerDashboardRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

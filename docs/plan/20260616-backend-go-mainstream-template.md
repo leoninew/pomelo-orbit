@@ -1,5 +1,5 @@
 # backend-go 主流模板架构改进计划
-最后修改时间: 2026-06-17 15:02:02
+最后修改时间: 2026-06-17 15:25:28
 
 Review status: Accepted
 
@@ -105,7 +105,7 @@ Review status: Accepted
 
 ### 8. CI HTTP/API 模块迁移
 
-- [ ] 拆分 `internal/httpserver/dashboard.go` 中 CI 相关 DTO 和 handler。
+- [x] 拆分 `internal/httpserver/dashboard.go` 中 CI 相关 DTO 和 handler。
 - [x] 将 repository API 迁移到 `transport/http/handler/ci` + `service/ci`。
 - [x] 将 webhook API 迁移到 `handler/ci` + `service/ci`。
 - [x] 将 pipeline template API 迁移到 `handler/ci` + `service/ci`。
@@ -120,8 +120,8 @@ Review status: Accepted
 - [x] 将 `internal/orbit/build_stage_store.go` 迁移到 `repository/ci`。
 - [x] 将 `internal/orbit/credential_store.go` 迁移到 `repository/ci` 或 `repository/credential`。
 - [x] 将 CI 相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
-- [ ] 保持 `/api/ci/*` API 路径、响应字段、分页结构和主要错误语义不变。
-- [ ] 更新 CI HTTP route tests、store tests 和 service/repository tests。
+- [x] 保持 `/api/ci/*` API 路径、响应字段、分页结构和主要错误语义不变。
+- [x] 更新 CI HTTP route tests、store tests 和 service/repository tests。
 
 ### 9. CI worker / executor 迁移
 

@@ -3,6 +3,7 @@ package ci
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -141,6 +142,82 @@ func TestCredentialReferencedByRepositories(t *testing.T) {
 	}
 	if referenced {
 		t.Fatal("expected credential not to be referenced by another project")
+	}
+}
+
+func TestRepositoryListPaginationAndFilters(t *testing.T) {
+	database := openRepositoryDB(t)
+	defer func() { _ = database.Close() }()
+	store := NewRepository(database, "sqlite")
+	ctx := context.Background()
+	projectId := "project-1"
+	if _, err := database.Exec(`UPDATE repository SET project_id = ?, created_at = '2024-03-16T00:00:00Z' WHERE id = 'repo-1'`, projectId); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO repository (id, project_id, name, code, repository_url, variable_overrides, default_branch, created_at) VALUES ('repo-2', ?, 'Other', 'other', 'https://example.invalid/other.git', '[]', 'main', '2024-03-17T00:00:00Z')`, projectId); err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := store.ListRepositories(ctx, &projectId, 1, 1, "demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || page.Page != 1 || page.PerPage != 1 || len(page.Items) != 1 || page.Items[0].Id != "repo-1" {
+		t.Fatalf("unexpected repository page: %+v", page)
+	}
+
+	page, err = store.ListRepositories(ctx, &projectId, 1, 20, "example.invalid/other")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Total != 1 || len(page.Items) != 1 || page.Items[0].Code != "other" {
+		t.Fatalf("unexpected repository URL search page: %+v", page)
+	}
+}
+
+func TestPipelineRunAndArtifactListPaginationAndFilters(t *testing.T) {
+	database := openRepositoryDB(t)
+	defer func() { _ = database.Close() }()
+	store := NewRepository(database, "sqlite")
+	ctx := context.Background()
+	projectId := "project-1"
+	if _, err := database.Exec(`UPDATE pipeline_run SET project_id = ?, created_at = '2024-03-16T00:00:00Z' WHERE id = 'run-1'`, projectId); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, template_id, template_name, template_version, trigger, trigger_ref, variables_snapshot, status, created_at) VALUES ('run-2', ?, 'repo-1', 'Repo', 'snapshot-1', 'template-2', 'Template Two', 1, 'manual', 'main', '{}', 'ran_to_completion', '2024-03-18T00:00:00Z')`, projectId); err != nil {
+		t.Fatal(err)
+	}
+	from, to := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC), time.Date(2024, 3, 17, 0, 0, 0, 0, time.UTC)
+	runs, err := store.ListPipelineRuns(ctx, projectId, "repo-1", "template-1", &from, &to, 1, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runs.Total != 1 || len(runs.Items) != 1 || runs.Items[0].Id != "run-1" {
+		t.Fatalf("unexpected pipeline run page: %+v", runs)
+	}
+
+	if _, err := database.Exec(`CREATE TABLE artifact (id TEXT PRIMARY KEY, project_id TEXT, pipeline_run_id TEXT, repository_id TEXT, repository_name TEXT, template_id TEXT, template_name TEXT, stage_name TEXT, type TEXT, name TEXT, path TEXT, created_at DATETIME NOT NULL DEFAULT (datetime('now'))) `); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO artifact (id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at) VALUES ('artifact-1', ?, 'run-1', 'repo-1', 'Repo', 'template-1', 'Template', 'build', 'binary', 'app', 'dist/app', '2024-03-16T00:00:00Z')`, projectId); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO artifact (id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at) VALUES ('artifact-2', ?, 'run-1', 'repo-1', 'Repo', 'template-1', 'Template', 'test', 'binary', 'test-log', 'dist/test.log', '2024-03-16T00:01:00Z')`, projectId); err != nil {
+		t.Fatal(err)
+	}
+	artifacts, err := store.ListArtifacts(ctx, projectId, "repo-1", "template-1", 1, 20, "test.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if artifacts.Total != 1 || len(artifacts.Items) != 1 || artifacts.Items[0].Id != "artifact-2" {
+		t.Fatalf("unexpected artifact page: %+v", artifacts)
+	}
+	runArtifacts, err := store.ListArtifactsByRun(ctx, &projectId, "run-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(runArtifacts) != 2 || runArtifacts[0].Id != "artifact-1" || runArtifacts[1].Id != "artifact-2" {
+		t.Fatalf("unexpected run artifacts: %+v", runArtifacts)
 	}
 }
 

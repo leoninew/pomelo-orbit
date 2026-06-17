@@ -18,20 +18,6 @@ import (
 var applicationCreateCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 var applicationUpdateCodePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 
-type artifactResp struct {
-	Id             string  `json:"id"`
-	PipelineRunId  string  `json:"pipeline_run_id"`
-	RepositoryId   string  `json:"repository_id"`
-	RepositoryName string  `json:"repository_name"`
-	TemplateId     string  `json:"template_id"`
-	TemplateName   string  `json:"template_name"`
-	StageName      string  `json:"stage_name"`
-	Type           string  `json:"type"`
-	Name           string  `json:"name"`
-	Path           *string `json:"path"`
-	CreatedAt      string  `json:"created_at"`
-}
-
 type applicationResp struct {
 	Id              string  `json:"id"`
 	ProjectId       *string `json:"project_id"`
@@ -151,7 +137,6 @@ type deploymentResp struct {
 }
 
 func (s Server) registerDashboardRoutes(r chiRouter) {
-	r.Get("/api/ci/artifact", s.listArtifacts)
 	r.Get("/api/ci/credential", s.listCredentials)
 	r.Post("/api/ci/credential", s.createCredential)
 	r.Post("/api/ci/credential/import", s.importCredential)
@@ -203,29 +188,6 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Get("/api/cd/deployment/{deployment_id}/logs", s.getDeploymentLogs)
 	r.Get("/api/cd/deployment/{deployment_id}/stream-log", s.streamDeploymentLog)
 	r.Post("/api/cd/deployment/{deployment_id}/cancel", s.cancelDeployment)
-}
-
-func (s Server) listArtifacts(w http.ResponseWriter, r *http.Request) {
-	current, ok := s.currentUser(w, r)
-	if !ok {
-		return
-	}
-	projectId := strings.TrimSpace(r.URL.Query().Get("project_id"))
-	if projectId == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "project_id is required"})
-		return
-	}
-	if !s.ensureProjectMembership(w, r, projectId, current.Id) || !s.ensureArtifactRepositoryFilter(w, r, projectId) || !s.ensureArtifactTemplateFilter(w, r, projectId) {
-		return
-	}
-	page, perPage := artifactPageParams(r)
-	items, err := s.store.ListArtifacts(r.Context(), projectId, r.URL.Query().Get("repository_id"), r.URL.Query().Get("template_id"), page, perPage, r.URL.Query().Get("search"))
-	if err != nil {
-		s.logger.Error("list artifacts failed", "project_id", projectId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list artifacts"})
-		return
-	}
-	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, artifactResponse)))
 }
 
 func (s Server) listApplications(w http.ResponseWriter, r *http.Request) {
@@ -506,20 +468,12 @@ func pageParams(r *http.Request) (int, int) {
 	return queryInt(r.URL.Query().Get("page"), 1), queryInt(r.URL.Query().Get("per_page"), 10)
 }
 
-func artifactPageParams(r *http.Request) (int, int) {
-	return queryInt(r.URL.Query().Get("page"), 1), queryInt(r.URL.Query().Get("per_page"), 20)
-}
-
 func mapPage[T any, U any](page repository.Page[T], convert func(T) U) repository.Page[U] {
 	items := make([]U, 0, len(page.Items))
 	for _, item := range page.Items {
 		items = append(items, convert(item))
 	}
 	return repository.Page[U]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}
-}
-
-func artifactResponse(item repository.Artifact) artifactResp {
-	return artifactResp{Id: item.Id, PipelineRunId: item.PipelineRunId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, TemplateId: item.TemplateId, TemplateName: item.TemplateName, StageName: item.StageName, Type: item.Type, Name: item.Name, Path: item.Path, CreatedAt: formatTime(item.CreatedAt)}
 }
 
 func (s Server) loadDeploymentForCurrentUser(w http.ResponseWriter, r *http.Request) (repository.Deployment, bool) {
@@ -641,58 +595,6 @@ func (s Server) ensureApplicationNameAvailable(w http.ResponseWriter, r *http.Re
 		return false
 	}
 	return true
-}
-
-func (s Server) ensurePipelineRunRepositoryFilter(w http.ResponseWriter, r *http.Request, projectId string, repositoryId string) bool {
-	repositoryId = strings.TrimSpace(repositoryId)
-	if repositoryId == "" {
-		return true
-	}
-	repo, err := s.store.Repository(r.Context(), repositoryId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + repositoryId + " not found"})
-			return false
-		}
-		s.logger.Error("load repository failed", "repository_id", repositoryId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository"})
-		return false
-	}
-	if repo.ProjectId == nil || *repo.ProjectId != projectId {
-		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + repositoryId + " not found"})
-		return false
-	}
-	return true
-}
-
-func (s Server) ensureArtifactRepositoryFilter(w http.ResponseWriter, r *http.Request, projectId string) bool {
-	return s.ensurePipelineRunRepositoryFilter(w, r, projectId, r.URL.Query().Get("repository_id"))
-}
-
-func (s Server) ensurePipelineRunTemplateFilter(w http.ResponseWriter, r *http.Request, projectId string, templateId string) bool {
-	templateId = strings.TrimSpace(templateId)
-	if templateId == "" {
-		return true
-	}
-	template, err := s.store.PipelineTemplate(r.Context(), templateId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline template " + templateId + " not found"})
-			return false
-		}
-		s.logger.Error("load pipeline template failed", "template_id", templateId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline template"})
-		return false
-	}
-	if template.ProjectId == nil || *template.ProjectId != projectId {
-		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline template " + templateId + " not found"})
-		return false
-	}
-	return true
-}
-
-func (s Server) ensureArtifactTemplateFilter(w http.ResponseWriter, r *http.Request, projectId string) bool {
-	return s.ensurePipelineRunTemplateFilter(w, r, projectId, r.URL.Query().Get("template_id"))
 }
 
 func parseOptionalRunTime(w http.ResponseWriter, value string, name string) (*time.Time, bool) {

@@ -1,5 +1,5 @@
 # backend-go 主流模板架构改进计划
-最后修改时间: 2026-06-17 14:11:01
+最后修改时间: 2026-06-17 14:22:30
 
 Review status: Accepted
 
@@ -112,7 +112,7 @@ Review status: Accepted
 - [x] 将 build stage API 迁移到 `handler/ci` + `service/ci`。
 - [x] 将 pipeline run API 迁移到 `handler/ci` + `service/ci`。
 - [x] 将 snapshot API 迁移到 `handler/ci` + `service/ci`。
-- [ ] 将 artifact API 迁移到 `handler/ci` + `service/ci`。
+- [x] 将 artifact API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 credential API 迁移到 `handler/ci` + `service/ci` 或共享 credential service。
 - [ ] 将 `internal/orbit/repository_store.go` 迁移到 `repository/ci`。
 - [ ] 将 `internal/orbit/pipeline_template_store.go` 迁移到 `repository/ci`。

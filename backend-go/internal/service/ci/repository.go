@@ -63,6 +63,7 @@ type RepositoryStore interface {
 	PipelineRun(ctx context.Context, id string) (repository.PipelineRun, error)
 	ListStageRuns(ctx context.Context, runId string) ([]repository.StageRun, error)
 	StageRun(ctx context.Context, id string) (repository.StageRun, error)
+	ListArtifacts(ctx context.Context, projectId string, repositoryId string, templateId string, page int, perPage int, search string) (repository.Page[repository.Artifact], error)
 	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]repository.Artifact, error)
 	CreatePipelineRun(ctx context.Context, run repository.PipelineRun) error
 	CancelPipelineRun(ctx context.Context, id string) error

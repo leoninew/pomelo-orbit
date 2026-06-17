@@ -1,0 +1,27 @@
+package cihandler
+
+import (
+	"net/http"
+
+	cisvc "backend/internal/service/ci"
+	transportresponse "backend/internal/transport/http/response"
+)
+
+func (h Handler) RegisterArtifactRoutes(r router) {
+	r.Get("/api/ci/artifact", h.listArtifacts)
+}
+
+func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request) {
+	current, ok := h.authenticator.CurrentUser(w, r)
+	if !ok {
+		return
+	}
+	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 20)
+	items, err := h.service.ListArtifacts(r.Context(), current.Id, cisvc.ArtifactListInput{ProjectId: r.URL.Query().Get("project_id"), RepositoryId: r.URL.Query().Get("repository_id"), TemplateId: r.URL.Query().Get("template_id"), Search: r.URL.Query().Get("search"), Page: page, PerPage: perPage})
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, artifactResponse)))
+}

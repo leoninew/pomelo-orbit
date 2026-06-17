@@ -1,5 +1,5 @@
 # backend-go 主流模板架构改进计划
-最后修改时间: 2026-06-17 16:07:01
+最后修改时间: 2026-06-17 16:46:28
 
 Review status: Accepted
 
@@ -134,12 +134,12 @@ Review status: Accepted
 
 ### 10. CD HTTP/API 模块迁移
 
-- [ ] 拆分 `internal/httpserver/dashboard.go` 中 CD application/deployment 相关 DTO 和 handler。
+- [x] 拆分 `internal/httpserver/dashboard.go` 中 CD application/deployment 相关 DTO 和 handler。
 - [ ] 将 `internal/httpserver/application_routes_extra.go` 迁移到 `handler/cd` + `service/cd`。
 - [ ] 将 `internal/httpserver/route.go` 迁移到 `handler/cd` + `service/cd`。
 - [ ] 将 `internal/httpserver/traefik_route.go` 迁移到 `handler/cd` + `service/cd`。
 - [ ] 将 application CRUD、config file、service config、route、compose preview/export/import 等用例放入 `service/cd`。
-- [ ] 将 deployment 相关用例放入 `service/cd`。
+- [x] 将 deployment 相关用例放入 `service/cd`。
 - [ ] 将 route / Traefik route 管理用例放入 `service/cd`。
 - [ ] 将 `internal/orbit/application_store.go` 迁移到 `repository/cd`。
 - [ ] 将 `internal/orbit/api_store.go` 中 CD/API route 相关 SQL 迁移到 `repository/cd`。

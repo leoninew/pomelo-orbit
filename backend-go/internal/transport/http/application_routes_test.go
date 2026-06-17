@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"backend/internal/repository"
+	cdhandler "backend/internal/transport/http/handler/cd"
 )
 
 func TestApplicationRoutesCRUD(t *testing.T) {
@@ -21,7 +22,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created applicationResp
+	var created cdhandler.ApplicationResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list paginatedResp[applicationResp]
+	var list paginatedResp[cdhandler.ApplicationResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +54,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated applicationResp
+	var updated cdhandler.ApplicationResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +156,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if importRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application import status 201, got %d: %s", importRecorder.Code, importRecorder.Body.String())
 	}
-	var imported applicationResp
+	var imported cdhandler.ApplicationResp
 	if err := json.NewDecoder(importRecorder.Body).Decode(&imported); err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +234,7 @@ func TestDeleteApplicationRejectsRunningStatus(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created applicationResp
+	var created cdhandler.ApplicationResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}

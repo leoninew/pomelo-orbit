@@ -10,6 +10,7 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
@@ -56,7 +57,15 @@ type RepositoryStore interface {
 	PipelineTemplateReferencedByWebhooks(ctx context.Context, templateId string) (bool, error)
 	DeletePipelineTemplate(ctx context.Context, id string) error
 	LatestPipelineSnapshot(ctx context.Context, templateId string) (repository.PipelineSnapshot, error)
+	PipelineSnapshot(ctx context.Context, id string) (repository.PipelineSnapshot, error)
+	ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[repository.PipelineRun], error)
+	ListPipelineRunsByRepository(ctx context.Context, repositoryId string, page int, perPage int) (repository.Page[repository.PipelineRun], error)
+	PipelineRun(ctx context.Context, id string) (repository.PipelineRun, error)
+	ListStageRuns(ctx context.Context, runId string) ([]repository.StageRun, error)
+	StageRun(ctx context.Context, id string) (repository.StageRun, error)
+	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]repository.Artifact, error)
 	CreatePipelineRun(ctx context.Context, run repository.PipelineRun) error
+	CancelPipelineRun(ctx context.Context, id string) error
 }
 
 type TaskService interface {
@@ -64,8 +73,9 @@ type TaskService interface {
 }
 
 type Service struct {
-	store RepositoryStore
-	tasks TaskService
+	store    RepositoryStore
+	tasks    TaskService
+	dataRoot string
 }
 
 type RepositoryCreateInput struct {
@@ -120,8 +130,8 @@ type WebhookReceiveResult struct {
 	RunId  string
 }
 
-func New(store RepositoryStore, tasks TaskService) Service {
-	return Service{store: store, tasks: tasks}
+func New(store RepositoryStore, tasks TaskService, dataRoot string) Service {
+	return Service{store: store, tasks: tasks, dataRoot: dataRoot}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[repository.Repository], error) {

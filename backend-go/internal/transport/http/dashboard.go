@@ -13,50 +13,10 @@ import (
 	"time"
 
 	"backend/internal/repository"
-	"backend/internal/status"
 )
 
 var applicationCreateCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 var applicationUpdateCodePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
-
-type pipelineRunTriggerReq struct {
-	TemplateId string            `json:"template_id"`
-	TriggerRef string            `json:"trigger_ref"`
-	Variables  map[string]string `json:"variables"`
-}
-
-type pipelineRunResp struct {
-	Id                string                           `json:"id"`
-	ProjectId         *string                          `json:"project_id,omitempty"`
-	RepositoryId      string                           `json:"repository_id"`
-	RepositoryName    string                           `json:"repository_name"`
-	SnapshotId        string                           `json:"snapshot_id"`
-	TemplateId        string                           `json:"template_id"`
-	TemplateName      string                           `json:"template_name"`
-	TemplateVersion   int                              `json:"template_version"`
-	Trigger           string                           `json:"trigger"`
-	TriggerRef        string                           `json:"trigger_ref"`
-	VariablesSnapshot []repository.VariableDeclaration `json:"variables_snapshot"`
-	Status            string                           `json:"status"`
-	RetryOf           *string                          `json:"retry_of"`
-	StartedAt         *string                          `json:"started_at"`
-	FinishedAt        *string                          `json:"finished_at"`
-	ErrorMessage      *string                          `json:"error_message"`
-	CreatedAt         string                           `json:"created_at"`
-	StageRuns         []stageRunResp                   `json:"stage_runs"`
-}
-
-type stageRunResp struct {
-	Id            string  `json:"id"`
-	PipelineRunId string  `json:"pipeline_run_id"`
-	StageId       string  `json:"stage_id"`
-	StageName     string  `json:"stage_name"`
-	Status        string  `json:"status"`
-	StartedAt     *string `json:"started_at"`
-	FinishedAt    *string `json:"finished_at"`
-	ExitCode      *int    `json:"exit_code"`
-	ErrorMessage  *string `json:"error_message"`
-}
 
 type artifactResp struct {
 	Id             string  `json:"id"`
@@ -200,14 +160,6 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Delete("/api/ci/credential/{credential_id}", s.deleteCredential)
 	r.Get("/api/ci/credential/{credential_id}/export", s.exportCredential)
 	r.Get("/api/ci/snapshot/{snapshot_id}", s.getPipelineSnapshot)
-	r.Get("/api/ci/repository/{repository_id}/run", s.listRepositoryRuns)
-	r.Post("/api/ci/repository/{repository_id}/trigger", s.triggerRepository)
-	r.Get("/api/ci/run", s.listPipelineRuns)
-	r.Get("/api/ci/run/{run_id}", s.getPipelineRun)
-	r.Get("/api/ci/run/{run_id}/artifacts", s.listPipelineRunArtifacts)
-	r.Get("/api/ci/run/{run_id}/stages/{stage_run_id}/log", s.getPipelineStageLog)
-	r.Post("/api/ci/run/{run_id}/cancel", s.cancelPipelineRun)
-	r.Post("/api/ci/run/{run_id}/retry", s.retryPipelineRun)
 	r.Get("/api/cd/route", s.listRoutes)
 	r.Post("/api/cd/route", s.createRoute)
 	r.Post("/api/cd/route/sync", s.syncRoutes)
@@ -254,96 +206,6 @@ func (s Server) registerDashboardRoutes(r chiRouter) {
 	r.Post("/api/cd/deployment/{deployment_id}/cancel", s.cancelDeployment)
 }
 
-func (s Server) listRepositoryRuns(w http.ResponseWriter, r *http.Request) {
-	repo, ok := s.loadRepositoryForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	page, perPage := pageParams(r)
-	items, err := s.store.ListPipelineRunsByRepository(r.Context(), repo.Id, page, perPage)
-	if err != nil {
-		s.logger.Error("list repository runs failed", "repository_id", repo.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list repository runs"})
-		return
-	}
-	responses := make([]pipelineRunResp, 0, len(items.Items))
-	for _, item := range items.Items {
-		resp, ok := s.pipelineRunResponse(w, r, item, false)
-		if !ok {
-			return
-		}
-		responses = append(responses, resp)
-	}
-	writeJSON(w, http.StatusOK, newPaginatedResp(repository.Page[pipelineRunResp]{Items: responses, Total: items.Total, Page: items.Page, PerPage: items.PerPage}))
-}
-
-func (s Server) triggerRepository(w http.ResponseWriter, r *http.Request) {
-	repo, ok := s.loadRepositoryForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	var req pipelineRunTriggerReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
-		return
-	}
-	req.TemplateId = strings.TrimSpace(req.TemplateId)
-	if req.TemplateId == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "template_id is required"})
-		return
-	}
-	template, err := s.store.PipelineTemplate(r.Context(), req.TemplateId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline template " + req.TemplateId + " not found"})
-			return
-		}
-		s.logger.Error("load pipeline template failed", "template_id", req.TemplateId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline template"})
-		return
-	}
-	snapshot, err := s.store.LatestPipelineSnapshot(r.Context(), req.TemplateId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline snapshot for template " + req.TemplateId + " not found"})
-			return
-		}
-		s.logger.Error("load pipeline snapshot failed", "template_id", req.TemplateId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline snapshot"})
-		return
-	}
-	variablesSnapshot, ok := marshalTriggerVariables(w, req.Variables)
-	if !ok {
-		return
-	}
-	triggerRef := strings.TrimSpace(req.TriggerRef)
-	if triggerRef == "" {
-		triggerRef = repo.DefaultBranch
-	}
-	run := repository.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
-	if err := s.store.CreatePipelineRun(r.Context(), run); err != nil {
-		s.logger.Error("create pipeline run failed", "repository_id", repo.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create pipeline run"})
-		return
-	}
-	if _, err := s.taskService.EnqueueTyped(r.Context(), status.TaskTypeCIPipelineRunExecute, map[string]any{"pipeline_run_id": run.Id, "variables": req.Variables}); err != nil {
-		s.logger.Error("enqueue pipeline run failed", "run_id", run.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to enqueue pipeline run"})
-		return
-	}
-	created, err := s.store.PipelineRun(r.Context(), run.Id)
-	if err != nil {
-		s.logger.Error("load created pipeline run failed", "run_id", run.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
-		return
-	}
-	resp, ok := s.pipelineRunResponse(w, r, created, false)
-	if !ok {
-		return
-	}
-	writeJSON(w, http.StatusCreated, resp)
-}
-
 func (s Server) listArtifacts(w http.ResponseWriter, r *http.Request) {
 	current, ok := s.currentUser(w, r)
 	if !ok {
@@ -365,209 +227,6 @@ func (s Server) listArtifacts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, newPaginatedResp(mapPage(items, artifactResponse)))
-}
-
-func (s Server) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
-	current, ok := s.currentUser(w, r)
-	if !ok {
-		return
-	}
-	projectId := strings.TrimSpace(r.URL.Query().Get("project_id"))
-	if projectId == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "project_id is required"})
-		return
-	}
-	if !s.ensureProjectMembership(w, r, projectId, current.Id) {
-		return
-	}
-	dateFrom, ok := parseOptionalRunTime(w, r.URL.Query().Get("date_from"), "date_from")
-	if !ok {
-		return
-	}
-	dateTo, ok := parseOptionalRunTime(w, r.URL.Query().Get("date_to"), "date_to")
-	if !ok {
-		return
-	}
-	if !s.ensurePipelineRunRepositoryFilter(w, r, projectId, r.URL.Query().Get("repository_id")) || !s.ensurePipelineRunTemplateFilter(w, r, projectId, r.URL.Query().Get("template_id")) {
-		return
-	}
-	page, perPage := artifactPageParams(r)
-	items, err := s.store.ListPipelineRuns(r.Context(), projectId, r.URL.Query().Get("repository_id"), r.URL.Query().Get("template_id"), dateFrom, dateTo, page, perPage)
-	if err != nil {
-		s.logger.Error("list pipeline runs failed", "project_id", projectId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list pipeline runs"})
-		return
-	}
-	responses := make([]pipelineRunResp, 0, len(items.Items))
-	for _, item := range items.Items {
-		resp, ok := s.pipelineRunResponse(w, r, item, false)
-		if !ok {
-			return
-		}
-		responses = append(responses, resp)
-	}
-	writeJSON(w, http.StatusOK, newPaginatedResp(repository.Page[pipelineRunResp]{Items: responses, Total: items.Total, Page: items.Page, PerPage: items.PerPage}))
-}
-
-func (s Server) getPipelineRun(w http.ResponseWriter, r *http.Request) {
-	run, ok := s.loadPipelineRunForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	resp, ok := s.pipelineRunResponse(w, r, run, true)
-	if !ok {
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (s Server) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request) {
-	run, ok := s.loadPipelineRunForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	items, err := s.store.ListArtifactsByRun(r.Context(), run.ProjectId, run.Id)
-	if err != nil {
-		s.logger.Error("list pipeline run artifacts failed", "run_id", run.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list artifacts"})
-		return
-	}
-	responses := make([]artifactResp, 0, len(items))
-	for _, item := range items {
-		responses = append(responses, artifactResponse(item))
-	}
-	writeJSON(w, http.StatusOK, responses)
-}
-
-func (s Server) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
-	run, ok := s.loadPipelineRunForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	stageRunId := urlParam(r, "stage_run_id")
-	stageRun, err := s.store.StageRun(r.Context(), stageRunId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusOK, map[string]any{"logs": "", "offset": queryInt(r.URL.Query().Get("offset"), 0), "is_complete": true})
-			return
-		}
-		s.logger.Error("load stage run failed", "stage_run_id", stageRunId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load stage run"})
-		return
-	}
-	offset := queryInt(r.URL.Query().Get("offset"), 0)
-	if offset < 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "offset must be greater than or equal to 0"})
-		return
-	}
-	if stageRun.PipelineRunId != run.Id {
-		writeJSON(w, http.StatusOK, map[string]any{"logs": "", "offset": offset, "is_complete": true})
-		return
-	}
-	logPath := filepath.Join(s.appCfg.DataRoot(), "ci", "runs", run.Id, "stages", stageRun.Id+".log")
-	file, err := os.Open(logPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			writeJSON(w, http.StatusOK, map[string]any{"logs": "", "offset": offset, "is_complete": pipelineRunStatusComplete(stageRun.Status)})
-			return
-		}
-		s.logger.Error("open stage log failed", "run_id", run.Id, "stage_run_id", stageRun.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read stage log"})
-		return
-	}
-	defer func() { _ = file.Close() }()
-	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
-		s.logger.Error("seek stage log failed", "run_id", run.Id, "stage_run_id", stageRun.Id, "offset", offset, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read stage log"})
-		return
-	}
-	content, err := io.ReadAll(file)
-	if err != nil {
-		s.logger.Error("read stage log failed", "run_id", run.Id, "stage_run_id", stageRun.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read stage log"})
-		return
-	}
-	newOffset := offset + len(content)
-	writeJSON(w, http.StatusOK, map[string]any{"logs": string(content), "offset": newOffset, "is_complete": pipelineRunStatusComplete(stageRun.Status)})
-}
-
-func (s Server) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
-	run, ok := s.loadPipelineRunForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	if run.Status != repository.WorkStatusWaitingToRun && run.Status != repository.WorkStatusRunning {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot cancel run with status " + run.Status})
-		return
-	}
-	if err := s.store.CancelPipelineRun(r.Context(), run.Id); err != nil {
-		s.logger.Error("cancel pipeline run failed", "run_id", run.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to cancel pipeline run"})
-		return
-	}
-	updated, err := s.store.PipelineRun(r.Context(), run.Id)
-	if err != nil {
-		s.logger.Error("load canceled pipeline run failed", "run_id", run.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
-		return
-	}
-	resp, ok := s.pipelineRunResponse(w, r, updated, true)
-	if !ok {
-		return
-	}
-	writeJSON(w, http.StatusOK, resp)
-}
-
-func (s Server) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
-	original, ok := s.loadPipelineRunForCurrentUser(w, r)
-	if !ok {
-		return
-	}
-	if original.Status != repository.WorkStatusFaulted && original.Status != repository.WorkStatusRanToCompletion {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot retry run with status " + original.Status})
-		return
-	}
-	if _, err := s.store.PipelineSnapshot(r.Context(), original.SnapshotId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Snapshot " + original.SnapshotId + " not found"})
-			return
-		}
-		s.logger.Error("load retry snapshot failed", "snapshot_id", original.SnapshotId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline snapshot"})
-		return
-	}
-	repo, err := s.store.Repository(r.Context(), original.RepositoryId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + original.RepositoryId + " not found"})
-			return
-		}
-		s.logger.Error("load retry repository failed", "repository_id", original.RepositoryId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository"})
-		return
-	}
-	newRun := repository.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: repository.WorkStatusWaitingToRun, RetryOf: &original.Id}
-	if err := s.store.CreatePipelineRun(r.Context(), newRun); err != nil {
-		s.logger.Error("create retry pipeline run failed", "run_id", original.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create retry pipeline run"})
-		return
-	}
-	if _, err := s.taskService.EnqueueTyped(r.Context(), status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": newRun.Id}); err != nil {
-		s.logger.Error("enqueue retry pipeline run failed", "run_id", newRun.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to enqueue pipeline run"})
-		return
-	}
-	created, err := s.store.PipelineRun(r.Context(), newRun.Id)
-	if err != nil {
-		s.logger.Error("load retry pipeline run failed", "run_id", newRun.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
-		return
-	}
-	resp, ok := s.pipelineRunResponse(w, r, created, true)
-	if !ok {
-		return
-	}
-	writeJSON(w, http.StatusCreated, resp)
 }
 
 func (s Server) listApplications(w http.ResponseWriter, r *http.Request) {
@@ -1037,28 +696,6 @@ func (s Server) ensureArtifactTemplateFilter(w http.ResponseWriter, r *http.Requ
 	return s.ensurePipelineRunTemplateFilter(w, r, projectId, r.URL.Query().Get("template_id"))
 }
 
-func (s Server) loadPipelineRunForCurrentUser(w http.ResponseWriter, r *http.Request) (repository.PipelineRun, bool) {
-	current, ok := s.currentUser(w, r)
-	if !ok {
-		return repository.PipelineRun{}, false
-	}
-	runId := urlParam(r, "run_id")
-	run, err := s.store.PipelineRun(r.Context(), runId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "PipelineRun " + runId + " not found"})
-			return repository.PipelineRun{}, false
-		}
-		s.logger.Error("load pipeline run failed", "run_id", runId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline run"})
-		return repository.PipelineRun{}, false
-	}
-	if run.ProjectId != nil && !s.ensureProjectMembership(w, r, *run.ProjectId, current.Id) {
-		return repository.PipelineRun{}, false
-	}
-	return run, true
-}
-
 func parseOptionalRunTime(w http.ResponseWriter, value string, name string) (*time.Time, bool) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -1112,25 +749,8 @@ func (s Server) readDeploymentLog(w http.ResponseWriter, r *http.Request, deploy
 	return string(content), offset + len(content), true
 }
 
-func pipelineRunStatusComplete(status string) bool {
-	return status == repository.WorkStatusRanToCompletion || status == repository.WorkStatusFaulted || status == repository.WorkStatusCanceled
-}
-
 func deploymentStatusComplete(status string) bool {
 	return status == repository.WorkStatusRanToCompletion || status == repository.WorkStatusFaulted || status == repository.WorkStatusCanceled
-}
-
-func (s Server) ensurePipelineTemplate(w http.ResponseWriter, r *http.Request, templateId string) bool {
-	if _, err := s.store.PipelineTemplate(r.Context(), templateId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Pipeline template " + templateId + " not found"})
-			return false
-		}
-		s.logger.Error("load pipeline template failed", "template_id", templateId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load pipeline template"})
-		return false
-	}
-	return true
 }
 
 func normalizeApplicationCreateReq(w http.ResponseWriter, req *applicationCreateReq) bool {
@@ -1146,63 +766,6 @@ func normalizeApplicationCreateReq(w http.ResponseWriter, req *applicationCreate
 
 func validImagePullPolicy(value string) bool {
 	return value == "always" || value == "missing" || value == "never"
-}
-
-func marshalTriggerVariables(w http.ResponseWriter, variables map[string]string) (string, bool) {
-	if variables == nil {
-		variables = map[string]string{}
-	}
-	data, err := json.Marshal(variables)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid variables"})
-		return "", false
-	}
-	return string(data), true
-}
-
-func (s Server) pipelineRunResponse(w http.ResponseWriter, r *http.Request, item repository.PipelineRun, includeStages bool) (pipelineRunResp, bool) {
-	variables, ok := pipelineRunVariables(w, item.VariablesSnapshot)
-	if !ok {
-		return pipelineRunResp{}, false
-	}
-	stageRuns := []stageRunResp{}
-	if includeStages {
-		items, err := s.store.ListStageRuns(r.Context(), item.Id)
-		if err != nil {
-			s.logger.Error("list stage runs failed", "run_id", item.Id, "error", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list stage runs"})
-			return pipelineRunResp{}, false
-		}
-		stageRuns = make([]stageRunResp, 0, len(items))
-		for _, stage := range items {
-			stageRuns = append(stageRuns, stageRunResponse(stage))
-		}
-	}
-	return pipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: variables, Status: item.Status, RetryOf: item.RetryOf, StartedAt: formatOptionalTime(item.StartedAt), FinishedAt: formatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: formatTime(item.CreatedAt), StageRuns: stageRuns}, true
-}
-
-func stageRunResponse(item repository.StageRun) stageRunResp {
-	return stageRunResp{Id: item.Id, PipelineRunId: item.PipelineRunId, StageId: item.StageId, StageName: item.StageName, Status: item.Status, StartedAt: formatOptionalTime(item.StartedAt), FinishedAt: formatOptionalTime(item.FinishedAt), ExitCode: item.ExitCode, ErrorMessage: item.ErrorMessage}
-}
-
-func pipelineRunVariables(w http.ResponseWriter, value string) ([]repository.VariableDeclaration, bool) {
-	if strings.TrimSpace(value) == "" {
-		return []repository.VariableDeclaration{}, true
-	}
-	var variables []repository.VariableDeclaration
-	if err := json.Unmarshal([]byte(value), &variables); err == nil {
-		return variables, true
-	}
-	var legacy map[string]any
-	if err := json.Unmarshal([]byte(value), &legacy); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Invalid pipeline run variables"})
-		return nil, false
-	}
-	variables = make([]repository.VariableDeclaration, 0, len(legacy))
-	for name, value := range legacy {
-		variables = append(variables, repository.VariableDeclaration{Name: name, Value: value, Source: "runtime", Editable: true})
-	}
-	return variables, true
 }
 
 func applicationResponse(item repository.Application) applicationResp {

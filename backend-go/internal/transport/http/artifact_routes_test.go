@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
+
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 func TestArtifactListRoute(t *testing.T) {
@@ -96,7 +98,7 @@ func TestPipelineRunArtifactsRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected run artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts []artifactResp
+	var artifacts []cihandler.ArtifactResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}

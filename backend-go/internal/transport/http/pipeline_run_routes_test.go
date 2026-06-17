@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 func TestPipelineRunDetailRoute(t *testing.T) {
@@ -23,7 +25,7 @@ func TestPipelineRunDetailRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run detail status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run pipelineRunResp
+	var run cihandler.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +46,7 @@ func TestPipelineRunListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var runs paginatedResp[pipelineRunResp]
+	var runs paginatedResp[cihandler.PipelineRunResp]
 	if err := json.NewDecoder(recorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +99,7 @@ func TestPipelineRunCancelRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run cancel status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run pipelineRunResp
+	var run cihandler.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +119,7 @@ func TestPipelineRunRetryRoute(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected pipeline run retry status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run pipelineRunResp
+	var run cihandler.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}

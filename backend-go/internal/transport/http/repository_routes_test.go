@@ -56,7 +56,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if runRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository run list status 200, got %d: %s", runRecorder.Code, runRecorder.Body.String())
 	}
-	var runs paginatedResp[pipelineRunResp]
+	var runs paginatedResp[cihandler.PipelineRunResp]
 	if err := json.NewDecoder(runRecorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestRepositoryTriggerRoute(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run pipelineRunResp
+	var run cihandler.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}

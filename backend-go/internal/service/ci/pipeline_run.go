@@ -1,0 +1,358 @@
+package cisvc
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"backend/internal/apperror"
+	"backend/internal/repository"
+	"backend/internal/status"
+)
+
+type PipelineRunTriggerInput struct {
+	RepositoryId string
+	TemplateId   string
+	TriggerRef   string
+	Variables    map[string]string
+}
+
+type PipelineRunListInput struct {
+	ProjectId    string
+	RepositoryId string
+	TemplateId   string
+	DateFrom     string
+	DateTo       string
+	Page         int
+	PerPage      int
+}
+
+type PipelineRunDetail struct {
+	Run               repository.PipelineRun
+	VariablesSnapshot []repository.VariableDeclaration
+	StageRuns         []repository.StageRun
+}
+
+type PipelineStageLog struct {
+	Logs       string
+	Offset     int
+	IsComplete bool
+}
+
+func (s Service) ListRepositoryRuns(ctx context.Context, userId string, repositoryId string, page int, perPage int) (repository.Page[PipelineRunDetail], error) {
+	repo, err := s.loadRepositoryForUser(ctx, userId, repositoryId)
+	if err != nil {
+		return repository.Page[PipelineRunDetail]{}, err
+	}
+	items, err := s.store.ListPipelineRunsByRepository(ctx, repo.Id, page, perPage)
+	if err != nil {
+		return repository.Page[PipelineRunDetail]{}, apperror.Wrap(apperror.KindInternal, "Failed to list repository runs", err)
+	}
+	return s.pipelineRunDetails(ctx, items, false)
+}
+
+func (s Service) TriggerRepository(ctx context.Context, userId string, input PipelineRunTriggerInput) (PipelineRunDetail, error) {
+	repo, err := s.loadRepositoryForUser(ctx, userId, input.RepositoryId)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	templateId := strings.TrimSpace(input.TemplateId)
+	if templateId == "" {
+		return PipelineRunDetail{}, apperror.New(apperror.KindValidation, "template_id is required")
+	}
+	template, err := s.store.PipelineTemplate(ctx, templateId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
+		}
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
+	}
+	snapshot, err := s.store.LatestPipelineSnapshot(ctx, templateId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Pipeline snapshot for template "+templateId+" not found")
+		}
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
+	}
+	variablesSnapshot, err := marshalTriggerVariables(input.Variables)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	triggerRef := strings.TrimSpace(input.TriggerRef)
+	if triggerRef == "" {
+		triggerRef = repo.DefaultBranch
+	}
+	run := repository.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
+	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
+	}
+	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]any{"pipeline_run_id": run.Id, "variables": input.Variables}); err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
+	}
+	created, err := s.store.PipelineRun(ctx, run.Id)
+	if err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
+	}
+	return s.pipelineRunDetail(ctx, created, false)
+}
+
+func (s Service) ListPipelineRuns(ctx context.Context, userId string, input PipelineRunListInput) (repository.Page[PipelineRunDetail], error) {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
+		return repository.Page[PipelineRunDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return repository.Page[PipelineRunDetail]{}, err
+	}
+	dateFrom, err := parseOptionalRunTime(input.DateFrom, "date_from")
+	if err != nil {
+		return repository.Page[PipelineRunDetail]{}, err
+	}
+	dateTo, err := parseOptionalRunTime(input.DateTo, "date_to")
+	if err != nil {
+		return repository.Page[PipelineRunDetail]{}, err
+	}
+	if err := s.ensurePipelineRunRepositoryFilter(ctx, projectId, input.RepositoryId); err != nil {
+		return repository.Page[PipelineRunDetail]{}, err
+	}
+	if err := s.ensurePipelineRunTemplateFilter(ctx, projectId, input.TemplateId); err != nil {
+		return repository.Page[PipelineRunDetail]{}, err
+	}
+	items, err := s.store.ListPipelineRuns(ctx, projectId, input.RepositoryId, input.TemplateId, dateFrom, dateTo, input.Page, input.PerPage)
+	if err != nil {
+		return repository.Page[PipelineRunDetail]{}, apperror.Wrap(apperror.KindInternal, "Failed to list pipeline runs", err)
+	}
+	return s.pipelineRunDetails(ctx, items, false)
+}
+
+func (s Service) PipelineRunForUser(ctx context.Context, userId string, runId string) (PipelineRunDetail, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	return s.pipelineRunDetail(ctx, run, true)
+}
+
+func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId string, runId string) ([]repository.Artifact, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.store.ListArtifactsByRun(ctx, run.ProjectId, run.Id)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list artifacts", err)
+	}
+	return items, nil
+}
+
+func (s Service) PipelineStageLog(ctx context.Context, userId string, runId string, stageRunId string, offset int) (PipelineStageLog, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+	if err != nil {
+		return PipelineStageLog{}, err
+	}
+	if offset < 0 {
+		return PipelineStageLog{}, apperror.New(apperror.KindValidation, "offset must be greater than or equal to 0")
+	}
+	stageRun, err := s.store.StageRun(ctx, strings.TrimSpace(stageRunId))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return PipelineStageLog{Offset: offset, IsComplete: true}, nil
+		}
+		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load stage run", err)
+	}
+	if stageRun.PipelineRunId != run.Id {
+		return PipelineStageLog{Offset: offset, IsComplete: true}, nil
+	}
+	logPath := filepath.Join(s.dataRoot, "ci", "runs", run.Id, "stages", stageRun.Id+".log")
+	file, err := os.Open(logPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return PipelineStageLog{Offset: offset, IsComplete: pipelineRunStatusComplete(stageRun.Status)}, nil
+		}
+		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
+	}
+	defer func() { _ = file.Close() }()
+	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
+		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
+	}
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
+	}
+	return PipelineStageLog{Logs: string(content), Offset: offset + len(content), IsComplete: pipelineRunStatusComplete(stageRun.Status)}, nil
+}
+
+func (s Service) CancelPipelineRun(ctx context.Context, userId string, runId string) (PipelineRunDetail, error) {
+	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	if run.Status != repository.WorkStatusWaitingToRun && run.Status != repository.WorkStatusRunning {
+		return PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot cancel run with status "+run.Status)
+	}
+	if err := s.store.CancelPipelineRun(ctx, run.Id); err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel pipeline run", err)
+	}
+	updated, err := s.store.PipelineRun(ctx, run.Id)
+	if err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
+	}
+	return s.pipelineRunDetail(ctx, updated, true)
+}
+
+func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId string) (PipelineRunDetail, error) {
+	original, err := s.loadPipelineRunForUser(ctx, userId, runId)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	if original.Status != repository.WorkStatusFaulted && original.Status != repository.WorkStatusRanToCompletion {
+		return PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot retry run with status "+original.Status)
+	}
+	if _, err := s.store.PipelineSnapshot(ctx, original.SnapshotId); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Snapshot "+original.SnapshotId+" not found")
+		}
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
+	}
+	repo, err := s.store.Repository(ctx, original.RepositoryId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Repository "+original.RepositoryId+" not found")
+		}
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
+	}
+	newRun := repository.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: repository.WorkStatusWaitingToRun, RetryOf: &original.Id}
+	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
+	}
+	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": newRun.Id}); err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
+	}
+	created, err := s.store.PipelineRun(ctx, newRun.Id)
+	if err != nil {
+		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
+	}
+	return s.pipelineRunDetail(ctx, created, true)
+}
+
+func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, runId string) (repository.PipelineRun, error) {
+	runId = strings.TrimSpace(runId)
+	run, err := s.store.PipelineRun(ctx, runId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return repository.PipelineRun{}, apperror.New(apperror.KindNotFound, "PipelineRun "+runId+" not found")
+		}
+		return repository.PipelineRun{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
+	}
+	if run.ProjectId != nil {
+		if err := s.ensureProjectMembership(ctx, *run.ProjectId, userId); err != nil {
+			return repository.PipelineRun{}, err
+		}
+	}
+	return run, nil
+}
+
+func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[repository.PipelineRun], includeStages bool) (repository.Page[PipelineRunDetail], error) {
+	items := make([]PipelineRunDetail, 0, len(page.Items))
+	for _, item := range page.Items {
+		detail, err := s.pipelineRunDetail(ctx, item, includeStages)
+		if err != nil {
+			return repository.Page[PipelineRunDetail]{}, err
+		}
+		items = append(items, detail)
+	}
+	return repository.Page[PipelineRunDetail]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
+}
+
+func (s Service) pipelineRunDetail(ctx context.Context, item repository.PipelineRun, includeStages bool) (PipelineRunDetail, error) {
+	variables, err := pipelineRunVariables(item.VariablesSnapshot)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	stageRuns := []repository.StageRun{}
+	if includeStages {
+		items, err := s.store.ListStageRuns(ctx, item.Id)
+		if err != nil {
+			return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to list stage runs", err)
+		}
+		stageRuns = items
+	}
+	return PipelineRunDetail{Run: item, VariablesSnapshot: variables, StageRuns: stageRuns}, nil
+}
+
+func (s Service) ensurePipelineRunRepositoryFilter(ctx context.Context, projectId string, repositoryId string) error {
+	repositoryId = strings.TrimSpace(repositoryId)
+	if repositoryId == "" {
+		return nil
+	}
+	repo, err := s.store.Repository(ctx, repositoryId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
+	}
+	if repo.ProjectId == nil || *repo.ProjectId != projectId {
+		return apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
+	}
+	return nil
+}
+
+func (s Service) ensurePipelineRunTemplateFilter(ctx context.Context, projectId string, templateId string) error {
+	templateId = strings.TrimSpace(templateId)
+	if templateId == "" {
+		return nil
+	}
+	template, err := s.store.PipelineTemplate(ctx, templateId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
+	}
+	if template.ProjectId == nil || *template.ProjectId != projectId {
+		return apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
+	}
+	return nil
+}
+
+func parseOptionalRunTime(value string, name string) (*time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil, apperror.New(apperror.KindValidation, name+" must be ISO 8601")
+	}
+	return &parsed, nil
+}
+
+func pipelineRunStatusComplete(status string) bool {
+	return status == repository.WorkStatusRanToCompletion || status == repository.WorkStatusFaulted || status == repository.WorkStatusCanceled
+}
+
+func pipelineRunVariables(value string) ([]repository.VariableDeclaration, error) {
+	if strings.TrimSpace(value) == "" {
+		return []repository.VariableDeclaration{}, nil
+	}
+	var variables []repository.VariableDeclaration
+	if err := json.Unmarshal([]byte(value), &variables); err == nil {
+		return variables, nil
+	}
+	var legacy map[string]any
+	if err := json.Unmarshal([]byte(value), &legacy); err != nil {
+		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline run variables")
+	}
+	variables = make([]repository.VariableDeclaration, 0, len(legacy))
+	for name, value := range legacy {
+		variables = append(variables, repository.VariableDeclaration{Name: name, Value: value, Source: "runtime", Editable: true})
+	}
+	return variables, nil
+}

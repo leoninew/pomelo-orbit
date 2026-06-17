@@ -27,8 +27,15 @@ type RepositoryStore interface {
 	ListRepositories(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[repository.Repository], error)
 	Repository(ctx context.Context, id string) (repository.Repository, error)
 	RepositoryByCode(ctx context.Context, projectId *string, code string) (repository.Repository, error)
+	ListCredentials(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.Credential], error)
+	Credential(ctx context.Context, id string) (repository.Credential, error)
+	CredentialByName(ctx context.Context, projectId string, name string) (repository.Credential, error)
 	CredentialExists(ctx context.Context, id string) (bool, error)
 	CredentialName(ctx context.Context, id string) (*string, error)
+	CreateCredential(ctx context.Context, credential repository.Credential) error
+	UpdateCredential(ctx context.Context, credential repository.Credential) error
+	DeleteCredential(ctx context.Context, id string) error
+	CredentialReferencedByRepositories(ctx context.Context, projectId string, credentialId string) (bool, error)
 	CreateRepository(ctx context.Context, repo repository.Repository) error
 	UpdateRepository(ctx context.Context, repo repository.Repository) error
 	DeleteRepository(ctx context.Context, id string) error
@@ -74,9 +81,10 @@ type TaskService interface {
 }
 
 type Service struct {
-	store    RepositoryStore
-	tasks    TaskService
-	dataRoot string
+	store     RepositoryStore
+	tasks     TaskService
+	dataRoot  string
+	secretKey string
 }
 
 type RepositoryCreateInput struct {
@@ -131,8 +139,8 @@ type WebhookReceiveResult struct {
 	RunId  string
 }
 
-func New(store RepositoryStore, tasks TaskService, dataRoot string) Service {
-	return Service{store: store, tasks: tasks, dataRoot: dataRoot}
+func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string) Service {
+	return Service{store: store, tasks: tasks, dataRoot: dataRoot, secretKey: secretKey}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[repository.Repository], error) {

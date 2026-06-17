@@ -7,6 +7,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	cisvc "backend/internal/service/ci"
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 const credentialRouteFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -37,7 +40,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if strings.Contains(createRecorder.Body.String(), "data") || strings.Contains(createRecorder.Body.String(), "encrypted") {
 		t.Fatalf("credential create leaked secret fields: %s", createRecorder.Body.String())
 	}
-	var created credentialResp
+	var created cihandler.CredentialResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +53,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var credentials paginatedResp[credentialResp]
+	var credentials paginatedResp[cihandler.CredentialResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&credentials); err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +77,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated credentialResp
+	var updated cihandler.CredentialResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -87,11 +90,11 @@ func TestCredentialRoutes(t *testing.T) {
 	if exportRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential export status 200, got %d: %s", exportRecorder.Code, exportRecorder.Body.String())
 	}
-	var exported credentialExportResp
+	var exported cihandler.CredentialExportResp
 	if err := json.NewDecoder(exportRecorder.Body).Decode(&exported); err != nil {
 		t.Fatal(err)
 	}
-	if exported.Version != credentialExportVersion || exported.Name != "GitHub Token Updated" || exported.Type != "github_token" || exported.Data != updatedPlainData {
+	if exported.Version != cisvc.CredentialExportVersion || exported.Name != "GitHub Token Updated" || exported.Type != "github_token" || exported.Data != updatedPlainData {
 		t.Fatalf("unexpected exported credential: %+v", exported)
 	}
 
@@ -115,7 +118,7 @@ func TestCredentialImportRoute(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected credential import status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created credentialResp
+	var created cihandler.CredentialResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -125,11 +128,11 @@ func TestCredentialImportRoute(t *testing.T) {
 	if exportRecorder.Code != http.StatusOK {
 		t.Fatalf("expected imported credential export status 200, got %d: %s", exportRecorder.Code, exportRecorder.Body.String())
 	}
-	var exported credentialExportResp
+	var exported cihandler.CredentialExportResp
 	if err := json.NewDecoder(exportRecorder.Body).Decode(&exported); err != nil {
 		t.Fatal(err)
 	}
-	if exported.Data != "imported-secret" || exported.Version != credentialExportVersion {
+	if exported.Data != "imported-secret" || exported.Version != cisvc.CredentialExportVersion {
 		t.Fatalf("unexpected imported credential export: %+v", exported)
 	}
 }
@@ -214,7 +217,7 @@ func TestCredentialRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func createCredentialForTest(t *testing.T, server Server, token string, projectId string, name string) credentialResp {
+func createCredentialForTest(t *testing.T, server Server, token string, projectId string, name string) cihandler.CredentialResp {
 	t.Helper()
 	body := bytes.NewBufferString(`{"name":"` + name + `","type":"github_token","data":"secret"}`)
 	recorder := httptest.NewRecorder()
@@ -222,7 +225,7 @@ func createCredentialForTest(t *testing.T, server Server, token string, projectI
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected credential create status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created credentialResp
+	var created cihandler.CredentialResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}

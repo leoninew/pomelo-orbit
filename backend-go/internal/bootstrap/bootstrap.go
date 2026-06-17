@@ -11,6 +11,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/repository"
+	cirepo "backend/internal/repository/ci"
 	taskrepo "backend/internal/repository/task"
 	"backend/internal/status"
 	transporthttp "backend/internal/transport/http"
@@ -46,7 +47,8 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, store repository.Stor
 
 func NewTaskRouter(store repository.Store, cfg config.Config, logger *slog.Logger) *worker.Router {
 	router := worker.NewRouter()
-	router.Register(status.TaskTypeCIPipelineRunExecute, ci.NewHandler(store, cfg, logger))
+	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
+	router.Register(status.TaskTypeCIPipelineRunExecute, ci.NewHandler(ciRepository, cfg, logger))
 	router.Register(status.TaskTypeCDApplicationDeploy, cd.NewDeployHandler(store, cfg, logger))
 	router.Register(status.TaskTypeCDApplicationRestart, cd.NewRestartHandler(store, cfg, logger))
 	return router

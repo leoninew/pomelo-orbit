@@ -13,6 +13,7 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 )
 
 type Executor struct {
@@ -22,13 +23,13 @@ type Executor struct {
 	runner ContainerRunner
 }
 
-func (e Executor) Execute(ctx context.Context, run repository.PipelineRun, repo repository.Repository, variables map[string]any, stages []repository.StageDefinition) (bool, string) {
+func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
 	layers, err := topologicalLayers(stages)
 	if err != nil {
 		e.logger.Error("cyclic dependency", "run", run.Id, "error", err)
 		return false, fmt.Sprintf("Cyclic dependency detected: %v", err)
 	}
-	stageById := map[string]repository.StageDefinition{}
+	stageById := map[string]model.StageDefinition{}
 	for _, stage := range stages {
 		stageById[stage.Id] = stage
 	}
@@ -51,7 +52,7 @@ func (e Executor) Execute(ctx context.Context, run repository.PipelineRun, repo 
 	return true, ""
 }
 
-func (e Executor) executeLayer(ctx context.Context, run repository.PipelineRun, repo repository.Repository, variables map[string]any, layer []string, stages map[string]repository.StageDefinition) map[string]bool {
+func (e Executor) executeLayer(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, layer []string, stages map[string]model.StageDefinition) map[string]bool {
 	results := make(map[string]bool, len(layer))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -70,8 +71,8 @@ func (e Executor) executeLayer(ctx context.Context, run repository.PipelineRun, 
 	return results
 }
 
-func (e Executor) executeStage(ctx context.Context, run repository.PipelineRun, repo repository.Repository, variables map[string]any, stage repository.StageDefinition) bool {
-	stageRun := repository.StageRun{Id: repository.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusWaitingToRun}
+func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition) bool {
+	stageRun := model.StageRun{Id: repository.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusWaitingToRun}
 	if err := e.store.InsertStageRun(ctx, stageRun); err != nil {
 		e.logger.Error("stage run insert failed", "run", run.Id, "stage", stage.Name, "error", err)
 		return false
@@ -124,7 +125,7 @@ func (e Executor) executeStage(ctx context.Context, run repository.PipelineRun, 
 	return true
 }
 
-func (e Executor) completeStageFailed(ctx context.Context, stageRun repository.StageRun, exitCode int, message string) bool {
+func (e Executor) completeStageFailed(ctx context.Context, stageRun model.StageRun, exitCode int, message string) bool {
 	finished := now()
 	stageRun.FinishedAt = &finished
 	stageRun.Status = repository.WorkStatusFaulted
@@ -135,7 +136,7 @@ func (e Executor) completeStageFailed(ctx context.Context, stageRun repository.S
 	return false
 }
 
-func (e Executor) failStage(ctx context.Context, stageRun repository.StageRun, message string) bool {
+func (e Executor) failStage(ctx context.Context, stageRun model.StageRun, message string) bool {
 	finished := now()
 	stageRun.FinishedAt = &finished
 	stageRun.Status = repository.WorkStatusFaulted
@@ -145,16 +146,16 @@ func (e Executor) failStage(ctx context.Context, stageRun repository.StageRun, m
 	return false
 }
 
-func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]string, start int, stages map[string]repository.StageDefinition) {
+func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]string, start int, stages map[string]model.StageDefinition) {
 	for i := start; i < len(layers); i++ {
 		for _, stageId := range layers[i] {
 			stage := stages[stageId]
-			_ = e.store.InsertStageRun(ctx, repository.StageRun{Id: repository.NewId(), PipelineRunId: runId, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusCanceled})
+			_ = e.store.InsertStageRun(ctx, model.StageRun{Id: repository.NewId(), PipelineRunId: runId, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusCanceled})
 		}
 	}
 }
 
-func (e Executor) saveArtifacts(ctx context.Context, run repository.PipelineRun, stage repository.StageDefinition) error {
+func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stage model.StageDefinition) error {
 	artifactRoot := filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "artifacts")
 	for _, artifact := range stage.Artifacts {
 		artifactPath := artifact.Path
@@ -172,7 +173,7 @@ func (e Executor) saveArtifacts(ctx context.Context, run repository.PipelineRun,
 	return nil
 }
 
-func topologicalLayers(stages []repository.StageDefinition) ([][]string, error) {
+func topologicalLayers(stages []model.StageDefinition) ([][]string, error) {
 	stageIds := map[string]bool{}
 	inDegree := map[string]int{}
 	children := map[string][]string{}

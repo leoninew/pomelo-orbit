@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cisvc "backend/internal/service/ci"
 	transportresponse "backend/internal/transport/http/response"
 )
@@ -163,6 +163,6 @@ func (h Handler) exportCredential(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(w, http.StatusOK, CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
 }
 
-func credentialResponse(item repository.Credential) CredentialResp {
+func credentialResponse(item model.Credential) CredentialResp {
 	return CredentialResp{Id: item.Id, Name: item.Name, Type: item.Type, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
 }

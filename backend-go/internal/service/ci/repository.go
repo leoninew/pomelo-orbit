@@ -24,55 +24,55 @@ var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 type RepositoryStore interface {
 	Project(ctx context.Context, id string) (model.Project, error)
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
-	ListRepositories(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[repository.Repository], error)
-	Repository(ctx context.Context, id string) (repository.Repository, error)
-	RepositoryByCode(ctx context.Context, projectId *string, code string) (repository.Repository, error)
-	ListCredentials(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.Credential], error)
-	Credential(ctx context.Context, id string) (repository.Credential, error)
-	CredentialByName(ctx context.Context, projectId string, name string) (repository.Credential, error)
+	ListRepositories(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error)
+	Repository(ctx context.Context, id string) (model.Repository, error)
+	RepositoryByCode(ctx context.Context, projectId *string, code string) (model.Repository, error)
+	ListCredentials(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.Credential], error)
+	Credential(ctx context.Context, id string) (model.Credential, error)
+	CredentialByName(ctx context.Context, projectId string, name string) (model.Credential, error)
 	CredentialExists(ctx context.Context, id string) (bool, error)
 	CredentialName(ctx context.Context, id string) (*string, error)
-	CreateCredential(ctx context.Context, credential repository.Credential) error
-	UpdateCredential(ctx context.Context, credential repository.Credential) error
+	CreateCredential(ctx context.Context, credential model.Credential) error
+	UpdateCredential(ctx context.Context, credential model.Credential) error
 	DeleteCredential(ctx context.Context, id string) error
 	CredentialReferencedByRepositories(ctx context.Context, projectId string, credentialId string) (bool, error)
-	CreateRepository(ctx context.Context, repo repository.Repository) error
-	UpdateRepository(ctx context.Context, repo repository.Repository) error
+	CreateRepository(ctx context.Context, repo model.Repository) error
+	UpdateRepository(ctx context.Context, repo model.Repository) error
 	DeleteRepository(ctx context.Context, id string) error
 	RepositoryHasRunningPipelines(ctx context.Context, repositoryId string) (bool, error)
-	ListRepositoryWebhooks(ctx context.Context, repositoryId string) ([]repository.RepositoryWebhook, error)
-	RepositoryWebhook(ctx context.Context, id string) (repository.RepositoryWebhook, error)
-	CreateRepositoryWebhook(ctx context.Context, webhook repository.RepositoryWebhook) error
-	UpdateRepositoryWebhook(ctx context.Context, webhook repository.RepositoryWebhook) error
+	ListRepositoryWebhooks(ctx context.Context, repositoryId string) ([]model.RepositoryWebhook, error)
+	RepositoryWebhook(ctx context.Context, id string) (model.RepositoryWebhook, error)
+	CreateRepositoryWebhook(ctx context.Context, webhook model.RepositoryWebhook) error
+	UpdateRepositoryWebhook(ctx context.Context, webhook model.RepositoryWebhook) error
 	DeleteRepositoryWebhook(ctx context.Context, id string) error
-	PipelineTemplate(ctx context.Context, id string) (repository.PipelineTemplate, error)
-	ListPipelineTemplates(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.PipelineTemplate], error)
-	PipelineTemplateByName(ctx context.Context, projectId string, name string) (repository.PipelineTemplate, error)
-	PipelineTemplateStages(ctx context.Context, templateId string) ([]repository.PipelineTemplateStage, error)
-	ListBuildStages(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.BuildStage], error)
-	BuildStage(ctx context.Context, id string) (repository.BuildStage, error)
-	BuildStageByName(ctx context.Context, projectId string, name string) (repository.BuildStage, error)
-	BuildStagesByIds(ctx context.Context, projectId string, ids []string) ([]repository.BuildStage, error)
-	CreateBuildStage(ctx context.Context, stage repository.BuildStage) error
-	UpdateBuildStage(ctx context.Context, stage repository.BuildStage) error
+	PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error)
+	ListPipelineTemplates(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.PipelineTemplate], error)
+	PipelineTemplateByName(ctx context.Context, projectId string, name string) (model.PipelineTemplate, error)
+	PipelineTemplateStages(ctx context.Context, templateId string) ([]model.PipelineTemplateStage, error)
+	ListBuildStages(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.BuildStage], error)
+	BuildStage(ctx context.Context, id string) (model.BuildStage, error)
+	BuildStageByName(ctx context.Context, projectId string, name string) (model.BuildStage, error)
+	BuildStagesByIds(ctx context.Context, projectId string, ids []string) ([]model.BuildStage, error)
+	CreateBuildStage(ctx context.Context, stage model.BuildStage) error
+	UpdateBuildStage(ctx context.Context, stage model.BuildStage) error
 	DeleteBuildStage(ctx context.Context, id string) error
 	BuildStageReferencedByTemplates(ctx context.Context, projectId string, stageId string) (bool, error)
-	CreatePipelineTemplate(ctx context.Context, template repository.PipelineTemplate) error
-	UpdatePipelineTemplate(ctx context.Context, template repository.PipelineTemplate) error
-	UpdatePipelineTemplateWithStages(ctx context.Context, template repository.PipelineTemplate, stages []repository.PipelineTemplateStage) error
-	DuplicatePipelineTemplate(ctx context.Context, template repository.PipelineTemplate, stages []repository.PipelineTemplateStage) error
+	CreatePipelineTemplate(ctx context.Context, template model.PipelineTemplate) error
+	UpdatePipelineTemplate(ctx context.Context, template model.PipelineTemplate) error
+	UpdatePipelineTemplateWithStages(ctx context.Context, template model.PipelineTemplate, stages []model.PipelineTemplateStage) error
+	DuplicatePipelineTemplate(ctx context.Context, template model.PipelineTemplate, stages []model.PipelineTemplateStage) error
 	PipelineTemplateReferencedByWebhooks(ctx context.Context, templateId string) (bool, error)
 	DeletePipelineTemplate(ctx context.Context, id string) error
-	LatestPipelineSnapshot(ctx context.Context, templateId string) (repository.PipelineSnapshot, error)
-	PipelineSnapshot(ctx context.Context, id string) (repository.PipelineSnapshot, error)
-	ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[repository.PipelineRun], error)
-	ListPipelineRunsByRepository(ctx context.Context, repositoryId string, page int, perPage int) (repository.Page[repository.PipelineRun], error)
-	PipelineRun(ctx context.Context, id string) (repository.PipelineRun, error)
-	ListStageRuns(ctx context.Context, runId string) ([]repository.StageRun, error)
-	StageRun(ctx context.Context, id string) (repository.StageRun, error)
-	ListArtifacts(ctx context.Context, projectId string, repositoryId string, templateId string, page int, perPage int, search string) (repository.Page[repository.Artifact], error)
-	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]repository.Artifact, error)
-	CreatePipelineRun(ctx context.Context, run repository.PipelineRun) error
+	LatestPipelineSnapshot(ctx context.Context, templateId string) (model.PipelineSnapshot, error)
+	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
+	ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[model.PipelineRun], error)
+	ListPipelineRunsByRepository(ctx context.Context, repositoryId string, page int, perPage int) (repository.Page[model.PipelineRun], error)
+	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
+	ListStageRuns(ctx context.Context, runId string) ([]model.StageRun, error)
+	StageRun(ctx context.Context, id string) (model.StageRun, error)
+	ListArtifacts(ctx context.Context, projectId string, repositoryId string, templateId string, page int, perPage int, search string) (repository.Page[model.Artifact], error)
+	ListArtifactsByRun(ctx context.Context, projectId *string, runId string) ([]model.Artifact, error)
+	CreatePipelineRun(ctx context.Context, run model.PipelineRun) error
 	CancelPipelineRun(ctx context.Context, id string) error
 }
 
@@ -106,7 +106,7 @@ type RepositoryUpdateInput struct {
 }
 
 type RepositoryDetail struct {
-	Repository           repository.Repository
+	Repository           model.Repository
 	GitCredentialName    *string
 	VariableDeclarations []map[string]any
 }
@@ -143,15 +143,15 @@ func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey st
 	return Service{store: store, tasks: tasks, dataRoot: dataRoot, secretKey: secretKey}
 }
 
-func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[repository.Repository], error) {
+func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {
 	if projectId != nil {
 		if err := s.ensureProjectMembership(ctx, *projectId, userId); err != nil {
-			return repository.Page[repository.Repository]{}, err
+			return repository.Page[model.Repository]{}, err
 		}
 	}
 	items, err := s.store.ListRepositories(ctx, projectId, page, perPage, search)
 	if err != nil {
-		return repository.Page[repository.Repository]{}, apperror.Wrap(apperror.KindInternal, "Failed to list repositories", err)
+		return repository.Page[model.Repository]{}, apperror.Wrap(apperror.KindInternal, "Failed to list repositories", err)
 	}
 	return items, nil
 }
@@ -178,7 +178,7 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input Repo
 	if err != nil {
 		return RepositoryDetail{}, err
 	}
-	repo := repository.Repository{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryURL: repositoryURL, GitCredentialId: gitCredentialId, VariableOverrides: overrides, DefaultBranch: defaultBranch}
+	repo := model.Repository{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryURL: repositoryURL, GitCredentialId: gitCredentialId, VariableOverrides: overrides, DefaultBranch: defaultBranch}
 	if err := s.store.CreateRepository(ctx, repo); err != nil {
 		return RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository", err)
 	}
@@ -264,7 +264,7 @@ func (s Service) DeleteRepository(ctx context.Context, userId string, repository
 	return nil
 }
 
-func (s Service) ListRepositoryWebhooks(ctx context.Context, userId string, repositoryId string) ([]repository.RepositoryWebhook, error) {
+func (s Service) ListRepositoryWebhooks(ctx context.Context, userId string, repositoryId string) ([]model.RepositoryWebhook, error) {
 	repo, err := s.loadRepositoryForUser(ctx, userId, repositoryId)
 	if err != nil {
 		return nil, err
@@ -276,82 +276,82 @@ func (s Service) ListRepositoryWebhooks(ctx context.Context, userId string, repo
 	return items, nil
 }
 
-func (s Service) CreateRepositoryWebhook(ctx context.Context, userId string, repositoryId string, input WebhookCreateInput) (repository.RepositoryWebhook, error) {
+func (s Service) CreateRepositoryWebhook(ctx context.Context, userId string, repositoryId string, input WebhookCreateInput) (model.RepositoryWebhook, error) {
 	repo, err := s.loadRepositoryForUser(ctx, userId, repositoryId)
 	if err != nil {
-		return repository.RepositoryWebhook{}, err
+		return model.RepositoryWebhook{}, err
 	}
 	name, templateId, secret, branchFilter, err := normalizeWebhookCreateInput(input)
 	if err != nil {
-		return repository.RepositoryWebhook{}, err
+		return model.RepositoryWebhook{}, err
 	}
 	if err := s.ensurePipelineTemplate(ctx, templateId); err != nil {
-		return repository.RepositoryWebhook{}, err
+		return model.RepositoryWebhook{}, err
 	}
-	webhook := repository.RepositoryWebhook{Id: repository.NewId(), RepositoryId: repo.Id, Name: name, TemplateId: templateId, BranchFilter: branchFilter, EncryptedSecret: secret, Enabled: true}
+	webhook := model.RepositoryWebhook{Id: repository.NewId(), RepositoryId: repo.Id, Name: name, TemplateId: templateId, BranchFilter: branchFilter, EncryptedSecret: secret, Enabled: true}
 	if err := s.store.CreateRepositoryWebhook(ctx, webhook); err != nil {
-		return repository.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository webhook", err)
+		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository webhook", err)
 	}
 	created, err := s.store.RepositoryWebhook(ctx, webhook.Id)
 	if err != nil {
-		return repository.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
+		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
 	}
 	return created, nil
 }
 
-func (s Service) RepositoryWebhookForUser(ctx context.Context, userId string, webhookId string) (repository.RepositoryWebhook, error) {
+func (s Service) RepositoryWebhookForUser(ctx context.Context, userId string, webhookId string) (model.RepositoryWebhook, error) {
 	webhook, err := s.loadRepositoryWebhook(ctx, webhookId)
 	if err != nil {
-		return repository.RepositoryWebhook{}, err
+		return model.RepositoryWebhook{}, err
 	}
 	repo, err := s.store.Repository(ctx, webhook.RepositoryId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Repository "+webhook.RepositoryId+" not found")
+			return model.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Repository "+webhook.RepositoryId+" not found")
 		}
-		return repository.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
+		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
 	if repo.ProjectId != nil {
 		if err := s.ensureProjectMembership(ctx, *repo.ProjectId, userId); err != nil {
-			return repository.RepositoryWebhook{}, err
+			return model.RepositoryWebhook{}, err
 		}
 	}
 	return webhook, nil
 }
 
-func (s Service) UpdateRepositoryWebhook(ctx context.Context, userId string, repositoryId string, webhookId string, input WebhookUpdateInput) (repository.RepositoryWebhook, error) {
+func (s Service) UpdateRepositoryWebhook(ctx context.Context, userId string, repositoryId string, webhookId string, input WebhookUpdateInput) (model.RepositoryWebhook, error) {
 	repo, err := s.loadRepositoryForUser(ctx, userId, repositoryId)
 	if err != nil {
-		return repository.RepositoryWebhook{}, err
+		return model.RepositoryWebhook{}, err
 	}
 	webhook, err := s.loadRepositoryWebhook(ctx, webhookId)
 	if err != nil {
-		return repository.RepositoryWebhook{}, err
+		return model.RepositoryWebhook{}, err
 	}
 	if webhook.RepositoryId != repo.Id {
-		return repository.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Webhook "+webhook.Id+" not found")
+		return model.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Webhook "+webhook.Id+" not found")
 	}
 	if input.Name != nil {
 		name := strings.TrimSpace(*input.Name)
 		if name == "" {
-			return repository.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Invalid repository webhook fields")
+			return model.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Invalid repository webhook fields")
 		}
 		webhook.Name = name
 	}
 	if input.TemplateId != nil {
 		templateId := strings.TrimSpace(*input.TemplateId)
 		if templateId == "" {
-			return repository.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Invalid repository webhook fields")
+			return model.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Invalid repository webhook fields")
 		}
 		if err := s.ensurePipelineTemplate(ctx, templateId); err != nil {
-			return repository.RepositoryWebhook{}, err
+			return model.RepositoryWebhook{}, err
 		}
 		webhook.TemplateId = templateId
 	}
 	if input.Secret != nil {
 		secret := strings.TrimSpace(*input.Secret)
 		if secret == "" {
-			return repository.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Invalid repository webhook fields")
+			return model.RepositoryWebhook{}, apperror.New(apperror.KindValidation, "Invalid repository webhook fields")
 		}
 		webhook.EncryptedSecret = secret
 	}
@@ -362,11 +362,11 @@ func (s Service) UpdateRepositoryWebhook(ctx context.Context, userId string, rep
 		webhook.Enabled = *input.Enabled
 	}
 	if err := s.store.UpdateRepositoryWebhook(ctx, webhook); err != nil {
-		return repository.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to update repository webhook", err)
+		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to update repository webhook", err)
 	}
 	updated, err := s.store.RepositoryWebhook(ctx, webhook.Id)
 	if err != nil {
-		return repository.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
+		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
 	}
 	return updated, nil
 }
@@ -438,7 +438,7 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input WebhookRece
 	if triggerRef == "" {
 		triggerRef = commitSha
 	}
-	run := repository.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "webhook", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
+	run := model.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "webhook", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
@@ -448,18 +448,18 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input WebhookRece
 	return WebhookReceiveResult{Status: "triggered", RunId: run.Id}, nil
 }
 
-func (s Service) loadRepositoryForUser(ctx context.Context, userId string, repositoryId string) (repository.Repository, error) {
+func (s Service) loadRepositoryForUser(ctx context.Context, userId string, repositoryId string) (model.Repository, error) {
 	repositoryId = strings.TrimSpace(repositoryId)
 	repo, err := s.store.Repository(ctx, repositoryId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
+			return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 		}
-		return repository.Repository{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
+		return model.Repository{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
 	if repo.ProjectId != nil {
 		if err := s.ensureProjectMembership(ctx, *repo.ProjectId, userId); err != nil {
-			return repository.Repository{}, err
+			return model.Repository{}, err
 		}
 	}
 	return repo, nil
@@ -507,14 +507,14 @@ func (s Service) ensureCredential(ctx context.Context, credentialId *string) err
 	return nil
 }
 
-func (s Service) loadRepositoryWebhook(ctx context.Context, webhookId string) (repository.RepositoryWebhook, error) {
+func (s Service) loadRepositoryWebhook(ctx context.Context, webhookId string) (model.RepositoryWebhook, error) {
 	webhookId = strings.TrimSpace(webhookId)
 	webhook, err := s.store.RepositoryWebhook(ctx, webhookId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Webhook "+webhookId+" not found")
+			return model.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Webhook "+webhookId+" not found")
 		}
-		return repository.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
+		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
 	}
 	return webhook, nil
 }
@@ -529,7 +529,7 @@ func (s Service) ensurePipelineTemplate(ctx context.Context, templateId string) 
 	return nil
 }
 
-func (s Service) repositoryDetail(ctx context.Context, repo repository.Repository) (RepositoryDetail, error) {
+func (s Service) repositoryDetail(ctx context.Context, repo model.Repository) (RepositoryDetail, error) {
 	credentialName, err := s.repositoryCredentialName(ctx, repo.GitCredentialId)
 	if err != nil {
 		return RepositoryDetail{}, err
@@ -611,7 +611,7 @@ func normalizeWebhookCreateInput(input WebhookCreateInput) (string, string, stri
 	return name, templateId, secret, branchFilter, nil
 }
 
-func parseWebhookEvent(headers map[string]string, webhook repository.RepositoryWebhook, payload []byte, body map[string]any) (string, string, string, error) {
+func parseWebhookEvent(headers map[string]string, webhook model.RepositoryWebhook, payload []byte, body map[string]any) (string, string, string, error) {
 	if signature := strings.TrimSpace(headers["X-Hub-Signature-256"]); signature != "" {
 		if !verifyGithubWebhookSignature(payload, signature, webhook.EncryptedSecret) {
 			return "", "", "", apperror.New(apperror.KindUnauthorized, "Invalid signature")

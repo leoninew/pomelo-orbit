@@ -1,5 +1,5 @@
 # backend-go 主流模板架构改进计划
-最后修改时间: 2026-06-17 14:34:06
+最后修改时间: 2026-06-17 15:02:02
 
 Review status: Accepted
 
@@ -114,12 +114,12 @@ Review status: Accepted
 - [x] 将 snapshot API 迁移到 `handler/ci` + `service/ci`。
 - [x] 将 artifact API 迁移到 `handler/ci` + `service/ci`。
 - [x] 将 credential API 迁移到 `handler/ci` + `service/ci` 或共享 credential service。
-- [ ] 将 `internal/orbit/repository_store.go` 迁移到 `repository/ci`。
-- [ ] 将 `internal/orbit/pipeline_template_store.go` 迁移到 `repository/ci`。
-- [ ] 将 `internal/orbit/pipeline_run_store.go` 迁移到 `repository/ci`。
-- [ ] 将 `internal/orbit/build_stage_store.go` 迁移到 `repository/ci`。
-- [ ] 将 `internal/orbit/credential_store.go` 迁移到 `repository/ci` 或 `repository/credential`。
-- [ ] 将 CI 相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
+- [x] 将 `internal/orbit/repository_store.go` 迁移到 `repository/ci`。
+- [x] 将 `internal/orbit/pipeline_template_store.go` 迁移到 `repository/ci`。
+- [x] 将 `internal/orbit/pipeline_run_store.go` 迁移到 `repository/ci`。
+- [x] 将 `internal/orbit/build_stage_store.go` 迁移到 `repository/ci`。
+- [x] 将 `internal/orbit/credential_store.go` 迁移到 `repository/ci` 或 `repository/credential`。
+- [x] 将 CI 相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
 - [ ] 保持 `/api/ci/*` API 路径、响应字段、分页结构和主要错误语义不变。
 - [ ] 更新 CI HTTP route tests、store tests 和 service/repository tests。
 

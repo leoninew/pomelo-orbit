@@ -10,6 +10,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cisvc "backend/internal/service/ci"
 	"backend/internal/transport/http/handler/authz"
 	transportresponse "backend/internal/transport/http/response"
@@ -303,7 +304,7 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.JSON(w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
 }
 
-func repositoryListResponse(item repository.Repository) RepositoryResp {
+func repositoryListResponse(item model.Repository) RepositoryResp {
 	return RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryURL: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: item.GitCredentialId, DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
@@ -312,7 +313,7 @@ func repositoryDetailResponse(detail cisvc.RepositoryDetail) RepositoryResp {
 	return RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryURL: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: item.GitCredentialId, GitCredentialName: detail.GitCredentialName, VariableDeclarations: detail.VariableDeclarations, DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func repositoryWebhookResponse(item repository.RepositoryWebhook) RepositoryWebhookResp {
+func repositoryWebhookResponse(item model.RepositoryWebhook) RepositoryWebhookResp {
 	return RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 

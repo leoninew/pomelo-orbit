@@ -11,19 +11,20 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	taskrepo "backend/internal/repository/task"
 	"backend/internal/templatex"
 )
 
 type Store interface {
-	PipelineRun(ctx context.Context, id string) (repository.PipelineRun, error)
-	Repository(ctx context.Context, id string) (repository.Repository, error)
-	PipelineSnapshot(ctx context.Context, id string) (repository.PipelineSnapshot, error)
+	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
+	Repository(ctx context.Context, id string) (model.Repository, error)
+	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
 	MarkPipelineRunRunning(ctx context.Context, id string) error
 	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
-	InsertStageRun(ctx context.Context, stage repository.StageRun) error
-	UpdateStageRun(ctx context.Context, stage repository.StageRun) error
-	InsertArtifact(ctx context.Context, projectId *string, run repository.PipelineRun, stageName string, artifact repository.ArtifactConfig, path string) error
+	InsertStageRun(ctx context.Context, stage model.StageRun) error
+	UpdateStageRun(ctx context.Context, stage model.StageRun) error
+	InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error
 }
 
 type ExecutePayload struct {
@@ -67,7 +68,7 @@ func (h Handler) Execute(ctx context.Context, payload ExecutePayload) error {
 		return err
 	}
 
-	var stages []repository.StageDefinition
+	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return h.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
@@ -110,8 +111,8 @@ func (h Handler) failRun(ctx context.Context, runId string, message string) erro
 	return nil
 }
 
-func resolveStages(stages []repository.StageDefinition, variables map[string]any) ([]repository.StageDefinition, error) {
-	resolved := make([]repository.StageDefinition, len(stages))
+func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]model.StageDefinition, error) {
+	resolved := make([]model.StageDefinition, len(stages))
 	copy(resolved, stages)
 	for i := range resolved {
 		script, err := templatex.Render(resolved[i].Script, variables)
@@ -140,7 +141,7 @@ func pipelineRunVariables(value string) map[string]any {
 	if strings.TrimSpace(value) == "" {
 		return variables
 	}
-	var declarations []repository.VariableDeclaration
+	var declarations []model.VariableDeclaration
 	if err := json.Unmarshal([]byte(value), &declarations); err == nil {
 		for _, declaration := range declarations {
 			variables[declaration.Name] = declaration.Value

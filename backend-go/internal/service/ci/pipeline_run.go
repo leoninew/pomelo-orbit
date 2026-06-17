@@ -13,6 +13,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	"backend/internal/status"
 )
 
@@ -34,9 +35,9 @@ type PipelineRunListInput struct {
 }
 
 type PipelineRunDetail struct {
-	Run               repository.PipelineRun
-	VariablesSnapshot []repository.VariableDeclaration
-	StageRuns         []repository.StageRun
+	Run               model.PipelineRun
+	VariablesSnapshot []model.VariableDeclaration
+	StageRuns         []model.StageRun
 }
 
 type PipelineStageLog struct {
@@ -88,7 +89,7 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input Pip
 	if triggerRef == "" {
 		triggerRef = repo.DefaultBranch
 	}
-	run := repository.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
+	run := model.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
@@ -139,7 +140,7 @@ func (s Service) PipelineRunForUser(ctx context.Context, userId string, runId st
 	return s.pipelineRunDetail(ctx, run, true)
 }
 
-func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId string, runId string) ([]repository.Artifact, error) {
+func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId string, runId string) ([]model.Artifact, error) {
 	run, err := s.loadPipelineRunForUser(ctx, userId, runId)
 	if err != nil {
 		return nil, err
@@ -227,7 +228,7 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 		}
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
-	newRun := repository.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: repository.WorkStatusWaitingToRun, RetryOf: &original.Id}
+	newRun := model.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: repository.WorkStatusWaitingToRun, RetryOf: &original.Id}
 	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
 	}
@@ -241,24 +242,24 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	return s.pipelineRunDetail(ctx, created, true)
 }
 
-func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, runId string) (repository.PipelineRun, error) {
+func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, runId string) (model.PipelineRun, error) {
 	runId = strings.TrimSpace(runId)
 	run, err := s.store.PipelineRun(ctx, runId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.PipelineRun{}, apperror.New(apperror.KindNotFound, "PipelineRun "+runId+" not found")
+			return model.PipelineRun{}, apperror.New(apperror.KindNotFound, "PipelineRun "+runId+" not found")
 		}
-		return repository.PipelineRun{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
+		return model.PipelineRun{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
 	}
 	if run.ProjectId != nil {
 		if err := s.ensureProjectMembership(ctx, *run.ProjectId, userId); err != nil {
-			return repository.PipelineRun{}, err
+			return model.PipelineRun{}, err
 		}
 	}
 	return run, nil
 }
 
-func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[repository.PipelineRun], includeStages bool) (repository.Page[PipelineRunDetail], error) {
+func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[model.PipelineRun], includeStages bool) (repository.Page[PipelineRunDetail], error) {
 	items := make([]PipelineRunDetail, 0, len(page.Items))
 	for _, item := range page.Items {
 		detail, err := s.pipelineRunDetail(ctx, item, includeStages)
@@ -270,12 +271,12 @@ func (s Service) pipelineRunDetails(ctx context.Context, page repository.Page[re
 	return repository.Page[PipelineRunDetail]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
 }
 
-func (s Service) pipelineRunDetail(ctx context.Context, item repository.PipelineRun, includeStages bool) (PipelineRunDetail, error) {
+func (s Service) pipelineRunDetail(ctx context.Context, item model.PipelineRun, includeStages bool) (PipelineRunDetail, error) {
 	variables, err := pipelineRunVariables(item.VariablesSnapshot)
 	if err != nil {
 		return PipelineRunDetail{}, err
 	}
-	stageRuns := []repository.StageRun{}
+	stageRuns := []model.StageRun{}
 	if includeStages {
 		items, err := s.store.ListStageRuns(ctx, item.Id)
 		if err != nil {
@@ -338,11 +339,11 @@ func pipelineRunStatusComplete(status string) bool {
 	return status == repository.WorkStatusRanToCompletion || status == repository.WorkStatusFaulted || status == repository.WorkStatusCanceled
 }
 
-func pipelineRunVariables(value string) ([]repository.VariableDeclaration, error) {
+func pipelineRunVariables(value string) ([]model.VariableDeclaration, error) {
 	if strings.TrimSpace(value) == "" {
-		return []repository.VariableDeclaration{}, nil
+		return []model.VariableDeclaration{}, nil
 	}
-	var variables []repository.VariableDeclaration
+	var variables []model.VariableDeclaration
 	if err := json.Unmarshal([]byte(value), &variables); err == nil {
 		return variables, nil
 	}
@@ -350,9 +351,9 @@ func pipelineRunVariables(value string) ([]repository.VariableDeclaration, error
 	if err := json.Unmarshal([]byte(value), &legacy); err != nil {
 		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline run variables")
 	}
-	variables = make([]repository.VariableDeclaration, 0, len(legacy))
+	variables = make([]model.VariableDeclaration, 0, len(legacy))
 	for name, value := range legacy {
-		variables = append(variables, repository.VariableDeclaration{Name: name, Value: value, Source: "runtime", Editable: true})
+		variables = append(variables, model.VariableDeclaration{Name: name, Value: value, Source: "runtime", Editable: true})
 	}
 	return variables, nil
 }

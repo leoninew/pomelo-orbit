@@ -8,6 +8,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	"backend/internal/security"
 )
 
@@ -32,71 +33,71 @@ type CredentialExport struct {
 	Data    string
 }
 
-func (s Service) ListCredentials(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[repository.Credential], error) {
+func (s Service) ListCredentials(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Credential], error) {
 	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
-		return repository.Page[repository.Credential]{}, apperror.New(apperror.KindValidation, "project_id is required")
+		return repository.Page[model.Credential]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return repository.Page[repository.Credential]{}, err
+		return repository.Page[model.Credential]{}, err
 	}
 	items, err := s.store.ListCredentials(ctx, projectId, page, perPage, search)
 	if err != nil {
-		return repository.Page[repository.Credential]{}, apperror.Wrap(apperror.KindInternal, "Failed to list credentials", err)
+		return repository.Page[model.Credential]{}, apperror.Wrap(apperror.KindInternal, "Failed to list credentials", err)
 	}
 	return items, nil
 }
 
-func (s Service) CreateCredential(ctx context.Context, userId string, input CredentialCreateInput) (repository.Credential, error) {
+func (s Service) CreateCredential(ctx context.Context, userId string, input CredentialCreateInput) (model.Credential, error) {
 	projectId, name, credentialType, data, err := normalizeCredentialCreateInput(input)
 	if err != nil {
-		return repository.Credential{}, err
+		return model.Credential{}, err
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return repository.Credential{}, err
+		return model.Credential{}, err
 	}
 	return s.createCredentialRecord(ctx, projectId, name, credentialType, data)
 }
 
-func (s Service) ImportCredential(ctx context.Context, userId string, input CredentialCreateInput) (repository.Credential, error) {
+func (s Service) ImportCredential(ctx context.Context, userId string, input CredentialCreateInput) (model.Credential, error) {
 	return s.CreateCredential(ctx, userId, input)
 }
 
-func (s Service) CredentialForUser(ctx context.Context, userId string, credentialId string) (repository.Credential, error) {
+func (s Service) CredentialForUser(ctx context.Context, userId string, credentialId string) (model.Credential, error) {
 	return s.loadCredentialForUser(ctx, userId, credentialId)
 }
 
-func (s Service) UpdateCredential(ctx context.Context, userId string, credentialId string, input CredentialUpdateInput) (repository.Credential, error) {
+func (s Service) UpdateCredential(ctx context.Context, userId string, credentialId string, input CredentialUpdateInput) (model.Credential, error) {
 	credential, err := s.loadCredentialForUser(ctx, userId, credentialId)
 	if err != nil {
-		return repository.Credential{}, err
+		return model.Credential{}, err
 	}
 	if input.Name != nil {
 		name := strings.TrimSpace(*input.Name)
 		if name == "" {
-			return repository.Credential{}, apperror.New(apperror.KindValidation, "Invalid credential fields")
+			return model.Credential{}, apperror.New(apperror.KindValidation, "Invalid credential fields")
 		}
 		if err := s.ensureCredentialNameAvailable(ctx, credentialProjectId(credential), name, credential.Id); err != nil {
-			return repository.Credential{}, err
+			return model.Credential{}, err
 		}
 		credential.Name = name
 	}
 	if input.Data != nil {
 		if *input.Data == "" {
-			return repository.Credential{}, apperror.New(apperror.KindValidation, "Invalid credential fields")
+			return model.Credential{}, apperror.New(apperror.KindValidation, "Invalid credential fields")
 		}
 		encrypted, err := s.encryptCredentialData(*input.Data)
 		if err != nil {
-			return repository.Credential{}, err
+			return model.Credential{}, err
 		}
 		credential.EncryptedData = encrypted
 	}
 	if err := s.store.UpdateCredential(ctx, credential); err != nil {
-		return repository.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to update credential", err)
+		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to update credential", err)
 	}
 	updated, err := s.store.Credential(ctx, credential.Id)
 	if err != nil {
-		return repository.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
+		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
 	}
 	return updated, nil
 }
@@ -131,37 +132,37 @@ func (s Service) ExportCredential(ctx context.Context, userId string, credential
 	return CredentialExport{Version: CredentialExportVersion, Name: credential.Name, Type: credential.Type, Data: decrypted}, nil
 }
 
-func (s Service) createCredentialRecord(ctx context.Context, projectId string, name string, credentialType string, data string) (repository.Credential, error) {
+func (s Service) createCredentialRecord(ctx context.Context, projectId string, name string, credentialType string, data string) (model.Credential, error) {
 	if err := s.ensureCredentialNameAvailable(ctx, projectId, name, ""); err != nil {
-		return repository.Credential{}, err
+		return model.Credential{}, err
 	}
 	encrypted, err := s.encryptCredentialData(data)
 	if err != nil {
-		return repository.Credential{}, err
+		return model.Credential{}, err
 	}
-	credential := repository.Credential{Id: repository.NewId(), ProjectId: &projectId, Name: name, Type: credentialType, EncryptedData: encrypted}
+	credential := model.Credential{Id: repository.NewId(), ProjectId: &projectId, Name: name, Type: credentialType, EncryptedData: encrypted}
 	if err := s.store.CreateCredential(ctx, credential); err != nil {
-		return repository.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to create credential", err)
+		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to create credential", err)
 	}
 	created, err := s.store.Credential(ctx, credential.Id)
 	if err != nil {
-		return repository.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
+		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
 	}
 	return created, nil
 }
 
-func (s Service) loadCredentialForUser(ctx context.Context, userId string, credentialId string) (repository.Credential, error) {
+func (s Service) loadCredentialForUser(ctx context.Context, userId string, credentialId string) (model.Credential, error) {
 	credentialId = strings.TrimSpace(credentialId)
 	credential, err := s.store.Credential(ctx, credentialId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.Credential{}, apperror.New(apperror.KindNotFound, "Credential "+credentialId+" not found")
+			return model.Credential{}, apperror.New(apperror.KindNotFound, "Credential "+credentialId+" not found")
 		}
-		return repository.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
+		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
 	}
 	if credential.ProjectId != nil {
 		if err := s.ensureProjectMembership(ctx, *credential.ProjectId, userId); err != nil {
-			return repository.Credential{}, err
+			return model.Credential{}, err
 		}
 	}
 	return credential, nil
@@ -202,7 +203,7 @@ func normalizeCredentialCreateInput(input CredentialCreateInput) (string, string
 	return projectId, name, credentialType, input.Data, nil
 }
 
-func credentialProjectId(item repository.Credential) string {
+func credentialProjectId(item model.Credential) string {
 	if item.ProjectId == nil {
 		return ""
 	}

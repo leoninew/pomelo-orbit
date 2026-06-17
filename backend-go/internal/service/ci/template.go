@@ -12,6 +12,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 )
 
 var pipelineTemplateCopyPattern = regexp.MustCompile(` copy( [0-9]+)?$`)
@@ -61,7 +62,7 @@ type PipelineTemplateResolveInput struct {
 }
 
 type PipelineTemplateDetail struct {
-	Template             repository.PipelineTemplate
+	Template             model.PipelineTemplate
 	Orchestration        []StageOrchestration
 	Stages               []BuildStageDetail
 	VariableDeclarations []map[string]any
@@ -109,7 +110,7 @@ func (s Service) CreatePipelineTemplate(ctx context.Context, userId string, inpu
 	if err != nil {
 		return PipelineTemplateDetail{}, err
 	}
-	template := repository.PipelineTemplate{Id: repository.NewId(), ProjectId: &projectId, Name: name, Description: input.Description, VariableDeclarations: variables, Version: 1}
+	template := model.PipelineTemplate{Id: repository.NewId(), ProjectId: &projectId, Name: name, Description: input.Description, VariableDeclarations: variables, Version: 1}
 	if err := s.store.CreatePipelineTemplate(ctx, template); err != nil {
 		return PipelineTemplateDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline template", err)
 	}
@@ -183,8 +184,8 @@ func (s Service) DuplicatePipelineTemplate(ctx context.Context, userId string, t
 	if err != nil {
 		return PipelineTemplateDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template stages", err)
 	}
-	duplicated := repository.PipelineTemplate{Id: repository.NewId(), ProjectId: template.ProjectId, Name: name, Description: template.Description, VariableDeclarations: template.VariableDeclarations, Version: 1}
-	stages := make([]repository.PipelineTemplateStage, 0, len(existingStages))
+	duplicated := model.PipelineTemplate{Id: repository.NewId(), ProjectId: template.ProjectId, Name: name, Description: template.Description, VariableDeclarations: template.VariableDeclarations, Version: 1}
+	stages := make([]model.PipelineTemplateStage, 0, len(existingStages))
 	for _, stage := range existingStages {
 		stage.Id = repository.NewId()
 		stage.TemplateId = duplicated.Id
@@ -215,22 +216,22 @@ func (s Service) ResolvePipelineTemplateVariables(ctx context.Context, userId st
 	return resolveTemplateVariables(stages, sanitizePipelineTemplateVariables(input.VariableDeclarations)), nil
 }
 
-func (s Service) loadPipelineTemplateForUser(ctx context.Context, userId string, templateId string) (repository.PipelineTemplate, error) {
+func (s Service) loadPipelineTemplateForUser(ctx context.Context, userId string, templateId string) (model.PipelineTemplate, error) {
 	templateId = strings.TrimSpace(templateId)
 	template, err := s.store.PipelineTemplate(ctx, templateId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.PipelineTemplate{}, apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
+			return model.PipelineTemplate{}, apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
 		}
-		return repository.PipelineTemplate{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
+		return model.PipelineTemplate{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
 	}
 	if err := s.ensureProjectMembership(ctx, pipelineTemplateProjectId(template), userId); err != nil {
-		return repository.PipelineTemplate{}, err
+		return model.PipelineTemplate{}, err
 	}
 	return template, nil
 }
 
-func (s Service) pipelineTemplateDetail(ctx context.Context, template repository.PipelineTemplate) (PipelineTemplateDetail, error) {
+func (s Service) pipelineTemplateDetail(ctx context.Context, template model.PipelineTemplate) (PipelineTemplateDetail, error) {
 	orchestration, err := s.pipelineTemplateOrchestration(ctx, template.Id)
 	if err != nil {
 		return PipelineTemplateDetail{}, err
@@ -271,7 +272,7 @@ func (s Service) pipelineTemplateStagesResponse(ctx context.Context, projectId s
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load build stages", err)
 	}
-	stageMap := make(map[string]repository.BuildStage, len(stages))
+	stageMap := make(map[string]model.BuildStage, len(stages))
 	for _, stage := range stages {
 		stageMap[stage.Id] = stage
 	}
@@ -317,11 +318,11 @@ func (s Service) nextPipelineTemplateCopyName(ctx context.Context, projectId str
 	}
 }
 
-func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template *repository.PipelineTemplate, req map[string]json.RawMessage) ([]repository.PipelineTemplateStage, bool, error) {
+func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template *model.PipelineTemplate, req map[string]json.RawMessage) ([]model.PipelineTemplateStage, bool, error) {
 	projectId := pipelineTemplateProjectId(*template)
 	versionChanged := false
 	orchestrationProvided := false
-	stages := []repository.PipelineTemplateStage(nil)
+	stages := []model.PipelineTemplateStage(nil)
 	if raw, exists := req["name"]; exists {
 		value, err := decodeRequiredString(raw, "Invalid pipeline template fields")
 		if err != nil {
@@ -383,7 +384,7 @@ func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template 
 	return stages, orchestrationProvided, nil
 }
 
-func (s Service) loadBuildStagesForOrchestration(ctx context.Context, projectId string, orchestration []StageOrchestration) ([]repository.BuildStage, error) {
+func (s Service) loadBuildStagesForOrchestration(ctx context.Context, projectId string, orchestration []StageOrchestration) ([]model.BuildStage, error) {
 	stageIds := make([]string, 0, len(orchestration))
 	seen := map[string]struct{}{}
 	for _, item := range orchestration {
@@ -416,12 +417,12 @@ func (s Service) loadBuildStagesForOrchestration(ctx context.Context, projectId 
 	return stages, nil
 }
 
-func pipelineTemplateStageRows(templateId string, orchestration []StageOrchestration, stages []repository.BuildStage) ([]repository.PipelineTemplateStage, error) {
-	stageMap := make(map[string]repository.BuildStage, len(stages))
+func pipelineTemplateStageRows(templateId string, orchestration []StageOrchestration, stages []model.BuildStage) ([]model.PipelineTemplateStage, error) {
+	stageMap := make(map[string]model.BuildStage, len(stages))
 	for _, stage := range stages {
 		stageMap[stage.Id] = stage
 	}
-	rows := make([]repository.PipelineTemplateStage, 0, len(orchestration))
+	rows := make([]model.PipelineTemplateStage, 0, len(orchestration))
 	for _, item := range orchestration {
 		stageId := strings.TrimSpace(item.StageId)
 		dependsOn, err := marshalPipelineTemplateDependsOn(item.DependsOn)
@@ -429,19 +430,19 @@ func pipelineTemplateStageRows(templateId string, orchestration []StageOrchestra
 			return nil, err
 		}
 		stage := stageMap[stageId]
-		rows = append(rows, repository.PipelineTemplateStage{Id: repository.NewId(), TemplateId: templateId, StageId: stage.Id, StageName: stage.Name, StageVersion: stage.Version, DependsOn: dependsOn, SortOrder: item.SortOrder})
+		rows = append(rows, model.PipelineTemplateStage{Id: repository.NewId(), TemplateId: templateId, StageId: stage.Id, StageName: stage.Name, StageVersion: stage.Version, DependsOn: dependsOn, SortOrder: item.SortOrder})
 	}
 	return rows, nil
 }
 
-func pipelineTemplateProjectId(template repository.PipelineTemplate) string {
+func pipelineTemplateProjectId(template model.PipelineTemplate) string {
 	if template.ProjectId == nil {
 		return ""
 	}
 	return *template.ProjectId
 }
 
-func buildStageDetail(stage repository.BuildStage) BuildStageDetail {
+func buildStageDetail(stage model.BuildStage) BuildStageDetail {
 	artifacts := []ArtifactConfig(nil)
 	if stage.Artifacts != nil && strings.TrimSpace(*stage.Artifacts) != "" {
 		_ = json.Unmarshal([]byte(*stage.Artifacts), &artifacts)
@@ -543,16 +544,16 @@ func sanitizePipelineTemplateVariables(variables []map[string]any) []map[string]
 }
 
 func resolveTemplateVariablesFromResponses(stages []BuildStageDetail, custom []map[string]any) []map[string]any {
-	converted := make([]repository.BuildStage, 0, len(stages))
+	converted := make([]model.BuildStage, 0, len(stages))
 	for _, stage := range stages {
 		artifacts, _ := json.Marshal(stage.Artifacts)
 		artifactString := string(artifacts)
-		converted = append(converted, repository.BuildStage{Name: stage.Name, Script: stage.Script, Artifacts: &artifactString})
+		converted = append(converted, model.BuildStage{Name: stage.Name, Script: stage.Script, Artifacts: &artifactString})
 	}
 	return resolveTemplateVariables(converted, custom)
 }
 
-func resolveTemplateVariables(stages []repository.BuildStage, custom []map[string]any) []map[string]any {
+func resolveTemplateVariables(stages []model.BuildStage, custom []map[string]any) []map[string]any {
 	extracted := map[string]any{}
 	for _, stage := range stages {
 		extractTemplateVariables(stage.Script, extracted)

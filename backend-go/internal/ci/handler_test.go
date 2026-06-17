@@ -9,11 +9,12 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	taskrepo "backend/internal/repository/task"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {
-	handler := Handler{store: repository.Store{}, cfg: config.Config{}, logger: slog.Default()}
+	handler := Handler{store: &fakeStore{}, cfg: config.Config{}, logger: slog.Default()}
 	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
 	if err == nil || !strings.Contains(err.Error(), "parse ci task payload") {
 		t.Fatalf("expected parse error, got %v", err)
@@ -22,9 +23,9 @@ func TestHandleRejectsInvalidPayload(t *testing.T) {
 
 func TestHandleMarksRunFaultedWhenStageFails(t *testing.T) {
 	store := &fakeStore{
-		run:  repository.PipelineRun{Id: "run-1", RepositoryId: "repo-1", SnapshotId: "snapshot-1", VariablesSnapshot: `{}`},
-		repo: repository.Repository{Id: "repo-1", Code: "repo"},
-		snapshot: repository.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[
+		run:  model.PipelineRun{Id: "run-1", RepositoryId: "repo-1", SnapshotId: "snapshot-1", VariablesSnapshot: `{}`},
+		repo: model.Repository{Id: "repo-1", Code: "repo"},
+		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[
 			{"id":"stage-1","name":"build","image":"alpine","script":"exit 1"},
 			{"id":"stage-2","name":"deploy","image":"alpine","depends_on":["stage-1"],"script":"echo deploy"}
 		]`},
@@ -53,7 +54,7 @@ func TestHandleMarksRunFaultedWhenStageFails(t *testing.T) {
 }
 
 func TestHandleRequiresPipelineRunId(t *testing.T) {
-	handler := Handler{store: repository.Store{}, cfg: config.Config{}, logger: slog.Default()}
+	handler := Handler{store: &fakeStore{}, cfg: config.Config{}, logger: slog.Default()}
 	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
 	if err == nil || !strings.Contains(err.Error(), "pipeline_run_id is required") {
 		t.Fatalf("expected required field error, got %v", err)
@@ -62,7 +63,7 @@ func TestHandleRequiresPipelineRunId(t *testing.T) {
 
 func TestHandleExecutesPipelineRun(t *testing.T) {
 	store := &fakeStore{
-		run: repository.PipelineRun{
+		run: model.PipelineRun{
 			Id:                "run-1",
 			RepositoryId:      "repo-1",
 			RepositoryName:    "repo",
@@ -71,8 +72,8 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 			TemplateName:      "template",
 			VariablesSnapshot: `{}`,
 		},
-		repo:     repository.Repository{Id: "repo-1", Code: "repo"},
-		snapshot: repository.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
+		repo:     model.Repository{Id: "repo-1", Code: "repo"},
+		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
 	}
 	handler := Handler{
 		store:  store,
@@ -101,23 +102,23 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 
 type fakeStore struct {
 	mu         sync.Mutex
-	run        repository.PipelineRun
-	repo       repository.Repository
-	snapshot   repository.PipelineSnapshot
-	stageRuns  []repository.StageRun
+	run        model.PipelineRun
+	repo       model.Repository
+	snapshot   model.PipelineSnapshot
+	stageRuns  []model.StageRun
 	runStarted bool
 	runStatus  string
 }
 
-func (s *fakeStore) PipelineRun(ctx context.Context, id string) (repository.PipelineRun, error) {
+func (s *fakeStore) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
 	return s.run, nil
 }
 
-func (s *fakeStore) Repository(ctx context.Context, id string) (repository.Repository, error) {
+func (s *fakeStore) Repository(ctx context.Context, id string) (model.Repository, error) {
 	return s.repo, nil
 }
 
-func (s *fakeStore) PipelineSnapshot(ctx context.Context, id string) (repository.PipelineSnapshot, error) {
+func (s *fakeStore) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
 	return s.snapshot, nil
 }
 
@@ -135,14 +136,14 @@ func (s *fakeStore) CompletePipelineRun(ctx context.Context, id string, status s
 	return nil
 }
 
-func (s *fakeStore) InsertStageRun(ctx context.Context, stage repository.StageRun) error {
+func (s *fakeStore) InsertStageRun(ctx context.Context, stage model.StageRun) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stageRuns = append(s.stageRuns, stage)
 	return nil
 }
 
-func (s *fakeStore) UpdateStageRun(ctx context.Context, stage repository.StageRun) error {
+func (s *fakeStore) UpdateStageRun(ctx context.Context, stage model.StageRun) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.stageRuns {
@@ -155,7 +156,7 @@ func (s *fakeStore) UpdateStageRun(ctx context.Context, stage repository.StageRu
 	return nil
 }
 
-func (s *fakeStore) InsertArtifact(ctx context.Context, projectId *string, run repository.PipelineRun, stageName string, artifact repository.ArtifactConfig, path string) error {
+func (s *fakeStore) InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error {
 	return nil
 }
 

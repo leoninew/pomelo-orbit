@@ -11,6 +11,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 )
 
 var buildStageCopyPattern = regexp.MustCompile(` copy( [0-9]+)?$`)
@@ -69,7 +70,7 @@ func (s Service) CreateBuildStage(ctx context.Context, userId string, input Buil
 	if err != nil {
 		return BuildStageDetail{}, err
 	}
-	stage := repository.BuildStage{Id: repository.NewId(), ProjectId: &projectId, Name: name, Image: image, Script: script, Artifacts: artifacts, Description: input.Description, Version: 1}
+	stage := model.BuildStage{Id: repository.NewId(), ProjectId: &projectId, Name: name, Image: image, Script: script, Artifacts: artifacts, Description: input.Description, Version: 1}
 	if err := s.store.CreateBuildStage(ctx, stage); err != nil {
 		return BuildStageDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create build stage", err)
 	}
@@ -135,7 +136,7 @@ func (s Service) DuplicateBuildStage(ctx context.Context, userId string, stageId
 	if err != nil {
 		return BuildStageDetail{}, err
 	}
-	duplicated := repository.BuildStage{Id: repository.NewId(), ProjectId: stage.ProjectId, Name: name, Image: stage.Image, Script: stage.Script, Artifacts: stage.Artifacts, Description: stage.Description, Version: 1}
+	duplicated := model.BuildStage{Id: repository.NewId(), ProjectId: stage.ProjectId, Name: name, Image: stage.Image, Script: stage.Script, Artifacts: stage.Artifacts, Description: stage.Description, Version: 1}
 	if err := s.store.CreateBuildStage(ctx, duplicated); err != nil {
 		return BuildStageDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to duplicate build stage", err)
 	}
@@ -146,17 +147,17 @@ func (s Service) DuplicateBuildStage(ctx context.Context, userId string, stageId
 	return buildStageDetail(created), nil
 }
 
-func (s Service) loadBuildStageForUser(ctx context.Context, userId string, stageId string) (repository.BuildStage, error) {
+func (s Service) loadBuildStageForUser(ctx context.Context, userId string, stageId string) (model.BuildStage, error) {
 	stageId = strings.TrimSpace(stageId)
 	stage, err := s.store.BuildStage(ctx, stageId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.BuildStage{}, apperror.New(apperror.KindNotFound, "Stage "+stageId+" not found")
+			return model.BuildStage{}, apperror.New(apperror.KindNotFound, "Stage "+stageId+" not found")
 		}
-		return repository.BuildStage{}, apperror.Wrap(apperror.KindInternal, "Failed to load build stage", err)
+		return model.BuildStage{}, apperror.Wrap(apperror.KindInternal, "Failed to load build stage", err)
 	}
 	if err := s.ensureProjectMembership(ctx, buildStageProjectId(stage), userId); err != nil {
-		return repository.BuildStage{}, err
+		return model.BuildStage{}, err
 	}
 	return stage, nil
 }
@@ -192,7 +193,7 @@ func (s Service) nextBuildStageCopyName(ctx context.Context, projectId string, n
 	}
 }
 
-func (s Service) applyBuildStageUpdateInput(ctx context.Context, stage *repository.BuildStage, req map[string]json.RawMessage) error {
+func (s Service) applyBuildStageUpdateInput(ctx context.Context, stage *model.BuildStage, req map[string]json.RawMessage) error {
 	projectId := buildStageProjectId(*stage)
 	versionChanged := false
 	if raw, exists := req["name"]; exists {
@@ -292,7 +293,7 @@ func validateBuildStageArtifacts(artifacts []ArtifactConfig) error {
 	return nil
 }
 
-func buildStageProjectId(stage repository.BuildStage) string {
+func buildStageProjectId(stage model.BuildStage) string {
 	if stage.ProjectId == nil {
 		return ""
 	}

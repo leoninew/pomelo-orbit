@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cisvc "backend/internal/service/ci"
 	transportresponse "backend/internal/transport/http/response"
 )
@@ -18,24 +18,24 @@ type PipelineRunTriggerReq struct {
 }
 
 type PipelineRunResp struct {
-	Id                string                           `json:"id"`
-	ProjectId         *string                          `json:"project_id,omitempty"`
-	RepositoryId      string                           `json:"repository_id"`
-	RepositoryName    string                           `json:"repository_name"`
-	SnapshotId        string                           `json:"snapshot_id"`
-	TemplateId        string                           `json:"template_id"`
-	TemplateName      string                           `json:"template_name"`
-	TemplateVersion   int                              `json:"template_version"`
-	Trigger           string                           `json:"trigger"`
-	TriggerRef        string                           `json:"trigger_ref"`
-	VariablesSnapshot []repository.VariableDeclaration `json:"variables_snapshot"`
-	Status            string                           `json:"status"`
-	RetryOf           *string                          `json:"retry_of"`
-	StartedAt         *string                          `json:"started_at"`
-	FinishedAt        *string                          `json:"finished_at"`
-	ErrorMessage      *string                          `json:"error_message"`
-	CreatedAt         string                           `json:"created_at"`
-	StageRuns         []StageRunResp                   `json:"stage_runs"`
+	Id                string                      `json:"id"`
+	ProjectId         *string                     `json:"project_id,omitempty"`
+	RepositoryId      string                      `json:"repository_id"`
+	RepositoryName    string                      `json:"repository_name"`
+	SnapshotId        string                      `json:"snapshot_id"`
+	TemplateId        string                      `json:"template_id"`
+	TemplateName      string                      `json:"template_name"`
+	TemplateVersion   int                         `json:"template_version"`
+	Trigger           string                      `json:"trigger"`
+	TriggerRef        string                      `json:"trigger_ref"`
+	VariablesSnapshot []model.VariableDeclaration `json:"variables_snapshot"`
+	Status            string                      `json:"status"`
+	RetryOf           *string                     `json:"retry_of"`
+	StartedAt         *string                     `json:"started_at"`
+	FinishedAt        *string                     `json:"finished_at"`
+	ErrorMessage      *string                     `json:"error_message"`
+	CreatedAt         string                      `json:"created_at"`
+	StageRuns         []StageRunResp              `json:"stage_runs"`
 }
 
 type StageRunResp struct {
@@ -197,7 +197,7 @@ func pipelineRunResponse(detail cisvc.PipelineRunDetail) PipelineRunResp {
 	return PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: detail.VariablesSnapshot, Status: item.Status, RetryOf: item.RetryOf, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), StageRuns: stageRunsResponse(detail.StageRuns)}
 }
 
-func stageRunsResponse(items []repository.StageRun) []StageRunResp {
+func stageRunsResponse(items []model.StageRun) []StageRunResp {
 	resp := make([]StageRunResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, stageRunResponse(item))
@@ -205,10 +205,10 @@ func stageRunsResponse(items []repository.StageRun) []StageRunResp {
 	return resp
 }
 
-func stageRunResponse(item repository.StageRun) StageRunResp {
+func stageRunResponse(item model.StageRun) StageRunResp {
 	return StageRunResp{Id: item.Id, PipelineRunId: item.PipelineRunId, StageId: item.StageId, StageName: item.StageName, Status: item.Status, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ExitCode: item.ExitCode, ErrorMessage: item.ErrorMessage}
 }
 
-func artifactResponse(item repository.Artifact) ArtifactResp {
+func artifactResponse(item model.Artifact) ArtifactResp {
 	return ArtifactResp{Id: item.Id, PipelineRunId: item.PipelineRunId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, TemplateId: item.TemplateId, TemplateName: item.TemplateName, StageName: item.StageName, Type: item.Type, Name: item.Name, Path: item.Path, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
 }

@@ -531,28 +531,6 @@ func (s Server) loadApplicationForCurrentUser(w http.ResponseWriter, r *http.Req
 	return app, true
 }
 
-func (s Server) loadRepositoryForCurrentUser(w http.ResponseWriter, r *http.Request) (repository.Repository, bool) {
-	current, ok := s.currentUser(w, r)
-	if !ok {
-		return repository.Repository{}, false
-	}
-	repositoryId := urlParam(r, "repository_id")
-	repo, err := s.store.Repository(r.Context(), repositoryId)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Repository " + repositoryId + " not found"})
-			return repository.Repository{}, false
-		}
-		s.logger.Error("load repository failed", "repository_id", repositoryId, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load repository"})
-		return repository.Repository{}, false
-	}
-	if repo.ProjectId != nil && !s.ensureProjectMembership(w, r, *repo.ProjectId, current.Id) {
-		return repository.Repository{}, false
-	}
-	return repo, true
-}
-
 func (s Server) ensureProjectMembership(w http.ResponseWriter, r *http.Request, projectId string, userId string) bool {
 	if _, err := s.store.Project(r.Context(), projectId); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

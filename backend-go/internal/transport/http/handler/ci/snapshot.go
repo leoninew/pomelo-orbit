@@ -5,18 +5,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cisvc "backend/internal/service/ci"
 	transportresponse "backend/internal/transport/http/response"
 )
 
 type PipelineSnapshotResp struct {
-	Id                string                           `json:"id"`
-	TemplateId        string                           `json:"template_id"`
-	Version           int                              `json:"version"`
-	StagesSnapshot    []repository.StageDefinition     `json:"stages_snapshot"`
-	VariablesSnapshot []repository.VariableDeclaration `json:"variables_snapshot"`
-	CreatedAt         string                           `json:"created_at"`
+	Id                string                      `json:"id"`
+	TemplateId        string                      `json:"template_id"`
+	Version           int                         `json:"version"`
+	StagesSnapshot    []model.StageDefinition     `json:"stages_snapshot"`
+	VariablesSnapshot []model.VariableDeclaration `json:"variables_snapshot"`
+	CreatedAt         string                      `json:"created_at"`
 }
 
 func (h Handler) RegisterSnapshotRoutes(r router) {

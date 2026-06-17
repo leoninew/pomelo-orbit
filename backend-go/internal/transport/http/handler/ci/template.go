@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository"
 	cisvc "backend/internal/service/ci"
 	transportresponse "backend/internal/transport/http/response"
 )
@@ -201,23 +200,18 @@ func serviceOrchestration(items []StageOrchestrationResp) []cisvc.StageOrchestra
 func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []BuildStageResp {
 	resp := make([]BuildStageResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, BuildStageResp{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: artifactConfigsResponse(item.Artifacts), Description: item.Description, Version: item.Version, CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt})
+		resp = append(resp, buildStageDetailResponse(item))
 	}
 	return resp
 }
 
 func artifactConfigsResponse(items []cisvc.ArtifactConfig) []ArtifactConfigResp {
+	if items == nil {
+		return nil
+	}
 	resp := make([]ArtifactConfigResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
 	}
 	return resp
-}
-
-func buildStageResponse(stage repository.BuildStage) BuildStageResp {
-	artifacts := []ArtifactConfigResp(nil)
-	if stage.Artifacts != nil {
-		_ = json.Unmarshal([]byte(*stage.Artifacts), &artifacts)
-	}
-	return BuildStageResp{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, Description: stage.Description, Version: stage.Version, CreatedAt: transportresponse.FormatTime(stage.CreatedAt), UpdatedAt: transportresponse.FormatTime(stage.UpdatedAt)}
 }

@@ -1,4 +1,5 @@
 # backend-go 主流模板架构改进计划
+最后修改时间: 2026-06-17 13:31:17
 
 Review status: Accepted
 
@@ -108,7 +109,7 @@ Review status: Accepted
 - [x] 将 repository API 迁移到 `transport/http/handler/ci` + `service/ci`。
 - [x] 将 webhook API 迁移到 `handler/ci` + `service/ci`。
 - [x] 将 pipeline template API 迁移到 `handler/ci` + `service/ci`。
-- [ ] 将 build stage API 迁移到 `handler/ci` + `service/ci`。
+- [x] 将 build stage API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 pipeline run API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 snapshot API 迁移到 `handler/ci` + `service/ci`。
 - [ ] 将 artifact API 迁移到 `handler/ci` + `service/ci`。

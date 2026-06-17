@@ -41,7 +41,14 @@ type RepositoryStore interface {
 	ListPipelineTemplates(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.PipelineTemplate], error)
 	PipelineTemplateByName(ctx context.Context, projectId string, name string) (repository.PipelineTemplate, error)
 	PipelineTemplateStages(ctx context.Context, templateId string) ([]repository.PipelineTemplateStage, error)
+	ListBuildStages(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.BuildStage], error)
+	BuildStage(ctx context.Context, id string) (repository.BuildStage, error)
+	BuildStageByName(ctx context.Context, projectId string, name string) (repository.BuildStage, error)
 	BuildStagesByIds(ctx context.Context, projectId string, ids []string) ([]repository.BuildStage, error)
+	CreateBuildStage(ctx context.Context, stage repository.BuildStage) error
+	UpdateBuildStage(ctx context.Context, stage repository.BuildStage) error
+	DeleteBuildStage(ctx context.Context, id string) error
+	BuildStageReferencedByTemplates(ctx context.Context, projectId string, stageId string) (bool, error)
 	CreatePipelineTemplate(ctx context.Context, template repository.PipelineTemplate) error
 	UpdatePipelineTemplate(ctx context.Context, template repository.PipelineTemplate) error
 	UpdatePipelineTemplateWithStages(ctx context.Context, template repository.PipelineTemplate, stages []repository.PipelineTemplateStage) error

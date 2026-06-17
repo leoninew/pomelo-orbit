@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	cihandler "backend/internal/transport/http/handler/ci"
 )
 
 func TestBuildStageRoutes(t *testing.T) {
@@ -19,7 +21,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected build stage create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created buildStageResp
+	var created cihandler.BuildStageResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +34,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var stages paginatedResp[buildStageResp]
+	var stages paginatedResp[cihandler.BuildStageResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&stages); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +53,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated buildStageResp
+	var updated cihandler.BuildStageResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +66,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if duplicateRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected build stage duplicate status 201, got %d: %s", duplicateRecorder.Code, duplicateRecorder.Body.String())
 	}
-	var duplicated buildStageResp
+	var duplicated cihandler.BuildStageResp
 	if err := json.NewDecoder(duplicateRecorder.Body).Decode(&duplicated); err != nil {
 		t.Fatal(err)
 	}

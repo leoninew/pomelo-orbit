@@ -66,6 +66,7 @@ type RepositoryStore interface {
 	DeletePipelineTemplate(ctx context.Context, id string) error
 	LatestPipelineSnapshot(ctx context.Context, templateId string) (model.PipelineSnapshot, error)
 	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
+	CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error
 	ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, templateId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[model.PipelineRun], error)
 	ListPipelineRunsByRepository(ctx context.Context, repositoryId string, page int, perPage int) (repository.Page[model.PipelineRun], error)
 	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
@@ -450,12 +451,9 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input WebhookRece
 		}
 		return WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
 	}
-	snapshot, err := s.store.LatestPipelineSnapshot(ctx, webhook.TemplateId)
+	snapshot, err := s.getOrCreatePipelineSnapshot(ctx, template)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return WebhookReceiveResult{}, apperror.New(apperror.KindNotFound, "Pipeline snapshot for template "+webhook.TemplateId+" not found")
-		}
-		return WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
+		return WebhookReceiveResult{}, err
 	}
 	variables := map[string]string{"commit_sha": commitSha, "author": author, "event_type": "push"}
 	triggerRef := branch

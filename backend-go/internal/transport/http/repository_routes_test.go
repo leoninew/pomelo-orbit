@@ -143,13 +143,10 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	}
 }
 
-func TestRepositoryTriggerRoute(t *testing.T) {
+func TestRepositoryTriggerRouteCreatesSnapshotWhenMissing(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
 	token := testToken(t, server)
-	if _, err := database.Exec(`INSERT INTO pipeline_snapshot (id, project_id, template_id, version, stages_snapshot, variables_snapshot) VALUES ('snapshot-test-1', '01KRRKK0K3T519ZQZES3M4QA9Z', '01KNVEJPWVK757139NMNNNCEFE', 8, '[]', '[]')`); err != nil {
-		t.Fatal(err)
-	}
 
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/repository/01KNNRBH52BQJYT9487B2H8N62/trigger", bytes.NewBufferString(`{"template_id":"01KNVEJPWVK757139NMNNNCEFE","trigger_ref":"main","variables":{"FOO":"bar"}}`), token))
@@ -162,6 +159,74 @@ func TestRepositoryTriggerRoute(t *testing.T) {
 	}
 	if run.Id == "" || run.RepositoryId != "01KNNRBH52BQJYT9487B2H8N62" || run.Status != "waiting_to_run" {
 		t.Fatalf("unexpected triggered run: %+v", run)
+	}
+	if run.SnapshotId == "" || run.TemplateVersion != 7 {
+		t.Fatalf("expected created snapshot on run, got snapshot=%q version=%d", run.SnapshotId, run.TemplateVersion)
+	}
+	var count int
+	if err := database.Get(&count, `SELECT COUNT(*) FROM pipeline_snapshot WHERE template_id = '01KNVEJPWVK757139NMNNNCEFE' AND version = 7`); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one created snapshot, got %d", count)
+	}
+}
+
+func TestRepositoryTriggerRouteReusesSameVersionSnapshot(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+	token := testToken(t, server)
+	if _, err := database.Exec(`INSERT INTO pipeline_snapshot (id, project_id, template_id, version, stages_snapshot, variables_snapshot) VALUES ('snapshot-test-1', '01KRRKK0K3T519ZQZES3M4QA9Z', '01KNVEJPWVK757139NMNNNCEFE', 7, '[]', '[]')`); err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/repository/01KNNRBH52BQJYT9487B2H8N62/trigger", bytes.NewBufferString(`{"template_id":"01KNVEJPWVK757139NMNNNCEFE","trigger_ref":"main","variables":{}}`), token))
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var run cihandler.PipelineRunResp
+	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
+		t.Fatal(err)
+	}
+	if run.SnapshotId != "snapshot-test-1" {
+		t.Fatalf("expected existing snapshot to be reused, got %q", run.SnapshotId)
+	}
+	var count int
+	if err := database.Get(&count, `SELECT COUNT(*) FROM pipeline_snapshot WHERE template_id = '01KNVEJPWVK757139NMNNNCEFE' AND version = 7`); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Fatalf("expected existing snapshot only, got %d", count)
+	}
+}
+
+func TestRepositoryTriggerRouteCreatesNewSnapshotForTemplateVersion(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+	token := testToken(t, server)
+	if _, err := database.Exec(`INSERT INTO pipeline_snapshot (id, project_id, template_id, version, stages_snapshot, variables_snapshot) VALUES ('snapshot-test-old', '01KRRKK0K3T519ZQZES3M4QA9Z', '01KNVEJPWVK757139NMNNNCEFE', 6, '[]', '[]')`); err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/repository/01KNNRBH52BQJYT9487B2H8N62/trigger", bytes.NewBufferString(`{"template_id":"01KNVEJPWVK757139NMNNNCEFE","trigger_ref":"main","variables":{}}`), token))
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var run cihandler.PipelineRunResp
+	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
+		t.Fatal(err)
+	}
+	if run.SnapshotId == "snapshot-test-old" || run.TemplateVersion != 7 {
+		t.Fatalf("expected new current-version snapshot, got snapshot=%q version=%d", run.SnapshotId, run.TemplateVersion)
+	}
+	var count int
+	if err := database.Get(&count, `SELECT COUNT(*) FROM pipeline_snapshot WHERE template_id = '01KNVEJPWVK757139NMNNNCEFE'`); err != nil {
+		t.Fatal(err)
+	}
+	if count != 2 {
+		t.Fatalf("expected old and new snapshots, got %d", count)
 	}
 }
 

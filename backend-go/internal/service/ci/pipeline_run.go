@@ -74,12 +74,9 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input Pip
 		}
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
 	}
-	snapshot, err := s.store.LatestPipelineSnapshot(ctx, templateId)
+	snapshot, err := s.getOrCreatePipelineSnapshot(ctx, template)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Pipeline snapshot for template "+templateId+" not found")
-		}
-		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
+		return PipelineRunDetail{}, err
 	}
 	triggerRef := strings.TrimSpace(input.TriggerRef)
 	if triggerRef == "" {

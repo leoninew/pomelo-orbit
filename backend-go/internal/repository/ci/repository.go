@@ -562,6 +562,15 @@ func (r Repository) LatestPipelineSnapshot(ctx context.Context, templateId strin
 	return snapshot, nil
 }
 
+func (r Repository) CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO pipeline_snapshot (id, project_id, template_id, version, stages_snapshot, variables_snapshot, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, %s)`, db.NowExpr(r.driver)), snapshot.Id, snapshot.ProjectId, snapshot.TemplateId, snapshot.Version, snapshot.StagesSnapshot, snapshot.VariablesSnapshot)
+	if err != nil {
+		return fmt.Errorf("create pipeline snapshot %s: %w", snapshot.Id, err)
+	}
+	return nil
+}
+
 func (r Repository) ListStageRuns(ctx context.Context, runId string) ([]model.StageRun, error) {
 	var items []model.StageRun
 	err := r.db.SelectContext(ctx, &items, `SELECT id, pipeline_run_id, stage_id, stage_name, status, started_at, finished_at, exit_code, error_message FROM stage_run WHERE pipeline_run_id = ? ORDER BY rowid`, runId)

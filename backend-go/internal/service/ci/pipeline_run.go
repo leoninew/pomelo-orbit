@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -167,7 +166,7 @@ func (s Service) PipelineStageLog(ctx context.Context, userId string, runId stri
 	if stageRun.PipelineRunId != run.Id {
 		return PipelineStageLog{Offset: offset, IsComplete: true}, nil
 	}
-	logPath := filepath.Join(s.dataRoot, "ci", "runs", run.Id, "stages", stageRun.Id+".log")
+	logPath := s.workspace.StageLogPath(run.Id, stageRun.Id)
 	file, err := os.Open(logPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

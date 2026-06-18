@@ -98,7 +98,7 @@ type Service struct {
 	store          RepositoryStore
 	executionStore PipelineExecutionStore
 	tasks          TaskService
-	dataRoot       string
+	workspace      *CIWorkspace
 	secretKey      string
 	logger         *slog.Logger
 	runner         ContainerRunner
@@ -165,11 +165,13 @@ func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, se
 	if !ok {
 		panic("ci service store must implement PipelineExecutionStore")
 	}
-	return Service{store: store, executionStore: executionStore, tasks: tasks, dataRoot: dataRoot, secretKey: secretKey, logger: logger, runner: runner}
+	workspace := NewCIWorkspace(dataRoot)
+	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner}
 }
 
 func NewExecutionService(store PipelineExecutionStore, dataRoot string, logger *slog.Logger, runner ContainerRunner) Service {
-	return Service{executionStore: store, dataRoot: dataRoot, logger: logger, runner: runner}
+	workspace := NewCIWorkspace(dataRoot)
+	return Service{executionStore: store, workspace: workspace, logger: logger, runner: runner}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {

@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"backend/internal/repository/model"
@@ -50,14 +48,14 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input ExecutePipelineRu
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 
-	if err := createWorkspace(s.dataRoot, repo.Code, run.Id); err != nil {
+	if err := s.workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
 		return err
 	}
 	if err := s.executionStore.MarkPipelineRunRunning(ctx, run.Id); err != nil {
 		return err
 	}
 
-	stageExecutor := Executor{store: s.executionStore, dataRoot: s.dataRoot, logger: s.logger, runner: s.runner}
+	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logger: s.logger, runner: s.runner}
 	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {
@@ -137,19 +135,6 @@ func pipelineRunRuntimeOverrides(value string) map[string]string {
 		}
 	}
 	return overrides
-}
-
-func createWorkspace(dataRoot string, projectCode string, runId string) error {
-	paths := []string{
-		filepath.Join(dataRoot, "ci", projectCode, "workspace"),
-		filepath.Join(dataRoot, "ci", "runs", runId, "artifacts"),
-	}
-	for _, path := range paths {
-		if err := os.MkdirAll(path, 0o755); err != nil {
-			return fmt.Errorf("create workspace path %s: %w", path, err)
-		}
-	}
-	return nil
 }
 
 func envMap(variables map[string]any) []string {

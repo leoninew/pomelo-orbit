@@ -3,6 +3,7 @@ package cisvc
 import (
 	"context"
 	"log/slog"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -98,6 +99,14 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 	if runner.script != "cd . && echo repo" {
 		t.Fatalf("unexpected script: %s", runner.script)
 	}
+	if len(runner.volumes) != 2 {
+		t.Fatalf("expected workspace and artifacts mounts, got %+v", runner.volumes)
+	}
+	for _, volume := range runner.volumes {
+		if !filepath.IsAbs(volume.HostPath) {
+			t.Fatalf("expected physical absolute host path, got %q", volume.HostPath)
+		}
+	}
 }
 
 type fakeExecutionStore struct {
@@ -184,10 +193,12 @@ func (failingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, st
 }
 
 type recordingContainerRunner struct {
-	script string
+	script  string
+	volumes []VolumeMount
 }
 
 func (r *recordingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
 	r.script = opts.Script
+	r.volumes = opts.Volumes
 	return 0, "ok", nil
 }

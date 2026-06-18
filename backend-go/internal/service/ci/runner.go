@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -29,16 +30,10 @@ type ContainerRunner interface {
 type DockerRunner struct{}
 
 func (DockerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
-	args := []string{"run", "--rm", "-w", "/workspace", "--entrypoint", "sh"}
-	for _, env := range opts.Environment {
-		args = append(args, "-e", env)
+	args, err := dockerRunArgs(opts)
+	if err != nil {
+		return 1, "", err
 	}
-	for _, volume := range opts.Volumes {
-		args = append(args, "-v", fmt.Sprintf("%s:%s:%s", volume.HostPath, volume.ContainerPath, volume.Mode))
-	}
-	args = append(args, "-v", "/var/run/docker.sock:/var/run/docker.sock:rw")
-	args = append(args, opts.Image, "-x", "-c", opts.Script)
-
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	output, err := cmd.CombinedOutput()
 	if opts.LogFile != nil {
@@ -51,6 +46,40 @@ func (DockerRunner) Run(ctx context.Context, opts RunOptions) (int, string, erro
 		return exitErr.ExitCode(), string(output), nil
 	}
 	return 1, string(output), fmt.Errorf("run container: %w", err)
+}
+
+func dockerRunArgs(opts RunOptions) ([]string, error) {
+	args := []string{"run", "--rm", "-w", "/workspace", "--entrypoint", "sh"}
+	for _, env := range opts.Environment {
+		args = append(args, "-e", env)
+	}
+	for _, volume := range opts.Volumes {
+		mount, err := dockerBindMountArg(volume)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, "--mount", mount)
+	}
+	args = append(args, "--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock")
+	args = append(args, opts.Image, "-x", "-c", opts.Script)
+	return args, nil
+}
+
+func dockerBindMountArg(volume VolumeMount) (string, error) {
+	hostPath := strings.TrimSpace(volume.HostPath)
+	containerPath := strings.TrimSpace(volume.ContainerPath)
+	mode := strings.TrimSpace(volume.Mode)
+	if hostPath == "" || containerPath == "" {
+		return "", fmt.Errorf("docker bind mount requires host and container paths")
+	}
+	if !filepath.IsAbs(hostPath) {
+		return "", fmt.Errorf("docker bind mount host path must be absolute: %s", hostPath)
+	}
+	mount := fmt.Sprintf("type=bind,source=%s,target=%s", hostPath, containerPath)
+	if mode == "ro" {
+		mount += ",readonly"
+	}
+	return mount, nil
 }
 
 func safeCommand(script string) string {

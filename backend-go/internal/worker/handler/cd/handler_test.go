@@ -2,22 +2,44 @@ package cd
 
 import (
 	"context"
-	"errors"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 
+	cdengine "backend/internal/cd"
 	"backend/internal/config"
 	"backend/internal/repository"
+	taskrepo "backend/internal/repository/task"
 )
 
-func TestEngineRestartsApplication(t *testing.T) {
-	store := &fakeStore{app: repository.Application{Id: "app-1", Code: "demo"}, deployment: repository.Deployment{Id: "deploy-1"}}
-	engine := NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{})
+func TestHandleRejectsInvalidPayload(t *testing.T) {
+	handler := NewDeployHandler(&fakeStore{}, config.Config{}, slog.Default())
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
+	if err == nil || !strings.Contains(err.Error(), "parse cd task payload") {
+		t.Fatalf("expected parse error, got %v", err)
+	}
+}
 
-	err := engine.Restart(context.Background(), "app-1", "deploy-1")
+func TestHandleRequiresApplicationAndDeploymentId(t *testing.T) {
+	handler := NewDeployHandler(&fakeStore{}, config.Config{}, slog.Default())
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
+	if err == nil || !strings.Contains(err.Error(), "application_id and deployment_id are required") {
+		t.Fatalf("expected required field error, got %v", err)
+	}
+}
+
+func TestHandleDeploysApplication(t *testing.T) {
+	store := &fakeStore{
+		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: repository.Deployment{Id: "deploy-1"},
+		files:      []repository.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
+	}
+	handler := Handler{engine: cdengine.NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{})}
+
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err != nil {
-		t.Fatalf("Restart returned error: %v", err)
+		t.Fatalf("Handle returned error: %v", err)
 	}
 	if store.appStatus != repository.ApplicationStatusDeployed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
@@ -27,39 +49,13 @@ func TestEngineRestartsApplication(t *testing.T) {
 	}
 }
 
-func TestEngineMarksDeploymentFaultedOnRunnerError(t *testing.T) {
-	store := &fakeStore{
-		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: repository.Deployment{Id: "deploy-1"},
-		files:      []repository.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
-	}
-	engine := NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{})
+func TestHandleRestartsApplication(t *testing.T) {
+	store := &fakeStore{app: repository.Application{Id: "app-1", Code: "demo"}, deployment: repository.Deployment{Id: "deploy-1"}}
+	handler := Handler{engine: cdengine.NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{}), restart: true}
 
-	err := engine.Deploy(context.Background(), "app-1", "deploy-1")
-	if err == nil {
-		t.Fatal("expected runner error")
-	}
-	if store.appStatus != repository.ApplicationStatusDeployFailed {
-		t.Fatalf("unexpected app status: %s", store.appStatus)
-	}
-	if store.deploymentStatus != repository.WorkStatusFaulted {
-		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
-	}
-}
-
-func TestEngineDeploysApplication(t *testing.T) {
-	store := &fakeStore{
-		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: repository.Deployment{Id: "deploy-1"},
-		files: []repository.ApplicationConfigFile{
-			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
-		},
-	}
-	engine := NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{})
-
-	err := engine.Deploy(context.Background(), "app-1", "deploy-1")
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err != nil {
-		t.Fatalf("Deploy returned error: %v", err)
+		t.Fatalf("Handle returned error: %v", err)
 	}
 	if store.appStatus != repository.ApplicationStatusDeployed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
@@ -119,10 +115,4 @@ func (fakeCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, nam
 		_, _ = log.Write([]byte("ok"))
 	}
 	return nil
-}
-
-type failingCommandRunner struct{}
-
-func (failingCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
-	return errors.New("boom")
 }

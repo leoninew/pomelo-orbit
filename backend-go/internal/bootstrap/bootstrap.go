@@ -6,7 +6,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"backend/internal/cd"
 	"backend/internal/config"
 	"backend/internal/db"
 	"backend/internal/repository"
@@ -16,6 +15,7 @@ import (
 	"backend/internal/status"
 	transporthttp "backend/internal/transport/http"
 	"backend/internal/worker"
+	cdworker "backend/internal/worker/handler/cd"
 	ciworker "backend/internal/worker/handler/ci"
 )
 
@@ -51,8 +51,8 @@ func NewTaskRouter(store repository.Store, cfg config.Config, logger *slog.Logge
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciRepository, cfg, logger))
-	router.Register(status.TaskTypeCDApplicationDeploy, cd.NewDeployHandler(cdRepository, cfg, logger))
-	router.Register(status.TaskTypeCDApplicationRestart, cd.NewRestartHandler(cdRepository, cfg, logger))
+	router.Register(status.TaskTypeCDApplicationDeploy, cdworker.NewDeployHandler(cdRepository, cfg, logger))
+	router.Register(status.TaskTypeCDApplicationRestart, cdworker.NewRestartHandler(cdRepository, cfg, logger))
 	return router
 }
 

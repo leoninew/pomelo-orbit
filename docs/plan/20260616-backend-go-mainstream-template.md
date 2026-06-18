@@ -149,12 +149,12 @@ Review status: Accepted
 
 ### 11. CD worker / runner 迁移
 
-- [ ] 调整 `internal/cd/handler.go`，使其不依赖 `orbit.Store`。
-- [ ] 将 CD deploy/restart task handler 迁移到 `internal/worker/handler/cd` 或按 Spec 中等价位置组织。
-- [ ] 保留 `internal/cd` 中 compose/render/runner 等底层执行能力。
-- [ ] 将 CD 执行所需数据访问改为依赖 `service/cd` 或 `repository/cd` 的最小接口。
-- [ ] 保持 application/deployment 状态流转、部署日志和 compose 写入行为不变。
-- [ ] 更新 CD handler/compose/runner 测试。
+- [x] 调整 `internal/cd/handler.go`，使其不依赖 `orbit.Store`。
+- [x] 将 CD deploy/restart task handler 迁移到 `internal/worker/handler/cd` 或按 Spec 中等价位置组织。
+- [x] 保留 `internal/cd` 中 compose/render/runner 等底层执行能力。
+- [x] 将 CD 执行所需数据访问改为依赖 `service/cd` 或 `repository/cd` 的最小接口。
+- [x] 保持 application/deployment 状态流转、部署日志和 compose 写入行为不变。
+- [x] 更新 CD handler/compose/runner 测试。
 
 ### 12. `internal/orbit` 退出和清理
 

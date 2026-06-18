@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"regexp"
 	"strings"
 	"time"
@@ -76,15 +77,29 @@ type RepositoryStore interface {
 	CancelPipelineRun(ctx context.Context, id string) error
 }
 
+type PipelineExecutionStore interface {
+	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
+	Repository(ctx context.Context, id string) (model.Repository, error)
+	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
+	MarkPipelineRunRunning(ctx context.Context, id string) error
+	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
+	InsertStageRun(ctx context.Context, stage model.StageRun) error
+	UpdateStageRun(ctx context.Context, stage model.StageRun) error
+	InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error
+}
+
 type TaskService interface {
 	EnqueueTyped(ctx context.Context, taskType string, payload any) (*taskrepo.Task, error)
 }
 
 type Service struct {
-	store     RepositoryStore
-	tasks     TaskService
-	dataRoot  string
-	secretKey string
+	store          RepositoryStore
+	executionStore PipelineExecutionStore
+	tasks          TaskService
+	dataRoot       string
+	secretKey      string
+	logger         *slog.Logger
+	runner         ContainerRunner
 }
 
 type RepositoryCreateInput struct {
@@ -140,7 +155,19 @@ type WebhookReceiveResult struct {
 }
 
 func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string) Service {
-	return Service{store: store, tasks: tasks, dataRoot: dataRoot, secretKey: secretKey}
+	return NewWithRunner(store, tasks, dataRoot, secretKey, slog.Default(), DockerRunner{})
+}
+
+func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner) Service {
+	executionStore, ok := store.(PipelineExecutionStore)
+	if !ok {
+		panic("ci service store must implement PipelineExecutionStore")
+	}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, dataRoot: dataRoot, secretKey: secretKey, logger: logger, runner: runner}
+}
+
+func NewExecutionService(store PipelineExecutionStore, dataRoot string, logger *slog.Logger, runner ContainerRunner) Service {
+	return Service{executionStore: store, dataRoot: dataRoot, logger: logger, runner: runner}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {

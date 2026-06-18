@@ -1,85 +1,61 @@
-package ci
+package cisvc
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"backend/internal/config"
 	"backend/internal/repository/model"
 	"backend/internal/status"
 	"backend/internal/templatex"
 )
 
-type Store interface {
-	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
-	Repository(ctx context.Context, id string) (model.Repository, error)
-	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
-	MarkPipelineRunRunning(ctx context.Context, id string) error
-	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
-	InsertStageRun(ctx context.Context, stage model.StageRun) error
-	UpdateStageRun(ctx context.Context, stage model.StageRun) error
-	InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error
-}
-
-type ExecuteInput struct {
+type ExecutePipelineRunInput struct {
 	PipelineRunId string
 	Variables     map[string]any
 }
 
-type Engine struct {
-	store  Store
-	cfg    config.Config
-	logger *slog.Logger
-	runner ContainerRunner
-}
-
-func NewEngine(store Store, cfg config.Config, logger *slog.Logger) Engine {
-	return Engine{store: store, cfg: cfg, logger: logger, runner: DockerRunner{}}
-}
-
-func (e Engine) Execute(ctx context.Context, input ExecuteInput) error {
-	run, err := e.store.PipelineRun(ctx, input.PipelineRunId)
+func (s Service) ExecutePipelineRun(ctx context.Context, input ExecutePipelineRunInput) error {
+	run, err := s.executionStore.PipelineRun(ctx, input.PipelineRunId)
 	if err != nil {
 		return err
 	}
-	repo, err := e.store.Repository(ctx, run.RepositoryId)
+	repo, err := s.executionStore.Repository(ctx, run.RepositoryId)
 	if err != nil {
 		return err
 	}
-	snapshot, err := e.store.PipelineSnapshot(ctx, run.SnapshotId)
+	snapshot, err := s.executionStore.PipelineSnapshot(ctx, run.SnapshotId)
 	if err != nil {
 		return err
 	}
 
 	var stages []model.StageDefinition
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
-		return e.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
+		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 	variables := input.Variables
 	if variables == nil {
-		variables = pipelineRunVariables(run.VariablesSnapshot)
+		variables = pipelineRunExecutionVariables(run.VariablesSnapshot)
 	}
 
 	stages, err = resolveStages(stages, variables)
 	if err != nil {
-		return e.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
+		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 
-	if err := createWorkspace(e.cfg.DataRoot(), repo.Code, run.Id); err != nil {
+	if err := createWorkspace(s.dataRoot, repo.Code, run.Id); err != nil {
 		return err
 	}
-	if err := e.store.MarkPipelineRunRunning(ctx, run.Id); err != nil {
+	if err := s.executionStore.MarkPipelineRunRunning(ctx, run.Id); err != nil {
 		return err
 	}
 
-	stageExecutor := Executor(e)
+	stageExecutor := Executor{store: s.executionStore, dataRoot: s.dataRoot, logger: s.logger, runner: s.runner}
 	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
-	current, err := e.store.PipelineRun(ctx, run.Id)
+	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {
 		return err
 	}
@@ -87,13 +63,13 @@ func (e Engine) Execute(ctx context.Context, input ExecuteInput) error {
 		return nil
 	}
 	if ok {
-		return e.store.CompletePipelineRun(ctx, run.Id, status.WorkStatusRanToCompletion, "")
+		return s.executionStore.CompletePipelineRun(ctx, run.Id, status.WorkStatusRanToCompletion, "")
 	}
-	return e.failRun(ctx, run.Id, message)
+	return s.failRun(ctx, run.Id, message)
 }
 
-func (e Engine) failRun(ctx context.Context, runId string, message string) error {
-	if err := e.store.CompletePipelineRun(ctx, runId, status.WorkStatusFaulted, message); err != nil {
+func (s Service) failRun(ctx context.Context, runId string, message string) error {
+	if err := s.executionStore.CompletePipelineRun(ctx, runId, status.WorkStatusFaulted, message); err != nil {
 		return err
 	}
 	return nil
@@ -124,7 +100,7 @@ func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]
 	return resolved, nil
 }
 
-func pipelineRunVariables(value string) map[string]any {
+func pipelineRunExecutionVariables(value string) map[string]any {
 	variables := map[string]any{}
 	if strings.TrimSpace(value) == "" {
 		return variables

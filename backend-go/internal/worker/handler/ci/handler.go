@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 
-	ciengine "backend/internal/ci"
-	"backend/internal/config"
 	taskrepo "backend/internal/repository/task"
+	cisvc "backend/internal/service/ci"
 )
 
 type ExecutePayload struct {
@@ -16,12 +14,16 @@ type ExecutePayload struct {
 	Variables     map[string]any `json:"variables"`
 }
 
-type Handler struct {
-	engine ciengine.Engine
+type PipelineExecutor interface {
+	ExecutePipelineRun(ctx context.Context, input cisvc.ExecutePipelineRunInput) error
 }
 
-func NewHandler(store ciengine.Store, cfg config.Config, logger *slog.Logger) Handler {
-	return Handler{engine: ciengine.NewEngine(store, cfg, logger)}
+type Handler struct {
+	executor PipelineExecutor
+}
+
+func NewHandler(executor PipelineExecutor) Handler {
+	return Handler{executor: executor}
 }
 
 func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
@@ -32,5 +34,5 @@ func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 	if payload.PipelineRunId == "" {
 		return fmt.Errorf("pipeline_run_id is required")
 	}
-	return h.engine.Execute(ctx, ciengine.ExecuteInput{PipelineRunId: payload.PipelineRunId, Variables: payload.Variables})
+	return h.executor.ExecutePipelineRun(ctx, cisvc.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, Variables: payload.Variables})
 }

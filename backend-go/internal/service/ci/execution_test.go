@@ -1,4 +1,4 @@
-package ci
+package cisvc
 
 import (
 	"context"
@@ -6,13 +6,12 @@ import (
 	"sync"
 	"testing"
 
-	"backend/internal/config"
 	"backend/internal/repository/model"
 	"backend/internal/status"
 )
 
-func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
-	store := &fakeStore{
+func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
+	store := &fakeExecutionStore{
 		run:  model.PipelineRun{Id: "run-1", RepositoryId: "repo-1", SnapshotId: "snapshot-1", VariablesSnapshot: `{}`},
 		repo: model.Repository{Id: "repo-1", Code: "repo"},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[
@@ -20,11 +19,11 @@ func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
 			{"id":"stage-2","name":"deploy","image":"alpine","depends_on":["stage-1"],"script":"echo deploy"}
 		]`},
 	}
-	engine := Engine{store: store, cfg: config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, logger: slog.Default(), runner: failingContainerRunner{}}
+	service := NewExecutionService(store, t.TempDir(), slog.Default(), failingContainerRunner{})
 
-	err := engine.Execute(context.Background(), ExecuteInput{PipelineRunId: "run-1"})
+	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
-		t.Fatalf("Execute returned error: %v", err)
+		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
 	if store.runStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected final run status: %s", store.runStatus)
@@ -43,8 +42,8 @@ func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
 	}
 }
 
-func TestEngineExecutesPipelineRun(t *testing.T) {
-	store := &fakeStore{
+func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
+	store := &fakeExecutionStore{
 		run: model.PipelineRun{
 			Id:                "run-1",
 			RepositoryId:      "repo-1",
@@ -57,16 +56,11 @@ func TestEngineExecutesPipelineRun(t *testing.T) {
 		repo:     model.Repository{Id: "repo-1", Code: "repo"},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
 	}
-	engine := Engine{
-		store:  store,
-		cfg:    config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}},
-		logger: slog.Default(),
-		runner: fakeContainerRunner{},
-	}
+	service := NewExecutionService(store, t.TempDir(), slog.Default(), fakeContainerRunner{})
 
-	err := engine.Execute(context.Background(), ExecuteInput{PipelineRunId: "run-1"})
+	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
-		t.Fatalf("Execute returned error: %v", err)
+		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
 	if !store.runStarted {
 		t.Fatal("expected run to be marked running")
@@ -82,7 +76,7 @@ func TestEngineExecutesPipelineRun(t *testing.T) {
 	}
 }
 
-type fakeStore struct {
+type fakeExecutionStore struct {
 	mu         sync.Mutex
 	run        model.PipelineRun
 	repo       model.Repository
@@ -92,40 +86,40 @@ type fakeStore struct {
 	runStatus  string
 }
 
-func (s *fakeStore) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
+func (s *fakeExecutionStore) PipelineRun(ctx context.Context, id string) (model.PipelineRun, error) {
 	return s.run, nil
 }
 
-func (s *fakeStore) Repository(ctx context.Context, id string) (model.Repository, error) {
+func (s *fakeExecutionStore) Repository(ctx context.Context, id string) (model.Repository, error) {
 	return s.repo, nil
 }
 
-func (s *fakeStore) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
+func (s *fakeExecutionStore) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
 	return s.snapshot, nil
 }
 
-func (s *fakeStore) MarkPipelineRunRunning(ctx context.Context, id string) error {
+func (s *fakeExecutionStore) MarkPipelineRunRunning(ctx context.Context, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.runStarted = true
 	return nil
 }
 
-func (s *fakeStore) CompletePipelineRun(ctx context.Context, id string, status string, message string) error {
+func (s *fakeExecutionStore) CompletePipelineRun(ctx context.Context, id string, status string, message string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.runStatus = status
 	return nil
 }
 
-func (s *fakeStore) InsertStageRun(ctx context.Context, stage model.StageRun) error {
+func (s *fakeExecutionStore) InsertStageRun(ctx context.Context, stage model.StageRun) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.stageRuns = append(s.stageRuns, stage)
 	return nil
 }
 
-func (s *fakeStore) UpdateStageRun(ctx context.Context, stage model.StageRun) error {
+func (s *fakeExecutionStore) UpdateStageRun(ctx context.Context, stage model.StageRun) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.stageRuns {
@@ -138,7 +132,7 @@ func (s *fakeStore) UpdateStageRun(ctx context.Context, stage model.StageRun) er
 	return nil
 }
 
-func (s *fakeStore) InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error {
+func (s *fakeExecutionStore) InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error {
 	return nil
 }
 

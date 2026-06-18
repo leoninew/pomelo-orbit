@@ -4,10 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 
-	cdengine "backend/internal/cd"
-	"backend/internal/config"
 	taskrepo "backend/internal/repository/task"
 )
 
@@ -16,17 +13,22 @@ type Payload struct {
 	DeploymentId  string `json:"deployment_id"`
 }
 
+type ApplicationDeployer interface {
+	ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string) error
+	ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error
+}
+
 type Handler struct {
-	engine  cdengine.Engine
-	restart bool
+	deployer ApplicationDeployer
+	restart  bool
 }
 
-func NewDeployHandler(store cdengine.Store, cfg config.Config, logger *slog.Logger) Handler {
-	return Handler{engine: cdengine.NewEngine(store, cfg, logger)}
+func NewDeployHandler(deployer ApplicationDeployer) Handler {
+	return Handler{deployer: deployer}
 }
 
-func NewRestartHandler(store cdengine.Store, cfg config.Config, logger *slog.Logger) Handler {
-	return Handler{engine: cdengine.NewEngine(store, cfg, logger), restart: true}
+func NewRestartHandler(deployer ApplicationDeployer) Handler {
+	return Handler{deployer: deployer, restart: true}
 }
 
 func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
@@ -38,7 +40,7 @@ func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 		return fmt.Errorf("application_id and deployment_id are required")
 	}
 	if h.restart {
-		return h.engine.Restart(ctx, payload.ApplicationId, payload.DeploymentId)
+		return h.deployer.ExecuteApplicationRestart(ctx, payload.ApplicationId, payload.DeploymentId)
 	}
-	return h.engine.Deploy(ctx, payload.ApplicationId, payload.DeploymentId)
+	return h.deployer.ExecuteApplicationDeploy(ctx, payload.ApplicationId, payload.DeploymentId)
 }

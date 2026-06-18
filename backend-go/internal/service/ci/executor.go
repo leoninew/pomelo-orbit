@@ -1,4 +1,4 @@
-package ci
+package cisvc
 
 import (
 	"context"
@@ -11,17 +11,16 @@ import (
 	"sync"
 	"time"
 
-	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
 	"backend/internal/status"
 )
 
 type Executor struct {
-	store  Store
-	cfg    config.Config
-	logger *slog.Logger
-	runner ContainerRunner
+	store    PipelineExecutionStore
+	dataRoot string
+	logger   *slog.Logger
+	runner   ContainerRunner
 }
 
 func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
@@ -84,7 +83,7 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 	stageRun.Status = status.WorkStatusRunning
 	_ = e.store.UpdateStageRun(ctx, stageRun)
 
-	logPath := filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "stages", stageRun.Id+".log")
+	logPath := filepath.Join(e.dataRoot, "ci", "runs", run.Id, "stages", stageRun.Id+".log")
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		return e.failStage(ctx, stageRun, fmt.Sprintf("create stage log dir: %v", err))
 	}
@@ -99,8 +98,8 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 		Script:      safeCommand(commandLines(stage.Script)),
 		Environment: envMap(variables),
 		Volumes: []VolumeMount{
-			{HostPath: filepath.Join(e.cfg.DataRoot(), "ci", repo.Code, "workspace"), ContainerPath: "/workspace", Mode: "rw"},
-			{HostPath: filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "artifacts"), ContainerPath: "/artifacts", Mode: "rw"},
+			{HostPath: filepath.Join(e.dataRoot, "ci", repo.Code, "workspace"), ContainerPath: "/workspace", Mode: "rw"},
+			{HostPath: filepath.Join(e.dataRoot, "ci", "runs", run.Id, "artifacts"), ContainerPath: "/artifacts", Mode: "rw"},
 		},
 		LogFile: logFile,
 	})
@@ -157,7 +156,7 @@ func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]
 }
 
 func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stage model.StageDefinition) error {
-	artifactRoot := filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "artifacts")
+	artifactRoot := filepath.Join(e.dataRoot, "ci", "runs", run.Id, "artifacts")
 	for _, artifact := range stage.Artifacts {
 		artifactPath := artifact.Path
 		if artifact.Type == "binary" {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -62,15 +63,29 @@ type Store interface {
 	DeleteRoute(ctx context.Context, id string) error
 }
 
+type DeploymentExecutionStore interface {
+	Application(ctx context.Context, id string) (model.Application, error)
+	Deployment(ctx context.Context, id string) (model.Deployment, error)
+	ConfigFiles(ctx context.Context, applicationId string) ([]model.ApplicationConfigFile, error)
+	ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error)
+	Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error)
+	MarkApplicationStatus(ctx context.Context, id string, status string) error
+	MarkDeploymentRunning(ctx context.Context, id string) error
+	CompleteDeployment(ctx context.Context, id string, status string, message string) error
+}
+
 type TaskService interface {
 	EnqueueTyped(ctx context.Context, taskType string, payload any) (*taskrepo.Task, error)
 }
 
 type Service struct {
-	store    Store
-	tasks    TaskService
-	cfg      config.Config
-	dataRoot string
+	store          Store
+	executionStore DeploymentExecutionStore
+	tasks          TaskService
+	cfg            config.Config
+	dataRoot       string
+	logger         *slog.Logger
+	runner         CommandRunner
 }
 
 type ApplicationCreateInput struct {
@@ -110,7 +125,19 @@ type DeploymentLog struct {
 }
 
 func New(store Store, tasks TaskService, cfg config.Config) Service {
-	return Service{store: store, tasks: tasks, cfg: cfg, dataRoot: cfg.DataRoot()}
+	return NewWithRunner(store, tasks, cfg, slog.Default(), ShellRunner{})
+}
+
+func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, runner CommandRunner) Service {
+	executionStore, ok := store.(DeploymentExecutionStore)
+	if !ok {
+		panic("cd service store must implement DeploymentExecutionStore")
+	}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, dataRoot: cfg.DataRoot(), logger: logger, runner: runner}
+}
+
+func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner) Service {
+	return Service{executionStore: store, cfg: cfg, dataRoot: cfg.DataRoot(), logger: logger, runner: runner}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {

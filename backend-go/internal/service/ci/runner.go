@@ -1,4 +1,4 @@
-package ci
+package cisvc
 
 import (
 	"context"

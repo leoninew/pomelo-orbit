@@ -1,4 +1,4 @@
-package cd
+package cdsvc
 
 import (
 	"strings"
@@ -8,13 +8,13 @@ import (
 	"backend/internal/repository/model"
 )
 
-func TestRenderTemplateUsesGoTemplateWithJinjaSyntax(t *testing.T) {
+func TestRenderApplicationTemplateUsesGoTemplateWithJinjaSyntax(t *testing.T) {
 	cfg := config.Config{
 		Orbit:   config.OrbitConfig{Root: "../.."},
 		Traefik: config.TraefikConfig{DomainSuffix: "lvh.me"},
 		Cert:    config.CertConfig{LetsEncrypt: config.LetsEncryptConfig{Email: "ops@example.com", Challenge: "http"}},
 	}
-	got, err := renderTemplate("{{ app.code }}.{{ config.domain_suffix }} {{ cert.letsencrypt.email }}", "demo", cfg)
+	got, err := renderApplicationTemplate("{{ app.code }}.{{ config.domain_suffix }} {{ cert.letsencrypt.email }}", "demo", cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,16 +23,16 @@ func TestRenderTemplateUsesGoTemplateWithJinjaSyntax(t *testing.T) {
 	}
 }
 
-func TestRenderTemplateRejectsMissingVariable(t *testing.T) {
-	_, err := renderTemplate("{{ app.missing }}", "demo", config.Config{})
+func TestRenderApplicationTemplateRejectsMissingVariable(t *testing.T) {
+	_, err := renderApplicationTemplate("{{ app.missing }}", "demo", config.Config{})
 	if err == nil {
 		t.Fatal("expected missing variable error")
 	}
 }
 
-func TestInjectRouteLabelsMatchesManagedRouteSemantics(t *testing.T) {
+func TestInjectApplicationRouteLabelsMatchesManagedRouteSemantics(t *testing.T) {
 	compose := "services:\n  web:\n    image: nginx\n    labels:\n      - keep=false\n"
-	got, err := injectRouteLabels(compose, nil, false)
+	got, err := injectApplicationRouteLabels(compose, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,9 +41,9 @@ func TestInjectRouteLabelsMatchesManagedRouteSemantics(t *testing.T) {
 	}
 }
 
-func TestInjectRouteLabelsRejectsMissingService(t *testing.T) {
+func TestInjectApplicationRouteLabelsRejectsMissingService(t *testing.T) {
 	compose := "services:\n  web:\n    image: nginx\n"
-	_, err := injectRouteLabels(compose, []model.ApplicationRoute{{ServiceName: "api", Domain: "api.example.com", Port: 8080}}, false)
+	_, err := injectApplicationRouteLabels(compose, []model.ApplicationRoute{{ServiceName: "api", Domain: "api.example.com", Port: 8080}}, false)
 	if err == nil {
 		t.Fatal("expected missing service error")
 	}

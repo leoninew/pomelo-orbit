@@ -42,14 +42,14 @@ type ApplicationServiceConfigImportInput struct {
 
 // ApplicationImportInput imports an application bundle.
 type ApplicationImportInput struct {
-	ProjectId        string
-	Version          string
-	Name             string
-	Code             string
-	ImagePullPolicy  string
-	RouteManaged     bool
-	ConfigFiles      []ConfigFileInput
-	ServiceConfigs   []ApplicationServiceConfigImportInput
+	ProjectId         string
+	Version           string
+	Name              string
+	Code              string
+	ImagePullPolicy   string
+	RouteManaged      bool
+	ConfigFiles       []ConfigFileInput
+	ServiceConfigs    []ApplicationServiceConfigImportInput
 	ApplicationRoutes []ApplicationRouteInput
 }
 
@@ -686,7 +686,7 @@ func injectApplicationRouteLabels(compose string, routes []repository.Applicatio
 	for _, route := range routes {
 		service, ok := services[route.ServiceName].(map[string]any)
 		if !ok {
-			return "", errors.New("service "+route.ServiceName+" not found in docker-compose.yml")
+			return "", errors.New("service " + route.ServiceName + " not found in docker-compose.yml")
 		}
 		labels := []string{
 			"traefik.enable=true",

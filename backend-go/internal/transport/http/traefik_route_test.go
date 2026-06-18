@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"backend/internal/repository"
+	cdsvc "backend/internal/service/cd"
 )
 
 func TestTraefikRouteEndpointsRequireAuth(t *testing.T) {
@@ -59,7 +60,7 @@ func TestTraefikRouteConfigWithoutDashboardRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp traefikConfigResp
+	var resp cdsvc.TraefikConfigResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +74,7 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	server.appCfg.Traefik.DomainSuffix = "lvh.me"
 	projectId := testRouteProjectId
-	if err := server.store.CreateRoute(t.Context(), repository.Route{
+	if err := server.cdRepository.CreateRoute(t.Context(), repository.Route{
 		Id:           "01KTRAETFIKROUTE0000000001",
 		ProjectId:    &projectId,
 		Name:         "traefik-dashboard",
@@ -82,7 +83,7 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 		TargetURL:    "http://traefik:8080",
 		Enabled:      true,
 		HTTPSEnabled: true,
-		CertType:     certTypeManual,
+		CertType:     "manual",
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +94,7 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp traefikConfigResp
+	var resp cdsvc.TraefikConfigResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +143,7 @@ func TestTraefikRouteListReturnsRouters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp traefikRouteListResp
+	var resp cdsvc.TraefikRouteListResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}

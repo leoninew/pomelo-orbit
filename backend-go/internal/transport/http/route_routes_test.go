@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"backend/internal/repository"
+	cdhandler "backend/internal/transport/http/handler/cd"
 )
 
 const testRouteProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
@@ -60,9 +60,13 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if updated.Name != "api-route-2" || updated.TargetURL != "http://host.docker.internal:8082" || !updated.Enabled {
 		t.Fatalf("unexpected updated route: %+v", updated)
 	}
-	configPath := filepath.Join(server.routeConfigDir(), "api-route-2.yml")
-	if _, err := os.Stat(configPath); err != nil {
+	configPath := filepath.Join(routeConfigDir(server), "api-route-2.yml")
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
 		t.Fatalf("expected route config file: %v", err)
+	}
+	if !strings.Contains(string(configData), "Host(`api2.example.test`) && PathPrefix(`/v2`)") {
+		t.Fatalf("unexpected route config: %s", string(configData))
 	}
 
 	deleteEnabledRecorder := httptest.NewRecorder()
@@ -121,7 +125,7 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if !withCert.HTTPSEnabled || withCert.CertType != "manual" {
 		t.Fatalf("unexpected cert route: %+v", withCert)
 	}
-	if _, err := os.Stat(filepath.Join(server.routeCertDir(), "cert-route.pem")); err != nil {
+	if _, err := os.Stat(filepath.Join(routeCertDir(server), "cert-route.pem")); err != nil {
 		t.Fatalf("expected cert file: %v", err)
 	}
 
@@ -130,7 +134,7 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if disableHTTPSRecorder.Code != http.StatusOK {
 		t.Fatalf("expected disable https status 200, got %d: %s", disableHTTPSRecorder.Code, disableHTTPSRecorder.Body.String())
 	}
-	if _, err := os.Stat(filepath.Join(server.routeCertDir(), "cert-route.pem")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(routeCertDir(server), "cert-route.pem")); !os.IsNotExist(err) {
 		t.Fatalf("expected cert file to be removed, err=%v", err)
 	}
 
@@ -229,17 +233,24 @@ func testCombinedPEM() string {
 	}, "\n")
 }
 
-func TestRouteTraefikConfig(t *testing.T) {
-	certPEM := "cert"
-	route := repository.Route{Name: "web", Domain: "web.example.test", PathPrefix: "/api", TargetURL: "http://host.docker.internal:8080", Enabled: true, HTTPSEnabled: true, CertPEM: &certPEM, CertType: "manual"}
-	config := routeTraefikConfig(route)
-	httpConfig := config["http"].(map[string]any)
-	routers := httpConfig["routers"].(map[string]any)
-	webRouter := routers["web-route"].(map[string]any)
-	if webRouter["rule"] != "Host(`web.example.test`) && PathPrefix(`/api`)" {
-		t.Fatalf("unexpected route rule: %+v", webRouter)
+func routeConfigDir(server Server) string {
+	if strings.TrimSpace(server.appCfg.Traefik.DynamicRouteDir) == "" {
+		return filepath.Join(server.appCfg.DataRoot(), "cd", "traefik", "data", "dynamic")
 	}
-	if config["tls"] == nil {
-		t.Fatalf("expected tls config: %+v", config)
+	return cleanTestConfigPath(server.appCfg.OrbitRoot(), server.appCfg.Traefik.DynamicRouteDir)
+}
+
+func routeCertDir(server Server) string {
+	if strings.TrimSpace(server.appCfg.Traefik.CertDir) == "" {
+		return filepath.Join(server.appCfg.DataRoot(), "cd", "traefik", "data", "certs")
 	}
+	return cleanTestConfigPath(server.appCfg.OrbitRoot(), server.appCfg.Traefik.CertDir)
+}
+
+func cleanTestConfigPath(root string, path string) string {
+	path = filepath.Clean(strings.TrimSpace(path))
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(root, path)
 }

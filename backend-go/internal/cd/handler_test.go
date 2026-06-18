@@ -14,7 +14,7 @@ import (
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {
-	handler := Handler{store: repository.Store{}, cfg: config.Config{}, logger: slog.Default()}
+	handler := Handler{store: &fakeStore{}, cfg: config.Config{}, logger: slog.Default()}
 	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
 	if err == nil || !strings.Contains(err.Error(), "parse cd task payload") {
 		t.Fatalf("expected parse error, got %v", err)
@@ -22,7 +22,7 @@ func TestHandleRejectsInvalidPayload(t *testing.T) {
 }
 
 func TestHandleRequiresApplicationAndDeploymentId(t *testing.T) {
-	handler := Handler{store: repository.Store{}, cfg: config.Config{}, logger: slog.Default()}
+	handler := Handler{store: &fakeStore{}, cfg: config.Config{}, logger: slog.Default()}
 	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
 	if err == nil || !strings.Contains(err.Error(), "application_id and deployment_id are required") {
 		t.Fatalf("expected required field error, got %v", err)

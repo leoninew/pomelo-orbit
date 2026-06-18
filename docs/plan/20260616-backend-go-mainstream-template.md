@@ -141,11 +141,11 @@ Review status: Accepted
 - [x] 将 application CRUD、config file、service config、route、compose preview/export/import 等用例放入 `service/cd`。
 - [x] 将 deployment 相关用例放入 `service/cd`。
 - [x] 将 route / Traefik route 管理用例放入 `service/cd`。
-- [ ] 将 `internal/orbit/application_store.go` 迁移到 `repository/cd`。
-- [ ] 将 `internal/orbit/api_store.go` 中 CD/API route 相关 SQL 迁移到 `repository/cd`。
-- [ ] 将 CD 相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
-- [ ] 保持 `/api/cd/*` API 路径、响应字段和主要错误语义不变。
-- [ ] 更新 CD HTTP route tests、store tests 和 service/repository tests。
+- [x] 将 `internal/orbit/application_store.go` 迁移到 `repository/cd`。
+- [x] 将 `internal/orbit/api_store.go` 中 CD/API route 相关 SQL 迁移到 `repository/cd`。
+- [x] 将 CD 相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。
+- [x] 保持 `/api/cd/*` API 路径、响应字段和主要错误语义不变。
+- [x] 更新 CD HTTP route tests、store tests 和 service/repository tests。
 
 ### 11. CD worker / runner 迁移
 

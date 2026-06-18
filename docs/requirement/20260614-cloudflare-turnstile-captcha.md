@@ -144,10 +144,10 @@ Cloudflare 官方要求：
     - `turnstile.secret_key`
     - `turnstile.verify_url`，可选，默认 Cloudflare endpoint
   - 绑定环境变量：
-    - `POMELO_ORBIT_BACKEND__TURNSTILE__ENABLED`
-    - `POMELO_ORBIT_BACKEND__TURNSTILE__SITE_KEY`
-    - `POMELO_ORBIT_BACKEND__TURNSTILE__SECRET_KEY`
-    - `POMELO_ORBIT_BACKEND__TURNSTILE__VERIFY_URL`
+    - `POMELO_ORBIT_TURNSTILE__ENABLED`
+    - `POMELO_ORBIT_TURNSTILE__SITE_KEY`
+    - `POMELO_ORBIT_TURNSTILE__SECRET_KEY`
+    - `POMELO_ORBIT_TURNSTILE__VERIFY_URL`
   - 当 `turnstile.enabled=true` 时校验 site key 和 secret key 非空；关闭时不强制校验。
 - `backend-go/config.defaults.yaml`
   - 增加 Turnstile 配置占位。

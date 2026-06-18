@@ -13,7 +13,7 @@ import (
 	"backend/internal/config"
 )
 
-const envPrefix = "POMELO_ORBIT_BACKEND__"
+const envPrefix = "POMELO_ORBIT_"
 
 type ConfigItem struct {
 	Key          string `json:"key"`

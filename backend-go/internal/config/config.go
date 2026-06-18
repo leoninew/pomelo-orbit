@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -12,7 +13,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const defaultConfigFile = "config.defaults.yaml"
+const (
+	defaultConfigFile = "config.defaults.yaml"
+	fernetKeySize     = 32
+)
 
 type Config struct {
 	App       AppConfig       `mapstructure:"app" yaml:"app"`
@@ -187,7 +191,7 @@ func bindEnv(loader *viper.Viper) {
 		"worker.concurrency",
 	}
 	for _, key := range keys {
-		envName := "POMELO_ORBIT_BACKEND__" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))
+		envName := "POMELO_ORBIT_" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))
 		_ = loader.BindEnv(key, envName)
 	}
 }
@@ -214,6 +218,9 @@ func (c Config) Validate() error {
 	if c.Logging.MaxBackups <= 0 {
 		return errors.New("logging.max_backups must be positive")
 	}
+	if err := validateFernetKey(c.JWT.SecretKey); err != nil {
+		return err
+	}
 	if c.Turnstile.Enabled {
 		if strings.TrimSpace(c.Turnstile.SiteKey) == "" {
 			return errors.New("turnstile.site_key is required when turnstile is enabled")
@@ -236,6 +243,24 @@ func (c Config) Validate() error {
 	}
 	if c.Worker.Concurrency < 1 {
 		return errors.New("worker.concurrency must be at least 1")
+	}
+	return nil
+}
+
+func validateFernetKey(secretKey string) error {
+	secretKey = strings.TrimSpace(secretKey)
+	if secretKey == "" {
+		return errors.New("jwt.secret_key is required")
+	}
+	key, err := base64.URLEncoding.DecodeString(secretKey)
+	if err != nil {
+		key, err = base64.RawURLEncoding.DecodeString(secretKey)
+	}
+	if err != nil {
+		return fmt.Errorf("jwt.secret_key must be a valid Fernet key: %w", err)
+	}
+	if len(key) != fernetKeySize {
+		return fmt.Errorf("jwt.secret_key must decode to %d bytes", fernetKeySize)
 	}
 	return nil
 }

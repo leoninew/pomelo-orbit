@@ -69,10 +69,10 @@ turnstile:
 - 默认配置断言 `Turnstile.Enabled == true`。
 - 默认配置断言 test site key / secret key / verify URL 非空。
 - 环境变量覆盖测试覆盖：
-  - `POMELO_ORBIT_BACKEND__TURNSTILE__ENABLED=false`
-  - `POMELO_ORBIT_BACKEND__TURNSTILE__SITE_KEY`
-  - `POMELO_ORBIT_BACKEND__TURNSTILE__SECRET_KEY`
-  - `POMELO_ORBIT_BACKEND__TURNSTILE__VERIFY_URL`
+  - `POMELO_ORBIT_TURNSTILE__ENABLED=false`
+  - `POMELO_ORBIT_TURNSTILE__SITE_KEY`
+  - `POMELO_ORBIT_TURNSTILE__SECRET_KEY`
+  - `POMELO_ORBIT_TURNSTILE__VERIFY_URL`
 - 校验测试覆盖：
   - enabled=true 且 site_key 空时报错。
   - enabled=true 且 secret_key 空时报错。

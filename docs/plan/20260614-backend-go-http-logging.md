@@ -86,8 +86,8 @@ logging:
   - `cfg.Logging.MaxBackups == 7`
 - 自定义配置合并测试覆盖 rolling 参数。
 - 环境变量覆盖测试覆盖：
-  - `POMELO_ORBIT_BACKEND__LOGGING__MAX_SIZE_MB`
-  - `POMELO_ORBIT_BACKEND__LOGGING__MAX_BACKUPS`
+  - `POMELO_ORBIT_LOGGING__MAX_SIZE_MB`
+  - `POMELO_ORBIT_LOGGING__MAX_BACKUPS`
 - 增加非法配置测试：
   - 空 `logging.file`
   - `max_size_mb <= 0`

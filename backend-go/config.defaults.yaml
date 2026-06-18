@@ -24,7 +24,7 @@ orbit:
   root: .
 
 jwt:
-  secret_key: ""
+  secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 traefik:
   api_url: http://traefik:8080

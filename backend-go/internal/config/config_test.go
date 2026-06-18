@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+const (
+	testFernetKey      = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	alternateFernetKey = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+)
+
 func TestLoadDefaultConfigFile(t *testing.T) {
 	setupDefaultConfig(t)
 
@@ -31,6 +36,9 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	}
 	if cfg.Logging.MaxBackups != 7 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
+	}
+	if cfg.JWT.SecretKey != testFernetKey {
+		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
 	}
 	if cfg.Traefik.APIURL != "http://traefik:8080" {
 		t.Fatalf("unexpected traefik api url: %s", cfg.Traefik.APIURL)
@@ -107,18 +115,18 @@ database:
 worker:
   concurrency: 1
 `)
-	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__HOST", "0.0.0.0")
-	t.Setenv("POMELO_ORBIT_BACKEND__SERVER__PORT", "8088")
-	t.Setenv("POMELO_ORBIT_BACKEND__DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
-	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_SIZE_MB", "25")
-	t.Setenv("POMELO_ORBIT_BACKEND__LOGGING__MAX_BACKUPS", "4")
-	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__ENABLED", "false")
-	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__SITE_KEY", "site-from-env")
-	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__SECRET_KEY", "secret-from-env")
-	t.Setenv("POMELO_ORBIT_BACKEND__TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
-	t.Setenv("POMELO_ORBIT_BACKEND__TRAEFIK__API_URL", "http://traefik.example.test:8080")
-	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__CONCURRENCY", "4")
-	t.Setenv("POMELO_ORBIT_BACKEND__WORKER__POLL_INTERVAL", "2s")
+	t.Setenv("POMELO_ORBIT_SERVER__HOST", "0.0.0.0")
+	t.Setenv("POMELO_ORBIT_SERVER__PORT", "8088")
+	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
+	t.Setenv("POMELO_ORBIT_LOGGING__MAX_SIZE_MB", "25")
+	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
+	t.Setenv("POMELO_ORBIT_TURNSTILE__ENABLED", "false")
+	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
+	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
+	t.Setenv("POMELO_ORBIT_TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
+	t.Setenv("POMELO_ORBIT_TRAEFIK__API_URL", "http://traefik.example.test:8080")
+	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
+	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
 
 	cfg, err := Load(path)
 	if err != nil {
@@ -170,14 +178,35 @@ func TestLoadConfigJWTEnvOverride(t *testing.T) {
 jwt:
   secret_key: "from-yaml"
 `)
-	t.Setenv("POMELO_ORBIT_BACKEND__JWT__SECRET_KEY", "from-env")
+	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", alternateFernetKey)
 
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.JWT.SecretKey != "from-env" {
+	if cfg.JWT.SecretKey != alternateFernetKey {
 		t.Fatalf("unexpected jwt secret: %s", cfg.JWT.SecretKey)
+	}
+}
+
+func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+	}{
+		{name: "missing secret key", content: `jwt:
+  secret_key: ""
+`},
+		{name: "invalid secret key", content: `jwt:
+  secret_key: "not-a-fernet-key"
+`},
+	}
+	for _, tc := range cases {
+		setupDefaultConfig(t)
+		path := writeConfig(t, tc.content)
+		if _, err := Load(path); err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
 	}
 }
 
@@ -329,7 +358,7 @@ database:
 orbit:
   root: .
 jwt:
-  secret_key: ""
+  secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 traefik:
   api_url: http://traefik:8080
   domain_suffix: lvh.me

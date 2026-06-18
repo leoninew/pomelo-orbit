@@ -41,7 +41,7 @@ func newTestServer(t *testing.T) (Server, *sqlx.DB) {
 		t.Fatal(err)
 	}
 	cfg := config.Config{Server: config.ServerConfig{Host: "127.0.0.1", Port: 0}}
-	cfg.JWT.SecretKey = "test-secret"
+	cfg.JWT.SecretKey = credentialRouteFernetKey
 	cfg.Turnstile = config.TurnstileConfig{Enabled: true, SiteKey: "test-site-key", SecretKey: "test-secret-key", VerifyURL: "https://turnstile.example.test"}
 	server := New(cfg, slog.Default(), repository.NewStore(database, config.DatabaseDriverSQLite), taskrepo.NewRepository(database, config.DatabaseDriverSQLite), 3)
 	server.turnstileVerifier = fakeTurnstileVerifier{}

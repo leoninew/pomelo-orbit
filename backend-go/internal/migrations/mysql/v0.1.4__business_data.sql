@@ -383,7 +383,7 @@ INSERT IGNORE INTO pipeline_template (
     '01KP0K6W1YW73REFQE8YAVTPMN',
     '通用容器镜像流水线',
     '- docker build',
-    '[]',
+    '[{"name":"working_dir","description":"","default":".","value":null,"secret":false,"source":"template_custom","editable":true},{"name":"repository_dockerfile","description":"","default":"Dockerfile","value":null,"secret":false,"source":"template_custom","editable":true}]',
     24,
     '01KRRKK0K3T519ZQZES3M4QA9Z',
     '2024-03-16T00:00:00Z',

@@ -81,19 +81,19 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input Pip
 		}
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}
-	variablesSnapshot, err := marshalTriggerVariables(input.Variables)
-	if err != nil {
-		return PipelineRunDetail{}, err
-	}
 	triggerRef := strings.TrimSpace(input.TriggerRef)
 	if triggerRef == "" {
 		triggerRef = repo.DefaultBranch
+	}
+	variablesSnapshot, err := buildPipelineRunVariables(repo, template, snapshot, triggerRef, input.Variables)
+	if err != nil {
+		return PipelineRunDetail{}, err
 	}
 	run := model.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: status.WorkStatusWaitingToRun}
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]any{"pipeline_run_id": run.Id, "variables": input.Variables}); err != nil {
+	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": run.Id}); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	created, err := s.store.PipelineRun(ctx, run.Id)
@@ -215,7 +215,8 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	if original.Status != status.WorkStatusFaulted && original.Status != status.WorkStatusRanToCompletion {
 		return PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot retry run with status "+original.Status)
 	}
-	if _, err := s.store.PipelineSnapshot(ctx, original.SnapshotId); err != nil {
+	snapshot, err := s.store.PipelineSnapshot(ctx, original.SnapshotId)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Snapshot "+original.SnapshotId+" not found")
 		}
@@ -228,7 +229,12 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 		}
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
-	newRun := model.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: status.WorkStatusWaitingToRun, RetryOf: &original.Id}
+	template := model.PipelineTemplate{Id: original.TemplateId, ProjectId: original.ProjectId, Name: original.TemplateName, VariableDeclarations: snapshot.VariablesSnapshot, Version: original.TemplateVersion}
+	variablesSnapshot, err := buildPipelineRunVariables(repo, template, snapshot, original.TriggerRef, nil)
+	if err != nil {
+		return PipelineRunDetail{}, err
+	}
+	newRun := model.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: variablesSnapshot, Status: status.WorkStatusWaitingToRun, RetryOf: &original.Id}
 	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
 	}

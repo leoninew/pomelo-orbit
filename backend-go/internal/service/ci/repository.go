@@ -81,6 +81,7 @@ type PipelineExecutionStore interface {
 	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
 	Repository(ctx context.Context, id string) (model.Repository, error)
 	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
+	PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error)
 	MarkPipelineRunRunning(ctx context.Context, id string) error
 	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
 	InsertStageRun(ctx context.Context, stage model.StageRun) error
@@ -457,19 +458,19 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input WebhookRece
 		return WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}
 	variables := map[string]string{"commit_sha": commitSha, "author": author, "event_type": "push"}
-	variablesSnapshot, err := marshalTriggerVariables(variables)
-	if err != nil {
-		return WebhookReceiveResult{}, err
-	}
 	triggerRef := branch
 	if triggerRef == "" {
 		triggerRef = commitSha
+	}
+	variablesSnapshot, err := buildPipelineRunVariables(repo, template, snapshot, triggerRef, variables)
+	if err != nil {
+		return WebhookReceiveResult{}, err
 	}
 	run := model.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "webhook", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: status.WorkStatusWaitingToRun}
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]any{"pipeline_run_id": run.Id, "variables": variables}); err != nil {
+	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": run.Id}); err != nil {
 		return WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	return WebhookReceiveResult{Status: "triggered", RunId: run.Id}, nil

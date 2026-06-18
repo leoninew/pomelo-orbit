@@ -36,9 +36,13 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input ExecutePipelineRu
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return s.failRun(ctx, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
-	variables := input.Variables
-	if variables == nil {
-		variables = pipelineRunExecutionVariables(run.VariablesSnapshot)
+	template, err := s.executionStore.PipelineTemplate(ctx, run.TemplateId)
+	if err != nil {
+		return err
+	}
+	variables, err := s.pipelineRunExecutionVariables(repo, template, snapshot, run)
+	if err != nil {
+		return s.failRun(ctx, run.Id, fmt.Sprintf("Variable resolution failed: %v", err))
 	}
 
 	stages, err = resolveStages(stages, variables)
@@ -100,20 +104,39 @@ func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]
 	return resolved, nil
 }
 
-func pipelineRunExecutionVariables(value string) map[string]any {
-	variables := map[string]any{}
+func (s Service) pipelineRunExecutionVariables(repo model.Repository, template model.PipelineTemplate, snapshot model.PipelineSnapshot, run model.PipelineRun) (map[string]any, error) {
+	declarations, err := completeSnapshotVariableDeclarations(snapshot, template)
+	if err != nil {
+		return nil, err
+	}
+	return buildRuntimeVariables(repo, template, run.TriggerRef, pipelineRunRuntimeOverrides(run.VariablesSnapshot), declarations)
+}
+
+func pipelineRunRuntimeOverrides(value string) map[string]string {
+	overrides := map[string]string{}
 	if strings.TrimSpace(value) == "" {
-		return variables
+		return overrides
 	}
 	var declarations []model.VariableDeclaration
 	if err := json.Unmarshal([]byte(value), &declarations); err == nil {
 		for _, declaration := range declarations {
-			variables[declaration.Name] = declaration.Value
+			if isPipelineTemplateBuiltinVariable(declaration.Name) || !hasRuntimeValue(declaration.Value) {
+				continue
+			}
+			if declaration.Secret && declaration.Value == maskedSecretValue {
+				continue
+			}
+			overrides[declaration.Name] = fmt.Sprint(declaration.Value)
 		}
-		return variables
+		return overrides
 	}
-	_ = json.Unmarshal([]byte(value), &variables)
-	return variables
+	var legacy map[string]any
+	if err := json.Unmarshal([]byte(value), &legacy); err == nil {
+		for name, value := range legacy {
+			overrides[name] = fmt.Sprint(value)
+		}
+	}
+	return overrides
 }
 
 func createWorkspace(dataRoot string, projectCode string, runId string) error {

@@ -130,14 +130,15 @@
 		return hasValue(form.variables[name]);
 	}
 
+	function effectiveVariableValue(variable: VariableDeclaration): unknown {
+		return variable.value ?? variable.default;
+	}
+
 	function getBuiltinDisplayValue(variable: VariableDeclaration): string {
 		if (variable.description) {
 			return variable.description;
 		}
-		if (variable.value != null) {
-			return stringifyValue(variable.value);
-		}
-		return '';
+		return stringifyValue(effectiveVariableValue(variable));
 	}
 
 	function syncBuiltinVariables() {
@@ -158,8 +159,9 @@
 		if (projectValue !== undefined) {
 			return `项目值: ${projectValue}`;
 		}
-		if (variable.value != null) {
-			return stringifyValue(variable.value);
+		const effectiveValue = effectiveVariableValue(variable);
+		if (effectiveValue != null) {
+			return stringifyValue(effectiveValue);
 		}
 		return `输入${name}`;
 	}
@@ -176,7 +178,7 @@
 				nextValues[variable.name] = projectValue;
 				continue;
 			}
-			nextValues[variable.name] = stringifyValue(variable.value);
+			nextValues[variable.name] = stringifyValue(effectiveVariableValue(variable));
 		}
 		form.variables = nextValues;
 		initialVariableValues.value = { ...nextValues };

@@ -76,11 +76,36 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 	}
 }
 
+func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
+	store := &fakeExecutionStore{
+		run: model.PipelineRun{
+			Id:           "run-1",
+			RepositoryId: "repo-1",
+			SnapshotId:   "snapshot-1",
+			TemplateId:   "template-1",
+			TriggerRef:   "main",
+		},
+		repo:     model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryURL: "https://example.test/repo.git"},
+		template: model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1},
+		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"cd {{ working_dir }} && echo {{ repository_code }}"}]`, VariablesSnapshot: `[{"name":"working_dir","default":".","source":"template_stage","editable":true},{"name":"repository_code","source":"template","editable":false}]`},
+	}
+	runner := &recordingContainerRunner{}
+	service := NewExecutionService(store, t.TempDir(), slog.Default(), runner)
+
+	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
+		t.Fatalf("ExecutePipelineRun returned error: %v", err)
+	}
+	if runner.script != "cd . && echo repo" {
+		t.Fatalf("unexpected script: %s", runner.script)
+	}
+}
+
 type fakeExecutionStore struct {
 	mu         sync.Mutex
 	run        model.PipelineRun
 	repo       model.Repository
 	snapshot   model.PipelineSnapshot
+	template   model.PipelineTemplate
 	stageRuns  []model.StageRun
 	runStarted bool
 	runStatus  string
@@ -96,6 +121,13 @@ func (s *fakeExecutionStore) Repository(ctx context.Context, id string) (model.R
 
 func (s *fakeExecutionStore) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
 	return s.snapshot, nil
+}
+
+func (s *fakeExecutionStore) PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error) {
+	if s.template.Id != "" {
+		return s.template, nil
+	}
+	return model.PipelineTemplate{Id: id, Name: "template", Version: 1}, nil
 }
 
 func (s *fakeExecutionStore) MarkPipelineRunRunning(ctx context.Context, id string) error {
@@ -149,4 +181,13 @@ type failingContainerRunner struct{}
 
 func (failingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
 	return 1, "line1\nline2\nline3\nline4", nil
+}
+
+type recordingContainerRunner struct {
+	script string
+}
+
+func (r *recordingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
+	r.script = opts.Script
+	return 0, "ok", nil
 }

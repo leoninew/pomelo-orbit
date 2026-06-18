@@ -16,7 +16,7 @@ import (
 )
 
 var pipelineTemplateCopyPattern = regexp.MustCompile(` copy( [0-9]+)?$`)
-var templateVariablePattern = regexp.MustCompile(`\{\{\s*([A-Za-z][A-Za-z0-9_]*)(?:\s*\|\s*(?:default|d)\s*\(\s*['\"]([^'\"]*)['\"]\s*\))?\s*\}\}`)
+var templateVariablePattern = regexp.MustCompile(`\{\{\s*([A-Za-z][A-Za-z0-9_]*)(?:\s*\|\s*default\s*:\s*['\"]([^'\"]*)['\"])?\s*\}\}`)
 
 type ArtifactConfig struct {
 	Type string `json:"type"`

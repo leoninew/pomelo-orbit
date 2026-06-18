@@ -45,7 +45,7 @@ INSERT IGNORE INTO application_config_file (
 ) VALUES (
     '01KKX2YNPF6VJ9N7QYCWG61KVQ',
     '01KKX2YNPF6VJ9N7QYCWG61KVM',
-    'data/traefik.yml.jinja',
+    'data/traefik.yml.liquid',
     'api:
   dashboard: true
   insecure: true
@@ -65,7 +65,7 @@ certificatesResolvers:
       {% if cert.letsencrypt.challenge == "http" %}
       httpChallenge:
         entryPoint: web
-      {% elif cert.letsencrypt.challenge == "dns" %}
+      {% elsif cert.letsencrypt.challenge == "dns" %}
       dnsChallenge:
         provider: {{ cert.letsencrypt.dns_provider }}
       {% endif %}
@@ -92,7 +92,7 @@ INSERT IGNORE INTO application_config_file (
 ) VALUES (
     '01KKX2YNPF6VJ9N7QYCWG61KVN',
     '01KKX2YNPF6VJ9N7QYCWG61KVM',
-    'docker-compose.yml.jinja',
+    'docker-compose.yml.liquid',
     'services:
   traefik:
     image: traefik:3
@@ -170,7 +170,7 @@ INSERT IGNORE INTO application_config_file (
 ) VALUES (
     '01KN8CG4A5PBH7TDXAQ0MD5Z34',
     '01KN8CG4A5S4VVH6NKNJF4F9NJ',
-    'docker-compose.yml.jinja',
+    'docker-compose.yml.liquid',
     'services:
   filebrowser:
     image: filebrowser/filebrowser
@@ -296,7 +296,7 @@ INSERT IGNORE INTO build_stage (
     'golang:1.23 test',
     'golang:1.23-alpine',
     'set -e
-cd {{ working_dir | default(''.'') }}
+cd {{ working_dir }}
 go env -w GOPROXY=https://goproxy.cn,direct
 go test ./...',
     NULL,
@@ -314,7 +314,7 @@ INSERT IGNORE INTO build_stage (
     'golang:1.23 build',
     'golang:1.23-alpine',
     'set -e
-cd {{ working_dir | default(''.'') }}
+cd {{ working_dir }}
 mkdir -p dist
 go env -w GOPROXY=https://goproxy.cn,direct
 go build -o dist/',
@@ -333,7 +333,7 @@ INSERT IGNORE INTO build_stage (
     'golang:1.23 lint',
     'golang:1.23-alpine',
     'set -e
-cd {{ working_dir | default(''.'') }}
+cd {{ working_dir }}
 go env -w GOPROXY=https://goproxy.cn,direct
 go install golang.org/x/lint/golint@latest
 golint ./...',
@@ -352,8 +352,8 @@ INSERT IGNORE INTO build_stage (
     'docker build',
     'docker:29.4',
     'set -e
-cd {{ working_dir | default(''.'') }}
-docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile | default(''Dockerfile'') }} .
+cd {{ working_dir }}
+docker build -t {{ repository_code }}:{{ runtime_datetime }} -f {{ repository_dockerfile }} .
 # docker push {{ repository_code }}:{{ runtime_datetime }}',
     '[{"type": "docker_image", "path": "{{ repository_code }}:{{ runtime_datetime }}", "name": "{{ repository_code }}"}]',
     '通用镜像构建+推送',

@@ -480,7 +480,7 @@ func (s Service) applicationComposeFile(ctx context.Context, applicationId strin
 		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application config files", err)
 	}
 	for _, file := range files {
-		if file.Path == "docker-compose.yml" || file.Path == "docker-compose.yml.jinja" {
+		if file.Path == "docker-compose.yml" || file.Path == "docker-compose.yml.liquid" {
 			return file, nil
 		}
 	}
@@ -490,7 +490,7 @@ func (s Service) applicationComposeFile(ctx context.Context, applicationId strin
 func (s Service) renderApplicationCompose(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (string, error) {
 	content := compose.Content
 	var err error
-	if strings.HasSuffix(compose.Path, ".jinja") {
+	if strings.HasSuffix(compose.Path, ".liquid") {
 		content, err = renderApplicationTemplate(content, app.Code, s.cfg)
 		if err != nil {
 			return "", apperror.New(apperror.KindValidation, err.Error())
@@ -516,7 +516,7 @@ func (s Service) renderApplicationCompose(ctx context.Context, app model.Applica
 
 func (s Service) composeServices(app model.Application, compose model.ApplicationConfigFile) (map[string]any, error) {
 	content := compose.Content
-	if strings.HasSuffix(compose.Path, ".jinja") {
+	if strings.HasSuffix(compose.Path, ".liquid") {
 		rendered, err := renderApplicationTemplate(content, app.Code, s.cfg)
 		if err != nil {
 			return nil, apperror.New(apperror.KindValidation, err.Error())

@@ -8,7 +8,7 @@ import (
 	"backend/internal/repository/model"
 )
 
-func TestRenderApplicationTemplateUsesGoTemplateWithJinjaSyntax(t *testing.T) {
+func TestRenderApplicationTemplateUsesLiquidSyntax(t *testing.T) {
 	cfg := config.Config{
 		Orbit:   config.OrbitConfig{Root: "../.."},
 		Traefik: config.TraefikConfig{DomainSuffix: "lvh.me"},
@@ -19,6 +19,16 @@ func TestRenderApplicationTemplateUsesGoTemplateWithJinjaSyntax(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got != "demo.lvh.me ops@example.com" {
+		t.Fatalf("unexpected render output: %q", got)
+	}
+}
+
+func TestRenderApplicationTemplateSupportsLiquidDefaultFilter(t *testing.T) {
+	got, err := renderApplicationTemplate("{{ image | default: 'nginx' }}", "demo", config.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "nginx" {
 		t.Fatalf("unexpected render output: %q", got)
 	}
 }

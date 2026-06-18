@@ -5,6 +5,9 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"backend/internal/config"
@@ -67,6 +70,33 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	}
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
+	}
+}
+
+func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
+	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
+	store := &fakeDeploymentExecutionStore{
+		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: model.Deployment{Id: "deploy-1"},
+		files: []model.ApplicationConfigFile{
+			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
+		},
+	}
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{})
+
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
+	if err != nil {
+		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
+	}
+	composePath := filepath.Join(cfg.DataRoot(), "cd", "demo", "docker-compose.yml")
+	content, err := os.ReadFile(composePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.ToSlash(filepath.Join(cfg.DataRoot(), "cd", "demo", "data"))
+	got := filepath.ToSlash(string(content))
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected rendered compose to contain %q, got:\n%s", want, string(content))
 	}
 }
 

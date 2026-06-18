@@ -405,7 +405,7 @@ func (s Service) ensureApplicationComposeFile(ctx context.Context, applicationId
 		return apperror.Wrap(apperror.KindInternal, "Failed to load application config files", err)
 	}
 	for _, file := range files {
-		if file.Path == "docker-compose.yml" || file.Path == "docker-compose.yml.jinja" {
+		if file.Path == "docker-compose.yml" || file.Path == "docker-compose.yml.liquid" {
 			return nil
 		}
 	}

@@ -93,8 +93,8 @@ func TestMigratorListsMySQLMigrations(t *testing.T) {
 	}
 }
 
-func TestMigratorRendersMigrationContentWithGoTemplate(t *testing.T) {
-	got, err := renderMigrationContent("test.sql", "CREATE TABLE {{ table_name }} (id TEXT);", map[string]any{"table_name": "demo"})
+func TestMigratorRendersMigrationContentWithLiquidTemplate(t *testing.T) {
+	got, err := renderMigrationContent("test.sql", "CREATE TABLE {{ table_name | default: 'demo' }} (id TEXT);", map[string]any{"enabled": true})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -104,8 +104,8 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 	for _, file := range files {
 		path := file.Path
 		content := file.Content
-		if strings.HasSuffix(path, ".jinja") {
-			path = strings.TrimSuffix(path, ".jinja")
+		if strings.HasSuffix(path, ".liquid") {
+			path = strings.TrimSuffix(path, ".liquid")
 			content, err = renderApplicationTemplate(content, app.Code, s.cfg)
 			if err != nil {
 				return err

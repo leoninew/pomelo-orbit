@@ -9,6 +9,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cdsvc "backend/internal/service/cd"
 	"backend/internal/transport/http/handler/authz"
 	transportresponse "backend/internal/transport/http/response"
@@ -273,19 +274,19 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.JSON(w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
 }
 
-func applicationResponse(item repository.Application) ApplicationResp {
+func applicationResponse(item model.Application) ApplicationResp {
 	return ApplicationResponse(item)
 }
 
-func deploymentResponse(item repository.Deployment) DeploymentResp {
+func deploymentResponse(item model.Deployment) DeploymentResp {
 	return DeploymentResponse(item)
 }
 
-func ApplicationResponse(item repository.Application) ApplicationResp {
+func ApplicationResponse(item model.Application) ApplicationResp {
 	return ApplicationResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, ImagePullPolicy: item.ImagePullPolicy, Status: item.Status, RouteManaged: item.RouteManaged, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func DeploymentResponse(item repository.Deployment) DeploymentResp {
+func DeploymentResponse(item model.Deployment) DeploymentResp {
 	return DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: item.DurationMs, LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
 }
 

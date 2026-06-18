@@ -158,9 +158,9 @@ Review status: Accepted
 
 ### 12. `internal/orbit` 退出和清理
 
-- [ ] 将 `orbit/model.go` 中所有仍被使用的结构迁移到新归属包。
-- [ ] 将 `orbit/status.go` 中状态常量迁移到 `internal/status` 或模块内常量。
-- [ ] 将 `orbit/store.go` 中 worker/CI/CD 通用方法迁移到对应 repository。
+- [x] 将 `orbit/model.go` 中所有仍被使用的结构迁移到新归属包。
+- [x] 将 `orbit/status.go` 中状态常量迁移到 `internal/status` 或模块内常量。
+- [x] 将 `orbit/store.go` 中 worker/CI/CD 通用方法迁移到对应 repository。
 - [x] 删除所有对 `backend/internal/orbit` 的 import。
 - [x] 删除 `internal/orbit` 包及其测试，或确认该目录为空并移除。
 - [x] 运行全局搜索确认没有 `internal/orbit`、`orbit.` 残留。

@@ -8,30 +8,31 @@ import (
 	"testing"
 
 	"backend/internal/config"
-	"backend/internal/repository"
+	"backend/internal/repository/model"
+	"backend/internal/status"
 )
 
 func TestEngineRestartsApplication(t *testing.T) {
-	store := &fakeStore{app: repository.Application{Id: "app-1", Code: "demo"}, deployment: repository.Deployment{Id: "deploy-1"}}
+	store := &fakeStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
 	engine := NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{})
 
 	err := engine.Restart(context.Background(), "app-1", "deploy-1")
 	if err != nil {
 		t.Fatalf("Restart returned error: %v", err)
 	}
-	if store.appStatus != repository.ApplicationStatusDeployed {
+	if store.appStatus != status.ApplicationStatusDeployed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
 	}
-	if store.deploymentStatus != repository.WorkStatusRanToCompletion {
+	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
 func TestEngineMarksDeploymentFaultedOnRunnerError(t *testing.T) {
 	store := &fakeStore{
-		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: repository.Deployment{Id: "deploy-1"},
-		files:      []repository.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
+		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: model.Deployment{Id: "deploy-1"},
+		files:      []model.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
 	}
 	engine := NewEngineWithRunner(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{})
 
@@ -39,19 +40,19 @@ func TestEngineMarksDeploymentFaultedOnRunnerError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected runner error")
 	}
-	if store.appStatus != repository.ApplicationStatusDeployFailed {
+	if store.appStatus != status.ApplicationStatusDeployFailed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
 	}
-	if store.deploymentStatus != repository.WorkStatusFaulted {
+	if store.deploymentStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
 func TestEngineDeploysApplication(t *testing.T) {
 	store := &fakeStore{
-		app:        repository.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: repository.Deployment{Id: "deploy-1"},
-		files: []repository.ApplicationConfigFile{
+		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: model.Deployment{Id: "deploy-1"},
+		files: []model.ApplicationConfigFile{
 			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
 		},
 	}
@@ -61,39 +62,39 @@ func TestEngineDeploysApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Deploy returned error: %v", err)
 	}
-	if store.appStatus != repository.ApplicationStatusDeployed {
+	if store.appStatus != status.ApplicationStatusDeployed {
 		t.Fatalf("unexpected app status: %s", store.appStatus)
 	}
-	if store.deploymentStatus != repository.WorkStatusRanToCompletion {
+	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
 type fakeStore struct {
-	app              repository.Application
-	deployment       repository.Deployment
-	files            []repository.ApplicationConfigFile
+	app              model.Application
+	deployment       model.Deployment
+	files            []model.ApplicationConfigFile
 	appStatus        string
 	deploymentStatus string
 }
 
-func (s *fakeStore) Application(_ context.Context, id string) (repository.Application, error) {
+func (s *fakeStore) Application(_ context.Context, id string) (model.Application, error) {
 	return s.app, nil
 }
 
-func (s *fakeStore) Deployment(_ context.Context, id string) (repository.Deployment, error) {
+func (s *fakeStore) Deployment(_ context.Context, id string) (model.Deployment, error) {
 	return s.deployment, nil
 }
 
-func (s *fakeStore) ConfigFiles(_ context.Context, applicationId string) ([]repository.ApplicationConfigFile, error) {
+func (s *fakeStore) ConfigFiles(_ context.Context, applicationId string) ([]model.ApplicationConfigFile, error) {
 	return s.files, nil
 }
 
-func (s *fakeStore) ServiceConfigs(ctx context.Context, applicationId string) ([]repository.ApplicationServiceConfig, error) {
+func (s *fakeStore) ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error) {
 	return nil, nil
 }
 
-func (s *fakeStore) Routes(ctx context.Context, applicationId string) ([]repository.ApplicationRoute, error) {
+func (s *fakeStore) Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error) {
 	return nil, nil
 }
 
@@ -103,7 +104,7 @@ func (s *fakeStore) MarkApplicationStatus(ctx context.Context, id string, status
 }
 
 func (s *fakeStore) MarkDeploymentRunning(ctx context.Context, id string) error {
-	s.deploymentStatus = repository.WorkStatusRunning
+	s.deploymentStatus = status.WorkStatusRunning
 	return nil
 }
 

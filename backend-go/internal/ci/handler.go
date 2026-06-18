@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"backend/internal/config"
-	"backend/internal/repository"
 	"backend/internal/repository/model"
+	"backend/internal/status"
 	"backend/internal/templatex"
 )
 
@@ -83,17 +83,17 @@ func (e Engine) Execute(ctx context.Context, input ExecuteInput) error {
 	if err != nil {
 		return err
 	}
-	if current.Status == repository.WorkStatusCanceled {
+	if current.Status == status.WorkStatusCanceled {
 		return nil
 	}
 	if ok {
-		return e.store.CompletePipelineRun(ctx, run.Id, repository.WorkStatusRanToCompletion, "")
+		return e.store.CompletePipelineRun(ctx, run.Id, status.WorkStatusRanToCompletion, "")
 	}
 	return e.failRun(ctx, run.Id, message)
 }
 
 func (e Engine) failRun(ctx context.Context, runId string, message string) error {
-	if err := e.store.CompletePipelineRun(ctx, runId, repository.WorkStatusFaulted, message); err != nil {
+	if err := e.store.CompletePipelineRun(ctx, runId, status.WorkStatusFaulted, message); err != nil {
 		return err
 	}
 	return nil

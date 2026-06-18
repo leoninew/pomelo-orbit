@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cdsvc "backend/internal/service/cd"
 )
 
@@ -74,7 +74,7 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	server.appCfg.Traefik.DomainSuffix = "lvh.me"
 	projectId := testRouteProjectId
-	if err := server.cdRepository.CreateRoute(t.Context(), repository.Route{
+	if err := server.cdRepository.CreateRoute(t.Context(), model.Route{
 		Id:           "01KTRAETFIKROUTE0000000001",
 		ProjectId:    &projectId,
 		Name:         "traefik-dashboard",

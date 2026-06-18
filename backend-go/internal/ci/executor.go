@@ -14,6 +14,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
+	"backend/internal/status"
 )
 
 type Executor struct {
@@ -72,7 +73,7 @@ func (e Executor) executeLayer(ctx context.Context, run model.PipelineRun, repo 
 }
 
 func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stage model.StageDefinition) bool {
-	stageRun := model.StageRun{Id: repository.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusWaitingToRun}
+	stageRun := model.StageRun{Id: repository.NewId(), PipelineRunId: run.Id, StageId: stage.Id, StageName: stage.Name, Status: status.WorkStatusWaitingToRun}
 	if err := e.store.InsertStageRun(ctx, stageRun); err != nil {
 		e.logger.Error("stage run insert failed", "run", run.Id, "stage", stage.Name, "error", err)
 		return false
@@ -80,7 +81,7 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 
 	started := now()
 	stageRun.StartedAt = &started
-	stageRun.Status = repository.WorkStatusRunning
+	stageRun.Status = status.WorkStatusRunning
 	_ = e.store.UpdateStageRun(ctx, stageRun)
 
 	logPath := filepath.Join(e.cfg.DataRoot(), "ci", "runs", run.Id, "stages", stageRun.Id+".log")
@@ -112,7 +113,7 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 
 	finished := now()
 	stageRun.FinishedAt = &finished
-	stageRun.Status = repository.WorkStatusRanToCompletion
+	stageRun.Status = status.WorkStatusRanToCompletion
 	stageRun.ExitCode = &exitCode
 	if err := e.saveArtifacts(ctx, run, stage); err != nil {
 		return e.failStage(ctx, stageRun, err.Error())
@@ -128,7 +129,7 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 func (e Executor) completeStageFailed(ctx context.Context, stageRun model.StageRun, exitCode int, message string) bool {
 	finished := now()
 	stageRun.FinishedAt = &finished
-	stageRun.Status = repository.WorkStatusFaulted
+	stageRun.Status = status.WorkStatusFaulted
 	stageRun.ExitCode = &exitCode
 	stageRun.ErrorMessage = &message
 	_ = e.store.UpdateStageRun(ctx, stageRun)
@@ -139,7 +140,7 @@ func (e Executor) completeStageFailed(ctx context.Context, stageRun model.StageR
 func (e Executor) failStage(ctx context.Context, stageRun model.StageRun, message string) bool {
 	finished := now()
 	stageRun.FinishedAt = &finished
-	stageRun.Status = repository.WorkStatusFaulted
+	stageRun.Status = status.WorkStatusFaulted
 	stageRun.ErrorMessage = &message
 	_ = e.store.UpdateStageRun(ctx, stageRun)
 	e.logger.Error("stage faulted", "run", stageRun.PipelineRunId, "stage", stageRun.StageName, "error", message)
@@ -150,7 +151,7 @@ func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]
 	for i := start; i < len(layers); i++ {
 		for _, stageId := range layers[i] {
 			stage := stages[stageId]
-			_ = e.store.InsertStageRun(ctx, model.StageRun{Id: repository.NewId(), PipelineRunId: runId, StageId: stage.Id, StageName: stage.Name, Status: repository.WorkStatusCanceled})
+			_ = e.store.InsertStageRun(ctx, model.StageRun{Id: repository.NewId(), PipelineRunId: runId, StageId: stage.Id, StageName: stage.Name, Status: status.WorkStatusCanceled})
 		}
 	}
 }

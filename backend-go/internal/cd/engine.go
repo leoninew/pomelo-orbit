@@ -9,15 +9,16 @@ import (
 	"strings"
 
 	"backend/internal/config"
-	"backend/internal/repository"
+	"backend/internal/repository/model"
+	"backend/internal/status"
 )
 
 type Store interface {
-	Application(ctx context.Context, id string) (repository.Application, error)
-	Deployment(ctx context.Context, id string) (repository.Deployment, error)
-	ConfigFiles(ctx context.Context, applicationId string) ([]repository.ApplicationConfigFile, error)
-	ServiceConfigs(ctx context.Context, applicationId string) ([]repository.ApplicationServiceConfig, error)
-	Routes(ctx context.Context, applicationId string) ([]repository.ApplicationRoute, error)
+	Application(ctx context.Context, id string) (model.Application, error)
+	Deployment(ctx context.Context, id string) (model.Deployment, error)
+	ConfigFiles(ctx context.Context, applicationId string) ([]model.ApplicationConfigFile, error)
+	ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error)
+	Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error)
 	MarkApplicationStatus(ctx context.Context, id string, status string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
@@ -43,7 +44,7 @@ func (e Engine) Deploy(ctx context.Context, applicationId string, deploymentId s
 	if err != nil {
 		return err
 	}
-	if err := e.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeploying); err != nil {
+	if err := e.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeploying); err != nil {
 		return err
 	}
 	if err := e.store.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
@@ -51,14 +52,14 @@ func (e Engine) Deploy(ctx context.Context, applicationId string, deploymentId s
 	}
 
 	if err := e.writeAndDeploy(ctx, app, deployment.Id); err != nil {
-		_ = e.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployFailed)
-		_ = e.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusFaulted, err.Error())
+		_ = e.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
+		_ = e.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := e.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployed); err != nil {
+	if err := e.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployed); err != nil {
 		return err
 	}
-	return e.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusRanToCompletion, "")
+	return e.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
 func (e Engine) Restart(ctx context.Context, applicationId string, deploymentId string) error {
@@ -66,7 +67,7 @@ func (e Engine) Restart(ctx context.Context, applicationId string, deploymentId 
 	if err != nil {
 		return err
 	}
-	if err := e.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeploying); err != nil {
+	if err := e.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeploying); err != nil {
 		return err
 	}
 	if err := e.store.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
@@ -80,29 +81,29 @@ func (e Engine) Restart(ctx context.Context, applicationId string, deploymentId 
 	}
 	defer closeLog()
 	if err := e.runner.Run(ctx, appDir, logFile, "docker", "compose", "-f", "docker-compose.yml", "restart"); err != nil {
-		_ = e.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployFailed)
-		_ = e.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusFaulted, err.Error())
+		_ = e.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
+		_ = e.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := e.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusDeployed); err != nil {
+	if err := e.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployed); err != nil {
 		return err
 	}
-	return e.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusRanToCompletion, "")
+	return e.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
-func (e Engine) load(ctx context.Context, applicationId string, deploymentId string) (repository.Application, repository.Deployment, error) {
+func (e Engine) load(ctx context.Context, applicationId string, deploymentId string) (model.Application, model.Deployment, error) {
 	app, err := e.store.Application(ctx, applicationId)
 	if err != nil {
-		return repository.Application{}, repository.Deployment{}, err
+		return model.Application{}, model.Deployment{}, err
 	}
 	deployment, err := e.store.Deployment(ctx, deploymentId)
 	if err != nil {
-		return repository.Application{}, repository.Deployment{}, err
+		return model.Application{}, model.Deployment{}, err
 	}
 	return app, deployment, nil
 }
 
-func (e Engine) writeAndDeploy(ctx context.Context, app repository.Application, deploymentId string) error {
+func (e Engine) writeAndDeploy(ctx context.Context, app model.Application, deploymentId string) error {
 	files, err := e.store.ConfigFiles(ctx, app.Id)
 	if err != nil {
 		return err
@@ -111,7 +112,7 @@ func (e Engine) writeAndDeploy(ctx context.Context, app repository.Application, 
 	if err != nil {
 		return err
 	}
-	var routes []repository.ApplicationRoute
+	var routes []model.ApplicationRoute
 	if app.RouteManaged {
 		routes, err = e.store.Routes(ctx, app.Id)
 		if err != nil {

@@ -26,39 +26,39 @@ var applicationUpdateCodePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 type Store interface {
 	Project(ctx context.Context, id string) (model.Project, error)
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
-	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[repository.Application], error)
-	Application(ctx context.Context, id string) (repository.Application, error)
-	ApplicationByName(ctx context.Context, name string) (repository.Application, error)
-	ApplicationByCode(ctx context.Context, code string) (repository.Application, error)
-	ConfigFiles(ctx context.Context, applicationId string) ([]repository.ApplicationConfigFile, error)
-	ConfigFile(ctx context.Context, id string) (repository.ApplicationConfigFile, error)
-	CreateConfigFile(ctx context.Context, file repository.ApplicationConfigFile) error
-	UpdateConfigFile(ctx context.Context, file repository.ApplicationConfigFile) error
+	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error)
+	Application(ctx context.Context, id string) (model.Application, error)
+	ApplicationByName(ctx context.Context, name string) (model.Application, error)
+	ApplicationByCode(ctx context.Context, code string) (model.Application, error)
+	ConfigFiles(ctx context.Context, applicationId string) ([]model.ApplicationConfigFile, error)
+	ConfigFile(ctx context.Context, id string) (model.ApplicationConfigFile, error)
+	CreateConfigFile(ctx context.Context, file model.ApplicationConfigFile) error
+	UpdateConfigFile(ctx context.Context, file model.ApplicationConfigFile) error
 	DeleteConfigFile(ctx context.Context, id string) error
-	Routes(ctx context.Context, applicationId string) ([]repository.ApplicationRoute, error)
-	ApplicationRoute(ctx context.Context, id string) (repository.ApplicationRoute, error)
-	CreateApplicationRoute(ctx context.Context, route repository.ApplicationRoute) error
-	UpdateApplicationRoute(ctx context.Context, route repository.ApplicationRoute) error
+	Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error)
+	ApplicationRoute(ctx context.Context, id string) (model.ApplicationRoute, error)
+	CreateApplicationRoute(ctx context.Context, route model.ApplicationRoute) error
+	UpdateApplicationRoute(ctx context.Context, route model.ApplicationRoute) error
 	DeleteApplicationRoute(ctx context.Context, id string) error
-	ServiceConfigs(ctx context.Context, applicationId string) ([]repository.ApplicationServiceConfig, error)
-	ApplicationServiceConfig(ctx context.Context, applicationId string, serviceName string) (repository.ApplicationServiceConfig, error)
-	UpsertApplicationServiceConfig(ctx context.Context, config repository.ApplicationServiceConfig) error
-	CreateApplication(ctx context.Context, app repository.Application) error
-	CreateApplicationBundle(ctx context.Context, app repository.Application, files []repository.ApplicationConfigFile, serviceConfigs []repository.ApplicationServiceConfig, routes []repository.ApplicationRoute) error
-	UpdateApplication(ctx context.Context, app repository.Application) error
+	ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error)
+	ApplicationServiceConfig(ctx context.Context, applicationId string, serviceName string) (model.ApplicationServiceConfig, error)
+	UpsertApplicationServiceConfig(ctx context.Context, config model.ApplicationServiceConfig) error
+	CreateApplication(ctx context.Context, app model.Application) error
+	CreateApplicationBundle(ctx context.Context, app model.Application, files []model.ApplicationConfigFile, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) error
+	UpdateApplication(ctx context.Context, app model.Application) error
 	DeleteApplication(ctx context.Context, id string) error
-	CreateDeployment(ctx context.Context, deployment repository.Deployment) error
+	CreateDeployment(ctx context.Context, deployment model.Deployment) error
 	MarkApplicationStatus(ctx context.Context, id string, status string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
-	ListDeployments(ctx context.Context, projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[repository.Deployment], error)
-	Deployment(ctx context.Context, id string) (repository.Deployment, error)
+	ListDeployments(ctx context.Context, projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[model.Deployment], error)
+	Deployment(ctx context.Context, id string) (model.Deployment, error)
 	CancelDeployment(ctx context.Context, id string) error
-	ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.Route], error)
-	ListAllRoutes(ctx context.Context, projectId string) ([]repository.Route, error)
-	Route(ctx context.Context, id string) (repository.Route, error)
-	RouteByDomain(ctx context.Context, domain string) (repository.Route, error)
-	CreateRoute(ctx context.Context, route repository.Route) error
-	UpdateRoute(ctx context.Context, route repository.Route) error
+	ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.Route], error)
+	ListAllRoutes(ctx context.Context, projectId string) ([]model.Route, error)
+	Route(ctx context.Context, id string) (model.Route, error)
+	RouteByDomain(ctx context.Context, domain string) (model.Route, error)
+	CreateRoute(ctx context.Context, route model.Route) error
+	UpdateRoute(ctx context.Context, route model.Route) error
 	DeleteRoute(ctx context.Context, id string) error
 }
 
@@ -113,72 +113,72 @@ func New(store Store, tasks TaskService, cfg config.Config) Service {
 	return Service{store: store, tasks: tasks, cfg: cfg, dataRoot: cfg.DataRoot()}
 }
 
-func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[repository.Application], error) {
+func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {
 	if projectId != nil {
 		if err := s.ensureProjectMembership(ctx, *projectId, userId); err != nil {
-			return repository.Page[repository.Application]{}, err
+			return repository.Page[model.Application]{}, err
 		}
 	}
 	items, err := s.store.ListApplications(ctx, projectId, page, perPage, search)
 	if err != nil {
-		return repository.Page[repository.Application]{}, apperror.Wrap(apperror.KindInternal, "Failed to list applications", err)
+		return repository.Page[model.Application]{}, apperror.Wrap(apperror.KindInternal, "Failed to list applications", err)
 	}
 	return items, nil
 }
 
-func (s Service) CreateApplication(ctx context.Context, userId string, input ApplicationCreateInput) (repository.Application, error) {
+func (s Service) CreateApplication(ctx context.Context, userId string, input ApplicationCreateInput) (model.Application, error) {
 	projectId := strings.TrimSpace(input.ProjectId)
 	if projectId == "" {
-		return repository.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
 	name, code, imagePullPolicy, err := normalizeApplicationCreateInput(input)
 	if err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
-	app := repository.Application{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, Status: repository.ApplicationStatusUndeployed}
+	app := model.Application{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, Status: status.ApplicationStatusUndeployed}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}
 	created, err := s.store.Application(ctx, app.Id)
 	if err != nil {
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	return created, nil
 }
 
-func (s Service) ApplicationForUser(ctx context.Context, userId string, applicationId string) (repository.Application, error) {
+func (s Service) ApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
 	return s.loadApplicationForUser(ctx, userId, applicationId)
 }
 
-func (s Service) UpdateApplication(ctx context.Context, userId string, applicationId string, input ApplicationUpdateInput) (repository.Application, error) {
+func (s Service) UpdateApplication(ctx context.Context, userId string, applicationId string, input ApplicationUpdateInput) (model.Application, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
 	if input.Name != nil {
 		name := strings.TrimSpace(*input.Name)
 		if name == "" || len(name) > 100 {
-			return repository.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
+			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
 		}
 		app.Name = name
 	}
 	if input.Code != nil {
 		code := strings.TrimSpace(*input.Code)
 		if code == "" || len(code) > 100 || !applicationUpdateCodePattern.MatchString(code) {
-			return repository.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
+			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
 		}
 		app.Code = code
 	}
 	if input.ImagePullPolicy != nil {
 		policy := strings.TrimSpace(*input.ImagePullPolicy)
 		if !validImagePullPolicy(policy) {
-			return repository.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
+			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application fields")
 		}
 		app.ImagePullPolicy = policy
 	}
@@ -186,11 +186,11 @@ func (s Service) UpdateApplication(ctx context.Context, userId string, applicati
 		app.RouteManaged = *input.RouteManaged
 	}
 	if err := s.store.UpdateApplication(ctx, app); err != nil {
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to update application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to update application", err)
 	}
 	updated, err := s.store.Application(ctx, app.Id)
 	if err != nil {
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	return updated, nil
 }
@@ -200,10 +200,10 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 	if err != nil {
 		return err
 	}
-	if app.Status == repository.ApplicationStatusDeploying {
+	if app.Status == status.ApplicationStatusDeploying {
 		return apperror.New(apperror.KindValidation, "应用正在部署中, 请稍后再试")
 	}
-	if app.Status == repository.ApplicationStatusDeployed {
+	if app.Status == status.ApplicationStatusDeployed {
 		return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
 	}
 	if input.RemoveDir {
@@ -235,30 +235,30 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	return deployment.Id, nil
 }
 
-func (s Service) ListDeployments(ctx context.Context, userId string, input DeploymentListInput) (repository.Page[repository.Deployment], error) {
+func (s Service) ListDeployments(ctx context.Context, userId string, input DeploymentListInput) (repository.Page[model.Deployment], error) {
 	projectId := strings.TrimSpace(input.ProjectId)
 	if projectId == "" {
-		return repository.Page[repository.Deployment]{}, apperror.New(apperror.KindValidation, "project_id is required")
+		return repository.Page[model.Deployment]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return repository.Page[repository.Deployment]{}, err
+		return repository.Page[model.Deployment]{}, err
 	}
 	dateFrom, err := parseOptionalRunTime(input.DateFrom, "date_from")
 	if err != nil {
-		return repository.Page[repository.Deployment]{}, err
+		return repository.Page[model.Deployment]{}, err
 	}
 	dateTo, err := parseOptionalRunTime(input.DateTo, "date_to")
 	if err != nil {
-		return repository.Page[repository.Deployment]{}, err
+		return repository.Page[model.Deployment]{}, err
 	}
 	items, err := s.store.ListDeployments(ctx, projectId, input.ApplicationId, input.Status, input.Search, dateFrom, dateTo, input.Page, input.PerPage)
 	if err != nil {
-		return repository.Page[repository.Deployment]{}, apperror.Wrap(apperror.KindInternal, "Failed to list deployments", err)
+		return repository.Page[model.Deployment]{}, apperror.Wrap(apperror.KindInternal, "Failed to list deployments", err)
 	}
 	return items, nil
 }
 
-func (s Service) DeploymentForUser(ctx context.Context, userId string, deploymentId string) (repository.Deployment, error) {
+func (s Service) DeploymentForUser(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
 	return s.loadDeploymentForUser(ctx, userId, deploymentId)
 }
 
@@ -277,53 +277,53 @@ func (s Service) DeploymentLog(ctx context.Context, userId string, deploymentId 
 	return DeploymentLog{Logs: logs, Offset: newOffset, IsComplete: deploymentStatusComplete(deployment.Status), Status: deployment.Status}, nil
 }
 
-func (s Service) CancelDeployment(ctx context.Context, userId string, deploymentId string) (repository.Deployment, error) {
+func (s Service) CancelDeployment(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
 	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
 	if err != nil {
-		return repository.Deployment{}, err
+		return model.Deployment{}, err
 	}
-	if deployment.Status != repository.WorkStatusWaitingToRun && deployment.Status != repository.WorkStatusRunning {
-		return repository.Deployment{}, apperror.New(apperror.KindValidation, "Cannot cancel deployment with status "+deployment.Status)
+	if deployment.Status != status.WorkStatusWaitingToRun && deployment.Status != status.WorkStatusRunning {
+		return model.Deployment{}, apperror.New(apperror.KindValidation, "Cannot cancel deployment with status "+deployment.Status)
 	}
 	if err := s.store.CancelDeployment(ctx, deployment.Id); err != nil {
-		return repository.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel deployment", err)
+		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to cancel deployment", err)
 	}
 	updated, err := s.store.Deployment(ctx, deployment.Id)
 	if err != nil {
-		return repository.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
+		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
 	}
 	return updated, nil
 }
 
-func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (repository.Application, error) {
+func (s Service) loadApplicationForUser(ctx context.Context, userId string, applicationId string) (model.Application, error) {
 	applicationId = strings.TrimSpace(applicationId)
 	app, err := s.store.Application(ctx, applicationId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
+			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	if app.ProjectId != nil {
 		if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-			return repository.Application{}, err
+			return model.Application{}, err
 		}
 	}
 	return app, nil
 }
 
-func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deploymentId string) (repository.Deployment, error) {
+func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
 	deploymentId = strings.TrimSpace(deploymentId)
 	deployment, err := s.store.Deployment(ctx, deploymentId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.Deployment{}, apperror.New(apperror.KindNotFound, "Deployment "+deploymentId+" not found")
+			return model.Deployment{}, apperror.New(apperror.KindNotFound, "Deployment "+deploymentId+" not found")
 		}
-		return repository.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
+		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
 	}
 	if deployment.ProjectId != nil {
 		if err := s.ensureProjectMembership(ctx, *deployment.ProjectId, userId); err != nil {
-			return repository.Deployment{}, err
+			return model.Deployment{}, err
 		}
 		return deployment, nil
 	}
@@ -331,13 +331,13 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deplo
 		app, err := s.store.Application(ctx, *deployment.ApplicationId)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return repository.Deployment{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
+				return model.Deployment{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
 			}
-			return repository.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+			return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 		}
 		if app.ProjectId != nil {
 			if err := s.ensureProjectMembership(ctx, *app.ProjectId, userId); err != nil {
-				return repository.Deployment{}, err
+				return model.Deployment{}, err
 			}
 		}
 	}
@@ -385,7 +385,7 @@ func (s Service) ensureApplicationComposeFile(ctx context.Context, applicationId
 	return apperror.New(apperror.KindValidation, "No docker-compose file found for application "+applicationId)
 }
 
-func (s Service) readDeploymentLog(ctx context.Context, deployment repository.Deployment, offset int) (string, int, error) {
+func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deployment, offset int) (string, int, error) {
 	if deployment.ApplicationId == nil || strings.TrimSpace(*deployment.ApplicationId) == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
 	}
@@ -442,11 +442,11 @@ func parseOptionalRunTime(value string, name string) (*time.Time, error) {
 }
 
 func deploymentStatusComplete(value string) bool {
-	return value == repository.WorkStatusRanToCompletion || value == repository.WorkStatusFaulted || value == repository.WorkStatusCanceled
+	return value == status.WorkStatusRanToCompletion || value == status.WorkStatusFaulted || value == status.WorkStatusCanceled
 }
 
-func newApplicationDeployment(app repository.Application, operationType string) repository.Deployment {
-	return repository.Deployment{Id: repository.NewId(), ProjectId: app.ProjectId, ApplicationId: &app.Id, ApplicationName: app.Name, OperationType: operationType, TriggerType: "manual", Status: repository.WorkStatusWaitingToRun, IsRollback: false}
+func newApplicationDeployment(app model.Application, operationType string) model.Deployment {
+	return model.Deployment{Id: repository.NewId(), ProjectId: app.ProjectId, ApplicationId: &app.Id, ApplicationName: app.Name, OperationType: operationType, TriggerType: "manual", Status: status.WorkStatusWaitingToRun, IsRollback: false}
 }
 
 func outputOrError(output string, err error) string {

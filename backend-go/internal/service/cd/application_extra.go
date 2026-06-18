@@ -14,6 +14,7 @@ import (
 	"backend/internal/apperror"
 	"backend/internal/config"
 	"backend/internal/repository"
+	"backend/internal/repository/model"
 	"backend/internal/status"
 	"backend/internal/templatex"
 	"gopkg.in/yaml.v3"
@@ -55,10 +56,10 @@ type ApplicationImportInput struct {
 
 // ApplicationExport bundles application data for handler response.
 type ApplicationExport struct {
-	Application    repository.Application
-	ConfigFiles    []repository.ApplicationConfigFile
-	ServiceConfigs []repository.ApplicationServiceConfig
-	Routes         []repository.ApplicationRoute
+	Application    model.Application
+	ConfigFiles    []model.ApplicationConfigFile
+	ServiceConfigs []model.ApplicationServiceConfig
+	Routes         []model.ApplicationRoute
 }
 
 // ApplicationServiceConfigView is the service-config view used by HTTP responses.
@@ -73,38 +74,38 @@ type ApplicationServiceConfigView struct {
 	UpdatedAt     *string `json:"updated_at"`
 }
 
-func (s Service) ImportApplication(ctx context.Context, userId string, input ApplicationImportInput) (repository.Application, error) {
+func (s Service) ImportApplication(ctx context.Context, userId string, input ApplicationImportInput) (model.Application, error) {
 	projectId := strings.TrimSpace(input.ProjectId)
 	if projectId == "" {
-		return repository.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
 	name, code, imagePullPolicy, err := normalizeApplicationImportInput(input)
 	if err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
 	if err := s.ensureApplicationCodeAvailable(ctx, code); err != nil {
-		return repository.Application{}, err
+		return model.Application{}, err
 	}
-	app := repository.Application{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, RouteManaged: input.RouteManaged, Status: repository.ApplicationStatusUndeployed}
-	files := make([]repository.ApplicationConfigFile, 0, len(input.ConfigFiles))
+	app := model.Application{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, RouteManaged: input.RouteManaged, Status: status.ApplicationStatusUndeployed}
+	files := make([]model.ApplicationConfigFile, 0, len(input.ConfigFiles))
 	for _, item := range input.ConfigFiles {
 		path := strings.TrimSpace(item.Path)
 		if path == "" {
-			return repository.Application{}, apperror.New(apperror.KindValidation, "Invalid config file fields")
+			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid config file fields")
 		}
-		files = append(files, repository.ApplicationConfigFile{Id: repository.NewId(), ApplicationId: app.Id, Path: path, Content: item.Content})
+		files = append(files, model.ApplicationConfigFile{Id: repository.NewId(), ApplicationId: app.Id, Path: path, Content: item.Content})
 	}
-	serviceConfigs := make([]repository.ApplicationServiceConfig, 0, len(input.ServiceConfigs))
+	serviceConfigs := make([]model.ApplicationServiceConfig, 0, len(input.ServiceConfigs))
 	for _, item := range input.ServiceConfigs {
 		serviceName := strings.TrimSpace(item.ServiceName)
 		if serviceName == "" {
-			return repository.Application{}, apperror.New(apperror.KindValidation, "Invalid application service config fields")
+			return model.Application{}, apperror.New(apperror.KindValidation, "Invalid application service config fields")
 		}
 		image := normalizeOptionalText(item.Image)
 		environment := normalizeOptionalText(item.Environment)
@@ -112,22 +113,22 @@ func (s Service) ImportApplication(ctx context.Context, userId string, input App
 		if image == nil && environment == nil && volumes == nil {
 			continue
 		}
-		serviceConfigs = append(serviceConfigs, repository.ApplicationServiceConfig{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName, Image: image, Environment: environment, Volumes: volumes})
+		serviceConfigs = append(serviceConfigs, model.ApplicationServiceConfig{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName, Image: image, Environment: environment, Volumes: volumes})
 	}
-	routes := make([]repository.ApplicationRoute, 0, len(input.ApplicationRoutes))
+	routes := make([]model.ApplicationRoute, 0, len(input.ApplicationRoutes))
 	for _, item := range input.ApplicationRoutes {
 		serviceName, domain, port, err := normalizeApplicationRouteInput(item.ServiceName, item.Domain, item.Port)
 		if err != nil {
-			return repository.Application{}, err
+			return model.Application{}, err
 		}
-		routes = append(routes, repository.ApplicationRoute{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName, Domain: domain, Port: port})
+		routes = append(routes, model.ApplicationRoute{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName, Domain: domain, Port: port})
 	}
 	if err := s.store.CreateApplicationBundle(ctx, app, files, serviceConfigs, routes); err != nil {
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to import application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to import application", err)
 	}
 	created, err := s.store.Application(ctx, app.Id)
 	if err != nil {
-		return repository.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	return created, nil
 }
@@ -152,7 +153,7 @@ func (s Service) ExportApplication(ctx context.Context, userId string, applicati
 	return ApplicationExport{Application: app, ConfigFiles: files, ServiceConfigs: serviceConfigs, Routes: routes}, nil
 }
 
-func (s Service) ListApplicationFiles(ctx context.Context, userId string, applicationId string) ([]repository.ApplicationConfigFile, error) {
+func (s Service) ListApplicationFiles(ctx context.Context, userId string, applicationId string) ([]model.ApplicationConfigFile, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return nil, err
@@ -164,62 +165,62 @@ func (s Service) ListApplicationFiles(ctx context.Context, userId string, applic
 	return files, nil
 }
 
-func (s Service) CreateApplicationFile(ctx context.Context, userId string, applicationId string, input ConfigFileInput) (repository.ApplicationConfigFile, error) {
+func (s Service) CreateApplicationFile(ctx context.Context, userId string, applicationId string, input ConfigFileInput) (model.ApplicationConfigFile, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return repository.ApplicationConfigFile{}, err
+		return model.ApplicationConfigFile{}, err
 	}
 	path := strings.TrimSpace(input.Path)
 	if path == "" {
-		return repository.ApplicationConfigFile{}, apperror.New(apperror.KindValidation, "Invalid config file fields")
+		return model.ApplicationConfigFile{}, apperror.New(apperror.KindValidation, "Invalid config file fields")
 	}
-	file := repository.ApplicationConfigFile{Id: repository.NewId(), ApplicationId: app.Id, Path: path, Content: input.Content}
+	file := model.ApplicationConfigFile{Id: repository.NewId(), ApplicationId: app.Id, Path: path, Content: input.Content}
 	if err := s.store.CreateConfigFile(ctx, file); err != nil {
-		return repository.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to create application file", err)
+		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to create application file", err)
 	}
 	created, err := s.store.ConfigFile(ctx, file.Id)
 	if err != nil {
-		return repository.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
+		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
 	}
 	return created, nil
 }
 
-func (s Service) ApplicationFileForUser(ctx context.Context, userId string, applicationId string, fileId string) (repository.ApplicationConfigFile, error) {
+func (s Service) ApplicationFileForUser(ctx context.Context, userId string, applicationId string, fileId string) (model.ApplicationConfigFile, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return repository.ApplicationConfigFile{}, err
+		return model.ApplicationConfigFile{}, err
 	}
 	fileId = strings.TrimSpace(fileId)
 	file, err := s.store.ConfigFile(ctx, fileId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.ApplicationConfigFile{}, apperror.New(apperror.KindNotFound, "Config file "+fileId+" not found")
+			return model.ApplicationConfigFile{}, apperror.New(apperror.KindNotFound, "Config file "+fileId+" not found")
 		}
-		return repository.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
+		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
 	}
 	if file.ApplicationId != app.Id {
-		return repository.ApplicationConfigFile{}, apperror.New(apperror.KindNotFound, "Config file "+fileId+" not found")
+		return model.ApplicationConfigFile{}, apperror.New(apperror.KindNotFound, "Config file "+fileId+" not found")
 	}
 	return file, nil
 }
 
-func (s Service) UpdateApplicationFile(ctx context.Context, userId string, applicationId string, fileId string, input ConfigFileInput) (repository.ApplicationConfigFile, error) {
+func (s Service) UpdateApplicationFile(ctx context.Context, userId string, applicationId string, fileId string, input ConfigFileInput) (model.ApplicationConfigFile, error) {
 	file, err := s.ApplicationFileForUser(ctx, userId, applicationId, fileId)
 	if err != nil {
-		return repository.ApplicationConfigFile{}, err
+		return model.ApplicationConfigFile{}, err
 	}
 	path := strings.TrimSpace(input.Path)
 	if path == "" {
-		return repository.ApplicationConfigFile{}, apperror.New(apperror.KindValidation, "Invalid config file fields")
+		return model.ApplicationConfigFile{}, apperror.New(apperror.KindValidation, "Invalid config file fields")
 	}
 	file.Path = path
 	file.Content = input.Content
 	if err := s.store.UpdateConfigFile(ctx, file); err != nil {
-		return repository.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to update application file", err)
+		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to update application file", err)
 	}
 	updated, err := s.store.ConfigFile(ctx, file.Id)
 	if err != nil {
-		return repository.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
+		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
 	}
 	return updated, nil
 }
@@ -240,7 +241,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if err != nil {
 		return "", err
 	}
-	if app.Status != repository.ApplicationStatusDeployed {
+	if app.Status != status.ApplicationStatusDeployed {
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法停止")
 	}
 	deployment := newApplicationDeployment(app, "stop")
@@ -253,13 +254,13 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	}
 	appDir := filepath.Join(s.dataRoot, "cd", app.Code)
 	if output, err := runApplicationCommand(ctx, appDir, cmd...); err != nil {
-		_ = s.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusFaulted, outputOrError(output, err))
+		_ = s.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, outputOrError(output, err))
 		return "", apperror.New(apperror.KindInternal, "Failed to stop application")
 	}
-	if err := s.store.MarkApplicationStatus(ctx, app.Id, repository.ApplicationStatusUndeployed); err != nil {
+	if err := s.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusUndeployed); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to update application status", err)
 	}
-	if err := s.store.CompleteDeployment(ctx, deployment.Id, repository.WorkStatusRanToCompletion, ""); err != nil {
+	if err := s.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, ""); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to complete deployment", err)
 	}
 	return deployment.Id, nil
@@ -270,7 +271,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err != nil {
 		return "", err
 	}
-	if app.Status != repository.ApplicationStatusDeployed {
+	if app.Status != status.ApplicationStatusDeployed {
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法重启")
 	}
 	if err := s.ensureApplicationComposeFile(ctx, app.Id); err != nil {
@@ -321,7 +322,7 @@ func (s Service) ApplicationComposePreview(ctx context.Context, userId string, a
 	return s.renderApplicationCompose(ctx, app, compose)
 }
 
-func (s Service) ListApplicationRoutes(ctx context.Context, userId string, applicationId string) ([]repository.ApplicationRoute, error) {
+func (s Service) ListApplicationRoutes(ctx context.Context, userId string, applicationId string) ([]model.ApplicationRoute, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return nil, err
@@ -333,47 +334,47 @@ func (s Service) ListApplicationRoutes(ctx context.Context, userId string, appli
 	return routes, nil
 }
 
-func (s Service) CreateApplicationRoute(ctx context.Context, userId string, applicationId string, input ApplicationRouteInput) (repository.ApplicationRoute, error) {
+func (s Service) CreateApplicationRoute(ctx context.Context, userId string, applicationId string, input ApplicationRouteInput) (model.ApplicationRoute, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return repository.ApplicationRoute{}, err
+		return model.ApplicationRoute{}, err
 	}
 	if !app.RouteManaged {
-		return repository.ApplicationRoute{}, apperror.New(apperror.KindValidation, "应用未启用路由托管")
+		return model.ApplicationRoute{}, apperror.New(apperror.KindValidation, "应用未启用路由托管")
 	}
 	serviceName, domain, port, err := normalizeApplicationRouteInput(input.ServiceName, input.Domain, input.Port)
 	if err != nil {
-		return repository.ApplicationRoute{}, err
+		return model.ApplicationRoute{}, err
 	}
-	route := repository.ApplicationRoute{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName, Domain: domain, Port: port}
+	route := model.ApplicationRoute{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName, Domain: domain, Port: port}
 	if err := s.store.CreateApplicationRoute(ctx, route); err != nil {
-		return repository.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to create application route", err)
+		return model.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to create application route", err)
 	}
 	created, err := s.store.ApplicationRoute(ctx, route.Id)
 	if err != nil {
-		return repository.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
+		return model.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
 	}
 	return created, nil
 }
 
-func (s Service) UpdateApplicationRoute(ctx context.Context, userId string, applicationId string, routeId string, input ApplicationRouteInput) (repository.ApplicationRoute, error) {
+func (s Service) UpdateApplicationRoute(ctx context.Context, userId string, applicationId string, routeId string, input ApplicationRouteInput) (model.ApplicationRoute, error) {
 	route, err := s.loadApplicationRouteForUser(ctx, userId, applicationId, routeId)
 	if err != nil {
-		return repository.ApplicationRoute{}, err
+		return model.ApplicationRoute{}, err
 	}
 	serviceName, domain, port, err := normalizeApplicationRouteInput(input.ServiceName, input.Domain, input.Port)
 	if err != nil {
-		return repository.ApplicationRoute{}, err
+		return model.ApplicationRoute{}, err
 	}
 	route.ServiceName = serviceName
 	route.Domain = domain
 	route.Port = port
 	if err := s.store.UpdateApplicationRoute(ctx, route); err != nil {
-		return repository.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to update application route", err)
+		return model.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to update application route", err)
 	}
 	updated, err := s.store.ApplicationRoute(ctx, route.Id)
 	if err != nil {
-		return repository.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
+		return model.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
 	}
 	return updated, nil
 }
@@ -426,7 +427,7 @@ func (s Service) UpdateApplicationServiceConfig(ctx context.Context, userId stri
 	config, err := s.store.ApplicationServiceConfig(ctx, app.Id, serviceName)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			config = repository.ApplicationServiceConfig{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName}
+			config = model.ApplicationServiceConfig{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName}
 		} else {
 			return ApplicationServiceConfigView{}, apperror.Wrap(apperror.KindInternal, "Failed to load application service config", err)
 		}
@@ -442,51 +443,51 @@ func (s Service) UpdateApplicationServiceConfig(ctx context.Context, userId stri
 	return s.applicationServiceConfigView(app, serviceName, raw, &updated), nil
 }
 
-func (s Service) loadApplicationRouteForUser(ctx context.Context, userId string, applicationId string, routeId string) (repository.ApplicationRoute, error) {
+func (s Service) loadApplicationRouteForUser(ctx context.Context, userId string, applicationId string, routeId string) (model.ApplicationRoute, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return repository.ApplicationRoute{}, err
+		return model.ApplicationRoute{}, err
 	}
 	routeId = strings.TrimSpace(routeId)
 	route, err := s.store.ApplicationRoute(ctx, routeId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return repository.ApplicationRoute{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
+			return model.ApplicationRoute{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 		}
-		return repository.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
+		return model.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
 	}
 	if route.ApplicationId != app.Id {
-		return repository.ApplicationRoute{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
+		return model.ApplicationRoute{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 	}
 	return route, nil
 }
 
-func (s Service) loadApplicationCompose(ctx context.Context, userId string, applicationId string) (repository.Application, repository.ApplicationConfigFile, error) {
+func (s Service) loadApplicationCompose(ctx context.Context, userId string, applicationId string) (model.Application, model.ApplicationConfigFile, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return repository.Application{}, repository.ApplicationConfigFile{}, err
+		return model.Application{}, model.ApplicationConfigFile{}, err
 	}
 	compose, err := s.applicationComposeFile(ctx, app.Id)
 	if err != nil {
-		return repository.Application{}, repository.ApplicationConfigFile{}, err
+		return model.Application{}, model.ApplicationConfigFile{}, err
 	}
 	return app, compose, nil
 }
 
-func (s Service) applicationComposeFile(ctx context.Context, applicationId string) (repository.ApplicationConfigFile, error) {
+func (s Service) applicationComposeFile(ctx context.Context, applicationId string) (model.ApplicationConfigFile, error) {
 	files, err := s.store.ConfigFiles(ctx, applicationId)
 	if err != nil {
-		return repository.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application config files", err)
+		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application config files", err)
 	}
 	for _, file := range files {
 		if file.Path == "docker-compose.yml" || file.Path == "docker-compose.yml.jinja" {
 			return file, nil
 		}
 	}
-	return repository.ApplicationConfigFile{}, apperror.New(apperror.KindValidation, "No docker-compose file found for this application")
+	return model.ApplicationConfigFile{}, apperror.New(apperror.KindValidation, "No docker-compose file found for this application")
 }
 
-func (s Service) renderApplicationCompose(ctx context.Context, app repository.Application, compose repository.ApplicationConfigFile) (string, error) {
+func (s Service) renderApplicationCompose(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (string, error) {
 	content := compose.Content
 	var err error
 	if strings.HasSuffix(compose.Path, ".jinja") {
@@ -513,7 +514,7 @@ func (s Service) renderApplicationCompose(ctx context.Context, app repository.Ap
 	return content, nil
 }
 
-func (s Service) composeServices(app repository.Application, compose repository.ApplicationConfigFile) (map[string]any, error) {
+func (s Service) composeServices(app model.Application, compose model.ApplicationConfigFile) (map[string]any, error) {
 	content := compose.Content
 	if strings.HasSuffix(compose.Path, ".jinja") {
 		rendered, err := renderApplicationTemplate(content, app.Code, s.cfg)
@@ -546,13 +547,13 @@ func (s Service) applicationServiceConfigViews(ctx context.Context, userId strin
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load application service configs", err)
 	}
-	byName := map[string]repository.ApplicationServiceConfig{}
+	byName := map[string]model.ApplicationServiceConfig{}
 	for _, config := range configs {
 		byName[config.ServiceName] = config
 	}
 	resp := make([]ApplicationServiceConfigView, 0, len(services))
 	for name, raw := range services {
-		var config *repository.ApplicationServiceConfig
+		var config *model.ApplicationServiceConfig
 		if value, ok := byName[name]; ok {
 			config = &value
 		}
@@ -561,7 +562,7 @@ func (s Service) applicationServiceConfigViews(ctx context.Context, userId strin
 	return resp, nil
 }
 
-func (s Service) applicationServiceConfigView(app repository.Application, serviceName string, raw any, config *repository.ApplicationServiceConfig) ApplicationServiceConfigView {
+func (s Service) applicationServiceConfigView(app model.Application, serviceName string, raw any, config *model.ApplicationServiceConfig) ApplicationServiceConfigView {
 	service, _ := raw.(map[string]any)
 	baseImage := optionalStringFromAny(service["image"])
 	var image *string
@@ -643,7 +644,7 @@ func renderApplicationTemplate(content string, appCode string, cfg config.Config
 	return templatex.Render(content, context)
 }
 
-func applyApplicationServiceConfigs(compose string, configs []repository.ApplicationServiceConfig) string {
+func applyApplicationServiceConfigs(compose string, configs []model.ApplicationServiceConfig) string {
 	if len(configs) == 0 {
 		return compose
 	}
@@ -669,7 +670,7 @@ func applyApplicationServiceConfigs(compose string, configs []repository.Applica
 	return string(out)
 }
 
-func injectApplicationRouteLabels(compose string, routes []repository.ApplicationRoute, letsEncrypt bool) (string, error) {
+func injectApplicationRouteLabels(compose string, routes []model.ApplicationRoute, letsEncrypt bool) (string, error) {
 	var data map[string]any
 	if err := yaml.Unmarshal([]byte(compose), &data); err != nil {
 		return "", err

@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cdsvc "backend/internal/service/cd"
 	transportresponse "backend/internal/transport/http/response"
 )
@@ -415,10 +415,10 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 	transportresponse.JSON(w, http.StatusOK, view)
 }
 
-func configFileResponse(file repository.ApplicationConfigFile) ConfigFileResp {
+func configFileResponse(file model.ApplicationConfigFile) ConfigFileResp {
 	return ConfigFileResp{Id: file.Id, Path: file.Path, CreatedAt: transportresponse.FormatTime(file.CreatedAt)}
 }
 
-func applicationRouteResponse(route repository.ApplicationRoute) ApplicationRouteResp {
+func applicationRouteResponse(route model.ApplicationRoute) ApplicationRouteResp {
 	return ApplicationRouteResp{Id: route.Id, ServiceName: route.ServiceName, Domain: route.Domain, Port: route.Port, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }

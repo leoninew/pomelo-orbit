@@ -89,7 +89,7 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input Pip
 	if triggerRef == "" {
 		triggerRef = repo.DefaultBranch
 	}
-	run := model.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: repository.WorkStatusWaitingToRun}
+	run := model.PipelineRun{Id: repository.NewId(), ProjectId: repo.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, TemplateId: template.Id, TemplateName: template.Name, TemplateVersion: snapshot.Version, Trigger: "manual", TriggerRef: triggerRef, VariablesSnapshot: variablesSnapshot, Status: status.WorkStatusWaitingToRun}
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
@@ -194,7 +194,7 @@ func (s Service) CancelPipelineRun(ctx context.Context, userId string, runId str
 	if err != nil {
 		return PipelineRunDetail{}, err
 	}
-	if run.Status != repository.WorkStatusWaitingToRun && run.Status != repository.WorkStatusRunning {
+	if run.Status != status.WorkStatusWaitingToRun && run.Status != status.WorkStatusRunning {
 		return PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot cancel run with status "+run.Status)
 	}
 	if err := s.store.CancelPipelineRun(ctx, run.Id); err != nil {
@@ -212,7 +212,7 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	if err != nil {
 		return PipelineRunDetail{}, err
 	}
-	if original.Status != repository.WorkStatusFaulted && original.Status != repository.WorkStatusRanToCompletion {
+	if original.Status != status.WorkStatusFaulted && original.Status != status.WorkStatusRanToCompletion {
 		return PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Cannot retry run with status "+original.Status)
 	}
 	if _, err := s.store.PipelineSnapshot(ctx, original.SnapshotId); err != nil {
@@ -228,7 +228,7 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 		}
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
-	newRun := model.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: repository.WorkStatusWaitingToRun, RetryOf: &original.Id}
+	newRun := model.PipelineRun{Id: repository.NewId(), ProjectId: original.ProjectId, RepositoryId: original.RepositoryId, RepositoryName: repo.Name, SnapshotId: original.SnapshotId, TemplateId: original.TemplateId, TemplateName: original.TemplateName, TemplateVersion: original.TemplateVersion, Trigger: original.Trigger, TriggerRef: original.TriggerRef, VariablesSnapshot: original.VariablesSnapshot, Status: status.WorkStatusWaitingToRun, RetryOf: &original.Id}
 	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
 		return PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
 	}
@@ -335,8 +335,8 @@ func parseOptionalRunTime(value string, name string) (*time.Time, error) {
 	return &parsed, nil
 }
 
-func pipelineRunStatusComplete(status string) bool {
-	return status == repository.WorkStatusRanToCompletion || status == repository.WorkStatusFaulted || status == repository.WorkStatusCanceled
+func pipelineRunStatusComplete(value string) bool {
+	return value == status.WorkStatusRanToCompletion || value == status.WorkStatusFaulted || value == status.WorkStatusCanceled
 }
 
 func pipelineRunVariables(value string) ([]model.VariableDeclaration, error) {

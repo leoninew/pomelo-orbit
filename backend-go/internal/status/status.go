@@ -21,3 +21,10 @@ const (
 	WorkStatusFaulted         = "faulted"
 	WorkStatusCanceled        = "canceled"
 )
+
+const (
+	ApplicationStatusDeployed     = "deployed"
+	ApplicationStatusDeploying    = "deploying"
+	ApplicationStatusUndeployed   = "undeployed"
+	ApplicationStatusDeployFailed = "deploy_failed"
+)

@@ -144,7 +144,9 @@ class ApplicationManagerImpl(ApplicationManager):
                 ]
             service["labels"] = labels
 
-        return yaml.dump(data, allow_unicode=True, default_flow_style=False)
+        dumped = yaml.dump(data, allow_unicode=True, default_flow_style=False)
+        assert isinstance(dumped, str)
+        return dumped
 
     def _apply_service_configs(self, compose_yaml: str, service_configs: list[ApplicationServiceConfig] | None) -> str:
         if not service_configs:
@@ -166,7 +168,9 @@ class ApplicationManagerImpl(ApplicationManager):
             if isinstance(service_config.image, str) and service_config.image.strip():
                 service["image"] = service_config.image.strip()
 
-        return yaml.dump(data, allow_unicode=True, default_flow_style=False)
+        dumped = yaml.dump(data, allow_unicode=True, default_flow_style=False)
+        assert isinstance(dumped, str)
+        return dumped
 
     # ==================== Docker 命令 ====================
 

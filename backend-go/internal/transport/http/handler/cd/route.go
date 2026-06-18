@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository"
+	"backend/internal/repository/model"
 	cdsvc "backend/internal/service/cd"
 	transportresponse "backend/internal/transport/http/response"
 )
@@ -274,7 +274,7 @@ func (h Handler) listTraefikRoutes(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(w, http.StatusOK, items)
 }
 
-func routeResponse(route repository.Route) RouteResp {
+func routeResponse(route model.Route) RouteResp {
 	return RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetURL: route.TargetURL, Enabled: route.Enabled, HTTPSEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }
 

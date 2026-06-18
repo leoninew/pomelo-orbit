@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"backend/internal/repository"
 	cdsvc "backend/internal/service/cd"
+	"backend/internal/status"
 	cdhandler "backend/internal/transport/http/handler/cd"
 )
 
@@ -27,7 +27,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != projectId || created.Name != "Route App" || created.Code != "route-app" || created.Status != repository.ApplicationStatusUndeployed || created.ImagePullPolicy != "missing" {
+	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != projectId || created.Name != "Route App" || created.Code != "route-app" || created.Status != status.ApplicationStatusUndeployed || created.ImagePullPolicy != "missing" {
 		t.Fatalf("unexpected created application: %+v", created)
 	}
 
@@ -239,7 +239,7 @@ func TestDeleteApplicationRejectsRunningStatus(t *testing.T) {
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.Exec(`UPDATE application SET status = ? WHERE id = ?`, repository.ApplicationStatusDeployed, created.Id); err != nil {
+	if _, err := database.Exec(`UPDATE application SET status = ? WHERE id = ?`, status.ApplicationStatusDeployed, created.Id); err != nil {
 		t.Fatal(err)
 	}
 

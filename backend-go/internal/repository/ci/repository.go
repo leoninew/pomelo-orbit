@@ -11,6 +11,7 @@ import (
 	"backend/internal/db"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
+	"backend/internal/status"
 )
 
 type Repository struct {
@@ -110,7 +111,7 @@ func (r Repository) DeleteRepository(ctx context.Context, id string) error {
 
 func (r Repository) RepositoryHasRunningPipelines(ctx context.Context, repositoryId string) (bool, error) {
 	var count int
-	if err := r.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM pipeline_run WHERE repository_id = ? AND status IN (?, ?)`, repositoryId, repository.WorkStatusWaitingToRun, repository.WorkStatusRunning); err != nil {
+	if err := r.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM pipeline_run WHERE repository_id = ? AND status IN (?, ?)`, repositoryId, status.WorkStatusWaitingToRun, status.WorkStatusRunning); err != nil {
 		return false, fmt.Errorf("count running repository pipelines %s: %w", repositoryId, err)
 	}
 	return count > 0, nil
@@ -519,7 +520,7 @@ func (r Repository) CreatePipelineRun(ctx context.Context, run model.PipelineRun
 }
 
 func (r Repository) CancelPipelineRun(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE pipeline_run SET status = ?, finished_at = %s WHERE id = ?`, db.NowExpr(r.driver)), repository.WorkStatusCanceled, id)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE pipeline_run SET status = ?, finished_at = %s WHERE id = ?`, db.NowExpr(r.driver)), status.WorkStatusCanceled, id)
 	if err != nil {
 		return fmt.Errorf("cancel pipeline run %s: %w", id, err)
 	}
@@ -527,7 +528,7 @@ func (r Repository) CancelPipelineRun(ctx context.Context, id string) error {
 }
 
 func (r Repository) MarkPipelineRunRunning(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE pipeline_run SET status = ?, started_at = %s, error_message = NULL WHERE id = ?`, db.NowExpr(r.driver)), repository.WorkStatusRunning, id)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE pipeline_run SET status = ?, started_at = %s, error_message = NULL WHERE id = ?`, db.NowExpr(r.driver)), status.WorkStatusRunning, id)
 	if err != nil {
 		return fmt.Errorf("mark pipeline run running %s: %w", id, err)
 	}

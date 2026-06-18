@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"backend/internal/config"
-	"backend/internal/repository"
 	"backend/internal/repository/model"
+	"backend/internal/status"
 )
 
 func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
@@ -26,7 +26,7 @@ func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if store.runStatus != repository.WorkStatusFaulted {
+	if store.runStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected final run status: %s", store.runStatus)
 	}
 	if len(store.stageRuns) != 2 {
@@ -34,7 +34,7 @@ func TestEngineMarksRunFaultedWhenStageFails(t *testing.T) {
 	}
 	var canceled bool
 	for _, stageRun := range store.stageRuns {
-		if stageRun.Status == repository.WorkStatusCanceled {
+		if stageRun.Status == status.WorkStatusCanceled {
 			canceled = true
 		}
 	}
@@ -71,13 +71,13 @@ func TestEngineExecutesPipelineRun(t *testing.T) {
 	if !store.runStarted {
 		t.Fatal("expected run to be marked running")
 	}
-	if store.runStatus != repository.WorkStatusRanToCompletion {
+	if store.runStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected final run status: %s", store.runStatus)
 	}
 	if len(store.stageRuns) != 1 {
 		t.Fatalf("expected 1 stage run, got %d", len(store.stageRuns))
 	}
-	if store.stageRuns[0].Status != repository.WorkStatusRanToCompletion {
+	if store.stageRuns[0].Status != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected stage status: %s", store.stageRuns[0].Status)
 	}
 }

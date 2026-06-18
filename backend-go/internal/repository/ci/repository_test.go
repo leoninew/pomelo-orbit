@@ -8,8 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"backend/internal/repository"
 	"backend/internal/repository/model"
+	"backend/internal/status"
 )
 
 func TestRepositoryPipelineRunRepositorySnapshot(t *testing.T) {
@@ -50,14 +50,14 @@ func TestRepositoryStatusUpdates(t *testing.T) {
 	if err := store.MarkPipelineRunRunning(ctx, "run-1"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.CompletePipelineRun(ctx, "run-1", repository.WorkStatusRanToCompletion, ""); err != nil {
+	if err := store.CompletePipelineRun(ctx, "run-1", status.WorkStatusRanToCompletion, ""); err != nil {
 		t.Fatal(err)
 	}
 	run, err := store.PipelineRun(ctx, "run-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if run.Status != repository.WorkStatusRanToCompletion {
+	if run.Status != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected status: %s", run.Status)
 	}
 }

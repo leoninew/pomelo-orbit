@@ -70,7 +70,7 @@ func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks t
 	projectRepository := projectrepo.NewRepository(store.DB(), store.Driver())
 	taskService := tasksvc.New(tasks, defaultMaxAttempts)
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, ciRepository: ciRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey), cdService: cdsvc.New(store, taskService, cfg.DataRoot()), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, ciRepository: ciRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey), cdService: cdsvc.New(store, taskService, cfg), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {
@@ -98,11 +98,13 @@ func (s Server) Handler() http.Handler {
 	ciHandler.RegisterSnapshotRoutes(r)
 	ciHandler.RegisterArtifactRoutes(r)
 	ciHandler.RegisterCredentialRoutes(r)
-	cdService := cdsvc.New(s.store, s.taskService, s.appCfg.DataRoot())
+	cdService := cdsvc.New(s.store, s.taskService, s.appCfg)
 	cdHandler := cdhandler.New(s.logger, cdService, authenticator)
 	cdHandler.RegisterApplicationRoutes(r)
 	cdHandler.RegisterDeploymentRoutes(r)
-	s.registerDashboardRoutes(r)
+	cdHandler.RegisterApplicationExtraRoutes(r)
+	cdHandler.RegisterRouteRoutes(r)
+	cdHandler.RegisterTraefikRouteRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if len(r.URL.Path) >= 5 && r.URL.Path[:5] == "/api/" {

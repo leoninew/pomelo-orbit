@@ -27,11 +27,11 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected route create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created routeResp
+	var created cdhandler.RouteResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Id == "" || created.Name != "api-route" || created.PathPrefix != "/api" || created.CertType != certTypeManual || created.HTTPSEnabled {
+	if created.Id == "" || created.Name != "api-route" || created.PathPrefix != "/api" || created.CertType != "manual" || created.HTTPSEnabled {
 		t.Fatalf("unexpected created route: %+v", created)
 	}
 
@@ -40,7 +40,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list paginatedResp[routeResp]
+	var list paginatedResp[cdhandler.RouteResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated routeResp
+	var updated cdhandler.RouteResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -114,11 +114,11 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if certRecorder.Code != http.StatusOK {
 		t.Fatalf("expected cert upload status 200, got %d: %s", certRecorder.Code, certRecorder.Body.String())
 	}
-	var withCert routeResp
+	var withCert cdhandler.RouteResp
 	if err := json.NewDecoder(certRecorder.Body).Decode(&withCert); err != nil {
 		t.Fatal(err)
 	}
-	if !withCert.HTTPSEnabled || withCert.CertType != certTypeManual {
+	if !withCert.HTTPSEnabled || withCert.CertType != "manual" {
 		t.Fatalf("unexpected cert route: %+v", withCert)
 	}
 	if _, err := os.Stat(filepath.Join(server.routeCertDir(), "cert-route.pem")); err != nil {
@@ -139,11 +139,11 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if leRecorder.Code != http.StatusOK {
 		t.Fatalf("expected letsencrypt status 200, got %d: %s", leRecorder.Code, leRecorder.Body.String())
 	}
-	var letsEncrypt routeResp
+	var letsEncrypt cdhandler.RouteResp
 	if err := json.NewDecoder(leRecorder.Body).Decode(&letsEncrypt); err != nil {
 		t.Fatal(err)
 	}
-	if !letsEncrypt.HTTPSEnabled || letsEncrypt.CertType != certTypeLetsEncrypt {
+	if !letsEncrypt.HTTPSEnabled || letsEncrypt.CertType != "letsencrypt" {
 		t.Fatalf("unexpected letsencrypt route: %+v", letsEncrypt)
 	}
 
@@ -183,14 +183,14 @@ func TestRouteEndpointsRequireAuth(t *testing.T) {
 	}
 }
 
-func createRouteForTest(t *testing.T, server Server, token string, body string) routeResp {
+func createRouteForTest(t *testing.T, server Server, token string, body string) cdhandler.RouteResp {
 	t.Helper()
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/cd/route?project_id="+testRouteProjectId, bytes.NewBufferString(body), token))
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected route create status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var route routeResp
+	var route cdhandler.RouteResp
 	if err := json.NewDecoder(recorder.Body).Decode(&route); err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func testCombinedPEM() string {
 
 func TestRouteTraefikConfig(t *testing.T) {
 	certPEM := "cert"
-	route := repository.Route{Name: "web", Domain: "web.example.test", PathPrefix: "/api", TargetURL: "http://host.docker.internal:8080", Enabled: true, HTTPSEnabled: true, CertPEM: &certPEM, CertType: certTypeManual}
+	route := repository.Route{Name: "web", Domain: "web.example.test", PathPrefix: "/api", TargetURL: "http://host.docker.internal:8080", Enabled: true, HTTPSEnabled: true, CertPEM: &certPEM, CertType: "manual"}
 	config := routeTraefikConfig(route)
 	httpConfig := config["http"].(map[string]any)
 	routers := httpConfig["routers"].(map[string]any)

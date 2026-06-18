@@ -135,12 +135,12 @@ Review status: Accepted
 ### 10. CD HTTP/API 模块迁移
 
 - [x] 拆分 `internal/httpserver/dashboard.go` 中 CD application/deployment 相关 DTO 和 handler。
-- [ ] 将 `internal/httpserver/application_routes_extra.go` 迁移到 `handler/cd` + `service/cd`。
-- [ ] 将 `internal/httpserver/route.go` 迁移到 `handler/cd` + `service/cd`。
-- [ ] 将 `internal/httpserver/traefik_route.go` 迁移到 `handler/cd` + `service/cd`。
-- [ ] 将 application CRUD、config file、service config、route、compose preview/export/import 等用例放入 `service/cd`。
+- [x] 将 `internal/httpserver/application_routes_extra.go` 迁移到 `handler/cd` + `service/cd`。
+- [x] 将 `internal/httpserver/route.go` 迁移到 `handler/cd` + `service/cd`。
+- [x] 将 `internal/httpserver/traefik_route.go` 迁移到 `handler/cd` + `service/cd`。
+- [x] 将 application CRUD、config file、service config、route、compose preview/export/import 等用例放入 `service/cd`。
 - [x] 将 deployment 相关用例放入 `service/cd`。
-- [ ] 将 route / Traefik route 管理用例放入 `service/cd`。
+- [x] 将 route / Traefik route 管理用例放入 `service/cd`。
 - [ ] 将 `internal/orbit/application_store.go` 迁移到 `repository/cd`。
 - [ ] 将 `internal/orbit/api_store.go` 中 CD/API route 相关 SQL 迁移到 `repository/cd`。
 - [ ] 将 CD 相关 DB model 从 `orbit/model.go` 迁移到 `repository/model`。

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"backend/internal/apperror"
+	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
 	taskrepo "backend/internal/repository/task"
@@ -28,14 +29,37 @@ type Store interface {
 	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[repository.Application], error)
 	Application(ctx context.Context, id string) (repository.Application, error)
 	ApplicationByName(ctx context.Context, name string) (repository.Application, error)
+	ApplicationByCode(ctx context.Context, code string) (repository.Application, error)
 	ConfigFiles(ctx context.Context, applicationId string) ([]repository.ApplicationConfigFile, error)
+	ConfigFile(ctx context.Context, id string) (repository.ApplicationConfigFile, error)
+	CreateConfigFile(ctx context.Context, file repository.ApplicationConfigFile) error
+	UpdateConfigFile(ctx context.Context, file repository.ApplicationConfigFile) error
+	DeleteConfigFile(ctx context.Context, id string) error
+	Routes(ctx context.Context, applicationId string) ([]repository.ApplicationRoute, error)
+	ApplicationRoute(ctx context.Context, id string) (repository.ApplicationRoute, error)
+	CreateApplicationRoute(ctx context.Context, route repository.ApplicationRoute) error
+	UpdateApplicationRoute(ctx context.Context, route repository.ApplicationRoute) error
+	DeleteApplicationRoute(ctx context.Context, id string) error
+	ServiceConfigs(ctx context.Context, applicationId string) ([]repository.ApplicationServiceConfig, error)
+	ApplicationServiceConfig(ctx context.Context, applicationId string, serviceName string) (repository.ApplicationServiceConfig, error)
+	UpsertApplicationServiceConfig(ctx context.Context, config repository.ApplicationServiceConfig) error
 	CreateApplication(ctx context.Context, app repository.Application) error
+	CreateApplicationBundle(ctx context.Context, app repository.Application, files []repository.ApplicationConfigFile, serviceConfigs []repository.ApplicationServiceConfig, routes []repository.ApplicationRoute) error
 	UpdateApplication(ctx context.Context, app repository.Application) error
 	DeleteApplication(ctx context.Context, id string) error
 	CreateDeployment(ctx context.Context, deployment repository.Deployment) error
+	MarkApplicationStatus(ctx context.Context, id string, status string) error
+	CompleteDeployment(ctx context.Context, id string, status string, message string) error
 	ListDeployments(ctx context.Context, projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (repository.Page[repository.Deployment], error)
 	Deployment(ctx context.Context, id string) (repository.Deployment, error)
 	CancelDeployment(ctx context.Context, id string) error
+	ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[repository.Route], error)
+	ListAllRoutes(ctx context.Context, projectId string) ([]repository.Route, error)
+	Route(ctx context.Context, id string) (repository.Route, error)
+	RouteByDomain(ctx context.Context, domain string) (repository.Route, error)
+	CreateRoute(ctx context.Context, route repository.Route) error
+	UpdateRoute(ctx context.Context, route repository.Route) error
+	DeleteRoute(ctx context.Context, id string) error
 }
 
 type TaskService interface {
@@ -45,6 +69,7 @@ type TaskService interface {
 type Service struct {
 	store    Store
 	tasks    TaskService
+	cfg      config.Config
 	dataRoot string
 }
 
@@ -84,8 +109,8 @@ type DeploymentLog struct {
 	Status     string
 }
 
-func New(store Store, tasks TaskService, dataRoot string) Service {
-	return Service{store: store, tasks: tasks, dataRoot: dataRoot}
+func New(store Store, tasks TaskService, cfg config.Config) Service {
+	return Service{store: store, tasks: tasks, cfg: cfg, dataRoot: cfg.DataRoot()}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[repository.Application], error) {

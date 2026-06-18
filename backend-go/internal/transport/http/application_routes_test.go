@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"backend/internal/repository"
+	cdsvc "backend/internal/service/cd"
 	cdhandler "backend/internal/transport/http/handler/cd"
 )
 
@@ -166,7 +167,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if exportRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application export status 200, got %d: %s", exportRecorder.Code, exportRecorder.Body.String())
 	}
-	var exported applicationExportResp
+	var exported cdhandler.ApplicationExportResp
 	if err := json.NewDecoder(exportRecorder.Body).Decode(&exported); err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +180,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if fileRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application file create status 200, got %d: %s", fileRecorder.Code, fileRecorder.Body.String())
 	}
-	var createdFile configFileResp
+	var createdFile cdhandler.ConfigFileResp
 	if err := json.NewDecoder(fileRecorder.Body).Decode(&createdFile); err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +196,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if serviceRecorder.Code != http.StatusOK {
 		t.Fatalf("expected compose service status 200, got %d: %s", serviceRecorder.Code, serviceRecorder.Body.String())
 	}
-	var services []composeServiceResp
+	var services []cdhandler.ComposeServiceResp
 	if err := json.NewDecoder(serviceRecorder.Body).Decode(&services); err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +215,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if updateConfigRecorder.Code != http.StatusOK {
 		t.Fatalf("expected service config update status 200, got %d: %s", updateConfigRecorder.Code, updateConfigRecorder.Body.String())
 	}
-	var serviceConfig applicationServiceConfigResp
+	var serviceConfig cdsvc.ApplicationServiceConfigView
 	if err := json.NewDecoder(updateConfigRecorder.Body).Decode(&serviceConfig); err != nil {
 		t.Fatal(err)
 	}

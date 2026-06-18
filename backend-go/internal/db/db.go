@@ -33,11 +33,29 @@ func openSQLite(cfg config.SQLiteConfig) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
 	database.SetMaxOpenConns(1)
+	if err := configureSQLite(database); err != nil {
+		_ = database.Close()
+		return nil, err
+	}
 	if err := database.Ping(); err != nil {
 		_ = database.Close()
 		return nil, fmt.Errorf("ping sqlite database: %w", err)
 	}
 	return database, nil
+}
+
+func configureSQLite(database *sqlx.DB) error {
+	pragmas := []string{
+		"PRAGMA busy_timeout = 5000",
+		"PRAGMA journal_mode = WAL",
+		"PRAGMA foreign_keys = ON",
+	}
+	for _, pragma := range pragmas {
+		if _, err := database.Exec(pragma); err != nil {
+			return fmt.Errorf("configure sqlite %s: %w", pragma, err)
+		}
+	}
+	return nil
 }
 
 func openMySQL(cfg config.MySQLConfig) (*sqlx.DB, error) {

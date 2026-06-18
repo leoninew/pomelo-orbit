@@ -45,10 +45,16 @@ func (a Authenticator) CurrentUser(w http.ResponseWriter, r *http.Request) (mode
 		return model.User{}, false
 	}
 	user, err := a.store.UserById(r.Context(), claims.Sub)
-	if err != nil || user.Status != "enabled" {
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			a.logger.Warn("load current user failed", "user_id", claims.Sub, "error", err)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			transportresponse.JSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
+			return model.User{}, false
 		}
+		a.logger.Error("load current user failed", "user_id", claims.Sub, "error", err)
+		transportresponse.JSON(w, http.StatusServiceUnavailable, map[string]string{"detail": "Authentication service unavailable"})
+		return model.User{}, false
+	}
+	if user.Status != "enabled" {
 		transportresponse.JSON(w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
 		return model.User{}, false
 	}

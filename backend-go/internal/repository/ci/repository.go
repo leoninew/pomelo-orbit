@@ -169,7 +169,7 @@ func (r Repository) ListCredentials(ctx context.Context, projectId string, page 
 	}
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.Credential
-	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, name, type, encrypted_data, created_at FROM credential`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, name, type, encrypted_data, created_at FROM credential`+where+` ORDER BY created_at DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return repository.Page[model.Credential]{}, fmt.Errorf("list credentials: %w", err)
 	}
@@ -255,7 +255,7 @@ func (r Repository) ListPipelineTemplates(ctx context.Context, projectId string,
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.PipelineTemplate
 	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, name, description, variable_declarations, version, created_at, updated_at
-		FROM pipeline_template`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+		FROM pipeline_template`+where+` ORDER BY created_at DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return repository.Page[model.PipelineTemplate]{}, fmt.Errorf("list pipeline templates: %w", err)
 	}
@@ -389,7 +389,7 @@ func (r Repository) ListBuildStages(ctx context.Context, projectId string, page 
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.BuildStage
 	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, name, image, script, artifacts, description, version, created_at, updated_at
-		FROM build_stage`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+		FROM build_stage`+where+` ORDER BY created_at DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return repository.Page[model.BuildStage]{}, fmt.Errorf("list build stages: %w", err)
 	}
@@ -475,7 +475,7 @@ func (r Repository) ListPipelineRuns(ctx context.Context, projectId string, repo
 	var items []model.PipelineRun
 	err := r.db.SelectContext(ctx, &items, fmt.Sprintf(`SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
 		template_name, template_version, %s, trigger_ref, variables_snapshot, status, retry_of,
-		started_at, finished_at, error_message, created_at FROM pipeline_run`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, db.QuoteIdent(r.driver, "trigger")), args...)
+		started_at, finished_at, error_message, created_at FROM pipeline_run`+where+` ORDER BY created_at DESC LIMIT ? OFFSET ?`, db.QuoteIdent(r.driver, "trigger")), args...)
 	if err != nil {
 		return repository.Page[model.PipelineRun]{}, fmt.Errorf("list pipeline runs: %w", err)
 	}
@@ -491,7 +491,7 @@ func (r Repository) ListPipelineRunsByRepository(ctx context.Context, repository
 	var items []model.PipelineRun
 	err := r.db.SelectContext(ctx, &items, fmt.Sprintf(`SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
 		template_name, template_version, %s, trigger_ref, variables_snapshot, status, retry_of,
-		started_at, finished_at, error_message, created_at FROM pipeline_run WHERE repository_id = ? ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, db.QuoteIdent(r.driver, "trigger")), repositoryId, perPage, (page-1)*perPage)
+		started_at, finished_at, error_message, created_at FROM pipeline_run WHERE repository_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`, db.QuoteIdent(r.driver, "trigger")), repositoryId, perPage, (page-1)*perPage)
 	if err != nil {
 		return repository.Page[model.PipelineRun]{}, fmt.Errorf("list repository pipeline runs %s: %w", repositoryId, err)
 	}
@@ -616,7 +616,7 @@ func (r Repository) ListArtifacts(ctx context.Context, projectId string, reposit
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.Artifact
 	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at
-		FROM artifact`+where+` ORDER BY id DESC LIMIT ? OFFSET ?`, args...)
+		FROM artifact`+where+` ORDER BY created_at DESC LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return repository.Page[model.Artifact]{}, fmt.Errorf("list artifacts: %w", err)
 	}

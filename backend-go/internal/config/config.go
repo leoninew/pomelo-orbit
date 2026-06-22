@@ -169,7 +169,7 @@ func bindEnv(loader *viper.Viper) {
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
-		"repository.root",
+		"orbit.root",
 		"jwt.secret_key",
 		"traefik.api_url",
 		"traefik.domain_suffix",

@@ -9,7 +9,7 @@ dev:
     uv run python scripts/dev.py
 
 dev-backend:
-    cd backend-go && POMELO_ORBIT_SERVER__HOST=127.0.0.1 POMELO_ORBIT_SERVER__PORT=9001 air -c .air.api.toml
+    cd backend-go && air -c .air.api.toml
 
 dev-worker:
     cd backend-go && air -c .air.worker.toml

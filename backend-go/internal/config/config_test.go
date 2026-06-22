@@ -25,7 +25,10 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.App.Name != "Pomelo Orbit Backend Go" {
 		t.Fatalf("unexpected app name: %s", cfg.App.Name)
 	}
-	if cfg.Server.Port != 8080 {
+	if cfg.Server.Host != "127.0.0.1" {
+		t.Fatalf("unexpected server host: %s", cfg.Server.Host)
+	}
+	if cfg.Server.Port != 9001 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
 	if cfg.Logging.File != "logs/backend-go.log" {
@@ -125,6 +128,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
 	t.Setenv("POMELO_ORBIT_TRAEFIK__API_URL", "http://traefik.example.test:8080")
+	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", "/srv/pomelo-orbit")
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
 
@@ -161,6 +165,9 @@ worker:
 	}
 	if cfg.Traefik.APIURL != "http://traefik.example.test:8080" {
 		t.Fatalf("unexpected traefik api url: %s", cfg.Traefik.APIURL)
+	}
+	if cfg.Orbit.Root != "/srv/pomelo-orbit" {
+		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)
 	}
 	if cfg.Worker.Concurrency != 4 {
 		t.Fatalf("unexpected worker concurrency: %d", cfg.Worker.Concurrency)
@@ -342,8 +349,8 @@ const defaultConfigContent = `app:
   version: 0.1.0
   debug: false
 server:
-  host: localhost
-  port: 8080
+  host: 127.0.0.1
+  port: 9001
 logging:
   level: info
   file: logs/backend-go.log

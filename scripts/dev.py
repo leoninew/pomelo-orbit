@@ -103,22 +103,16 @@ def wait_any(processes: list[DevProcess]) -> int:
 
 
 def main() -> int:
-    backend_env = os.environ.copy()
-    backend_env["POMELO_ORBIT_SERVER__HOST"] = "127.0.0.1"
-    backend_env["POMELO_ORBIT_SERVER__PORT"] = "9001"
-
     processes = [
         DevProcess(
             name="后端服务",
             cwd=ROOT_DIR / "backend-go",
             command=[command_path("air"), "-c", ".air.api.toml"],
-            env=backend_env,
         ),
         DevProcess(
             name="后端 Worker",
             cwd=ROOT_DIR / "backend-go",
             command=[command_path("air"), "-c", ".air.worker.toml"],
-            env=backend_env,
         ),
         DevProcess(
             name="前端服务",

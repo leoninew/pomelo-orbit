@@ -4,7 +4,7 @@ tmp_dir = "tmp/air/api"
 [build]
 cmd = "go build -o ./tmp/air/api/backend-go.exe ./cmd/backend-go"
 bin = "./tmp/air/api/backend-go.exe"
-args_bin = ["serve"]
+args_bin = ["--config", "config.local.yaml", "serve"]
 include_ext = ["go", "yaml", "yml", "toml"]
 exclude_dir = ["tmp", "bin", "data", "logs", "vendor"]
 exclude_file = []

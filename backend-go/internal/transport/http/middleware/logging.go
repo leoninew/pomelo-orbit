@@ -10,40 +10,46 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-const MaxResponseBodyLogLength = 4096
+type LogRequestConfig struct {
+	BodyEnabled  bool
+	BodyMaxBytes int
+}
 
-func LogRequest(logger *slog.Logger) func(http.Handler) http.Handler {
+func LogRequest(logger *slog.Logger, cfg LogRequestConfig) func(http.Handler) http.Handler {
+	if cfg.BodyEnabled && cfg.BodyMaxBytes <= 0 {
+		panic("http body max bytes must be positive")
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			startedAt := time.Now()
-			requestBody, bodyErr := readRequestBodyForLog(r)
-			responseWriter := newLoggingResponseWriter(w)
+			requestAttrs := requestLogAttrs(r)
+			requestBody, bodyErr := readRequestBodyForLog(r, cfg)
 
+			startedAttrs := append([]any{}, requestAttrs...)
+			if requestBody != "" {
+				startedAttrs = append(startedAttrs, "request_body", requestBody)
+			}
+			if bodyErr != nil {
+				startedAttrs = append(startedAttrs, "body_read_error", bodyErr.Error())
+			}
+			logger.Info("request started", startedAttrs...)
+
+			responseWriter := newLoggingResponseWriter(w, cfg)
 			next.ServeHTTP(responseWriter, r)
 
-			attrs := []any{
-				"method", r.Method,
-				"path", r.URL.Path,
-				"uri", r.URL.RequestURI(),
+			attrs := append([]any{}, requestAttrs...)
+			attrs = append(attrs,
 				"status", responseWriter.Status(),
 				"bytes", responseWriter.BytesWritten(),
 				"duration_ms", time.Since(startedAt).Milliseconds(),
-				"request_id", chimiddleware.GetReqID(r.Context()),
-				"remote_addr", r.RemoteAddr,
-				"user_agent", r.UserAgent(),
-			}
-			if requestBody != "" {
-				attrs = append(attrs, "request_body", requestBody)
-			}
+			)
 			if responseBody := responseWriter.Body(); responseBody != "" {
 				attrs = append(attrs, "response_body", responseBody)
-			}
-			if bodyErr != nil {
-				attrs = append(attrs, "body_read_error", bodyErr.Error())
 			}
 
 			logger.Info("request completed", attrs...)
@@ -51,19 +57,31 @@ func LogRequest(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-func readRequestBodyForLog(r *http.Request) (string, error) {
-	if !isJSONContentType(r.Header.Get("Content-Type")) || r.Body == nil {
+func requestLogAttrs(r *http.Request) []any {
+	return []any{
+		"method", r.Method,
+		"path", r.URL.Path,
+		"uri", r.URL.RequestURI(),
+		"request_id", chimiddleware.GetReqID(r.Context()),
+		"remote_addr", r.RemoteAddr,
+		"user_agent", r.UserAgent(),
+	}
+}
+
+func readRequestBodyForLog(r *http.Request, cfg LogRequestConfig) (string, error) {
+	if !cfg.BodyEnabled || !isJSONContentType(r.Header.Get("Content-Type")) || r.Body == nil {
 		return "", nil
 	}
-	body, err := io.ReadAll(r.Body)
+	body := r.Body
+	loggedBytes, err := io.ReadAll(io.LimitReader(body, int64(cfg.BodyMaxBytes)+1))
+	r.Body = &prefixReadCloser{reader: io.MultiReader(bytes.NewReader(loggedBytes), body), closer: body}
 	if err != nil {
 		return "", err
 	}
-	r.Body = io.NopCloser(bytes.NewReader(body))
-	if len(body) == 0 {
+	if len(loggedBytes) == 0 {
 		return "", nil
 	}
-	return string(body), nil
+	return truncateLogBody(loggedBytes, cfg.BodyMaxBytes), nil
 }
 
 func isJSONContentType(contentType string) bool {
@@ -75,26 +93,44 @@ func isJSONContentType(contentType string) bool {
 	return mediaType == "application/json" || strings.HasSuffix(mediaType, "+json")
 }
 
-func truncateLogBody(value string, limit int) string {
+func truncateLogBody(value []byte, limit int) string {
 	if limit <= 0 {
 		return ""
 	}
-	runes := []rune(value)
-	if len(runes) <= limit {
-		return value
+	if len(value) <= limit {
+		return string(value)
 	}
-	return string(runes[:limit]) + "..."
+	value = value[:limit]
+	for len(value) > 0 && !utf8.Valid(value) {
+		value = value[:len(value)-1]
+	}
+	return string(value) + "..."
+}
+
+type prefixReadCloser struct {
+	reader io.Reader
+	closer io.Closer
+}
+
+func (r *prefixReadCloser) Read(data []byte) (int, error) {
+	return r.reader.Read(data)
+}
+
+func (r *prefixReadCloser) Close() error {
+	return r.closer.Close()
 }
 
 type loggingResponseWriter struct {
 	http.ResponseWriter
-	status int
-	bytes  int
-	body   bytes.Buffer
+	status       int
+	bytes        int
+	body         bytes.Buffer
+	bodyEnabled  bool
+	bodyMaxBytes int
 }
 
-func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
-	return &loggingResponseWriter{ResponseWriter: w}
+func newLoggingResponseWriter(w http.ResponseWriter, cfg LogRequestConfig) *loggingResponseWriter {
+	return &loggingResponseWriter{ResponseWriter: w, bodyEnabled: cfg.BodyEnabled, bodyMaxBytes: cfg.BodyMaxBytes}
 }
 
 func (w *loggingResponseWriter) WriteHeader(status int) {
@@ -127,10 +163,10 @@ func (w *loggingResponseWriter) BytesWritten() int {
 }
 
 func (w *loggingResponseWriter) Body() string {
-	if w.body.Len() == 0 {
+	if !w.bodyEnabled || w.body.Len() == 0 {
 		return ""
 	}
-	return truncateLogBody(w.body.String(), MaxResponseBodyLogLength)
+	return truncateLogBody(w.body.Bytes(), w.bodyMaxBytes)
 }
 
 func (w *loggingResponseWriter) Flush() {
@@ -156,10 +192,10 @@ func (w *loggingResponseWriter) Push(target string, opts *http.PushOptions) erro
 }
 
 func (w *loggingResponseWriter) captureBody(data []byte) {
-	if !isJSONContentType(w.Header().Get("Content-Type")) || len(data) == 0 {
+	if !w.bodyEnabled || !isJSONContentType(w.Header().Get("Content-Type")) || len(data) == 0 {
 		return
 	}
-	limit := MaxResponseBodyLogLength * 4
+	limit := w.bodyMaxBytes + 1
 	if w.body.Len() >= limit {
 		return
 	}

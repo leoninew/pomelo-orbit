@@ -132,6 +132,8 @@ func settingDefinitions(cfg config.Config) []Definition {
 		{Key: "logging__file", Default: cfg.Logging.File, Description: "Backend log file path"},
 		{Key: "logging__max_size_mb", Default: cfg.Logging.MaxSizeMB, Description: "Maximum size of one log file in MB"},
 		{Key: "logging__max_backups", Default: cfg.Logging.MaxBackups, Description: "Maximum number of rotated log files"},
+		{Key: "logging__http_body_enabled", Default: cfg.Logging.HTTPBodyEnabled, Description: "Enable HTTP request and response body logging"},
+		{Key: "logging__http_body_max_bytes", Default: cfg.Logging.HTTPBodyMaxBytes, Description: "Maximum HTTP request and response body bytes to log"},
 		{Key: "database__driver", Default: cfg.Database.Driver, Description: "Database driver"},
 		{Key: "database__sqlite__path", Default: cfg.Database.SQLite.Path, Description: "SQLite database file path"},
 		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.DSN, Description: "MySQL DSN", Secret: true},

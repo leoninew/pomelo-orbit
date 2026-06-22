@@ -12,6 +12,8 @@ logging:
   file: logs/backend-go.log
   max_size_mb: 100
   max_backups: 7
+  http_body_enabled: false
+  http_body_max_bytes: 4096
 
 database:
   driver: sqlite

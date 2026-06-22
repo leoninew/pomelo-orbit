@@ -43,10 +43,12 @@ type ServerConfig struct {
 }
 
 type LoggingConfig struct {
-	Level      string `mapstructure:"level" yaml:"level"`
-	File       string `mapstructure:"file" yaml:"file"`
-	MaxSizeMB  int    `mapstructure:"max_size_mb" yaml:"max_size_mb"`
-	MaxBackups int    `mapstructure:"max_backups" yaml:"max_backups"`
+	Level            string `mapstructure:"level" yaml:"level"`
+	File             string `mapstructure:"file" yaml:"file"`
+	MaxSizeMB        int    `mapstructure:"max_size_mb" yaml:"max_size_mb"`
+	MaxBackups       int    `mapstructure:"max_backups" yaml:"max_backups"`
+	HTTPBodyEnabled  bool   `mapstructure:"http_body_enabled" yaml:"http_body_enabled"`
+	HTTPBodyMaxBytes int    `mapstructure:"http_body_max_bytes" yaml:"http_body_max_bytes"`
 }
 
 const (
@@ -166,6 +168,8 @@ func bindEnv(loader *viper.Viper) {
 		"logging.file",
 		"logging.max_size_mb",
 		"logging.max_backups",
+		"logging.http_body_enabled",
+		"logging.http_body_max_bytes",
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",
@@ -217,6 +221,9 @@ func (c Config) Validate() error {
 	}
 	if c.Logging.MaxBackups <= 0 {
 		return errors.New("logging.max_backups must be positive")
+	}
+	if c.Logging.HTTPBodyMaxBytes <= 0 {
+		return errors.New("logging.http_body_max_bytes must be positive")
 	}
 	if err := validateFernetKey(c.JWT.SecretKey); err != nil {
 		return err

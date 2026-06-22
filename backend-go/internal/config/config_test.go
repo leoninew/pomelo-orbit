@@ -40,6 +40,12 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.MaxBackups != 7 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
 	}
+	if cfg.Logging.HTTPBodyEnabled {
+		t.Fatal("expected http body logging disabled")
+	}
+	if cfg.Logging.HTTPBodyMaxBytes != 4096 {
+		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
+	}
 	if cfg.JWT.SecretKey != testFernetKey {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
 	}
@@ -69,6 +75,8 @@ func TestLoadConfigMergesCustomConfig(t *testing.T) {
   level: "DEBUG"
   max_size_mb: 50
   max_backups: 3
+  http_body_enabled: true
+  http_body_max_bytes: 2048
 database:
   sqlite:
     path: "data/test.db"
@@ -92,6 +100,12 @@ worker:
 	}
 	if cfg.Logging.MaxBackups != 3 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
+	}
+	if !cfg.Logging.HTTPBodyEnabled {
+		t.Fatal("expected http body logging enabled")
+	}
+	if cfg.Logging.HTTPBodyMaxBytes != 2048 {
+		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
 	}
 	if cfg.Worker.Id != "worker-1" {
 		t.Fatalf("unexpected worker id: %s", cfg.Worker.Id)
@@ -123,6 +137,8 @@ worker:
 	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_BODY_ENABLED", "true")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_BODY_MAX_BYTES", "8192")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
@@ -150,6 +166,12 @@ worker:
 	}
 	if cfg.Logging.MaxBackups != 4 {
 		t.Fatalf("unexpected logging max backups: %d", cfg.Logging.MaxBackups)
+	}
+	if !cfg.Logging.HTTPBodyEnabled {
+		t.Fatal("expected http body logging enabled")
+	}
+	if cfg.Logging.HTTPBodyMaxBytes != 8192 {
+		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
 	}
 	if cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile disabled")
@@ -270,6 +292,9 @@ func TestLoadConfigValidatesLogging(t *testing.T) {
 		{name: "missing max backups", content: `logging:
   max_backups: 0
 `},
+		{name: "missing http body max bytes", content: `logging:
+  http_body_max_bytes: 0
+`},
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
@@ -356,6 +381,8 @@ logging:
   file: logs/backend-go.log
   max_size_mb: 100
   max_backups: 7
+  http_body_enabled: false
+  http_body_max_bytes: 4096
 database:
   driver: sqlite
   sqlite:

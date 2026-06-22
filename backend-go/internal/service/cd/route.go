@@ -482,14 +482,14 @@ func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) err
 
 func (s Service) routeConfigDir() string {
 	if strings.TrimSpace(s.cfg.Traefik.DynamicRouteDir) == "" {
-		return filepath.Join(s.dataRoot, "cd", "traefik", "data", "dynamic")
+		return filepath.Join(s.workspace.AppDir("traefik"), "data", "dynamic")
 	}
 	return cleanConfigPath(s.cfg.OrbitRoot(), s.cfg.Traefik.DynamicRouteDir)
 }
 
 func (s Service) routeCertDir() string {
 	if strings.TrimSpace(s.cfg.Traefik.CertDir) == "" {
-		return filepath.Join(s.dataRoot, "cd", "traefik", "data", "certs")
+		return filepath.Join(s.workspace.AppDir("traefik"), "data", "certs")
 	}
 	return cleanConfigPath(s.cfg.OrbitRoot(), s.cfg.Traefik.CertDir)
 }

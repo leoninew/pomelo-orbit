@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -83,7 +82,7 @@ type Service struct {
 	executionStore DeploymentExecutionStore
 	tasks          TaskService
 	cfg            config.Config
-	dataRoot       string
+	workspace      *Workspace
 	logger         *slog.Logger
 	runner         CommandRunner
 }
@@ -133,11 +132,11 @@ func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *sl
 	if !ok {
 		panic("cd service store must implement DeploymentExecutionStore")
 	}
-	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, dataRoot: cfg.DataRoot(), logger: logger, runner: runner}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logger: logger, runner: runner}
 }
 
 func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner) Service {
-	return Service{executionStore: store, cfg: cfg, dataRoot: cfg.DataRoot(), logger: logger, runner: runner}
+	return Service{executionStore: store, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logger: logger, runner: runner}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {
@@ -234,7 +233,7 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 		return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
 	}
 	if input.RemoveDir {
-		if err := os.RemoveAll(filepath.Join(s.dataRoot, "cd", app.Code)); err != nil {
+		if err := os.RemoveAll(s.workspace.AppDir(app.Code)); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to remove application directory", err)
 		}
 	}
@@ -423,7 +422,7 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	logPath := filepath.Join(s.dataRoot, "cd", app.Code, "deployments", deployment.Id+".log")
+	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
 	file, err := os.Open(logPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

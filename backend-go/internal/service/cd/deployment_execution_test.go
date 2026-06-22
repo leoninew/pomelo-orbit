@@ -73,6 +73,32 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	}
 }
 
+func TestExecuteApplicationDeployFailsWhenPhysicalDataRootCannotBeResolved(t *testing.T) {
+	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
+	store := &fakeDeploymentExecutionStore{
+		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: model.Deployment{Id: "deploy-1"},
+		files: []model.ApplicationConfigFile{
+			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
+		},
+	}
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{})
+	service.workspace = newWorkspaceWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
+		return "", errors.New("missing host mount")
+	})
+
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
+	if err == nil || !strings.Contains(err.Error(), "missing host mount") {
+		t.Fatalf("expected physical data root error, got %v", err)
+	}
+	if store.appStatus != status.ApplicationStatusDeployFailed {
+		t.Fatalf("unexpected app status: %s", store.appStatus)
+	}
+	if store.deploymentStatus != status.WorkStatusFaulted {
+		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
+	}
+}
+
 func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	store := &fakeDeploymentExecutionStore{
@@ -83,6 +109,10 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 		},
 	}
 	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{})
+	physicalRoot := filepath.Join(t.TempDir(), "host-data")
+	service.workspace = newWorkspaceWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
+		return physicalRoot, nil
+	})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
 	if err != nil {
@@ -93,7 +123,7 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.ToSlash(filepath.Join(cfg.DataRoot(), "cd", "demo", "data"))
+	want := filepath.ToSlash(filepath.Join(physicalRoot, "cd", "demo", "data"))
 	got := filepath.ToSlash(string(content))
 	if !strings.Contains(got, want) {
 		t.Fatalf("expected rendered compose to contain %q, got:\n%s", want, string(content))

@@ -6,13 +6,11 @@ import (
 	"database/sql"
 	"errors"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"backend/internal/apperror"
-	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
 	"backend/internal/status"
@@ -252,7 +250,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if removeVolumes {
 		cmd = append(cmd, "-v")
 	}
-	appDir := filepath.Join(s.dataRoot, "cd", app.Code)
+	appDir := s.workspace.AppDir(app.Code)
 	if output, err := runApplicationCommand(ctx, appDir, cmd...); err != nil {
 		_ = s.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, outputOrError(output, err))
 		return "", apperror.New(apperror.KindInternal, "Failed to stop application")
@@ -292,7 +290,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if err != nil {
 		return "", err
 	}
-	output, err := runApplicationCommand(ctx, filepath.Join(s.dataRoot, "cd", app.Code), "docker", "compose", "-f", "docker-compose.yml", "ps", "--format", "json")
+	output, err := runApplicationCommand(ctx, s.workspace.AppDir(app.Code), "docker", "compose", "-f", "docker-compose.yml", "ps", "--format", "json")
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -307,7 +305,7 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	if tail < 1 || tail > 1000 {
 		return "", apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
 	}
-	output, err := runApplicationCommand(ctx, filepath.Join(s.dataRoot, "cd", app.Code), "docker", "compose", "-f", "docker-compose.yml", "logs", "--tail", strconv.Itoa(tail))
+	output, err := runApplicationCommand(ctx, s.workspace.AppDir(app.Code), "docker", "compose", "-f", "docker-compose.yml", "logs", "--tail", strconv.Itoa(tail))
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -411,7 +409,7 @@ func (s Service) UpdateApplicationServiceConfig(ctx context.Context, userId stri
 	if err != nil {
 		return ApplicationServiceConfigView{}, err
 	}
-	services, err := s.composeServices(app, compose)
+	services, err := s.composeServices(ctx, app, compose)
 	if err != nil {
 		return ApplicationServiceConfigView{}, err
 	}
@@ -491,7 +489,7 @@ func (s Service) renderApplicationCompose(ctx context.Context, app model.Applica
 	content := compose.Content
 	var err error
 	if strings.HasSuffix(compose.Path, ".liquid") {
-		content, err = renderApplicationTemplate(content, app.Code, s.cfg)
+		content, err = s.renderApplicationTemplate(ctx, content, app.Code)
 		if err != nil {
 			return "", apperror.New(apperror.KindValidation, err.Error())
 		}
@@ -514,10 +512,10 @@ func (s Service) renderApplicationCompose(ctx context.Context, app model.Applica
 	return content, nil
 }
 
-func (s Service) composeServices(app model.Application, compose model.ApplicationConfigFile) (map[string]any, error) {
+func (s Service) composeServices(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (map[string]any, error) {
 	content := compose.Content
 	if strings.HasSuffix(compose.Path, ".liquid") {
-		rendered, err := renderApplicationTemplate(content, app.Code, s.cfg)
+		rendered, err := s.renderApplicationTemplate(ctx, content, app.Code)
 		if err != nil {
 			return nil, apperror.New(apperror.KindValidation, err.Error())
 		}
@@ -539,7 +537,7 @@ func (s Service) applicationServiceConfigViews(ctx context.Context, userId strin
 	if err != nil {
 		return nil, err
 	}
-	services, err := s.composeServices(app, compose)
+	services, err := s.composeServices(ctx, app, compose)
 	if err != nil {
 		return nil, err
 	}
@@ -626,19 +624,27 @@ func runApplicationCommand(ctx context.Context, cwd string, args ...string) (str
 	return output.String(), err
 }
 
-func renderApplicationTemplate(content string, appCode string, cfg config.Config) (string, error) {
+func (s Service) renderApplicationTemplate(ctx context.Context, content string, appCode string) (string, error) {
+	physicalDir, err := s.workspace.PhysicalDir(ctx)
+	if err != nil {
+		return "", err
+	}
+	physicalAppDir, err := s.workspace.PhysicalAppDir(ctx, appCode)
+	if err != nil {
+		return "", err
+	}
 	context := map[string]any{
 		"app": map[string]any{
 			"code":             appCode,
-			"physical_dir":     cfg.DataRoot(),
-			"physical_app_dir": filepath.Join(cfg.DataRoot(), "cd", appCode),
+			"physical_dir":     physicalDir,
+			"physical_app_dir": physicalAppDir,
 		},
-		"config": map[string]any{"domain_suffix": cfg.Traefik.DomainSuffix},
+		"config": map[string]any{"domain_suffix": s.cfg.Traefik.DomainSuffix},
 		"cert": map[string]any{"letsencrypt": map[string]any{
-			"enabled":      cfg.Cert.LetsEncrypt.Enabled,
-			"email":        cfg.Cert.LetsEncrypt.Email,
-			"challenge":    cfg.Cert.LetsEncrypt.Challenge,
-			"dns_provider": cfg.Cert.LetsEncrypt.DNSProvider,
+			"enabled":      s.cfg.Cert.LetsEncrypt.Enabled,
+			"email":        s.cfg.Cert.LetsEncrypt.Email,
+			"challenge":    s.cfg.Cert.LetsEncrypt.Challenge,
+			"dns_provider": s.cfg.Cert.LetsEncrypt.DNSProvider,
 		}},
 	}
 	return templatex.Render(content, context)

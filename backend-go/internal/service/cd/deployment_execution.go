@@ -46,7 +46,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	appDir := filepath.Join(s.dataRoot, "cd", app.Code)
+	appDir := s.workspace.AppDir(app.Code)
 	logFile, closeLog, err := s.deploymentLog(app.Code, deployment.Id)
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 		}
 	}
 
-	appDir := filepath.Join(s.dataRoot, "cd", app.Code)
+	appDir := s.workspace.AppDir(app.Code)
 	logFile, closeLog, err := s.deploymentLog(app.Code, deploymentId)
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 		content := file.Content
 		if strings.HasSuffix(path, ".liquid") {
 			path = strings.TrimSuffix(path, ".liquid")
-			content, err = renderApplicationTemplate(content, app.Code, s.cfg)
+			content, err = s.renderApplicationTemplate(ctx, content, app.Code)
 			if err != nil {
 				return err
 			}
@@ -136,7 +136,7 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 }
 
 func (s Service) deploymentLog(applicationCode string, deploymentId string) (*os.File, func(), error) {
-	path := filepath.Join(s.dataRoot, "cd", applicationCode, "deployments", deploymentId+".log")
+	path := s.workspace.DeploymentLogPath(applicationCode, deploymentId)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, nil, err
 	}

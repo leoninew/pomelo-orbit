@@ -8,7 +8,7 @@ import (
 )
 
 func TestCIWorkspaceResolvesRelativeDataRootToAbsolutePhysicalMounts(t *testing.T) {
-	workspace := newCIWorkspaceWithResolver("data", defaultPhysicalDataRoot)
+	workspace := newCIWorkspaceWithResolver("data", resolveAbsolutePhysicalDataRoot)
 	mounts, err := workspace.DockerStageMounts(context.Background(), "repo", "run-1")
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestCIWorkspaceResolvesRelativeDataRootToAbsolutePhysicalMounts(t *testing.
 
 func TestCIWorkspaceKeepsAbsolutePhysicalDataRootSemantics(t *testing.T) {
 	dataRoot := t.TempDir()
-	workspace := newCIWorkspaceWithResolver(dataRoot, defaultPhysicalDataRoot)
+	workspace := newCIWorkspaceWithResolver(dataRoot, resolveAbsolutePhysicalDataRoot)
 	mounts, err := workspace.DockerStageMounts(context.Background(), "repo", "run-1")
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +59,10 @@ func TestCIWorkspaceUsesResolvedPhysicalDataRootForDockerMounts(t *testing.T) {
 	if !strings.HasPrefix(mounts[0].HostPath, physicalRoot) || !strings.HasPrefix(mounts[1].HostPath, physicalRoot) {
 		t.Fatalf("expected physical root %q, got %+v", physicalRoot, mounts)
 	}
+}
+
+func resolveAbsolutePhysicalDataRoot(ctx context.Context, logicalDataRoot string) (string, error) {
+	return filepath.Abs(logicalDataRoot)
 }
 
 func TestDockerRunArgsUseBindMountSyntax(t *testing.T) {

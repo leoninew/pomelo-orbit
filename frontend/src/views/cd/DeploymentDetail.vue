@@ -1,5 +1,5 @@
 <template>
-	<div class="flex flex-col gap-4">
+	<div class="flex h-full min-h-0 flex-col gap-4">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<h1 class="text-xl font-semibold text-foreground">部署详情</h1>
 			<div class="flex flex-wrap items-center gap-2">
@@ -22,7 +22,7 @@
 		<AppSpinner v-if="status === 'loading'" class="py-12" />
 
 		<!-- 内容 -->
-		<div v-else-if="deployment" class="flex flex-col gap-4">
+		<div v-else-if="deployment" class="flex min-h-0 flex-1 flex-col gap-4">
 			<!-- 基本信息卡片 -->
 			<div class="app-surface">
 				<div class="app-section-header">
@@ -95,18 +95,18 @@
 			</div>
 
 			<!-- 日志卡片 -->
-			<div class="app-surface">
-				<div class="app-section-header flex items-center justify-between">
+			<div class="app-surface flex min-h-0 flex-1 flex-col">
+				<div class="app-section-header flex shrink-0 items-center justify-between">
 					<h2 class="font-semibold text-foreground">部署日志</h2>
 					<button class="app-button h-8 px-3" @click="refreshDeployment">
 						<RefreshCw class="size-4" />
 						刷新
 					</button>
 				</div>
-				<div class="p-5">
+				<div class="min-h-0 flex-1 p-5">
 					<div
 						v-if="!logText"
-						class="flex h-[600px] items-center justify-center text-muted-foreground"
+						class="flex h-full min-h-[240px] items-center justify-center text-muted-foreground"
 					>
 						<div class="text-center">
 							<AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
@@ -123,7 +123,7 @@
 						v-else
 						:model-value="logText"
 						language="plaintext"
-						height="600px"
+						height="100%"
 						:readonly="true"
 						@mount="handleEditorMount"
 					/>

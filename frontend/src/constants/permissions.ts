@@ -5,20 +5,20 @@
  */
 
 export const PERMISSIONS = {
-	// 登录历史权限
-	LOGIN_READ: 'login:read',
+  // 登录历史权限
+  LOGIN_READ: 'login:read',
 
-	// 用户管理权限
-	USER_READ: 'user:read',
-	USER_WRITE: 'user:write',
+  // 用户管理权限
+  USER_READ: 'user:read',
+  USER_WRITE: 'user:write',
 
-	// 角色管理权限
-	ROLE_READ: 'role:read',
-	ROLE_WRITE: 'role:write',
+  // 角色管理权限
+  ROLE_READ: 'role:read',
+  ROLE_WRITE: 'role:write',
 
-	// 系统配置权限
-	SETTING_READ: 'setting:read',
-	SETTING_WRITE: 'setting:write',
+  // 系统配置权限
+  SETTING_READ: 'setting:read',
+  SETTING_WRITE: 'setting:write',
 } as const;
 
 /**
@@ -30,5 +30,5 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
  * 检查是否为有效权限
  */
 export function isValidPermission(permission: string): permission is Permission {
-	return Object.values(PERMISSIONS).includes(permission as Permission);
+  return Object.values(PERMISSIONS).includes(permission as Permission);
 }

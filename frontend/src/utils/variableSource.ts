@@ -7,13 +7,13 @@
 import type { BadgeTone } from './status';
 
 export type VariableSource =
-	| 'global'
-	| 'repository'
-	| 'repository_custom'
-	| 'template'
-	| 'template_stage'
-	| 'template_custom'
-	| 'runtime';
+  | 'global'
+  | 'repository'
+  | 'repository_custom'
+  | 'template'
+  | 'template_stage'
+  | 'template_custom'
+  | 'runtime';
 
 /**
  * 获取变量来源的显示标签
@@ -23,32 +23,32 @@ export type VariableSource =
  * - 模板详情界面：template -> "模板运行时"，template_stage -> "模板 Stage"，template_custom -> "模板自定义"
  */
 export function getSourceLabel(source: VariableSource): string {
-	const labels: Record<VariableSource, string> = {
-		global: '全局',
-		repository: '项目运行时',
-		repository_custom: '项目自定义',
-		template: '模板运行时',
-		template_stage: '模板 Stage',
-		template_custom: '模板自定义',
-		runtime: '触发时',
-	};
-	return labels[source];
+  const labels: Record<VariableSource, string> = {
+    global: '全局',
+    repository: '项目运行时',
+    repository_custom: '项目自定义',
+    template: '模板运行时',
+    template_stage: '模板 Stage',
+    template_custom: '模板自定义',
+    runtime: '触发时',
+  };
+  return labels[source];
 }
 
 /**
  * 获取变量来源的徽章样式
  */
 export function getSourceTone(source: VariableSource): BadgeTone {
-	const tones: Record<VariableSource, BadgeTone> = {
-		global: 'primary',
-		repository: 'info',
-		repository_custom: 'warning',
-		template: 'primary',
-		template_stage: 'success',
-		template_custom: 'warning',
-		runtime: 'default',
-	};
-	return tones[source];
+  const tones: Record<VariableSource, BadgeTone> = {
+    global: 'primary',
+    repository: 'info',
+    repository_custom: 'warning',
+    template: 'primary',
+    template_stage: 'success',
+    template_custom: 'warning',
+    runtime: 'default',
+  };
+  return tones[source];
 }
 
 /**
@@ -56,7 +56,7 @@ export function getSourceTone(source: VariableSource): BadgeTone {
  * template_stage 变量（从 Stage 脚本提取）可在触发时覆盖其 default 值
  */
 export function isVariableEditable(source: VariableSource): boolean {
-	return (
-		source === 'repository_custom' || source === 'template_custom' || source === 'template_stage'
-	);
+  return (
+    source === 'repository_custom' || source === 'template_custom' || source === 'template_stage'
+  );
 }

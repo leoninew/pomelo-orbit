@@ -3,14 +3,14 @@ import type { Artifact } from '@/types/ci/stage_run';
 import request from '@/utils/request';
 
 export const artifactApi = {
-	list(params?: {
-		page?: number
-		per_page?: number
-		repository_id?: string
-		template_id?: string
-		search?: string
-		project_id?: string
-	}): Promise<PaginatedResp<Artifact>> {
-		return request.get('/api/ci/artifact', { params });
-	},
+  list(params?: {
+    page?: number;
+    per_page?: number;
+    repository_id?: string;
+    template_id?: string;
+    search?: string;
+    project_id?: string;
+  }): Promise<PaginatedResp<Artifact>> {
+    return request.get('/api/ci/artifact', { params });
+  },
 };

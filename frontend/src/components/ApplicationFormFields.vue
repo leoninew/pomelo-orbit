@@ -1,91 +1,91 @@
 <template>
-	<div class="space-y-4">
-		<div class="space-y-1.5">
-			<label class="app-field-label block">
-				{{ t('application.name') }}
-				<span class="text-destructive">*</span>
-			</label>
-			<input
-				:value="form.name"
-				type="text"
-				:placeholder="t('application.namePlaceholder')"
-				class="app-input"
-				:class="errors.name ? 'app-input-error' : ''"
-				@input="updateField('name', ($event.target as HTMLInputElement).value)"
-			/>
-			<p v-if="errors.name" class="app-field-error mt-1 text-xs">{{ errors.name }}</p>
-		</div>
+  <div class="space-y-4">
+    <div class="space-y-1.5">
+      <label class="app-field-label block">
+        {{ t('application.name') }}
+        <span class="text-destructive">*</span>
+      </label>
+      <input
+        :value="form.name"
+        type="text"
+        :placeholder="t('application.namePlaceholder')"
+        class="app-input"
+        :class="errors.name ? 'app-input-error' : ''"
+        @input="updateField('name', ($event.target as HTMLInputElement).value)"
+      />
+      <p v-if="errors.name" class="app-field-error mt-1 text-xs">{{ errors.name }}</p>
+    </div>
 
-		<div class="space-y-1.5">
-			<label class="app-field-label block">
-				{{ t('application.code') }}
-				<span class="text-destructive">*</span>
-			</label>
-			<input
-				:value="form.code"
-				type="text"
-				:placeholder="t('application.codePlaceholder')"
-				class="app-input"
-				:class="errors.code ? 'app-input-error' : ''"
-				@input="updateField('code', ($event.target as HTMLInputElement).value)"
-			/>
-			<p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
-			<p class="app-field-hint">{{ t('application.codeHint') }}</p>
-		</div>
+    <div class="space-y-1.5">
+      <label class="app-field-label block">
+        {{ t('application.code') }}
+        <span class="text-destructive">*</span>
+      </label>
+      <input
+        :value="form.code"
+        type="text"
+        :placeholder="t('application.codePlaceholder')"
+        class="app-input"
+        :class="errors.code ? 'app-input-error' : ''"
+        @input="updateField('code', ($event.target as HTMLInputElement).value)"
+      />
+      <p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
+      <p class="app-field-hint">{{ t('application.codeHint') }}</p>
+    </div>
 
-		<div class="space-y-1.5">
-			<label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
-			<SelectControl
-				:model-value="form.image_pull_policy"
-				:options="imagePullPolicyOptions"
-				:placeholder="t('application.imagePullPolicyPlaceholder')"
-				@update:model-value="updateField('image_pull_policy', String($event))"
-			/>
-		</div>
+    <div class="space-y-1.5">
+      <label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
+      <SelectControl
+        :model-value="form.image_pull_policy"
+        :options="imagePullPolicyOptions"
+        :placeholder="t('application.imagePullPolicyPlaceholder')"
+        @update:model-value="updateField('image_pull_policy', String($event))"
+      />
+    </div>
 
-		<div class="flex items-center gap-2">
-			<input
-				id="route_managed"
-				:checked="form.route_managed"
-				type="checkbox"
-				class="app-checkbox"
-				@change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
-			/>
-			<label for="route_managed" class="text-sm font-medium text-foreground">
-				{{ t('application.enableRouteManaged') }}
-			</label>
-		</div>
-		<p class="app-field-hint">{{ t('application.routeManagedHint') }}</p>
-	</div>
+    <div class="flex items-center gap-2">
+      <input
+        id="route_managed"
+        :checked="form.route_managed"
+        type="checkbox"
+        class="app-checkbox"
+        @change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
+      />
+      <label for="route_managed" class="text-sm font-medium text-foreground">
+        {{ t('application.enableRouteManaged') }}
+      </label>
+    </div>
+    <p class="app-field-hint">{{ t('application.routeManagedHint') }}</p>
+  </div>
 </template>
 
 <script setup lang="ts">
-	import { computed } from 'vue';
-	import { useI18n } from 'vue-i18n';
-	import SelectControl from '@/components/SelectControl.vue';
-	import type { ApplicationFormState } from '@/types/cd/application';
+  import { computed } from 'vue';
+  import { useI18n } from 'vue-i18n';
+  import SelectControl from '@/components/SelectControl.vue';
+  import type { ApplicationFormState } from '@/types/cd/application';
 
-	const props = defineProps<{
-		form: ApplicationFormState
-		errors: { name: string; code: string }
-	}>();
+  const props = defineProps<{
+    form: ApplicationFormState;
+    errors: { name: string; code: string };
+  }>();
 
-	const emit = defineEmits<{
-		'update:form': [value: ApplicationFormState]
-	}>();
+  const emit = defineEmits<{
+    'update:form': [value: ApplicationFormState];
+  }>();
 
-	const { t } = useI18n();
+  const { t } = useI18n();
 
-	function updateField<K extends keyof ApplicationFormState>(
-		field: K,
-		value: ApplicationFormState[K]
-	) {
-		emit('update:form', { ...props.form, [field]: value });
-	}
+  function updateField<K extends keyof ApplicationFormState>(
+    field: K,
+    value: ApplicationFormState[K]
+  ) {
+    emit('update:form', { ...props.form, [field]: value });
+  }
 
-	const imagePullPolicyOptions = computed(() => [
-		{ value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
-		{ value: 'always', label: t('application.imagePullPolicyOptions.always') },
-		{ value: 'never', label: t('application.imagePullPolicyOptions.never') },
-	]);
+  const imagePullPolicyOptions = computed(() => [
+    { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
+    { value: 'always', label: t('application.imagePullPolicyOptions.always') },
+    { value: 'never', label: t('application.imagePullPolicyOptions.never') },
+  ]);
 </script>

@@ -34,8 +34,9 @@ export default [
 			'vue/custom-event-name-casing': ['error', 'kebab-case'],
 			'vue/no-unused-refs': 'warn',
 			'vue/block-order': ['error', { order: ['template', 'script', 'style'] }],
-			'vue/html-indent': ['error', 'tab'],
-			'vue/script-indent': ['error', 'tab', { baseIndent: 1 }],
+			// 缩进由 Prettier 统一处理，避免 lint:fix 与 format 来回改动
+			'vue/html-indent': 'off',
+			'vue/script-indent': 'off',
 
 			// TypeScript 规则
 			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
@@ -44,11 +45,11 @@ export default [
 			'@typescript-eslint/no-empty-function': 'off',
 			'@typescript-eslint/no-require-imports': 'off',
 
-			// 代码风格规则 - interface 成员不使用分号
+			// 代码风格规则 - interface 成员使用分号，与 Prettier 默认风格保持一致
 			'@stylistic/member-delimiter-style': [
 				'error',
 				{
-					multiline: { delimiter: 'none', requireLast: false },
+					multiline: { delimiter: 'semi', requireLast: true },
 					singleline: { delimiter: 'semi', requireLast: false },
 				},
 			],

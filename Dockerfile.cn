@@ -74,9 +74,6 @@ ENV POMELO_ORBIT_SERVER__PORT=80
 # Expose port
 EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:80/api/health || exit 1
-
-# Run the application
-CMD ["backend-go", "serve"]
+# Run the application. Override CMD with "worker" to run the background worker.
+ENTRYPOINT ["backend-go"]
+CMD ["serve"]

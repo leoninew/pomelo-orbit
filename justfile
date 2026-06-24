@@ -1,5 +1,10 @@
 set shell := ["bash", "-cu"]
 
+# Show available tasks by default
+_default:
+    just --list
+
+
 install:
     cd frontend && yarn install
     cd backend-go && go mod download

@@ -107,6 +107,45 @@ just test    # 单元测试
 just build   # 镜像构建
 ```
 
+## Docker 镜像角色
+
+Pomelo Orbit 使用同一个镜像启动 HTTP API 和后台 worker。镜像默认启动 HTTP API：
+
+```bash
+docker run --rm -p 80:80 pomelo-orbit:latest
+```
+
+启动后台 worker 时覆盖 command：
+
+```bash
+docker run --rm pomelo-orbit:latest worker
+```
+
+Compose 部署时，用同一个 image 定义不同服务，并将 HTTP healthcheck 放在 `api` 服务上，避免 worker 继承 HTTP 专用健康检查：
+
+```yaml
+services:
+  api:
+    image: pomelo-orbit:latest
+    command: ["serve"]
+    ports:
+      - "80:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  worker:
+    image: pomelo-orbit:latest
+    command: ["worker"]
+    healthcheck:
+      disable: true
+```
+
+如果 worker 需要执行 Docker / Compose 任务，应只给 worker 服务挂载 Docker socket 或配置远程 Docker host，避免 API 容器获得不必要的 Docker 执行权限。
+
 ## 许可证
 
 MIT License

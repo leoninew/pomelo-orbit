@@ -21,5 +21,11 @@ backend/data/
 backend/tests
 backend/coverage
 
+# Backend Go
+backend-go/bin/
+backend-go/tmp/
+backend-go/data/
+backend-go/logs/
+
 # Data directory (mounted as volume)
 data/

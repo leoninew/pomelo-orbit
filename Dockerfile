@@ -17,63 +17,53 @@ COPY frontend/ ./
 # Build frontend
 RUN yarn build
 
-# Stage 2: Python backend with uv
-FROM python:3.12-slim AS backend-builder
+# Stage 2: Build backend-go
+FROM golang:1.25-bookworm AS backend-builder
 
-WORKDIR /app
+WORKDIR /app/backend-go
 
-# Install uv
-RUN pip install --no-cache-dir uv
+# Copy backend-go module files
+COPY backend-go/go.mod backend-go/go.sum ./
 
-# Copy backend files
-COPY backend/pyproject.toml backend/uv.lock* ./
+# Download dependencies
+RUN go mod download
 
-# Install dependencies
-RUN uv sync
+# Copy backend-go source
+COPY backend-go/cmd ./cmd
+COPY backend-go/internal ./internal
 
-# Copy source code (needed for dependency resolution)
-COPY backend/src ./src
+# Build backend-go binary
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend-go ./cmd/backend-go
 
 # Stage 3: Final image
-FROM python:3.12-slim
+FROM debian:bookworm-slim
 
 WORKDIR /app
 
 # Install system dependencies and docker CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
-    docker-cli \
+    docker.io \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /usr/local/lib/docker/cli-plugins
 
 RUN curl -SL https://github.com/docker/compose/releases/download/v5.1.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 
-# Copy Python dependencies from builder
-COPY --from=backend-builder /app/.venv /app/.venv
-
-# Copy backend configuration files
-COPY backend/pyproject.toml backend/config.defaults.yaml ./
-
-# Copy backend source
-COPY backend/src/ ./src/
-
-# Copy database migrations
-COPY backend/migrations/ ./migrations/
+# Copy backend-go binary and configuration
+COPY --from=backend-builder /out/backend-go /usr/local/bin/backend-go
+COPY backend-go/config.defaults.yaml ./config.defaults.yaml
 
 # Copy frontend build from stage 1
 COPY --from=frontend-builder /app/frontend/dist ./static
 
-# Set Python path
-ENV PYTHONPATH=/app/src
-
-# Create data directories
+# Create runtime directories
 RUN mkdir -p /app/data/db /app/logs
 
 # Environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PATH="/app/.venv/bin:$PATH"
+ENV POMELO_ORBIT_SERVER__HOST=0.0.0.0
+ENV POMELO_ORBIT_SERVER__PORT=80
 
 # Expose port
 EXPOSE 80
@@ -83,4 +73,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:80/api/health || exit 1
 
 # Run the application
-CMD ["python", "-m", "pomelo_orbit.main", "--host", "0.0.0.0", "--port", "80"]
+CMD ["backend-go", "serve"]

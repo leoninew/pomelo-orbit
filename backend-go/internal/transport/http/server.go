@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -110,13 +113,40 @@ func (s Server) Handler() http.Handler {
 	cdHandler.RegisterTraefikRouteRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) >= 5 && r.URL.Path[:5] == "/api/" {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
 			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
+			return
+		}
+		if serveStatic(w, r, "static") {
 			return
 		}
 		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
 	})
 	return r
+}
+
+func serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		return false
+	}
+
+	indexPath := filepath.Join(staticDir, "index.html")
+	if _, err := os.Stat(indexPath); err != nil {
+		return false
+	}
+
+	requestPath := path.Clean("/" + r.URL.Path)
+	if requestPath != "/" {
+		filePath := filepath.Join(staticDir, filepath.FromSlash(strings.TrimPrefix(requestPath, "/")))
+		info, err := os.Stat(filePath)
+		if err == nil && !info.IsDir() {
+			http.ServeFile(w, r, filePath)
+			return true
+		}
+	}
+
+	http.ServeFile(w, r, indexPath)
+	return true
 }
 
 func (s Server) Addr() string {

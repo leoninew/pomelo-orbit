@@ -31,16 +31,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          python-version: '3.12'
+          go-version-file: backend-go/go.mod
+          cache-dependency-path: backend-go/go.sum
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-
-      - name: Run backend tests
-        run: cd backend && uv run pytest
+      - name: Run backend-go tests
+        run: go -C backend-go test ./...
 
       - name: Extract metadata
         id: meta

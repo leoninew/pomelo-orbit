@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -248,6 +250,58 @@ func TestAuthCaptchaRouteIsRemoved(t *testing.T) {
 	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/auth/captcha", nil))
 	if recorder.Code != http.StatusNotFound {
 		t.Fatalf("expected captcha status 404, got %d", recorder.Code)
+	}
+}
+
+func TestStaticFilesFallbackServesFrontend(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+	workingDir := t.TempDir()
+	staticDir := filepath.Join(workingDir, "static")
+	if err := os.Mkdir(staticDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<html>app</html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staticDir, "asset.js"), []byte("console.log('app')"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(workingDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	assetRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(assetRecorder, httptest.NewRequest(http.MethodGet, "/asset.js", nil))
+	if assetRecorder.Code != http.StatusOK || assetRecorder.Body.String() != "console.log('app')" {
+		t.Fatalf("expected static asset, got %d: %s", assetRecorder.Code, assetRecorder.Body.String())
+	}
+
+	spaRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(spaRecorder, httptest.NewRequest(http.MethodGet, "/ci/repository", nil))
+	if spaRecorder.Code != http.StatusOK || spaRecorder.Body.String() != "<html>app</html>" {
+		t.Fatalf("expected spa fallback, got %d: %s", spaRecorder.Code, spaRecorder.Body.String())
+	}
+
+	apiRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(apiRecorder, httptest.NewRequest(http.MethodGet, "/api/missing", nil))
+	if apiRecorder.Code != http.StatusNotFound {
+		t.Fatalf("expected api 404, got %d: %s", apiRecorder.Code, apiRecorder.Body.String())
+	}
+
+	postRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(postRecorder, httptest.NewRequest(http.MethodPost, "/ci/repository", nil))
+	if postRecorder.Code != http.StatusNotFound {
+		t.Fatalf("expected non-get static fallback status 404, got %d: %s", postRecorder.Code, postRecorder.Body.String())
 	}
 }
 

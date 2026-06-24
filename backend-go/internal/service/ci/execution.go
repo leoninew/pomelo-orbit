@@ -55,7 +55,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input ExecutePipelineRu
 		return err
 	}
 
-	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logger: s.logger, runner: s.runner}
+	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, secretKey: s.secretKey, logger: s.logger, runner: s.runner}
 	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {

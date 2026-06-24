@@ -4,12 +4,16 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
 	"backend/internal/repository/model"
+	"backend/internal/security"
 	"backend/internal/status"
 )
+
+const testExecutionFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
 	store := &fakeExecutionStore{
@@ -20,7 +24,7 @@ func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
 			{"id":"stage-2","name":"deploy","image":"alpine","depends_on":["stage-1"],"script":"echo deploy"}
 		]`},
 	}
-	service := NewExecutionService(store, t.TempDir(), slog.Default(), failingContainerRunner{})
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), failingContainerRunner{})
 
 	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
@@ -57,7 +61,7 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 		repo:     model.Repository{Id: "repo-1", Code: "repo"},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
 	}
-	service := NewExecutionService(store, t.TempDir(), slog.Default(), fakeContainerRunner{})
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), fakeContainerRunner{})
 
 	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
@@ -77,6 +81,51 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 	}
 }
 
+func TestExecutePipelineRunInjectsGiteeCredentialRewrite(t *testing.T) {
+	credentialId := "credential-1"
+	encrypted, err := security.EncryptString(testExecutionFernetKey, "leoninew:gitee-token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &fakeExecutionStore{
+		run: model.PipelineRun{
+			Id:           "run-1",
+			RepositoryId: "repo-1",
+			SnapshotId:   "snapshot-1",
+			TemplateId:   "template-1",
+			TriggerRef:   "develop",
+		},
+		repo:       model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryURL: "https://gitee.com/leoninew/pomelo-orbit.git", GitCredentialId: &credentialId},
+		credential: model.Credential{Id: credentialId, Type: "gitee_token", EncryptedData: encrypted},
+		template:   model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1},
+		snapshot:   model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"git clone","image":"alpine/git","script":"git remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}"}]`, VariablesSnapshot: `[{"name":"repository_url","source":"template","editable":false},{"name":"repository_ref","source":"template","editable":false}]`},
+	}
+	runner := &recordingContainerRunner{}
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner)
+
+	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"}); err != nil {
+		t.Fatalf("ExecutePipelineRun returned error: %v", err)
+	}
+	if runner.script != "git remote add origin https://gitee.com/leoninew/pomelo-orbit.git\ngit fetch --depth=1 origin develop" {
+		t.Fatalf("expected original clone script to stay unchanged, got script:\n%s", runner.script)
+	}
+	if strings.Contains(runner.script, "gitee-token") {
+		t.Fatalf("expected script not to contain credential data, got script:\n%s", runner.script)
+	}
+	if !containsString(runner.environment, "GIT_TERMINAL_PROMPT=0") {
+		t.Fatalf("expected GIT_TERMINAL_PROMPT=0, got %+v", runner.environment)
+	}
+	if !containsString(runner.environment, "GIT_CONFIG_COUNT=1") {
+		t.Fatalf("expected GIT_CONFIG_COUNT=1, got %+v", runner.environment)
+	}
+	if !containsString(runner.environment, "GIT_CONFIG_KEY_0=url.https://leoninew:gitee-token@gitee.com/leoninew/pomelo-orbit.git.insteadOf") {
+		t.Fatalf("expected authenticated rewrite config key, got %+v", runner.environment)
+	}
+	if !containsString(runner.environment, "GIT_CONFIG_VALUE_0=https://gitee.com/leoninew/pomelo-orbit.git") {
+		t.Fatalf("expected rewrite config value, got %+v", runner.environment)
+	}
+}
+
 func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 	store := &fakeExecutionStore{
 		run: model.PipelineRun{
@@ -91,7 +140,7 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"cd {{ working_dir }} && echo {{ repository_code }}"}]`, VariablesSnapshot: `[{"name":"working_dir","default":".","source":"template_stage","editable":true},{"name":"repository_code","source":"template","editable":false}]`},
 	}
 	runner := &recordingContainerRunner{}
-	service := NewExecutionService(store, t.TempDir(), slog.Default(), runner)
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner)
 
 	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
@@ -113,6 +162,7 @@ type fakeExecutionStore struct {
 	mu         sync.Mutex
 	run        model.PipelineRun
 	repo       model.Repository
+	credential model.Credential
 	snapshot   model.PipelineSnapshot
 	template   model.PipelineTemplate
 	stageRuns  []model.StageRun
@@ -126,6 +176,10 @@ func (s *fakeExecutionStore) PipelineRun(ctx context.Context, id string) (model.
 
 func (s *fakeExecutionStore) Repository(ctx context.Context, id string) (model.Repository, error) {
 	return s.repo, nil
+}
+
+func (s *fakeExecutionStore) Credential(ctx context.Context, id string) (model.Credential, error) {
+	return s.credential, nil
 }
 
 func (s *fakeExecutionStore) PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error) {
@@ -193,12 +247,23 @@ func (failingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, st
 }
 
 type recordingContainerRunner struct {
-	script  string
-	volumes []VolumeMount
+	script      string
+	environment []string
+	volumes     []VolumeMount
 }
 
 func (r *recordingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
 	r.script = opts.Script
+	r.environment = opts.Environment
 	r.volumes = opts.Volumes
 	return 0, "ok", nil
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }

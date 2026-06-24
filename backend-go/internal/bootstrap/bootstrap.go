@@ -52,7 +52,7 @@ func NewTaskRouter(store repository.Store, cfg config.Config, logger *slog.Logge
 	router := worker.NewRouter()
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
-	ciService := cisvc.NewExecutionService(ciRepository, cfg.DataRoot(), logger, cisvc.DockerRunner{})
+	ciService := cisvc.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, cisvc.DockerRunner{})
 	cdService := cdsvc.NewExecutionService(cdRepository, cfg, logger, cdsvc.ShellRunner{})
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciService))
 	router.Register(status.TaskTypeCDApplicationDeploy, cdworker.NewDeployHandler(cdService))

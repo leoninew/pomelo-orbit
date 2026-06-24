@@ -3,7 +3,7 @@ tmp_dir = "tmp/air/worker"
 
 [build]
 cmd = "go build -o ./tmp/air/worker/backend-go.exe ./cmd/backend-go"
-bin = "./tmp/air/worker/backend-go.exe"
+entrypoint = "./tmp/air/worker/backend-go.exe"
 args_bin = ["worker"]
 include_ext = ["go", "yaml", "yml", "toml"]
 exclude_dir = ["tmp", "bin", "data", "logs", "vendor"]

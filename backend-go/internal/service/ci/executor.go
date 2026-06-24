@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -13,12 +14,14 @@ import (
 
 	"backend/internal/repository"
 	"backend/internal/repository/model"
+	"backend/internal/security"
 	"backend/internal/status"
 )
 
 type Executor struct {
 	store     PipelineExecutionStore
 	workspace *CIWorkspace
+	secretKey string
 	logger    *slog.Logger
 	runner    ContainerRunner
 }
@@ -97,10 +100,15 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 		return e.failStage(ctx, stageRun, err.Error())
 	}
 
+	script, environment, err := e.stageRunConfig(ctx, repo, variables, stage)
+	if err != nil {
+		return e.failStage(ctx, stageRun, err.Error())
+	}
+
 	exitCode, output, err := e.runner.Run(ctx, RunOptions{
 		Image:       stage.Image,
-		Script:      safeCommand(commandLines(stage.Script)),
-		Environment: envMap(variables),
+		Script:      script,
+		Environment: environment,
 		Volumes:     volumes,
 		LogFile:     logFile,
 	})
@@ -124,6 +132,84 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 	}
 	e.logger.Info("stage succeeded", "run", run.Id, "stage", stage.Name)
 	return true
+}
+
+func (e Executor) stageRunConfig(ctx context.Context, repo model.Repository, variables map[string]any, stage model.StageDefinition) (string, []string, error) {
+	script := safeCommand(commandLines(stage.Script))
+	environment := envMap(variables)
+	if repo.GitCredentialId == nil || !stageUsesRepositoryURL(stage.Script, repo.RepositoryURL) {
+		return script, environment, nil
+	}
+	credential, err := e.store.Credential(ctx, *repo.GitCredentialId)
+	if err != nil {
+		return "", nil, fmt.Errorf("load git credential: %w", err)
+	}
+	authenticatedURL, err := e.authenticatedRepositoryURL(repo.RepositoryURL, credential)
+	if err != nil {
+		return "", nil, err
+	}
+	environment = append(environment, gitCredentialEnvironment(repo.RepositoryURL, authenticatedURL)...)
+	return script, environment, nil
+}
+
+func stageUsesRepositoryURL(script string, repositoryURL string) bool {
+	return strings.TrimSpace(repositoryURL) != "" && strings.Contains(script, repositoryURL)
+}
+
+func (e Executor) authenticatedRepositoryURL(repositoryURL string, credential model.Credential) (string, error) {
+	decrypted, err := security.DecryptString(e.secretKey, credential.EncryptedData)
+	if err != nil {
+		return "", fmt.Errorf("decrypt git credential: %w", err)
+	}
+	switch credential.Type {
+	case "github_token":
+		return buildAuthenticatedRepositoryURL(repositoryURL, decrypted)
+	case "gitee_token":
+		username, token, err := splitGiteeCredential(decrypted)
+		if err != nil {
+			return "", err
+		}
+		return buildAuthenticatedRepositoryURL(repositoryURL, username+":"+token)
+	case "git_ssh":
+		return "", fmt.Errorf("git_ssh credentials are not supported by backend-go pipeline execution")
+	default:
+		return "", fmt.Errorf("unsupported git credential type: %s", credential.Type)
+	}
+}
+
+func splitGiteeCredential(value string) (string, string, error) {
+	username, token, ok := strings.Cut(value, ":")
+	username = strings.TrimSpace(username)
+	if !ok || username == "" || token == "" {
+		return "", "", fmt.Errorf("gitee_token credential must be username:token")
+	}
+	return username, token, nil
+}
+
+func buildAuthenticatedRepositoryURL(repositoryURL string, authPart string) (string, error) {
+	if strings.TrimSpace(authPart) == "" {
+		return "", fmt.Errorf("git credential data is empty")
+	}
+	parsed, err := url.Parse(repositoryURL)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return "", fmt.Errorf("unsupported repository URL format: %s", repositoryURL)
+	}
+	if strings.Contains(authPart, ":") {
+		username, password, _ := strings.Cut(authPart, ":")
+		parsed.User = url.UserPassword(username, password)
+	} else {
+		parsed.User = url.User(authPart)
+	}
+	return parsed.String(), nil
+}
+
+func gitCredentialEnvironment(repositoryURL string, authenticatedURL string) []string {
+	return []string{
+		"GIT_TERMINAL_PROMPT=0",
+		"GIT_CONFIG_COUNT=1",
+		"GIT_CONFIG_KEY_0=url." + authenticatedURL + ".insteadOf",
+		"GIT_CONFIG_VALUE_0=" + repositoryURL,
+	}
 }
 
 func (e Executor) completeStageFailed(ctx context.Context, stageRun model.StageRun, exitCode int, message string) bool {

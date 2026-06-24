@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	defaultConfigFile = "config.defaults.yaml"
+	DefaultConfigFile = "config.defaults.yaml"
+	LocalConfigFile   = "config.local.yaml"
 	fernetKeySize     = 32
 )
 
@@ -112,17 +113,16 @@ type LetsEncryptConfig struct {
 	DNSProvider string `mapstructure:"dns_provider" yaml:"dns_provider"`
 }
 
-func Load(path string) (Config, error) {
+func Load() (Config, error) {
 	loader := newLoader()
-	loader.SetConfigFile(defaultConfigFile)
+	loader.SetConfigFile(DefaultConfigFile)
 	if err := loader.ReadInConfig(); err != nil {
 		return Config{}, fmt.Errorf("read default config: %w", err)
 	}
-	if path != "" {
-		loader.SetConfigFile(path)
-		if err := loader.MergeInConfig(); err != nil {
-			return Config{}, fmt.Errorf("read config: %w", err)
-		}
+
+	loader.SetConfigFile(LocalConfigFile)
+	if err := loader.MergeInConfig(); err != nil && !isLocalConfigMissing(err) {
+		return Config{}, fmt.Errorf("read local config: %w", err)
 	}
 
 	var cfg Config
@@ -137,17 +137,16 @@ func Load(path string) (Config, error) {
 		}
 		cfg.Worker.Id = fmt.Sprintf("%s-%d", hostname, os.Getpid())
 	}
-	if cfg.Database.Driver == "" {
-		cfg.Database.Driver = DatabaseDriverSQLite
-	}
-	if cfg.Database.Driver == DatabaseDriverSQLite && cfg.Database.SQLite.Path == "" {
-		cfg.Database.SQLite.Path = filepath.Join(cfg.Orbit.Root, "data", "db", "pomelo-repository.db")
-	}
 
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
+}
+
+func isLocalConfigMissing(err error) bool {
+	var notFound viper.ConfigFileNotFoundError
+	return errors.As(err, &notFound) || errors.Is(err, os.ErrNotExist)
 }
 
 func newLoader() *viper.Viper {

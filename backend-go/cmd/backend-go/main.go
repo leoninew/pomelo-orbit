@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-	configPath := flag.String("config", "", "path to config yaml")
 	migrateOnly := flag.Bool("migrate-only", false, "run database migrations and exit")
 	flag.Parse()
 
@@ -28,7 +27,7 @@ func main() {
 		command = "migrate-up"
 	}
 
-	cfg, err := config.Load(*configPath)
+	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("load config failed", "error", err)
 		os.Exit(1)

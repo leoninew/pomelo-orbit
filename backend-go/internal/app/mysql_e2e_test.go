@@ -25,12 +25,32 @@ func TestMySQLE2E(t *testing.T) {
 	if configPath == "" {
 		t.Skip("set BACKEND_GO_E2E_CONFIG to run MySQL e2e test")
 	}
+	configPath, err := filepath.Abs(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	moduleRoot := filepath.Join("..", "..")
-	if err := os.Chdir(moduleRoot); err != nil {
+	defaultConfig, err := os.ReadFile(filepath.Join(moduleRoot, config.DefaultConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	localConfig, err := os.ReadFile(configPath)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	cfg, err := config.Load(configPath)
+	configDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(configDir, config.DefaultConfigFile), defaultConfig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, config.LocalConfigFile), localConfig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(configDir); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := config.Load()
 	if err != nil {
 		t.Fatal(err)
 	}

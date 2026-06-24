@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -15,7 +14,7 @@ const (
 func TestLoadDefaultConfigFile(t *testing.T) {
 	setupDefaultConfig(t)
 
-	cfg, err := Load("")
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
@@ -71,7 +70,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 
 func TestLoadConfigMergesCustomConfig(t *testing.T) {
 	setupDefaultConfig(t)
-	path := writeConfig(t, `logging:
+	writeLocalConfig(t, `logging:
   level: "DEBUG"
   max_size_mb: 50
   max_backups: 3
@@ -88,7 +87,7 @@ worker:
   concurrency: 3
 `)
 
-	cfg, err := Load(path)
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
@@ -121,9 +120,21 @@ worker:
 	}
 }
 
+func TestLoadConfigRejectsInvalidLocalConfig(t *testing.T) {
+	setupDefaultConfig(t)
+	writeLocalConfig(t, `database:
+  sqlite:
+    path: [invalid]
+`)
+
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error for invalid local config")
+	}
+}
+
 func TestLoadConfigEnvOverrides(t *testing.T) {
 	setupDefaultConfig(t)
-	path := writeConfig(t, `server:
+	writeLocalConfig(t, `server:
   host: "127.0.0.1"
   port: 9000
 database:
@@ -148,7 +159,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
 
-	cfg, err := Load(path)
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
@@ -201,7 +212,7 @@ worker:
 
 func TestLoadConfigJWTEnvOverride(t *testing.T) {
 	setupDefaultConfig(t)
-	path := writeConfig(t, `database:
+	writeLocalConfig(t, `database:
   sqlite:
     path: "data/test.db"
 jwt:
@@ -209,7 +220,7 @@ jwt:
 `)
 	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", alternateFernetKey)
 
-	cfg, err := Load(path)
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
@@ -232,8 +243,8 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
-		path := writeConfig(t, tc.content)
-		if _, err := Load(path); err == nil {
+		writeLocalConfig(t, tc.content)
+		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
 	}
@@ -241,13 +252,13 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 
 func TestLoadConfigMySQL(t *testing.T) {
 	setupDefaultConfig(t)
-	path := writeConfig(t, `database:
+	writeLocalConfig(t, `database:
   driver: mysql
   mysql:
     dsn: "user:pass@tcp(127.0.0.1:3306)/pomelo_orbit?parseTime=true"
 `)
 
-	cfg, err := Load(path)
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
@@ -259,22 +270,15 @@ func TestLoadConfigMySQL(t *testing.T) {
 	}
 }
 
-func TestLoadConfigDerivesDatabasePath(t *testing.T) {
+func TestLoadConfigRequiresSQLitePath(t *testing.T) {
 	setupDefaultConfig(t)
-	path := writeConfig(t, `database:
+	writeLocalConfig(t, `database:
   sqlite:
     path: ""
-orbit:
-  root: "/opt/pomelo-orbit"
 `)
 
-	cfg, err := Load(path)
-	if err != nil {
-		t.Fatalf("Load returned error: %v", err)
-	}
-	want := filepath.Join("/opt/pomelo-orbit", "data", "db", "pomelo-repository.db")
-	if cfg.Database.SQLite.Path != want {
-		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
+	if _, err := Load(); err == nil {
+		t.Fatal("expected error for empty sqlite path")
 	}
 }
 
@@ -298,8 +302,8 @@ func TestLoadConfigValidatesLogging(t *testing.T) {
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
-		path := writeConfig(t, tc.content)
-		if _, err := Load(path); err == nil {
+		writeLocalConfig(t, tc.content)
+		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
 	}
@@ -329,8 +333,8 @@ func TestLoadConfigValidatesTurnstile(t *testing.T) {
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
-		path := writeConfig(t, tc.content)
-		_, err := Load(path)
+		writeLocalConfig(t, tc.content)
+		_, err := Load()
 		if tc.wantErr && err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
@@ -355,18 +359,16 @@ func setupDefaultConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if err := os.WriteFile(defaultConfigFile, []byte(defaultConfigContent), 0o644); err != nil {
+	if err := os.WriteFile(DefaultConfigFile, []byte(defaultConfigContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func writeConfig(t *testing.T, content string) string {
+func writeLocalConfig(t *testing.T, content string) {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "config.yaml")
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(LocalConfigFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return path
 }
 
 const defaultConfigContent = `app:

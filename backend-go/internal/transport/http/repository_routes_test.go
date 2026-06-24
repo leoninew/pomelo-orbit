@@ -25,8 +25,17 @@ func TestRepositoryRoutes(t *testing.T) {
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Id == "" || created.Code != "repo-one" || created.DefaultBranch != "main" || len(created.VariableDeclarations) != 1 {
+	if created.Id == "" || created.Code != "repo-one" || created.DefaultBranch != "main" || len(created.VariableDeclarations) != 6 {
 		t.Fatalf("unexpected created repository: %+v", created)
+	}
+	if created.VariableDeclarations[0]["name"] != "repository_id" || created.VariableDeclarations[0]["default"] != created.Id {
+		t.Fatalf("unexpected repository_id variable: %+v", created.VariableDeclarations[0])
+	}
+	if created.VariableDeclarations[1]["name"] != "repository_name" || created.VariableDeclarations[1]["default"] != "Repo One" {
+		t.Fatalf("unexpected repository_name variable: %+v", created.VariableDeclarations[1])
+	}
+	if created.VariableDeclarations[5]["name"] != "FOO" || created.VariableDeclarations[5]["source"] != "repository_custom" {
+		t.Fatalf("unexpected custom variable: %+v", created.VariableDeclarations[5])
 	}
 
 	listRecorder := httptest.NewRecorder()

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"backend/internal/apperror"
+	"backend/internal/repository/model"
 )
 
 func TestNormalizeRepositoryCreateInputCompatibility(t *testing.T) {
@@ -32,23 +33,39 @@ func TestNormalizeRepositoryCreateInputCompatibility(t *testing.T) {
 }
 
 func TestRepositoryVariablesCompatibility(t *testing.T) {
-	variables, err := repositoryVariables("")
+	repo := model.Repository{Id: "repo-1", Name: "Repo One", Code: "repo-one", RepositoryURL: "https://example.test/repo.git", VariableOverrides: "", DefaultBranch: "main"}
+	variables, err := repositoryVariables(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if variables == nil || len(variables) != 0 {
-		t.Fatalf("expected empty variable_overrides to decode as an empty slice, got %+v", variables)
+	if len(variables) != 5 {
+		t.Fatalf("expected repository builtins only, got %+v", variables)
+	}
+	if variables[0]["name"] != "repository_id" || variables[0]["default"] != "repo-1" || variables[0]["source"] != "repository" || variables[0]["editable"] != false {
+		t.Fatalf("unexpected repository_id declaration: %+v", variables[0])
+	}
+	if variables[1]["name"] != "repository_name" || variables[1]["default"] != "Repo One" {
+		t.Fatalf("unexpected repository_name declaration: %+v", variables[1])
+	}
+	if variables[4]["name"] != "repository_ref" || variables[4]["default"] != "main" || variables[4]["editable"] != true {
+		t.Fatalf("unexpected repository_ref declaration: %+v", variables[4])
 	}
 
-	variables, err = repositoryVariables(`[{"name":"FOO","value":"bar"}]`)
+	repo.VariableOverrides = `[{"name":"FOO","value":"bar"},{"name":"repository_id","value":"fake"}]`
+	variables, err = repositoryVariables(repo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(variables) != 1 || variables[0]["name"] != "FOO" || variables[0]["value"] != "bar" {
-		t.Fatalf("unexpected variable declarations: %+v", variables)
+	if len(variables) != 6 {
+		t.Fatalf("expected builtins plus one custom variable, got %+v", variables)
+	}
+	custom := variables[5]
+	if custom["name"] != "FOO" || custom["value"] != "bar" || custom["source"] != "repository_custom" || custom["editable"] != true {
+		t.Fatalf("unexpected custom variable declaration: %+v", custom)
 	}
 
-	_, err = repositoryVariables(`{`)
+	repo.VariableOverrides = `{`
+	_, err = repositoryVariables(repo)
 	if err == nil || apperror.StatusCode(err) != http.StatusInternalServerError {
 		t.Fatalf("expected malformed stored variable_overrides to return 500, got %v", err)
 	}

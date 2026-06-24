@@ -81,6 +81,7 @@ type RepositoryStore interface {
 type PipelineExecutionStore interface {
 	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
 	Repository(ctx context.Context, id string) (model.Repository, error)
+	Credential(ctx context.Context, id string) (model.Credential, error)
 	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
 	PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error)
 	MarkPipelineRunRunning(ctx context.Context, id string) error
@@ -169,9 +170,9 @@ func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, se
 	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner}
 }
 
-func NewExecutionService(store PipelineExecutionStore, dataRoot string, logger *slog.Logger, runner ContainerRunner) Service {
+func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner) Service {
 	workspace := NewCIWorkspace(dataRoot)
-	return Service{executionStore: store, workspace: workspace, logger: logger, runner: runner}
+	return Service{executionStore: store, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {
@@ -205,7 +206,7 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input Repo
 	if err := s.ensureCredential(ctx, gitCredentialId); err != nil {
 		return RepositoryDetail{}, err
 	}
-	overrides, err := marshalVariableOverrides(input.VariableOverrides)
+	overrides, err := marshalVariableOverrides(sanitizeRepositoryVariables(input.VariableOverrides))
 	if err != nil {
 		return RepositoryDetail{}, err
 	}
@@ -254,7 +255,7 @@ func (s Service) UpdateRepository(ctx context.Context, userId string, repository
 		}
 	}
 	if input.VariableOverrides != nil {
-		overrides, err := marshalVariableOverrides(*input.VariableOverrides)
+		overrides, err := marshalVariableOverrides(sanitizeRepositoryVariables(*input.VariableOverrides))
 		if err != nil {
 			return RepositoryDetail{}, err
 		}
@@ -562,7 +563,7 @@ func (s Service) repositoryDetail(ctx context.Context, repo model.Repository) (R
 	if err != nil {
 		return RepositoryDetail{}, err
 	}
-	variables, err := repositoryVariables(repo.VariableOverrides)
+	variables, err := repositoryVariables(repo)
 	if err != nil {
 		return RepositoryDetail{}, err
 	}
@@ -617,7 +618,17 @@ func marshalVariableOverrides(variables []map[string]any) (string, error) {
 	return string(data), nil
 }
 
-func repositoryVariables(value string) ([]map[string]any, error) {
+func repositoryVariables(repo model.Repository) ([]map[string]any, error) {
+	custom, err := repositoryCustomVariables(repo.VariableOverrides)
+	if err != nil {
+		return nil, err
+	}
+	variables := repositoryBuiltinVariableDeclarations(repo)
+	variables = append(variables, custom...)
+	return variables, nil
+}
+
+func repositoryCustomVariables(value string) ([]map[string]any, error) {
 	if strings.TrimSpace(value) == "" {
 		return []map[string]any{}, nil
 	}
@@ -625,7 +636,44 @@ func repositoryVariables(value string) ([]map[string]any, error) {
 	if err := json.Unmarshal([]byte(value), &variables); err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Invalid repository variables", err)
 	}
-	return variables, nil
+	return sanitizeRepositoryVariables(variables), nil
+}
+
+func repositoryBuiltinVariableDeclarations(repo model.Repository) []map[string]any {
+	return []map[string]any{
+		repositoryBuiltinVariableDeclaration("repository_id", repo.Id),
+		repositoryBuiltinVariableDeclaration("repository_name", repo.Name),
+		repositoryBuiltinVariableDeclaration("repository_code", repo.Code),
+		repositoryBuiltinVariableDeclaration("repository_url", repo.RepositoryURL),
+		repositoryBuiltinVariableDeclaration("repository_ref", repo.DefaultBranch),
+	}
+}
+
+func repositoryBuiltinVariableDeclaration(name string, defaultValue any) map[string]any {
+	return map[string]any{"name": name, "description": pipelineTemplateBuiltinVariableSpecs()[name], "default": defaultValue, "value": nil, "secret": false, "source": "repository", "editable": name == "repository_ref"}
+}
+
+func sanitizeRepositoryVariables(variables []map[string]any) []map[string]any {
+	result := make([]map[string]any, 0, len(variables))
+	for _, variable := range variables {
+		name, _ := variable["name"].(string)
+		name = strings.TrimSpace(name)
+		if name == "" || isPipelineTemplateBuiltinVariable(name) {
+			continue
+		}
+		copy := map[string]any{}
+		for key, value := range variable {
+			copy[key] = value
+		}
+		copy["name"] = name
+		copy["source"] = "repository_custom"
+		copy["editable"] = true
+		if _, exists := copy["secret"]; !exists {
+			copy["secret"] = false
+		}
+		result = append(result, copy)
+	}
+	return result
 }
 
 func normalizeWebhookCreateInput(input WebhookCreateInput) (string, string, string, *string, error) {

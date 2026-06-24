@@ -33,6 +33,11 @@ type CredentialExport struct {
 	Data    string
 }
 
+type CredentialDetail struct {
+	Credential model.Credential
+	Data       string
+}
+
 func (s Service) ListCredentials(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Credential], error) {
 	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
@@ -65,6 +70,18 @@ func (s Service) ImportCredential(ctx context.Context, userId string, input Cred
 
 func (s Service) CredentialForUser(ctx context.Context, userId string, credentialId string) (model.Credential, error) {
 	return s.loadCredentialForUser(ctx, userId, credentialId)
+}
+
+func (s Service) CredentialDetailForUser(ctx context.Context, userId string, credentialId string) (CredentialDetail, error) {
+	credential, err := s.loadCredentialForUser(ctx, userId, credentialId)
+	if err != nil {
+		return CredentialDetail{}, err
+	}
+	decrypted, err := s.decryptCredentialData(credential.EncryptedData)
+	if err != nil {
+		return CredentialDetail{}, err
+	}
+	return CredentialDetail{Credential: credential, Data: decrypted}, nil
 }
 
 func (s Service) UpdateCredential(ctx context.Context, userId string, credentialId string, input CredentialUpdateInput) (model.Credential, error) {
@@ -125,9 +142,9 @@ func (s Service) ExportCredential(ctx context.Context, userId string, credential
 	if err != nil {
 		return CredentialExport{}, err
 	}
-	decrypted, err := security.DecryptString(s.secretKey, credential.EncryptedData)
+	decrypted, err := s.decryptCredentialData(credential.EncryptedData)
 	if err != nil {
-		return CredentialExport{}, apperror.Wrap(apperror.KindInternal, "Failed to decrypt credential", err)
+		return CredentialExport{}, err
 	}
 	return CredentialExport{Version: CredentialExportVersion, Name: credential.Name, Type: credential.Type, Data: decrypted}, nil
 }
@@ -188,6 +205,14 @@ func (s Service) encryptCredentialData(data string) (string, error) {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to encrypt credential", err)
 	}
 	return encrypted, nil
+}
+
+func (s Service) decryptCredentialData(data string) (string, error) {
+	decrypted, err := security.DecryptString(s.secretKey, data)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to decrypt credential", err)
+	}
+	return decrypted, nil
 }
 
 func normalizeCredentialCreateInput(input CredentialCreateInput) (string, string, string, string, error) {

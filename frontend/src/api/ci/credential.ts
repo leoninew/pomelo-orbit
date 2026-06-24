@@ -1,6 +1,7 @@
 import type {
   Credential,
   CredentialCreateReq,
+  CredentialDetail,
   CredentialExportResp,
   CredentialImportReq,
   CredentialUpdateReq,
@@ -19,7 +20,7 @@ export const credentialApi = {
     return request.get('/api/ci/credential', { params });
   },
 
-  get(id: string): Promise<Credential> {
+  get(id: string): Promise<CredentialDetail> {
     return request.get(`/api/ci/credential/${id}`);
   },
 

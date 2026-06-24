@@ -18,6 +18,14 @@ type CredentialResp struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type CredentialDetailResp struct {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Data      string `json:"data"`
+	CreatedAt string `json:"created_at"`
+}
+
 type CredentialCreateReq struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
@@ -112,12 +120,12 @@ func (h Handler) getCredential(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	credential, err := h.service.CredentialForUser(r.Context(), current.Id, chi.URLParam(r, "credential_id"))
+	credential, err := h.service.CredentialDetailForUser(r.Context(), current.Id, chi.URLParam(r, "credential_id"))
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, credentialResponse(credential))
+	transportresponse.JSON(w, http.StatusOK, credentialDetailResponse(credential))
 }
 
 func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
@@ -165,4 +173,9 @@ func (h Handler) exportCredential(w http.ResponseWriter, r *http.Request) {
 
 func credentialResponse(item model.Credential) CredentialResp {
 	return CredentialResp{Id: item.Id, Name: item.Name, Type: item.Type, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
+}
+
+func credentialDetailResponse(item cisvc.CredentialDetail) CredentialDetailResp {
+	credential := credentialResponse(item.Credential)
+	return CredentialDetailResp{Id: credential.Id, Name: credential.Name, Type: credential.Type, Data: item.Data, CreatedAt: credential.CreatedAt}
 }

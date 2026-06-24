@@ -97,9 +97,7 @@
         />
       </div>
       <div class="space-y-1.5">
-        <label class="app-field-label block">
-          凭据内容 {{ isEditing ? '（留空表示不修改）' : '' }}
-        </label>
+        <label class="app-field-label block">凭据内容</label>
         <textarea
           v-model="form.data"
           rows="8"
@@ -224,7 +222,7 @@
 
   function validate() {
     errors.name = form.name.trim() ? '' : '请输入凭据名称';
-    errors.data = !isEditing.value && !form.data.trim() ? '请输入凭据内容' : '';
+    errors.data = form.data.trim() ? '' : '请输入凭据内容';
     return !errors.name && !errors.data;
   }
 
@@ -274,12 +272,19 @@
     showCredentialDialog.value = true;
   }
 
-  function openEditModal(record: Credential) {
-    isEditing.value = true;
-    currentId.value = record.id;
-    Object.assign(form, { name: record.name, type: record.type, data: '' });
-    Object.assign(errors, { name: '', data: '' });
-    showCredentialDialog.value = true;
+  async function openEditModal(record: Credential) {
+    try {
+      await executeOp(async () => {
+        const detail = await credentialApi.get(record.id);
+        isEditing.value = true;
+        currentId.value = record.id;
+        Object.assign(form, { name: detail.name, type: detail.type, data: detail.data });
+        Object.assign(errors, { name: '', data: '' });
+        showCredentialDialog.value = true;
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '获取凭据详情失败');
+    }
   }
 
   async function handleModalOk() {
@@ -296,7 +301,7 @@
         if (isEditing.value) {
           await credentialApi.update(currentId.value, {
             name: form.name,
-            ...(form.data ? { data: form.data } : {}),
+            data: form.data,
           });
           toast.success('更新成功');
         } else {

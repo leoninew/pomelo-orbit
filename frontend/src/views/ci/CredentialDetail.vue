@@ -63,9 +63,22 @@
           <dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
           <dd class="text-muted-foreground">{{ formatTime(credential.created_at) }}</dd>
         </div>
-        <div class="flex gap-2">
-          <dt class="w-32 shrink-0 text-muted-foreground">更新时间</dt>
-          <dd class="text-muted-foreground">{{ formatTime(credential.updated_at) }}</dd>
+        <div class="flex gap-2 sm:col-span-2">
+          <dt class="w-32 shrink-0 text-muted-foreground">凭据内容</dt>
+          <dd class="flex min-w-0 flex-1 items-start gap-2">
+            <span class="min-w-0 whitespace-pre-wrap break-all text-foreground">
+              {{ isCredentialDataVisible ? credential.data : '********' }}
+            </span>
+            <button
+              type="button"
+              class="shrink-0 p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              :aria-label="isCredentialDataVisible ? '隐藏凭据内容' : '显示凭据内容'"
+              @click="isCredentialDataVisible = !isCredentialDataVisible"
+            >
+              <EyeOff v-if="isCredentialDataVisible" class="size-4" />
+              <Eye v-else class="size-4" />
+            </button>
+          </dd>
         </div>
       </dl>
     </div>
@@ -87,16 +100,15 @@
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">
-            凭据内容
-            <span class="font-normal text-muted-foreground">（留空则不修改）</span>
-          </label>
+          <label class="app-field-label block">凭据内容</label>
           <textarea
             v-model="form.data"
             class="app-textarea font-mono text-xs"
+            :class="errors.data ? 'app-input-error' : ''"
             rows="8"
             :placeholder="credential ? getDataPlaceholder(credential.type) : ''"
           />
+          <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
         </div>
       </div>
       <template #footer>
@@ -122,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Download, Pencil, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Download, Eye, EyeOff, Pencil, Trash2 } from 'lucide-vue-next';
   import { onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/ci';
@@ -131,7 +143,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { Credential } from '@/types/ci/credential';
+  import type { CredentialDetail } from '@/types/ci/credential';
   import { credentialTypeLabels } from '@/types/ci/credential';
   import { formatTime } from '@/utils/time';
 
@@ -141,16 +153,18 @@
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const credential = ref<Credential>();
+  const credential = ref<CredentialDetail>();
+  const isCredentialDataVisible = ref(false);
   const isEditModalOpen = ref(false);
   const isDeleteModalOpen = ref(false);
   const form = reactive({ name: '', data: '' });
-  const errors = reactive({ name: '' });
+  const errors = reactive({ name: '', data: '' });
 
   async function fetchCredential() {
     try {
       await execute(async () => {
         credential.value = await credentialApi.get(props.id);
+        isCredentialDataVisible.value = false;
       });
     } catch {
       toast.error('获取凭据详情失败');
@@ -158,21 +172,22 @@
   }
 
   function openEditModal() {
-    Object.assign(form, { name: credential.value?.name ?? '', data: '' });
-    Object.assign(errors, { name: '' });
+    Object.assign(form, { name: credential.value?.name ?? '', data: credential.value?.data ?? '' });
+    Object.assign(errors, { name: '', data: '' });
     isEditModalOpen.value = true;
   }
 
   async function handleEditOk() {
     errors.name = form.name.trim() ? '' : '请输入凭据名称';
-    if (errors.name) {
+    errors.data = form.data.trim() ? '' : '请输入凭据内容';
+    if (errors.name || errors.data) {
       return;
     }
     try {
       await executeOp(async () => {
         await credentialApi.update(props.id, {
           name: form.name,
-          ...(form.data ? { data: form.data } : {}),
+          data: form.data,
         });
         toast.success('更新成功');
         isEditModalOpen.value = false;

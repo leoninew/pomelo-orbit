@@ -4,7 +4,10 @@ export interface Credential {
   name: string;
   type: string;
   created_at: string;
-  updated_at: string;
+}
+
+export interface CredentialDetail extends Credential {
+  data: string;
 }
 
 export interface CredentialCreateReq {

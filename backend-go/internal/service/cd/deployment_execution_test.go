@@ -187,3 +187,41 @@ type failingCommandRunner struct{}
 func (failingCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
 	return errors.New("boom")
 }
+
+func TestWriteDeploymentFileNormalizesInitScriptLineEndings(t *testing.T) {
+	appDir := t.TempDir()
+	content := "#!/bin/bash\r\nset -e\r\necho ok\r"
+
+	if err := writeDeploymentFile(appDir, "init.sh", content); err != nil {
+		t.Fatalf("writeDeploymentFile returned error: %v", err)
+	}
+
+	path := filepath.Join(appDir, "init.sh")
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(written), "\r") {
+		t.Fatalf("expected init.sh line endings to be normalized, got %q", string(written))
+	}
+	if string(written) != "#!/bin/bash\nset -e\necho ok\n" {
+		t.Fatalf("unexpected init.sh content: %q", string(written))
+	}
+}
+
+func TestWriteDeploymentFilePreservesNonInitFileContent(t *testing.T) {
+	appDir := t.TempDir()
+	content := "services:\r\n  app:\r\n    image: nginx\r\n"
+
+	if err := writeDeploymentFile(appDir, "docker-compose.yml", content); err != nil {
+		t.Fatalf("writeDeploymentFile returned error: %v", err)
+	}
+
+	written, err := os.ReadFile(filepath.Join(appDir, "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(written) != content {
+		t.Fatalf("expected non-init content to be preserved, got %q", string(written))
+	}
+}

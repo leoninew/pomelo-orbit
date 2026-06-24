@@ -152,6 +152,9 @@ func writeDeploymentFile(appDir string, name string, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
+	if filepath.Base(path) == "init.sh" {
+		content = normalizeShellScriptLineEndings(content)
+	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
 	}
@@ -159,4 +162,9 @@ func writeDeploymentFile(appDir string, name string, content string) error {
 		return os.Chmod(path, 0o755)
 	}
 	return nil
+}
+
+func normalizeShellScriptLineEndings(content string) string {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	return strings.ReplaceAll(content, "\r", "\n")
 }

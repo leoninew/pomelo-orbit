@@ -40,7 +40,7 @@ COPY backend-go/internal ./internal
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend-go ./cmd/backend-go
 
 # Stage 3: Final image
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 WORKDIR /app
 
@@ -52,11 +52,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     docker.io \
+    docker-cli \
+    docker-compose \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /usr/local/lib/docker/cli-plugins
-
-RUN curl -SL https://ghproxy.net/https://github.com/docker/compose/releases/download/v5.1.0/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose \
-    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    && docker compose version
 
 # Copy backend-go binary and configuration
 COPY --from=backend-builder /out/backend-go /usr/local/bin/backend-go

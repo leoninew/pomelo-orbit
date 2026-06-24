@@ -14,9 +14,9 @@ Pomelo Orbit Remote Deployment Tool
   SSH_USER                        - SSH 用户名
   REMOTE_PORT                     - 远程端口
   REMOTE_DEPLOY_DIR               - 远程部署目录（必填）
-  POMELO_ORBIT_JWT__SECRET_KEY    - JWT 密钥（必填）
-  POMELO_ORBIT_IMAGE              - Docker 镜像（可选，默认从数据库读取）
-  POMELO_ORBIT_TRAEFIK__API_URL   - Traefik API 地址（可选）
+  POMELO_ORBIT_JWT__SECRET_KEY    - JWT 密钥（必填，会写入远端 .env）
+  POMELO_ORBIT_*                  - 应用配置（会写入远端 .env）
+  POMELO_ORBIT_IMAGE              - Docker 镜像（脚本变量，不写入远端 .env）
   GHCR_TOKEN                      - GitHub Container Registry 令牌（可选，拉取私有镜像需要）
 
 用法:
@@ -91,8 +91,9 @@ class Config:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
-                        key, value = line.split("=", 1)
-                        env_vars[key.strip()] = value.strip()
+                    key, value = line.split("=", 1)
+                    env_vars[key.strip()] = value.strip()
+        self.env_vars = env_vars
 
         # 验证必需配置
         self.ssh_host = env_vars.get("SSH_HOST")
@@ -113,7 +114,6 @@ class Config:
         # 可选配置
         self.local_port = env_vars.get("LOCAL_PORT", self.remote_port)
         self.image = env_vars.get("POMELO_ORBIT_IMAGE")
-        self.traefik_api_url = env_vars.get("POMELO_ORBIT_TRAEFIK__API_URL")
         self.ghcr_token = env_vars.get("GHCR_TOKEN")
 
     @property
@@ -569,11 +569,12 @@ class Deployer:
             logger.error("scripts/.env 中缺少 POMELO_ORBIT_JWT__SECRET_KEY")
             sys.exit(1)
 
-        env_content = f"POMELO_ORBIT_JWT__SECRET_KEY={self.config.jwt_secret}\n"
-        if self.config.traefik_api_url:
-            env_content += (
-                f"POMELO_ORBIT_TRAEFIK__API_URL={self.config.traefik_api_url}\n"
-            )
+        app_env = {
+            key: value
+            for key, value in self.config.env_vars.items()
+            if key.startswith("POMELO_ORBIT_") and key != "POMELO_ORBIT_IMAGE"
+        }
+        env_content = "".join(f"{key}={app_env[key]}\n" for key in sorted(app_env))
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, encoding="utf-8") as f:
             f.write(env_content)
@@ -632,14 +633,14 @@ class Deployer:
         """检查镜像是否存在，不存在才拉取"""
         logger.info("检查 Docker 镜像...")
         logger.info(f"  镜像: {image}")
-        
+
         # 检查镜像是否已存在
         result = subprocess.run(
             ["ssh", self.config.ssh_target, f"docker images -q {image}"],
             capture_output=True,
             text=True,
         )
-        
+
         if result.stdout.strip():
             logger.info("  镜像已存在，跳过拉取\n")
         else:

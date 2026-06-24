@@ -5,14 +5,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
+	settingssvc "backend/internal/service/settings"
 	settingshandler "backend/internal/transport/http/handler/settings"
 )
 
 func TestSettingsConfigRoutes(t *testing.T) {
 	server, database := newTestServer(t)
+	envFilePath := filepath.Join(t.TempDir(), ".env")
 	server.appCfg.Orbit.Root = t.TempDir()
+	server.appCfg.EnvFilePath = envFilePath
+	server.settingsService = settingssvc.New(server.appCfg)
 	defer func() { _ = database.Close() }()
 	token := testToken(t, server)
 
@@ -41,6 +47,13 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	loggingLevel, ok := findConfigItem(updated.Items, "logging__level")
 	if !ok || loggingLevel.Value != "debug" || !loggingLevel.IsOverridden {
 		t.Fatalf("unexpected updated logging level: %+v", loggingLevel)
+	}
+	content, err := os.ReadFile(envFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(content, []byte("POMELO_ORBIT_LOGGING__LEVEL=debug")) {
+		t.Fatalf("expected settings update in env file %s: %s", envFilePath, string(content))
 	}
 
 	resetRecorder := httptest.NewRecorder()

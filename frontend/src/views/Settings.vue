@@ -36,7 +36,7 @@
           <tbody>
             <tr v-for="item in filteredConfig" :key="item.key">
               <td class="text-foreground">{{ item.key }}</td>
-              <td class="text-muted-foreground">{{ item.description || '-' }}</td>
+              <!-- <td class="text-muted-foreground">{{ item.description || '-' }}</td> -->
               <td>
                 <!-- Editing Mode -->
                 <div v-if="editingState.key === item.key">

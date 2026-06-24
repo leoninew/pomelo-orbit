@@ -10,6 +10,7 @@ import (
 	"time"
 
 	mapstructure "github.com/go-viper/mapstructure/v2"
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -20,16 +21,17 @@ const (
 )
 
 type Config struct {
-	App       AppConfig       `mapstructure:"app" yaml:"app"`
-	Server    ServerConfig    `mapstructure:"server" yaml:"server"`
-	Logging   LoggingConfig   `mapstructure:"logging" yaml:"logging"`
-	Database  DatabaseConfig  `mapstructure:"database" yaml:"database"`
-	Worker    WorkerConfig    `mapstructure:"worker" yaml:"worker"`
-	Orbit     OrbitConfig     `mapstructure:"orbit" yaml:"orbit"`
-	JWT       JWTConfig       `mapstructure:"jwt" yaml:"jwt"`
-	Traefik   TraefikConfig   `mapstructure:"traefik" yaml:"traefik"`
-	Turnstile TurnstileConfig `mapstructure:"turnstile" yaml:"turnstile"`
-	Cert      CertConfig      `mapstructure:"cert" yaml:"cert"`
+	App         AppConfig       `mapstructure:"app" yaml:"app"`
+	Server      ServerConfig    `mapstructure:"server" yaml:"server"`
+	Logging     LoggingConfig   `mapstructure:"logging" yaml:"logging"`
+	Database    DatabaseConfig  `mapstructure:"database" yaml:"database"`
+	Worker      WorkerConfig    `mapstructure:"worker" yaml:"worker"`
+	Orbit       OrbitConfig     `mapstructure:"orbit" yaml:"orbit"`
+	JWT         JWTConfig       `mapstructure:"jwt" yaml:"jwt"`
+	Traefik     TraefikConfig   `mapstructure:"traefik" yaml:"traefik"`
+	Turnstile   TurnstileConfig `mapstructure:"turnstile" yaml:"turnstile"`
+	Cert        CertConfig      `mapstructure:"cert" yaml:"cert"`
+	EnvFilePath string          `mapstructure:"-" yaml:"-"`
 }
 
 type AppConfig struct {
@@ -114,6 +116,14 @@ type LetsEncryptConfig struct {
 }
 
 func Load() (Config, error) {
+	envPath, err := envFilePath()
+	if err != nil {
+		return Config{}, err
+	}
+	if err := loadEnvFile(envPath); err != nil {
+		return Config{}, err
+	}
+
 	loader := newLoader()
 	loader.SetConfigFile(DefaultConfigFile)
 	if err := loader.ReadInConfig(); err != nil {
@@ -138,6 +148,7 @@ func Load() (Config, error) {
 		cfg.Worker.Id = fmt.Sprintf("%s-%d", hostname, os.Getpid())
 	}
 
+	cfg.EnvFilePath = envPath
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
@@ -147,6 +158,27 @@ func Load() (Config, error) {
 func isLocalConfigMissing(err error) bool {
 	var notFound viper.ConfigFileNotFoundError
 	return errors.As(err, &notFound) || errors.Is(err, os.ErrNotExist)
+}
+
+func envFilePath() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("get working directory: %w", err)
+	}
+	return filepath.Join(cwd, ".env"), nil
+}
+
+func loadEnvFile(path string) error {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("stat env file: %w", err)
+	}
+	if err := godotenv.Load(path); err != nil {
+		return fmt.Errorf("read env file: %w", err)
+	}
+	return nil
 }
 
 func newLoader() *viper.Viper {

@@ -80,7 +80,7 @@ func (s Service) Config(context.Context) (SystemConfig, error) {
 		secret := false
 		if hasDefinition {
 			defaultValue = definition.Default
-			description = definition.Description
+			description = settingDescription(definition.Description)
 			secret = definition.Secret
 		}
 		value := defaultValue
@@ -121,6 +121,9 @@ func (s Service) Reset(ctx context.Context, keys []string) (SystemConfig, error)
 }
 
 func (s Service) envPath() string {
+	if s.cfg.EnvFilePath != "" {
+		return filepath.Clean(s.cfg.EnvFilePath)
+	}
 	return filepath.Join(s.cfg.OrbitRoot(), ".env")
 }
 
@@ -153,6 +156,13 @@ func settingDefinitions(cfg config.Config) []Definition {
 		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Default task max attempts"},
 		{Key: "worker__concurrency", Default: cfg.Worker.Concurrency, Description: "Background worker concurrency"},
 	}
+}
+
+func settingDescription(description string) string {
+	if description == "" {
+		return "Requires backend-go restart to take effect"
+	}
+	return description + " (requires backend-go restart to take effect)"
 }
 
 func readEnvFile(path string) (map[string]string, error) {

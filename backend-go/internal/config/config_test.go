@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -65,6 +67,9 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	}
 	if cfg.Worker.PollInterval != time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
+	}
+	if cfg.EnvFilePath != filepath.Join(currentDir(t), ".env") {
+		t.Fatalf("unexpected env file path: %s", cfg.EnvFilePath)
 	}
 }
 
@@ -207,6 +212,87 @@ worker:
 	}
 	if cfg.Worker.PollInterval != 2*time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
+	}
+}
+
+func TestLoadConfigEnvFileOverridesConfig(t *testing.T) {
+	setupDefaultConfig(t)
+	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY", "POMELO_ORBIT_TURNSTILE__SECRET_KEY")
+	writeDotEnv(t, `POMELO_ORBIT_SERVER__PORT=8081
+POMELO_ORBIT_TURNSTILE__SITE_KEY=site-from-dotenv
+POMELO_ORBIT_TURNSTILE__SECRET_KEY=secret-from-dotenv
+`)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Server.Port != 8081 {
+		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
+	}
+	if cfg.Turnstile.SiteKey != "site-from-dotenv" {
+		t.Fatalf("unexpected turnstile site key: %s", cfg.Turnstile.SiteKey)
+	}
+	if cfg.Turnstile.SecretKey != "secret-from-dotenv" {
+		t.Fatalf("unexpected turnstile secret key: %s", cfg.Turnstile.SecretKey)
+	}
+}
+
+func TestLoadConfigEnvFileOverridesLocalConfig(t *testing.T) {
+	setupDefaultConfig(t)
+	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY")
+	writeLocalConfig(t, `server:
+  port: 7000
+turnstile:
+  site_key: "site-from-local"
+`)
+	writeDotEnv(t, `POMELO_ORBIT_SERVER__PORT=8082
+POMELO_ORBIT_TURNSTILE__SITE_KEY=site-from-dotenv
+`)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Server.Port != 8082 {
+		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
+	}
+	if cfg.Turnstile.SiteKey != "site-from-dotenv" {
+		t.Fatalf("unexpected turnstile site key: %s", cfg.Turnstile.SiteKey)
+	}
+}
+
+func TestLoadConfigOSEnvOverridesEnvFile(t *testing.T) {
+	setupDefaultConfig(t)
+	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY")
+	writeDotEnv(t, `POMELO_ORBIT_SERVER__PORT=8083
+POMELO_ORBIT_TURNSTILE__SITE_KEY=site-from-dotenv
+`)
+	t.Setenv("POMELO_ORBIT_SERVER__PORT", "9090")
+	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-os-env")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Server.Port != 9090 {
+		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
+	}
+	if cfg.Turnstile.SiteKey != "site-from-os-env" {
+		t.Fatalf("unexpected turnstile site key: %s", cfg.Turnstile.SiteKey)
+	}
+}
+
+func TestLoadConfigRejectsInvalidEnvFile(t *testing.T) {
+	setupDefaultConfig(t)
+	writeDotEnv(t, "POMELO_ORBIT_SERVER__PORT='unterminated")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid env file")
+	}
+	if !strings.Contains(err.Error(), "read env file") {
+		t.Fatalf("expected env file error, got: %v", err)
 	}
 }
 
@@ -369,6 +455,49 @@ func writeLocalConfig(t *testing.T, content string) {
 	if err := os.WriteFile(LocalConfigFile, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func writeDotEnv(t *testing.T, content string) {
+	t.Helper()
+	if err := os.WriteFile(".env", []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func currentDir(t *testing.T) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cwd
+}
+
+func preserveEnv(t *testing.T, keys ...string) {
+	t.Helper()
+	originals := make(map[string]string, len(keys))
+	present := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		value, ok := os.LookupEnv(key)
+		originals[key] = value
+		present[key] = ok
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, key := range keys {
+			if present[key] {
+				if err := os.Setenv(key, originals[key]); err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
+			if err := os.Unsetenv(key); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
 }
 
 const defaultConfigContent = `app:

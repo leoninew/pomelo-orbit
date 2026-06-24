@@ -7,6 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/joho/godotenv v1.5.1
 	github.com/osteele/liquid v1.8.1
 	github.com/spf13/viper v1.20.1
 	golang.org/x/crypto v0.39.0

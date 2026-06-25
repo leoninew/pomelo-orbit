@@ -11,13 +11,14 @@ import (
 	"testing"
 
 	"backend/internal/config"
+	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository/model"
 	"backend/internal/status"
 )
 
 func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
 
 	err := service.ExecuteApplicationRestart(context.Background(), "app-1", "deploy-1")
 	if err != nil {
@@ -34,7 +35,7 @@ func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
 	runner := &recordingCommandRunner{}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner)
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, logstore.LogStore{})
 
 	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", true)
 	if err != nil {
@@ -53,7 +54,7 @@ func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 
 func TestExecuteApplicationStopMarksDeploymentFaultedOnRunnerError(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, logstore.LogStore{})
 
 	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", false)
 	if err == nil {
@@ -73,7 +74,7 @@ func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.
 		deployment: model.Deployment{Id: "deploy-1"},
 		files:      []model.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
 	}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, logstore.LogStore{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
 	if err == nil {
@@ -95,7 +96,7 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
 		},
 	}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
 	if err != nil {
@@ -118,7 +119,7 @@ func TestExecuteApplicationDeployFailsWhenPhysicalDataRootCannotBeResolved(t *te
 			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
 		},
 	}
-	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{})
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
 	service.workspace = newWorkspaceWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return "", errors.New("missing host mount")
 	})
@@ -144,7 +145,7 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
 		},
 	}
-	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{})
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
 	physicalRoot := filepath.Join(t.TempDir(), "host-data")
 	service.workspace = newWorkspaceWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return physicalRoot, nil
@@ -212,9 +213,6 @@ func (s *fakeDeploymentExecutionStore) CompleteDeployment(ctx context.Context, i
 type fakeCommandRunner struct{}
 
 func (fakeCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
-	if log != nil {
-		_, _ = log.Write([]byte("ok"))
-	}
 	return nil
 }
 
@@ -228,9 +226,6 @@ func (r *recordingCommandRunner) Run(ctx context.Context, cwd string, log io.Wri
 	r.cwd = cwd
 	r.name = name
 	r.args = append([]string{}, args...)
-	if log != nil {
-		_, _ = log.Write([]byte("ok"))
-	}
 	return nil
 }
 

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"backend/internal/apperror"
+	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
 	taskrepo "backend/internal/repository/task"
@@ -100,6 +101,7 @@ type Service struct {
 	executionStore PipelineExecutionStore
 	tasks          TaskService
 	workspace      *CIWorkspace
+	logStore       logstore.LogStore
 	secretKey      string
 	logger         *slog.Logger
 	runner         ContainerRunner
@@ -157,22 +159,22 @@ type WebhookReceiveResult struct {
 	RunId  string
 }
 
-func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger) Service {
-	return NewWithRunner(store, tasks, dataRoot, secretKey, logger, DockerRunner{})
+func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, logStore logstore.LogStore) Service {
+	return NewWithRunner(store, tasks, dataRoot, secretKey, logger, DockerRunner{}, logStore)
 }
 
-func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner) Service {
+func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore logstore.LogStore) Service {
 	executionStore, ok := store.(PipelineExecutionStore)
 	if !ok {
 		panic("ci service store must implement PipelineExecutionStore")
 	}
 	workspace := NewCIWorkspace(dataRoot)
-	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
-func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner) Service {
+func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore logstore.LogStore) Service {
 	workspace := NewCIWorkspace(dataRoot)
-	return Service{executionStore: store, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner}
+	return Service{executionStore: store, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {

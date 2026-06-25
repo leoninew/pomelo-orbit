@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"backend/internal/config"
+	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository"
 	cdrepo "backend/internal/repository/cd"
 	cirepo "backend/internal/repository/ci"
@@ -53,6 +54,7 @@ type Server struct {
 	cfg               config.ServerConfig
 	logger            *slog.Logger
 	store             repository.Store
+	logStore          logstore.LogStore
 	ciRepository      cirepo.Repository
 	cdRepository      cdrepo.Repository
 	authService       authsvc.Service
@@ -77,7 +79,8 @@ func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks t
 	taskService := tasksvc.New(tasks, defaultMaxAttempts)
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger), cdService: cdsvc.New(cdRepository, taskService, cfg, logger), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+	logStore := logstore.LogStore{}
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, logStore: logStore, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger, logStore), cdService: cdsvc.New(cdRepository, taskService, cfg, logger, logStore), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {
@@ -96,7 +99,7 @@ func (s Server) Handler() http.Handler {
 	rolehandler.New(s.logger, s.roleService, authenticator, s.roleRepository).Register(r)
 	settingshandler.New(s.logger, s.settingsService, authenticator).Register(r)
 	projecthandler.New(s.logger, s.projectService, authenticator).Register(r)
-	ciService := cisvc.New(s.ciRepository, s.taskService, s.appCfg.DataRoot(), s.appCfg.JWT.SecretKey, s.logger)
+	ciService := cisvc.New(s.ciRepository, s.taskService, s.appCfg.DataRoot(), s.appCfg.JWT.SecretKey, s.logger, s.logStore)
 	ciHandler := cihandler.New(s.logger, ciService, authenticator)
 	ciHandler.RegisterRepositoryRoutes(r)
 	ciHandler.RegisterTemplateRoutes(r)
@@ -105,7 +108,7 @@ func (s Server) Handler() http.Handler {
 	ciHandler.RegisterSnapshotRoutes(r)
 	ciHandler.RegisterArtifactRoutes(r)
 	ciHandler.RegisterCredentialRoutes(r)
-	cdService := cdsvc.New(s.cdRepository, s.taskService, s.appCfg, s.logger)
+	cdService := cdsvc.New(s.cdRepository, s.taskService, s.appCfg, s.logger, s.logStore)
 	cdHandler := cdhandler.New(s.logger, cdService, authenticator)
 	cdHandler.RegisterApplicationRoutes(r)
 	cdHandler.RegisterDeploymentRoutes(r)

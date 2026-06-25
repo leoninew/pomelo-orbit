@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
 	"backend/internal/security"
@@ -21,6 +22,7 @@ import (
 type Executor struct {
 	store     PipelineExecutionStore
 	workspace *CIWorkspace
+	logStore  logstore.LogStore
 	secretKey string
 	logger    *slog.Logger
 	runner    ContainerRunner
@@ -87,14 +89,12 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 	_ = e.store.UpdateStageRun(ctx, stageRun)
 
 	logPath := e.workspace.StageLogPath(run.Id, stageRun.Id)
-	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
-		return e.failStage(ctx, stageRun, fmt.Sprintf("create stage log dir: %v", err))
-	}
-	logFile, err := os.Create(logPath)
+	logWriter, err := e.logStore.Writer(logPath)
 	if err != nil {
-		return e.failStage(ctx, stageRun, fmt.Sprintf("create stage log: %v", err))
+		return e.failStage(ctx, stageRun, fmt.Sprintf("create log writer: %v", err))
 	}
-	defer func() { _ = logFile.Close() }()
+	defer logWriter.Close()
+
 	volumes, err := e.workspace.DockerStageMounts(ctx, repo.Code, run.Id)
 	if err != nil {
 		return e.failStage(ctx, stageRun, err.Error())
@@ -105,18 +105,21 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 		return e.failStage(ctx, stageRun, err.Error())
 	}
 
-	exitCode, output, err := e.runner.Run(ctx, RunOptions{
+	exitCode, _, err := e.runner.Run(ctx, RunOptions{
 		Image:       stage.Image,
 		Script:      script,
 		Environment: environment,
 		Volumes:     volumes,
-		LogFile:     logFile,
+		LogWriter:   logWriter,
 	})
 	if err != nil {
 		return e.failStage(ctx, stageRun, err.Error())
 	}
 	if exitCode != 0 {
-		return e.completeStageFailed(ctx, stageRun, exitCode, lastLines(output, 3))
+		logWriter.Close()
+		content, _, _ := e.logStore.Read(logPath, 0)
+		errMsg := lastLines(string(content), 3)
+		return e.completeStageFailed(ctx, stageRun, exitCode, errMsg)
 	}
 
 	finished := now()

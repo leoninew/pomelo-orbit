@@ -20,7 +20,7 @@ type RunOptions struct {
 	Script      string
 	Environment []string
 	Volumes     []VolumeMount
-	LogFile     io.Writer
+	LogWriter   io.Writer
 }
 
 type ContainerRunner interface {
@@ -35,17 +35,16 @@ func (DockerRunner) Run(ctx context.Context, opts RunOptions) (int, string, erro
 		return 1, "", err
 	}
 	cmd := exec.CommandContext(ctx, "docker", args...)
-	output, err := cmd.CombinedOutput()
-	if opts.LogFile != nil {
-		_, _ = opts.LogFile.Write(output)
-	}
+	cmd.Stdout = opts.LogWriter
+	cmd.Stderr = opts.LogWriter
+	err = cmd.Run()
 	if err == nil {
-		return 0, string(output), nil
+		return 0, "", nil
 	}
 	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr.ExitCode(), string(output), nil
+		return exitErr.ExitCode(), "", nil
 	}
-	return 1, string(output), fmt.Errorf("run container: %w", err)
+	return 1, "", fmt.Errorf("run container: %w", err)
 }
 
 func dockerRunArgs(opts RunOptions) ([]string, error) {

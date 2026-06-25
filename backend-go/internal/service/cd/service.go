@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"regexp"
@@ -14,6 +13,7 @@ import (
 
 	"backend/internal/apperror"
 	"backend/internal/config"
+	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository"
 	"backend/internal/repository/model"
 	taskrepo "backend/internal/repository/task"
@@ -83,6 +83,7 @@ type Service struct {
 	tasks          TaskService
 	cfg            config.Config
 	workspace      *Workspace
+	logStore       logstore.LogStore
 	logger         *slog.Logger
 	runner         CommandRunner
 }
@@ -123,20 +124,20 @@ type DeploymentLog struct {
 	Status     string
 }
 
-func New(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger) Service {
-	return NewWithRunner(store, tasks, cfg, logger, ShellRunner{})
+func New(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, logStore logstore.LogStore) Service {
+	return NewWithRunner(store, tasks, cfg, logger, ShellRunner{}, logStore)
 }
 
-func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, runner CommandRunner) Service {
+func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore) Service {
 	executionStore, ok := store.(DeploymentExecutionStore)
 	if !ok {
 		panic("cd service store must implement DeploymentExecutionStore")
 	}
-	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logger: logger, runner: runner}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
 }
 
-func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner) Service {
-	return Service{executionStore: store, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logger: logger, runner: runner}
+func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore) Service {
+	return Service{executionStore: store, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {
@@ -423,22 +424,11 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
-	file, err := os.Open(logPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return "", offset, nil
-		}
-		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)
-	}
-	defer func() { _ = file.Close() }()
-	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
-		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)
-	}
-	content, err := io.ReadAll(file)
+	content, newOffset, err := s.logStore.Read(logPath, offset)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)
 	}
-	return string(content), offset + len(content), nil
+	return string(content), newOffset, nil
 }
 
 func normalizeApplicationCreateInput(input ApplicationCreateInput) (string, string, string, error) {

@@ -8,6 +8,7 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/db"
+	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository"
 	cdrepo "backend/internal/repository/cd"
 	cirepo "backend/internal/repository/ci"
@@ -52,8 +53,9 @@ func NewTaskRouter(store repository.Store, cfg config.Config, logger *slog.Logge
 	router := worker.NewRouter()
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
-	ciService := cisvc.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, cisvc.DockerRunner{})
-	cdService := cdsvc.NewExecutionService(cdRepository, cfg, logger, cdsvc.ShellRunner{})
+	logStore := logstore.LogStore{}
+	ciService := cisvc.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, cisvc.DockerRunner{}, logStore)
+	cdService := cdsvc.NewExecutionService(cdRepository, cfg, logger, cdsvc.ShellRunner{}, logStore)
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciService))
 	router.Register(status.TaskTypeCDApplicationDeploy, cdworker.NewDeployHandler(cdService))
 	router.Register(status.TaskTypeCDApplicationRestart, cdworker.NewRestartHandler(cdService))

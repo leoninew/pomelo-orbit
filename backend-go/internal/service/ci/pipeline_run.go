@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -167,22 +165,11 @@ func (s Service) PipelineStageLog(ctx context.Context, userId string, runId stri
 		return PipelineStageLog{Offset: offset, IsComplete: true}, nil
 	}
 	logPath := s.workspace.StageLogPath(run.Id, stageRun.Id)
-	file, err := os.Open(logPath)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return PipelineStageLog{Offset: offset, IsComplete: pipelineRunStatusComplete(stageRun.Status)}, nil
-		}
-		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
-	}
-	defer func() { _ = file.Close() }()
-	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
-		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
-	}
-	content, err := io.ReadAll(file)
+	content, newOffset, err := s.logStore.Read(logPath, offset)
 	if err != nil {
 		return PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
 	}
-	return PipelineStageLog{Logs: string(content), Offset: offset + len(content), IsComplete: pipelineRunStatusComplete(stageRun.Status)}, nil
+	return PipelineStageLog{Logs: string(content), Offset: newOffset, IsComplete: pipelineRunStatusComplete(stageRun.Status)}, nil
 }
 
 func (s Service) CancelPipelineRun(ctx context.Context, userId string, runId string) (PipelineRunDetail, error) {

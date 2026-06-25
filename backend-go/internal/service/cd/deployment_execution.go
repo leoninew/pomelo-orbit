@@ -47,12 +47,15 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	}
 
 	appDir := s.workspace.AppDir(app.Code)
-	logFile, closeLog, err := s.deploymentLog(app.Code, deployment.Id)
+	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
+	logWriter, err := s.logStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
-	defer closeLog()
-	if err := s.runner.Run(ctx, appDir, logFile, "docker", "compose", "-f", "docker-compose.yml", "restart"); err != nil {
+	defer logWriter.Close()
+
+	fmt.Fprintf(logWriter, "Working directory: %s\n", appDir)
+	if err := s.runner.Run(ctx, appDir, logWriter, "docker", "compose", "-f", "docker-compose.yml", "restart"); err != nil {
 		_ = s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -73,17 +76,19 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	}
 
 	appDir := s.workspace.AppDir(app.Code)
-	logFile, closeLog, err := s.deploymentLog(app.Code, deployment.Id)
+	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
+	logWriter, err := s.logStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
-	defer closeLog()
-	_, _ = fmt.Fprintf(logFile, "Working directory: %s\n", appDir)
+	defer logWriter.Close()
+
+	fmt.Fprintf(logWriter, "Working directory: %s\n", appDir)
 	args := []string{"compose", "-f", "docker-compose.yml", "down"}
 	if removeVolumes {
 		args = append(args, "-v")
 	}
-	if err := s.runner.Run(ctx, appDir, logFile, "docker", args...); err != nil {
+	if err := s.runner.Run(ctx, appDir, logWriter, "docker", args...); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -123,12 +128,14 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 	}
 
 	appDir := s.workspace.AppDir(app.Code)
-	logFile, closeLog, err := s.deploymentLog(app.Code, deploymentId)
+	logPath := s.workspace.DeploymentLogPath(app.Code, deploymentId)
+	logWriter, err := s.logStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
-	defer closeLog()
-	_, _ = fmt.Fprintf(logFile, "Working directory: %s\n", appDir)
+	defer logWriter.Close()
+
+	fmt.Fprintf(logWriter, "Working directory: %s\n", appDir)
 
 	hasInit := false
 	for _, file := range files {
@@ -158,23 +165,11 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 		}
 	}
 	if hasInit {
-		if err := s.runner.Run(ctx, appDir, logFile, "bash", "-x", "init.sh"); err != nil {
+		if err := s.runner.Run(ctx, appDir, logWriter, "bash", "-x", "init.sh"); err != nil {
 			return err
 		}
 	}
-	return s.runner.Run(ctx, appDir, logFile, "docker", "compose", "-f", "docker-compose.yml", "up", "-d", "--remove-orphans", "--pull", app.ImagePullPolicy)
-}
-
-func (s Service) deploymentLog(applicationCode string, deploymentId string) (*os.File, func(), error) {
-	path := s.workspace.DeploymentLogPath(applicationCode, deploymentId)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return nil, nil, err
-	}
-	file, err := os.Create(path)
-	if err != nil {
-		return nil, nil, err
-	}
-	return file, func() { _ = file.Close() }, nil
+	return s.runner.Run(ctx, appDir, logWriter, "docker", "compose", "-f", "docker-compose.yml", "up", "-d", "--remove-orphans", "--pull", app.ImagePullPolicy)
 }
 
 func writeDeploymentFile(appDir string, name string, content string) error {

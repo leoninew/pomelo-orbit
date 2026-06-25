@@ -235,21 +235,18 @@ CI/CD 是最大风险区，规格上不改变业务行为，只改变边界：
 
 ```text
 backend-go/.air.api.toml
-backend-go/.air.worker.toml
 ```
 
 建议命令形态：
 
 ```powershell
 air -c .air.api.toml
-air -c .air.worker.toml
 ```
 
 或通过项目已有任务入口包装成：
 
 ```powershell
 just backend-go-dev-api
-just backend-go-dev-worker
 ```
 
 具体命令命名在 Plan 阶段结合 `justfile` / 当前开发脚本确认。
@@ -261,12 +258,7 @@ go build -o ./tmp/air/api.exe ./cmd/backend-go
 ./tmp/air/api.exe serve
 ```
 
-worker 配置应构建并运行：
-
-```text
-go build -o ./tmp/air/worker.exe ./cmd/backend-go
-./tmp/air/worker.exe worker
-```
+原计划包含独立 worker air 配置；后续单节点运行时已删除 worker air 文件，worker loop 并入 `serve` 启动路径。
 
 Windows 下实际扩展名和 air 配置字段在实现阶段以 air 当前配置格式为准。
 
@@ -292,7 +284,7 @@ Windows 下实际扩展名和 air 配置字段在实现阶段以 air 当前配�
 - `backend-go/internal/cd/*.go`
 - `backend-go/.gitignore` 或仓库根 `.gitignore`
 - `backend-go/.air.api.toml`
-- `backend-go/.air.worker.toml`
+- `backend-go/.air.worker.toml`（后续已删除，worker loop 并入 `serve`）
 - 项目任务入口文件，如 `justfile` / `scripts/dev.py`，若 Plan 阶段确认需要包装 hot reload 命令
 
 ### 不应修改的范围

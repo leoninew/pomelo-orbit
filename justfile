@@ -16,9 +16,6 @@ dev:
 dev-backend:
     cd backend-go && air -c .air.api.toml
 
-dev-worker:
-    cd backend-go && air -c .air.worker.toml
-
 dev-frontend:
     cd frontend && yarn dev
 

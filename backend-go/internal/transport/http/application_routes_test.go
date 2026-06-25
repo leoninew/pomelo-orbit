@@ -76,6 +76,73 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	}
 }
 
+func TestStopApplicationEnqueuesTask(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+	token := testToken(t, server)
+	projectId := "01KRRKK0K3T519ZQZES3M4QA9Z"
+
+	createRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(createRecorder, authedRequest(http.MethodPost, "/api/cd/application?project_id="+projectId, bytes.NewBufferString(`{"name":"Stop App","code":"stop-app","image_pull_policy":"missing"}`), token))
+	if createRecorder.Code != http.StatusCreated {
+		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
+	}
+	var created cdhandler.ApplicationResp
+	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`UPDATE application SET status = ? WHERE id = ?`, status.ApplicationStatusDeployed, created.Id); err != nil {
+		t.Fatal(err)
+	}
+
+	stopRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(stopRecorder, authedRequest(http.MethodPost, "/api/cd/application/"+created.Id+"/stop", bytes.NewBufferString(`{"remove_volumes":true}`), token))
+	if stopRecorder.Code != http.StatusOK {
+		t.Fatalf("expected stop status 200, got %d: %s", stopRecorder.Code, stopRecorder.Body.String())
+	}
+	var stopResp map[string]string
+	if err := json.NewDecoder(stopRecorder.Body).Decode(&stopResp); err != nil {
+		t.Fatal(err)
+	}
+	deploymentId := stopResp["deployment_id"]
+	if deploymentId == "" {
+		t.Fatalf("expected deployment_id, got %+v", stopResp)
+	}
+
+	var task struct {
+		TaskType    string `db:"task_type"`
+		PayloadJSON string `db:"payload_json"`
+	}
+	if err := database.Get(&task, `SELECT task_type, payload_json FROM background_task ORDER BY created_at DESC LIMIT 1`); err != nil {
+		t.Fatal(err)
+	}
+	if task.TaskType != status.TaskTypeCDApplicationStop {
+		t.Fatalf("unexpected task type: %s", task.TaskType)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(task.PayloadJSON), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["application_id"] != created.Id || payload["deployment_id"] != deploymentId || payload["remove_volumes"] != true {
+		t.Fatalf("unexpected stop payload: %+v", payload)
+	}
+
+	var deploymentStatus string
+	if err := database.Get(&deploymentStatus, `SELECT status FROM deployment WHERE id = ?`, deploymentId); err != nil {
+		t.Fatal(err)
+	}
+	if deploymentStatus != status.WorkStatusWaitingToRun {
+		t.Fatalf("unexpected deployment status: %s", deploymentStatus)
+	}
+	var appStatus string
+	if err := database.Get(&appStatus, `SELECT status FROM application WHERE id = ?`, created.Id); err != nil {
+		t.Fatal(err)
+	}
+	if appStatus != status.ApplicationStatusDeployed {
+		t.Fatalf("expected application to remain deployed before task runs, got %s", appStatus)
+	}
+}
+
 func TestApplicationRoutesValidation(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()

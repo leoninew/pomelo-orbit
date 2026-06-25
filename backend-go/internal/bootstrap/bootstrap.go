@@ -57,6 +57,7 @@ func NewTaskRouter(store repository.Store, cfg config.Config, logger *slog.Logge
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciService))
 	router.Register(status.TaskTypeCDApplicationDeploy, cdworker.NewDeployHandler(cdService))
 	router.Register(status.TaskTypeCDApplicationRestart, cdworker.NewRestartHandler(cdService))
+	router.Register(status.TaskTypeCDApplicationStop, cdworker.NewStopHandler(cdService))
 	return router
 }
 

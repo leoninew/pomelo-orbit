@@ -12,6 +12,7 @@ const (
 	TaskTypeCIPipelineRunExecute = "ci.pipeline_run.execute"
 	TaskTypeCDApplicationDeploy  = "cd.application.deploy"
 	TaskTypeCDApplicationRestart = "cd.application.restart"
+	TaskTypeCDApplicationStop    = "cd.application.stop"
 )
 
 const (

@@ -31,6 +31,42 @@ func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 	}
 }
 
+func TestExecuteApplicationStopStopsApplication(t *testing.T) {
+	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
+	runner := &recordingCommandRunner{}
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner)
+
+	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", true)
+	if err != nil {
+		t.Fatalf("ExecuteApplicationStop returned error: %v", err)
+	}
+	if store.appStatus != status.ApplicationStatusUndeployed {
+		t.Fatalf("unexpected app status: %s", store.appStatus)
+	}
+	if store.deploymentStatus != status.WorkStatusRanToCompletion {
+		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
+	}
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -f docker-compose.yml down -v" {
+		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
+	}
+}
+
+func TestExecuteApplicationStopMarksDeploymentFaultedOnRunnerError(t *testing.T) {
+	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{})
+
+	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", false)
+	if err == nil {
+		t.Fatal("expected runner error")
+	}
+	if store.appStatus != "" {
+		t.Fatalf("expected app status to remain unchanged, got %s", store.appStatus)
+	}
+	if store.deploymentStatus != status.WorkStatusFaulted {
+		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
+	}
+}
+
 func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{
 		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
@@ -176,6 +212,22 @@ func (s *fakeDeploymentExecutionStore) CompleteDeployment(ctx context.Context, i
 type fakeCommandRunner struct{}
 
 func (fakeCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
+	if log != nil {
+		_, _ = log.Write([]byte("ok"))
+	}
+	return nil
+}
+
+type recordingCommandRunner struct {
+	cwd  string
+	name string
+	args []string
+}
+
+func (r *recordingCommandRunner) Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error {
+	r.cwd = cwd
+	r.name = name
+	r.args = append([]string{}, args...)
 	if log != nil {
 		_, _ = log.Write([]byte("ok"))
 	}

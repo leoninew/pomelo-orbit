@@ -11,24 +11,30 @@ import (
 type Payload struct {
 	ApplicationId string `json:"application_id"`
 	DeploymentId  string `json:"deployment_id"`
+	RemoveVolumes bool   `json:"remove_volumes"`
 }
 
 type ApplicationDeployer interface {
 	ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string) error
 	ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error
+	ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error
 }
 
 type Handler struct {
-	deployer ApplicationDeployer
-	restart  bool
+	deployer  ApplicationDeployer
+	operation string
 }
 
 func NewDeployHandler(deployer ApplicationDeployer) Handler {
-	return Handler{deployer: deployer}
+	return Handler{deployer: deployer, operation: "deploy"}
 }
 
 func NewRestartHandler(deployer ApplicationDeployer) Handler {
-	return Handler{deployer: deployer, restart: true}
+	return Handler{deployer: deployer, operation: "restart"}
+}
+
+func NewStopHandler(deployer ApplicationDeployer) Handler {
+	return Handler{deployer: deployer, operation: "stop"}
 }
 
 func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
@@ -39,8 +45,14 @@ func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 	if payload.ApplicationId == "" || payload.DeploymentId == "" {
 		return fmt.Errorf("application_id and deployment_id are required")
 	}
-	if h.restart {
+	switch h.operation {
+	case "deploy":
+		return h.deployer.ExecuteApplicationDeploy(ctx, payload.ApplicationId, payload.DeploymentId)
+	case "restart":
 		return h.deployer.ExecuteApplicationRestart(ctx, payload.ApplicationId, payload.DeploymentId)
+	case "stop":
+		return h.deployer.ExecuteApplicationStop(ctx, payload.ApplicationId, payload.DeploymentId, payload.RemoveVolumes)
+	default:
+		return fmt.Errorf("unsupported cd task operation: %s", h.operation)
 	}
-	return h.deployer.ExecuteApplicationDeploy(ctx, payload.ApplicationId, payload.DeploymentId)
 }

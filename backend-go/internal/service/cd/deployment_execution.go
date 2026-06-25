@@ -63,6 +63,36 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
+func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error {
+	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
+	if err != nil {
+		return err
+	}
+	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
+		return err
+	}
+
+	appDir := s.workspace.AppDir(app.Code)
+	logFile, closeLog, err := s.deploymentLog(app.Code, deployment.Id)
+	if err != nil {
+		return err
+	}
+	defer closeLog()
+	_, _ = fmt.Fprintf(logFile, "Working directory: %s\n", appDir)
+	args := []string{"compose", "-f", "docker-compose.yml", "down"}
+	if removeVolumes {
+		args = append(args, "-v")
+	}
+	if err := s.runner.Run(ctx, appDir, logFile, "docker", args...); err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	if err := s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusUndeployed); err != nil {
+		return err
+	}
+	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
+}
+
 func (s Service) loadDeploymentExecution(ctx context.Context, applicationId string, deploymentId string) (model.Application, model.Deployment, error) {
 	app, err := s.executionStore.Application(ctx, applicationId)
 	if err != nil {

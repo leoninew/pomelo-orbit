@@ -175,12 +175,12 @@ Review status: Accepted
 ### 14. Air hot reload
 
 - [x] 新增 `backend-go/.air.api.toml`，构建 `./cmd/backend-go` 并运行 `serve`。
-- [x] 新增 `backend-go/.air.worker.toml`，构建 `./cmd/backend-go` 并运行 `worker`。
+- [x] 原计划新增 `backend-go/.air.worker.toml`，后续单节点运行时删除，worker loop 已并入 `serve` 启动路径。
 - [x] API 和 worker 使用不同输出文件，例如 `./tmp/air/api.exe` 与 `./tmp/air/worker.exe`。
 - [x] air 配置排除 `tmp`、`bin`、`data`、日志目录和其它构建产物目录。
 - [x] 更新 `.gitignore`，忽略 air 临时产物，例如 `backend-go/tmp/` 和 `backend-go/bin/`（如当前未被忽略）。
 - [x] 更新 `justfile`：将 `dev-backend` 切换或新增为 `air -c .air.api.toml`。
-- [x] 更新 `justfile`：将 `dev-worker` 切换或新增为 `air -c .air.worker.toml`。
+- [x] 原计划更新 `justfile` 增加 `air -c .air.worker.toml` 包装；后续单节点运行时移除独立 worker 入口。
 - [x] 评估并更新 `scripts/dev.py`：开发组合启动时是否直接调用 air API/worker，或继续使用一次性 build binary。若改用 air，应保持前端/API/worker 同时启动和退出清理行为。
 - [x] 记录 `air` 安装前置条件；若项目不 vendoring 工具，则不把 air 加入生产依赖。
 
@@ -210,7 +210,7 @@ Review status: Accepted
 - `backend-go/internal/httpserver/**`（迁移后删除）
 - `backend-go/internal/orbit/**`（迁移后删除）
 - `backend-go/.air.api.toml`
-- `backend-go/.air.worker.toml`
+- `backend-go/.air.worker.toml`（后续已删除，worker loop 并入 `serve`）
 - `.gitignore`
 - `justfile`
 - `scripts/dev.py`（如采用 air 作为组合开发启动方式）
@@ -252,9 +252,7 @@ Air 配置验证：
 cd backend-go && air -c .air.api.toml
 ```
 
-```powershell
-cd backend-go && air -c .air.worker.toml
-```
+原计划包含 `cd backend-go && air -c .air.worker.toml`；后续单节点运行时已删除 worker air 配置，worker loop 由 `serve` 启动。
 
 不主动长期启动/停止开发服务器；若需要实际运行 hot reload，应在 Verification 阶段按用户授权执行，或记录需用户本地运行验证。
 

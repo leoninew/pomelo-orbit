@@ -19,7 +19,7 @@ func main() {
 	migrateOnly := flag.Bool("migrate-only", false, "run database migrations and exit")
 	flag.Parse()
 
-	command := "worker"
+	command := "serve"
 	if flag.NArg() > 0 {
 		command = flag.Arg(0)
 	}

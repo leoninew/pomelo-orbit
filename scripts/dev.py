@@ -110,11 +110,6 @@ def main() -> int:
             command=[command_path("air"), "-c", ".air.api.toml"],
         ),
         DevProcess(
-            name="后端 Worker",
-            cwd=ROOT_DIR / "backend-go",
-            command=[command_path("air"), "-c", ".air.worker.toml"],
-        ),
-        DevProcess(
             name="前端服务",
             cwd=ROOT_DIR / "frontend",
             command=[command_path("yarn"), "dev"],
@@ -124,7 +119,7 @@ def main() -> int:
     try:
         for process in processes:
             process.start()
-        print("前端、后端 API hot reload 和 Worker hot reload 已启动，按 Ctrl+C 退出。", flush=True)
+        print("前端、后端 API 与后台任务热重载已启动，按 Ctrl+C 退出。", flush=True)
         exit_code = wait_any(processes)
         print("开发服务器已退出，正在停止剩余进程...", flush=True)
         return exit_code

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 
 	"backend/internal/bootstrap"
 	"backend/internal/config"
@@ -73,17 +74,52 @@ func (a App) Serve(ctx context.Context) error {
 	store := bootstrap.NewRepositoryStore(database, a.cfg.Database.Driver)
 	server := bootstrap.NewHTTPServer(a.cfg, a.logger, store, taskRepo)
 	httpServer := &http.Server{Addr: server.Addr(), Handler: server.Handler()}
+	router := bootstrap.NewTaskRouter(store, a.cfg, a.logger)
+	backgroundWorker := bootstrap.NewWorker(a.cfg, a.logger, taskRepo, router)
 
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var shutdownOnce sync.Once
+	shutdownHTTP := func() {
+		shutdownOnce.Do(func() {
+			if err := httpServer.Shutdown(context.Background()); err != nil {
+				a.logger.Error("http server shutdown failed", "error", err)
+			}
+		})
+	}
 	go func() {
-		<-ctx.Done()
-		if err := httpServer.Shutdown(context.Background()); err != nil {
-			a.logger.Error("http server shutdown failed", "error", err)
-		}
+		<-runCtx.Done()
+		shutdownHTTP()
 	}()
 
-	a.logger.Info("http server started", "addr", server.Addr())
-	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("serve http: %w", err)
+	errCh := make(chan error, 2)
+	go func() {
+		a.logger.Info("http server started", "addr", server.Addr())
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errCh <- fmt.Errorf("serve http: %w", err)
+			return
+		}
+		errCh <- nil
+	}()
+	go func() {
+		if err := backgroundWorker.Run(runCtx); err != nil && !errors.Is(err, context.Canceled) {
+			errCh <- fmt.Errorf("run background worker: %w", err)
+			return
+		}
+		errCh <- nil
+	}()
+
+	var firstErr error
+	for completed := 0; completed < 2; completed++ {
+		if err := <-errCh; err != nil && firstErr == nil {
+			firstErr = err
+			cancel()
+			shutdownHTTP()
+		}
+	}
+	if firstErr != nil {
+		return firstErr
 	}
 	return ctx.Err()
 }

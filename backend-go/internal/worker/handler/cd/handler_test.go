@@ -56,9 +56,27 @@ func TestHandleRestartsApplication(t *testing.T) {
 	}
 }
 
+func TestHandleStopsApplication(t *testing.T) {
+	deployer := &fakeDeployer{}
+	handler := NewStopHandler(deployer)
+
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1","remove_volumes":true}`})
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+	if !deployer.stopped {
+		t.Fatal("expected stop to be called")
+	}
+	if deployer.applicationId != "app-1" || deployer.deploymentId != "deploy-1" || !deployer.removeVolumes {
+		t.Fatalf("unexpected stop payload: app=%s deployment=%s remove_volumes=%v", deployer.applicationId, deployer.deploymentId, deployer.removeVolumes)
+	}
+}
+
 type fakeDeployer struct {
 	deployed      bool
 	restarted     bool
+	stopped       bool
+	removeVolumes bool
 	applicationId string
 	deploymentId  string
 }
@@ -72,6 +90,14 @@ func (d *fakeDeployer) ExecuteApplicationDeploy(ctx context.Context, application
 
 func (d *fakeDeployer) ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error {
 	d.restarted = true
+	d.applicationId = applicationId
+	d.deploymentId = deploymentId
+	return nil
+}
+
+func (d *fakeDeployer) ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error {
+	d.stopped = true
+	d.removeVolumes = removeVolumes
 	d.applicationId = applicationId
 	d.deploymentId = deploymentId
 	return nil

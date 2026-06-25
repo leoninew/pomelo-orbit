@@ -143,6 +143,29 @@ func TestEnqueueCDApplicationDeploy(t *testing.T) {
 	}
 }
 
+func TestEnqueueCDApplicationStop(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodPost, "/api/background/cd/application/app-1/stop/deploy-1", nil)
+	server.Handler().ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	var created taskrepo.Task
+	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
+		t.Fatal(err)
+	}
+	if created.TaskType != status.TaskTypeCDApplicationStop {
+		t.Fatalf("unexpected task type: %s", created.TaskType)
+	}
+	if created.PayloadJSON != `{"application_id":"app-1","deployment_id":"deploy-1"}` {
+		t.Fatalf("unexpected payload: %s", created.PayloadJSON)
+	}
+}
+
 func TestCreateTaskValidatesPayload(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()

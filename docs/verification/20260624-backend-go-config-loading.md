@@ -39,7 +39,7 @@ Accepted
 - `backend-go/.air.api.toml`
   - API 启动参数改为 `args_bin = ["serve"]`。
 - `backend-go/.air.worker.toml`
-  - Worker 启动参数改为 `args_bin = ["worker"]`。
+  - 原计划 Worker 启动参数改为 `args_bin = ["worker"]`；后续单节点运行时已删除该文件，worker loop 并入 `serve` 启动路径。
 - `backend-go/internal/config/config_test.go`
   - 测试改为通过固定 `config.local.yaml` 覆盖默认配置。
   - 新增非法本地配置失败测试。
@@ -56,7 +56,7 @@ Accepted
 | `backend-go/internal/config/config.go` | 需要 | 已修改 | 符合 |
 | `backend-go/cmd/backend-go/main.go` | 需要 | 已修改 | 符合 |
 | `backend-go/.air.api.toml` | 需要 | 已修改 | 符合 |
-| `backend-go/.air.worker.toml` | 需要 | 已修改 | 符合 |
+| `backend-go/.air.worker.toml` | 原计划修改 | 已删除，worker loop 并入 `serve` | 符合 |
 | `backend-go/internal/config/config_test.go` | 需要 | 已修改 | 符合 |
 | `backend-go/internal/app/mysql_e2e_test.go` | 需要同步 `Load` 调用 | 已修改 | 符合 |
 | 前端文件 | 不应修改 | 未修改 | 符合 |
@@ -65,7 +65,7 @@ Accepted
 ## Acceptance criteria checklist
 
 - [x] Air API 启动参数不再包含 `--config config.local.yaml`。
-- [x] Air worker 启动参数不再包含 `--config config.local.yaml`。
+- [x] 原计划验证 Air worker 启动参数；后续单节点运行时 worker loop 已并入 `serve`，该 air 配置已删除。
 - [x] `config.Load` 不依赖调用方传入本地配置路径即可执行默认配置、本地配置、环境变量合并。
 - [x] `config.local.yaml` 缺失时不会报 `open config.local.yaml`；默认配置加载测试覆盖无本地配置文件场景。
 - [x] `config.defaults.yaml` 缺失或读取失败仍然报错；默认配置仍通过 `ReadInConfig()` 必读。

@@ -67,6 +67,6 @@ ENV POMELO_ORBIT_SERVER__PORT=80
 # Expose port
 EXPOSE 80
 
-# Run the application. Override CMD with "worker" to run the background worker.
+# Run the API server and background worker in one process.
 ENTRYPOINT ["backend-go"]
 CMD ["serve"]

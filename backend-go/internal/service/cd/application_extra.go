@@ -246,20 +246,8 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	cmd := []string{"docker", "compose", "-f", "docker-compose.yml", "down"}
-	if removeVolumes {
-		cmd = append(cmd, "-v")
-	}
-	appDir := s.workspace.AppDir(app.Code)
-	if output, err := runApplicationCommand(ctx, appDir, cmd...); err != nil {
-		_ = s.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, outputOrError(output, err))
-		return "", apperror.New(apperror.KindInternal, "Failed to stop application")
-	}
-	if err := s.store.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusUndeployed); err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to update application status", err)
-	}
-	if err := s.store.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, ""); err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to complete deployment", err)
+	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationStop, map[string]any{"application_id": app.Id, "deployment_id": deployment.Id, "remove_volumes": removeVolumes}); err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
 }

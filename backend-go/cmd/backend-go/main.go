@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,18 +28,18 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("load config failed", "error", err)
+		_, _ = fmt.Fprintf(os.Stderr, "load config failed: %v\n", err)
 		os.Exit(1)
 	}
 
 	logger, closeLogger, err := logging.New(cfg.Logging)
 	if err != nil {
-		slog.Error("init logger failed", "error", err)
+		_, _ = fmt.Fprintf(os.Stderr, "init logger failed: %v\n", err)
 		os.Exit(1)
 	}
 	defer func() {
 		if err := closeLogger(); err != nil {
-			slog.Error("close logger failed", "error", err)
+			logger.Error("close logger failed", "error", err)
 		}
 	}()
 	backgroundApp := app.New(cfg, logger)

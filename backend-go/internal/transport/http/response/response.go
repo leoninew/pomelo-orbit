@@ -30,11 +30,11 @@ func NewPaginatedResp[T any](page repository.Page[T]) PaginatedResp[T] {
 	return PaginatedResp[T]{Items: page.Items, Total: page.Total, Page: page.Page, PerPage: page.PerPage, Pages: pages}
 }
 
-func JSON(w http.ResponseWriter, status int, value any) {
+func JSON(logger *slog.Logger, w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(value); err != nil && !errors.Is(err, http.ErrHandlerTimeout) {
-		slog.Error("write response failed", "error", err)
+		logger.Error("write response failed", "error", err)
 	}
 }
 

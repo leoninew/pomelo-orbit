@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	cdhandler "backend/internal/transport/http/handler/cd"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 const testRouteProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
@@ -40,7 +41,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list paginatedResp[cdhandler.RouteResp]
+	var list transportresponse.PaginatedResp[cdhandler.RouteResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}

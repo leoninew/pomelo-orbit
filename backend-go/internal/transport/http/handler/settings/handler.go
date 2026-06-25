@@ -54,7 +54,7 @@ func (h Handler) getConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +63,7 @@ func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	var req systemConfigUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	resp, err := h.service.Update(r.Context(), req.Key, req.Value)
@@ -71,7 +71,7 @@ func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +80,7 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	var req systemConfigResetReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	resp, err := h.service.Reset(r.Context(), req.Keys)
@@ -88,12 +88,12 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("settings request failed", "error", err)
 	}
-	transportresponse.JSON(w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
+	transportresponse.JSON(h.logger, w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
 }

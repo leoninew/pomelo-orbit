@@ -48,7 +48,7 @@ func (h Handler) Register(r router) {
 func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
 	var req createTaskReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 
@@ -57,13 +57,13 @@ func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, item)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, item)
 }
 
 func (h Handler) enqueueCIPipelineRun(w http.ResponseWriter, r *http.Request) {
 	runId := strings.TrimSpace(chi.URLParam(r, "run_id"))
 	if runId == "" {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "run_id is required"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "run_id is required"})
 		return
 	}
 	h.enqueueTypedTask(w, r, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": runId})
@@ -73,7 +73,7 @@ func (h Handler) enqueueCDApplicationDeploy(w http.ResponseWriter, r *http.Reque
 	appId := strings.TrimSpace(chi.URLParam(r, "app_id"))
 	deploymentId := strings.TrimSpace(chi.URLParam(r, "deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "app_id and deployment_id are required"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "app_id and deployment_id are required"})
 		return
 	}
 	h.enqueueTypedTask(w, r, status.TaskTypeCDApplicationDeploy, map[string]string{"application_id": appId, "deployment_id": deploymentId})
@@ -83,7 +83,7 @@ func (h Handler) enqueueCDApplicationRestart(w http.ResponseWriter, r *http.Requ
 	appId := strings.TrimSpace(chi.URLParam(r, "app_id"))
 	deploymentId := strings.TrimSpace(chi.URLParam(r, "deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "app_id and deployment_id are required"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "app_id and deployment_id are required"})
 		return
 	}
 	h.enqueueTypedTask(w, r, status.TaskTypeCDApplicationRestart, map[string]string{"application_id": appId, "deployment_id": deploymentId})
@@ -93,7 +93,7 @@ func (h Handler) enqueueCDApplicationStop(w http.ResponseWriter, r *http.Request
 	appId := strings.TrimSpace(chi.URLParam(r, "app_id"))
 	deploymentId := strings.TrimSpace(chi.URLParam(r, "deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "app_id and deployment_id are required"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "app_id and deployment_id are required"})
 		return
 	}
 	h.enqueueTypedTask(w, r, status.TaskTypeCDApplicationStop, map[string]string{"application_id": appId, "deployment_id": deploymentId})
@@ -105,23 +105,23 @@ func (h Handler) enqueueTypedTask(w http.ResponseWriter, r *http.Request, taskTy
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, item)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, item)
 }
 
 func (h Handler) getTask(w http.ResponseWriter, r *http.Request) {
 	item, err := h.service.FindById(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
-		transportresponse.JSON(w, http.StatusNotFound, map[string]string{"detail": "Task not found"})
+		transportresponse.JSON(h.logger, w, http.StatusNotFound, map[string]string{"detail": "Task not found"})
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, item)
+	transportresponse.JSON(h.logger, w, http.StatusOK, item)
 }
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
 		return
 	}
 	h.logger.Error("task service failed", "error", err)
-	transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to process task"})
+	transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to process task"})
 }

@@ -105,7 +105,7 @@ func (h Handler) importApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	var req applicationImportReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	files := make([]cdsvc.ConfigFileInput, 0, len(req.ConfigFiles))
@@ -125,7 +125,7 @@ func (h Handler) importApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, applicationResponse(app))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, applicationResponse(app))
 }
 
 func (h Handler) exportApplication(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +148,7 @@ func (h Handler) exportApplication(w http.ResponseWriter, r *http.Request) {
 	for _, route := range exported.Routes {
 		resp.Routes = append(resp.Routes, applicationRouteReq{ServiceName: route.ServiceName, Domain: route.Domain, Port: route.Port})
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) listApplicationFiles(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +165,7 @@ func (h Handler) listApplicationFiles(w http.ResponseWriter, r *http.Request) {
 	for _, file := range files {
 		resp = append(resp, configFileResponse(file))
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +175,7 @@ func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
 	}
 	var req configFileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	file, err := h.service.CreateApplicationFile(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ConfigFileInput{Path: req.Path, Content: req.Content})
@@ -183,7 +183,7 @@ func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, configFileResponse(file))
+	transportresponse.JSON(h.logger, w, http.StatusOK, configFileResponse(file))
 }
 
 func (h Handler) readApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +196,7 @@ func (h Handler) readApplicationFile(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"content": file.Content, "path": file.Path})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"content": file.Content, "path": file.Path})
 }
 
 func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +206,7 @@ func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
 	}
 	var req configFileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	file, err := h.service.UpdateApplicationFile(r.Context(), current.Id, chi.URLParam(r, "app_id"), chi.URLParam(r, "file_id"), cdsvc.ConfigFileInput{Path: req.Path, Content: req.Content})
@@ -214,7 +214,7 @@ func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, configFileResponse(file))
+	transportresponse.JSON(h.logger, w, http.StatusOK, configFileResponse(file))
 }
 
 func (h Handler) deleteApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -247,7 +247,7 @@ func (h Handler) stopApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
 }
 
 func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
@@ -260,7 +260,7 @@ func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
 }
 
 func (h Handler) getApplicationStatus(w http.ResponseWriter, r *http.Request) {
@@ -270,10 +270,10 @@ func (h Handler) getApplicationStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	status, err := h.service.ApplicationStatus(r.Context(), current.Id, chi.URLParam(r, "app_id"))
 	if err != nil {
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"status": status})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"status": status})
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"status": status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"status": status})
 }
 
 func (h Handler) getApplicationLogs(w http.ResponseWriter, r *http.Request) {
@@ -283,10 +283,10 @@ func (h Handler) getApplicationLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	logs, err := h.service.ApplicationLogs(r.Context(), current.Id, chi.URLParam(r, "app_id"), transportresponse.QueryInt(r.URL.Query().Get("tail"), 100))
 	if err != nil {
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"logs": logs})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"logs": logs})
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"logs": logs})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"logs": logs})
 }
 
 func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Request) {
@@ -299,7 +299,7 @@ func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Reques
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"compose_yaml": compose})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"compose_yaml": compose})
 }
 
 func (h Handler) listApplicationRoutes(w http.ResponseWriter, r *http.Request) {
@@ -316,7 +316,7 @@ func (h Handler) listApplicationRoutes(w http.ResponseWriter, r *http.Request) {
 	for _, route := range routes {
 		resp = append(resp, applicationRouteResponse(route))
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) {
@@ -326,7 +326,7 @@ func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) 
 	}
 	var req applicationRouteReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	route, err := h.service.CreateApplicationRoute(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: req.Port})
@@ -334,7 +334,7 @@ func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, applicationRouteResponse(route))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, applicationRouteResponse(route))
 }
 
 func (h Handler) updateApplicationRoute(w http.ResponseWriter, r *http.Request) {
@@ -344,7 +344,7 @@ func (h Handler) updateApplicationRoute(w http.ResponseWriter, r *http.Request) 
 	}
 	var req applicationRouteReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	route, err := h.service.UpdateApplicationRoute(r.Context(), current.Id, chi.URLParam(r, "app_id"), chi.URLParam(r, "route_id"), cdsvc.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: req.Port})
@@ -352,7 +352,7 @@ func (h Handler) updateApplicationRoute(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, applicationRouteResponse(route))
+	transportresponse.JSON(h.logger, w, http.StatusOK, applicationRouteResponse(route))
 }
 
 func (h Handler) deleteApplicationRoute(w http.ResponseWriter, r *http.Request) {
@@ -381,7 +381,7 @@ func (h Handler) listApplicationComposeServices(w http.ResponseWriter, r *http.R
 	for _, view := range views {
 		resp = append(resp, ComposeServiceResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: view.DefaultPort})
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) listApplicationServiceConfigs(w http.ResponseWriter, r *http.Request) {
@@ -394,7 +394,7 @@ func (h Handler) listApplicationServiceConfigs(w http.ResponseWriter, r *http.Re
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, views)
+	transportresponse.JSON(h.logger, w, http.StatusOK, views)
 }
 
 func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.Request) {
@@ -404,7 +404,7 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 	}
 	var req applicationServiceConfigUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	view, err := h.service.UpdateApplicationServiceConfig(r.Context(), current.Id, chi.URLParam(r, "app_id"), chi.URLParam(r, "service_name"), req.Image)
@@ -412,7 +412,7 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, view)
+	transportresponse.JSON(h.logger, w, http.StatusOK, view)
 }
 
 func configFileResponse(file model.ApplicationConfigFile) ConfigFileResp {

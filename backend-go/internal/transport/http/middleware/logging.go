@@ -15,6 +15,8 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
+const TruncatedBodySuffix = "..."
+
 type LogRequestConfig struct {
 	BodyEnabled  bool
 	BodyMaxBytes int
@@ -42,17 +44,16 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) func(http.Handler) ht
 			responseWriter := newLoggingResponseWriter(w, cfg)
 			next.ServeHTTP(responseWriter, r)
 
-			attrs := append([]any{}, requestAttrs...)
-			attrs = append(attrs,
+			completedAttrs := append([]any{}, requestAttrs...)
+			completedAttrs = append(completedAttrs,
 				"status", responseWriter.Status(),
 				"bytes", responseWriter.BytesWritten(),
 				"duration_ms", time.Since(startedAt).Milliseconds(),
 			)
 			if responseBody := responseWriter.Body(); responseBody != "" {
-				attrs = append(attrs, "response_body", responseBody)
+				completedAttrs = append(completedAttrs, "response_body", responseBody)
 			}
-
-			logger.Info("request completed", attrs...)
+			logger.Info("request completed", completedAttrs...)
 		})
 	}
 }
@@ -104,7 +105,7 @@ func truncateLogBody(value []byte, limit int) string {
 	for len(value) > 0 && !utf8.Valid(value) {
 		value = value[:len(value)-1]
 	}
-	return string(value) + "..."
+	return string(value) + TruncatedBodySuffix
 }
 
 type prefixReadCloser struct {
@@ -180,6 +181,9 @@ func (w *loggingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if !ok {
 		return nil, nil, http.ErrNotSupported
 	}
+	if w.status == 0 {
+		w.status = http.StatusSwitchingProtocols
+	}
 	return hijacker.Hijack()
 }
 
@@ -189,6 +193,10 @@ func (w *loggingResponseWriter) Push(target string, opts *http.PushOptions) erro
 		return http.ErrNotSupported
 	}
 	return pusher.Push(target, opts)
+}
+
+func (w *loggingResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *loggingResponseWriter) captureBody(data []byte) {
@@ -205,3 +213,8 @@ func (w *loggingResponseWriter) captureBody(data []byte) {
 	}
 	_, _ = w.body.Write(data)
 }
+
+var _ http.Flusher = (*loggingResponseWriter)(nil)
+var _ http.Hijacker = (*loggingResponseWriter)(nil)
+var _ http.Pusher = (*loggingResponseWriter)(nil)
+var _ interface{ Unwrap() http.ResponseWriter } = (*loggingResponseWriter)(nil)

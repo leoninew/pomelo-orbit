@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	cdhandler "backend/internal/transport/http/handler/cd"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 const deploymentRouteProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
@@ -28,7 +29,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list paginatedResp[cdhandler.DeploymentResp]
+	var list transportresponse.PaginatedResp[cdhandler.DeploymentResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}

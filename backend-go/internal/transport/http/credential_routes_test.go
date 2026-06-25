@@ -10,6 +10,7 @@ import (
 
 	cisvc "backend/internal/service/ci"
 	cihandler "backend/internal/transport/http/handler/ci"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 const credentialRouteFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -53,7 +54,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var credentials paginatedResp[cihandler.CredentialResp]
+	var credentials transportresponse.PaginatedResp[cihandler.CredentialResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&credentials); err != nil {
 		t.Fatal(err)
 	}

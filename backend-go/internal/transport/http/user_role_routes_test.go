@@ -10,6 +10,7 @@ import (
 	authhandler "backend/internal/transport/http/handler/auth"
 	rolehandler "backend/internal/transport/http/handler/role"
 	userhandler "backend/internal/transport/http/handler/user"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func testToken(t *testing.T, server Server) string {
@@ -49,7 +50,7 @@ func TestUserRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected user list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var users paginatedResp[userhandler.UserListResp]
+	var users transportresponse.PaginatedResp[userhandler.UserListResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&users); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +157,7 @@ func TestRoleRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected role list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var roles paginatedResp[rolehandler.RoleResp]
+	var roles transportresponse.PaginatedResp[rolehandler.RoleResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&roles); err != nil {
 		t.Fatal(err)
 	}

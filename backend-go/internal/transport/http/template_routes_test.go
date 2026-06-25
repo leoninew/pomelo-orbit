@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	cihandler "backend/internal/transport/http/handler/ci"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestPipelineTemplateRoutes(t *testing.T) {
@@ -35,7 +36,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var templates paginatedResp[cihandler.PipelineTemplateResp]
+	var templates transportresponse.PaginatedResp[cihandler.PipelineTemplateResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&templates); err != nil {
 		t.Fatal(err)
 	}

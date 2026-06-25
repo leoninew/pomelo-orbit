@@ -103,7 +103,7 @@ func (h Handler) listApplications(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, applicationResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, applicationResponse)))
 }
 
 func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +113,7 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	var req ApplicationCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	app, err := h.service.CreateApplication(r.Context(), current.Id, cdsvc.ApplicationCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy})
@@ -121,7 +121,7 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, applicationResponse(app))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, applicationResponse(app))
 }
 
 func (h Handler) getApplication(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +134,7 @@ func (h Handler) getApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, applicationResponse(app))
+	transportresponse.JSON(h.logger, w, http.StatusOK, applicationResponse(app))
 }
 
 func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +144,7 @@ func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	var req ApplicationUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	app, err := h.service.UpdateApplication(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ApplicationUpdateInput{Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
@@ -152,7 +152,7 @@ func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, applicationResponse(app))
+	transportresponse.JSON(h.logger, w, http.StatusOK, applicationResponse(app))
 }
 
 func (h Handler) deleteApplication(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +177,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
 }
 
 func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
@@ -192,7 +192,7 @@ func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, deploymentResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, deploymentResponse)))
 }
 
 func (h Handler) getDeployment(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +205,7 @@ func (h Handler) getDeployment(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, deploymentResponse(deployment))
+	transportresponse.JSON(h.logger, w, http.StatusOK, deploymentResponse(deployment))
 }
 
 func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +218,7 @@ func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]any{"logs": log.Logs, "offset": log.Offset, "is_complete": log.IsComplete, "status": log.Status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": log.Logs, "offset": log.Offset, "is_complete": log.IsComplete, "status": log.Status})
 }
 
 func (h Handler) streamDeploymentLog(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +228,7 @@ func (h Handler) streamDeploymentLog(w http.ResponseWriter, r *http.Request) {
 	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Streaming is not supported"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Streaming is not supported"})
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -264,14 +264,14 @@ func (h Handler) cancelDeployment(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, deploymentResponse(deployment))
+	transportresponse.JSON(h.logger, w, http.StatusOK, deploymentResponse(deployment))
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("cd request failed", "error", err)
 	}
-	transportresponse.JSON(w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
+	transportresponse.JSON(h.logger, w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
 }
 
 func applicationResponse(item model.Application) ApplicationResp {

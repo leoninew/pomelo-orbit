@@ -11,6 +11,7 @@ import (
 )
 
 func TestNewReturnsLogger(t *testing.T) {
+	restoreDefaultLogger(t)
 	cases := []struct {
 		level       string
 		enabledInfo bool
@@ -28,8 +29,9 @@ func TestNewReturnsLogger(t *testing.T) {
 		if err != nil {
 			t.Fatalf("New returned error for level %s: %v", tc.level, err)
 		}
+		closeLoggerFn := closeLogger
 		t.Cleanup(func() {
-			if err := closeLogger(); err != nil {
+			if err := closeLoggerFn(); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -43,6 +45,7 @@ func TestNewReturnsLogger(t *testing.T) {
 }
 
 func TestNewWritesLogFile(t *testing.T) {
+	restoreDefaultLogger(t)
 	cfg := testConfig(t, "INFO")
 	logger, closeLogger, err := New(cfg)
 	if err != nil {
@@ -64,6 +67,7 @@ func TestNewWritesLogFile(t *testing.T) {
 }
 
 func TestNewCreatesLogDirectory(t *testing.T) {
+	restoreDefaultLogger(t)
 	cfg := config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "nested", "logs", "backend-go.log"), MaxSizeMB: 100, MaxBackups: 7}
 	_, closeLogger, err := New(cfg)
 	if err != nil {
@@ -74,6 +78,31 @@ func TestNewCreatesLogDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Dir(cfg.File)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestNewSetsDefaultLogger(t *testing.T) {
+	restoreDefaultLogger(t)
+	cfg := testConfig(t, "INFO")
+	logger, closeLogger, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New returned error: %v", err)
+	}
+	slog.Info("default logger writes file", "component", "default")
+	if err := closeLogger(); err != nil {
+		t.Fatal(err)
+	}
+	if slog.Default() != logger {
+		t.Fatal("expected New to install default logger")
+	}
+
+	content, err := os.ReadFile(cfg.File)
+	if err != nil {
+		t.Fatal(err)
+	}
+	logContent := string(content)
+	if !strings.Contains(logContent, "default logger writes file") || !strings.Contains(logContent, "component=default") {
+		t.Fatalf("unexpected log content: %s", logContent)
 	}
 }
 
@@ -91,6 +120,14 @@ func TestNewValidatesConfig(t *testing.T) {
 			t.Fatalf("expected error for %s", tc.name)
 		}
 	}
+}
+
+func restoreDefaultLogger(t *testing.T) {
+	t.Helper()
+	oldDefault := slog.Default()
+	t.Cleanup(func() {
+		slog.SetDefault(oldDefault)
+	})
 }
 
 func testConfig(t *testing.T, level string) config.LoggingConfig {

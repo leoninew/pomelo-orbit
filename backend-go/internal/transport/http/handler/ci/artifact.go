@@ -23,5 +23,5 @@ func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, artifactResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, artifactResponse)))
 }

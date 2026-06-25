@@ -54,10 +54,10 @@ func (s Service) Login(ctx context.Context, input LoginInput) (string, error) {
 	if err != nil || user.Status != "enabled" || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)) != nil {
 		return "", ErrInvalidCredentials
 	}
-	if err := s.repo.MarkUserLoggedIn(ctx, user.Id); err != nil && s.logger != nil {
+	if err := s.repo.MarkUserLoggedIn(ctx, user.Id); err != nil {
 		s.logger.Warn("mark user login time failed", "user_id", user.Id, "error", err)
 	}
-	if err := s.repo.SaveLoginHistory(ctx, model.LoginHistory{Id: repository.NewId(), UserId: user.Id, Username: user.Username, IpAddress: optionalString(input.IP), UserAgent: optionalString(input.UserAgent), LoginAt: time.Now().UTC(), Success: true}); err != nil && s.logger != nil {
+	if err := s.repo.SaveLoginHistory(ctx, model.LoginHistory{Id: repository.NewId(), UserId: user.Id, Username: user.Username, IpAddress: optionalString(input.IP), UserAgent: optionalString(input.UserAgent), LoginAt: time.Now().UTC(), Success: true}); err != nil {
 		s.logger.Warn("save login history failed", "user_id", user.Id, "error", err)
 	}
 	return s.tokens.Sign(user.Id, user.Username)

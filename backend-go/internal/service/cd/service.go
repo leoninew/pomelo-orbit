@@ -123,8 +123,8 @@ type DeploymentLog struct {
 	Status     string
 }
 
-func New(store Store, tasks TaskService, cfg config.Config) Service {
-	return NewWithRunner(store, tasks, cfg, slog.Default(), ShellRunner{})
+func New(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger) Service {
+	return NewWithRunner(store, tasks, cfg, logger, ShellRunner{})
 }
 
 func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, runner CommandRunner) Service {

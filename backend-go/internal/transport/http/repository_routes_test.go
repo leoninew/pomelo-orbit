@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	cihandler "backend/internal/transport/http/handler/ci"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestRepositoryRoutes(t *testing.T) {
@@ -43,7 +44,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var repositories paginatedResp[cihandler.RepositoryResp]
+	var repositories transportresponse.PaginatedResp[cihandler.RepositoryResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&repositories); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +66,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if runRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository run list status 200, got %d: %s", runRecorder.Code, runRecorder.Body.String())
 	}
-	var runs paginatedResp[cihandler.PipelineRunResp]
+	var runs transportresponse.PaginatedResp[cihandler.PipelineRunResp]
 	if err := json.NewDecoder(runRecorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}

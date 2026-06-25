@@ -30,7 +30,7 @@ def main() -> None:
         sys.exit(1)
 
     sql_file = Path(sys.argv[1])
-    datasource = sys.argv[2] if len(sys.argv) > 2 else "orbit"
+    datasource = sys.argv[2] if len(sys.argv) > 2 else "orbit_local"
 
     if not sql_file.exists():
         print(f"Error: file not found: {sql_file}")

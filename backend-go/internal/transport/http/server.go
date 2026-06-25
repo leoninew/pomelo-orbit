@@ -38,6 +38,7 @@ import (
 	taskhandler "backend/internal/transport/http/handler/task"
 	userhandler "backend/internal/transport/http/handler/user"
 	transportmiddleware "backend/internal/transport/http/middleware"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 type chiRouter interface {
@@ -76,7 +77,7 @@ func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks t
 	taskService := tasksvc.New(tasks, defaultMaxAttempts)
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey), cdService: cdsvc.New(cdRepository, taskService, cfg), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger), cdService: cdsvc.New(cdRepository, taskService, cfg, logger), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {
@@ -87,7 +88,7 @@ func (s Server) Handler() http.Handler {
 	r.Use(middleware.Recoverer)
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		transportresponse.JSON(s.logger, w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	authenticator := authz.New(s.logger, s.userRepository, s.tokenService)
 	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)
@@ -95,7 +96,7 @@ func (s Server) Handler() http.Handler {
 	rolehandler.New(s.logger, s.roleService, authenticator, s.roleRepository).Register(r)
 	settingshandler.New(s.logger, s.settingsService, authenticator).Register(r)
 	projecthandler.New(s.logger, s.projectService, authenticator).Register(r)
-	ciService := cisvc.New(s.ciRepository, s.taskService, s.appCfg.DataRoot(), s.appCfg.JWT.SecretKey)
+	ciService := cisvc.New(s.ciRepository, s.taskService, s.appCfg.DataRoot(), s.appCfg.JWT.SecretKey, s.logger)
 	ciHandler := cihandler.New(s.logger, ciService, authenticator)
 	ciHandler.RegisterRepositoryRoutes(r)
 	ciHandler.RegisterTemplateRoutes(r)
@@ -104,7 +105,7 @@ func (s Server) Handler() http.Handler {
 	ciHandler.RegisterSnapshotRoutes(r)
 	ciHandler.RegisterArtifactRoutes(r)
 	ciHandler.RegisterCredentialRoutes(r)
-	cdService := cdsvc.New(s.cdRepository, s.taskService, s.appCfg)
+	cdService := cdsvc.New(s.cdRepository, s.taskService, s.appCfg, s.logger)
 	cdHandler := cdhandler.New(s.logger, cdService, authenticator)
 	cdHandler.RegisterApplicationRoutes(r)
 	cdHandler.RegisterDeploymentRoutes(r)
@@ -114,13 +115,13 @@ func (s Server) Handler() http.Handler {
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
-			writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
+			transportresponse.JSON(s.logger, w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
 			return
 		}
 		if serveStatic(w, r, "static") {
 			return
 		}
-		writeJSON(w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
+		transportresponse.JSON(s.logger, w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
 	})
 	return r
 }

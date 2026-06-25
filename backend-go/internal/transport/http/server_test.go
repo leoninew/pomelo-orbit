@@ -22,6 +22,7 @@ import (
 	"backend/internal/status"
 	authhandler "backend/internal/transport/http/handler/auth"
 	projecthandler "backend/internal/transport/http/handler/project"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 type fakeTurnstileVerifier struct {
@@ -365,7 +366,7 @@ func TestProjectAndDashboardLists(t *testing.T) {
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("expected %s status 200, got %d: %s", path, recorder.Code, recorder.Body.String())
 		}
-		var resp paginatedResp[map[string]any]
+		var resp transportresponse.PaginatedResp[map[string]any]
 		if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 			t.Fatal(err)
 		}

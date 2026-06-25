@@ -39,7 +39,7 @@ func (h Handler) listBuildStages(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, buildStageDetailResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, buildStageDetailResponse)))
 }
 
 func (h Handler) createBuildStage(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func (h Handler) createBuildStage(w http.ResponseWriter, r *http.Request) {
 	}
 	var req BuildStageCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	stage, err := h.service.CreateBuildStage(r.Context(), current.Id, cisvc.BuildStageCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
@@ -57,7 +57,7 @@ func (h Handler) createBuildStage(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, buildStageDetailResponse(stage))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, buildStageDetailResponse(stage))
 }
 
 func (h Handler) getBuildStage(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func (h Handler) getBuildStage(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, buildStageDetailResponse(stage))
+	transportresponse.JSON(h.logger, w, http.StatusOK, buildStageDetailResponse(stage))
 }
 
 func (h Handler) updateBuildStage(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +80,7 @@ func (h Handler) updateBuildStage(w http.ResponseWriter, r *http.Request) {
 	}
 	var req map[string]json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	stage, err := h.service.UpdateBuildStage(r.Context(), current.Id, chi.URLParam(r, "stage_id"), cisvc.BuildStageUpdateInput{Fields: req})
@@ -88,7 +88,7 @@ func (h Handler) updateBuildStage(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, buildStageDetailResponse(stage))
+	transportresponse.JSON(h.logger, w, http.StatusOK, buildStageDetailResponse(stage))
 }
 
 func (h Handler) deleteBuildStage(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +113,7 @@ func (h Handler) duplicateBuildStage(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, buildStageDetailResponse(stage))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, buildStageDetailResponse(stage))
 }
 
 func buildStageDetailResponse(item cisvc.BuildStageDetail) BuildStageResp {

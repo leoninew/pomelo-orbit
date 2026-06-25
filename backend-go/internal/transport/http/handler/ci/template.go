@@ -81,7 +81,7 @@ func (h Handler) listPipelineTemplates(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineTemplateResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineTemplateResponse)))
 }
 
 func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,7 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	}
 	var req PipelineTemplateCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	detail, err := h.service.CreatePipelineTemplate(r.Context(), current.Id, cisvc.PipelineTemplateCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: req.VariableDeclarations})
@@ -99,7 +99,7 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, pipelineTemplateResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineTemplateResponse(detail))
 }
 
 func (h Handler) getPipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -112,7 +112,7 @@ func (h Handler) getPipelineTemplate(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, pipelineTemplateResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineTemplateResponse(detail))
 }
 
 func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +122,7 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	}
 	var req map[string]json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	detail, err := h.service.UpdatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"), cisvc.PipelineTemplateUpdateInput{Fields: req})
@@ -130,7 +130,7 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, pipelineTemplateResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineTemplateResponse(detail))
 }
 
 func (h Handler) deletePipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +155,7 @@ func (h Handler) duplicatePipelineTemplate(w http.ResponseWriter, r *http.Reques
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, pipelineTemplateResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineTemplateResponse(detail))
 }
 
 func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +165,7 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 	}
 	var req TemplateVariableResolveReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	variables, err := h.service.ResolvePipelineTemplateVariables(r.Context(), current.Id, cisvc.PipelineTemplateResolveInput{ProjectId: r.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: req.VariableDeclarations})
@@ -173,7 +173,7 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, variables)
+	transportresponse.JSON(h.logger, w, http.StatusOK, variables)
 }
 
 func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) PipelineTemplateResp {

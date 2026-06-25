@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	cihandler "backend/internal/transport/http/handler/ci"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestBuildStageRoutes(t *testing.T) {
@@ -34,7 +35,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var stages paginatedResp[cihandler.BuildStageResp]
+	var stages transportresponse.PaginatedResp[cihandler.BuildStageResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&stages); err != nil {
 		t.Fatal(err)
 	}

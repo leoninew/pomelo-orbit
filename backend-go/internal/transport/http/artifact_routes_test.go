@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	cihandler "backend/internal/transport/http/handler/ci"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestArtifactListRoute(t *testing.T) {
@@ -23,7 +24,7 @@ func TestArtifactListRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts paginatedResp[cihandler.ArtifactResp]
+	var artifacts transportresponse.PaginatedResp[cihandler.ArtifactResp]
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +48,7 @@ func TestArtifactListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected filtered artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts paginatedResp[cihandler.ArtifactResp]
+	var artifacts transportresponse.PaginatedResp[cihandler.ArtifactResp]
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}

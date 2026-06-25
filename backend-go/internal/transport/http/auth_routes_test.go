@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	authhandler "backend/internal/transport/http/handler/auth"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestAuthPasswordAndLoginHistoryRoutes(t *testing.T) {
@@ -33,7 +34,7 @@ func TestAuthPasswordAndLoginHistoryRoutes(t *testing.T) {
 	if historyRecorder.Code != http.StatusOK {
 		t.Fatalf("expected login history status 200, got %d: %s", historyRecorder.Code, historyRecorder.Body.String())
 	}
-	var history paginatedResp[authhandler.LoginHistoryResp]
+	var history transportresponse.PaginatedResp[authhandler.LoginHistoryResp]
 	if err := json.NewDecoder(historyRecorder.Body).Decode(&history); err != nil {
 		t.Fatal(err)
 	}

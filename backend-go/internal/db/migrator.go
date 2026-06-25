@@ -1,7 +1,7 @@
 package db
 
 import (
-	"crypto/sha256"
+	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"io/fs"
@@ -186,6 +186,6 @@ func (m Migrator) apply(filename string, fileChecksum string, sql string) error 
 }
 
 func checksum(content []byte) string {
-	sum := sha256.Sum256(content)
+	sum := md5.Sum(content)
 	return hex.EncodeToString(sum[:])
 }

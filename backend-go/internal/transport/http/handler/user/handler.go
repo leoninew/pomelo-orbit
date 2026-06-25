@@ -121,7 +121,7 @@ func (h Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.store.ListUsers(r.Context(), page, perPage, r.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list users failed", "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list users"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list users"})
 		return
 	}
 	userIds := make([]string, 0, len(users.Items))
@@ -131,13 +131,13 @@ func (h Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 	rolesByUserId, err := h.store.UserRolesByUserIds(r.Context(), userIds)
 	if err != nil {
 		h.logger.Error("load users roles failed", "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user roles"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user roles"})
 		return
 	}
 	resp := mapPage(users, func(user model.User) UserListResp {
 		return userListResponse(user, rolesByUserId[user.Id])
 	})
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(resp))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(resp))
 }
 
 func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
@@ -146,7 +146,7 @@ func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	var req userCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	user, err := h.service.Create(r.Context(), usersvc.CreateInput{Username: req.Username, Password: req.Password, Email: req.Email})
@@ -158,7 +158,7 @@ func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, resp)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, resp)
 }
 
 func (h Handler) getUser(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +173,7 @@ func (h Handler) getUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
@@ -187,15 +187,15 @@ func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	var req userUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	if req.Password != nil && *req.Password != "" && !h.canResetPassword(r, current, user.Id) {
-		transportresponse.JSON(w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
+		transportresponse.JSON(h.logger, w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
 		return
 	}
 	if req.Status != nil && current.User.Id == user.Id && strings.TrimSpace(*req.Status) == "disabled" {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot disable current user"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Cannot disable current user"})
 		return
 	}
 	if _, err := h.service.Update(r.Context(), usersvc.UpdateInput{User: user, Username: req.Username, Password: req.Password, Status: req.Status}); err != nil {
@@ -205,14 +205,14 @@ func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.store.UserById(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load updated user failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user"})
 		return
 	}
 	resp, ok := h.userDetailResp(w, r, updated)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) updateUserRoles(w http.ResponseWriter, r *http.Request) {
@@ -221,7 +221,7 @@ func (h Handler) updateUserRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !authz.HasPermission(current.Permissions, "role:write") {
-		transportresponse.JSON(w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
+		transportresponse.JSON(h.logger, w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
 		return
 	}
 	user, ok := h.loadUserFromPath(w, r)
@@ -230,47 +230,47 @@ func (h Handler) updateUserRoles(w http.ResponseWriter, r *http.Request) {
 	}
 	var req userRoleUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	seen := map[string]struct{}{}
 	for _, roleId := range req.RoleIds {
 		roleId = strings.TrimSpace(roleId)
 		if roleId == "" {
-			transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid role id"})
+			transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid role id"})
 			return
 		}
 		if _, exists := seen[roleId]; exists {
-			transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "role_ids must be unique"})
+			transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "role_ids must be unique"})
 			return
 		}
 		seen[roleId] = struct{}{}
 		if _, err := h.roleStore.RoleById(r.Context(), roleId); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				transportresponse.JSON(w, http.StatusNotFound, map[string]string{"detail": "Role " + roleId + " not found"})
+				transportresponse.JSON(h.logger, w, http.StatusNotFound, map[string]string{"detail": "Role " + roleId + " not found"})
 				return
 			}
 			h.logger.Error("load role failed", "role_id", roleId, "error", err)
-			transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role"})
+			transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role"})
 			return
 		}
 	}
 	if err := h.store.SetUserRoles(r.Context(), user.Id, req.RoleIds); err != nil {
 		h.logger.Error("update user roles failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to update user roles"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to update user roles"})
 		return
 	}
 	updated, err := h.store.UserById(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load updated user failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user"})
 		return
 	}
 	resp, ok := h.userDetailResp(w, r, updated)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
 
 func (h Handler) disableUser(w http.ResponseWriter, r *http.Request) {
@@ -283,13 +283,13 @@ func (h Handler) disableUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if current.User.Id == user.Id {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot disable current user"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Cannot disable current user"})
 		return
 	}
 	if user.Status != "disabled" {
 		if err := h.service.SetStatus(r.Context(), user.Id, "disabled"); err != nil {
 			h.logger.Error("disable user failed", "user_id", user.Id, "error", err)
-			transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to disable user"})
+			transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to disable user"})
 			return
 		}
 	}
@@ -307,7 +307,7 @@ func (h Handler) enableUser(w http.ResponseWriter, r *http.Request) {
 	if user.Status != "enabled" {
 		if err := h.service.SetStatus(r.Context(), user.Id, "enabled"); err != nil {
 			h.logger.Error("enable user failed", "user_id", user.Id, "error", err)
-			transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to enable user"})
+			transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to enable user"})
 			return
 		}
 	}
@@ -324,12 +324,12 @@ func (h Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if current.User.Id == user.Id {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Cannot delete current user"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Cannot delete current user"})
 		return
 	}
 	if err := h.service.Delete(r.Context(), user.Id); err != nil {
 		h.logger.Error("delete user failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to delete user"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to delete user"})
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -337,15 +337,15 @@ func (h Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
 		return
 	}
 	if apperror.IsKind(err, apperror.KindConflict) {
-		transportresponse.JSON(w, http.StatusConflict, map[string]string{"detail": err.Error()})
+		transportresponse.JSON(h.logger, w, http.StatusConflict, map[string]string{"detail": err.Error()})
 		return
 	}
 	h.logger.Error("user service failed", "error", err)
-	transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create user"})
+	transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to create user"})
 }
 
 func (h Handler) loadUserFromPath(w http.ResponseWriter, r *http.Request) (model.User, bool) {
@@ -353,11 +353,11 @@ func (h Handler) loadUserFromPath(w http.ResponseWriter, r *http.Request) (model
 	user, err := h.store.UserById(r.Context(), userId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			transportresponse.JSON(w, http.StatusNotFound, map[string]string{"detail": "User " + userId + " not found"})
+			transportresponse.JSON(h.logger, w, http.StatusNotFound, map[string]string{"detail": "User " + userId + " not found"})
 			return model.User{}, false
 		}
 		h.logger.Error("load user failed", "user_id", userId, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user"})
 		return model.User{}, false
 	}
 	return user, true
@@ -367,13 +367,13 @@ func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user mod
 	roles, err := h.store.UserRoleDetails(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user roles failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user roles"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user roles"})
 		return UserResp{}, false
 	}
 	permissions, err := h.store.UserPermissions(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user permissions"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user permissions"})
 		return UserResp{}, false
 	}
 	roleIds := make([]string, 0, len(roles))
@@ -385,7 +385,7 @@ func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user mod
 	permissionsByRoleId, err := h.roleStore.RolePermissionCodesByRoleIds(r.Context(), roleIds)
 	if err != nil {
 		h.logger.Error("load role permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role permissions"})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role permissions"})
 		return UserResp{}, false
 	}
 	return UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes, Permissions: permissions, Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: roleResponses(roles, permissionsByRoleId)}, true

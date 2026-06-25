@@ -10,6 +10,7 @@ import (
 	cdsvc "backend/internal/service/cd"
 	"backend/internal/status"
 	cdhandler "backend/internal/transport/http/handler/cd"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestApplicationRoutesCRUD(t *testing.T) {
@@ -42,7 +43,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list paginatedResp[cdhandler.ApplicationResp]
+	var list transportresponse.PaginatedResp[cdhandler.ApplicationResp]
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package transporthttp
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"backend/internal/repository/model"
 	cdsvc "backend/internal/service/cd"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestTraefikRouteEndpointsRequireAuth(t *testing.T) {
@@ -111,7 +113,7 @@ func TestTraefikRouteListReturnsRouters(t *testing.T) {
 		if r.URL.Path != "/api/http/routers" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
-		writeJSON(w, http.StatusOK, []map[string]any{
+		transportresponse.JSON(slog.Default(), w, http.StatusOK, []map[string]any{
 			{
 				"name":        "api@docker",
 				"provider":    "docker",

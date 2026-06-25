@@ -87,7 +87,7 @@ func (h Handler) listRepositoryRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineRunResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineRunResponse)))
 }
 
 func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +97,7 @@ func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
 	}
 	var req PipelineRunTriggerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
 	detail, err := h.service.TriggerRepository(r.Context(), current.Id, cisvc.PipelineRunTriggerInput{RepositoryId: chi.URLParam(r, "repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
@@ -105,7 +105,7 @@ func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, pipelineRunResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineRunResponse(detail))
 }
 
 func (h Handler) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +120,7 @@ func (h Handler) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineRunResponse)))
+	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineRunResponse)))
 }
 
 func (h Handler) getPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +133,7 @@ func (h Handler) getPipelineRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, pipelineRunResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineRunResponse(detail))
 }
 
 func (h Handler) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +150,7 @@ func (h Handler) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request
 	for _, item := range items {
 		responses = append(responses, artifactResponse(item))
 	}
-	transportresponse.JSON(w, http.StatusOK, responses)
+	transportresponse.JSON(h.logger, w, http.StatusOK, responses)
 }
 
 func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +163,7 @@ func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, map[string]any{"logs": result.Logs, "offset": result.Offset, "is_complete": result.IsComplete})
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": result.Logs, "offset": result.Offset, "is_complete": result.IsComplete})
 }
 
 func (h Handler) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +176,7 @@ func (h Handler) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, pipelineRunResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineRunResponse(detail))
 }
 
 func (h Handler) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -189,7 +189,7 @@ func (h Handler) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusCreated, pipelineRunResponse(detail))
+	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineRunResponse(detail))
 }
 
 func pipelineRunResponse(detail cisvc.PipelineRunDetail) PipelineRunResp {

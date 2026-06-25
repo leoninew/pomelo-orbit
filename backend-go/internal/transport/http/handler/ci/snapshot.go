@@ -33,7 +33,7 @@ func (h Handler) getPipelineSnapshot(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(w, http.StatusOK, pipelineSnapshotResponse(snapshot))
+	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineSnapshotResponse(snapshot))
 }
 
 func pipelineSnapshotResponse(detail cisvc.PipelineSnapshotDetail) PipelineSnapshotResp {

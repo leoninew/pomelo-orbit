@@ -157,8 +157,8 @@ type WebhookReceiveResult struct {
 	RunId  string
 }
 
-func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string) Service {
-	return NewWithRunner(store, tasks, dataRoot, secretKey, slog.Default(), DockerRunner{})
+func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger) Service {
+	return NewWithRunner(store, tasks, dataRoot, secretKey, logger, DockerRunner{})
 }
 
 func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner) Service {

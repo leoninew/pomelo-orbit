@@ -47,5 +47,7 @@ func New(cfg config.LoggingConfig) (*slog.Logger, func() error, error) {
 	}
 	writer := io.MultiWriter(os.Stdout, rollingWriter)
 	handler := slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slogLevel})
-	return slog.New(handler), rollingWriter.Close, nil
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+	return logger, rollingWriter.Close, nil
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"backend/internal/repository/model"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func (s Server) requirePermission(w http.ResponseWriter, r *http.Request, permission string) (currentUserResp, bool) {
@@ -14,7 +15,7 @@ func (s Server) requirePermission(w http.ResponseWriter, r *http.Request, permis
 	permissions, err := s.userRepository.UserPermissions(r.Context(), user.Id)
 	if err != nil {
 		s.logger.Error("load current user permissions failed", "user_id", user.Id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user permissions"})
+		transportresponse.JSON(s.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user permissions"})
 		return currentUserResp{}, false
 	}
 	for _, item := range permissions {
@@ -22,7 +23,7 @@ func (s Server) requirePermission(w http.ResponseWriter, r *http.Request, permis
 			return currentUserResp{User: user, Permissions: permissions}, true
 		}
 	}
-	writeJSON(w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
+	transportresponse.JSON(s.logger, w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
 	return currentUserResp{}, false
 }
 

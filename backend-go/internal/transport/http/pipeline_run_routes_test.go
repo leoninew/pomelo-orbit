@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	cihandler "backend/internal/transport/http/handler/ci"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestPipelineRunDetailRoute(t *testing.T) {
@@ -46,7 +47,7 @@ func TestPipelineRunListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var runs paginatedResp[cihandler.PipelineRunResp]
+	var runs transportresponse.PaginatedResp[cihandler.PipelineRunResp]
 	if err := json.NewDecoder(recorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}

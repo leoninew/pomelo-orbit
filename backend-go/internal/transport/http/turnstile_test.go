@@ -2,11 +2,13 @@ package transporthttp
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"backend/internal/config"
+	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestTurnstileVerifierSuccess(t *testing.T) {
@@ -24,7 +26,7 @@ func TestTurnstileVerifierSuccess(t *testing.T) {
 		if req.Secret != "secret" || req.Response != "token" || req.RemoteIP != "127.0.0.1" {
 			t.Fatalf("unexpected request: %+v", req)
 		}
-		writeJSON(w, http.StatusOK, turnstileVerifyResp{Success: true})
+		transportresponse.JSON(slog.Default(), w, http.StatusOK, turnstileVerifyResp{Success: true})
 	}))
 	defer server.Close()
 
@@ -36,7 +38,7 @@ func TestTurnstileVerifierSuccess(t *testing.T) {
 
 func TestTurnstileVerifierRejectsFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, turnstileVerifyResp{Success: false, ErrorCodes: []string{"invalid-input-response"}})
+		transportresponse.JSON(slog.Default(), w, http.StatusOK, turnstileVerifyResp{Success: false, ErrorCodes: []string{"invalid-input-response"}})
 	}))
 	defer server.Close()
 

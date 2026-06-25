@@ -1,6 +1,6 @@
 services:
   pomelo-orbit:
-    image: pomelo-orbit:20260624
+    image: pomelo-orbit:<tag>
     container_name: pomelo-orbit
     command: ["serve"]
     restart: unless-stopped

@@ -370,7 +370,7 @@ INSERT OR IGNORE INTO pipeline_template (
     'Go 构建流水线',
     '- test & lint
 - build',
-    '[{"name":"working_dir","description":"","default":".","value":"hello","secret":false,"source":"template_custom","editable":true}]',
+    '[{"name":"working_dir","description":"工作目录","default":".","value":null,"secret":false,"source":"template_custom","editable":true}]',
     7,
     '01KRRKK0K3T519ZQZES3M4QA9Z',
     '2024-03-16T00:00:00Z',

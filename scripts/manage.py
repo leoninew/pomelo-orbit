@@ -693,7 +693,7 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     exclude_args = " ".join(f"--exclude={shlex.quote(pattern)}" for pattern in excludes)
 
     run_ssh_command(
-        f"tar -czf {remote_archive} {exclude_args} -C {remote_dir} .",
+        f"tar --ignore-failed-read -czf {remote_archive} {exclude_args} -C {remote_dir} .",
         "压缩远程目录",
     )
     logger.info(f"下载备份文件: {local_archive}")

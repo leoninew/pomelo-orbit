@@ -27,11 +27,16 @@ import getpass
 import sys
 from pathlib import Path
 
+# ruff: noqa: E402
+
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent.parent / "backend"
 sys.path.insert(0, str(project_root / "src"))
 
-from pomelo_orbit.infrastructure import hash_password, verify_password
+from pomelo_orbit.infrastructure import (  # type: ignore[import-untyped]
+    hash_password,
+    verify_password,
+)
 
 
 def hash_command(password: str | None = None) -> None:
@@ -105,12 +110,18 @@ def main():
 
     # hash 子命令
     hash_parser = subparsers.add_parser("hash", help="生成密码哈希")
-    hash_parser.add_argument("password", nargs="?", help="密码（可选，不提供则交互式输入）")
+    hash_parser.add_argument(
+        "password", nargs="?", help="密码（可选，不提供则交互式输入）"
+    )
 
     # verify 子命令
     verify_parser = subparsers.add_parser("verify", help="验证密码哈希")
-    verify_parser.add_argument("password", nargs="?", help="密码（可选，不提供则交互式输入）")
-    verify_parser.add_argument("hash", nargs="?", help="哈希值（可选，不提供则交互式输入）")
+    verify_parser.add_argument(
+        "password", nargs="?", help="密码（可选，不提供则交互式输入）"
+    )
+    verify_parser.add_argument(
+        "hash", nargs="?", help="哈希值（可选，不提供则交互式输入）"
+    )
 
     args = parser.parse_args()
 

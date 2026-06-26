@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any, cast
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
@@ -24,7 +25,13 @@ def command_path(command: str) -> str:
 class DevProcess:
     """Development server process."""
 
-    def __init__(self, name: str, cwd: Path, command: list[str], env: dict[str, str] | None = None):
+    def __init__(
+        self,
+        name: str,
+        cwd: Path,
+        command: list[str],
+        env: dict[str, str] | None = None,
+    ):
         self.name = name
         self.cwd = cwd
         self.command = command
@@ -34,7 +41,7 @@ class DevProcess:
     def start(self) -> None:
         """Start process in its own process group."""
         print(f"启动{self.name}...", flush=True)
-        kwargs: dict[str, object] = {
+        kwargs: dict[str, Any] = {
             "cwd": self.cwd,
             "env": self.env,
         }
@@ -55,7 +62,8 @@ class DevProcess:
         if os.name == "nt":
             self.kill_process_tree(force=False)
         else:
-            os.killpg(self.process.pid, signal.SIGTERM)
+            killpg = cast(Any, os).killpg
+            killpg(self.process.pid, signal.SIGTERM)
 
     def kill(self) -> None:
         """Force kill process when graceful stop times out."""
@@ -65,7 +73,9 @@ class DevProcess:
         if os.name == "nt":
             self.kill_process_tree(force=True)
         else:
-            os.killpg(self.process.pid, signal.SIGKILL)
+            killpg = cast(Any, os).killpg
+            sigkill = cast(Any, signal).SIGKILL
+            killpg(self.process.pid, sigkill)
 
     def kill_process_tree(self, force: bool) -> None:
         """Kill the Windows process tree started by this process."""
@@ -73,7 +83,9 @@ class DevProcess:
         command = ["taskkill", "/PID", str(self.process.pid), "/T"]
         if force:
             command.append("/F")
-        subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        subprocess.run(
+            command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False
+        )
 
 
 def stop_all(processes: list[DevProcess]) -> None:

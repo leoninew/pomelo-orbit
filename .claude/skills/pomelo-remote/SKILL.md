@@ -187,7 +187,30 @@ python scripts/manage.py backup
 python scripts/manage.py backup --remote-dir /opt/pomelo-orbit/data
 ```
 
-## 5. 直接 SSH 连接
+## 5. 文件传输
+
+```bash
+# 上传本地文件到远程服务器
+python scripts/manage.py scp to-remote ./local-file.txt /opt/pomelo-orbit/local-file.txt
+
+# 下载远程文件到本地
+python scripts/manage.py scp from-remote /opt/pomelo-orbit/.env ./remote.env
+
+# 递归上传本地目录到远程服务器
+python scripts/manage.py scp to-remote --recursive ./dist /opt/pomelo-orbit/dist
+
+# 递归下载远程目录到本地
+python scripts/manage.py scp from-remote -r /opt/pomelo-orbit/logs ./logs
+```
+
+说明：
+- SSH 连接信息来自 `scripts/.env` 中的 `SSH_HOST` 和 `SSH_USER`。
+- 使用 `--recursive` / `-r` 时，脚本会先断言源路径是目录。
+- 递归复制采用 `scp -r` 原生行为，目标已存在时覆盖同名文件或合并目录，不删除目标端多余文件。
+- 路径中包含空格或特殊字符时，需要按当前 shell 规则加引号。
+- Windows/Git Bash 下建议使用相对路径或 `/c/Users/...` 风格路径。
+
+## 6. 直接 SSH 连接
 
 ```bash
 # SSH 连接到远程服务器
@@ -221,6 +244,7 @@ python scripts/manage.py exec -w /opt/pomelo-orbit 'ls -la'
 3. **写入操作**：数据库写入操作必须添加 `-w` 参数
 4. **日志查看**：使用 `docker-compose logs` 而非 `exec` 进入容器
 5. **备份数据**：定期备份远程数据目录到本地 `scripts/backup/`
+6. **文件传输**：使用 `scp to-remote` / `scp from-remote`，目录复制需显式添加 `--recursive` / `-r`
 
 ---
 

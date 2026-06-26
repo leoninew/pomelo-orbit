@@ -27,6 +27,8 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/manage.py tunnel status              - 查看隧道状态
   python scripts/manage.py exec <command>             - 执行远程命令
   python scripts/manage.py docker-compose <args>      - 执行 docker compose 命令
+  python scripts/manage.py scp to-remote [-r] <local> <remote>    - 复制本地文件或目录到远程
+  python scripts/manage.py scp from-remote [-r] <remote> <local>  - 复制远程文件或目录到本地
   python scripts/manage.py backup                     - 备份远程数据目录
 
 示例:
@@ -40,6 +42,9 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/manage.py exec ls -al
   python scripts/manage.py docker-compose up -d
   python scripts/manage.py docker-compose logs -f
+  python scripts/manage.py scp to-remote ./local.txt /tmp/local.txt
+  python scripts/manage.py scp from-remote /tmp/remote.txt ./remote.txt
+  python scripts/manage.py scp to-remote -r ./dist /tmp/dist
 """
 
 import argparse
@@ -138,12 +143,26 @@ def run_ssh_command(command: str, description: str = "") -> str:
         sys.exit(1)
 
 
-def copy_to_remote(local_path: str, remote_path: str):
-    """复制文件到远程服务器"""
-    subprocess.run(
-        ["scp", local_path, f"{config.ssh_target}:{remote_path}"],
-        check=True,
-    )
+def copy_to_remote(local_path: str, remote_path: str, recursive: bool = False) -> None:
+    """复制本地文件或目录到远程服务器"""
+    cmd = ["scp"]
+    if recursive:
+        assert Path(local_path).is_dir(), f"本地源路径不是目录: {local_path}"
+        cmd.append("-r")
+    cmd.extend([local_path, f"{config.ssh_target}:{remote_path}"])
+    subprocess.run(cmd, check=True)
+
+
+def copy_from_remote(
+    remote_path: str, local_path: str, recursive: bool = False
+) -> None:
+    """复制远程文件或目录到本地"""
+    cmd = ["scp"]
+    if recursive:
+        run_ssh_command(f"test -d {shlex.quote(remote_path)}", "检查远程源目录")
+        cmd.append("-r")
+    cmd.extend([f"{config.ssh_target}:{remote_path}", local_path])
+    subprocess.run(cmd, check=True)
 
 
 class SSHTunnel:
@@ -235,7 +254,8 @@ class SSHTunnel:
                 continue
             try:
                 logger.info(
-                    f"终止进程 project_id={DEFAULT_CI_PROJECT_ID} (localhost:{t['local_port']} -> {t['ssh_host']}:{t['remote_port']})..."
+                    f"终止隧道进程: pid={pid}, local_port={t['local_port']}, "
+                    f"remote={t['ssh_host']}:{t['remote_port']}"
                 )
                 if platform.system() == "Windows":
                     result = subprocess.run(
@@ -716,10 +736,10 @@ def main():
 
     # upgrade 命令
     upgrade_parser = subparsers.add_parser("upgrade", help="更新已有环境")
-    upgrade_parser.add_argument("--image", required=True, help="指定 Docker 镜像（必填）")
     upgrade_parser.add_argument(
-        "--skip-pull", action="store_true", help="跳过拉取镜像"
+        "--image", required=True, help="指定 Docker 镜像（必填）"
     )
+    upgrade_parser.add_argument("--skip-pull", action="store_true", help="跳过拉取镜像")
 
     # tunnel 命令
     tunnel_parser = subparsers.add_parser("tunnel", help="SSH 隧道管理")
@@ -727,7 +747,9 @@ def main():
         "action", choices=["start", "stop", "status"], help="操作"
     )
     tunnel_parser.add_argument(
-        "ports", nargs="*", help="端口映射, 格式: remote_port[:local_port], 如 8080 或 8080:8888"
+        "ports",
+        nargs="*",
+        help="端口映射, 格式: remote_port[:local_port], 如 8080 或 8080:8888",
     )
 
     # exec 命令
@@ -744,6 +766,17 @@ def main():
     dc_parser.add_argument(
         "dc_args", nargs=argparse.REMAINDER, help="docker compose 参数"
     )
+
+    # scp 命令
+    scp_parser = subparsers.add_parser("scp", help="复制本地和远程文件")
+    scp_parser.add_argument(
+        "direction", choices=["to-remote", "from-remote"], help="复制方向"
+    )
+    scp_parser.add_argument(
+        "-r", "--recursive", action="store_true", help="递归复制目录"
+    )
+    scp_parser.add_argument("source", help="源路径")
+    scp_parser.add_argument("destination", help="目标路径")
 
     # ssh 命令
     subparsers.add_parser("ssh", help="SSH 连接到远程服务器")
@@ -778,8 +811,14 @@ def main():
             for p in args.ports:
                 if ":" in p:
                     parts = p.split(":")
-                    if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
-                        logger.error(f"无效的端口格式: {p}, 应为 remote_port[:local_port]")
+                    if (
+                        len(parts) != 2
+                        or not parts[0].isdigit()
+                        or not parts[1].isdigit()
+                    ):
+                        logger.error(
+                            f"无效的端口格式: {p}, 应为 remote_port[:local_port]"
+                        )
                         sys.exit(1)
                     remote, local = int(parts[0]), int(parts[1])
                 else:
@@ -805,6 +844,18 @@ def main():
     elif args.command == "docker-compose":
         executor = RemoteExecutor(config)
         executor.docker_compose(args.dc_args)
+    elif args.command == "scp":
+        if args.direction == "to-remote":
+            logger.info(
+                f"复制到远程: {args.source} -> {config.ssh_target}:{args.destination}"
+            )
+            copy_to_remote(args.source, args.destination, recursive=args.recursive)
+        else:
+            logger.info(
+                f"复制到本地: {config.ssh_target}:{args.source} -> {args.destination}"
+            )
+            copy_from_remote(args.source, args.destination, recursive=args.recursive)
+        logger.info("文件复制完成")
     elif args.command == "ssh":
         os.system(f"ssh {config.ssh_target}")
     elif args.command == "backup":

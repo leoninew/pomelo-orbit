@@ -407,12 +407,12 @@ func (s Service) UpdateApplicationServiceConfig(ctx context.Context, userId stri
 		return ApplicationServiceConfigView{}, apperror.New(apperror.KindNotFound, "Service "+serviceName+" not found")
 	}
 	image := normalizeOptionalText(imageInput)
-	if image == nil {
-		return ApplicationServiceConfigView{}, apperror.New(apperror.KindValidation, "Image cannot be empty")
-	}
 	config, err := s.store.ApplicationServiceConfig(ctx, app.Id, serviceName)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			if image == nil {
+				return s.applicationServiceConfigView(app, serviceName, raw, nil), nil
+			}
 			config = model.ApplicationServiceConfig{Id: repository.NewId(), ApplicationId: app.Id, ServiceName: serviceName}
 		} else {
 			return ApplicationServiceConfigView{}, apperror.Wrap(apperror.KindInternal, "Failed to load application service config", err)

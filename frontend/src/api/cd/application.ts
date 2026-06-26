@@ -42,7 +42,7 @@ export const applicationApi = {
   // 删除应用
   delete(id: string, removeDir: boolean = false): Promise<void> {
     return request.delete(`/api/cd/application/${id}`, {
-      data: { remove_dir: removeDir },
+      params: { remove_dir: removeDir },
     });
   },
 

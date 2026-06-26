@@ -44,6 +44,7 @@ type ApplicationCreateReq struct {
 	Name            string `json:"name"`
 	Code            string `json:"code"`
 	ImagePullPolicy string `json:"image_pull_policy"`
+	RouteManaged    bool   `json:"route_managed"`
 }
 
 type ApplicationUpdateReq struct {
@@ -116,7 +117,7 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
 		return
 	}
-	app, err := h.service.CreateApplication(r.Context(), current.Id, cdsvc.ApplicationCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy})
+	app, err := h.service.CreateApplication(r.Context(), current.Id, cdsvc.ApplicationCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
 	if err != nil {
 		h.writeError(w, err)
 		return

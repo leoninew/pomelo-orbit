@@ -247,7 +247,7 @@ export default {
         deleteConfigFileConfirm: '确定要删除这个配置文件吗？此操作无法撤销。',
         resetServiceImageConfirm: '确定要重置「{name}」的镜像覆盖并回退到 compose 原值吗？',
         deleteRouteConfirm: '确定要删除这个路由配置吗？此操作无法撤销。',
-        deleteWorkDir: '同时删除应用工作目录（data/apps/{code}）',
+        deleteWorkDir: '同时删除应用工作目录（data/cd/{code}）',
         currentService: '当前服务',
       },
       hints: {

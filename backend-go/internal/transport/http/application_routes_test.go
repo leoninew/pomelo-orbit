@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	cdsvc "backend/internal/service/cd"
@@ -16,11 +18,12 @@ import (
 func TestApplicationRoutesCRUD(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
+	server.appCfg.Orbit.Root = t.TempDir()
 	token := testToken(t, server)
 	projectId := "01KRRKK0K3T519ZQZES3M4QA9Z"
 
 	createRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(createRecorder, authedRequest(http.MethodPost, "/api/cd/application?project_id="+projectId, bytes.NewBufferString(`{"name":"Route App","code":"route-app","image_pull_policy":"missing"}`), token))
+	server.Handler().ServeHTTP(createRecorder, authedRequest(http.MethodPost, "/api/cd/application?project_id="+projectId, bytes.NewBufferString(`{"name":"Route App","code":"route-app","image_pull_policy":"missing","route_managed":true}`), token))
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
@@ -28,7 +31,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != projectId || created.Name != "Route App" || created.Code != "route-app" || created.Status != status.ApplicationStatusUndeployed || created.ImagePullPolicy != "missing" {
+	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != projectId || created.Name != "Route App" || created.Code != "route-app" || created.Status != status.ApplicationStatusUndeployed || created.ImagePullPolicy != "missing" || !created.RouteManaged {
 		t.Fatalf("unexpected created application: %+v", created)
 	}
 
@@ -64,10 +67,17 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 		t.Fatalf("unexpected updated application: %+v", updated)
 	}
 
+	appDir := filepath.Join(server.appCfg.DataRoot(), "cd", updated.Code)
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	deleteRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(deleteRecorder, authedRequest(http.MethodDelete, "/api/cd/application/"+created.Id, nil, token))
+	server.Handler().ServeHTTP(deleteRecorder, authedRequest(http.MethodDelete, "/api/cd/application/"+created.Id+"?remove_dir=true", nil, token))
 	if deleteRecorder.Code != http.StatusNoContent {
 		t.Fatalf("expected application delete status 204, got %d: %s", deleteRecorder.Code, deleteRecorder.Body.String())
+	}
+	if _, err := os.Stat(appDir); !os.IsNotExist(err) {
+		t.Fatalf("expected application directory to be removed, stat error: %v", err)
 	}
 
 	missingRecorder := httptest.NewRecorder()
@@ -289,6 +299,32 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	}
 	if serviceConfig.Image == nil || *serviceConfig.Image != "nginx:1.28" {
 		t.Fatalf("unexpected service config: %+v", serviceConfig)
+	}
+
+	resetConfigRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(resetConfigRecorder, authedRequest(http.MethodPut, "/api/cd/application/"+imported.Id+"/service-config/web", bytes.NewBufferString(`{"image":null}`), token))
+	if resetConfigRecorder.Code != http.StatusOK {
+		t.Fatalf("expected service config reset status 200, got %d: %s", resetConfigRecorder.Code, resetConfigRecorder.Body.String())
+	}
+	var resetConfig cdsvc.ApplicationServiceConfigView
+	if err := json.NewDecoder(resetConfigRecorder.Body).Decode(&resetConfig); err != nil {
+		t.Fatal(err)
+	}
+	if resetConfig.Image != nil || resetConfig.BaseImage == nil || *resetConfig.BaseImage != "nginx" {
+		t.Fatalf("unexpected reset service config: %+v", resetConfig)
+	}
+
+	emptyConfigRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(emptyConfigRecorder, authedRequest(http.MethodPut, "/api/cd/application/"+imported.Id+"/service-config/web", bytes.NewBufferString(`{"image":""}`), token))
+	if emptyConfigRecorder.Code != http.StatusOK {
+		t.Fatalf("expected empty service config status 200, got %d: %s", emptyConfigRecorder.Code, emptyConfigRecorder.Body.String())
+	}
+	var emptyConfig cdsvc.ApplicationServiceConfigView
+	if err := json.NewDecoder(emptyConfigRecorder.Body).Decode(&emptyConfig); err != nil {
+		t.Fatal(err)
+	}
+	if emptyConfig.Image != nil || emptyConfig.BaseImage == nil || *emptyConfig.BaseImage != "nginx" {
+		t.Fatalf("unexpected empty service config: %+v", emptyConfig)
 	}
 }
 

@@ -93,6 +93,7 @@ type ApplicationCreateInput struct {
 	Name            string
 	Code            string
 	ImagePullPolicy string
+	RouteManaged    bool
 }
 
 type ApplicationUpdateInput struct {
@@ -168,7 +169,7 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input App
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, Status: status.ApplicationStatusUndeployed}
+	app := model.Application{Id: repository.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, RouteManaged: input.RouteManaged, Status: status.ApplicationStatusUndeployed}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}

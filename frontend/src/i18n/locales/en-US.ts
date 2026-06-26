@@ -252,7 +252,7 @@ export default {
         resetServiceImageConfirm:
           'Reset image override for "{name}" and fall back to the original compose value?',
         deleteRouteConfirm: 'Delete this route config? This action cannot be undone.',
-        deleteWorkDir: 'Also delete application working directory (data/apps/{code})',
+        deleteWorkDir: 'Also delete application working directory (data/cd/{code})',
         currentService: 'Current service',
       },
       hints: {

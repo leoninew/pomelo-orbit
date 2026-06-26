@@ -33,7 +33,7 @@
         <button
           class="app-button-primary px-5"
           :disabled="status === 'loading'"
-          @click="openCreateDialog"
+          @click="router.push('/cd/applications/create')"
         >
           <Plus class="size-4" />
           {{ t('application.createApplication') }}
@@ -215,22 +215,6 @@
       </div>
     </template>
 
-    <AppDialog v-model:open="isCreateDialogOpen" :title="t('application.createApplication')">
-      <ApplicationFormFields
-        :form="form"
-        :errors="formErrors"
-        @update:form="Object.assign(form, $event)"
-      />
-      <template #footer>
-        <button class="app-button" @click="isCreateDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
-          {{ t('application.create') }}
-        </button>
-      </template>
-    </AppDialog>
-
     <AppDialog v-model:open="isImportDialogOpen" :title="t('application.importApplication')">
       <ApplicationFormFields
         :form="importForm"
@@ -259,6 +243,7 @@
   import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/cd/application';
   import AppBadge from '@/components/AppBadge.vue';
+  import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
@@ -269,14 +254,12 @@
   import { useProjectStore } from '@/stores/project';
   import type {
     Application,
-    ApplicationFormState,
     ApplicationImportReq,
     ApplicationImportState,
   } from '@/types/cd/application';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
-  import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
 
   const router = useRouter();
   const { t } = useI18n();
@@ -288,19 +271,11 @@
   const applications = ref<Application[]>([]);
   const searchText = ref('');
   const viewMode = ref<'card' | 'table'>('card');
-  const isCreateDialogOpen = ref(false);
   const isImportDialogOpen = ref(false);
   const fileInput = ref<HTMLInputElement>();
   const operatingAppId = ref<string | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-  const form = reactive<ApplicationFormState>({
-    name: '',
-    code: '',
-    image_pull_policy: 'missing',
-    route_managed: false,
-  });
-  const formErrors = reactive({ name: '', code: '' });
   const importForm = reactive<ApplicationImportState>({
     version: undefined,
     name: '',
@@ -372,56 +347,12 @@
     fetchApplications();
   }
 
-  function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
+  function validateForm(target: ApplicationImportState, errors: { name: string; code: string }) {
     errors.name = target.name.trim() ? '' : t('application.validation.nameRequired');
     errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
       ? ''
       : t('application.validation.codeInvalid');
     return !errors.name && !errors.code;
-  }
-
-  function resetForm(target: ApplicationFormState) {
-    Object.assign(target, {
-      name: '',
-      code: '',
-      image_pull_policy: 'missing',
-      route_managed: false,
-    });
-  }
-
-  function openCreateDialog() {
-    resetForm(form);
-    Object.assign(formErrors, { name: '', code: '' });
-    isCreateDialogOpen.value = true;
-  }
-
-  async function handleCreateOk() {
-    if (!validateForm(form, formErrors)) {
-      return;
-    }
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error(t('application.toast.selectProjectRequired'));
-      return;
-    }
-    try {
-      await executeOp(async () => {
-        await applicationApi.create(
-          {
-            name: form.name,
-            code: form.code,
-            image_pull_policy: form.image_pull_policy,
-            route_managed: form.route_managed,
-          },
-          { project_id: projectId }
-        );
-        toast.success(t('application.toast.createSuccess'));
-        isCreateDialogOpen.value = false;
-        await fetchApplications();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.createFailed'));
-    }
   }
 
   function triggerImport() {

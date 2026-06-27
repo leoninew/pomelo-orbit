@@ -1,0 +1,65 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  install:
+    desc: Install frontend and backend-go dependencies
+    cmds:
+      - bash -lc 'cd frontend && yarn install'
+      - bash -lc 'cd backend-go && go mod download'
+      - bash -lc 'cd backend-go && go mod tidy'
+
+  dev:
+    desc: Start the development orchestrator
+    cmds:
+      - bash -lc 'uv run python scripts/dev.py'
+
+  dev-backend:
+    desc: Start the Go backend with air
+    cmds:
+      - bash -lc 'cd backend-go && air -c .air.api.toml'
+
+  dev-frontend:
+    desc: Start the frontend dev server
+    cmds:
+      - bash -lc 'cd frontend && yarn dev'
+
+  check:
+    desc: Run frontend and backend checks
+    cmds:
+      - bash -lc 'cd frontend && yarn lint:fix'
+      - bash -lc 'cd frontend && yarn format'
+      - bash -lc 'cd frontend && yarn typecheck'
+      - bash -lc 'cd backend-go && go fmt ./...'
+      - bash -lc 'cd backend-go && go vet ./...'
+      - bash -lc 'cd backend-go && go test ./...'
+
+  test:
+    desc: Run frontend and backend tests
+    cmds:
+      - bash -lc 'cd frontend && yarn test'
+      - bash -lc 'cd backend-go && go test ./...'
+
+  build:
+    desc: Build the Docker image, optionally with TAG=<tag> and CN=1
+    vars:
+      TAG: '{{if .TAG}}{{.TAG}}{{else}}latest{{end}}'
+      CN: '{{.CN}}'
+    cmds:
+      - |
+        bash -lc 'TAG="{{.TAG}}"; CN="{{.CN}}"; DOCKERFILE="Dockerfile"; if [[ "$CN" == "1" ]]; then DOCKERFILE="Dockerfile.cn"; fi; docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .; echo "image built: pomelo-orbit:$TAG"'
+
+  clean:
+    desc: Remove local Python cache and coverage artifacts
+    cmds:
+      - bash -lc 'find . -type d -name "__pycache__" -not -path "./.git/*" -exec rm -rf {} +'
+      - bash -lc 'find . -type d -name ".mypy_cache" -not -path "./.git/*" -exec rm -rf {} +'
+      - bash -lc 'find . -type d -name ".ruff_cache" -not -path "./.git/*" -exec rm -rf {} +'
+      - bash -lc 'find . -type d -name ".pytest_cache" -not -path "./.git/*" -exec rm -rf {} +'
+      - bash -lc 'find . -type d -name "htmlcov" -not -path "./.git/*" -exec rm -rf {} +'
+      - bash -lc 'find . -type f -name "*.pyc" -not -path "./.git/*" -exec rm -f {} +'
+      - bash -lc 'echo "clean complete"'

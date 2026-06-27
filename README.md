@@ -91,19 +91,19 @@ Web UI 配置路由
 ## 快速开始
 
 ```bash
-just install       # 安装 frontend 和 backend-go 依赖
+task install       # 安装 frontend 和 backend-go 依赖
 go install github.com/air-verse/air@latest  # 安装开发热重载工具
-just dev-backend   # 通过 air 启动 Go 后端（端口 9001）
-just dev-frontend  # 启动前端（端口 9002）
+task dev-backend   # 通过 air 启动 Go 后端（端口 9001）
+task dev-frontend  # 启动前端（端口 9002）
 ```
 
 访问 [localhost:9002](http://localhost:9002)，默认账号：admin / admin
 
 ```bash
-just --list  # 查看所有命令
-just check   # 代码检查、格式化和类型检查
-just test    # 单元测试
-just build   # 镜像构建
+task --list  # 查看所有命令
+task check   # 代码检查、格式化和类型检查
+task test    # 单元测试
+task build   # 镜像构建
 ```
 
 ## Docker 镜像角色

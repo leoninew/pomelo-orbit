@@ -10,7 +10,13 @@ Thumbs.db
 
 # Environment
 .env
-.env.local
+.env.*
+!.env.example
+backend-go/.env
+backend-go/.env.*
+!backend-go/.env.example
+backend-go/configs/config.*.yaml
+!backend-go/configs/config.example.yaml
 
 # ai
 .understand-anything

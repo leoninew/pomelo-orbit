@@ -1,7 +1,7 @@
 name: pomelo-orbit-ui-screenshots
 description: Generate screenshots for all routes to guide Reka UI migration
 variables:
-  base_url: "http://localhost:9002"
+  base_url: "http://localhost:9021"
   username: "admin"
   password: "admin"
 

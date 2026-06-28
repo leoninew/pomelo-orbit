@@ -34,16 +34,20 @@ func TestMySQLE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	localConfig, err := os.ReadFile(configPath)
+	envConfig, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	configDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(configDir, filepath.Dir(config.DefaultConfigFile)), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(configDir, config.DefaultConfigFile), defaultConfig, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(configDir, config.LocalConfigFile), localConfig, 0o644); err != nil {
+	t.Setenv("POMELO_ORBIT_APP__ENV", "e2e")
+	if err := os.WriteFile(filepath.Join(configDir, config.EnvConfigFile("e2e")), envConfig, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Chdir(configDir); err != nil {

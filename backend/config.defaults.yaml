@@ -1,5 +1,5 @@
 # Pomelo Orbit 默认配置
-# 配置优先级：环境变量 > config.yaml > config.defaults.yaml
+# 配置优先级：config.defaults.yaml < config.yaml < .env < OS env
 
 logging:
   level: "INFO"
@@ -13,7 +13,7 @@ app:
 
 cors:
   origins:
-    - "http://localhost:9002"
+    - "http://localhost:9021"
   allow_credentials: true
   allow_methods: ["*"]
   allow_headers: ["*"]

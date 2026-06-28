@@ -52,7 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy backend-go binary and configuration
 COPY --from=backend-builder /out/backend-go /usr/local/bin/backend-go
-COPY backend-go/config.defaults.yaml ./config.defaults.yaml
+COPY backend-go/configs ./configs
 
 # Copy frontend build from stage 1
 COPY --from=frontend-builder /app/frontend/dist ./static

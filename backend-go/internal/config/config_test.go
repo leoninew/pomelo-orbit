@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +30,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Server.Host != "127.0.0.1" {
 		t.Fatalf("unexpected server host: %s", cfg.Server.Host)
 	}
-	if cfg.Server.Port != 9001 {
+	if cfg.Server.Port != 9020 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
 	if cfg.Logging.File != "logs/backend-go.log" {
@@ -73,9 +74,10 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	}
 }
 
-func TestLoadConfigMergesCustomConfig(t *testing.T) {
+func TestLoadConfigMergesEnvConfig(t *testing.T) {
 	setupDefaultConfig(t)
-	writeLocalConfig(t, `logging:
+	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
+	writeEnvConfig(t, "develop", `logging:
   level: "DEBUG"
   max_size_mb: 50
   max_backups: 3
@@ -125,21 +127,23 @@ worker:
 	}
 }
 
-func TestLoadConfigRejectsInvalidLocalConfig(t *testing.T) {
+func TestLoadConfigRejectsInvalidEnvConfig(t *testing.T) {
 	setupDefaultConfig(t)
-	writeLocalConfig(t, `database:
+	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
+	writeEnvConfig(t, "develop", `database:
   sqlite:
     path: [invalid]
 `)
 
 	if _, err := Load(); err == nil {
-		t.Fatal("expected error for invalid local config")
+		t.Fatal("expected error for invalid env config")
 	}
 }
 
 func TestLoadConfigEnvOverrides(t *testing.T) {
 	setupDefaultConfig(t)
-	writeLocalConfig(t, `server:
+	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
+	writeEnvConfig(t, "develop", `server:
   host: "127.0.0.1"
   port: 9000
 database:
@@ -238,15 +242,16 @@ POMELO_ORBIT_TURNSTILE__SECRET_KEY=secret-from-dotenv
 	}
 }
 
-func TestLoadConfigEnvFileOverridesLocalConfig(t *testing.T) {
+func TestLoadConfigEnvFileOverridesEnvConfig(t *testing.T) {
 	setupDefaultConfig(t)
 	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY")
-	writeLocalConfig(t, `server:
+	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
+	writeEnvConfig(t, "develop", `server:
   port: 7000
 turnstile:
-  site_key: "site-from-local"
+  site_key: "site-from-env-config"
 `)
-	writeDotEnv(t, `POMELO_ORBIT_SERVER__PORT=8082
+	writeEnvDotEnv(t, "develop", `POMELO_ORBIT_SERVER__PORT=8082
 POMELO_ORBIT_TURNSTILE__SITE_KEY=site-from-dotenv
 `)
 
@@ -298,7 +303,7 @@ func TestLoadConfigRejectsInvalidEnvFile(t *testing.T) {
 
 func TestLoadConfigJWTEnvOverride(t *testing.T) {
 	setupDefaultConfig(t)
-	writeLocalConfig(t, `database:
+	writeEnvConfig(t, "develop", `database:
   sqlite:
     path: "data/test.db"
 jwt:
@@ -329,7 +334,7 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
-		writeLocalConfig(t, tc.content)
+		writeEnvConfig(t, "develop", tc.content)
 		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
@@ -338,7 +343,7 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 
 func TestLoadConfigMySQL(t *testing.T) {
 	setupDefaultConfig(t)
-	writeLocalConfig(t, `database:
+	writeEnvConfig(t, "develop", `database:
   driver: mysql
   mysql:
     dsn: "user:pass@tcp(127.0.0.1:3306)/pomelo_orbit?parseTime=true"
@@ -358,7 +363,7 @@ func TestLoadConfigMySQL(t *testing.T) {
 
 func TestLoadConfigRequiresSQLitePath(t *testing.T) {
 	setupDefaultConfig(t)
-	writeLocalConfig(t, `database:
+	writeEnvConfig(t, "develop", `database:
   sqlite:
     path: ""
 `)
@@ -388,7 +393,7 @@ func TestLoadConfigValidatesLogging(t *testing.T) {
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
-		writeLocalConfig(t, tc.content)
+		writeEnvConfig(t, "develop", tc.content)
 		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
@@ -419,7 +424,7 @@ func TestLoadConfigValidatesTurnstile(t *testing.T) {
 	}
 	for _, tc := range cases {
 		setupDefaultConfig(t)
-		writeLocalConfig(t, tc.content)
+		writeEnvConfig(t, "develop", tc.content)
 		_, err := Load()
 		if tc.wantErr && err == nil {
 			t.Fatalf("expected error for %s", tc.name)
@@ -445,14 +450,22 @@ func setupDefaultConfig(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	if err := os.MkdirAll(filepath.Dir(DefaultConfigFile), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(DefaultConfigFile, []byte(defaultConfigContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func writeLocalConfig(t *testing.T, content string) {
+func writeEnvConfig(t *testing.T, envName string, content string) {
 	t.Helper()
-	if err := os.WriteFile(LocalConfigFile, []byte(content), 0o644); err != nil {
+	t.Setenv("POMELO_ORBIT_APP__ENV", envName)
+	path := EnvConfigFile(envName)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -460,6 +473,13 @@ func writeLocalConfig(t *testing.T, content string) {
 func writeDotEnv(t *testing.T, content string) {
 	t.Helper()
 	if err := os.WriteFile(".env", []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeEnvDotEnv(t *testing.T, envName string, content string) {
+	t.Helper()
+	if err := os.WriteFile(fmt.Sprintf(".env.%s", envName), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -506,7 +526,7 @@ const defaultConfigContent = `app:
   debug: false
 server:
   host: 127.0.0.1
-  port: 9001
+  port: 9020
 logging:
   level: info
   file: logs/backend-go.log

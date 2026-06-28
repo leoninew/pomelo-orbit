@@ -15,10 +15,13 @@ import (
 )
 
 const (
-	DefaultConfigFile = "config.defaults.yaml"
-	LocalConfigFile   = "config.local.yaml"
+	DefaultConfigFile = "configs/config.yaml"
 	fernetKeySize     = 32
 )
+
+func EnvConfigFile(env string) string {
+	return fmt.Sprintf("configs/config.%s.yaml", env)
+}
 
 type Config struct {
 	App         AppConfig       `mapstructure:"app" yaml:"app"`
@@ -37,6 +40,7 @@ type Config struct {
 type AppConfig struct {
 	Name    string `mapstructure:"name" yaml:"name"`
 	Version string `mapstructure:"version" yaml:"version"`
+	Env     string `mapstructure:"env" yaml:"env"`
 	Debug   bool   `mapstructure:"debug" yaml:"debug"`
 }
 
@@ -116,7 +120,8 @@ type LetsEncryptConfig struct {
 }
 
 func Load() (Config, error) {
-	envPath, err := envFilePath()
+	envName := strings.TrimSpace(os.Getenv("POMELO_ORBIT_APP__ENV"))
+	envPath, err := envFilePath(envName)
 	if err != nil {
 		return Config{}, err
 	}
@@ -127,12 +132,14 @@ func Load() (Config, error) {
 	loader := newLoader()
 	loader.SetConfigFile(DefaultConfigFile)
 	if err := loader.ReadInConfig(); err != nil {
-		return Config{}, fmt.Errorf("read default config: %w", err)
+		return Config{}, fmt.Errorf("read base config: %w", err)
 	}
 
-	loader.SetConfigFile(LocalConfigFile)
-	if err := loader.MergeInConfig(); err != nil && !isLocalConfigMissing(err) {
-		return Config{}, fmt.Errorf("read local config: %w", err)
+	if envName != "" {
+		loader.SetConfigFile(EnvConfigFile(envName))
+		if err := loader.MergeInConfig(); err != nil && !isOptionalConfigMissing(err) {
+			return Config{}, fmt.Errorf("read env config: %w", err)
+		}
 	}
 
 	var cfg Config
@@ -155,17 +162,20 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-func isLocalConfigMissing(err error) bool {
+func isOptionalConfigMissing(err error) bool {
 	var notFound viper.ConfigFileNotFoundError
 	return errors.As(err, &notFound) || errors.Is(err, os.ErrNotExist)
 }
 
-func envFilePath() (string, error) {
+func envFilePath(envName string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get working directory: %w", err)
 	}
-	return filepath.Join(cwd, ".env"), nil
+	if envName == "" {
+		return filepath.Join(cwd, ".env"), nil
+	}
+	return filepath.Join(cwd, fmt.Sprintf(".env.%s", envName)), nil
 }
 
 func loadEnvFile(path string) error {
@@ -192,6 +202,7 @@ func bindEnv(loader *viper.Viper) {
 	keys := []string{
 		"app.name",
 		"app.version",
+		"app.env",
 		"app.debug",
 		"server.host",
 		"server.port",

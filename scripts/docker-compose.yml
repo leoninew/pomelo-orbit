@@ -12,7 +12,7 @@ services:
       - /opt/pomelo-orbit/logs:/app/logs
       - /opt/pomelo-orbit/.env:/app/.env
     ports:
-      - "9001:80"
+      - "80:80"
     environment:
       - POMELO_ORBIT_JWT__SECRET_KEY=${POMELO_ORBIT_JWT__SECRET_KEY}
     labels:

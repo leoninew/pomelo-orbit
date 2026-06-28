@@ -1,19 +1,40 @@
 # 配置加载最佳实践
 
+本文记录当前 Go 后端的配置文件布局和加载规则。旧 Python 后端仍使用 Dynaconf，但新改动优先按本规则更新 `backend-go`。
+
 ## 优先级链
 
-配置按以下顺序加载，后面的覆盖前面的：
+未指定环境时：
 
-```
-config.defaults.yaml  →  config.yaml  →  .env  →  环境变量
+```text
+backend-go/configs/config.yaml < backend-go/.env < OS env
 ```
 
-| 层级 | 文件/来源 | 用途 |
-|------|-----------|------|
-| 1 | `backend/config.defaults.yaml` | 所有配置项的默认值，提交到版本库 |
-| 2 | `backend/config.yaml` | 本地覆盖，不提交（.gitignore） |
-| 3 | `backend/.env` | 敏感配置（密钥等），不提交 |
-| 4 | 环境变量 | 生产/CI 注入，优先级最高 |
+指定环境时，环境名只通过 OS env 提供：
+
+```bash
+POMELO_ORBIT_APP__ENV=develop
+```
+
+加载顺序为：
+
+```text
+backend-go/configs/config.yaml < backend-go/configs/config.<env>.yaml < backend-go/.env.<env> < OS env
+```
+
+`backend-go/configs/config.example.yaml` 和 `backend-go/.env.example` 只用于给人看字段、注释和复制模板，不参与运行时加载。
+
+## 配置文件职责
+
+| 文件/来源 | 用途 |
+|------|------|
+| `backend-go/configs/config.yaml` | 共享基础配置，提交到版本库 |
+| `backend-go/configs/config.<env>.yaml` | 指定环境的结构化覆盖，不提交本地私有文件 |
+| `backend-go/.env` | 未指定环境时的本地敏感覆盖，不提交 |
+| `backend-go/.env.<env>` | 指定环境时的敏感覆盖，不提交 |
+| OS env | Docker/systemd/Kubernetes/CI 注入，优先级最高 |
+
+不要依赖 `.env` 里的 `POMELO_ORBIT_APP__ENV` 决定环境；程序必须先读取 OS env，才能知道加载 `.env` 还是 `.env.<env>`。
 
 ## 环境变量命名规则
 
@@ -32,58 +53,22 @@ POMELO_ORBIT_DATABASE__SQLITE__PATH=/data/db/app.db
 
 ## 新增配置项的步骤
 
-1. 在 `config.defaults.yaml` 里加默认值（即使是空字符串）
-2. 在 `backend/.env.example` 里加对应的环境变量示例
-3. 敏感项（密钥、密码）只通过 `.env` 或环境变量提供，**不放进 yaml**
-
-## 已知问题
-
-**dynaconf 3.2.x `dotenv_encoding` 不生效**
-
-dynaconf 内部的 `start_dotenv` 调用底层 `load_dotenv` 时未传 `encoding` 参数，
-导致在 Windows 非 UTF-8 系统上读取 `.env` 时报 `UnicodeDecodeError`。
-
-规避方式：启动时设置 `PYTHONUTF8=1`，Makefile 和 `pytest.ini` 里已配置：
-
-```makefile
-# Makefile
-dev-backend:
-    cd backend && PYTHONUTF8=1 uv run python -m pomelo_orbit.main --port 9001 --reload
-```
-
-```ini
-# pytest.ini
-[pytest]
-env =
-    PYTHONUTF8=1  # 若未配置，在 Windows 下运行测试会因 .env 编码问题失败
-```
-
-待 dynaconf 修复后可移除该环境变量。
+1. 在 `backend-go/internal/config/config.go` 的 `Config` 结构体中添加字段。
+2. 在 `bindEnv()` 的白名单中加入完整 key，允许 OS env 覆盖。
+3. 在 `backend-go/configs/config.yaml` 写入非敏感默认值；敏感项只保留空字符串占位或通过 env 提供。
+4. 如果需要给人看示例，同步更新 `backend-go/configs/config.example.yaml` 和 `backend-go/.env.example`。
+5. 在 `backend-go/internal/config/config_test.go` 补充 YAML 加载、env 文件覆盖、OS env 优先和非法值校验测试。
 
 ## 测试中的注意事项
 
-**不要用 `get_settings()` 单例测试配置加载**，`@lru_cache` 会让第一次调用的结果永久缓存，
-后续测试无法覆盖。应直接构造 `Dynaconf` 实例：
+配置测试直接在临时目录写入 `configs/config.yaml`、`configs/config.<env>.yaml`、`.env` 或 `.env.<env>`，再调用 `config.Load()`。
 
-```python
-from dynaconf import Dynaconf
+需要测试指定环境时，用 `t.Setenv("POMELO_ORBIT_APP__ENV", "develop")` 显式设置环境名。
 
-def make_settings(base_dir: Path) -> Dynaconf:
-    dotenv = base_dir / ".env"
-    s = Dynaconf(
-        settings_files=[str(base_dir / "config.defaults.yaml")],
-        load_dotenv=True,
-        # 明确指定路径（即使文件不存在），阻止 dynaconf 向上搜索找到真实的 .env
-        dotenv_path=str(dotenv) if dotenv.exists() else str(base_dir / ".env"),
-        dotenv_override=False,
-        envvar_prefix="POMELO_ORBIT",
-        merge_enabled=True,
-        encoding="utf-8",
-    )
-    s.as_dict()  # 强制触发加载，避免懒加载在环境变量还原后才读取
-    return s
+## 修改后的验证步骤
+
+```bash
+go -C backend-go test ./internal/config
+go -C backend-go test ./internal/app
+git diff --check
 ```
-
-**`pytest.ini` 注入的环境变量会污染所有测试**，测试配置加载时避免使用
-`pytest.ini` 里已注入的 key（如 `POMELO_ORBIT_JWT__SECRET_KEY`），
-否则 yaml / `.env` 里的值会被覆盖，断言结果不符合预期。

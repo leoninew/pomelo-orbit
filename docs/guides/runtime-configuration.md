@@ -4,18 +4,21 @@
 
 ## 配置分层
 
-后端配置由 Dynaconf 加载，优先级从低到高：
+Go 后端配置优先级从低到高：
 
 ```text
-backend/config.defaults.yaml -> backend/config.yaml -> backend/.env -> 系统环境变量
+未指定环境：backend-go/configs/config.yaml < backend-go/.env < OS env
+指定环境：backend-go/configs/config.yaml < backend-go/configs/config.<env>.yaml < backend-go/.env.<env> < OS env
 ```
 
-后端环境变量统一使用 `POMELO_ORBIT_` 前缀，例如：
+环境名只通过 OS env `POMELO_ORBIT_APP__ENV` 指定。`backend-go/configs/config.example.yaml` 和 `backend-go/.env.example` 只用于复制模板，不参与运行时加载。
+
+后端环境变量统一使用 `POMELO_ORBIT_` 前缀，嵌套 key 使用双下划线 `__`，例如：
 
 ```env
 POMELO_ORBIT_GOOGLE__CLIENT_ID=...
 POMELO_ORBIT_GOOGLE__CLIENT_SECRET=...
-POMELO_ORBIT_GOOGLE__REDIRECT_URI=http://localhost:9002/google/callback
+POMELO_ORBIT_GOOGLE__REDIRECT_URI=http://localhost:9021/google/callback
 ```
 
 前端有两类配置：
@@ -32,19 +35,19 @@ window.__CONFIG__      运行时配置，由 Nginx/entrypoint 在加载应用前
 默认部署模型是同源 API：
 
 ```text
-前端页面: http://localhost:9002
+前端页面: http://localhost:9021
 API 路径: /api/...
 ```
 
-开发环境由 Vite proxy 把 `/api` 转发到后端 `http://127.0.0.1:9001`；生产镜像由 FastAPI 同源提供静态前端和 `/api`。
+开发环境由 Vite proxy 把 `/api` 转发到后端 `http://127.0.0.1:9020`；生产镜像由 FastAPI 同源提供静态前端和 `/api`。
 
 远程开发模式也使用同一个 proxy。如果本机存在 SSH 隧道：
 
 ```text
-ssh -L 9001:localhost:9001 ...
+ssh -L 9020:localhost:9020 ...
 ```
 
-那么 `http://localhost:9002/api/...` 实际会进入远程 `9001`。此时前端本地改动不会改变远程后端行为，需要同时部署或更新远程后端。
+那么 `http://localhost:9021/api/...` 实际会进入远程 `9020`。此时前端本地改动不会改变远程后端行为，需要同时部署或更新远程后端。
 
 `apiBaseUrl` 表示 API 路径前缀，不是 API 根路径本身：
 
@@ -103,7 +106,7 @@ server {
     root /usr/share/nginx/html;
 
     location /api/ {
-        proxy_pass http://backend:9001/api/;
+        proxy_pass http://backend:9020/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -111,7 +114,7 @@ server {
     }
 
     location /hooks/ {
-        proxy_pass http://backend:9001/hooks/;
+        proxy_pass http://backend:9020/hooks/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -137,13 +140,13 @@ window.location.assign(buildApiUrl('/api/auth/google'))
 同源开发环境下会访问：
 
 ```text
-http://localhost:9002/api/auth/google
+http://localhost:9021/api/auth/google
 ```
 
 再由 Vite proxy 转发到后端：
 
 ```text
-http://127.0.0.1:9001/api/auth/google
+http://127.0.0.1:9020/api/auth/google
 ```
 
 后端 `/api/auth/google` 生成 Google 授权 URL，并使用后端配置的 `POMELO_ORBIT_GOOGLE__REDIRECT_URI` 作为 Google 回调地址。
@@ -151,10 +154,10 @@ http://127.0.0.1:9001/api/auth/google
 开发环境应配置：
 
 ```env
-POMELO_ORBIT_GOOGLE__REDIRECT_URI=http://localhost:9002/google/callback
+POMELO_ORBIT_GOOGLE__REDIRECT_URI=http://localhost:9021/google/callback
 ```
 
-该地址必须和 Google Cloud Console 里的 Authorized redirect URI 完全一致。端口使用前端端口 `9002`，不是后端端口，也不是旧的 `9006`。
+该地址必须和 Google Cloud Console 里的 Authorized redirect URI 完全一致。端口使用前端端口 `9021`，不是后端端口，也不是旧的 `9006`。
 
 跨域 API 部署时还需要：
 

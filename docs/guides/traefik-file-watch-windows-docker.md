@@ -173,7 +173,7 @@ time="..." level=info msg="Configuration reloaded" providerName=file
 **测试验证**：
 ```bash
 # 1. 添加路由
-curl -X POST http://localhost:9001/api/route -d '{"domain":"test.local","target_url":"http://localhost:8000"}'
+curl -X POST http://localhost:9020/api/route -d '{"domain":"test.local","target_url":"http://localhost:8000"}'
 
 # 2. 观察 Traefik 日志
 docker logs -f traefik

@@ -28,7 +28,7 @@ func TestBuildPipelineRunVariablesMergesDefaultsAndProtectsBuiltins(t *testing.T
 	}
 }
 
-func TestBuildPipelineRunVariablesMasksSecretSnapshotValue(t *testing.T) {
+func TestBuildPipelineRunVariablesKeepsSecretSnapshotValue(t *testing.T) {
 	repo := model.Repository{Id: "repo-1", Name: "Repo", Code: "repo", RepositoryURL: "https://example.test/repo.git"}
 	template := model.PipelineTemplate{Id: "template-1", Name: "template", Version: 1, VariableDeclarations: `[{"name":"TOKEN","value":"secret-token","secret":true,"source":"template_custom"}]`}
 	snapshot := model.PipelineSnapshot{VariablesSnapshot: `[{"name":"TOKEN","secret":true,"source":"template_custom"}]`}
@@ -38,8 +38,8 @@ func TestBuildPipelineRunVariablesMasksSecretSnapshotValue(t *testing.T) {
 		t.Fatal(err)
 	}
 	variables := declarationsByName(t, data)
-	if variables["TOKEN"].Value != maskedSecretValue {
-		t.Fatalf("secret value was not masked: %+v", variables["TOKEN"])
+	if variables["TOKEN"].Value != "secret-token" {
+		t.Fatalf("secret value was not preserved: %+v", variables["TOKEN"])
 	}
 }
 

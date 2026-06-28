@@ -4,6 +4,7 @@ export interface RepositoryWebhook {
   name: string;
   template_id: string;
   branch_filter: string | null;
+  secret: string;
   enabled: boolean;
   created_at: string;
   updated_at: string;

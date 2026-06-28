@@ -9,8 +9,6 @@ import (
 	"backend/internal/repository/model"
 )
 
-const maskedSecretValue = "***"
-
 func buildPipelineRunVariables(repo model.Repository, template model.PipelineTemplate, snapshot model.PipelineSnapshot, triggerRef string, runtimeOverrides map[string]string) (string, error) {
 	declarations, err := completeSnapshotVariableDeclarations(snapshot, template)
 	if err != nil {
@@ -140,11 +138,7 @@ func validateRuntimeVariables(variables map[string]any, declarations []model.Var
 func marshalRuntimeVariableSnapshot(variables map[string]any, declarations []model.VariableDeclaration) (string, error) {
 	snapshot := make([]model.VariableDeclaration, 0, len(declarations))
 	for _, declaration := range declarations {
-		value := variables[declaration.Name]
-		if declaration.Secret && hasRuntimeValue(value) {
-			value = maskedSecretValue
-		}
-		declaration.Value = value
+		declaration.Value = variables[declaration.Name]
 		snapshot = append(snapshot, declaration)
 	}
 	data, err := json.Marshal(snapshot)

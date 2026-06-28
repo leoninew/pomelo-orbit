@@ -103,19 +103,25 @@
           />
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">
-            签名密钥
-            <span v-if="editingWebhook" class="font-normal text-muted-foreground">
-              （留空则不修改）
-            </span>
-          </label>
-          <input
-            v-model="form.secret"
-            type="password"
-            class="app-input"
-            :class="errors.secret ? 'app-input-error' : ''"
-            placeholder="用于验证 Webhook 请求"
-          />
+          <label class="app-field-label block">签名密钥</label>
+          <div class="relative">
+            <input
+              v-model="form.secret"
+              :type="isSecretVisible ? 'text' : 'password'"
+              class="app-input pr-10"
+              :class="errors.secret ? 'app-input-error' : ''"
+              placeholder="用于验证 Webhook 请求"
+            />
+            <button
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
+              :aria-label="isSecretVisible ? '隐藏签名密钥' : '显示签名密钥'"
+              @click="isSecretVisible = !isSecretVisible"
+            >
+              <EyeOff v-if="isSecretVisible" class="size-4" />
+              <Eye v-else class="size-4" />
+            </button>
+          </div>
           <p v-if="errors.secret" class="app-field-error text-xs">{{ errors.secret }}</p>
         </div>
         <label v-if="editingWebhook" class="flex cursor-pointer items-center gap-2">
@@ -148,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-  import { Copy, Plus } from 'lucide-vue-next';
+  import { Copy, Eye, EyeOff, Plus } from 'lucide-vue-next';
   import { computed, nextTick, reactive, ref } from 'vue';
   import { webhookApi } from '@/api/ci';
   import AppBadge from '@/components/AppBadge.vue';
@@ -174,6 +180,7 @@
 
   const isDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
+  const isSecretVisible = ref(true);
   const editingWebhook = ref<RepositoryWebhook>();
   const deletingWebhook = ref<RepositoryWebhook>();
 
@@ -228,6 +235,7 @@
       enabled: true,
     });
     resetErrors();
+    isSecretVisible.value = false;
     isDialogOpen.value = true;
   }
 
@@ -237,17 +245,18 @@
       name: wh.name,
       template_id: wh.template_id,
       branch_filter: wh.branch_filter || '',
-      secret: '',
+      secret: wh.secret,
       enabled: wh.enabled,
     });
     resetErrors();
+    isSecretVisible.value = false;
     isDialogOpen.value = true;
   }
 
   function validateForm() {
     errors.name = form.name.trim() ? '' : '请输入名称';
     errors.template_id = form.template_id ? '' : '请选择模板';
-    errors.secret = !editingWebhook.value && !form.secret ? '请输入签名密钥' : '';
+    errors.secret = form.secret ? '' : '请输入签名密钥';
     return !errors.name && !errors.template_id && !errors.secret;
   }
 
@@ -263,7 +272,7 @@
             name: form.name,
             template_id: form.template_id,
             branch_filter: form.branch_filter || null,
-            secret: form.secret || undefined,
+            secret: form.secret,
             enabled: form.enabled,
           });
           toast.success('更新成功');

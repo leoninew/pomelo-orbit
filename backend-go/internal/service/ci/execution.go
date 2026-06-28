@@ -121,9 +121,6 @@ func pipelineRunRuntimeOverrides(value string) map[string]string {
 			if isPipelineTemplateBuiltinVariable(declaration.Name) || !hasRuntimeValue(declaration.Value) {
 				continue
 			}
-			if declaration.Secret && declaration.Value == maskedSecretValue {
-				continue
-			}
 			overrides[declaration.Name] = fmt.Sprint(declaration.Value)
 		}
 		return overrides

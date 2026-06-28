@@ -67,6 +67,7 @@ type RepositoryWebhookResp struct {
 	Name         string  `json:"name"`
 	TemplateId   string  `json:"template_id"`
 	BranchFilter *string `json:"branch_filter"`
+	Secret       string  `json:"secret"`
 	Enabled      bool    `json:"enabled"`
 	CreatedAt    string  `json:"created_at"`
 	UpdatedAt    string  `json:"updated_at"`
@@ -314,7 +315,7 @@ func repositoryDetailResponse(detail cisvc.RepositoryDetail) RepositoryResp {
 }
 
 func repositoryWebhookResponse(item model.RepositoryWebhook) RepositoryWebhookResp {
-	return RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Secret: item.EncryptedSecret, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func requestHeaders(r *http.Request) map[string]string {

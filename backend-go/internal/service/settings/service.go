@@ -20,6 +20,7 @@ type ConfigItem struct {
 	Value        any    `json:"value"`
 	Default      any    `json:"default"`
 	IsOverridden bool   `json:"is_overridden"`
+	Secret       bool   `json:"secret"`
 	Description  string `json:"description,omitempty"`
 }
 
@@ -87,10 +88,7 @@ func (s Service) Config(context.Context) (SystemConfig, error) {
 		if overridden {
 			value = parseSettingValue(rawValue, defaultValue)
 		}
-		if secret && valueString(value) != "" {
-			value = "****"
-		}
-		items = append(items, ConfigItem{Key: key, Value: value, Default: defaultValue, IsOverridden: overridden, Description: description})
+		items = append(items, ConfigItem{Key: key, Value: value, Default: defaultValue, IsOverridden: overridden, Secret: secret, Description: description})
 	}
 	return SystemConfig{Items: items}, nil
 }
@@ -128,7 +126,18 @@ func (s Service) envPath() string {
 }
 
 func settingDefinitions(cfg config.Config) []Definition {
-	return []Definition{
+	secretKeys := map[string]struct{}{}
+	for _, key := range cfg.Settings.SecretKeys {
+		key = strings.TrimSpace(key)
+		if key != "" {
+			secretKeys[key] = struct{}{}
+		}
+	}
+	markSecret := func(definition Definition) Definition {
+		_, definition.Secret = secretKeys[definition.Key]
+		return definition
+	}
+	definitions := []Definition{
 		{Key: "server__host", Default: cfg.Server.Host, Description: "HTTP server bind host"},
 		{Key: "server__port", Default: cfg.Server.Port, Description: "HTTP server bind port"},
 		{Key: "logging__level", Default: cfg.Logging.Level, Description: "Application log level"},
@@ -139,13 +148,14 @@ func settingDefinitions(cfg config.Config) []Definition {
 		{Key: "logging__http_body_max_bytes", Default: cfg.Logging.HTTPBodyMaxBytes, Description: "Maximum HTTP request and response body bytes to log"},
 		{Key: "database__driver", Default: cfg.Database.Driver, Description: "Database driver"},
 		{Key: "database__sqlite__path", Default: cfg.Database.SQLite.Path, Description: "SQLite database file path"},
-		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.DSN, Description: "MySQL DSN", Secret: true},
-		{Key: "jwt__secret_key", Default: cfg.JWT.SecretKey, Description: "JWT signing secret", Secret: true},
+		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.DSN, Description: "MySQL DSN"},
+		{Key: "jwt__secret_key", Default: cfg.JWT.SecretKey, Description: "JWT signing secret"},
 		{Key: "traefik__domain_suffix", Default: cfg.Traefik.DomainSuffix, Description: "Default Traefik domain suffix"},
 		{Key: "turnstile__enabled", Default: cfg.Turnstile.Enabled, Description: "Enable Cloudflare Turnstile verification"},
 		{Key: "turnstile__site_key", Default: cfg.Turnstile.SiteKey, Description: "Cloudflare Turnstile site key"},
-		{Key: "turnstile__secret_key", Default: cfg.Turnstile.SecretKey, Description: "Cloudflare Turnstile secret key", Secret: true},
+		{Key: "turnstile__secret_key", Default: cfg.Turnstile.SecretKey, Description: "Cloudflare Turnstile secret key"},
 		{Key: "turnstile__verify_url", Default: cfg.Turnstile.VerifyURL, Description: "Cloudflare Turnstile siteverify URL"},
+		{Key: "settings__secret_keys", Default: cfg.Settings.SecretKeys, Description: "Settings fields marked as secret"},
 		{Key: "cert__letsencrypt__enabled", Default: cfg.Cert.LetsEncrypt.Enabled, Description: "Enable Let's Encrypt certificates"},
 		{Key: "cert__letsencrypt__email", Default: cfg.Cert.LetsEncrypt.Email, Description: "Let's Encrypt account email"},
 		{Key: "cert__letsencrypt__challenge", Default: cfg.Cert.LetsEncrypt.Challenge, Description: "Let's Encrypt challenge type"},
@@ -156,6 +166,10 @@ func settingDefinitions(cfg config.Config) []Definition {
 		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Default task max attempts"},
 		{Key: "worker__concurrency", Default: cfg.Worker.Concurrency, Description: "Background worker concurrency"},
 	}
+	for index := range definitions {
+		definitions[index] = markSecret(definitions[index])
+	}
+	return definitions
 }
 
 func settingDescription(description string) string {
@@ -254,6 +268,8 @@ func settingValueString(value any) string {
 		return strconv.FormatFloat(typed, 'f', -1, 64)
 	case string:
 		return typed
+	case []string:
+		return strings.Join(typed, ",")
 	default:
 		return fmt.Sprint(typed)
 	}
@@ -267,16 +283,19 @@ func parseSettingValue(raw string, defaultValue any) any {
 		if parsed, err := strconv.Atoi(raw); err == nil {
 			return parsed
 		}
+	case []string:
+		parts := strings.Split(raw, ",")
+		values := make([]string, 0, len(parts))
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part != "" {
+				values = append(values, part)
+			}
+		}
+		return values
 	}
 	if strings.EqualFold(raw, "true") || strings.EqualFold(raw, "false") {
 		return strings.EqualFold(raw, "true")
 	}
 	return raw
-}
-
-func valueString(value any) string {
-	if value == nil {
-		return ""
-	}
-	return fmt.Sprint(value)
 }

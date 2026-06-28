@@ -16,7 +16,10 @@
     </div>
 
     <div class="app-surface p-5">
-      <ApplicationCreateWizard :project-id="projectStore.activeProjectId" @created="handleCreated" />
+      <ApplicationCreateWizard
+        :project-id="projectStore.activeProjectId"
+        @created="handleCreated"
+      />
     </div>
   </div>
 </template>

@@ -561,6 +561,11 @@ cert:
     email: ""
     challenge: http
     dns_provider: ""
+settings:
+  secret_keys:
+    - database__mysql__dsn
+    - jwt__secret_key
+    - turnstile__secret_key
 worker:
   id: ""
   poll_interval: 1s

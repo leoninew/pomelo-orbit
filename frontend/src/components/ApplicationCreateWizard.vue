@@ -16,7 +16,9 @@
           >
             <StepperIndicator
               class="flex size-7 shrink-0 items-center justify-center rounded-full border border-border text-sm font-semibold"
-              :class="state === 'active' || state === 'completed' ? 'border-primary text-primary' : ''"
+              :class="
+                state === 'active' || state === 'completed' ? 'border-primary text-primary' : ''
+              "
             >
               {{ step.value }}
             </StepperIndicator>
@@ -138,7 +140,10 @@
 
             <div class="space-y-1.5 md:col-span-2">
               <label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
-              <SelectControl v-model="imageForm.imagePullPolicy" :options="imagePullPolicyOptions" />
+              <SelectControl
+                v-model="imageForm.imagePullPolicy"
+                :options="imagePullPolicyOptions"
+              />
             </div>
           </div>
 
@@ -254,7 +259,9 @@
               <div>{{ imageForm.code }}</div>
             </div>
             <div class="app-tip">
-              <div class="font-semibold text-foreground">{{ t('application.createWizard.image') }}</div>
+              <div class="font-semibold text-foreground">
+                {{ t('application.createWizard.image') }}
+              </div>
               <div>{{ imageForm.image }}</div>
             </div>
             <div class="app-tip">
@@ -267,18 +274,27 @@
 
           <div class="rounded-xl border border-border bg-background p-4">
             <div class="mb-2 text-sm font-semibold text-foreground">docker-compose.yml</div>
-            <pre class="max-h-72 overflow-auto rounded-xl bg-muted/40 p-3 text-xs text-foreground">{{ composePreview }}</pre>
+            <pre
+              class="max-h-72 overflow-auto rounded-xl bg-muted/40 p-3 text-xs text-foreground"
+              >{{ composePreview }}</pre
+            >
           </div>
 
           <div v-if="envPreview" class="rounded-xl border border-border bg-background p-4">
             <div class="mb-2 text-sm font-semibold text-foreground">.env</div>
-            <pre class="max-h-48 overflow-auto rounded-xl bg-muted/40 p-3 text-xs text-foreground">{{ envPreview }}</pre>
+            <pre
+              class="max-h-48 overflow-auto rounded-xl bg-muted/40 p-3 text-xs text-foreground"
+              >{{ envPreview }}</pre
+            >
           </div>
         </template>
       </div>
     </StepperRoot>
 
-    <div v-if="submitError" class="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+    <div
+      v-if="submitError"
+      class="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+    >
       <p class="text-destructive">{{ submitError }}</p>
       <button v-if="createdApplication" class="app-button mt-3" @click="goCreatedApplicationDetail">
         {{ t('application.createWizard.goDetailFix') }}
@@ -289,7 +305,12 @@
       <button class="app-button" :disabled="submitting" @click="router.push('/cd/applications')">
         {{ t('common.cancel') }}
       </button>
-      <button v-if="currentStep > 1" class="app-button" :disabled="submitting" @click="currentStep -= 1">
+      <button
+        v-if="currentStep > 1"
+        class="app-button"
+        :disabled="submitting"
+        @click="currentStep -= 1"
+      >
         {{ t('application.createWizard.previous') }}
       </button>
       <button
@@ -300,7 +321,13 @@
       >
         {{ t('application.createWizard.next') }}
       </button>
-      <button v-else class="app-button-primary" :disabled="submitting" type="button" @click="handleSubmit">
+      <button
+        v-else
+        class="app-button-primary"
+        :disabled="submitting"
+        type="button"
+        @click="handleSubmit"
+      >
         {{ submitButtonText }}
       </button>
     </div>
@@ -509,7 +536,11 @@
     if (!imageForm.image.trim()) {
       return false;
     }
-    if (!Number.isInteger(containerPort.value) || containerPort.value < 1 || containerPort.value > 65535) {
+    if (
+      !Number.isInteger(containerPort.value) ||
+      containerPort.value < 1 ||
+      containerPort.value > 65535
+    ) {
       return false;
     }
     for (const row of normalizedEnvVars.value) {
@@ -568,7 +599,8 @@
       emit('created');
       router.push('/cd/applications');
     } catch (error) {
-      submitError.value = error instanceof Error ? error.message : t('application.toast.createFailed');
+      submitError.value =
+        error instanceof Error ? error.message : t('application.toast.createFailed');
     } finally {
       submitting.value = false;
     }
@@ -618,7 +650,8 @@
       emit('created');
       router.push('/cd/applications');
     } catch (error) {
-      submitError.value = error instanceof Error ? error.message : t('application.toast.createFailed');
+      submitError.value =
+        error instanceof Error ? error.message : t('application.toast.createFailed');
     } finally {
       submitting.value = false;
     }

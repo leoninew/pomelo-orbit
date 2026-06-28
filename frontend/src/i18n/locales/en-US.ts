@@ -197,7 +197,8 @@ export default {
     importSummary: 'Config files {configFiles} / Image configs {serviceConfigs} / Routes {routes}',
     createWizard: {
       title: 'Create Application',
-      description: 'Choose a creation method and generate deployable config for common single-service images.',
+      description:
+        'Choose a creation method and generate deployable config for common single-service images.',
       availableNow: 'Available now',
       later: 'Later',
       useCurrentImport: 'Use current import',
@@ -224,7 +225,8 @@ export default {
       containerPathPlaceholder: 'Container path, for example /data',
       routeDomain: 'Domain / Route',
       routeDomainPlaceholder: 'For example app.example.com',
-      routeDomainHint: 'When set, route management is enabled and a route is created for service app.',
+      routeDomainHint:
+        'When set, route management is enabled and a route is created for service app.',
       steps: {
         method: 'Method',
         methodDesc: 'Choose how to create the application',
@@ -237,11 +239,13 @@ export default {
         image: 'Create from image',
         imageDesc: 'For single-service apps. Generate compose from an image and container port.',
         compose: 'Create from docker-compose',
-        composeDesc: 'For users with an existing compose file. Paste or upload support will come later.',
+        composeDesc:
+          'For users with an existing compose file. Paste or upload support will come later.',
         import: 'Import application package',
         importDesc: 'Use the current list page import button to import a Pomelo Orbit package.',
         blank: 'Advanced blank app',
-        blankDesc: 'For advanced Docker Compose users. Uses the original basic-info-only creation behavior.',
+        blankDesc:
+          'For advanced Docker Compose users. Uses the original basic-info-only creation behavior.',
       },
     },
     detail: {

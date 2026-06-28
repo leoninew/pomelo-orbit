@@ -34,6 +34,7 @@ type Config struct {
 	Traefik     TraefikConfig   `mapstructure:"traefik" yaml:"traefik"`
 	Turnstile   TurnstileConfig `mapstructure:"turnstile" yaml:"turnstile"`
 	Cert        CertConfig      `mapstructure:"cert" yaml:"cert"`
+	Settings    SettingsConfig  `mapstructure:"settings" yaml:"settings"`
 	EnvFilePath string          `mapstructure:"-" yaml:"-"`
 }
 
@@ -117,6 +118,10 @@ type LetsEncryptConfig struct {
 	Email       string `mapstructure:"email" yaml:"email"`
 	Challenge   string `mapstructure:"challenge" yaml:"challenge"`
 	DNSProvider string `mapstructure:"dns_provider" yaml:"dns_provider"`
+}
+
+type SettingsConfig struct {
+	SecretKeys []string `mapstructure:"secret_keys" yaml:"secret_keys"`
 }
 
 func Load() (Config, error) {
@@ -235,6 +240,7 @@ func bindEnv(loader *viper.Viper) {
 		"worker.lease_duration",
 		"worker.max_attempts",
 		"worker.concurrency",
+		"settings.secret_keys",
 	}
 	for _, key := range keys {
 		envName := "POMELO_ORBIT_" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))

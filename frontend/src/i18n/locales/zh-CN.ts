@@ -197,8 +197,10 @@ export default {
       availableNow: '本次支持',
       later: '后续支持',
       useCurrentImport: '使用现有导入',
-      unsupportedHint: '该创建方式将在后续支持；本次请使用“从镜像创建”，导入应用包可继续使用列表页的独立导入入口。',
-      blankConfirmHint: '高级空白应用将按原方式创建：只保存应用基础信息，不生成 docker-compose.yml 或 .env。创建后需要进入详情页手动添加部署配置。',
+      unsupportedHint:
+        '该创建方式将在后续支持；本次请使用“从镜像创建”，导入应用包可继续使用列表页的独立导入入口。',
+      blankConfirmHint:
+        '高级空白应用将按原方式创建：只保存应用基础信息，不生成 docker-compose.yml 或 .env。创建后需要进入详情页手动添加部署配置。',
       previous: '上一步',
       next: '下一步',
       creating: '创建中...',

@@ -58,15 +58,13 @@
                   <input
                     v-else
                     v-model="editingState.stringValue"
-                    :type="secretKeys.has(item.key) ? 'password' : 'text'"
-                    :placeholder="secretKeys.has(item.key) ? t('common.emptyKeepUnchanged') : ''"
+                    type="text"
                     class="app-input h-9"
                   />
                 </div>
                 <!-- Display Mode -->
                 <div v-else class="text-foreground">
-                  <span v-if="secretKeys.has(item.key)">••••••••</span>
-                  <span v-else-if="typeof item.value === 'boolean'">
+                  <span v-if="typeof item.value === 'boolean'">
                     {{ item.value ? 'true' : 'false' }}
                   </span>
                   <span v-else>{{ item.value || '-' }}</span>
@@ -173,7 +171,6 @@
     { value: 'true', label: 'true' },
     { value: 'false', label: 'false' },
   ];
-  const secretKeys = new Set(['jwt__secret_key']);
 
   interface EditingState {
     key: string | null;
@@ -215,10 +212,7 @@
     const boolValue = record.value ?? record.default;
     editingState.value = {
       key: record.key,
-      stringValue:
-        typeof record.default === 'boolean' || secretKeys.has(record.key)
-          ? ''
-          : String(record.value ?? ''),
+      stringValue: typeof record.default === 'boolean' ? '' : String(record.value ?? ''),
       boolValue: typeof boolValue === 'boolean' ? String(boolValue) : 'false',
     };
   }
@@ -232,10 +226,6 @@
       return;
     }
     const currentEditing = editingState.value;
-    if (secretKeys.has(record.key) && !currentEditing.stringValue) {
-      cancelEdit();
-      return;
-    }
     try {
       await executeOp(async () => {
         const value =

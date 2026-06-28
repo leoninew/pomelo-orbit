@@ -4,6 +4,7 @@ export interface ConfigItemResp {
   value: unknown;
   default: unknown;
   is_overridden: boolean;
+  secret: boolean;
   description?: string;
   updated_at?: string;
 }

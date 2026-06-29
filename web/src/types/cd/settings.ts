@@ -6,7 +6,6 @@ export interface ConfigItemResp {
   is_overridden: boolean;
   secret: boolean;
   description?: string;
-  updated_at?: string;
 }
 
 export interface SystemConfigResp {

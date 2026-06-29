@@ -168,6 +168,22 @@ func (s Service) createCredentialRecord(ctx context.Context, projectId string, n
 	return created, nil
 }
 
+func (s Service) encryptCredentialData(data string) (string, error) {
+	encrypted, err := security.EncryptString(s.secretKey, data)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to encrypt credential", err)
+	}
+	return encrypted, nil
+}
+
+func (s Service) decryptCredentialData(data string) (string, error) {
+	decrypted, err := security.DecryptString(s.secretKey, data)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to decrypt credential", err)
+	}
+	return decrypted, nil
+}
+
 func (s Service) loadCredentialForUser(ctx context.Context, userId string, credentialId string) (model.Credential, error) {
 	credentialId = strings.TrimSpace(credentialId)
 	credential, err := s.store.Credential(ctx, credentialId)
@@ -197,22 +213,6 @@ func (s Service) ensureCredentialNameAvailable(ctx context.Context, projectId st
 		return apperror.Wrap(apperror.KindInternal, "Failed to check credential name", err)
 	}
 	return nil
-}
-
-func (s Service) encryptCredentialData(data string) (string, error) {
-	encrypted, err := security.EncryptString(s.secretKey, data)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to encrypt credential", err)
-	}
-	return encrypted, nil
-}
-
-func (s Service) decryptCredentialData(data string) (string, error) {
-	decrypted, err := security.DecryptString(s.secretKey, data)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to decrypt credential", err)
-	}
-	return decrypted, nil
 }
 
 func normalizeCredentialCreateInput(input CredentialCreateInput) (string, string, string, string, error) {

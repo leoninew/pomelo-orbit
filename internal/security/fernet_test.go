@@ -32,9 +32,24 @@ func TestFernetDecryptsPythonToken(t *testing.T) {
 	}
 }
 
-func TestFernetRejectsInvalidKey(t *testing.T) {
-	if _, err := EncryptString("not-a-fernet-key", "secret"); err == nil {
-		t.Fatal("expected invalid key error")
+func TestFernetDerivesKeyFromPlainSecret(t *testing.T) {
+	secretKey := "plain-jwt-secret-with-at-least-32-chars"
+	encrypted, err := EncryptString(secretKey, "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	decrypted, err := DecryptString(secretKey, encrypted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decrypted != "secret" {
+		t.Fatalf("unexpected decrypted value: %q", decrypted)
+	}
+}
+
+func TestFernetRejectsShortPlainSecret(t *testing.T) {
+	if _, err := EncryptString("short-secret", "secret"); err == nil {
+		t.Fatal("expected short secret error")
 	}
 }
 

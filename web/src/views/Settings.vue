@@ -22,20 +22,28 @@
     </div>
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-table-list min-w-[1120px]">
+        <table class="app-table-list min-w-[960px]">
           <thead>
             <tr>
               <th>{{ t('settings.configKey') }}</th>
-              <th>{{ t('settings.currentValue') }}</th>
               <th>{{ t('settings.defaultValue') }}</th>
-              <th>{{ t('settings.updatedAt') }}</th>
-              <th>{{ t('common.description') }}</th>
+              <th>{{ t('settings.currentValue') }}</th>
               <th v-if="canWriteSettings">{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in filteredConfig" :key="item.key">
-              <td class="text-foreground">{{ item.key }}</td>
+              <td class="text-foreground" :title="item.description || undefined">
+                <span :class="item.description ? 'cursor-help underline decoration-dotted underline-offset-4' : ''">
+                  {{ item.key }}
+                </span>
+              </td>
+              <td class="text-muted-foreground">
+                <span v-if="typeof item.default === 'boolean'">
+                  {{ item.default ? 'true' : 'false' }}
+                </span>
+                <span v-else>{{ item.default || '-' }}</span>
+              </td>
               <td>
                 <!-- Editing Mode -->
                 <div v-if="editingState.key === item.key">
@@ -69,23 +77,8 @@
                   <span v-else>{{ item.value || '-' }}</span>
                 </div>
               </td>
-              <td class="text-muted-foreground">
-                <span v-if="typeof item.default === 'boolean'">
-                  {{ item.default ? 'true' : 'false' }}
-                </span>
-                <span v-else>{{ item.default || '-' }}</span>
-              </td>
-              <td class="text-muted-foreground">
-                {{ item.updated_at ? formatTime(item.updated_at) : '-' }}
-              </td>
-              <td
-                class="max-w-80 truncate text-muted-foreground"
-                :title="item.description || undefined"
-              >
-                {{ item.description || '-' }}
-              </td>
               <td v-if="canWriteSettings">
-                <div v-if="editingState.key === item.key" class="flex justify-end gap-2">
+                <div v-if="editingState.key === item.key" class="flex gap-2">
                   <button :disabled="operating" class="app-link" @click="handleSave(item)">
                     {{ t('common.save') }}
                   </button>
@@ -93,7 +86,7 @@
                     {{ t('common.cancel') }}
                   </button>
                 </div>
-                <div v-else class="flex justify-end gap-2">
+                <div v-else class="flex gap-2">
                   <button class="app-link" @click="startEdit(item)">{{ t('common.edit') }}</button>
                   <button
                     class="text-muted-foreground hover:text-foreground"
@@ -142,7 +135,6 @@
   import { PERMISSIONS } from '@/constants/permissions';
   import { useAuthStore } from '@/stores/auth';
   import type { ConfigItemResp, SystemConfigResp } from '@/types/cd/settings';
-  import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();
   const authStore = useAuthStore();

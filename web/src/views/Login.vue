@@ -51,7 +51,7 @@
 
           <div v-if="turnstileEnabled" class="space-y-1.5">
             <label class="app-field-label block">{{ t('login.verification') }}</label>
-            <div ref="turnstileContainer"></div>
+            <div ref="turnstileContainer" class="flex justify-center"></div>
             <p v-if="errors.verification" class="app-field-error text-xs">
               {{ errors.verification }}
             </p>

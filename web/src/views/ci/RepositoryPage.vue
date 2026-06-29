@@ -128,6 +128,11 @@
           placeholder="不使用凭据"
         />
       </div>
+
+      <div class="space-y-1.5">
+        <label class="app-field-label block">默认分支</label>
+        <input v-model="form.default_branch" type="text" placeholder="develop" class="app-input" />
+      </div>
     </div>
 
     <template #footer>
@@ -192,6 +197,7 @@
     code: '',
     repository_url: '',
     git_credential_id: '',
+    default_branch: 'develop',
   });
   const errors = reactive({
     name: '',
@@ -258,6 +264,7 @@
       code: '',
       repository_url: '',
       git_credential_id: '',
+      default_branch: 'develop',
     });
     Object.assign(errors, { name: '', code: '', repository_url: '' });
     showCreateModal.value = true;
@@ -291,6 +298,7 @@
             code: form.code,
             repository_url: form.repository_url,
             git_credential_id: form.git_credential_id || undefined,
+            default_branch: form.default_branch,
           },
           { project_id: projectId }
         );

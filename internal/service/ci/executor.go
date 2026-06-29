@@ -160,15 +160,15 @@ func stageUsesRepositoryURL(script string, repositoryURL string) bool {
 }
 
 func (e Executor) authenticatedRepositoryURL(repositoryURL string, credential model.Credential) (string, error) {
-	decrypted, err := security.DecryptString(e.secretKey, credential.EncryptedData)
+	credentialData, err := security.DecryptString(e.secretKey, credential.EncryptedData)
 	if err != nil {
 		return "", fmt.Errorf("decrypt git credential: %w", err)
 	}
 	switch credential.Type {
 	case "github_token":
-		return buildAuthenticatedRepositoryURL(repositoryURL, decrypted)
+		return buildAuthenticatedRepositoryURL(repositoryURL, credentialData)
 	case "gitee_token":
-		username, token, err := splitGiteeCredential(decrypted)
+		username, token, err := splitGiteeCredential(credentialData)
 		if err != nil {
 			return "", err
 		}

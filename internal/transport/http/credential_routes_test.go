@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"backend/internal/security"
 	cisvc "backend/internal/service/ci"
 	cihandler "backend/internal/transport/http/handler/ci"
 	transportresponse "backend/internal/transport/http/response"
@@ -47,6 +48,28 @@ func TestCredentialRoutes(t *testing.T) {
 	}
 	if created.Id == "" || created.Name != "GitHub Token" || created.Type != "github_token" || created.CreatedAt == "" {
 		t.Fatalf("unexpected created credential: %+v", created)
+	}
+	stored, err := database.Queryx(`SELECT encrypted_data FROM credential WHERE id = ?`, created.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var storedData string
+	if stored.Next() {
+		if err := stored.Scan(&storedData); err != nil {
+			_ = stored.Close()
+			t.Fatal(err)
+		}
+	}
+	_ = stored.Close()
+	if storedData == "" || storedData == plainData {
+		t.Fatalf("expected stored credential data to be encrypted")
+	}
+	decryptedStoredData, err := security.DecryptString(credentialRouteFernetKey, storedData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decryptedStoredData != plainData {
+		t.Fatalf("unexpected stored credential plaintext: %q", decryptedStoredData)
 	}
 
 	listRecorder := httptest.NewRecorder()

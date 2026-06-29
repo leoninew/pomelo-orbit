@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -15,8 +14,8 @@ import (
 )
 
 const (
-	DefaultConfigFile = "configs/config.yaml"
-	fernetKeySize     = 32
+	DefaultConfigFile     = "configs/config.yaml"
+	jwtSecretKeyMinLength = 32
 )
 
 func EnvConfigFile(env string) string {
@@ -273,7 +272,7 @@ func (c Config) Validate() error {
 	if c.Logging.HTTPBodyMaxBytes <= 0 {
 		return errors.New("logging.http_body_max_bytes must be positive")
 	}
-	if err := validateFernetKey(c.JWT.SecretKey); err != nil {
+	if err := validateJWTSecretKey(c.JWT.SecretKey); err != nil {
 		return err
 	}
 	if c.Turnstile.Enabled {
@@ -302,20 +301,13 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func validateFernetKey(secretKey string) error {
+func validateJWTSecretKey(secretKey string) error {
 	secretKey = strings.TrimSpace(secretKey)
 	if secretKey == "" {
 		return errors.New("jwt.secret_key is required")
 	}
-	key, err := base64.URLEncoding.DecodeString(secretKey)
-	if err != nil {
-		key, err = base64.RawURLEncoding.DecodeString(secretKey)
-	}
-	if err != nil {
-		return fmt.Errorf("jwt.secret_key must be a valid Fernet key: %w", err)
-	}
-	if len(key) != fernetKeySize {
-		return fmt.Errorf("jwt.secret_key must decode to %d bytes", fernetKeySize)
+	if len(secretKey) < jwtSecretKeyMinLength {
+		return fmt.Errorf("jwt.secret_key must be at least %d characters", jwtSecretKeyMinLength)
 	}
 	return nil
 }

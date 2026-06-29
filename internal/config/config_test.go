@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	testFernetKey      = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-	alternateFernetKey = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="
+	testJWTSecret           = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	standardBase64JWTSecret = "J69d31L/5Dg4yhJXhp+CacFovpi8Ikhr34zSsHmE3x4="
 )
 
 func TestLoadDefaultConfigFile(t *testing.T) {
@@ -48,7 +48,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.HTTPBodyMaxBytes != 4096 {
 		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
 	}
-	if cfg.JWT.SecretKey != testFernetKey {
+	if cfg.JWT.SecretKey != testJWTSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
 	}
 	if cfg.Traefik.APIURL != "http://traefik:8080" {
@@ -309,13 +309,13 @@ func TestLoadConfigJWTEnvOverride(t *testing.T) {
 jwt:
   secret_key: "from-yaml"
 `)
-	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", alternateFernetKey)
+	t.Setenv("POMELO_ORBIT_JWT__SECRET_KEY", standardBase64JWTSecret)
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.JWT.SecretKey != alternateFernetKey {
+	if cfg.JWT.SecretKey != standardBase64JWTSecret {
 		t.Fatalf("unexpected jwt secret: %s", cfg.JWT.SecretKey)
 	}
 }
@@ -328,8 +328,8 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 		{name: "missing secret key", content: `jwt:
   secret_key: ""
 `},
-		{name: "invalid secret key", content: `jwt:
-  secret_key: "not-a-fernet-key"
+		{name: "short secret key", content: `jwt:
+  secret_key: "too-short"
 `},
 	}
 	for _, tc := range cases {
@@ -338,6 +338,21 @@ func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
+	}
+}
+
+func TestLoadConfigAcceptsStandardBase64JWTSecretKey(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", fmt.Sprintf(`jwt:
+  secret_key: %q
+`, standardBase64JWTSecret))
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.JWT.SecretKey != standardBase64JWTSecret {
+		t.Fatalf("unexpected jwt secret: %s", cfg.JWT.SecretKey)
 	}
 }
 

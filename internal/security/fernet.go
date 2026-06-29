@@ -12,16 +12,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 )
 
 const (
-	fernetVersion      = byte(0x80)
-	fernetKeySize      = 32
-	fernetHMACSize     = sha256.Size
-	fernetIVSize       = aes.BlockSize
-	secretKeyMinLength = 32
+	fernetVersion  = byte(0x80)
+	fernetKeySize  = 32
+	fernetHMACSize = sha256.Size
+	fernetIVSize   = aes.BlockSize
 )
 
 func EncryptString(secretKey string, plainValue string) (string, error) {
@@ -49,22 +47,17 @@ func DecryptString(secretKey string, encryptedValue string) (string, error) {
 }
 
 func parseFernetKey(secretKey string) ([]byte, error) {
-	secretKey = strings.TrimSpace(secretKey)
-	if secretKey == "" {
-		return nil, errors.New("secret key is required")
-	}
-	if len(secretKey) < secretKeyMinLength {
-		return nil, fmt.Errorf("secret key must be at least %d characters", secretKeyMinLength)
-	}
 	key, err := base64.URLEncoding.DecodeString(secretKey)
 	if err != nil {
 		key, err = base64.RawURLEncoding.DecodeString(secretKey)
 	}
-	if err == nil && len(key) == fernetKeySize {
-		return key, nil
+	if err != nil {
+		return nil, fmt.Errorf("invalid fernet key: %w", err)
 	}
-	sum := sha256.Sum256([]byte(secretKey))
-	return sum[:], nil
+	if len(key) != fernetKeySize {
+		return nil, fmt.Errorf("invalid fernet key length: %d", len(key))
+	}
+	return key, nil
 }
 
 func encryptFernet(key []byte, plaintext []byte, iv []byte, timestamp int64) (string, error) {

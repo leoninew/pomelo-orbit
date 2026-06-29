@@ -33,7 +33,7 @@
         <button
           class="app-button-primary px-5"
           :disabled="status === 'loading'"
-          @click="router.push('/cd/applications/create')"
+          @click="openCreateDialog"
         >
           <Plus class="size-4" />
           {{ t('application.createApplication') }}
@@ -215,6 +215,22 @@
       </div>
     </template>
 
+    <AppDialog v-model:open="isCreateDialogOpen" :title="t('application.createApplication')">
+      <ApplicationFormFields
+        :form="createForm"
+        :errors="createErrors"
+        @update:form="Object.assign(createForm, $event)"
+      />
+      <template #footer>
+        <button class="app-button" @click="isCreateDialogOpen = false">
+          {{ t('common.cancel') }}
+        </button>
+        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">
+          {{ t('application.create') }}
+        </button>
+      </template>
+    </AppDialog>
+
     <AppDialog v-model:open="isImportDialogOpen" :title="t('application.importApplication')">
       <ApplicationFormFields
         :form="importForm"
@@ -254,6 +270,7 @@
   import { useProjectStore } from '@/stores/project';
   import type {
     Application,
+    ApplicationFormState,
     ApplicationImportReq,
     ApplicationImportState,
   } from '@/types/cd/application';
@@ -271,11 +288,19 @@
   const applications = ref<Application[]>([]);
   const searchText = ref('');
   const viewMode = ref<'card' | 'table'>('card');
+  const isCreateDialogOpen = ref(false);
   const isImportDialogOpen = ref(false);
   const fileInput = ref<HTMLInputElement>();
   const operatingAppId = ref<string | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
+  const createForm = reactive<ApplicationFormState>({
+    name: '',
+    code: '',
+    image_pull_policy: 'missing',
+    route_managed: false,
+  });
+  const createErrors = reactive({ name: '', code: '' });
   const importForm = reactive<ApplicationImportState>({
     version: undefined,
     name: '',
@@ -347,12 +372,52 @@
     fetchApplications();
   }
 
-  function validateForm(target: ApplicationImportState, errors: { name: string; code: string }) {
+  function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
     errors.name = target.name.trim() ? '' : t('application.validation.nameRequired');
     errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
       ? ''
       : t('application.validation.codeInvalid');
     return !errors.name && !errors.code;
+  }
+
+  function openCreateDialog() {
+    Object.assign(createForm, {
+      name: '',
+      code: '',
+      image_pull_policy: 'missing',
+      route_managed: false,
+    });
+    Object.assign(createErrors, { name: '', code: '' });
+    isCreateDialogOpen.value = true;
+  }
+
+  async function handleCreateOk() {
+    if (!validateForm(createForm, createErrors)) {
+      return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        await applicationApi.create(
+          {
+            name: createForm.name,
+            code: createForm.code,
+            image_pull_policy: createForm.image_pull_policy,
+            route_managed: createForm.route_managed,
+          },
+          { project_id: projectId }
+        );
+        toast.success(t('application.toast.createSuccess'));
+        isCreateDialogOpen.value = false;
+        await fetchApplications();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.createFailed'));
+    }
   }
 
   function triggerImport() {

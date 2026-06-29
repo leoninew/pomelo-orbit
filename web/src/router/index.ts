@@ -80,12 +80,6 @@ const router = createRouter({
       meta: { title: '应用管理', menuKey: 'applications' },
     },
     {
-      path: '/cd/applications/create',
-      name: 'ApplicationCreate',
-      component: () => import('@/views/cd/ApplicationCreatePage.vue'),
-      meta: { title: '创建应用', menuKey: 'applications' },
-    },
-    {
       path: '/cd/applications/:id',
       name: 'ApplicationDetail',
       component: () => import('@/views/cd/ApplicationDetail.vue'),

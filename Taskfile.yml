@@ -13,20 +13,10 @@ tasks:
       - bash -c 'cd backend-go && go mod download'
       - bash -c 'cd backend-go && go mod tidy'
 
-  dev:
+  run:
     desc: Start the development orchestrator
     cmds:
-      - bash -c 'uv run python scripts/dev.py'
-
-  dev-backend:
-    desc: Start the Go backend with air
-    cmds:
-      - bash -c 'cd backend-go && air -c .air.api.toml'
-
-  dev-frontend:
-    desc: Start the frontend dev server
-    cmds:
-      - bash -c 'cd frontend && yarn dev'
+      - bash -c 'uv run python scripts/run.py'
 
   check:
     desc: Run frontend and backend checks

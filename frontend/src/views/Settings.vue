@@ -26,17 +26,16 @@
           <thead>
             <tr>
               <th>{{ t('settings.configKey') }}</th>
-              <th>{{ t('common.description') }}</th>
               <th>{{ t('settings.currentValue') }}</th>
               <th>{{ t('settings.defaultValue') }}</th>
               <th>{{ t('settings.updatedAt') }}</th>
+              <th>{{ t('common.description') }}</th>
               <th v-if="canWriteSettings">{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in filteredConfig" :key="item.key">
               <td class="text-foreground">{{ item.key }}</td>
-              <!-- <td class="text-muted-foreground">{{ item.description || '-' }}</td> -->
               <td>
                 <!-- Editing Mode -->
                 <div v-if="editingState.key === item.key">
@@ -78,6 +77,9 @@
               </td>
               <td class="text-muted-foreground">
                 {{ item.updated_at ? formatTime(item.updated_at) : '-' }}
+              </td>
+              <td class="max-w-80 truncate text-muted-foreground" :title="item.description || undefined">
+                {{ item.description || '-' }}
               </td>
               <td v-if="canWriteSettings">
                 <div v-if="editingState.key === item.key" class="flex justify-end gap-2">

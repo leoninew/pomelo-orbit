@@ -81,8 +81,8 @@ Web UI 配置路由
 
 | 层级 | 技术 |
 |------|------|
-| 后端 | Python 3.12 + FastAPI + SQLAlchemy + SQLite |
-| 前端 | Vue 3 + Vite + Reka UI + Tailwind CSS + TypeScript |
+| 后端 | Go 1.25 + chi + sqlx + SQLite/MySQL |
+| Web | Vue 3 + Vite + Reka UI + Tailwind CSS + TypeScript |
 | 网关 | Traefik |
 | 容器 | Docker + docker-compose |
 
@@ -91,7 +91,7 @@ Web UI 配置路由
 ## 快速开始
 
 ```bash
-task install       # 安装 frontend 和 backend-go 依赖
+task install       # 安装 web 和 Go 依赖
 go install github.com/air-verse/air@latest  # 安装开发热重载工具
 task run           # 启动前端和 Go 后端开发服务
 ```

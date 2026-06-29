@@ -34,11 +34,11 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: backend-go/go.mod
-          cache-dependency-path: backend-go/go.sum
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
-      - name: Run backend-go tests
-        run: go -C backend-go test ./...
+      - name: Run Go tests
+        run: go test ./cmd/... ./internal/...
 
       - name: Extract metadata
         id: meta

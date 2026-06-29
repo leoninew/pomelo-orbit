@@ -1,7 +1,0 @@
-.env
-config.local.yaml
-config.*.local.yaml
-
-logs/
-data/
-bin/

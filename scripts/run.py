@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start frontend and backend development servers together."""
+"""Start web and backend development servers together."""
 
 from __future__ import annotations
 
@@ -152,12 +152,12 @@ def main() -> int:
     processes = [
         DevProcess(
             name="后端服务",
-            cwd=ROOT_DIR / "backend-go",
+            cwd=ROOT_DIR,
             command=[command_path("air"), "-c", ".air.api.toml"],
         ),
         DevProcess(
             name="前端服务",
-            cwd=ROOT_DIR / "frontend",
+            cwd=ROOT_DIR / "web",
             command=[command_path("yarn"), "dev"],
         ),
     ]

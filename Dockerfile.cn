@@ -1,42 +1,42 @@
 # Pomelo Orbit - Multi-stage Dockerfile (CN mirror accelerated)
 
-# Stage 1: Build frontend
-FROM node:20-alpine AS frontend-builder
+# Stage 1: Build web
+FROM node:20-alpine AS web-builder
 
-WORKDIR /app/frontend
+WORKDIR /app/web
 
-# Copy frontend package files
-COPY frontend/package.json frontend/yarn.lock ./
+# Copy web package files
+COPY web/package.json web/yarn.lock ./
 
 # Install dependencies (Taobao mirror)
 RUN yarn config set registry https://registry.npmmirror.com \
     && yarn install --frozen-lockfile
 
-# Copy frontend source
-COPY frontend/ ./
+# Copy web source
+COPY web/ ./
 
-# Build frontend
+# Build web
 RUN yarn build
 
-# Stage 2: Build backend-go
+# Stage 2: Build backend
 FROM golang:1.25-bookworm AS backend-builder
 
-WORKDIR /app/backend-go
+WORKDIR /app
 
 # Use Go proxy mirror
 ENV GOPROXY=https://goproxy.cn,direct
 
-# Copy backend-go module files
-COPY backend-go/go.mod backend-go/go.sum ./
+# Copy Go module files
+COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
 
-# Copy backend-go source
-COPY backend-go/cmd ./cmd
-COPY backend-go/internal ./internal
+# Copy backend source
+COPY cmd ./cmd
+COPY internal ./internal
 
-# Build backend-go binary
+# Build backend binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend-go ./cmd/backend-go
 
 # Stage 3: Final image
@@ -57,12 +57,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && docker compose version
 
-# Copy backend-go binary and configuration
+# Copy backend binary and configuration
 COPY --from=backend-builder /out/backend-go /usr/local/bin/backend-go
-COPY backend-go/configs ./configs
+COPY configs ./configs
 
-# Copy frontend build from stage 1
-COPY --from=frontend-builder /app/frontend/dist ./static
+# Copy web build from stage 1
+COPY --from=web-builder /app/web/dist ./static
 
 # Create runtime directories
 RUN mkdir -p /app/data/db /app/logs

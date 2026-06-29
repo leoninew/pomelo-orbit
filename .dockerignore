@@ -6,26 +6,12 @@
 .DS_Store
 .env*.local
 
-# Frontend (built separately)
-frontend/node_modules
-frontend/dist
-frontend/coverage
+# Web (built separately)
+web/node_modules
+web/dist
+web/coverage
 
 # Backend
-backend/__pycache__
-backend/.venv
-backend/.pytest_cache
-backend/.mypy_cache
-backend/.ruff_cache
-backend/data/
-backend/tests
-backend/coverage
-
-# Backend Go
-backend-go/bin/
-backend-go/tmp/
-backend-go/data/
-backend-go/logs/
-
-# Data directory (mounted as volume)
+bin/
 data/
+logs/

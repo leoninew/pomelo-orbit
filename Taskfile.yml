@@ -7,11 +7,11 @@ tasks:
       - task --list
 
   install:
-    desc: Install frontend and backend-go dependencies
+    desc: Install web and Go dependencies
     cmds:
-      - bash -c 'cd frontend && yarn install'
-      - bash -c 'cd backend-go && go mod download'
-      - bash -c 'cd backend-go && go mod tidy'
+      - bash -c 'cd web && yarn install'
+      - go mod download
+      - go mod tidy
 
   run:
     desc: Start the development orchestrator
@@ -19,20 +19,20 @@ tasks:
       - bash -c 'uv run python scripts/run.py'
 
   check:
-    desc: Run frontend and backend checks
+    desc: Run web and Go checks
     cmds:
-      - bash -c 'cd frontend && yarn lint:fix'
-      - bash -c 'cd frontend && yarn format'
-      - bash -c 'cd frontend && yarn typecheck'
-      - bash -c 'cd backend-go && go fmt ./...'
-      - bash -c 'cd backend-go && go vet ./...'
-      - bash -c 'cd backend-go && go test ./...'
+      - bash -c 'cd web && yarn lint:fix'
+      - bash -c 'cd web && yarn format'
+      - bash -c 'cd web && yarn typecheck'
+      - go fmt ./cmd/... ./internal/...
+      - go vet ./cmd/... ./internal/...
+      - go test ./cmd/... ./internal/...
 
   test:
-    desc: Run frontend and backend tests
+    desc: Run web and Go tests
     cmds:
-      - bash -c 'cd frontend && yarn test'
-      - bash -c 'cd backend-go && go test ./...'
+      - bash -c 'cd web && yarn test'
+      - go test ./cmd/... ./internal/...
 
   build:
     desc: Build the Docker image, optionally with TAG=<tag> and CN=1
@@ -41,15 +41,21 @@ tasks:
       CN: '{{.CN}}'
     cmds:
       - |
-        bash -c 'TAG="{{.TAG}}"; CN="{{.CN}}"; DOCKERFILE="Dockerfile"; if [[ "$CN" == "1" ]]; then DOCKERFILE="Dockerfile.cn"; fi; docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .; echo "image built: pomelo-orbit:$TAG"'
+        bash -c '
+          TAG="{{.TAG}}"
+          CN="{{.CN}}"
+          DOCKERFILE="Dockerfile"
+
+          if [[ "$CN" == "1" ]]; then
+            DOCKERFILE="Dockerfile.cn"
+          fi
+
+          docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .
+          printf "image built: pomelo-orbit:%s\n" "$TAG"
+        '
 
   clean:
-    desc: Remove local Python cache and coverage artifacts
+    desc: Remove local build artifacts
     cmds:
-      - bash -c 'find . -type d -name "__pycache__" -not -path "./.git/*" -exec rm -rf {} +'
-      - bash -c 'find . -type d -name ".mypy_cache" -not -path "./.git/*" -exec rm -rf {} +'
-      - bash -c 'find . -type d -name ".ruff_cache" -not -path "./.git/*" -exec rm -rf {} +'
-      - bash -c 'find . -type d -name ".pytest_cache" -not -path "./.git/*" -exec rm -rf {} +'
-      - bash -c 'find . -type d -name "htmlcov" -not -path "./.git/*" -exec rm -rf {} +'
-      - bash -c 'find . -type f -name "*.pyc" -not -path "./.git/*" -exec rm -f {} +'
+      - bash -c 'rm -rf bin web/dist web/coverage'
       - bash -c 'echo "clean complete"'

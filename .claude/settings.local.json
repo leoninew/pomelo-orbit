@@ -4,8 +4,8 @@
       "Skill(dev-feature)",
       "Bash(yarn lint:*)",
       "Bash(yarn typecheck:*)",
-      "Bash(yarn --cwd frontend lint --fix)",
-      "Bash(yarn --cwd frontend typecheck)"
+      "Bash(yarn --cwd web lint --fix)",
+      "Bash(yarn --cwd web typecheck)"
     ]
   }
 }

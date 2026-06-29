@@ -78,7 +78,10 @@
               <td class="text-muted-foreground">
                 {{ item.updated_at ? formatTime(item.updated_at) : '-' }}
               </td>
-              <td class="max-w-80 truncate text-muted-foreground" :title="item.description || undefined">
+              <td
+                class="max-w-80 truncate text-muted-foreground"
+                :title="item.description || undefined"
+              >
                 {{ item.description || '-' }}
               </td>
               <td v-if="canWriteSettings">

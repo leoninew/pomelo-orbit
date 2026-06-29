@@ -3,8 +3,8 @@
 cert.py - 证书工具
 
 用法:
-  uv run --project backend/ python scripts/cert.py new -n <domain>
-  uv run --project backend/ python scripts/cert.py check -n <domain>
+  python scripts/cert.py new -n <domain>
+  python scripts/cert.py check -n <domain>
 """
 
 import argparse
@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
-CERT_DIR = SCRIPT_DIR.parent / "backend/data/cd/traefik/data/certs"
+CERT_DIR = SCRIPT_DIR.parent / "data/cd/traefik/data/certs"
 
 
 def run(
@@ -213,7 +213,7 @@ def cmd_check(domain: str) -> None:
     if not pem_file.exists():
         logger.warning(f"文件不存在: {pem_file}")
         logger.info(
-            f"修复: uv run --project backend/ python scripts/cert.py new -n {domain}"
+            f"修复: python scripts/cert.py new -n {domain}"
         )
     else:
         logger.info(f"文件: {pem_file}")
@@ -284,8 +284,8 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "示例:\n"
-            "  uv run --project backend/ python scripts/cert.py new -n pomelo-orbit.localhost\n"
-            "  uv run --project backend/ python scripts/cert.py check -n pomelo-orbit.localhost"
+            "  python scripts/cert.py new -n pomelo-orbit.localhost\n"
+            "  python scripts/cert.py check -n pomelo-orbit.localhost"
         ),
     )
     sub = parser.add_subparsers(dest="cmd")

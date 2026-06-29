@@ -320,6 +320,44 @@ jwt:
 	}
 }
 
+func TestLoadConfigBaseIgnoresEnvOverrides(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
+	writeEnvConfig(t, "develop", `server:
+  host: "127.0.0.1"
+  port: 9000
+database:
+  sqlite:
+    path: "data/test.db"
+`)
+	t.Setenv("POMELO_ORBIT_SERVER__PORT", "8088")
+	t.Setenv("POMELO_ORBIT_LOGGING__LEVEL", "DEBUG")
+	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/overridden/db.sqlite")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.Server.Port != 8088 {
+		t.Fatalf("expected full config port 8088, got %d", cfg.Server.Port)
+	}
+	if cfg.Logging.Level != "DEBUG" {
+		t.Fatalf("expected full config logging level DEBUG, got %s", cfg.Logging.Level)
+	}
+	if cfg.Base == nil {
+		t.Fatal("expected base config to be populated")
+	}
+	if cfg.Base.Server.Port != 9000 {
+		t.Fatalf("expected base port 9000 from env config, got %d", cfg.Base.Server.Port)
+	}
+	if cfg.Base.Logging.Level != "info" {
+		t.Fatalf("expected base logging level info from defaults, got %s", cfg.Base.Logging.Level)
+	}
+	if cfg.Base.Database.SQLite.Path != "data/test.db" {
+		t.Fatalf("expected base sqlite path from env config, got %s", cfg.Base.Database.SQLite.Path)
+	}
+}
+
 func TestLoadConfigValidatesJWTSecretKey(t *testing.T) {
 	cases := []struct {
 		name    string

@@ -35,6 +35,7 @@ type Config struct {
 	Cert        CertConfig      `mapstructure:"cert" yaml:"cert"`
 	Settings    SettingsConfig  `mapstructure:"settings" yaml:"settings"`
 	EnvFilePath string          `mapstructure:"-" yaml:"-"`
+	Base        *Config         `mapstructure:"-" yaml:"-"`
 }
 
 type AppConfig struct {
@@ -163,7 +164,33 @@ func Load() (Config, error) {
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
+
+	base, err := loadBaseConfig(envName)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.Base = &base
 	return cfg, nil
+}
+
+func loadBaseConfig(envName string) (Config, error) {
+	loader := viper.New()
+	loader.SetConfigType("yaml")
+	loader.SetConfigFile(DefaultConfigFile)
+	if err := loader.ReadInConfig(); err != nil {
+		return Config{}, fmt.Errorf("read default config: %w", err)
+	}
+	if envName != "" {
+		loader.SetConfigFile(EnvConfigFile(envName))
+		if err := loader.MergeInConfig(); err != nil && !isOptionalConfigMissing(err) {
+			return Config{}, fmt.Errorf("read env config: %w", err)
+		}
+	}
+	var base Config
+	if err := loader.Unmarshal(&base, viper.DecodeHook(mapstructure.StringToTimeDurationHookFunc())); err != nil {
+		return Config{}, fmt.Errorf("parse default config: %w", err)
+	}
+	return base, nil
 }
 
 func isOptionalConfigMissing(err error) bool {

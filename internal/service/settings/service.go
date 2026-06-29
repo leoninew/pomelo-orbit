@@ -48,7 +48,7 @@ func (s Service) Config(context.Context) (SystemConfig, error) {
 	if err != nil {
 		return SystemConfig{}, err
 	}
-	definitions := settingDefinitions(s.cfg)
+	definitions := settingDefinitions(s.baseConfig())
 	definitionByKey := make(map[string]Definition, len(definitions))
 	orderedKeys := make([]string, 0, len(definitions))
 	for _, definition := range definitions {
@@ -116,6 +116,13 @@ func (s Service) Reset(ctx context.Context, keys []string) (SystemConfig, error)
 		return SystemConfig{}, err
 	}
 	return s.Config(ctx)
+}
+
+func (s Service) baseConfig() config.Config {
+	if s.cfg.Base != nil {
+		return *s.cfg.Base
+	}
+	return s.cfg
 }
 
 func (s Service) envPath() string {

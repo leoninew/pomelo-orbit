@@ -70,7 +70,7 @@
                   />
                 </div>
                 <!-- Display Mode -->
-                <div v-else class="text-foreground">
+                <div v-else :class="item.is_overridden ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'">
                   <span v-if="typeof item.value === 'boolean'">
                     {{ item.value ? 'true' : 'false' }}
                   </span>

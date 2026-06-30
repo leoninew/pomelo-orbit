@@ -141,12 +141,15 @@ func TestDeployApplicationEnqueuesForceRecreateTask(t *testing.T) {
 		t.Fatalf("unexpected deploy payload: %+v", payload)
 	}
 
-	var deploymentStatus string
-	if err := database.Get(&deploymentStatus, `SELECT status FROM deployment WHERE id = ?`, deploymentId); err != nil {
+	var deployment struct {
+		Status      string `db:"status"`
+		CommandText string `db:"command_text"`
+	}
+	if err := database.Get(&deployment, `SELECT status, command_text FROM deployment WHERE id = ?`, deploymentId); err != nil {
 		t.Fatal(err)
 	}
-	if deploymentStatus != status.WorkStatusWaitingToRun {
-		t.Fatalf("unexpected deployment status: %s", deploymentStatus)
+	if deployment.Status != status.WorkStatusWaitingToRun || deployment.CommandText != "docker compose -f docker-compose.yml up -d --remove-orphans --pull missing --force-recreate" {
+		t.Fatalf("unexpected deployment: %+v", deployment)
 	}
 }
 
@@ -201,12 +204,15 @@ func TestStopApplicationEnqueuesTask(t *testing.T) {
 		t.Fatalf("unexpected stop payload: %+v", payload)
 	}
 
-	var deploymentStatus string
-	if err := database.Get(&deploymentStatus, `SELECT status FROM deployment WHERE id = ?`, deploymentId); err != nil {
+	var deployment struct {
+		Status      string `db:"status"`
+		CommandText string `db:"command_text"`
+	}
+	if err := database.Get(&deployment, `SELECT status, command_text FROM deployment WHERE id = ?`, deploymentId); err != nil {
 		t.Fatal(err)
 	}
-	if deploymentStatus != status.WorkStatusWaitingToRun {
-		t.Fatalf("unexpected deployment status: %s", deploymentStatus)
+	if deployment.Status != status.WorkStatusWaitingToRun || deployment.CommandText != "docker compose -f docker-compose.yml down -v" {
+		t.Fatalf("unexpected deployment: %+v", deployment)
 	}
 	var appStatus string
 	if err := database.Get(&appStatus, `SELECT status FROM application WHERE id = ?`, created.Id); err != nil {

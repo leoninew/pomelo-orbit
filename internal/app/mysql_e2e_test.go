@@ -76,8 +76,8 @@ func TestMySQLE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(statuses) != 6 {
-		t.Fatalf("expected 6 migrations, got %d", len(statuses))
+	if len(statuses) != 7 {
+		t.Fatalf("expected 7 migrations, got %d", len(statuses))
 	}
 	for _, migration := range statuses {
 		if !migration.Applied {

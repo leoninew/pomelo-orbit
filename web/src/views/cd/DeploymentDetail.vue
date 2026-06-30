@@ -65,6 +65,12 @@
             <dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
             <dd class="text-foreground">{{ deployment.trigger_type }}</dd>
           </div>
+          <div class="flex gap-2 sm:col-span-2">
+            <dt class="w-32 shrink-0 text-muted-foreground">执行命令</dt>
+            <dd class="min-w-0 break-all font-mono text-xs text-foreground">
+              {{ deployment.command_text || '未记录' }}
+            </dd>
+          </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">耗时</dt>
             <dd class="text-muted-foreground">
@@ -97,10 +103,20 @@
       <!-- 日志卡片 -->
       <div class="app-surface flex min-h-0 flex-1 flex-col">
         <div class="app-section-header flex shrink-0 items-center justify-between">
-          <h2 class="font-semibold text-foreground">部署日志</h2>
-          <button class="app-button h-8 px-3" @click="refreshDeployment">
-            <RefreshCw class="size-4" />
-            刷新
+          <div>
+            <h2 class="font-semibold text-foreground">容器日志</h2>
+            <p v-if="containerLogSource === 'tail'" class="mt-1 text-xs text-muted-foreground">
+              当前展示最近容器日志，可能包含本次操作前的历史输出。
+            </p>
+          </div>
+          <button
+            v-if="showsContainerLogs"
+            class="app-button inline-flex h-8 items-center gap-2 px-3"
+            :class="isLogPolling ? 'text-primary' : ''"
+            @click="toggleLogPolling"
+          >
+            <Loader2 class="size-4" :class="isLogPolling ? 'animate-spin' : ''" />
+            {{ isLogPolling ? '自动刷新' : '暂停刷新' }}
           </button>
         </div>
         <div class="min-h-0 flex-1 p-5">
@@ -110,12 +126,15 @@
           >
             <div class="text-center">
               <AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
-              <p v-if="logStatus === 'loading'" class="mt-2 text-sm">加载日志中...</p>
-              <p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">日志流传输中...</p>
-              <p v-else-if="logStatus === 'empty'" class="text-sm">暂无日志输出</p>
+              <p v-if="logStatus === 'not_applicable'" class="text-sm">
+                停止操作不展示实时容器日志。
+              </p>
+              <p v-else-if="logStatus === 'loading'" class="mt-2 text-sm">加载容器日志中...</p>
+              <p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">容器日志刷新中...</p>
+              <p v-else-if="logStatus === 'empty'" class="text-sm">暂无容器日志输出</p>
               <div v-else-if="logStatus === 'error'">
-                <p class="text-sm text-destructive">日志加载失败</p>
-                <button class="app-link mt-2 text-sm" @click="refreshDeployment">重试</button>
+                <p class="text-sm text-destructive">容器日志加载失败</p>
+                <button class="app-link mt-2 text-sm" @click="fetchContainerLogs">重试</button>
               </div>
             </div>
           </div>
@@ -146,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, RefreshCw, X } from 'lucide-vue-next';
+  import { ArrowLeft, Loader2, X } from 'lucide-vue-next';
   import { computed, onMounted, onUnmounted, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { deploymentApi } from '@/api/cd/deployments';
@@ -156,11 +175,9 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import { useAuthStore } from '@/stores/auth';
   import type { DeploymentDetail } from '@/types/cd/deployment';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
-  import config from '@/config';
   import type { editor } from 'monaco-editor';
 
   const route = useRoute();
@@ -168,13 +185,15 @@
   const deploymentId = route.params.id as string;
   const toast = useToast();
   const { status, execute } = useStatusAsync();
-  const authStore = useAuthStore();
 
   const deployment = ref<DeploymentDetail>();
   const logText = ref('');
-  const logOffset = ref(0);
+  const containerLogSource = ref<'since' | 'tail'>('since');
   const isCancelDialogOpen = ref(false);
-  const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
+  const isLogPolling = ref(false);
+  const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error' | 'not_applicable'>(
+    'loading'
+  );
   let logAbort: AbortController | null = null;
   let logEditorInstance: editor.IStandaloneCodeEditor | null = null;
 
@@ -206,44 +225,53 @@
     }
   }
 
-  async function fetchLogs() {
+  const showsContainerLogs = computed(() => deployment.value?.operation_type !== 'stop');
+
+  async function fetchContainerLogs() {
+    if (!deployment.value || !showsContainerLogs.value) {
+      logText.value = '';
+      logStatus.value = 'not_applicable';
+      return;
+    }
     try {
-      const data = await deploymentApi.getLogs(deploymentId, logOffset.value);
-      if (data.logs) {
-        logText.value += data.logs;
-        logOffset.value = data.offset;
-      }
-      if (data.is_complete) {
-        logAbort?.abort();
-        logStatus.value = logText.value ? 'done' : 'empty';
-        deployment.value = await deploymentApi.get(deploymentId);
-      } else {
-        logStatus.value = 'streaming';
-      }
+      const data = await deploymentApi.getContainerLogs(deploymentId, { tail: 200 });
+      logText.value = data.logs;
+      containerLogSource.value = data.source;
+      logStatus.value = isTerminalStatus(deployment.value.status)
+        ? logText.value
+          ? 'done'
+          : 'empty'
+        : 'streaming';
+      scrollToBottom();
     } catch (error) {
-      console.error('获取日志失败:', error);
+      console.error('获取容器日志失败:', error);
       logStatus.value = 'error';
     }
   }
 
   function startLogPolling() {
+    if (isLogPolling.value) {
+      return;
+    }
     logAbort = new AbortController();
     const signal = logAbort.signal;
+    isLogPolling.value = true;
     (async () => {
-      await fetchLogs();
-      while (!signal.aborted) {
-        if (deployment.value && isTerminalStatus(deployment.value.status)) {
-          break;
-        }
+      await fetchContainerLogs();
+      if (!deployment.value || !showsContainerLogs.value) {
+        isLogPolling.value = false;
+        return;
+      }
+      while (!signal.aborted && showsContainerLogs.value) {
         await delayAsync(2000);
         if (signal.aborted) {
           break;
         }
         try {
-          await fetchLogs();
+          deployment.value = await deploymentApi.get(deploymentId);
+          await fetchContainerLogs();
         } catch {
           logStatus.value = 'error';
-          break;
         }
       }
     })();
@@ -252,67 +280,15 @@
   function stopLog() {
     logAbort?.abort();
     logAbort = null;
+    isLogPolling.value = false;
   }
 
-  async function startLogStream(refreshOnComplete = true) {
-    logAbort = new AbortController();
-    const signal = logAbort.signal;
-    let reader: ReadableStreamDefaultReader<string> | null = null;
-
-    try {
-      const response = await deploymentApi.streamLogs(deploymentId, authStore.token, signal);
-      if (!response.body) {
-        logStatus.value = logText.value ? 'done' : 'empty';
-        return;
-      }
-
-      reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-      let buffer = '';
-      logStatus.value = 'streaming';
-
-      while (!signal.aborted) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += value;
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() ?? '';
-
-        for (const part of parts) {
-          if (part.startsWith('event: complete')) {
-            logStatus.value = logText.value ? 'done' : 'empty';
-            if (refreshOnComplete) {
-              deployment.value = await deploymentApi.get(deploymentId);
-            }
-            return;
-          }
-          const dataLine = part.split('\n').find((l) => l.startsWith('data: '));
-          if (dataLine) {
-            const payload = JSON.parse(dataLine.slice(6));
-            if (payload.logs) {
-              logText.value += payload.logs;
-              scrollToBottom();
-            }
-          }
-        }
-      }
-      logStatus.value = logText.value ? 'done' : 'empty';
-    } catch (error) {
-      if (!signal.aborted) {
-        console.error('日志流读取失败:', error);
-        logStatus.value = 'error';
-      }
-    } finally {
-      if (reader) {
-        try {
-          await reader.cancel();
-        } catch {
-          // ignore cleanup errors
-        }
-      }
+  function toggleLogPolling() {
+    if (isLogPolling.value) {
+      stopLog();
+      return;
     }
+    startLogPolling();
   }
 
   async function handleCancel() {
@@ -325,11 +301,6 @@
     } catch {
       toast.error('取消失败');
     }
-  }
-
-  async function refreshDeployment() {
-    await fetchDeployment();
-    scrollToBottom();
   }
 
   function scrollToBottom() {
@@ -351,19 +322,11 @@
     if (!deployment.value) {
       return;
     }
-    if (config.features.sseDeploymentLog) {
-      if (isTerminalStatus(deployment.value.status)) {
-        startLogStream(false);
-      } else {
-        startLogStream();
-      }
-    } else {
-      if (isTerminalStatus(deployment.value.status)) {
-        await fetchLogs();
-      } else {
-        startLogPolling();
-      }
+    if (!showsContainerLogs.value || isTerminalStatus(deployment.value.status)) {
+      await fetchContainerLogs();
+      return;
     }
+    startLogPolling();
   });
   onUnmounted(stopLog);
 </script>

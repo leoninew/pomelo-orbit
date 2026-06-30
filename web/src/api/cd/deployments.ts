@@ -43,6 +43,18 @@ export const deploymentApi = {
     });
   },
 
+  // 获取部署对应的容器日志
+  getContainerLogs(
+    id: string,
+    params?: { tail?: number }
+  ): Promise<{
+    logs: string;
+    source: 'since' | 'tail';
+    is_realtime_supported: boolean;
+  }> {
+    return request.get(`/api/cd/deployment/${id}/container-logs`, { params });
+  },
+
   // SSE 流式获取部署日志
   streamLogs(id: string, token: string | null, signal?: AbortSignal): Promise<Response> {
     return fetch(`/api/cd/deployment/${id}/stream-log`, {

@@ -31,8 +31,8 @@ func TestMigratorUpAndStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(statuses) != 6 {
-		t.Fatalf("expected 6 migrations, got %d", len(statuses))
+	if len(statuses) != 7 {
+		t.Fatalf("expected 7 migrations, got %d", len(statuses))
 	}
 	for _, status := range statuses {
 		if !status.Applied {
@@ -85,8 +85,8 @@ func TestMigratorListsMySQLMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 6 {
-		t.Fatalf("expected 6 mysql migrations, got %d", len(files))
+	if len(files) != 7 {
+		t.Fatalf("expected 7 mysql migrations, got %d", len(files))
 	}
 	if files[0] != "mysql/v0.1.0__background_task.sql" {
 		t.Fatalf("unexpected first mysql migration: %s", files[0])

@@ -46,7 +46,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if err := json.NewDecoder(detailRecorder.Body).Decode(&detail); err != nil {
 		t.Fatal(err)
 	}
-	if detail.ApplicationId == nil || *detail.ApplicationId != deploymentRouteApplicationId || detail.ApplicationName != "FileBrowser" {
+	if detail.ApplicationId == nil || *detail.ApplicationId != deploymentRouteApplicationId || detail.ApplicationName != "FileBrowser" || detail.CommandText != "docker compose -f docker-compose.yml up -d --remove-orphans --pull missing" {
 		t.Fatalf("unexpected deployment detail: %+v", detail)
 	}
 
@@ -125,6 +125,7 @@ func TestDeploymentRoutesRequireAuth(t *testing.T) {
 		{http.MethodGet, "/api/cd/deployment?project_id=" + deploymentRouteProjectId},
 		{http.MethodGet, "/api/cd/deployment/deploy-route-test"},
 		{http.MethodGet, "/api/cd/deployment/deploy-route-test/logs"},
+		{http.MethodGet, "/api/cd/deployment/deploy-route-test/container-logs"},
 		{http.MethodGet, "/api/cd/deployment/deploy-route-test/stream-log"},
 		{http.MethodPost, "/api/cd/deployment/deploy-route-test/cancel"},
 	}
@@ -141,7 +142,7 @@ func insertDeploymentRouteData(t *testing.T, database interface {
 	Exec(query string, args ...any) (sql.Result, error)
 }, deploymentId string, deploymentStatus string) {
 	t.Helper()
-	if _, err := database.Exec(`INSERT INTO deployment (id, project_id, application_id, application_name, operation_type, trigger_type, status, started_at, is_rollback) VALUES (?, ?, ?, 'FileBrowser', 'deploy', 'manual', ?, '2024-03-16T00:00:00Z', 0)`, deploymentId, deploymentRouteProjectId, deploymentRouteApplicationId, deploymentStatus); err != nil {
+	if _, err := database.Exec(`INSERT INTO deployment (id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status, started_at, is_rollback) VALUES (?, ?, ?, 'FileBrowser', 'deploy', 'manual', 'docker compose -f docker-compose.yml up -d --remove-orphans --pull missing', ?, '2024-03-16T00:00:00Z', 0)`, deploymentId, deploymentRouteProjectId, deploymentRouteApplicationId, deploymentStatus); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -7,6 +7,7 @@ export interface Deployment {
   application_name: string | null;
   operation_type: string;
   trigger_type: string;
+  command_text: string;
   status: TaskStatus;
   started_at: string;
   finished_at: string | null;

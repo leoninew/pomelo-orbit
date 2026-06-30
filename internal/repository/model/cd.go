@@ -21,6 +21,7 @@ type Deployment struct {
 	ApplicationName          string     `db:"application_name"`
 	OperationType            string     `db:"operation_type"`
 	TriggerType              string     `db:"trigger_type"`
+	CommandText              string     `db:"command_text"`
 	Status                   string     `db:"status"`
 	StartedAt                time.Time  `db:"started_at"`
 	FinishedAt               *time.Time `db:"finished_at"`

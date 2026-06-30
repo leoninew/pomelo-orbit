@@ -243,6 +243,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法停止")
 	}
 	deployment := newApplicationDeployment(app, "stop")
+	deployment.CommandText = stopComposeCommand(removeVolumes).String()
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -264,6 +265,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 		return "", err
 	}
 	deployment := newApplicationDeployment(app, "restart")
+	deployment.CommandText = restartComposeCommand().String()
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -293,11 +295,47 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 	if tail < 1 || tail > 1000 {
 		return "", apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
 	}
-	output, err := runApplicationCommand(ctx, s.workspace.AppDir(app.Code), "docker", "compose", "-f", "docker-compose.yml", "logs", "--tail", strconv.Itoa(tail))
+	command := containerLogsTailCommand(strconv.Itoa(tail))
+	output, err := runApplicationCommand(ctx, s.workspace.AppDir(app.Code), command.argv()...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
 	return output, nil
+}
+
+func (s Service) DeploymentContainerLog(ctx context.Context, userId string, deploymentId string, tail int) (DeploymentContainerLog, error) {
+	if tail < 1 || tail > 1000 {
+		return DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
+	}
+	deployment, err := s.loadDeploymentForUser(ctx, userId, deploymentId)
+	if err != nil {
+		return DeploymentContainerLog{}, err
+	}
+	if deployment.OperationType == "stop" {
+		return DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "container logs are not available for stop deployments")
+	}
+	if deployment.ApplicationId == nil || strings.TrimSpace(*deployment.ApplicationId) == "" {
+		return DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
+	}
+	app, err := s.store.Application(ctx, *deployment.ApplicationId)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return DeploymentContainerLog{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
+		}
+		return DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+	}
+	appDir := s.workspace.AppDir(app.Code)
+	sinceCommand := containerLogsSinceCommand(deployment.StartedAt.UTC().Format(time.RFC3339))
+	output, err := runApplicationCommand(ctx, appDir, sinceCommand.argv()...)
+	if err == nil {
+		return DeploymentContainerLog{Logs: output, Source: "since", IsRealtimeSupported: true}, nil
+	}
+	tailCommand := containerLogsTailCommand(strconv.Itoa(tail))
+	output, tailErr := runApplicationCommand(ctx, appDir, tailCommand.argv()...)
+	if tailErr != nil {
+		return DeploymentContainerLog{}, apperror.New(apperror.KindInternal, outputOrError(output, tailErr))
+	}
+	return DeploymentContainerLog{Logs: output, Source: "tail", IsRealtimeSupported: true}, nil
 }
 
 func (s Service) ApplicationComposePreview(ctx context.Context, userId string, applicationId string) (string, error) {

@@ -66,6 +66,7 @@ type DeploymentResp struct {
 	ApplicationName          string  `json:"application_name"`
 	OperationType            string  `json:"operation_type"`
 	TriggerType              string  `json:"trigger_type"`
+	CommandText              string  `json:"command_text"`
 	Status                   string  `json:"status"`
 	StartedAt                string  `json:"started_at"`
 	FinishedAt               *string `json:"finished_at"`
@@ -93,6 +94,7 @@ func (h Handler) RegisterDeploymentRoutes(r router) {
 	r.Get("/api/cd/deployment", h.listDeployments)
 	r.Get("/api/cd/deployment/{deployment_id}", h.getDeployment)
 	r.Get("/api/cd/deployment/{deployment_id}/logs", h.getDeploymentLogs)
+	r.Get("/api/cd/deployment/{deployment_id}/container-logs", h.getDeploymentContainerLogs)
 	r.Get("/api/cd/deployment/{deployment_id}/stream-log", h.streamDeploymentLog)
 	r.Post("/api/cd/deployment/{deployment_id}/cancel", h.cancelDeployment)
 }
@@ -234,6 +236,19 @@ func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": log.Logs, "offset": log.Offset, "is_complete": log.IsComplete, "status": log.Status})
 }
 
+func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Request) {
+	current, ok := h.authenticator.CurrentUser(w, r)
+	if !ok {
+		return
+	}
+	log, err := h.service.DeploymentContainerLog(r.Context(), current.Id, chi.URLParam(r, "deployment_id"), transportresponse.QueryInt(r.URL.Query().Get("tail"), 200))
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": log.Logs, "source": log.Source, "is_realtime_supported": log.IsRealtimeSupported})
+}
+
 func (h Handler) streamDeploymentLog(w http.ResponseWriter, r *http.Request) {
 	current, ok := h.authenticator.CurrentUser(w, r)
 	if !ok {
@@ -300,7 +315,7 @@ func ApplicationResponse(item model.Application) ApplicationResp {
 }
 
 func DeploymentResponse(item model.Deployment) DeploymentResp {
-	return DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: item.DurationMs, LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
+	return DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, CommandText: item.CommandText, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: item.DurationMs, LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
 }
 
 func mapPage[T any, U any](page repository.Page[T], convert func(T) U) repository.Page[U] {

@@ -129,6 +129,12 @@ type DeploymentLog struct {
 	Status     string
 }
 
+type DeploymentContainerLog struct {
+	Logs                string
+	Source              string
+	IsRealtimeSupported bool
+}
+
 func New(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, logStore logstore.LogStore) Service {
 	return NewWithRunner(store, tasks, cfg, logger, ShellRunner{}, logStore)
 }
@@ -258,6 +264,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 		return "", err
 	}
 	deployment := newApplicationDeployment(app, "deploy")
+	deployment.CommandText = deployComposeCommand(app.ImagePullPolicy, input.ForceRecreate).String()
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}

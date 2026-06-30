@@ -369,8 +369,8 @@ func (r Repository) DeleteRoute(ctx context.Context, id string) error {
 }
 
 func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deployment) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO deployment (id, project_id, application_id, application_name, operation_type, trigger_type, status, started_at, is_rollback, rollback_from_deployment_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, %s, ?, ?)`, db.NowExpr(r.driver)), deployment.Id, deployment.ProjectId, deployment.ApplicationId, deployment.ApplicationName, deployment.OperationType, deployment.TriggerType, deployment.Status, deployment.IsRollback, deployment.RollbackFromDeploymentId)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO deployment (id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, ?, ?)`, db.NowExpr(r.driver)), deployment.Id, deployment.ProjectId, deployment.ApplicationId, deployment.ApplicationName, deployment.OperationType, deployment.TriggerType, deployment.CommandText, deployment.Status, deployment.IsRollback, deployment.RollbackFromDeploymentId)
 	if err != nil {
 		return fmt.Errorf("create deployment %s: %w", deployment.Id, err)
 	}
@@ -386,7 +386,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	}
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.Deployment
-	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type,
+	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, command_text,
 		status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id
 		FROM deployment`+where+` ORDER BY started_at DESC, id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
@@ -397,7 +397,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 
 func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment, error) {
 	var deployment model.Deployment
-	err := r.db.GetContext(ctx, &deployment, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, status,
+	err := r.db.GetContext(ctx, &deployment, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status,
 		started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id FROM deployment WHERE id = ?`, id)
 	if err != nil {
 		return model.Deployment{}, fmt.Errorf("load deployment %s: %w", id, err)

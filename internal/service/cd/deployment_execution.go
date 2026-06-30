@@ -55,7 +55,8 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	defer logWriter.Close()
 
 	fmt.Fprintf(logWriter, "Working directory: %s\n", appDir)
-	if err := s.runner.Run(ctx, appDir, logWriter, "docker", "compose", "-f", "docker-compose.yml", "restart"); err != nil {
+	command := restartComposeCommand()
+	if err := s.runner.Run(ctx, appDir, logWriter, command.Name, command.Args...); err != nil {
 		_ = s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -84,11 +85,8 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	defer logWriter.Close()
 
 	fmt.Fprintf(logWriter, "Working directory: %s\n", appDir)
-	args := []string{"compose", "-f", "docker-compose.yml", "down"}
-	if removeVolumes {
-		args = append(args, "-v")
-	}
-	if err := s.runner.Run(ctx, appDir, logWriter, "docker", args...); err != nil {
+	command := stopComposeCommand(removeVolumes)
+	if err := s.runner.Run(ctx, appDir, logWriter, command.Name, command.Args...); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -169,11 +167,8 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 			return err
 		}
 	}
-	args := []string{"compose", "-f", "docker-compose.yml", "up", "-d", "--remove-orphans", "--pull", app.ImagePullPolicy}
-	if forceRecreate {
-		args = append(args, "--force-recreate")
-	}
-	return s.runner.Run(ctx, appDir, logWriter, "docker", args...)
+	command := deployComposeCommand(app.ImagePullPolicy, forceRecreate)
+	return s.runner.Run(ctx, appDir, logWriter, command.Name, command.Args...)
 }
 
 func writeDeploymentFile(appDir string, name string, content string) error {

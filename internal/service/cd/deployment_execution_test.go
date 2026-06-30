@@ -76,7 +76,7 @@ func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.
 	}
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, logstore.LogStore{})
 
-	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err == nil {
 		t.Fatal("expected runner error")
 	}
@@ -96,9 +96,10 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
 		},
 	}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
+	runner := &recordingCommandRunner{}
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, logstore.LogStore{})
 
-	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}
@@ -107,6 +108,29 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	}
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
+	}
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -f docker-compose.yml up -d --remove-orphans --pull missing" {
+		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
+	}
+}
+
+func TestExecuteApplicationDeployForceRecreatesApplication(t *testing.T) {
+	store := &fakeDeploymentExecutionStore{
+		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
+		deployment: model.Deployment{Id: "deploy-1"},
+		files: []model.ApplicationConfigFile{
+			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
+		},
+	}
+	runner := &recordingCommandRunner{}
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, logstore.LogStore{})
+
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", true)
+	if err != nil {
+		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
+	}
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -f docker-compose.yml up -d --remove-orphans --pull missing --force-recreate" {
+		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
 
@@ -124,7 +148,7 @@ func TestExecuteApplicationDeployFailsWhenPhysicalDataRootCannotBeResolved(t *te
 		return "", errors.New("missing host mount")
 	})
 
-	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err == nil || !strings.Contains(err.Error(), "missing host mount") {
 		t.Fatalf("expected physical data root error, got %v", err)
 	}
@@ -151,7 +175,7 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 		return physicalRoot, nil
 	})
 
-	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1")
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}

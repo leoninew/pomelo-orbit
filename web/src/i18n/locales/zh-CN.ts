@@ -254,6 +254,8 @@ export default {
         preview: '预览',
         addRoute: '添加路由',
         viewAllDeployments: '查看所有部署',
+        deployOptions: '部署选项',
+        deployForceRecreate: '强制重建部署',
         close: '关闭',
       },
       fields: {

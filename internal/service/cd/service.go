@@ -107,6 +107,10 @@ type ApplicationDeleteInput struct {
 	RemoveDir bool
 }
 
+type ApplicationDeployInput struct {
+	ForceRecreate bool
+}
+
 type DeploymentListInput struct {
 	ProjectId     string
 	ApplicationId string
@@ -245,7 +249,7 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 	return nil
 }
 
-func (s Service) DeployApplication(ctx context.Context, userId string, applicationId string) (string, error) {
+func (s Service) DeployApplication(ctx context.Context, userId string, applicationId string, input ApplicationDeployInput) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return "", err
@@ -257,7 +261,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationDeploy, map[string]string{"application_id": app.Id, "deployment_id": deployment.Id}); err != nil {
+	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationDeploy, map[string]any{"application_id": app.Id, "deployment_id": deployment.Id, "force_recreate": input.ForceRecreate}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil

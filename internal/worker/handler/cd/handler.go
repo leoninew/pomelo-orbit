@@ -12,10 +12,11 @@ type Payload struct {
 	ApplicationId string `json:"application_id"`
 	DeploymentId  string `json:"deployment_id"`
 	RemoveVolumes bool   `json:"remove_volumes"`
+	ForceRecreate bool   `json:"force_recreate"`
 }
 
 type ApplicationDeployer interface {
-	ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string) error
+	ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error
 	ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error
 	ExecuteApplicationStop(ctx context.Context, applicationId string, deploymentId string, removeVolumes bool) error
 }
@@ -47,7 +48,7 @@ func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 	}
 	switch h.operation {
 	case "deploy":
-		return h.deployer.ExecuteApplicationDeploy(ctx, payload.ApplicationId, payload.DeploymentId)
+		return h.deployer.ExecuteApplicationDeploy(ctx, payload.ApplicationId, payload.DeploymentId, payload.ForceRecreate)
 	case "restart":
 		return h.deployer.ExecuteApplicationRestart(ctx, payload.ApplicationId, payload.DeploymentId)
 	case "stop":

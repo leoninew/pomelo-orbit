@@ -12,15 +12,43 @@
           <Pencil class="size-4" />
           {{ t('common.edit') }}
         </button>
-        <button
-          v-if="application"
-          :disabled="operating"
-          class="app-button-primary h-9 px-3"
-          @click="handleDeploy"
-        >
-          <Play class="size-4" />
-          {{ t('application.deploy') }}
-        </button>
+        <DropdownMenuRoot v-if="application">
+          <div class="inline-flex h-9 overflow-hidden rounded-md">
+            <button
+              :disabled="operating"
+              class="app-button-primary h-9 rounded-r-none px-3"
+              @click="handleDeploy()"
+            >
+              <Play class="size-4" />
+              {{ t('application.deploy') }}
+            </button>
+            <DropdownMenuTrigger as-child>
+              <button
+                type="button"
+                :disabled="operating"
+                class="app-button-primary h-9 rounded-l-none border-l border-primary-foreground/20 px-2"
+                :aria-label="t('application.detail.actions.deployOptions')"
+              >
+                <ChevronDown class="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+          </div>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
+              class="z-50 min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
+              align="end"
+              :side-offset="8"
+            >
+              <DropdownMenuItem
+                class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+                @select="handleDeploy(true)"
+              >
+                <Play class="size-4" />
+                {{ t('application.detail.actions.deployForceRecreate') }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenuRoot>
         <button
           v-if="application"
           :disabled="operating"
@@ -704,6 +732,7 @@
 <script setup lang="ts">
   import {
     ArrowLeft,
+    ChevronDown,
     Download,
     Eye,
     Pencil,
@@ -714,6 +743,13 @@
     Trash2,
   } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
+  import {
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuPortal,
+    DropdownMenuRoot,
+    DropdownMenuTrigger,
+  } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/cd/application';
@@ -885,10 +921,10 @@
     }
   }
 
-  async function handleDeploy() {
+  async function handleDeploy(forceRecreate = false) {
     try {
       await executeOp(async () => {
-        const res = await applicationApi.deploy(applicationId);
+        const res = await applicationApi.deploy(applicationId, { force_recreate: forceRecreate });
         toast.success(t('application.toast.deployTriggeredDetail'));
         router.push({
           path: `/cd/deployments/${res.deployment_id}`,

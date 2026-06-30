@@ -11,7 +11,7 @@ import (
 	"backend/internal/status"
 )
 
-func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string) error {
+func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {
 	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
 	if err != nil {
 		return err
@@ -23,7 +23,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		return err
 	}
 
-	if err := s.writeAndDeploy(ctx, app, deployment.Id); err != nil {
+	if err := s.writeAndDeploy(ctx, app, deployment.Id, forceRecreate); err != nil {
 		_ = s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -110,7 +110,7 @@ func (s Service) loadDeploymentExecution(ctx context.Context, applicationId stri
 	return app, deployment, nil
 }
 
-func (s Service) writeAndDeploy(ctx context.Context, app model.Application, deploymentId string) error {
+func (s Service) writeAndDeploy(ctx context.Context, app model.Application, deploymentId string, forceRecreate bool) error {
 	files, err := s.executionStore.ConfigFiles(ctx, app.Id)
 	if err != nil {
 		return err
@@ -169,7 +169,11 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 			return err
 		}
 	}
-	return s.runner.Run(ctx, appDir, logWriter, "docker", "compose", "-f", "docker-compose.yml", "up", "-d", "--remove-orphans", "--pull", app.ImagePullPolicy)
+	args := []string{"compose", "-f", "docker-compose.yml", "up", "-d", "--remove-orphans", "--pull", app.ImagePullPolicy}
+	if forceRecreate {
+		args = append(args, "--force-recreate")
+	}
+	return s.runner.Run(ctx, appDir, logWriter, "docker", args...)
 }
 
 func writeDeploymentFile(appDir string, name string, content string) error {

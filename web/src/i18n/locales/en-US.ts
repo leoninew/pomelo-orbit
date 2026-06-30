@@ -263,6 +263,8 @@ export default {
         preview: 'Preview',
         addRoute: 'Add Route',
         viewAllDeployments: 'View all deployments',
+        deployOptions: 'Deploy options',
+        deployForceRecreate: 'Deploy with force recreate',
         close: 'Close',
       },
       fields: {

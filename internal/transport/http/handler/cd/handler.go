@@ -2,6 +2,7 @@ package cdhandler
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -52,6 +53,10 @@ type ApplicationUpdateReq struct {
 	Code            *string `json:"code"`
 	ImagePullPolicy *string `json:"image_pull_policy"`
 	RouteManaged    *bool   `json:"route_managed"`
+}
+
+type ApplicationDeployReq struct {
+	ForceRecreate bool `json:"force_recreate"`
 }
 
 type DeploymentResp struct {
@@ -173,7 +178,14 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	deploymentId, err := h.service.DeployApplication(r.Context(), current.Id, chi.URLParam(r, "app_id"))
+	var req ApplicationDeployReq
+	if r.Body != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
+			transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+			return
+		}
+	}
+	deploymentId, err := h.service.DeployApplication(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ApplicationDeployInput{ForceRecreate: req.ForceRecreate})
 	if err != nil {
 		h.writeError(w, err)
 		return

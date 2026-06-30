@@ -47,8 +47,8 @@ export const applicationApi = {
   },
 
   // 手动触发部署
-  deploy(id: string): Promise<{ deployment_id: string }> {
-    return request.post(`/api/cd/application/${id}/deploy`, {});
+  deploy(id: string, data?: { force_recreate?: boolean }): Promise<{ deployment_id: string }> {
+    return request.post(`/api/cd/application/${id}/deploy`, data ?? {});
   },
 
   // 停止应用

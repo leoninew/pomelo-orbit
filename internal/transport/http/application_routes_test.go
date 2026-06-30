@@ -87,6 +87,69 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	}
 }
 
+func TestDeployApplicationEnqueuesForceRecreateTask(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+	token := testToken(t, server)
+	projectId := "01KRRKK0K3T519ZQZES3M4QA9Z"
+
+	createRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(createRecorder, authedRequest(http.MethodPost, "/api/cd/application?project_id="+projectId, bytes.NewBufferString(`{"name":"Deploy App","code":"deploy-app","image_pull_policy":"missing"}`), token))
+	if createRecorder.Code != http.StatusCreated {
+		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
+	}
+	var created cdhandler.ApplicationResp
+	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
+		t.Fatal(err)
+	}
+
+	fileRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(fileRecorder, authedRequest(http.MethodPost, "/api/cd/application/"+created.Id+"/file", bytes.NewBufferString(`{"path":"docker-compose.yml","content":"services:\n  web:\n    image: nginx\n"}`), token))
+	if fileRecorder.Code != http.StatusOK {
+		t.Fatalf("expected application file create status 200, got %d: %s", fileRecorder.Code, fileRecorder.Body.String())
+	}
+
+	deployRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(deployRecorder, authedRequest(http.MethodPost, "/api/cd/application/"+created.Id+"/deploy", bytes.NewBufferString(`{"force_recreate":true}`), token))
+	if deployRecorder.Code != http.StatusOK {
+		t.Fatalf("expected deploy status 200, got %d: %s", deployRecorder.Code, deployRecorder.Body.String())
+	}
+	var deployResp map[string]string
+	if err := json.NewDecoder(deployRecorder.Body).Decode(&deployResp); err != nil {
+		t.Fatal(err)
+	}
+	deploymentId := deployResp["deployment_id"]
+	if deploymentId == "" {
+		t.Fatalf("expected deployment_id, got %+v", deployResp)
+	}
+
+	var task struct {
+		TaskType    string `db:"task_type"`
+		PayloadJSON string `db:"payload_json"`
+	}
+	if err := database.Get(&task, `SELECT task_type, payload_json FROM background_task ORDER BY created_at DESC LIMIT 1`); err != nil {
+		t.Fatal(err)
+	}
+	if task.TaskType != status.TaskTypeCDApplicationDeploy {
+		t.Fatalf("unexpected task type: %s", task.TaskType)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(task.PayloadJSON), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["application_id"] != created.Id || payload["deployment_id"] != deploymentId || payload["force_recreate"] != true {
+		t.Fatalf("unexpected deploy payload: %+v", payload)
+	}
+
+	var deploymentStatus string
+	if err := database.Get(&deploymentStatus, `SELECT status FROM deployment WHERE id = ?`, deploymentId); err != nil {
+		t.Fatal(err)
+	}
+	if deploymentStatus != status.WorkStatusWaitingToRun {
+		t.Fatalf("unexpected deployment status: %s", deploymentStatus)
+	}
+}
+
 func TestStopApplicationEnqueuesTask(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()

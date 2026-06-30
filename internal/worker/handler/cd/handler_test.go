@@ -35,8 +35,24 @@ func TestHandleDeploysApplication(t *testing.T) {
 	if !deployer.deployed {
 		t.Fatal("expected deploy to be called")
 	}
-	if deployer.applicationId != "app-1" || deployer.deploymentId != "deploy-1" {
-		t.Fatalf("unexpected ids: app=%s deployment=%s", deployer.applicationId, deployer.deploymentId)
+	if deployer.applicationId != "app-1" || deployer.deploymentId != "deploy-1" || deployer.forceRecreate {
+		t.Fatalf("unexpected deploy payload: app=%s deployment=%s force_recreate=%v", deployer.applicationId, deployer.deploymentId, deployer.forceRecreate)
+	}
+}
+
+func TestHandleDeploysApplicationWithForceRecreate(t *testing.T) {
+	deployer := &fakeDeployer{}
+	handler := NewDeployHandler(deployer)
+
+	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1","force_recreate":true}`})
+	if err != nil {
+		t.Fatalf("Handle returned error: %v", err)
+	}
+	if !deployer.deployed {
+		t.Fatal("expected deploy to be called")
+	}
+	if deployer.applicationId != "app-1" || deployer.deploymentId != "deploy-1" || !deployer.forceRecreate {
+		t.Fatalf("unexpected deploy payload: app=%s deployment=%s force_recreate=%v", deployer.applicationId, deployer.deploymentId, deployer.forceRecreate)
 	}
 }
 
@@ -77,12 +93,14 @@ type fakeDeployer struct {
 	restarted     bool
 	stopped       bool
 	removeVolumes bool
+	forceRecreate bool
 	applicationId string
 	deploymentId  string
 }
 
-func (d *fakeDeployer) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string) error {
+func (d *fakeDeployer) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {
 	d.deployed = true
+	d.forceRecreate = forceRecreate
 	d.applicationId = applicationId
 	d.deploymentId = deploymentId
 	return nil

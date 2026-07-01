@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
@@ -280,29 +281,9 @@ func TestAuthCaptchaRouteIsRemoved(t *testing.T) {
 func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
-	workingDir := t.TempDir()
-	staticDir := filepath.Join(workingDir, "static")
-	if err := os.Mkdir(staticDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<html>app</html>"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(staticDir, "asset.js"), []byte("console.log('app')"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	originalDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(workingDir); err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.Chdir(originalDir); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	withStaticDir(t, "<html><!-- __RUNTIME_CONFIG__ -->app</html>", map[string]string{
+		"asset.js": "console.log('app')",
+	})
 
 	assetRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(assetRecorder, httptest.NewRequest(http.MethodGet, "/asset.js", nil))
@@ -312,8 +293,8 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 
 	spaRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(spaRecorder, httptest.NewRequest(http.MethodGet, "/ci/repository", nil))
-	if spaRecorder.Code != http.StatusOK || spaRecorder.Body.String() != "<html>app</html>" {
-		t.Fatalf("expected spa fallback, got %d: %s", spaRecorder.Code, spaRecorder.Body.String())
+	if spaRecorder.Code != http.StatusOK || !strings.Contains(spaRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
+		t.Fatalf("expected spa fallback with runtime config, got %d: %s", spaRecorder.Code, spaRecorder.Body.String())
 	}
 
 	apiRecorder := httptest.NewRecorder()
@@ -327,6 +308,90 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	if postRecorder.Code != http.StatusNotFound {
 		t.Fatalf("expected non-get static fallback status 404, got %d: %s", postRecorder.Code, postRecorder.Body.String())
 	}
+}
+
+func TestStaticFilesInjectRuntimeConfigAPIBaseURL(t *testing.T) {
+	server, database := newTestServer(t)
+	server.appCfg.Web.APIBaseURL = "https://orbit-api.preflite.cn"
+	defer func() { _ = database.Close() }()
+	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, `<script>window.__CONFIG__ = {"apiBaseUrl":"https://orbit-api.preflite.cn"};</script>`) {
+		t.Fatalf("expected runtime config api base url, got: %s", body)
+	}
+	if recorder.Header().Get("Content-Type") != "text/html; charset=utf-8" {
+		t.Fatalf("unexpected content type: %s", recorder.Header().Get("Content-Type"))
+	}
+}
+
+func TestStaticFilesInjectRuntimeConfigEmptyObject(t *testing.T) {
+	server, database := newTestServer(t)
+	defer func() { _ = database.Close() }()
+	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	if !strings.Contains(recorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
+		t.Fatalf("expected empty runtime config, got: %s", recorder.Body.String())
+	}
+}
+
+func TestStaticFilesInjectRuntimeConfigFallbackBeforeHeadEnd(t *testing.T) {
+	server, database := newTestServer(t)
+	server.appCfg.Web.APIBaseURL = "https://orbit-api.preflite.cn"
+	defer func() { _ = database.Close() }()
+	withStaticDir(t, "<html><head><title>Orbit</title></head><body>app</body></html>", nil)
+
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/", nil))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", recorder.Code)
+	}
+	want := `<script>window.__CONFIG__ = {"apiBaseUrl":"https://orbit-api.preflite.cn"};</script></head>`
+	if !strings.Contains(recorder.Body.String(), want) {
+		t.Fatalf("expected runtime config before head end, got: %s", recorder.Body.String())
+	}
+}
+
+func withStaticDir(t *testing.T, indexHTML string, files map[string]string) {
+	t.Helper()
+	workingDir := t.TempDir()
+	staticDir := filepath.Join(workingDir, "static")
+	if err := os.Mkdir(staticDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte(indexHTML), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(staticDir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(workingDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Fatal(err)
+		}
+	})
 }
 
 func TestProjectAndDashboardLists(t *testing.T) {

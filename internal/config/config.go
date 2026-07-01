@@ -25,6 +25,7 @@ func EnvConfigFile(env string) string {
 type Config struct {
 	App         AppConfig       `mapstructure:"app" yaml:"app"`
 	Server      ServerConfig    `mapstructure:"server" yaml:"server"`
+	Web         WebConfig       `mapstructure:"web" yaml:"web"`
 	Logging     LoggingConfig   `mapstructure:"logging" yaml:"logging"`
 	Database    DatabaseConfig  `mapstructure:"database" yaml:"database"`
 	Worker      WorkerConfig    `mapstructure:"worker" yaml:"worker"`
@@ -46,8 +47,13 @@ type AppConfig struct {
 }
 
 type ServerConfig struct {
-	Host string `mapstructure:"host" yaml:"host"`
-	Port int    `mapstructure:"port" yaml:"port"`
+	Host               string   `mapstructure:"host" yaml:"host"`
+	Port               int      `mapstructure:"port" yaml:"port"`
+	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins" yaml:"cors_allowed_origins"`
+}
+
+type WebConfig struct {
+	APIBaseURL string `mapstructure:"api_base_url" yaml:"api_base_url"`
 }
 
 type LoggingConfig struct {
@@ -148,7 +154,7 @@ func Load() (Config, error) {
 	}
 
 	var cfg Config
-	if err := loader.Unmarshal(&cfg, viper.DecodeHook(mapstructure.StringToTimeDurationHookFunc())); err != nil {
+	if err := loader.Unmarshal(&cfg, configDecodeHook()); err != nil {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
 
@@ -187,7 +193,7 @@ func loadBaseConfig(envName string) (Config, error) {
 		}
 	}
 	var base Config
-	if err := loader.Unmarshal(&base, viper.DecodeHook(mapstructure.StringToTimeDurationHookFunc())); err != nil {
+	if err := loader.Unmarshal(&base, configDecodeHook()); err != nil {
 		return Config{}, fmt.Errorf("parse default config: %w", err)
 	}
 	return base, nil
@@ -229,6 +235,13 @@ func newLoader() *viper.Viper {
 	return loader
 }
 
+func configDecodeHook() viper.DecoderConfigOption {
+	return viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+	))
+}
+
 func bindEnv(loader *viper.Viper) {
 	keys := []string{
 		"app.name",
@@ -237,6 +250,8 @@ func bindEnv(loader *viper.Viper) {
 		"app.debug",
 		"server.host",
 		"server.port",
+		"server.cors_allowed_origins",
+		"web.api_base_url",
 		"logging.level",
 		"logging.file",
 		"logging.max_size_mb",

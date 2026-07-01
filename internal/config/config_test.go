@@ -33,6 +33,12 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Server.Port != 9020 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
+	if len(cfg.Server.CORSAllowedOrigins) != 0 {
+		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CORSAllowedOrigins)
+	}
+	if cfg.Web.APIBaseURL != "" {
+		t.Fatalf("unexpected web api base url: %s", cfg.Web.APIBaseURL)
+	}
 	if cfg.Logging.File != "logs/backend-go.log" {
 		t.Fatalf("unexpected logging file: %s", cfg.Logging.File)
 	}
@@ -154,6 +160,8 @@ worker:
 `)
 	t.Setenv("POMELO_ORBIT_SERVER__HOST", "0.0.0.0")
 	t.Setenv("POMELO_ORBIT_SERVER__PORT", "8088")
+	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn,https://preview.preflite.cn")
+	t.Setenv("POMELO_ORBIT_WEB__API_BASE_URL", "https://orbit-api.preflite.cn")
 	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
@@ -177,6 +185,12 @@ worker:
 	}
 	if cfg.Server.Port != 8088 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
+	}
+	if len(cfg.Server.CORSAllowedOrigins) != 2 || cfg.Server.CORSAllowedOrigins[0] != "https://orbit.preflite.cn" || cfg.Server.CORSAllowedOrigins[1] != "https://preview.preflite.cn" {
+		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CORSAllowedOrigins)
+	}
+	if cfg.Web.APIBaseURL != "https://orbit-api.preflite.cn" {
+		t.Fatalf("unexpected web api base url: %s", cfg.Web.APIBaseURL)
 	}
 	if cfg.Database.SQLite.Path != "/data/pomelo-repository.db" {
 		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
@@ -580,6 +594,9 @@ const defaultConfigContent = `app:
 server:
   host: 127.0.0.1
   port: 9020
+  cors_allowed_origins: []
+web:
+  api_base_url: ""
 logging:
   level: info
   file: logs/backend-go.log

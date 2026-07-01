@@ -1,6 +1,8 @@
 package transporthttp
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -71,6 +73,10 @@ type Server struct {
 	turnstileVerifier turnstileVerifier
 }
 
+type HealthResp struct {
+	Status string `json:"status"`
+}
+
 func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks taskrepo.Repository, defaultMaxAttempts int) Server {
 	tokenService := authsvc.NewTokenService(jwtSecret(cfg))
 	userRepository := userrepo.NewRepository(store.DB(), store.Driver())
@@ -89,9 +95,10 @@ func (s Server) Handler() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(transportmiddleware.LogRequest(s.logger, transportmiddleware.LogRequestConfig{BodyEnabled: s.appCfg.Logging.HTTPBodyEnabled, BodyMaxBytes: s.appCfg.Logging.HTTPBodyMaxBytes}))
 	r.Use(middleware.Recoverer)
+	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins))
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		transportresponse.JSON(s.logger, w, http.StatusOK, map[string]string{"status": "ok"})
+		transportresponse.JSON(s.logger, w, http.StatusOK, HealthResp{Status: "ok"})
 	})
 	authenticator := authz.New(s.logger, s.userRepository, s.tokenService)
 	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)
@@ -118,18 +125,18 @@ func (s Server) Handler() http.Handler {
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
-			transportresponse.JSON(s.logger, w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
+			transportresponse.Error(s.logger, w, http.StatusNotFound, "Not Found")
 			return
 		}
-		if serveStatic(w, r, "static") {
+		if s.serveStatic(w, r, "static") {
 			return
 		}
-		transportresponse.JSON(s.logger, w, http.StatusNotFound, map[string]string{"detail": "Not Found"})
+		transportresponse.Error(s.logger, w, http.StatusNotFound, "Not Found")
 	})
 	return r
 }
 
-func serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool {
+func (s Server) serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return false
 	}
@@ -144,13 +151,49 @@ func serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool 
 		filePath := filepath.Join(staticDir, filepath.FromSlash(strings.TrimPrefix(requestPath, "/")))
 		info, err := os.Stat(filePath)
 		if err == nil && !info.IsDir() {
+			if filepath.Clean(filePath) == filepath.Clean(indexPath) {
+				return s.serveIndexHTML(w, r, indexPath)
+			}
 			http.ServeFile(w, r, filePath)
 			return true
 		}
 	}
 
-	http.ServeFile(w, r, indexPath)
+	return s.serveIndexHTML(w, r, indexPath)
+}
+
+func (s Server) serveIndexHTML(w http.ResponseWriter, r *http.Request, indexPath string) bool {
+	content, err := os.ReadFile(indexPath)
+	if err != nil {
+		return false
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if r.Method == http.MethodHead {
+		return true
+	}
+	_, _ = w.Write(injectRuntimeConfig(content, s.appCfg.Web.APIBaseURL))
 	return true
+}
+
+func injectRuntimeConfig(content []byte, apiBaseURL string) []byte {
+	configValue := map[string]string{}
+	if strings.TrimSpace(apiBaseURL) != "" {
+		configValue["apiBaseUrl"] = apiBaseURL
+	}
+	configJSON, err := json.Marshal(configValue)
+	if err != nil {
+		panic(fmt.Sprintf("marshal runtime config: %v", err))
+	}
+	script := []byte("<script>window.__CONFIG__ = " + string(configJSON) + ";</script>")
+	placeholder := []byte("<!-- __RUNTIME_CONFIG__ -->")
+	if bytes.Contains(content, placeholder) {
+		return bytes.Replace(content, placeholder, script, 1)
+	}
+	headEnd := []byte("</head>")
+	if bytes.Contains(content, headEnd) {
+		return bytes.Replace(content, headEnd, append(script, headEnd...), 1)
+	}
+	return content
 }
 
 func (s Server) Addr() string {

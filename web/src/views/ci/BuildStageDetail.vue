@@ -98,6 +98,7 @@
             language="shell"
             height="300px"
             :readonly="true"
+            squared
           />
         </div>
         <div v-else class="px-5 py-10 text-center text-muted-foreground">

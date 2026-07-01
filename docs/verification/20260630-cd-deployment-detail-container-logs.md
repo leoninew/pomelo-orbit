@@ -1,5 +1,5 @@
 # CD 部署详情展示执行命令与容器日志验证
-最后修改时间: 2026-06-30 13:03:31
+最后修改时间: 2026-07-01 12:57:58
 
 Review status: Accepted
 
@@ -199,6 +199,48 @@ git diff --check HEAD --
 - 可选后续优化：为容器日志接口增加更明确的输出量控制或分页 / offset 机制，避免 `--since` 在长时间运行场景下返回过大日志。
 - 可选后续优化：如用户需要同时排查 Orbit 执行过程，可另开需求增加“执行日志”折叠面板或 debug 入口。
 
+## 2026-07-01 layout follow-up / 布局补充验证
+
+用户在验证过程中补充反馈：部署详情页在高度减少时，“基本信息”卡片会被压缩到几乎不可见；同时容器日志卡片需要提供最小高度。
+
+本次补充实现与验证范围限定在 `web/src/views/cd/DeploymentDetail.vue` 的页面布局：
+
+- “基本信息”卡片增加 `shrink-0`，避免外层纵向 flex 高度不足时被压缩到不可读。
+- “容器日志”卡片从 `min-h-0` 调整为 `min-h-[360px]`，保证日志区域有可用的最小展示高度。
+- `MonacoEditor` 的 `squared` 使用保持不变，用于配合日志编辑器方角显示。
+
+补充验收清单：
+
+- [x] 容器日志卡片具备最小高度，不会在页面高度减少时压缩到无法阅读。
+- [x] 基本信息卡片不可压缩，页面高度不足时优先保留基本信息可见性。
+- [x] 未改变容器日志拉取、自动刷新、停止操作不适用说明、返回和取消部署逻辑。
+
+补充命令结果：
+
+```text
+yarn --cwd web lint:fix
+结果：通过
+输出摘要：eslint . --fix --cache，Done in 1.10s.
+```
+
+```text
+yarn --cwd web typecheck
+结果：通过
+输出摘要：vue-tsc --noEmit，Done in 4.79s.
+```
+
+```text
+git diff --check -- web/src/views/cd/DeploymentDetail.vue
+结果：通过
+输出摘要：无输出。
+```
+
+补充范围说明：
+
+- 本次补充验证没有重新运行 Go fmt/vet/test，因为补充改动只涉及前端 Vue 布局；原后端功能验证结果仍以本文件上方记录为准。
+- 当前工作区还包含其他已暂存或未暂存改动，例如 Traefik 多域名路由、manage.py scp、文档更新、`web/src/components/ApplicationCreateWizard.vue` 删除等；这些不属于本次部署详情布局补充验证范围。
+- `web/src/views/cd/DeploymentDetail.vue` 当前同时包含已暂存的 `squared` 编辑器改动和本次未暂存的布局补充改动，提交前建议用户按实际交付边界检查 staged/unstaged 分组。
+
 ## Conclusion / 结论
 
-本次实现与已接受的 Requirement、Spec 和 Plan 对齐；验证命令均通过。除已记录的轻微文案扩展范围和真实 Docker Compose 环境未手工验证外，没有发现阻塞交付的问题。当前可以进入用户验收或提交准备阶段。
+本次实现与已接受的 Requirement、Spec 和 Plan 对齐；验证命令均通过。2026-07-01 的布局补充已解决容器日志卡片缺少最小高度、基本信息卡片在高度减少时被压缩的问题。除已记录的轻微文案扩展范围、真实 Docker Compose 环境未手工验证以及当前工作区存在其他无关改动外，没有发现阻塞交付的问题。当前可以进入用户验收或提交准备阶段。

@@ -24,7 +24,7 @@
     <!-- 内容 -->
     <div v-else-if="deployment" class="flex min-h-0 flex-1 flex-col gap-4">
       <!-- 基本信息卡片 -->
-      <div class="app-surface">
+      <div class="app-surface shrink-0">
         <div class="app-section-header">
           <h2 class="font-semibold text-foreground">基本信息</h2>
         </div>
@@ -101,7 +101,7 @@
       </div>
 
       <!-- 日志卡片 -->
-      <div class="app-surface flex min-h-0 flex-1 flex-col">
+      <div class="app-surface flex min-h-[360px] flex-1 flex-col">
         <div class="app-section-header flex shrink-0 items-center justify-between">
           <div>
             <h2 class="font-semibold text-foreground">容器日志</h2>
@@ -144,6 +144,7 @@
             language="plaintext"
             height="100%"
             :readonly="true"
+            squared
             @mount="handleEditorMount"
           />
         </div>

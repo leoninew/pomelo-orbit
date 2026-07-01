@@ -330,6 +330,7 @@
             language="plaintext"
             height="100%"
             :readonly="true"
+            squared
           />
         </div>
         <div v-else class="flex flex-1 items-center justify-center text-muted-foreground">

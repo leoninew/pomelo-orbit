@@ -335,6 +335,7 @@ export default {
       filePathRequired: 'File path is required',
       serviceRequired: 'Please select a service',
       domainRequired: 'Domain is required',
+      domainInvalid: 'Enter a valid domain without spaces or backticks',
       portRange: 'Port range is 1-65535',
       envKeyInvalid:
         'Environment variable names must start with a letter or underscore and only contain letters, numbers, and underscores',

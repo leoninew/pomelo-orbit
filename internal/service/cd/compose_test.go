@@ -89,3 +89,59 @@ func TestInjectApplicationRouteLabelsRejectsMissingService(t *testing.T) {
 		t.Fatal("expected missing service error")
 	}
 }
+
+func TestInjectApplicationRouteLabelsMergesDomainsForSameService(t *testing.T) {
+	compose := "services:\n  pomelo-orbit:\n    image: pomelo-orbit\n"
+	routes := []model.ApplicationRoute{
+		{ServiceName: "pomelo-orbit", Domain: "orbit.typing-island.site", Port: 80},
+		{ServiceName: "pomelo-orbit", Domain: "orbit.preflite.cn", Port: 80},
+	}
+
+	got, err := injectApplicationRouteLabels(compose, routes, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRule := "traefik.http.routers.pomelo-orbit.rule=Host(`orbit.typing-island.site`) || Host(`orbit.preflite.cn`)"
+	if !strings.Contains(got, wantRule) {
+		t.Fatalf("expected merged router rule %q, got:\n%s", wantRule, got)
+	}
+	if !strings.Contains(got, "traefik.http.services.pomelo-orbit.loadbalancer.server.port=80") {
+		t.Fatalf("expected service port label, got:\n%s", got)
+	}
+	if !strings.Contains(got, "traefik.http.routers.pomelo-orbit.tls.certresolver=letsencrypt") {
+		t.Fatalf("expected letsencrypt label, got:\n%s", got)
+	}
+}
+
+func TestInjectApplicationRouteLabelsRejectsSameServiceWithDifferentPorts(t *testing.T) {
+	compose := "services:\n  web:\n    image: nginx\n"
+	routes := []model.ApplicationRoute{
+		{ServiceName: "web", Domain: "web.example.com", Port: 80},
+		{ServiceName: "web", Domain: "api.example.com", Port: 8080},
+	}
+
+	_, err := injectApplicationRouteLabels(compose, routes, false)
+	if err == nil {
+		t.Fatal("expected different ports error")
+	}
+}
+
+func TestNormalizeApplicationRouteInputRejectsInvalidDomain(t *testing.T) {
+	invalidDomains := []string{"bad host.example.com", "bad`host.example.com", "-bad.example.com", "bad-.example.com", ""}
+	for _, domain := range invalidDomains {
+		_, _, _, err := normalizeApplicationRouteInput("web", domain, 80)
+		if err == nil {
+			t.Fatalf("expected domain %q to be rejected", domain)
+		}
+	}
+}
+
+func TestNormalizeApplicationRouteInputNormalizesDomain(t *testing.T) {
+	_, domain, _, err := normalizeApplicationRouteInput("web", " Orbit.Example.COM ", 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if domain != "orbit.example.com" {
+		t.Fatalf("unexpected normalized domain: %q", domain)
+	}
+}

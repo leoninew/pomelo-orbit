@@ -191,10 +191,42 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 	}
 }
 
+func TestApplicationComposePreviewMatchesDeployRouteLabels(t *testing.T) {
+	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
+	app := model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing", RouteManaged: true}
+	compose := model.ApplicationConfigFile{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}
+	routes := []model.ApplicationRoute{
+		{ServiceName: "web", Domain: "web.example.com", Port: 80},
+		{ServiceName: "web", Domain: "alt.example.com", Port: 80},
+	}
+	store := &fakeDeploymentExecutionStore{app: app, deployment: model.Deployment{Id: "deploy-1"}, files: []model.ApplicationConfigFile{compose}, routes: routes}
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
+
+	preview, err := service.renderApplicationCompose(context.Background(), app, compose)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false); err != nil {
+		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
+	}
+	content, err := os.ReadFile(filepath.Join(cfg.DataRoot(), "cd", "demo", "docker-compose.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview != string(content) {
+		t.Fatalf("expected preview to match deployed compose\npreview:\n%s\ndeployed:\n%s", preview, string(content))
+	}
+	wantRule := "traefik.http.routers.web.rule=Host(`web.example.com`) || Host(`alt.example.com`)"
+	if !strings.Contains(preview, wantRule) {
+		t.Fatalf("expected merged route rule %q, got:\n%s", wantRule, preview)
+	}
+}
+
 type fakeDeploymentExecutionStore struct {
 	app              model.Application
 	deployment       model.Deployment
 	files            []model.ApplicationConfigFile
+	routes           []model.ApplicationRoute
 	appStatus        string
 	deploymentStatus string
 }
@@ -216,7 +248,7 @@ func (s *fakeDeploymentExecutionStore) ServiceConfigs(ctx context.Context, appli
 }
 
 func (s *fakeDeploymentExecutionStore) Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error) {
-	return nil, nil
+	return s.routes, nil
 }
 
 func (s *fakeDeploymentExecutionStore) MarkApplicationStatus(ctx context.Context, id string, status string) error {

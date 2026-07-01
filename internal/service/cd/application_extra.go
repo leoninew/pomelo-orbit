@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ type ApplicationRouteInput struct {
 	Domain      string
 	Port        int
 }
+
+var applicationRouteDomainPattern = regexp.MustCompile(`(?i)^(localhost|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$`)
 
 // ApplicationServiceConfigImportInput stores import payload for service config.
 type ApplicationServiceConfigImportInput struct {
@@ -512,30 +515,41 @@ func (s Service) applicationComposeFile(ctx context.Context, applicationId strin
 }
 
 func (s Service) renderApplicationCompose(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (string, error) {
-	content := compose.Content
-	var err error
-	if strings.HasSuffix(compose.Path, ".liquid") {
-		content, err = s.renderApplicationTemplate(ctx, content, app.Code)
-		if err != nil {
-			return "", apperror.New(apperror.KindValidation, err.Error())
-		}
-	}
-	serviceConfigs, err := s.store.ServiceConfigs(ctx, app.Id)
+	serviceConfigs, err := s.executionStore.ServiceConfigs(ctx, app.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to load application service configs", err)
 	}
-	content = applyApplicationServiceConfigs(content, serviceConfigs)
+	var routes []model.ApplicationRoute
 	if app.RouteManaged {
-		routes, err := s.store.Routes(ctx, app.Id)
+		routes, err = s.executionStore.Routes(ctx, app.Id)
 		if err != nil {
 			return "", apperror.Wrap(apperror.KindInternal, "Failed to load application routes", err)
 		}
-		content, err = injectApplicationRouteLabels(content, routes, s.cfg.Cert.LetsEncrypt.Enabled)
+	}
+	_, content, err := s.renderApplicationConfigFile(ctx, app, compose.Path, compose.Content, serviceConfigs, routes)
+	return content, err
+}
+
+func (s Service) renderApplicationConfigFile(ctx context.Context, app model.Application, path string, content string, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) (string, string, error) {
+	if strings.HasSuffix(path, ".liquid") {
+		path = strings.TrimSuffix(path, ".liquid")
+		rendered, err := s.renderApplicationTemplate(ctx, content, app.Code)
 		if err != nil {
-			return "", apperror.New(apperror.KindValidation, err.Error())
+			return "", "", apperror.New(apperror.KindValidation, err.Error())
+		}
+		content = rendered
+	}
+	if path == "docker-compose.yml" {
+		content = applyApplicationServiceConfigs(content, serviceConfigs)
+		if app.RouteManaged {
+			rendered, err := injectApplicationRouteLabels(content, routes, s.cfg.Cert.LetsEncrypt.Enabled)
+			if err != nil {
+				return "", "", apperror.New(apperror.KindValidation, err.Error())
+			}
+			content = rendered
 		}
 	}
-	return content, nil
+	return path, content, nil
 }
 
 func (s Service) composeServices(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (map[string]any, error) {
@@ -631,10 +645,17 @@ func (s Service) ensureApplicationCodeAvailable(ctx context.Context, code string
 func normalizeApplicationRouteInput(serviceName string, domain string, port int) (string, string, int, error) {
 	serviceName = strings.TrimSpace(serviceName)
 	domain = strings.TrimSpace(domain)
-	if serviceName == "" || domain == "" || port < 1 || port > 65535 {
+	if serviceName == "" || !validApplicationRouteDomain(domain) || port < 1 || port > 65535 {
 		return "", "", 0, apperror.New(apperror.KindValidation, "Invalid application route fields")
 	}
-	return serviceName, domain, port, nil
+	return serviceName, strings.ToLower(domain), port, nil
+}
+
+func validApplicationRouteDomain(domain string) bool {
+	if domain == "" || len(domain) > 253 || strings.ContainsAny(domain, " `\t\r\n") {
+		return false
+	}
+	return applicationRouteDomainPattern.MatchString(domain)
 }
 
 func runApplicationCommand(ctx context.Context, cwd string, args ...string) (string, error) {
@@ -716,20 +737,14 @@ func injectApplicationRouteLabels(compose string, routes []model.ApplicationRout
 			delete(service, "labels")
 		}
 	}
-	for _, route := range routes {
-		service, ok := services[route.ServiceName].(map[string]any)
+	for serviceName, group := range groupApplicationRoutes(routes) {
+		service, ok := services[serviceName].(map[string]any)
 		if !ok {
-			return "", errors.New("service " + route.ServiceName + " not found in docker-compose.yml")
+			return "", errors.New("service " + serviceName + " not found in docker-compose.yml")
 		}
-		labels := []string{
-			"traefik.enable=true",
-			"traefik.http.routers." + route.ServiceName + ".rule=Host(`" + route.Domain + "`)",
-			"traefik.http.services." + route.ServiceName + ".loadbalancer.server.port=" + strconv.Itoa(route.Port),
-		}
-		if letsEncrypt {
-			labels = append(labels, "traefik.http.routers."+route.ServiceName+".entrypoints=websecure", "traefik.http.routers."+route.ServiceName+".tls=true", "traefik.http.routers."+route.ServiceName+".tls.certresolver=letsencrypt")
-		} else {
-			labels = append(labels, "traefik.http.routers."+route.ServiceName+".entrypoints=web")
+		labels, err := applicationRouteLabels(serviceName, group, letsEncrypt)
+		if err != nil {
+			return "", err
 		}
 		service["labels"] = labels
 	}
@@ -738,6 +753,48 @@ func injectApplicationRouteLabels(compose string, routes []model.ApplicationRout
 		return "", err
 	}
 	return string(out), nil
+}
+
+func groupApplicationRoutes(routes []model.ApplicationRoute) map[string][]model.ApplicationRoute {
+	groups := make(map[string][]model.ApplicationRoute)
+	for _, route := range routes {
+		groups[route.ServiceName] = append(groups[route.ServiceName], route)
+	}
+	return groups
+}
+
+func applicationRouteLabels(serviceName string, routes []model.ApplicationRoute, letsEncrypt bool) ([]string, error) {
+	if len(routes) == 0 {
+		return nil, errors.New("application route group is empty")
+	}
+	port := routes[0].Port
+	hosts := make([]string, 0, len(routes))
+	seen := map[string]struct{}{}
+	for _, route := range routes {
+		if route.Port != port {
+			return nil, errors.New("service " + serviceName + " has routes with different ports")
+		}
+		domain := strings.ToLower(strings.TrimSpace(route.Domain))
+		if !validApplicationRouteDomain(domain) {
+			return nil, errors.New("service " + serviceName + " has invalid route domain")
+		}
+		if _, exists := seen[domain]; exists {
+			continue
+		}
+		seen[domain] = struct{}{}
+		hosts = append(hosts, "Host(`"+domain+"`)")
+	}
+	labels := []string{
+		"traefik.enable=true",
+		"traefik.http.routers." + serviceName + ".rule=" + strings.Join(hosts, " || "),
+		"traefik.http.services." + serviceName + ".loadbalancer.server.port=" + strconv.Itoa(port),
+	}
+	if letsEncrypt {
+		labels = append(labels, "traefik.http.routers."+serviceName+".entrypoints=websecure", "traefik.http.routers."+serviceName+".tls=true", "traefik.http.routers."+serviceName+".tls.certresolver=letsencrypt")
+	} else {
+		labels = append(labels, "traefik.http.routers."+serviceName+".entrypoints=web")
+	}
+	return labels, nil
 }
 
 func normalizeOptionalText(value *string) *string {

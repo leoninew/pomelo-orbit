@@ -137,28 +137,14 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 
 	hasInit := false
 	for _, file := range files {
-		path := file.Path
-		content := file.Content
-		if strings.HasSuffix(path, ".liquid") {
-			path = strings.TrimSuffix(path, ".liquid")
-			content, err = s.renderApplicationTemplate(ctx, content, app.Code)
-			if err != nil {
-				return err
-			}
-		}
-		if path == "docker-compose.yml" {
-			content = applyApplicationServiceConfigs(content, services)
-			if app.RouteManaged {
-				content, err = injectApplicationRouteLabels(content, routes, s.cfg.Cert.LetsEncrypt.Enabled)
-				if err != nil {
-					return err
-				}
-			}
+		path, content, err := s.renderApplicationConfigFile(ctx, app, file.Path, file.Content, services, routes)
+		if err != nil {
+			return err
 		}
 		if err := writeDeploymentFile(appDir, path, content); err != nil {
 			return err
 		}
-		if file.Path == "init.sh" {
+		if path == "init.sh" {
 			hasInit = true
 		}
 	}

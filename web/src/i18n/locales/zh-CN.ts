@@ -321,6 +321,7 @@ export default {
       filePathRequired: '请输入文件路径',
       serviceRequired: '请选择 service',
       domainRequired: '请输入域名',
+      domainInvalid: '请输入合法域名，不能包含空格或反引号',
       portRange: '端口范围 1-65535',
       envKeyInvalid: '环境变量名必须以字母或下划线开头，只能包含字母、数字和下划线',
       envValueInvalid: '环境变量值不能包含换行',

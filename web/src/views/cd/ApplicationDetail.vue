@@ -815,6 +815,7 @@
 
   const routeForm = reactive({ service_name: '', domain: '', port: 80 });
   const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
+  const routeDomainPattern = /^(localhost|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
   const serviceConfigForm = reactive({ image: '' });
 
   const fileDrawerVisible = ref(false);
@@ -1355,15 +1356,25 @@
   }
 
   function validateRouteForm() {
+    const domain = routeForm.domain.trim();
     routeFormErrors.service_name = routeForm.service_name
       ? ''
       : t('application.validation.serviceRequired');
-    routeFormErrors.domain = routeForm.domain.trim()
+    routeFormErrors.domain = isValidRouteDomain(domain)
       ? ''
-      : t('application.validation.domainRequired');
+      : t('application.validation.domainInvalid');
     routeFormErrors.port =
       routeForm.port >= 1 && routeForm.port <= 65535 ? '' : t('application.validation.portRange');
     return !routeFormErrors.service_name && !routeFormErrors.domain && !routeFormErrors.port;
+  }
+
+  function isValidRouteDomain(domain: string) {
+    return (
+      domain.length > 0 &&
+      domain.length <= 253 &&
+      !/[\s`]/.test(domain) &&
+      routeDomainPattern.test(domain)
+    );
   }
 
   async function handleRouteOk() {
@@ -1374,7 +1385,7 @@
       await executeRoute(async () => {
         const data = {
           service_name: routeForm.service_name,
-          domain: routeForm.domain,
+          domain: routeForm.domain.trim().toLowerCase(),
           port: routeForm.port,
         };
         if (editingRouteId.value) {

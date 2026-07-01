@@ -53,7 +53,7 @@ Review status: Accepted
 9. 复制命令使用 `subprocess.run([...], check=True)` 形式调用 `scp`，不使用本地 shell 拼接执行。
 10. `scripts/manage.py` 顶部用法说明包含新增 `scp` 命令。
 11. `.claude/skills/pomelo-remote/SKILL.md` 记录上传、下载和递归目录复制示例。
-12. 代码变更后运行脚本检查命令：`uv run --project backend python -m mypy scripts/`、`uv run --project backend python -m ruff check scripts/ --fix`、`uv run --project backend python -m ruff format scripts/`。
+12. 代码变更后运行脚本检查命令：`python -m mypy scripts/`、`python -m ruff check scripts/ --fix`、`python -m ruff format scripts/`。
 13. 至少验证 `python scripts/manage.py --help` 和 `python scripts/manage.py scp --help` 能正常显示新增命令。
 
 ## Open questions

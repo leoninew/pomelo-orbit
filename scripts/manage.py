@@ -30,6 +30,7 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/manage.py scp to-remote [-r] <local> <remote>    - 复制本地文件或目录到远程
   python scripts/manage.py scp from-remote [-r] <remote> <local>  - 复制远程文件或目录到本地
   python scripts/manage.py backup                     - 备份远程数据目录
+  python scripts/manage.py clean                      - 分析远程数据目录并清理 7 天前的 *.log
 
 示例:
   python scripts/manage.py install --image ghcr.io/leoninew/pomelo-orbit:latest
@@ -45,6 +46,7 @@ Pomelo Orbit Remote Deployment Tool
   python scripts/manage.py scp to-remote ./local.txt /tmp/local.txt
   python scripts/manage.py scp from-remote /tmp/remote.txt ./remote.txt
   python scripts/manage.py scp to-remote -r ./dist /tmp/dist
+  python scripts/manage.py clean
 """
 
 import argparse
@@ -725,6 +727,67 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     logger.info(f"备份完成: {local_archive}")
 
 
+def clean(cfg: "Config", remote_dir: str, days: int) -> None:
+    """分析远程数据目录并清理指定天数前的 *.log 文件"""
+    assert days >= 0, "days 必须大于等于 0"
+
+    logger.info(f"分析远程数据目录: {remote_dir}")
+    logger.info(f"清理范围: {days} 天前的 *.log 文件")
+
+    script = f"""
+set -euo pipefail
+base={shlex.quote(remote_dir)}
+days={days}
+
+if [ ! -d "$base" ]; then
+  printf 'data directory does not exist: %s\\n' "$base" >&2
+  exit 1
+fi
+
+printf '%s\\n' '--- data directory ---'
+ls -ld "$base"
+printf '%s\\n' '--- total size ---'
+du -sh "$base"
+printf '%s\\n' '--- top level sizes ---'
+du -h -d 1 "$base" 2>/dev/null | sort -hr | sed -n '1,50p'
+printf '%s\\n' '--- large files >=100M ---'
+find "$base" -xdev -type f -size +100M -exec ls -alh {{}} + 2>/dev/null | sort -k5 -hr | sed -n '1,50p'
+printf '%s\\n' '--- top 30 files ---'
+find "$base" -xdev -type f -exec ls -alh {{}} + 2>/dev/null | sort -k5 -hr | sed -n '1,30p'
+printf '%s\\n' '--- *.log files older than threshold before cleanup ---'
+sudo -n find "$base" -xdev -type f -name '*.log' -mtime +"$days" -exec ls -alh {{}} + | sort -k5 -hr | sed -n '1,100p'
+printf '%s\\n' '--- cleanup summary before delete ---'
+old_log_count=$(sudo -n find "$base" -xdev -type f -name '*.log' -mtime +"$days" -print | wc -l)
+printf 'count=%s\\n' "$old_log_count"
+if [ "$old_log_count" -gt 0 ]; then
+  sudo -n find "$base" -xdev -type f -name '*.log' -mtime +"$days" -exec du -ch {{}} + | tail -n 1
+else
+  printf 'total=0\\n'
+fi
+printf '%s\\n' '--- deleting old *.log files ---'
+deleted_count=$(sudo -n find "$base" -xdev -type f -name '*.log' -mtime +"$days" -print -delete | wc -l)
+printf 'deleted_count=%s\\n' "$deleted_count"
+printf '%s\\n' '--- verify remaining old *.log files ---'
+remaining_count=$(sudo -n find "$base" -xdev -type f -name '*.log' -mtime +"$days" -print | wc -l)
+printf 'remaining_count=%s\\n' "$remaining_count"
+if [ "$remaining_count" -gt 0 ]; then
+  sudo -n find "$base" -xdev -type f -name '*.log' -mtime +"$days" -exec du -ch {{}} + | tail -n 1
+else
+  printf 'total=0\\n'
+fi
+printf '%s\\n' '--- total size after cleanup ---'
+du -sh "$base"
+"""
+
+    result = subprocess.run(
+        ["ssh", cfg.ssh_target, "bash -s"],
+        input=script.encode("utf-8"),
+    )
+    if result.returncode != 0:
+        logger.error("远程清理失败；请确认远程用户可执行免密 sudo")
+        sys.exit(result.returncode)
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(description="Pomelo Orbit 远程部署和管理工具")
@@ -786,6 +849,15 @@ def main():
     backup_parser.add_argument(
         "--remote-dir",
         help="远程备份目录(默认: REMOTE_DEPLOY_DIR)",
+    )
+
+    # clean 命令
+    clean_parser = subparsers.add_parser("clean", help="分析远程数据目录并清理旧日志")
+    clean_parser.add_argument(
+        "--days",
+        type=int,
+        default=7,
+        help="清理多少天前的 *.log 文件(默认: 7)",
     )
 
     args = parser.parse_args()
@@ -860,6 +932,8 @@ def main():
         os.system(f"ssh {config.ssh_target}")
     elif args.command == "backup":
         backup(config, args.remote_dir or config.remote_deploy_dir)
+    elif args.command == "clean":
+        clean(config, f"{config.remote_deploy_dir}/data", args.days)
 
 
 if __name__ == "__main__":

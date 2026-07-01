@@ -16,7 +16,7 @@ tasks:
   run:
     desc: Start the development orchestrator
     cmds:
-      - bash -c 'uv run python scripts/run.py'
+      - python scripts/run.py
 
   check:
     desc: Run web and Go checks

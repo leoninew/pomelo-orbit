@@ -25,17 +25,17 @@ Traefik 负责 TLS 终止，证书以 PEM 格式通过 pomelo-orbit UI 上传后
 
 ## cert.py 工具
 
-`scripts/cert.py` 提供两个子命令，使用 uv 运行：
+`scripts/cert.py` 提供两个子命令，使用 Python 运行：
 
 ```bash
 # 查看帮助
-uv run --project backend/ python scripts/cert.py -h
+python scripts/cert.py -h
 
 # 生成证书（输出到 scripts/cert/{domain}.pem）
-uv run --project backend/ python scripts/cert.py new -n pomelo-orbit.localhost
+python scripts/cert.py new -n pomelo-orbit.localhost
 
 # 检查证书信任链（CA → 叶证书 → TLS 握手，模拟浏览器）
-uv run --project backend/ python scripts/cert.py check -n pomelo-orbit.localhost
+python scripts/cert.py check -n pomelo-orbit.localhost
 ```
 
 ### new
@@ -75,7 +75,7 @@ uv run --project backend/ python scripts/cert.py check -n pomelo-orbit.localhost
 
 ```bash
 # 生成证书（输出到 scripts/cert/{domain}.pem）
-uv run --project backend/ python scripts/cert.py new -n app.localhost
+python scripts/cert.py new -n app.localhost
 ```
 
 ### 2. 上传证书到 Pomelo Orbit
@@ -91,7 +91,7 @@ uv run --project backend/ python scripts/cert.py new -n app.localhost
 
 ```bash
 # 检查证书是否正确安装
-uv run --project backend/ python scripts/cert.py check -n app.localhost
+python scripts/cert.py check -n app.localhost
 ```
 
 ### 4. 访问应用

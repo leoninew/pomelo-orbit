@@ -110,7 +110,7 @@ Traefik 路由（从 Docker Provider 自动发现）本身不存储在数据库�
 
 1. 生成证书：
    ```bash
-   uv run --project backend/ python scripts/cert.py new -n app.localhost
+   python scripts/cert.py new -n app.localhost
    ```
 
 2. 手动复制证书文件到 Traefik 证书目录：

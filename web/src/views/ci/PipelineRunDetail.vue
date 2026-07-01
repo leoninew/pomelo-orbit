@@ -567,7 +567,8 @@
   async function fetchArtifacts() {
     try {
       await executeArtifacts(async () => {
-        artifacts.value = await pipelineRunApi.listArtifacts(runId.value);
+        const resp = await pipelineRunApi.listArtifacts(runId.value);
+        artifacts.value = resp.items;
       });
     } catch {
       // Artifact load failure does not block the main flow

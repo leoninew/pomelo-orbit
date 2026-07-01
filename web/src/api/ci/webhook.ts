@@ -1,3 +1,4 @@
+import type { ListResp } from '@/types/common';
 import type {
   ProjectWebhookCreateReq,
   ProjectWebhookUpdateReq,
@@ -6,7 +7,7 @@ import type {
 import request from '@/utils/request';
 
 export const webhookApi = {
-  list(repositoryId: string, params: { project_id: string }): Promise<RepositoryWebhook[]> {
+  list(repositoryId: string, params: { project_id: string }): Promise<ListResp<RepositoryWebhook>> {
     return request.get(`/api/ci/repository/${repositoryId}/webhook`, { params });
   },
 

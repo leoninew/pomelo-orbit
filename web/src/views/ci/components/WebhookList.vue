@@ -158,6 +158,7 @@
   import { computed, nextTick, reactive, ref } from 'vue';
   import { webhookApi } from '@/api/ci';
   import AppBadge from '@/components/AppBadge.vue';
+  import { buildApiUrl } from '@/config';
   import AppDialog from '@/components/AppDialog.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -209,7 +210,7 @@
   }
 
   function webhookUrl(webhookId: string) {
-    return `${window.location.origin}/api/webhooks/${webhookId}`;
+    return buildApiUrl(`/api/ci/webhook/${webhookId}`);
   }
 
   async function copyUrl(webhookId: string) {

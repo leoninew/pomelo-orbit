@@ -29,54 +29,6 @@ type Handler struct {
 	authenticator authz.Authenticator
 }
 
-type ApplicationResp struct {
-	Id              string  `json:"id"`
-	ProjectId       *string `json:"project_id"`
-	Name            string  `json:"name"`
-	Code            string  `json:"code"`
-	ImagePullPolicy string  `json:"image_pull_policy"`
-	Status          string  `json:"status"`
-	RouteManaged    bool    `json:"route_managed"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
-}
-
-type ApplicationCreateReq struct {
-	Name            string `json:"name"`
-	Code            string `json:"code"`
-	ImagePullPolicy string `json:"image_pull_policy"`
-	RouteManaged    bool   `json:"route_managed"`
-}
-
-type ApplicationUpdateReq struct {
-	Name            *string `json:"name"`
-	Code            *string `json:"code"`
-	ImagePullPolicy *string `json:"image_pull_policy"`
-	RouteManaged    *bool   `json:"route_managed"`
-}
-
-type ApplicationDeployReq struct {
-	ForceRecreate bool `json:"force_recreate"`
-}
-
-type DeploymentResp struct {
-	Id                       string  `json:"id"`
-	ProjectId                *string `json:"project_id"`
-	ApplicationId            *string `json:"application_id"`
-	ApplicationName          string  `json:"application_name"`
-	OperationType            string  `json:"operation_type"`
-	TriggerType              string  `json:"trigger_type"`
-	CommandText              string  `json:"command_text"`
-	Status                   string  `json:"status"`
-	StartedAt                string  `json:"started_at"`
-	FinishedAt               *string `json:"finished_at"`
-	DurationMs               *int    `json:"duration_ms"`
-	LogText                  *string `json:"log_text"`
-	ErrorMessage             *string `json:"error_message"`
-	IsRollback               bool    `json:"is_rollback"`
-	RollbackFromDeploymentId *string `json:"rollback_from_deployment_id"`
-}
-
 func New(logger *slog.Logger, service cdsvc.Service, authenticator authz.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
@@ -95,7 +47,6 @@ func (h Handler) RegisterDeploymentRoutes(r router) {
 	r.Get("/api/cd/deployment/{deployment_id}", h.getDeployment)
 	r.Get("/api/cd/deployment/{deployment_id}/logs", h.getDeploymentLogs)
 	r.Get("/api/cd/deployment/{deployment_id}/container-logs", h.getDeploymentContainerLogs)
-	r.Get("/api/cd/deployment/{deployment_id}/stream-log", h.streamDeploymentLog)
 	r.Post("/api/cd/deployment/{deployment_id}/cancel", h.cancelDeployment)
 }
 
@@ -121,7 +72,7 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	var req ApplicationCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	app, err := h.service.CreateApplication(r.Context(), current.Id, cdsvc.ApplicationCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
@@ -152,7 +103,7 @@ func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	var req ApplicationUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	app, err := h.service.UpdateApplication(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ApplicationUpdateInput{Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
@@ -183,7 +134,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 	var req ApplicationDeployReq
 	if r.Body != nil {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
-			transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+			transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 			return
 		}
 	}
@@ -192,7 +143,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
@@ -233,7 +184,7 @@ func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": log.Logs, "offset": log.Offset, "is_complete": log.IsComplete, "status": log.Status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentLogsResp{Logs: log.Logs, Offset: log.Offset, IsComplete: log.IsComplete, Status: log.Status})
 }
 
 func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Request) {
@@ -246,40 +197,7 @@ func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Reque
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": log.Logs, "source": log.Source, "is_realtime_supported": log.IsRealtimeSupported})
-}
-
-func (h Handler) streamDeploymentLog(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
-	if !ok {
-		return
-	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Streaming is not supported"})
-		return
-	}
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("X-Accel-Buffering", "no")
-	log, err := h.service.DeploymentLog(r.Context(), current.Id, chi.URLParam(r, "deployment_id"), 0)
-	if err != nil {
-		h.writeError(w, err)
-		return
-	}
-	if log.Logs != "" {
-		data, err := json.Marshal(map[string]any{"logs": log.Logs, "offset": log.Offset})
-		if err != nil {
-			h.logger.Error("marshal deployment log event failed", "deployment_id", chi.URLParam(r, "deployment_id"), "error", err)
-			return
-		}
-		_, _ = w.Write([]byte("data: " + string(data) + "\n\n"))
-		flusher.Flush()
-	}
-	if log.IsComplete {
-		_, _ = w.Write([]byte("event: complete\ndata: {}\n\n"))
-		flusher.Flush()
-	}
+	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported})
 }
 
 func (h Handler) cancelDeployment(w http.ResponseWriter, r *http.Request) {
@@ -299,7 +217,7 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("cd request failed", "error", err)
 	}
-	transportresponse.JSON(h.logger, w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
+	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
 func applicationResponse(item model.Application) ApplicationResp {

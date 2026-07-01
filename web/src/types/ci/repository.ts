@@ -1,4 +1,4 @@
-import type { VariableDeclaration } from './template';
+import type { VariableDeclaration, VariableDeclarationReq } from './template';
 
 export interface RepositoryListItem {
   id: string;
@@ -31,7 +31,7 @@ export interface RepositoryCreateReq {
   code: string;
   repository_url: string;
   git_credential_id?: string | null;
-  variable_overrides?: VariableDeclaration[];
+  variable_overrides?: VariableDeclarationReq[];
   default_branch?: string;
 }
 
@@ -39,6 +39,6 @@ export interface RepositoryUpdateReq {
   name?: string;
   repository_url?: string;
   git_credential_id?: string | null;
-  variable_overrides?: VariableDeclaration[];
+  variable_overrides?: VariableDeclarationReq[];
   default_branch?: string;
 }

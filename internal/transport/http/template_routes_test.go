@@ -107,11 +107,11 @@ func TestPipelineTemplateResolveVariablesRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected resolve variables status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var variables []map[string]any
+	var variables cihandler.TemplateVariableResolveResp
 	if err := json.NewDecoder(recorder.Body).Decode(&variables); err != nil {
 		t.Fatal(err)
 	}
-	if !hasVariable(variables, "working_dir") {
+	if !hasVariable(variables.Items, "working_dir") {
 		t.Fatalf("expected working_dir variable, got %+v", variables)
 	}
 }
@@ -167,9 +167,9 @@ func TestPipelineTemplateRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func hasVariable(variables []map[string]any, name string) bool {
+func hasVariable(variables []cihandler.VariableDeclarationResp, name string) bool {
 	for _, variable := range variables {
-		if variable["name"] == name {
+		if variable.Name == name {
 			return true
 		}
 	}

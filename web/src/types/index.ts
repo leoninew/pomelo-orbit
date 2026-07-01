@@ -35,6 +35,7 @@ export type { PipelineSnapshot } from './ci/snapshot';
 export type { Artifact, StageRun } from './ci/stage_run';
 export type {
   ArtifactConfig,
+  ArtifactConfigReq,
   BuildStage,
   BuildStageCreateReq,
   BuildStageUpdateReq,
@@ -43,6 +44,8 @@ export type {
   PipelineTemplateCreateReq,
   PipelineTemplateUpdateReq,
   StageOrchestration,
+  StageOrchestrationReq,
   VariableDeclaration,
+  VariableDeclarationReq,
 } from './ci/template';
 export type { PaginatedResp, TaskStatus } from './common';

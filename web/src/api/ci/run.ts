@@ -1,5 +1,5 @@
 import type { Artifact } from '@/types/ci/stage_run';
-import type { PaginatedResp } from '@/types/common';
+import type { ListResp, PaginatedResp } from '@/types/common';
 import type { PipelineRun } from '@/types/ci/run';
 import request from '@/utils/request';
 
@@ -35,7 +35,7 @@ export const pipelineRunApi = {
     return request.post(`/api/ci/run/${id}/cancel`, {});
   },
 
-  listArtifacts(runId: string): Promise<Artifact[]> {
+  listArtifacts(runId: string): Promise<ListResp<Artifact>> {
     return request.get(`/api/ci/run/${runId}/artifacts`);
   },
 

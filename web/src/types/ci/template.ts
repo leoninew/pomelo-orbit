@@ -6,6 +6,12 @@ export interface ArtifactConfig {
   name: string;
 }
 
+export interface ArtifactConfigReq {
+  type: ArtifactType;
+  path: string;
+  name: string;
+}
+
 export interface ArtifactDeclaration {
   stageName: string;
   type: string;
@@ -31,7 +37,7 @@ export interface BuildStageCreateReq {
   name: string;
   image: string;
   script: string;
-  artifacts?: ArtifactConfig[];
+  artifacts?: ArtifactConfigReq[];
   description?: string;
 }
 
@@ -39,7 +45,7 @@ export interface BuildStageUpdateReq {
   name?: string;
   image?: string;
   script?: string;
-  artifacts?: ArtifactConfig[];
+  artifacts?: ArtifactConfigReq[];
   description?: string;
 }
 
@@ -53,9 +59,17 @@ export interface StageOrchestration {
   sort_order: number;
 }
 
+export interface StageOrchestrationReq {
+  stage_id: string;
+  stage_name: string;
+  stage_version: number;
+  depends_on: string[];
+  sort_order: number;
+}
+
 export interface OrchestrationUpdateReq {
-  orchestration: StageOrchestration[];
-  variable_declarations?: VariableDeclaration[];
+  orchestration: StageOrchestrationReq[];
+  variable_declarations?: VariableDeclarationReq[];
 }
 
 // ── 变量声明 ──────────────────────────────────────────────────────────────────
@@ -67,6 +81,23 @@ export interface VariableDeclaration {
   value?: string | number | boolean | null; // 用户的显式覆盖值
   secret: boolean;
   editable?: boolean; // 是否允许用户修改，由后端根据 source 设置
+  source?:
+    | 'global'
+    | 'repository'
+    | 'repository_custom'
+    | 'template'
+    | 'template_stage'
+    | 'template_custom'
+    | 'runtime';
+}
+
+export interface VariableDeclarationReq {
+  name: string;
+  description?: string;
+  default?: string | number | boolean | null;
+  value?: string | number | boolean | null;
+  secret: boolean;
+  editable?: boolean;
   source?:
     | 'global'
     | 'repository'
@@ -94,12 +125,12 @@ export interface PipelineTemplate {
 export interface PipelineTemplateCreateReq {
   name: string;
   description?: string;
-  variable_declarations?: VariableDeclaration[];
+  variable_declarations?: VariableDeclarationReq[];
 }
 
 export interface PipelineTemplateUpdateReq {
   name?: string;
   description?: string;
-  orchestration?: StageOrchestration[];
-  variable_declarations?: VariableDeclaration[];
+  orchestration?: StageOrchestrationReq[];
+  variable_declarations?: VariableDeclarationReq[];
 }

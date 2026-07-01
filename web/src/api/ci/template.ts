@@ -1,11 +1,12 @@
-import type { PaginatedResp } from '@/types/common';
+import type { ListResp, PaginatedResp } from '@/types/common';
 import type { PipelineSnapshot } from '@/types/ci/snapshot';
 import type {
   PipelineTemplate,
   PipelineTemplateCreateReq,
-  StageOrchestration,
+  StageOrchestrationReq,
   PipelineTemplateUpdateReq,
   VariableDeclaration,
+  VariableDeclarationReq,
 } from '@/types/ci/template';
 import request from '@/utils/request';
 
@@ -36,11 +37,11 @@ export const pipelineTemplateApi = {
 
   resolveVariables(
     data: {
-      orchestration: StageOrchestration[];
-      variable_declarations?: VariableDeclaration[];
+      orchestration: StageOrchestrationReq[];
+      variable_declarations?: VariableDeclarationReq[];
     },
     params: { project_id: string }
-  ): Promise<VariableDeclaration[]> {
+  ): Promise<ListResp<VariableDeclaration>> {
     return request.post('/api/ci/template/resolve-variables', data, { params });
   },
 

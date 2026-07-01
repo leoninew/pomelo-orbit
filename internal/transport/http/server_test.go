@@ -23,6 +23,7 @@ import (
 	"backend/internal/status"
 	authhandler "backend/internal/transport/http/handler/auth"
 	projecthandler "backend/internal/transport/http/handler/project"
+	taskhandler "backend/internal/transport/http/handler/task"
 	transportresponse "backend/internal/transport/http/response"
 )
 
@@ -77,7 +78,7 @@ func TestCreateAndGetTask(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created taskrepo.Task
+	var created taskhandler.TaskResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +111,7 @@ func TestEnqueueCIPipelineRun(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created taskrepo.Task
+	var created taskhandler.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +134,7 @@ func TestEnqueueCDApplicationDeploy(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created taskrepo.Task
+	var created taskhandler.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +157,7 @@ func TestEnqueueCDApplicationStop(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created taskrepo.Task
+	var created taskhandler.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -404,10 +405,11 @@ func TestProjectAndDashboardLists(t *testing.T) {
 	if projectRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project status 200, got %d", projectRecorder.Code)
 	}
-	var projects []projecthandler.ProjectResp
-	if err := json.NewDecoder(projectRecorder.Body).Decode(&projects); err != nil {
+	var projectList projecthandler.ProjectListResp
+	if err := json.NewDecoder(projectRecorder.Body).Decode(&projectList); err != nil {
 		t.Fatal(err)
 	}
+	projects := projectList.Items
 	if len(projects) == 0 || projects[0].Code != "default" {
 		t.Fatalf("unexpected projects: %+v", projects)
 	}

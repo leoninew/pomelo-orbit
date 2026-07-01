@@ -11,59 +11,6 @@ import (
 	transportresponse "backend/internal/transport/http/response"
 )
 
-type PipelineRunTriggerReq struct {
-	TemplateId string            `json:"template_id"`
-	TriggerRef string            `json:"trigger_ref"`
-	Variables  map[string]string `json:"variables"`
-}
-
-type PipelineRunResp struct {
-	Id                string                      `json:"id"`
-	ProjectId         *string                     `json:"project_id,omitempty"`
-	RepositoryId      string                      `json:"repository_id"`
-	RepositoryName    string                      `json:"repository_name"`
-	SnapshotId        string                      `json:"snapshot_id"`
-	TemplateId        string                      `json:"template_id"`
-	TemplateName      string                      `json:"template_name"`
-	TemplateVersion   int                         `json:"template_version"`
-	Trigger           string                      `json:"trigger"`
-	TriggerRef        string                      `json:"trigger_ref"`
-	VariablesSnapshot []model.VariableDeclaration `json:"variables_snapshot"`
-	Status            string                      `json:"status"`
-	RetryOf           *string                     `json:"retry_of"`
-	StartedAt         *string                     `json:"started_at"`
-	FinishedAt        *string                     `json:"finished_at"`
-	ErrorMessage      *string                     `json:"error_message"`
-	CreatedAt         string                      `json:"created_at"`
-	StageRuns         []StageRunResp              `json:"stage_runs"`
-}
-
-type StageRunResp struct {
-	Id            string  `json:"id"`
-	PipelineRunId string  `json:"pipeline_run_id"`
-	StageId       string  `json:"stage_id"`
-	StageName     string  `json:"stage_name"`
-	Status        string  `json:"status"`
-	StartedAt     *string `json:"started_at"`
-	FinishedAt    *string `json:"finished_at"`
-	ExitCode      *int    `json:"exit_code"`
-	ErrorMessage  *string `json:"error_message"`
-}
-
-type ArtifactResp struct {
-	Id             string  `json:"id"`
-	PipelineRunId  string  `json:"pipeline_run_id"`
-	RepositoryId   string  `json:"repository_id"`
-	RepositoryName string  `json:"repository_name"`
-	TemplateId     string  `json:"template_id"`
-	TemplateName   string  `json:"template_name"`
-	StageName      string  `json:"stage_name"`
-	Type           string  `json:"type"`
-	Name           string  `json:"name"`
-	Path           *string `json:"path"`
-	CreatedAt      string  `json:"created_at"`
-}
-
 func (h Handler) RegisterPipelineRunRoutes(r router) {
 	r.Get("/api/ci/repository/{repository_id}/run", h.listRepositoryRuns)
 	r.Post("/api/ci/repository/{repository_id}/trigger", h.triggerRepository)
@@ -97,7 +44,7 @@ func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
 	}
 	var req PipelineRunTriggerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.TriggerRepository(r.Context(), current.Id, cisvc.PipelineRunTriggerInput{RepositoryId: chi.URLParam(r, "repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
@@ -150,7 +97,7 @@ func (h Handler) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request
 	for _, item := range items {
 		responses = append(responses, artifactResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, responses)
+	transportresponse.JSON(h.logger, w, http.StatusOK, PipelineRunArtifactListResp{Items: responses})
 }
 
 func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
@@ -163,7 +110,7 @@ func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]any{"logs": result.Logs, "offset": result.Offset, "is_complete": result.IsComplete})
+	transportresponse.JSON(h.logger, w, http.StatusOK, PipelineStageLogResp{Logs: result.Logs, Offset: result.Offset, IsComplete: result.IsComplete})
 }
 
 func (h Handler) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -194,7 +141,15 @@ func (h Handler) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
 
 func pipelineRunResponse(detail cisvc.PipelineRunDetail) PipelineRunResp {
 	item := detail.Run
-	return PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: detail.VariablesSnapshot, Status: item.Status, RetryOf: item.RetryOf, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), StageRuns: stageRunsResponse(detail.StageRuns)}
+	return PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot), Status: item.Status, RetryOf: item.RetryOf, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), StageRuns: stageRunsResponse(detail.StageRuns)}
+}
+
+func pipelineRunVariableDeclarationResponses(items []model.VariableDeclaration) []VariableDeclarationResp {
+	resp := make([]VariableDeclarationResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: item.Default, Value: item.Value, Secret: item.Secret, Source: item.Source, Editable: item.Editable})
+	}
+	return resp
 }
 
 func stageRunsResponse(items []model.StageRun) []StageRunResp {

@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig } from 'axios';
+import type { ErrorResp } from '@/types/common';
 import axios, { type AxiosError } from 'axios';
 import config from '@/config';
 import { useAuthStore } from '@/stores/auth';
@@ -39,7 +40,7 @@ request.interceptors.request.use(
 // 响应拦截器 - 处理基础错误
 request.interceptors.response.use(
   (response) => response.data,
-  (error: AxiosError<{ detail?: string }>) => {
+  (error: AxiosError<Partial<ErrorResp<string>>>) => {
     // 401 - token 失效，清除登录状态并跳转登录页
     if (error.response?.status === 401) {
       handleUnauthorized();

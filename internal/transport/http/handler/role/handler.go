@@ -40,37 +40,6 @@ type Handler struct {
 	store         Store
 }
 
-type PermissionResp struct {
-	Id          string  `json:"id"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-}
-
-type RoleResp struct {
-	Id              string   `json:"id"`
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	Description     *string  `json:"description"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
-	PermissionCodes []string `json:"permission_codes"`
-}
-
-type roleCreateReq struct {
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	Description     *string  `json:"description"`
-	PermissionCodes []string `json:"permission_codes"`
-}
-
-type roleUpdateReq struct {
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	Description     *string  `json:"description"`
-	PermissionCodes []string `json:"permission_codes"`
-}
-
 func New(logger *slog.Logger, service rolesvc.Service, authenticator authz.Authenticator, store Store) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator, store: store}
 }
@@ -93,7 +62,7 @@ func (h Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 	roles, err := h.store.ListRoles(r.Context(), page, perPage, r.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list roles failed", "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list roles"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list roles")
 		return
 	}
 	roleIds := make([]string, 0, len(roles.Items))
@@ -103,7 +72,7 @@ func (h Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(r.Context(), roleIds)
 	if err != nil {
 		h.logger.Error("load role permissions failed", "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role permissions"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
 		return
 	}
 	resp := mapPage(roles, func(role model.Role) RoleResp {
@@ -119,14 +88,14 @@ func (h Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
 	permissions, err := h.store.ListPermissions(r.Context())
 	if err != nil {
 		h.logger.Error("list permissions failed", "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list permissions"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list permissions")
 		return
 	}
 	items := make([]PermissionResp, 0, len(permissions))
 	for _, permission := range permissions {
 		items = append(items, permissionResponse(permission))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, items)
+	transportresponse.JSON(h.logger, w, http.StatusOK, PermissionListResp{Items: items})
 }
 
 func (h Handler) getRole(w http.ResponseWriter, r *http.Request) {
@@ -148,9 +117,9 @@ func (h Handler) createRole(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "role:write"); !ok {
 		return
 	}
-	var req roleCreateReq
+	var req RoleCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	role, err := h.service.Create(r.Context(), rolesvc.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
@@ -169,9 +138,9 @@ func (h Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req roleUpdateReq
+	var req RoleUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	updated, err := h.service.Update(r.Context(), rolesvc.SaveInput{Role: role, Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
@@ -196,7 +165,7 @@ func (h Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.service.Delete(r.Context(), role.Id); err != nil {
 		h.logger.Error("delete role failed", "role_id", role.Id, "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to delete role"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to delete role")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -204,19 +173,19 @@ func (h Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error, internalDetail string) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": err.Error()})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if apperror.IsKind(err, apperror.KindConflict) {
-		transportresponse.JSON(h.logger, w, http.StatusConflict, map[string]string{"detail": err.Error()})
+		transportresponse.Error(h.logger, w, http.StatusConflict, err.Error())
 		return
 	}
 	if apperror.IsKind(err, apperror.KindNotFound) {
-		transportresponse.JSON(h.logger, w, http.StatusNotFound, map[string]string{"detail": err.Error()})
+		transportresponse.Error(h.logger, w, http.StatusNotFound, err.Error())
 		return
 	}
 	h.logger.Error("role service failed", "error", err)
-	transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": internalDetail})
+	transportresponse.Error(h.logger, w, http.StatusInternalServerError, internalDetail)
 }
 
 func (h Handler) loadRoleFromPath(w http.ResponseWriter, r *http.Request) (model.Role, bool) {
@@ -224,11 +193,11 @@ func (h Handler) loadRoleFromPath(w http.ResponseWriter, r *http.Request) (model
 	role, err := h.store.RoleById(r.Context(), roleId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			transportresponse.JSON(h.logger, w, http.StatusNotFound, map[string]string{"detail": "Role " + roleId + " not found"})
+			transportresponse.Error(h.logger, w, http.StatusNotFound, "Role "+roleId+" not found")
 			return model.Role{}, false
 		}
 		h.logger.Error("load role failed", "role_id", roleId, "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role")
 		return model.Role{}, false
 	}
 	return role, true
@@ -238,7 +207,7 @@ func (h Handler) roleDetailResp(w http.ResponseWriter, r *http.Request, role mod
 	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(r.Context(), []string{role.Id})
 	if err != nil {
 		h.logger.Error("load role permissions failed", "role_id", role.Id, "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load role permissions"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
 		return RoleResp{}, false
 	}
 	return roleResponse(role, permissionsByRoleId[role.Id]), true

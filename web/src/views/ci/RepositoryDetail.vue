@@ -429,7 +429,8 @@
       return;
     }
     try {
-      webhooks.value = await webhookApi.list(repositoryId, { project_id: projectId });
+      const resp = await webhookApi.list(repositoryId, { project_id: projectId });
+      webhooks.value = resp.items;
     } catch {
       toast.error('获取 Webhook 列表失败');
     }

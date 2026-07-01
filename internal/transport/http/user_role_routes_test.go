@@ -131,11 +131,11 @@ func TestRoleRoutes(t *testing.T) {
 	if permissionsRecorder.Code != http.StatusOK {
 		t.Fatalf("expected permission list status 200, got %d: %s", permissionsRecorder.Code, permissionsRecorder.Body.String())
 	}
-	var permissions []rolehandler.PermissionResp
+	var permissions rolehandler.PermissionListResp
 	if err := json.NewDecoder(permissionsRecorder.Body).Decode(&permissions); err != nil {
 		t.Fatal(err)
 	}
-	if len(permissions) == 0 {
+	if len(permissions.Items) == 0 {
 		t.Fatalf("expected seeded permissions")
 	}
 

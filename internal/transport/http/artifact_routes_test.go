@@ -99,11 +99,11 @@ func TestPipelineRunArtifactsRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected run artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts []cihandler.ArtifactResp
+	var artifacts cihandler.PipelineRunArtifactListResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}
-	if len(artifacts) != 2 || artifacts[0].Id != "artifact-1" || artifacts[1].Id != "artifact-2" {
+	if len(artifacts.Items) != 2 || artifacts.Items[0].Id != "artifact-1" || artifacts.Items[1].Id != "artifact-2" {
 		t.Fatalf("unexpected run artifact list: %+v", artifacts)
 	}
 }

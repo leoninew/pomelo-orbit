@@ -10,14 +10,6 @@ import (
 	transportresponse "backend/internal/transport/http/response"
 )
 
-type BuildStageCreateReq struct {
-	Name        string               `json:"name"`
-	Image       string               `json:"image"`
-	Script      string               `json:"script"`
-	Artifacts   []ArtifactConfigResp `json:"artifacts"`
-	Description string               `json:"description"`
-}
-
 func (h Handler) RegisterBuildStageRoutes(r router) {
 	r.Get("/api/ci/build-stage", h.listBuildStages)
 	r.Post("/api/ci/build-stage", h.createBuildStage)
@@ -49,7 +41,7 @@ func (h Handler) createBuildStage(w http.ResponseWriter, r *http.Request) {
 	}
 	var req BuildStageCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	stage, err := h.service.CreateBuildStage(r.Context(), current.Id, cisvc.BuildStageCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
@@ -80,7 +72,7 @@ func (h Handler) updateBuildStage(w http.ResponseWriter, r *http.Request) {
 	}
 	var req map[string]json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	stage, err := h.service.UpdateBuildStage(r.Context(), current.Id, chi.URLParam(r, "stage_id"), cisvc.BuildStageUpdateInput{Fields: req})
@@ -120,7 +112,7 @@ func buildStageDetailResponse(item cisvc.BuildStageDetail) BuildStageResp {
 	return BuildStageResp{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: artifactConfigsResponse(item.Artifacts), Description: item.Description, Version: item.Version, CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
 }
 
-func serviceArtifacts(items []ArtifactConfigResp) []cisvc.ArtifactConfig {
+func serviceArtifacts(items []ArtifactConfigReq) []cisvc.ArtifactConfig {
 	resp := make([]cisvc.ArtifactConfig, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, cisvc.ArtifactConfig{Type: item.Type, Path: item.Path, Name: item.Name})

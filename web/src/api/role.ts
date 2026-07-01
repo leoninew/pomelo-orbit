@@ -1,4 +1,4 @@
-import type { PaginatedResp } from '@/types/common';
+import type { ListResp, PaginatedResp } from '@/types/common';
 import type { PermissionResp, RoleCreateReq, RoleResp, RoleUpdateReq } from '@/types/role';
 import request from '@/utils/request';
 
@@ -13,7 +13,7 @@ export const roleApi = {
   get(id: string): Promise<RoleResp> {
     return request.get(`/api/role/${id}`);
   },
-  listPermissions(): Promise<PermissionResp[]> {
+  listPermissions(): Promise<ListResp<PermissionResp>> {
     return request.get('/api/role/permission');
   },
   create(data: RoleCreateReq): Promise<RoleResp> {

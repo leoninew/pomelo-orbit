@@ -18,11 +18,6 @@ type Store interface {
 	UserPermissions(ctx context.Context, userId string) ([]string, error)
 }
 
-type CurrentUserResp struct {
-	User        model.User
-	Permissions []string
-}
-
 type Authenticator struct {
 	logger *slog.Logger
 	store  Store
@@ -36,47 +31,47 @@ func New(logger *slog.Logger, store Store, tokens authsvc.TokenService) Authenti
 func (a Authenticator) CurrentUser(w http.ResponseWriter, r *http.Request) (model.User, bool) {
 	token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if token == "" {
-		transportresponse.JSON(a.logger, w, http.StatusUnauthorized, map[string]string{"detail": "Not authenticated"})
+		transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Not authenticated")
 		return model.User{}, false
 	}
 	claims, err := a.tokens.Verify(token)
 	if err != nil {
-		transportresponse.JSON(a.logger, w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
+		transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Invalid token")
 		return model.User{}, false
 	}
 	user, err := a.store.UserById(r.Context(), claims.Sub)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			transportresponse.JSON(a.logger, w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
+			transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Invalid token")
 			return model.User{}, false
 		}
 		a.logger.Error("load current user failed", "user_id", claims.Sub, "error", err)
-		transportresponse.JSON(a.logger, w, http.StatusServiceUnavailable, map[string]string{"detail": "Authentication service unavailable"})
+		transportresponse.Error(a.logger, w, http.StatusServiceUnavailable, "Authentication service unavailable")
 		return model.User{}, false
 	}
 	if user.Status != "enabled" {
-		transportresponse.JSON(a.logger, w, http.StatusUnauthorized, map[string]string{"detail": "Invalid token"})
+		transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Invalid token")
 		return model.User{}, false
 	}
 	return user, true
 }
 
-func (a Authenticator) RequirePermission(w http.ResponseWriter, r *http.Request, permission string) (CurrentUserResp, bool) {
+func (a Authenticator) RequirePermission(w http.ResponseWriter, r *http.Request, permission string) (CurrentUserContext, bool) {
 	user, ok := a.CurrentUser(w, r)
 	if !ok {
-		return CurrentUserResp{}, false
+		return CurrentUserContext{}, false
 	}
 	permissions, err := a.store.UserPermissions(r.Context(), user.Id)
 	if err != nil {
 		a.logger.Error("load current user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.JSON(a.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to load user permissions"})
-		return CurrentUserResp{}, false
+		transportresponse.Error(a.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
+		return CurrentUserContext{}, false
 	}
 	if HasPermission(permissions, permission) {
-		return CurrentUserResp{User: user, Permissions: permissions}, true
+		return CurrentUserContext{User: user, Permissions: permissions}, true
 	}
-	transportresponse.JSON(a.logger, w, http.StatusForbidden, map[string]string{"detail": "Permission denied"})
-	return CurrentUserResp{}, false
+	transportresponse.Error(a.logger, w, http.StatusForbidden, "Permission denied")
+	return CurrentUserContext{}, false
 }
 
 func HasPermission(permissions []string, permission string) bool {

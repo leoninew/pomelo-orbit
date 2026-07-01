@@ -1055,7 +1055,8 @@
   async function loadFiles() {
     try {
       await executeFileList(async () => {
-        files.value = await applicationApi.listFiles(applicationId);
+        const resp = await applicationApi.listFiles(applicationId);
+        files.value = resp.items;
       });
     } catch {
       toast.error(t('application.toast.loadConfigFilesFailed'));
@@ -1066,7 +1067,8 @@
     serviceConfigError.value = '';
     try {
       await executeServiceConfigList(async () => {
-        serviceConfigs.value = await applicationApi.listServiceConfigs(applicationId);
+        const resp = await applicationApi.listServiceConfigs(applicationId);
+        serviceConfigs.value = resp.items;
       });
     } catch (error) {
       serviceConfigs.value = [];
@@ -1296,7 +1298,8 @@
   async function loadRoutes() {
     try {
       await executeRouteList(async () => {
-        appRoutes.value = await applicationApi.listRoutes(applicationId);
+        const resp = await applicationApi.listRoutes(applicationId);
+        appRoutes.value = resp.items;
       });
     } catch {
       toast.error(t('application.toast.loadRouteConfigFailed'));
@@ -1306,7 +1309,8 @@
   async function loadComposeServices() {
     composeServices.value = [];
     try {
-      composeServices.value = await applicationApi.listComposeServices(applicationId);
+      const resp = await applicationApi.listComposeServices(applicationId);
+      composeServices.value = resp.items;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t('application.toast.parseComposeFailed')

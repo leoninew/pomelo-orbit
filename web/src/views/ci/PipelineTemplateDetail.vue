@@ -665,7 +665,7 @@
       return;
     }
     try {
-      declarations.value = await pipelineTemplateApi.resolveVariables(
+      const resp = await pipelineTemplateApi.resolveVariables(
         {
           orchestration: sortableOrch.value.map((item, index) => ({
             ...item,
@@ -675,6 +675,7 @@
         },
         { project_id: projectId }
       );
+      declarations.value = resp.items;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : t('pipelineTemplate.toast.syncVariablesFailed')

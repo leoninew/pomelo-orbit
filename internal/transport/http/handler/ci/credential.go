@@ -11,46 +11,6 @@ import (
 	transportresponse "backend/internal/transport/http/response"
 )
 
-type CredentialResp struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	CreatedAt string `json:"created_at"`
-}
-
-type CredentialDetailResp struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Data      string `json:"data"`
-	CreatedAt string `json:"created_at"`
-}
-
-type CredentialCreateReq struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
-	Data string `json:"data"`
-}
-
-type CredentialUpdateReq struct {
-	Name *string `json:"name"`
-	Data *string `json:"data"`
-}
-
-type CredentialExportResp struct {
-	Version string `json:"version"`
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Data    string `json:"data"`
-}
-
-type CredentialImportReq struct {
-	Version string `json:"version"`
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Data    string `json:"data"`
-}
-
 func (h Handler) RegisterCredentialRoutes(r router) {
 	r.Get("/api/ci/credential", h.listCredentials)
 	r.Post("/api/ci/credential", h.createCredential)
@@ -83,7 +43,7 @@ func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 	}
 	var req CredentialCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	created, err := h.service.CreateCredential(r.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
@@ -101,7 +61,7 @@ func (h Handler) importCredential(w http.ResponseWriter, r *http.Request) {
 	}
 	var req CredentialImportReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if req.Version == "" {
@@ -135,7 +95,7 @@ func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
 	}
 	var req CredentialUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	updated, err := h.service.UpdateCredential(r.Context(), current.Id, chi.URLParam(r, "credential_id"), cisvc.CredentialUpdateInput{Name: req.Name, Data: req.Data})

@@ -261,7 +261,8 @@
       return;
     }
     try {
-      permissions.value = await roleApi.listPermissions();
+      const resp = await roleApi.listPermissions();
+      permissions.value = resp.items;
     } catch {
       toast.error(t('roleManagement.loadPermissionsFailed'));
     }

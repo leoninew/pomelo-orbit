@@ -76,11 +76,7 @@ func TestPipelineStageLogRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected stage log status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var logResp struct {
-		Logs       string `json:"logs"`
-		Offset     int    `json:"offset"`
-		IsComplete bool   `json:"is_complete"`
-	}
+	var logResp cihandler.PipelineStageLogResp
 	if err := json.NewDecoder(recorder.Body).Decode(&logResp); err != nil {
 		t.Fatal(err)
 	}

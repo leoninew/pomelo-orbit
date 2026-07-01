@@ -11,12 +11,27 @@ import (
 	"backend/internal/repository"
 )
 
+type ListResp[T any] struct {
+	Items []T `json:"items"`
+}
+
 type PaginatedResp[T any] struct {
 	Items   []T `json:"items"`
 	Total   int `json:"total"`
 	Page    int `json:"page"`
 	PerPage int `json:"per_page"`
 	Pages   int `json:"pages"`
+}
+
+type ErrorResp[T any] struct {
+	Detail T `json:"detail"`
+}
+
+func NewListResp[T any](items []T) ListResp[T] {
+	if items == nil {
+		items = []T{}
+	}
+	return ListResp[T]{Items: items}
 }
 
 func NewPaginatedResp[T any](page repository.Page[T]) PaginatedResp[T] {
@@ -36,6 +51,10 @@ func JSON(logger *slog.Logger, w http.ResponseWriter, status int, value any) {
 	if err := json.NewEncoder(w).Encode(value); err != nil && !errors.Is(err, http.ErrHandlerTimeout) {
 		logger.Error("write response failed", "error", err)
 	}
+}
+
+func Error(logger *slog.Logger, w http.ResponseWriter, status int, detail string) {
+	JSON(logger, w, status, ErrorResp[string]{Detail: detail})
 }
 
 func QueryInt(value string, fallback int) int {

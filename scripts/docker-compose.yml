@@ -11,13 +11,11 @@ services:
       - /opt/pomelo-orbit/data:/app/data
       - /opt/pomelo-orbit/logs:/app/logs
       - /opt/pomelo-orbit/.env:/app/.env
-    ports:
-      - "80:80"
     environment:
       - POMELO_ORBIT_JWT__SECRET_KEY=${POMELO_ORBIT_JWT__SECRET_KEY}
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pomelo-orbit.rule=Host(`orbit.typing-island.site`) || Host(`orbit.preflite.cn`)
+      - traefik.http.routers.pomelo-orbit.rule=Host(`orbit.preflite.cn`) || Host(`orbit-api.preflite.cn`)
       - traefik.http.routers.pomelo-orbit.entrypoints=websecure
       - traefik.http.routers.pomelo-orbit.tls=true
       - traefik.http.routers.pomelo-orbit.tls.certresolver=letsencrypt

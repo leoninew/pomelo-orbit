@@ -41,15 +41,33 @@ export interface ApplicationRoutePayload {
   port: number;
 }
 
+export interface ApplicationExportConfigFileResp {
+  path: string;
+  content: string;
+}
+
+export interface ApplicationServiceConfigExportResp {
+  service_name: string;
+  image: string | null;
+  environment: string | null;
+  volumes: string | null;
+}
+
+export interface ApplicationExportRouteResp {
+  service_name: string;
+  domain: string;
+  port: number;
+}
+
 export interface ApplicationExportResp {
   version: string;
   name: string;
   code: string;
   image_pull_policy: string;
   route_managed: boolean;
-  config_files: Required<ApplicationConfigFilePayload>[];
-  service_configs: ApplicationServiceConfigPayload[];
-  routes: ApplicationRoutePayload[];
+  config_files: ApplicationExportConfigFileResp[];
+  service_configs: ApplicationServiceConfigExportResp[];
+  routes: ApplicationExportRouteResp[];
 }
 
 export interface ApplicationImportReq {

@@ -23,18 +23,6 @@ type Handler struct {
 	authenticator authz.Authenticator
 }
 
-type ConfigItemResp = settingssvc.ConfigItem
-type SystemConfigResp = settingssvc.SystemConfig
-
-type systemConfigUpdateReq struct {
-	Key   string `json:"key"`
-	Value any    `json:"value"`
-}
-
-type systemConfigResetReq struct {
-	Keys []string `json:"keys"`
-}
-
 func New(logger *slog.Logger, service settingssvc.Service, authenticator authz.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
@@ -54,16 +42,16 @@ func (h Handler) getConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, systemConfigResponse(resp))
 }
 
 func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
 		return
 	}
-	var req systemConfigUpdateReq
+	var req SystemConfigUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	resp, err := h.service.Update(r.Context(), req.Key, req.Value)
@@ -71,16 +59,16 @@ func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, systemConfigResponse(resp))
 }
 
 func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
 		return
 	}
-	var req systemConfigResetReq
+	var req SystemConfigResetReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	resp, err := h.service.Reset(r.Context(), req.Keys)
@@ -88,12 +76,24 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, systemConfigResponse(resp))
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("settings request failed", "error", err)
 	}
-	transportresponse.JSON(h.logger, w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
+	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
+}
+
+func systemConfigResponse(config settingssvc.SystemConfig) SystemConfigResp {
+	items := make([]ConfigItemResp, 0, len(config.Items))
+	for _, item := range config.Items {
+		items = append(items, configItemResponse(item))
+	}
+	return SystemConfigResp{Items: items}
+}
+
+func configItemResponse(item settingssvc.ConfigItem) ConfigItemResp {
+	return ConfigItemResp{Key: item.Key, Value: item.Value, Default: item.Default, IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
 }

@@ -287,7 +287,7 @@
           projectApi.listMembers(props.id),
           userApi.list({ page: 1, per_page: 100 }),
         ]);
-        members.value = memberList;
+        members.value = memberList.items;
         users.value = userPage.items;
       });
     } catch {
@@ -329,7 +329,8 @@
     }
     try {
       await executeOp(async () => {
-        members.value = await projectApi.addMember(props.id, { user_id: selectedUserId.value });
+        const resp = await projectApi.addMember(props.id, { user_id: selectedUserId.value });
+        members.value = resp.items;
         selectedUserId.value = '';
         toast.success(t('project.memberAdded'));
         isMemberModalOpen.value = false;
@@ -342,7 +343,8 @@
   async function handleRemoveMember(userId: string) {
     try {
       await executeOp(async () => {
-        members.value = await projectApi.removeMember(props.id, userId);
+        const resp = await projectApi.removeMember(props.id, userId);
+        members.value = resp.items;
         toast.success(t('project.memberRemoved'));
       });
     } catch (e: unknown) {

@@ -114,11 +114,11 @@ func TestDeployApplicationEnqueuesForceRecreateTask(t *testing.T) {
 	if deployRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deploy status 200, got %d: %s", deployRecorder.Code, deployRecorder.Body.String())
 	}
-	var deployResp map[string]string
+	var deployResp cdhandler.DeploymentActionResp
 	if err := json.NewDecoder(deployRecorder.Body).Decode(&deployResp); err != nil {
 		t.Fatal(err)
 	}
-	deploymentId := deployResp["deployment_id"]
+	deploymentId := deployResp.DeploymentId
 	if deploymentId == "" {
 		t.Fatalf("expected deployment_id, got %+v", deployResp)
 	}
@@ -177,11 +177,11 @@ func TestStopApplicationEnqueuesTask(t *testing.T) {
 	if stopRecorder.Code != http.StatusOK {
 		t.Fatalf("expected stop status 200, got %d: %s", stopRecorder.Code, stopRecorder.Body.String())
 	}
-	var stopResp map[string]string
+	var stopResp cdhandler.DeploymentActionResp
 	if err := json.NewDecoder(stopRecorder.Body).Decode(&stopResp); err != nil {
 		t.Fatal(err)
 	}
-	deploymentId := stopResp["deployment_id"]
+	deploymentId := stopResp.DeploymentId
 	if deploymentId == "" {
 		t.Fatalf("expected deployment_id, got %+v", stopResp)
 	}
@@ -343,10 +343,11 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if serviceRecorder.Code != http.StatusOK {
 		t.Fatalf("expected compose service status 200, got %d: %s", serviceRecorder.Code, serviceRecorder.Body.String())
 	}
-	var services []cdhandler.ComposeServiceResp
-	if err := json.NewDecoder(serviceRecorder.Body).Decode(&services); err != nil {
+	var serviceList cdhandler.ComposeServiceListResp
+	if err := json.NewDecoder(serviceRecorder.Body).Decode(&serviceList); err != nil {
 		t.Fatal(err)
 	}
+	services := serviceList.Items
 	if len(services) != 1 || services[0].ServiceName != "web" || services[0].DefaultPort != 80 {
 		t.Fatalf("unexpected compose services: %+v", services)
 	}

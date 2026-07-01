@@ -73,10 +73,6 @@ type Server struct {
 	turnstileVerifier turnstileVerifier
 }
 
-type HealthResp struct {
-	Status string `json:"status"`
-}
-
 func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks taskrepo.Repository, defaultMaxAttempts int) Server {
 	tokenService := authsvc.NewTokenService(jwtSecret(cfg))
 	userRepository := userrepo.NewRepository(store.DB(), store.Driver())

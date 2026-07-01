@@ -28,33 +28,6 @@ type Handler struct {
 	authenticator authz.Authenticator
 }
 
-type ProjectResp struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Code      string `json:"code"`
-	IsActive  bool   `json:"is_active"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-}
-
-type ProjectMemberResp struct {
-	Id          string  `json:"id"`
-	Username    string  `json:"username"`
-	Email       *string `json:"email"`
-	Status      string  `json:"status"`
-	AuthSource  string  `json:"auth_source"`
-	LastLoginAt *string `json:"last_login_at"`
-}
-
-type projectSaveReq struct {
-	Name string `json:"name"`
-	Code string `json:"code"`
-}
-
-type projectMemberReq struct {
-	UserId string `json:"user_id"`
-}
-
 func New(logger *slog.Logger, service projectsvc.Service, authenticator authz.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
@@ -78,14 +51,14 @@ func (h Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 	items, err := h.service.ListByMember(r.Context(), current.Id)
 	if err != nil {
 		h.logger.Error("list projects failed", "user_id", current.Id, "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list projects"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list projects")
 		return
 	}
 	resp := make([]ProjectResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, ProjectResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectListResp{Items: resp})
 }
 
 func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
@@ -93,9 +66,9 @@ func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req projectSaveReq
+	var req ProjectSaveReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	project, err := h.service.Create(r.Context(), current.Id, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
@@ -119,9 +92,9 @@ func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req projectSaveReq
+	var req ProjectSaveReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	updated, err := h.service.Update(r.Context(), project, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
@@ -161,9 +134,9 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req projectMemberReq
+	var req ProjectMemberReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	members, err := h.service.AddMember(r.Context(), project.Id, req.UserId)
@@ -171,7 +144,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, projectMemberResponses(members))
+	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectMemberListResp{Items: projectMemberResponses(members)})
 }
 
 func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
@@ -184,17 +157,17 @@ func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, projectMemberResponses(members))
+	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectMemberListResp{Items: projectMemberResponses(members)})
 }
 
 func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, projectId string) {
 	members, err := h.service.Members(r.Context(), projectId)
 	if err != nil {
 		h.logger.Error("list project members failed", "project_id", projectId, "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to list project members"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list project members")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, projectMemberResponses(members))
+	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectMemberListResp{Items: projectMemberResponses(members)})
 }
 
 func (h Handler) loadProjectForCurrentUser(w http.ResponseWriter, r *http.Request) (model.Project, bool) {
@@ -219,7 +192,7 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("project request failed", "error", err)
 	}
-	transportresponse.JSON(h.logger, w, apperror.StatusCode(err), map[string]string{"detail": err.Error()})
+	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
 func ProjectResponse(project model.Project) ProjectResp {

@@ -14,35 +14,6 @@ import (
 	transportresponse "backend/internal/transport/http/response"
 )
 
-type RouteResp struct {
-	Id           string `json:"id"`
-	Name         string `json:"name"`
-	Domain       string `json:"domain"`
-	PathPrefix   string `json:"path_prefix"`
-	TargetURL    string `json:"target_url"`
-	Enabled      bool   `json:"enabled"`
-	HTTPSEnabled bool   `json:"https_enabled"`
-	CertType     string `json:"cert_type"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
-}
-
-type routeCreateReq struct {
-	Name       string `json:"name"`
-	Domain     string `json:"domain"`
-	PathPrefix string `json:"path_prefix"`
-	TargetURL  string `json:"target_url"`
-	Enabled    bool   `json:"enabled"`
-}
-
-type routeUpdateReq struct {
-	Name       *string `json:"name"`
-	Domain     *string `json:"domain"`
-	PathPrefix *string `json:"path_prefix"`
-	TargetURL  *string `json:"target_url"`
-	Enabled    *bool   `json:"enabled"`
-}
-
 func (h Handler) RegisterRouteRoutes(r router) {
 	r.Get("/api/cd/route", h.listRoutes)
 	r.Post("/api/cd/route", h.createRoute)
@@ -83,9 +54,9 @@ func (h Handler) createRoute(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req routeCreateReq
+	var req RouteCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.CreateRoute(r.Context(), current.Id, r.URL.Query().Get("project_id"), cdsvc.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetURL, Enabled: req.Enabled})
@@ -114,9 +85,9 @@ func (h Handler) updateRoute(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req routeUpdateReq
+	var req RouteUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.UpdateRoute(r.Context(), current.Id, chi.URLParam(r, "route_id"), cdsvc.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetURL, Enabled: req.Enabled})
@@ -148,7 +119,7 @@ func (h Handler) enableRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"message": "Route enabled successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, RouteEnableResp{Message: "Route enabled successfully"})
 }
 
 func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +131,7 @@ func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"message": "Route disabled successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, RouteDisableResp{Message: "Route disabled successfully"})
 }
 
 func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +143,7 @@ func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"message": "Routes synced successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, RouteSyncResp{Message: "Routes synced successfully"})
 }
 
 func (h Handler) uploadRouteCert(w http.ResponseWriter, r *http.Request) {
@@ -182,19 +153,19 @@ func (h Handler) uploadRouteCert(w http.ResponseWriter, r *http.Request) {
 	}
 	file, _, err := r.FormFile("pem")
 	if err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "pem is required"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "pem is required")
 		return
 	}
 	defer func() { _ = file.Close() }()
 	var content bytes.Buffer
 	if _, err := content.ReadFrom(file); err != nil {
 		h.logger.Error("read certificate upload failed", "route_id", chi.URLParam(r, "route_id"), "error", err)
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"detail": "Failed to read certificate"})
+		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to read certificate")
 		return
 	}
 	certPEM, certKey, ok := splitPEM(content.Bytes())
 	if !ok {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid PEM certificate"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid PEM certificate")
 		return
 	}
 	route, err := h.service.UploadRouteCert(r.Context(), current.Id, chi.URLParam(r, "route_id"), certPEM, certKey)
@@ -254,7 +225,7 @@ func (h Handler) getTraefikRouteConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, config)
+	transportresponse.JSON(h.logger, w, http.StatusOK, traefikConfigResponse(config))
 }
 
 func (h Handler) listTraefikRoutes(w http.ResponseWriter, r *http.Request) {
@@ -265,17 +236,33 @@ func (h Handler) listTraefikRoutes(w http.ResponseWriter, r *http.Request) {
 	items, err := h.service.ListTraefikRoutes(r.Context(), current.Id, r.URL.Query().Get("project_id"))
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "无法连接到 Traefik:") {
-			transportresponse.JSON(h.logger, w, http.StatusServiceUnavailable, map[string]string{"detail": err.Error()})
+			transportresponse.Error(h.logger, w, http.StatusServiceUnavailable, err.Error())
 			return
 		}
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, items)
+	transportresponse.JSON(h.logger, w, http.StatusOK, traefikRouteListResponse(items))
 }
 
 func routeResponse(route model.Route) RouteResp {
 	return RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetURL: route.TargetURL, Enabled: route.Enabled, HTTPSEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
+}
+
+func traefikConfigResponse(config cdsvc.TraefikConfigResp) TraefikConfigResp {
+	return TraefikConfigResp{DashboardDomain: config.DashboardDomain, HTTPSEnabled: config.HTTPSEnabled}
+}
+
+func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) TraefikRouteListResp {
+	items := make([]TraefikRouterResp, 0, len(resp.Items))
+	for _, item := range resp.Items {
+		items = append(items, traefikRouterResponse(item))
+	}
+	return TraefikRouteListResp{Items: items, Total: resp.Total}
+}
+
+func traefikRouterResponse(router cdsvc.TraefikRouterResp) TraefikRouterResp {
+	return TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, TLS: router.TLS}
 }
 
 func splitPEM(content []byte) (string, string, bool) {

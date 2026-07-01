@@ -30,6 +30,18 @@ export interface RouteUpdateReq {
   enabled?: boolean;
 }
 
+export interface RouteEnableResp {
+  message: string;
+}
+
+export interface RouteDisableResp {
+  message: string;
+}
+
+export interface RouteSyncResp {
+  message: string;
+}
+
 export const routeApi = {
   list(params?: {
     page?: number;
@@ -56,15 +68,15 @@ export const routeApi = {
     return request.delete(`/api/cd/route/${id}`);
   },
 
-  enable(id: string): Promise<void> {
+  enable(id: string): Promise<RouteEnableResp> {
     return request.post(`/api/cd/route/${id}/enable`);
   },
 
-  disable(id: string): Promise<void> {
+  disable(id: string): Promise<RouteDisableResp> {
     return request.post(`/api/cd/route/${id}/disable`);
   },
 
-  sync(params: { project_id: string }): Promise<void> {
+  sync(params: { project_id: string }): Promise<RouteSyncResp> {
     return request.post('/api/cd/route/sync', undefined, { params });
   },
 

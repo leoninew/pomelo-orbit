@@ -53,10 +53,11 @@ func TestProjectRoutes(t *testing.T) {
 	if memberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project member list status 200, got %d: %s", memberRecorder.Code, memberRecorder.Body.String())
 	}
-	var members []projecthandler.ProjectMemberResp
-	if err := json.NewDecoder(memberRecorder.Body).Decode(&members); err != nil {
+	var memberList projecthandler.ProjectMemberListResp
+	if err := json.NewDecoder(memberRecorder.Body).Decode(&memberList); err != nil {
 		t.Fatal(err)
 	}
+	members := memberList.Items
 	if len(members) != 1 || members[0].Username != "admin" {
 		t.Fatalf("unexpected project members: %+v", members)
 	}
@@ -76,10 +77,11 @@ func TestProjectRoutes(t *testing.T) {
 	if addMemberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected add member status 200, got %d: %s", addMemberRecorder.Code, addMemberRecorder.Body.String())
 	}
-	members = []projecthandler.ProjectMemberResp{}
-	if err := json.NewDecoder(addMemberRecorder.Body).Decode(&members); err != nil {
+	memberList = projecthandler.ProjectMemberListResp{}
+	if err := json.NewDecoder(addMemberRecorder.Body).Decode(&memberList); err != nil {
 		t.Fatal(err)
 	}
+	members = memberList.Items
 	if len(members) != 2 {
 		t.Fatalf("unexpected members after add: %+v", members)
 	}
@@ -89,10 +91,11 @@ func TestProjectRoutes(t *testing.T) {
 	if removeMemberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected remove member status 200, got %d: %s", removeMemberRecorder.Code, removeMemberRecorder.Body.String())
 	}
-	members = []projecthandler.ProjectMemberResp{}
-	if err := json.NewDecoder(removeMemberRecorder.Body).Decode(&members); err != nil {
+	memberList = projecthandler.ProjectMemberListResp{}
+	if err := json.NewDecoder(removeMemberRecorder.Body).Decode(&memberList); err != nil {
 		t.Fatal(err)
 	}
+	members = memberList.Items
 	if len(members) != 1 {
 		t.Fatalf("unexpected members after remove: %+v", members)
 	}

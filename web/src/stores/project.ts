@@ -40,10 +40,10 @@ export const useProjectStore = defineStore('project', () => {
   async function fetchProjects() {
     loading.value = true;
     try {
-      const items = await projectApi.list();
-      projects.value = items;
-      selectFallbackProject(items);
-      return items;
+      const resp = await projectApi.list();
+      projects.value = resp.items;
+      selectFallbackProject(resp.items);
+      return resp.items;
     } finally {
       loading.value = false;
     }

@@ -1,3 +1,4 @@
+import type { ListResp } from '@/types/common';
 import type {
   Project,
   ProjectCreateReq,
@@ -8,7 +9,7 @@ import type {
 import request from '@/utils/request';
 
 export const projectApi = {
-  list(): Promise<Project[]> {
+  list(): Promise<ListResp<Project>> {
     return request.get('/api/project');
   },
 
@@ -28,15 +29,15 @@ export const projectApi = {
     return request.post(`/api/project/${id}/deprecate`);
   },
 
-  listMembers(id: string): Promise<ProjectMember[]> {
+  listMembers(id: string): Promise<ListResp<ProjectMember>> {
     return request.get(`/api/project/${id}/member`);
   },
 
-  addMember(id: string, data: ProjectMemberReq): Promise<ProjectMember[]> {
+  addMember(id: string, data: ProjectMemberReq): Promise<ListResp<ProjectMember>> {
     return request.post(`/api/project/${id}/member`, data);
   },
 
-  removeMember(id: string, userId: string): Promise<ProjectMember[]> {
+  removeMember(id: string, userId: string): Promise<ListResp<ProjectMember>> {
     return request.delete(`/api/project/${id}/member/${userId}`);
   },
 };

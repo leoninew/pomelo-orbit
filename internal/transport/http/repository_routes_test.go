@@ -29,13 +29,13 @@ func TestRepositoryRoutes(t *testing.T) {
 	if created.Id == "" || created.Code != "repo-one" || created.DefaultBranch != "main" || len(created.VariableDeclarations) != 6 {
 		t.Fatalf("unexpected created repository: %+v", created)
 	}
-	if created.VariableDeclarations[0]["name"] != "repository_id" || created.VariableDeclarations[0]["default"] != created.Id {
+	if created.VariableDeclarations[0].Name != "repository_id" || created.VariableDeclarations[0].Default != created.Id {
 		t.Fatalf("unexpected repository_id variable: %+v", created.VariableDeclarations[0])
 	}
-	if created.VariableDeclarations[1]["name"] != "repository_name" || created.VariableDeclarations[1]["default"] != "Repo One" {
+	if created.VariableDeclarations[1].Name != "repository_name" || created.VariableDeclarations[1].Default != "Repo One" {
 		t.Fatalf("unexpected repository_name variable: %+v", created.VariableDeclarations[1])
 	}
-	if created.VariableDeclarations[5]["name"] != "FOO" || created.VariableDeclarations[5]["source"] != "repository_custom" {
+	if created.VariableDeclarations[5].Name != "FOO" || created.VariableDeclarations[5].Source != "repository_custom" {
 		t.Fatalf("unexpected custom variable: %+v", created.VariableDeclarations[5])
 	}
 
@@ -119,10 +119,11 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var webhooks []cihandler.RepositoryWebhookResp
-	if err := json.NewDecoder(listRecorder.Body).Decode(&webhooks); err != nil {
+	var webhookList cihandler.RepositoryWebhookListResp
+	if err := json.NewDecoder(listRecorder.Body).Decode(&webhookList); err != nil {
 		t.Fatal(err)
 	}
+	webhooks := webhookList.Items
 	if len(webhooks) != 1 || webhooks[0].Id != created.Id {
 		t.Fatalf("unexpected webhook list: %+v", webhooks)
 	}

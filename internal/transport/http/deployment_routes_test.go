@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	cdhandler "backend/internal/transport/http/handler/cd"
@@ -89,31 +88,6 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	}
 }
 
-func TestDeploymentStreamLogRoute(t *testing.T) {
-	server, database := newTestServer(t)
-	defer func() { _ = database.Close() }()
-	server.appCfg.Orbit.Root = t.TempDir()
-	token := testToken(t, server)
-	insertDeploymentRouteData(t, database, "deploy-stream-test", "ran_to_completion")
-	logDir := filepath.Join(server.appCfg.DataRoot(), "cd", "filebrowser", "deployments")
-	if err := os.MkdirAll(logDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(logDir, "deploy-stream-test.log"), []byte("done\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	recorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodGet, "/api/cd/deployment/deploy-stream-test/stream-log", nil, token))
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("expected deployment stream status 200, got %d: %s", recorder.Code, recorder.Body.String())
-	}
-	body := recorder.Body.String()
-	if !strings.Contains(body, `"logs":"done\n"`) || !strings.Contains(body, "event: complete") {
-		t.Fatalf("unexpected deployment stream response: %s", body)
-	}
-}
-
 func TestDeploymentRoutesRequireAuth(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
@@ -126,7 +100,6 @@ func TestDeploymentRoutesRequireAuth(t *testing.T) {
 		{http.MethodGet, "/api/cd/deployment/deploy-route-test"},
 		{http.MethodGet, "/api/cd/deployment/deploy-route-test/logs"},
 		{http.MethodGet, "/api/cd/deployment/deploy-route-test/container-logs"},
-		{http.MethodGet, "/api/cd/deployment/deploy-route-test/stream-log"},
 		{http.MethodPost, "/api/cd/deployment/deploy-route-test/cancel"},
 	}
 	for _, route := range routes {

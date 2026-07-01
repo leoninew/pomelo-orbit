@@ -9,8 +9,29 @@ import type {
   ComposeServiceResp,
   ConfigFile,
 } from '@/types/cd/application';
-import type { PaginatedResp } from '@/types/common';
+import type { ListResp, PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
+
+export interface DeploymentActionResp {
+  deployment_id: string;
+}
+
+export interface ApplicationStatusResp {
+  status: string;
+}
+
+export interface ApplicationLogsResp {
+  logs: string;
+}
+
+export interface ApplicationFileContentResp {
+  content: string;
+  path: string;
+}
+
+export interface ApplicationComposePreviewResp {
+  compose_yaml: string;
+}
 
 // 应用相关 API
 export const applicationApi = {
@@ -47,34 +68,34 @@ export const applicationApi = {
   },
 
   // 手动触发部署
-  deploy(id: string, data?: { force_recreate?: boolean }): Promise<{ deployment_id: string }> {
+  deploy(id: string, data?: { force_recreate?: boolean }): Promise<DeploymentActionResp> {
     return request.post(`/api/cd/application/${id}/deploy`, data ?? {});
   },
 
   // 停止应用
-  stop(id: string, removeVolumes?: boolean): Promise<{ deployment_id: string }> {
+  stop(id: string, removeVolumes?: boolean): Promise<DeploymentActionResp> {
     return request.post(`/api/cd/application/${id}/stop`, {
       remove_volumes: removeVolumes,
     });
   },
 
   // 重启应用
-  restart(id: string): Promise<{ deployment_id: string }> {
+  restart(id: string): Promise<DeploymentActionResp> {
     return request.post(`/api/cd/application/${id}/restart`);
   },
 
   // 获取应用状态
-  getStatus(id: string): Promise<{ status: string; error?: string }> {
+  getStatus(id: string): Promise<ApplicationStatusResp> {
     return request.get(`/api/cd/application/${id}/status`);
   },
 
   // 获取应用日志
-  getLogs(id: string, tail?: number): Promise<{ logs: string; error?: string }> {
+  getLogs(id: string, tail?: number): Promise<ApplicationLogsResp> {
     return request.get(`/api/cd/application/${id}/logs`, { params: { tail } });
   },
 
   // 读取应用文件
-  readFile(id: string, fileId: string): Promise<{ content: string; path: string }> {
+  readFile(id: string, fileId: string): Promise<ApplicationFileContentResp> {
     return request.get(`/api/cd/application/${id}/file/${fileId}`);
   },
 
@@ -92,12 +113,12 @@ export const applicationApi = {
   },
 
   // 获取应用文件列表
-  listFiles(id: string): Promise<ConfigFile[]> {
+  listFiles(id: string): Promise<ListResp<ConfigFile>> {
     return request.get(`/api/cd/application/${id}/files`);
   },
 
   /** 预览部署时生成的 docker-compose.yml（模板渲染、镜像覆盖、路由 labels） */
-  previewCompose(id: string): Promise<{ compose_yaml: string }> {
+  previewCompose(id: string): Promise<ApplicationComposePreviewResp> {
     return request.post(`/api/cd/application/${id}/compose-preview`);
   },
 
@@ -120,7 +141,7 @@ export const applicationApi = {
   },
 
   // 获取路由托管列表
-  listRoutes(id: string): Promise<ApplicationRoute[]> {
+  listRoutes(id: string): Promise<ListResp<ApplicationRoute>> {
     return request.get(`/api/cd/application/${id}/route`);
   },
 
@@ -147,12 +168,12 @@ export const applicationApi = {
   },
 
   // 解析 docker-compose service 列表
-  listComposeServices(id: string): Promise<ComposeServiceResp[]> {
+  listComposeServices(id: string): Promise<ListResp<ComposeServiceResp>> {
     return request.get(`/api/cd/application/${id}/compose-service`);
   },
 
   // 获取 service 级配置
-  listServiceConfigs(id: string): Promise<ApplicationServiceConfig[]> {
+  listServiceConfigs(id: string): Promise<ListResp<ApplicationServiceConfig>> {
     return request.get(`/api/cd/application/${id}/service-config`);
   },
 

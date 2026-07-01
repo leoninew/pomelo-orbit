@@ -10,55 +10,6 @@ import (
 	transportresponse "backend/internal/transport/http/response"
 )
 
-type PipelineTemplateResp struct {
-	Id                   string                   `json:"id"`
-	Name                 string                   `json:"name"`
-	Description          string                   `json:"description"`
-	Orchestration        []StageOrchestrationResp `json:"orchestration"`
-	Stages               []BuildStageResp         `json:"stages"`
-	VariableDeclarations []map[string]any         `json:"variable_declarations"`
-	Version              int                      `json:"version"`
-	CreatedAt            string                   `json:"created_at"`
-	UpdatedAt            string                   `json:"updated_at"`
-}
-
-type StageOrchestrationResp struct {
-	StageId      string   `json:"stage_id"`
-	StageName    string   `json:"stage_name"`
-	StageVersion int      `json:"stage_version"`
-	DependsOn    []string `json:"depends_on"`
-	SortOrder    int      `json:"sort_order"`
-}
-
-type ArtifactConfigResp struct {
-	Type string `json:"type"`
-	Path string `json:"path"`
-	Name string `json:"name"`
-}
-
-type BuildStageResp struct {
-	Id          string               `json:"id"`
-	Name        string               `json:"name"`
-	Image       string               `json:"image"`
-	Script      string               `json:"script"`
-	Artifacts   []ArtifactConfigResp `json:"artifacts"`
-	Description string               `json:"description"`
-	Version     int                  `json:"version"`
-	CreatedAt   string               `json:"created_at"`
-	UpdatedAt   string               `json:"updated_at"`
-}
-
-type PipelineTemplateCreateReq struct {
-	Name                 string           `json:"name"`
-	Description          string           `json:"description"`
-	VariableDeclarations []map[string]any `json:"variable_declarations"`
-}
-
-type TemplateVariableResolveReq struct {
-	Orchestration        []StageOrchestrationResp `json:"orchestration"`
-	VariableDeclarations []map[string]any         `json:"variable_declarations"`
-}
-
 func (h Handler) RegisterTemplateRoutes(r router) {
 	r.Get("/api/ci/template", h.listPipelineTemplates)
 	r.Post("/api/ci/template", h.createPipelineTemplate)
@@ -91,10 +42,10 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	}
 	var req PipelineTemplateCreateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.CreatePipelineTemplate(r.Context(), current.Id, cisvc.PipelineTemplateCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: req.VariableDeclarations})
+	detail, err := h.service.CreatePipelineTemplate(r.Context(), current.Id, cisvc.PipelineTemplateCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -122,7 +73,7 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	}
 	var req map[string]json.RawMessage
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.UpdatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"), cisvc.PipelineTemplateUpdateInput{Fields: req})
@@ -165,20 +116,20 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 	}
 	var req TemplateVariableResolveReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	variables, err := h.service.ResolvePipelineTemplateVariables(r.Context(), current.Id, cisvc.PipelineTemplateResolveInput{ProjectId: r.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: req.VariableDeclarations})
+	variables, err := h.service.ResolvePipelineTemplateVariables(r.Context(), current.Id, cisvc.PipelineTemplateResolveInput{ProjectId: r.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, variables)
+	transportresponse.JSON(h.logger, w, http.StatusOK, TemplateVariableResolveResp{Items: variableDeclarationResponses(variables)})
 }
 
 func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) PipelineTemplateResp {
 	item := detail.Template
-	return PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: orchestrationResponse(detail.Orchestration), Stages: buildStageDetailsResponse(detail.Stages), VariableDeclarations: detail.VariableDeclarations, Version: item.Version, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: orchestrationResponse(detail.Orchestration), Stages: buildStageDetailsResponse(detail.Stages), VariableDeclarations: variableDeclarationResponses(detail.VariableDeclarations), Version: item.Version, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func orchestrationResponse(items []cisvc.StageOrchestration) []StageOrchestrationResp {
@@ -189,7 +140,7 @@ func orchestrationResponse(items []cisvc.StageOrchestration) []StageOrchestratio
 	return resp
 }
 
-func serviceOrchestration(items []StageOrchestrationResp) []cisvc.StageOrchestration {
+func serviceOrchestration(items []StageOrchestrationReq) []cisvc.StageOrchestration {
 	resp := make([]cisvc.StageOrchestration, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, cisvc.StageOrchestration{StageId: item.StageId, StageName: item.StageName, StageVersion: item.StageVersion, DependsOn: item.DependsOn, SortOrder: item.SortOrder})
@@ -214,4 +165,38 @@ func artifactConfigsResponse(items []cisvc.ArtifactConfig) []ArtifactConfigResp 
 		resp = append(resp, ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
 	}
 	return resp
+}
+
+func variableDeclarationResponses(items []map[string]any) []VariableDeclarationResp {
+	resp := make([]VariableDeclarationResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, variableDeclarationResponse(item))
+	}
+	return resp
+}
+
+func variableDeclarationResponse(item map[string]any) VariableDeclarationResp {
+	return VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: item["default"], Value: item["value"], Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
+}
+
+func variableDeclarationRequestMaps(items []VariableDeclarationReq) []map[string]any {
+	resp := make([]map[string]any, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, variableDeclarationRequestMap(item))
+	}
+	return resp
+}
+
+func variableDeclarationRequestMap(item VariableDeclarationReq) map[string]any {
+	return map[string]any{"name": item.Name, "description": item.Description, "default": item.Default, "value": item.Value, "secret": item.Secret, "source": item.Source, "editable": item.Editable}
+}
+
+func stringFromMap(item map[string]any, key string) string {
+	value, _ := item[key].(string)
+	return value
+}
+
+func boolFromMap(item map[string]any, key string) bool {
+	value, _ := item[key].(bool)
+	return value
 }

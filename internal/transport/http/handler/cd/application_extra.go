@@ -11,71 +11,6 @@ import (
 	transportresponse "backend/internal/transport/http/response"
 )
 
-type configFileReq struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
-}
-
-type ConfigFileResp struct {
-	Id        string `json:"id"`
-	Path      string `json:"path"`
-	CreatedAt string `json:"created_at"`
-}
-
-type applicationRouteReq struct {
-	ServiceName string `json:"service_name"`
-	Domain      string `json:"domain"`
-	Port        int    `json:"port"`
-}
-
-type ApplicationRouteResp struct {
-	Id          string `json:"id"`
-	ServiceName string `json:"service_name"`
-	Domain      string `json:"domain"`
-	Port        int    `json:"port"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-}
-
-type applicationServiceConfigUpdateReq struct {
-	Image *string `json:"image"`
-}
-
-type ComposeServiceResp struct {
-	ServiceName   string `json:"service_name"`
-	DefaultDomain string `json:"default_domain"`
-	DefaultPort   int    `json:"default_port"`
-}
-
-type ApplicationExportResp struct {
-	Version         string                              `json:"version"`
-	Name            string                              `json:"name"`
-	Code            string                              `json:"code"`
-	ImagePullPolicy string                              `json:"image_pull_policy"`
-	RouteManaged    bool                                `json:"route_managed"`
-	ConfigFiles     []configFileReq                     `json:"config_files"`
-	ServiceConfigs  []applicationServiceConfigImportReq `json:"service_configs"`
-	Routes          []applicationRouteReq               `json:"routes"`
-}
-
-type applicationImportReq struct {
-	Version         string                              `json:"version"`
-	Name            string                              `json:"name"`
-	Code            string                              `json:"code"`
-	ImagePullPolicy string                              `json:"image_pull_policy"`
-	RouteManaged    bool                                `json:"route_managed"`
-	ConfigFiles     []configFileReq                     `json:"config_files"`
-	ServiceConfigs  []applicationServiceConfigImportReq `json:"service_configs"`
-	Routes          []applicationRouteReq               `json:"routes"`
-}
-
-type applicationServiceConfigImportReq struct {
-	ServiceName string  `json:"service_name"`
-	Image       *string `json:"image"`
-	Environment *string `json:"environment"`
-	Volumes     *string `json:"volumes"`
-}
-
 func (h Handler) RegisterApplicationExtraRoutes(r router) {
 	r.Post("/api/cd/application/import", h.importApplication)
 	r.Get("/api/cd/application/{app_id}/export", h.exportApplication)
@@ -103,9 +38,9 @@ func (h Handler) importApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req applicationImportReq
+	var req ApplicationImportReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	files := make([]cdsvc.ConfigFileInput, 0, len(req.ConfigFiles))
@@ -138,15 +73,15 @@ func (h Handler) exportApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	resp := ApplicationExportResp{Version: "1.0", Name: exported.Application.Name, Code: exported.Application.Code, ImagePullPolicy: exported.Application.ImagePullPolicy, RouteManaged: exported.Application.RouteManaged, ConfigFiles: []configFileReq{}, ServiceConfigs: []applicationServiceConfigImportReq{}, Routes: []applicationRouteReq{}}
+	resp := ApplicationExportResp{Version: "1.0", Name: exported.Application.Name, Code: exported.Application.Code, ImagePullPolicy: exported.Application.ImagePullPolicy, RouteManaged: exported.Application.RouteManaged, ConfigFiles: []ApplicationExportConfigFileResp{}, ServiceConfigs: []ApplicationServiceConfigExportResp{}, Routes: []ApplicationExportRouteResp{}}
 	for _, file := range exported.ConfigFiles {
-		resp.ConfigFiles = append(resp.ConfigFiles, configFileReq{Path: file.Path, Content: file.Content})
+		resp.ConfigFiles = append(resp.ConfigFiles, ApplicationExportConfigFileResp{Path: file.Path, Content: file.Content})
 	}
 	for _, config := range exported.ServiceConfigs {
-		resp.ServiceConfigs = append(resp.ServiceConfigs, applicationServiceConfigImportReq{ServiceName: config.ServiceName, Image: config.Image, Environment: config.Environment, Volumes: config.Volumes})
+		resp.ServiceConfigs = append(resp.ServiceConfigs, ApplicationServiceConfigExportResp{ServiceName: config.ServiceName, Image: config.Image, Environment: config.Environment, Volumes: config.Volumes})
 	}
 	for _, route := range exported.Routes {
-		resp.Routes = append(resp.Routes, applicationRouteReq{ServiceName: route.ServiceName, Domain: route.Domain, Port: route.Port})
+		resp.Routes = append(resp.Routes, ApplicationExportRouteResp{ServiceName: route.ServiceName, Domain: route.Domain, Port: route.Port})
 	}
 	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
 }
@@ -165,7 +100,7 @@ func (h Handler) listApplicationFiles(w http.ResponseWriter, r *http.Request) {
 	for _, file := range files {
 		resp = append(resp, configFileResponse(file))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, ConfigFileListResp{Items: resp})
 }
 
 func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -173,9 +108,9 @@ func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req configFileReq
+	var req ConfigFileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	file, err := h.service.CreateApplicationFile(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ConfigFileInput{Path: req.Path, Content: req.Content})
@@ -196,7 +131,7 @@ func (h Handler) readApplicationFile(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"content": file.Content, "path": file.Path})
+	transportresponse.JSON(h.logger, w, http.StatusOK, ApplicationFileContentResp{Content: file.Content, Path: file.Path})
 }
 
 func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -204,9 +139,9 @@ func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req configFileReq
+	var req ConfigFileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	file, err := h.service.UpdateApplicationFile(r.Context(), current.Id, chi.URLParam(r, "app_id"), chi.URLParam(r, "file_id"), cdsvc.ConfigFileInput{Path: req.Path, Content: req.Content})
@@ -234,20 +169,16 @@ func (h Handler) stopApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	removeVolumes := false
-	var body struct {
-		RemoveVolumes bool `json:"remove_volumes"`
-	}
+	var req ApplicationStopReq
 	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		removeVolumes = body.RemoveVolumes
+		_ = json.NewDecoder(r.Body).Decode(&req)
 	}
-	deploymentId, err := h.service.StopApplication(r.Context(), current.Id, chi.URLParam(r, "app_id"), removeVolumes)
+	deploymentId, err := h.service.StopApplication(r.Context(), current.Id, chi.URLParam(r, "app_id"), req.RemoveVolumes)
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
@@ -260,7 +191,7 @@ func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"deployment_id": deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) getApplicationStatus(w http.ResponseWriter, r *http.Request) {
@@ -270,10 +201,10 @@ func (h Handler) getApplicationStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	status, err := h.service.ApplicationStatus(r.Context(), current.Id, chi.URLParam(r, "app_id"))
 	if err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"status": status})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, ApplicationStatusResp{Status: status})
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"status": status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, ApplicationStatusResp{Status: status})
 }
 
 func (h Handler) getApplicationLogs(w http.ResponseWriter, r *http.Request) {
@@ -283,10 +214,10 @@ func (h Handler) getApplicationLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	logs, err := h.service.ApplicationLogs(r.Context(), current.Id, chi.URLParam(r, "app_id"), transportresponse.QueryInt(r.URL.Query().Get("tail"), 100))
 	if err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, map[string]string{"logs": logs})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, ApplicationLogsResp{Logs: logs})
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"logs": logs})
+	transportresponse.JSON(h.logger, w, http.StatusOK, ApplicationLogsResp{Logs: logs})
 }
 
 func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Request) {
@@ -299,7 +230,7 @@ func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Reques
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, map[string]string{"compose_yaml": compose})
+	transportresponse.JSON(h.logger, w, http.StatusOK, ApplicationComposePreviewResp{ComposeYAML: compose})
 }
 
 func (h Handler) listApplicationRoutes(w http.ResponseWriter, r *http.Request) {
@@ -316,7 +247,7 @@ func (h Handler) listApplicationRoutes(w http.ResponseWriter, r *http.Request) {
 	for _, route := range routes {
 		resp = append(resp, applicationRouteResponse(route))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, ApplicationRouteListResp{Items: resp})
 }
 
 func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) {
@@ -324,9 +255,9 @@ func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req applicationRouteReq
+	var req ApplicationRouteReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.CreateApplicationRoute(r.Context(), current.Id, chi.URLParam(r, "app_id"), cdsvc.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: req.Port})
@@ -342,9 +273,9 @@ func (h Handler) updateApplicationRoute(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req applicationRouteReq
+	var req ApplicationRouteReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.UpdateApplicationRoute(r.Context(), current.Id, chi.URLParam(r, "app_id"), chi.URLParam(r, "route_id"), cdsvc.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: req.Port})
@@ -381,7 +312,7 @@ func (h Handler) listApplicationComposeServices(w http.ResponseWriter, r *http.R
 	for _, view := range views {
 		resp = append(resp, ComposeServiceResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: view.DefaultPort})
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, ComposeServiceListResp{Items: resp})
 }
 
 func (h Handler) listApplicationServiceConfigs(w http.ResponseWriter, r *http.Request) {
@@ -394,7 +325,7 @@ func (h Handler) listApplicationServiceConfigs(w http.ResponseWriter, r *http.Re
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, views)
+	transportresponse.JSON(h.logger, w, http.StatusOK, ApplicationServiceConfigListResp{Items: applicationServiceConfigResponses(views)})
 }
 
 func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.Request) {
@@ -402,9 +333,9 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 	if !ok {
 		return
 	}
-	var req applicationServiceConfigUpdateReq
+	var req ApplicationServiceConfigUpdateReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusBadRequest, map[string]string{"detail": "Invalid JSON body"})
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.UpdateApplicationServiceConfig(r.Context(), current.Id, chi.URLParam(r, "app_id"), chi.URLParam(r, "service_name"), req.Image)
@@ -412,7 +343,7 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, view)
+	transportresponse.JSON(h.logger, w, http.StatusOK, applicationServiceConfigResponse(view))
 }
 
 func configFileResponse(file model.ApplicationConfigFile) ConfigFileResp {
@@ -421,4 +352,16 @@ func configFileResponse(file model.ApplicationConfigFile) ConfigFileResp {
 
 func applicationRouteResponse(route model.ApplicationRoute) ApplicationRouteResp {
 	return ApplicationRouteResp{Id: route.Id, ServiceName: route.ServiceName, Domain: route.Domain, Port: route.Port, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
+}
+
+func applicationServiceConfigResponses(views []cdsvc.ApplicationServiceConfigView) []ApplicationServiceConfigResp {
+	resp := make([]ApplicationServiceConfigResp, 0, len(views))
+	for _, view := range views {
+		resp = append(resp, applicationServiceConfigResponse(view))
+	}
+	return resp
+}
+
+func applicationServiceConfigResponse(view cdsvc.ApplicationServiceConfigView) ApplicationServiceConfigResp {
+	return ApplicationServiceConfigResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: view.DefaultPort, BaseImage: view.BaseImage, Image: view.Image, ConfigId: view.ConfigId, CreatedAt: view.CreatedAt, UpdatedAt: view.UpdatedAt}
 }

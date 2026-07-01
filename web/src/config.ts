@@ -33,9 +33,6 @@ export const config = {
     return getApiBaseUrl();
   },
   envLabel: import.meta.env.VITE_ENV_LABEL,
-  features: {
-    sseDeploymentLog: import.meta.env.VITE_FEATURE_SSE_DEPLOYMENT_LOG === 'true',
-  },
 };
 
 export default config;

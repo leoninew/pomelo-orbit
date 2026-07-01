@@ -2,6 +2,19 @@ import type { Deployment, DeploymentDetail } from '@/types/cd/deployment';
 import type { PaginatedResp } from '@/types/common';
 import request from '@/utils/request';
 
+export interface DeploymentLogsResp {
+  logs: string;
+  offset: number;
+  is_complete: boolean;
+  status: string;
+}
+
+export interface DeploymentContainerLogsResp {
+  logs: string;
+  source: 'since' | 'tail';
+  is_realtime_supported: boolean;
+}
+
 // 部署记录相关 API
 export const deploymentApi = {
   // 获取部署记录列表
@@ -24,20 +37,12 @@ export const deploymentApi = {
   },
 
   // 取消部署
-  cancel(id: string): Promise<void> {
+  cancel(id: string): Promise<Deployment> {
     return request.post(`/api/cd/deployment/${id}/cancel`);
   },
 
   // 获取部署日志（增量读取，回退用）
-  getLogs(
-    id: string,
-    offset: number = 0
-  ): Promise<{
-    logs: string;
-    offset: number;
-    is_complete: boolean;
-    status: string;
-  }> {
+  getLogs(id: string, offset: number = 0): Promise<DeploymentLogsResp> {
     return request.get(`/api/cd/deployment/${id}/logs`, {
       params: { offset },
     });
@@ -47,19 +52,7 @@ export const deploymentApi = {
   getContainerLogs(
     id: string,
     params?: { tail?: number }
-  ): Promise<{
-    logs: string;
-    source: 'since' | 'tail';
-    is_realtime_supported: boolean;
-  }> {
+  ): Promise<DeploymentContainerLogsResp> {
     return request.get(`/api/cd/deployment/${id}/container-logs`, { params });
-  },
-
-  // SSE 流式获取部署日志
-  streamLogs(id: string, token: string | null, signal?: AbortSignal): Promise<Response> {
-    return fetch(`/api/cd/deployment/${id}/stream-log`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      signal,
-    });
   },
 };

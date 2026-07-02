@@ -25,7 +25,6 @@ func EnvConfigFile(env string) string {
 type Config struct {
 	App         AppConfig       `mapstructure:"app" yaml:"app"`
 	Server      ServerConfig    `mapstructure:"server" yaml:"server"`
-	Web         WebConfig       `mapstructure:"web" yaml:"web"`
 	Logging     LoggingConfig   `mapstructure:"logging" yaml:"logging"`
 	Database    DatabaseConfig  `mapstructure:"database" yaml:"database"`
 	Worker      WorkerConfig    `mapstructure:"worker" yaml:"worker"`
@@ -50,10 +49,7 @@ type ServerConfig struct {
 	Host               string   `mapstructure:"host" yaml:"host"`
 	Port               int      `mapstructure:"port" yaml:"port"`
 	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins" yaml:"cors_allowed_origins"`
-}
-
-type WebConfig struct {
-	APIBaseURL string `mapstructure:"api_base_url" yaml:"api_base_url"`
+	APIBaseURL         string   `mapstructure:"api_base_url" yaml:"api_base_url"`
 }
 
 type LoggingConfig struct {
@@ -251,7 +247,7 @@ func bindEnv(loader *viper.Viper) {
 		"server.host",
 		"server.port",
 		"server.cors_allowed_origins",
-		"web.api_base_url",
+		"server.api_base_url",
 		"logging.level",
 		"logging.file",
 		"logging.max_size_mb",

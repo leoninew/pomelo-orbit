@@ -313,7 +313,7 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 
 func TestStaticFilesInjectRuntimeConfigAPIBaseURL(t *testing.T) {
 	server, database := newTestServer(t)
-	server.appCfg.Web.APIBaseURL = "https://orbit-api.preflite.cn"
+	server.appCfg.Server.APIBaseURL = "https://orbit-api.preflite.cn"
 	defer func() { _ = database.Close() }()
 	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
 
@@ -350,7 +350,7 @@ func TestStaticFilesInjectRuntimeConfigEmptyObject(t *testing.T) {
 
 func TestStaticFilesInjectRuntimeConfigFallbackBeforeHeadEnd(t *testing.T) {
 	server, database := newTestServer(t)
-	server.appCfg.Web.APIBaseURL = "https://orbit-api.preflite.cn"
+	server.appCfg.Server.APIBaseURL = "https://orbit-api.preflite.cn"
 	defer func() { _ = database.Close() }()
 	withStaticDir(t, "<html><head><title>Orbit</title></head><body>app</body></html>", nil)
 

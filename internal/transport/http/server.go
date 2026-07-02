@@ -167,7 +167,7 @@ func (s Server) serveIndexHTML(w http.ResponseWriter, r *http.Request, indexPath
 	if r.Method == http.MethodHead {
 		return true
 	}
-	_, _ = w.Write(injectRuntimeConfig(content, s.appCfg.Web.APIBaseURL))
+	_, _ = w.Write(injectRuntimeConfig(content, s.appCfg.Server.APIBaseURL))
 	return true
 }
 

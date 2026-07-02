@@ -159,17 +159,17 @@ window.__CONFIG__?.apiBaseUrl || import.meta.env.VITE_API_BASE_URL
 </script>
 ```
 
-新增后端配置：
+新增后端配置，与 CORS 配置合并在 `server` 配置段：
 
 ```yaml
-web:
+server:
   api_base_url: ""
 ```
 
 环境变量：
 
 ```text
-POMELO_ORBIT_WEB__API_BASE_URL=https://orbit-api.preflite.cn
+POMELO_ORBIT_SERVER__API_BASE_URL=https://orbit-api.preflite.cn
 ```
 
 Go 服务在返回 `index.html` 时注入：
@@ -241,7 +241,7 @@ internal/config/config_test.go
 
 ```go
 type Config struct {
-    Web WebConfig `mapstructure:"web" yaml:"web"`
+    Server ServerConfig `mapstructure:"server" yaml:"server"`
     // existing fields...
 }
 
@@ -249,10 +249,7 @@ type ServerConfig struct {
     Host               string   `mapstructure:"host" yaml:"host"`
     Port               int      `mapstructure:"port" yaml:"port"`
     CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins" yaml:"cors_allowed_origins"`
-}
-
-type WebConfig struct {
-    APIBaseURL string `mapstructure:"api_base_url" yaml:"api_base_url"`
+    APIBaseURL         string   `mapstructure:"api_base_url" yaml:"api_base_url"`
 }
 ```
 
@@ -260,7 +257,7 @@ type WebConfig struct {
 
 ```go
 "server.cors_allowed_origins"
-"web.api_base_url"
+"server.api_base_url"
 ```
 
 ### Backend HTTP middleware
@@ -286,6 +283,7 @@ Access-Control-Allow-Origin: <request Origin>
 Vary: Origin
 Access-Control-Allow-Headers: Authorization, Content-Type
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Max-Age: 600
 ```
 
 6. 对命中的 preflight `OPTIONS` 返回 `204 No Content`。
@@ -306,7 +304,7 @@ internal/transport/http/server_test.go
 func serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool
 ```
 
-需要能访问 `s.appCfg.Web.APIBaseURL`。建议改为 Server 方法：
+需要能访问 `s.appCfg.Server.APIBaseURL`。建议改为 Server 方法：
 
 ```go
 func (s Server) serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool
@@ -326,7 +324,7 @@ func (s Server) serveStatic(w http.ResponseWriter, r *http.Request, staticDir st
 <script>window.__CONFIG__ = {"apiBaseUrl":"https://orbit-api.preflite.cn"};</script>
 ```
 
-如果 `web.api_base_url` 为空，可以注入空对象或不替换；推荐仍注入：
+如果 `server.api_base_url` 为空，可以注入空对象或不替换；推荐仍注入：
 
 ```html
 <script>window.__CONFIG__ = {};</script>
@@ -377,8 +375,6 @@ server:
   host: 127.0.0.1
   port: 9020
   cors_allowed_origins: []
-
-web:
   api_base_url: ""
 ```
 
@@ -386,7 +382,7 @@ web:
 
 ```env
 POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS=https://orbit.preflite.cn
-POMELO_ORBIT_WEB__API_BASE_URL=https://orbit-api.preflite.cn
+POMELO_ORBIT_SERVER__API_BASE_URL=https://orbit-api.preflite.cn
 ```
 
 多 Origin 示例：
@@ -403,6 +399,7 @@ POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS=https://orbit.preflite.cn,https://orbi
 Access-Control-Allow-Origin: https://orbit.preflite.cn
 Access-Control-Allow-Headers: Authorization, Content-Type
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Max-Age: 600
 Vary: Origin
 ```
 
@@ -413,6 +410,7 @@ HTTP/1.1 204 No Content
 Access-Control-Allow-Origin: https://orbit.preflite.cn
 Access-Control-Allow-Headers: Authorization, Content-Type
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Max-Age: 600
 Vary: Origin
 ```
 

@@ -33,36 +33,26 @@ internal/config/config_test.go
 
 计划：
 
-1. 在 `Config` 中新增 `Web WebConfig`。
-2. 在 `ServerConfig` 中新增 `CORSAllowedOrigins []string`。
-3. 新增 `WebConfig`：
-
-```go
-type WebConfig struct {
-    APIBaseURL string `mapstructure:"api_base_url" yaml:"api_base_url"`
-}
-```
-
-4. 在 `bindEnv` 中新增：
+1. 在 `ServerConfig` 中新增 `CORSAllowedOrigins []string`。
+2. 在 `ServerConfig` 中新增 `APIBaseURL string`。
+3. 在 `bindEnv` 中新增：
 
 ```go
 "server.cors_allowed_origins"
-"web.api_base_url"
+"server.api_base_url"
 ```
 
-5. 在 `configs/config.yaml` 中新增默认空配置：
+4. 在 `configs/config.yaml` 中新增默认空配置：
 
 ```yaml
 server:
   cors_allowed_origins: []
-
-web:
   api_base_url: ""
 ```
 
-6. 更新配置测试，覆盖：
+5. 更新配置测试，覆盖：
    - 默认配置为空。
-   - 环境变量能覆盖 CORS origins 和 web API base URL。
+   - 环境变量能覆盖 CORS origins 和 server API base URL。
 
 ### Step 2: 添加 CORS 中间件
 
@@ -139,7 +129,7 @@ internal/transport/http/server_test.go
    - 构造公开配置：
 
 ```go
-map[string]string{"apiBaseUrl": s.appCfg.Web.APIBaseURL}
+map[string]string{"apiBaseUrl": s.appCfg.Server.APIBaseURL}
 ```
 
    - 如果 APIBaseURL 为空，输出空对象 `{}`。
@@ -151,7 +141,7 @@ map[string]string{"apiBaseUrl": s.appCfg.Web.APIBaseURL}
 
 测试覆盖：
 
-1. 配置 `Web.APIBaseURL` 后，返回的 index HTML 包含 `window.__CONFIG__` 和 apiBaseUrl。
+1. 配置 `Server.APIBaseURL` 后，返回的 index HTML 包含 `window.__CONFIG__` 和 apiBaseUrl。
 2. APIBaseURL 为空时，返回空配置，不影响页面。
 3. 占位符缺失时能插入到 `</head>` 前。
 4. 普通静态文件仍能正常返回，不被 runtime config 注入逻辑改写。
@@ -300,7 +290,7 @@ https://orbit-api.preflite.cn
 
 ```text
 POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS=https://orbit.preflite.cn
-POMELO_ORBIT_WEB__API_BASE_URL=https://orbit-api.preflite.cn
+POMELO_ORBIT_SERVER__API_BASE_URL=https://orbit-api.preflite.cn
 ```
 
 2. `orbit-api.preflite.cn` 已由云端路由转发到同一后端服务。
@@ -311,7 +301,7 @@ POMELO_ORBIT_WEB__API_BASE_URL=https://orbit-api.preflite.cn
 
 1. CORS 只解决浏览器跨域限制，不改变服务端权限模型；API 仍必须依赖现有鉴权。
 2. 如果生产环境忘记设置 CORS origins，浏览器跨域 API 会失败。
-3. 如果生产环境忘记设置 `web.api_base_url`，前端仍会同源请求 `orbit.preflite.cn/api/...`。
+3. 如果生产环境忘记设置 `server.api_base_url`，前端仍会同源请求 `orbit.preflite.cn/api/...`。
 4. 如果未来新增直接 `fetch('/api/...')`，可能再次绕过 baseURL；后续 code review 需关注。
 
 ## Rollback
@@ -320,7 +310,7 @@ POMELO_ORBIT_WEB__API_BASE_URL=https://orbit-api.preflite.cn
 
 ```text
 POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS
-POMELO_ORBIT_WEB__API_BASE_URL
+POMELO_ORBIT_SERVER__API_BASE_URL
 ```
 
 可回到同源 API 行为。

@@ -155,7 +155,7 @@ Access-Control-Allow-Credentials
 新增：
 
 ```yaml
-web:
+server:
   api_base_url: ""
 ```
 
@@ -165,7 +165,7 @@ web:
 <script>window.__CONFIG__ = {"apiBaseUrl":"https://orbit-api.preflite.cn"};</script>
 ```
 
-当 `api_base_url` 为空时注入：
+当 `server.api_base_url` 为空时注入：
 
 ```html
 <script>window.__CONFIG__ = {};</script>
@@ -369,7 +369,7 @@ web/src/env.d.ts
 - [x] 未配置 allowed origins 时不默认返回 `Access-Control-Allow-Origin: *`。
 - [x] 不设置 `Access-Control-Allow-Credentials`。
 - [x] CORS 只处理 `/api/`。
-- [x] 新增 `web.api_base_url` 运行时配置。
+- [x] 新增 `server.api_base_url` 运行时配置。
 - [x] `index.html` 返回时注入 `window.__CONFIG__`。
 - [x] 注入使用 `json.Marshal`。
 - [x] 占位符缺失时 fallback 到 `</head>` 前。
@@ -486,7 +486,7 @@ GET /api/cd/deployment/{deployment_id}/logs
 
 ```text
 POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS=https://orbit.preflite.cn
-POMELO_ORBIT_WEB__API_BASE_URL=https://orbit-api.preflite.cn
+POMELO_ORBIT_SERVER__API_BASE_URL=https://orbit-api.preflite.cn
 ```
 
 否则浏览器跨域 API 或前端 API base URL 行为不会达到目标部署形态。

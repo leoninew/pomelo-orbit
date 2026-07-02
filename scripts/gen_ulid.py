@@ -3,7 +3,7 @@
 
 import argparse
 
-from ulid import ULID
+import ulid
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="生成 ULID")
@@ -11,4 +11,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     for _ in range(args.n):
-        print(ULID())
+        print(ulid.new())

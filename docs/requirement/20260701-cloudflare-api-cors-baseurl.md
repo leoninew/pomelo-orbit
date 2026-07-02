@@ -73,6 +73,7 @@ Webhook URL 展示或复制逻辑不应依赖 `window.location.origin` 生成前
 Access-Control-Allow-Origin: https://orbit.preflite.cn
 Access-Control-Allow-Headers: Authorization, Content-Type
 Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+Access-Control-Max-Age: 600
 ```
 
 3. 后端能处理浏览器 preflight `OPTIONS` 请求；对允许的 Origin 返回成功状态和 CORS 头。

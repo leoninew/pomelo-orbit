@@ -111,6 +111,9 @@ func assertCORSHeaders(t *testing.T, recorder *httptest.ResponseRecorder, origin
 	if recorder.Header().Get("Access-Control-Allow-Methods") != corsAllowMethods {
 		t.Fatalf("unexpected allow methods: %s", recorder.Header().Get("Access-Control-Allow-Methods"))
 	}
+	if recorder.Header().Get("Access-Control-Max-Age") != corsMaxAge {
+		t.Fatalf("unexpected max age: %s", recorder.Header().Get("Access-Control-Max-Age"))
+	}
 	if recorder.Header().Get("Vary") != "Origin" {
 		t.Fatalf("unexpected vary header: %s", recorder.Header().Get("Vary"))
 	}

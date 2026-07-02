@@ -210,14 +210,14 @@
   const currentId = ref('');
   const pendingDeleteId = ref('');
 
-  const form = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+  const form = reactive({ name: '', type: 'github_token' as string, data: '' });
   const credentialTypeOptions = [
-    { value: 'git_ssh', label: 'Git SSH 密钥' },
     { value: 'github_token', label: 'GitHub Token' },
     { value: 'gitee_token', label: 'Gitee Token' },
+    { value: 'git_ssh', label: 'Git SSH 密钥' },
   ];
   const errors = reactive({ name: '', data: '' });
-  const importForm = reactive({ name: '', type: 'git_ssh' as string, data: '' });
+  const importForm = reactive({ name: '', type: 'github_token' as string, data: '' });
   const importErrors = reactive({ name: '', data: '' });
 
   function validate() {
@@ -267,7 +267,7 @@
   function openCreateModal() {
     isEditing.value = false;
     currentId.value = '';
-    Object.assign(form, { name: '', type: 'git_ssh', data: '' });
+    Object.assign(form, { name: '', type: 'github_token', data: '' });
     Object.assign(errors, { name: '', data: '' });
     showCredentialDialog.value = true;
   }

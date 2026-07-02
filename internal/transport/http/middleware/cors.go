@@ -8,6 +8,7 @@ import (
 const (
 	corsAllowHeaders = "Authorization, Content-Type"
 	corsAllowMethods = "GET, POST, PUT, DELETE, OPTIONS"
+	corsMaxAge       = "600"
 )
 
 func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
@@ -61,5 +62,6 @@ func setCORSHeaders(header http.Header, origin string) {
 	header.Set("Access-Control-Allow-Origin", origin)
 	header.Set("Access-Control-Allow-Headers", corsAllowHeaders)
 	header.Set("Access-Control-Allow-Methods", corsAllowMethods)
+	header.Set("Access-Control-Max-Age", corsMaxAge)
 	header.Add("Vary", "Origin")
 }

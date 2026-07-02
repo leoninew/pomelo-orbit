@@ -212,9 +212,7 @@ def cmd_check(domain: str) -> None:
     leaf_cert = None
     if not pem_file.exists():
         logger.warning(f"文件不存在: {pem_file}")
-        logger.info(
-            f"修复: python scripts/cert.py new -n {domain}"
-        )
+        logger.info(f"修复: python scripts/cert.py new -n {domain}")
     else:
         logger.info(f"文件: {pem_file}")
         pem_text = pem_file.read_text(encoding="utf-8")

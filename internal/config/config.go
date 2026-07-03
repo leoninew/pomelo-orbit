@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +50,8 @@ type ServerConfig struct {
 	Host               string   `mapstructure:"host" yaml:"host"`
 	Port               int      `mapstructure:"port" yaml:"port"`
 	CORSAllowedOrigins []string `mapstructure:"cors_allowed_origins" yaml:"cors_allowed_origins"`
-	APIBaseURL         string   `mapstructure:"api_base_url" yaml:"api_base_url"`
+	ApiPathPrefixes    []string `mapstructure:"api_path_prefixes" yaml:"api_path_prefixes"`
+	PublicURL          string   `mapstructure:"public_url" yaml:"public_url"`
 }
 
 type LoggingConfig struct {
@@ -154,6 +156,7 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("parse config: %w", err)
 	}
 
+	normalizeServerRuntimeOriginConfig(&cfg.Server)
 	if cfg.Worker.Id == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -192,6 +195,7 @@ func loadBaseConfig(envName string) (Config, error) {
 	if err := loader.Unmarshal(&base, configDecodeHook()); err != nil {
 		return Config{}, fmt.Errorf("parse default config: %w", err)
 	}
+	normalizeServerRuntimeOriginConfig(&base.Server)
 	return base, nil
 }
 
@@ -247,7 +251,8 @@ func bindEnv(loader *viper.Viper) {
 		"server.host",
 		"server.port",
 		"server.cors_allowed_origins",
-		"server.api_base_url",
+		"server.api_path_prefixes",
+		"server.public_url",
 		"logging.level",
 		"logging.file",
 		"logging.max_size_mb",
@@ -286,6 +291,9 @@ func bindEnv(loader *viper.Viper) {
 }
 
 func (c Config) Validate() error {
+	if err := validateServerRuntimeOriginConfig(c.Server); err != nil {
+		return err
+	}
 	switch c.Database.Driver {
 	case DatabaseDriverSQLite:
 		if c.Database.SQLite.Path == "" {
@@ -335,6 +343,98 @@ func (c Config) Validate() error {
 	}
 	if c.Worker.Concurrency < 1 {
 		return errors.New("worker.concurrency must be at least 1")
+	}
+	return nil
+}
+
+func normalizeServerRuntimeOriginConfig(cfg *ServerConfig) {
+	cfg.PublicURL = strings.TrimRight(strings.TrimSpace(cfg.PublicURL), "/")
+	cfg.CORSAllowedOrigins = normalizeHTTPOrigins(cfg.CORSAllowedOrigins)
+	cfg.ApiPathPrefixes = normalizeApiPathPrefixes(cfg.ApiPathPrefixes)
+}
+
+func normalizeHTTPOrigins(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		value = strings.TrimRight(strings.TrimSpace(value), "/")
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func normalizeApiPathPrefixes(values []string) []string {
+	out := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "/" {
+			value = strings.TrimRight(value, "/")
+		}
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
+}
+
+func validateServerRuntimeOriginConfig(cfg ServerConfig) error {
+	if err := validateApiPathPrefixes(cfg.ApiPathPrefixes); err != nil {
+		return err
+	}
+	if cfg.PublicURL != "" {
+		if err := validateHTTPURL("server.public_url", cfg.PublicURL, false); err != nil {
+			return err
+		}
+	}
+	for _, origin := range cfg.CORSAllowedOrigins {
+		if err := validateHTTPURL("server.cors_allowed_origins", origin, true); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateApiPathPrefixes(prefixes []string) error {
+	if len(prefixes) == 0 {
+		return errors.New("server.api_path_prefixes must not be empty")
+	}
+	for _, prefix := range prefixes {
+		if prefix == "/" {
+			return errors.New("server.api_path_prefixes must not contain root path")
+		}
+		if !strings.HasPrefix(prefix, "/") {
+			return fmt.Errorf("server.api_path_prefixes must start with /: %s", prefix)
+		}
+	}
+	return nil
+}
+
+func validateHTTPURL(key string, value string, originOnly bool) error {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return fmt.Errorf("%s must be an absolute http or https URL", key)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("%s must use http or https scheme", key)
+	}
+	if parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("%s must not include query or fragment", key)
+	}
+	if originOnly && parsed.Path != "" {
+		return fmt.Errorf("%s must not include path, query, or fragment", key)
 	}
 	return nil
 }

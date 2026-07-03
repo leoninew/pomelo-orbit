@@ -91,7 +91,7 @@ func (s Server) Handler() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(transportmiddleware.LogRequest(s.logger, transportmiddleware.LogRequestConfig{BodyEnabled: s.appCfg.Logging.HTTPBodyEnabled, BodyMaxBytes: s.appCfg.Logging.HTTPBodyMaxBytes}))
 	r.Use(middleware.Recoverer)
-	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins))
+	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins, s.appCfg.Server.ApiPathPrefixes))
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		transportresponse.JSON(s.logger, w, http.StatusOK, HealthResp{Status: "ok"})
@@ -120,7 +120,7 @@ func (s Server) Handler() http.Handler {
 	cdHandler.RegisterTraefikRouteRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") {
+		if isAPIPath(r.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
 			transportresponse.Error(s.logger, w, http.StatusNotFound, "Not Found")
 			return
 		}
@@ -167,14 +167,15 @@ func (s Server) serveIndexHTML(w http.ResponseWriter, r *http.Request, indexPath
 	if r.Method == http.MethodHead {
 		return true
 	}
-	_, _ = w.Write(injectRuntimeConfig(content, s.appCfg.Server.APIBaseURL))
+	_, _ = w.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicURL))
 	return true
 }
 
-func injectRuntimeConfig(content []byte, apiBaseURL string) []byte {
+func injectRuntimeConfig(content []byte, publicURL string) []byte {
 	configValue := map[string]string{}
-	if strings.TrimSpace(apiBaseURL) != "" {
-		configValue["apiBaseUrl"] = apiBaseURL
+	publicURL = strings.TrimRight(strings.TrimSpace(publicURL), "/")
+	if publicURL != "" {
+		configValue["publicUrl"] = publicURL
 	}
 	configJSON, err := json.Marshal(configValue)
 	if err != nil {
@@ -194,6 +195,19 @@ func injectRuntimeConfig(content []byte, apiBaseURL string) []byte {
 
 func (s Server) Addr() string {
 	return fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
+}
+
+func isAPIPath(requestPath string, prefixes []string) bool {
+	return hasAPIPathPrefix(requestPath, prefixes)
+}
+
+func hasAPIPathPrefix(requestPath string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if requestPath == prefix || strings.HasPrefix(requestPath, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func urlParam(r *http.Request, key string) string {

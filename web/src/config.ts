@@ -1,7 +1,7 @@
 export interface RuntimeConfig {
-  // Public API prefix injected by deployment tooling.
-  // Empty or "/" means same-origin /api; use a full origin only for cross-origin APIs.
-  apiBaseUrl?: string;
+  // Public API URL prefix injected by the backend while serving index.html.
+  // Empty means same-origin /api.
+  publicUrl?: string;
 }
 
 declare global {
@@ -10,27 +10,38 @@ declare global {
   }
 }
 
-function normalizeApiBaseUrl(value: string | undefined): string {
-  const trimmed = value?.trim() ?? '';
-  if (trimmed === '' || trimmed === '/') {
-    return '';
-  }
-  return trimmed.replace(/\/+$/, '');
+const apiPathPrefixes = ['/api'];
+
+function normalizePublicUrl(value: string | undefined): string {
+  return (value ?? '').trim().replace(/\/+$/, '');
 }
 
 // Runtime config wins because Vite env values are baked into the bundle at build time.
-export function getApiBaseUrl(): string {
-  return normalizeApiBaseUrl(window.__CONFIG__?.apiBaseUrl || import.meta.env.VITE_API_BASE_URL);
+export function getPublicUrl(): string {
+  if (typeof window !== 'undefined' && window.__CONFIG__ !== undefined) {
+    return normalizePublicUrl(window.__CONFIG__.publicUrl);
+  }
+
+  return normalizePublicUrl(import.meta.env.VITE_PUBLIC_URL);
 }
 
 export function buildApiUrl(path: string): string {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${getApiBaseUrl()}${normalizedPath}`;
+  assertApiPath(path, apiPathPrefixes);
+
+  return `${getPublicUrl()}${path}`;
+}
+
+function assertApiPath(path: string, prefixes: string[]): void {
+  const matched = prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+
+  if (!matched) {
+    throw new Error(`API path must start with one of: ${prefixes.join(', ')}; got ${path}`);
+  }
 }
 
 export const config = {
-  get apiBaseUrl() {
-    return getApiBaseUrl();
+  get publicUrl() {
+    return getPublicUrl();
   },
   envLabel: import.meta.env.VITE_ENV_LABEL,
 };

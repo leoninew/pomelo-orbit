@@ -53,6 +53,24 @@ func TestCORSAllowedPreflightReturnsNoContent(t *testing.T) {
 	}
 }
 
+func TestCORSAllowsAPIRootPath(t *testing.T) {
+	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api", "https://orbit.preflite.cn")
+
+	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("expected status 204, got %d", recorder.Code)
+	}
+}
+
+func TestCORSUsesConfiguredApiPathPrefixes(t *testing.T) {
+	recorder := serveCORSRequestWithPrefixes(t, []string{"https://orbit.preflite.cn"}, []string{"/api", "/graphql"}, http.MethodOptions, "/graphql", "https://orbit.preflite.cn")
+
+	assertCORSHeaders(t, recorder, "https://orbit.preflite.cn")
+	if recorder.Code != http.StatusNoContent {
+		t.Fatalf("expected status 204, got %d", recorder.Code)
+	}
+}
+
 func TestCORSDeniedPreflightReturnsForbidden(t *testing.T) {
 	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/api/health", "https://evil.example.test")
 
@@ -65,13 +83,16 @@ func TestCORSDeniedPreflightReturnsForbidden(t *testing.T) {
 }
 
 func TestCORSIgnoresNonAPIPaths(t *testing.T) {
-	recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, "/ci/repository", "https://orbit.preflite.cn")
+	paths := []string{"/ci/repository", "/apix/health"}
+	for _, path := range paths {
+		recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, path, "https://orbit.preflite.cn")
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("expected downstream status 200, got %d", recorder.Code)
-	}
-	if recorder.Header().Get("Access-Control-Allow-Origin") != "" {
-		t.Fatalf("expected no cors origin header, got %s", recorder.Header().Get("Access-Control-Allow-Origin"))
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("expected downstream status 200 for %s, got %d", path, recorder.Code)
+		}
+		if recorder.Header().Get("Access-Control-Allow-Origin") != "" {
+			t.Fatalf("expected no cors origin header for %s, got %s", path, recorder.Header().Get("Access-Control-Allow-Origin"))
+		}
 	}
 }
 
@@ -86,9 +107,36 @@ func TestCORSIgnoresRequestsWithoutOrigin(t *testing.T) {
 	}
 }
 
+func TestHasAPIPathPrefixUsesConfiguredPrefixes(t *testing.T) {
+	prefixes := []string{"/api", "/graphql", "/report-api"}
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{path: "/api", want: true},
+		{path: "/api/health", want: true},
+		{path: "/graphql", want: true},
+		{path: "/graphql/query", want: true},
+		{path: "/report-api/v1", want: true},
+		{path: "/apix", want: false},
+		{path: "/graphqlx", want: false},
+		{path: "/report-api-v2", want: false},
+	}
+	for _, tc := range cases {
+		if got := hasAPIPathPrefix(tc.path, prefixes); got != tc.want {
+			t.Fatalf("hasAPIPathPrefix(%q) = %v, want %v", tc.path, got, tc.want)
+		}
+	}
+}
+
 func serveCORSRequest(t *testing.T, allowedOrigins []string, method string, path string, origin string) *httptest.ResponseRecorder {
 	t.Helper()
-	handler := CORS(allowedOrigins)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return serveCORSRequestWithPrefixes(t, allowedOrigins, []string{"/api"}, method, path, origin)
+}
+
+func serveCORSRequestWithPrefixes(t *testing.T, allowedOrigins []string, apiPathPrefixes []string, method string, path string, origin string) *httptest.ResponseRecorder {
+	t.Helper()
+	handler := CORS(allowedOrigins, apiPathPrefixes)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	request := httptest.NewRequest(method, path, nil)

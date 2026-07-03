@@ -36,8 +36,11 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if len(cfg.Server.CORSAllowedOrigins) != 0 {
 		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CORSAllowedOrigins)
 	}
-	if cfg.Server.APIBaseURL != "" {
-		t.Fatalf("unexpected server api base url: %s", cfg.Server.APIBaseURL)
+	if len(cfg.Server.ApiPathPrefixes) != 1 || cfg.Server.ApiPathPrefixes[0] != "/api" {
+		t.Fatalf("unexpected api path prefixes: %v", cfg.Server.ApiPathPrefixes)
+	}
+	if cfg.Server.PublicURL != "" {
+		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicURL)
 	}
 	if cfg.Logging.File != "logs/backend-go.log" {
 		t.Fatalf("unexpected logging file: %s", cfg.Logging.File)
@@ -160,8 +163,9 @@ worker:
 `)
 	t.Setenv("POMELO_ORBIT_SERVER__HOST", "0.0.0.0")
 	t.Setenv("POMELO_ORBIT_SERVER__PORT", "8088")
-	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn,https://preview.preflite.cn")
-	t.Setenv("POMELO_ORBIT_SERVER__API_BASE_URL", "https://orbit-api.preflite.cn")
+	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn/,https://preview.preflite.cn,https://orbit.preflite.cn")
+	t.Setenv("POMELO_ORBIT_SERVER__API_PATH_PREFIXES", "/api/,/graphql,/api")
+	t.Setenv("POMELO_ORBIT_SERVER__PUBLIC_URL", "https://orbit-api.preflite.cn/")
 	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
@@ -189,8 +193,11 @@ worker:
 	if len(cfg.Server.CORSAllowedOrigins) != 2 || cfg.Server.CORSAllowedOrigins[0] != "https://orbit.preflite.cn" || cfg.Server.CORSAllowedOrigins[1] != "https://preview.preflite.cn" {
 		t.Fatalf("unexpected cors allowed origins: %v", cfg.Server.CORSAllowedOrigins)
 	}
-	if cfg.Server.APIBaseURL != "https://orbit-api.preflite.cn" {
-		t.Fatalf("unexpected server api base url: %s", cfg.Server.APIBaseURL)
+	if len(cfg.Server.ApiPathPrefixes) != 2 || cfg.Server.ApiPathPrefixes[0] != "/api" || cfg.Server.ApiPathPrefixes[1] != "/graphql" {
+		t.Fatalf("unexpected api path prefixes: %v", cfg.Server.ApiPathPrefixes)
+	}
+	if cfg.Server.PublicURL != "https://orbit-api.preflite.cn" {
+		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicURL)
 	}
 	if cfg.Database.SQLite.Path != "/data/pomelo-repository.db" {
 		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
@@ -230,6 +237,64 @@ worker:
 	}
 	if cfg.Worker.PollInterval != 2*time.Second {
 		t.Fatalf("unexpected poll interval: %s", cfg.Worker.PollInterval)
+	}
+}
+
+func TestLoadConfigRejectsInvalidApiPathPrefixes(t *testing.T) {
+	cases := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{name: "empty", content: `server:
+  api_path_prefixes: []
+`, want: "server.api_path_prefixes must not be empty"},
+		{name: "root", content: `server:
+  api_path_prefixes:
+    - /
+`, want: "server.api_path_prefixes must not contain root path"},
+		{name: "missing slash", content: `server:
+  api_path_prefixes:
+    - api
+`, want: "server.api_path_prefixes must start with /: api"},
+	}
+	for _, tc := range cases {
+		setupDefaultConfig(t)
+		writeEnvConfig(t, "develop", tc.content)
+
+		_, err := Load()
+		if err == nil {
+			t.Fatalf("expected error for %s", tc.name)
+		}
+		if !strings.Contains(err.Error(), tc.want) {
+			t.Fatalf("unexpected error for %s: %v", tc.name, err)
+		}
+	}
+}
+
+func TestLoadConfigRejectsInvalidPublicURL(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_SERVER__PUBLIC_URL", "ftp://orbit-api.preflite.cn")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid public url")
+	}
+	if !strings.Contains(err.Error(), "server.public_url must use http or https scheme") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoadConfigRejectsInvalidCORSOrigin(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn/path")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for invalid cors origin")
+	}
+	if !strings.Contains(err.Error(), "server.cors_allowed_origins must not include path, query, or fragment") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -595,7 +660,9 @@ server:
   host: 127.0.0.1
   port: 9020
   cors_allowed_origins: []
-  api_base_url: ""
+  api_path_prefixes:
+    - /api
+  public_url: ""
 logging:
   level: info
   file: logs/backend-go.log

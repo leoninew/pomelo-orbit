@@ -7,7 +7,9 @@ server:
   host: 127.0.0.1
   port: 9020
   cors_allowed_origins: []
-  api_base_url: ""
+  api_path_prefixes:
+    - /api
+  public_url: ""
 
 logging:
   level: info

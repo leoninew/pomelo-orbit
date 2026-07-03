@@ -19,7 +19,7 @@ export class ApiError extends Error {
 }
 
 const request = axios.create({
-  baseURL: config.apiBaseUrl,
+  baseURL: config.publicUrl,
   timeout: 30000,
 });
 

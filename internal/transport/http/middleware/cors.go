@@ -11,7 +11,7 @@ const (
 	corsMaxAge       = "600"
 )
 
-func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
+func CORS(allowedOrigins []string, apiPathPrefixes []string) func(http.Handler) http.Handler {
 	origins := parseCORSAllowedOrigins(allowedOrigins)
 	return func(next http.Handler) http.Handler {
 		if len(origins) == 0 {
@@ -19,7 +19,7 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := normalizeCORSOrigin(r.Header.Get("Origin"))
-			if !strings.HasPrefix(r.URL.Path, "/api/") || origin == "" {
+			if !isAPIPath(r.URL.Path, apiPathPrefixes) || origin == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -52,6 +52,19 @@ func parseCORSAllowedOrigins(values []string) map[string]bool {
 		}
 	}
 	return origins
+}
+
+func isAPIPath(path string, prefixes []string) bool {
+	return hasAPIPathPrefix(path, prefixes)
+}
+
+func hasAPIPathPrefix(path string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if path == prefix || strings.HasPrefix(path, prefix+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 func normalizeCORSOrigin(value string) string {

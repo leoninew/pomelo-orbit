@@ -45,7 +45,7 @@ func newTestServer(t *testing.T) (Server, *sqlx.DB) {
 	if err := db.NewMigrator(database, config.DatabaseDriverSQLite).Up(); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Config{Server: config.ServerConfig{Host: "127.0.0.1", Port: 0}}
+	cfg := config.Config{Server: config.ServerConfig{Host: "127.0.0.1", Port: 0, ApiPathPrefixes: []string{"/api"}}}
 	cfg.JWT.SecretKey = credentialRouteFernetKey
 	cfg.Turnstile = config.TurnstileConfig{Enabled: true, SiteKey: "test-site-key", SecretKey: "test-secret-key", VerifyURL: "https://turnstile.example.test"}
 	server := New(cfg, slog.Default(), repository.NewStore(database, config.DatabaseDriverSQLite), taskrepo.NewRepository(database, config.DatabaseDriverSQLite), 3)
@@ -279,10 +279,29 @@ func TestAuthCaptchaRouteIsRemoved(t *testing.T) {
 	}
 }
 
+func TestStaticFilesFallbackUsesConfiguredApiPathPrefixes(t *testing.T) {
+	server, database := newTestServer(t)
+	server.appCfg.Server.ApiPathPrefixes = []string{"/api", "/graphql"}
+	defer func() { _ = database.Close() }()
+	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
+
+	apiRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(apiRecorder, httptest.NewRequest(http.MethodGet, "/graphql", nil))
+	if apiRecorder.Code != http.StatusNotFound {
+		t.Fatalf("expected configured api prefix 404, got %d: %s", apiRecorder.Code, apiRecorder.Body.String())
+	}
+
+	nonAPIRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(nonAPIRecorder, httptest.NewRequest(http.MethodGet, "/graphqlx", nil))
+	if nonAPIRecorder.Code != http.StatusOK || !strings.Contains(nonAPIRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
+		t.Fatalf("expected non-api spa fallback, got %d: %s", nonAPIRecorder.Code, nonAPIRecorder.Body.String())
+	}
+}
+
 func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
-	withStaticDir(t, "<html><!-- __RUNTIME_CONFIG__ -->app</html>", map[string]string{
+	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", map[string]string{
 		"asset.js": "console.log('app')",
 	})
 
@@ -304,6 +323,18 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 		t.Fatalf("expected api 404, got %d: %s", apiRecorder.Code, apiRecorder.Body.String())
 	}
 
+	apiRootRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(apiRootRecorder, httptest.NewRequest(http.MethodGet, "/api", nil))
+	if apiRootRecorder.Code != http.StatusNotFound {
+		t.Fatalf("expected api root 404, got %d: %s", apiRootRecorder.Code, apiRootRecorder.Body.String())
+	}
+
+	nonAPIRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(nonAPIRecorder, httptest.NewRequest(http.MethodGet, "/apix/missing", nil))
+	if nonAPIRecorder.Code != http.StatusOK || !strings.Contains(nonAPIRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
+		t.Fatalf("expected non-api spa fallback, got %d: %s", nonAPIRecorder.Code, nonAPIRecorder.Body.String())
+	}
+
 	postRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(postRecorder, httptest.NewRequest(http.MethodPost, "/ci/repository", nil))
 	if postRecorder.Code != http.StatusNotFound {
@@ -311,9 +342,9 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	}
 }
 
-func TestStaticFilesInjectRuntimeConfigAPIBaseURL(t *testing.T) {
+func TestStaticFilesInjectRuntimeConfigPublicURL(t *testing.T) {
 	server, database := newTestServer(t)
-	server.appCfg.Server.APIBaseURL = "https://orbit-api.preflite.cn"
+	server.appCfg.Server.PublicURL = "https://orbit-api.preflite.cn"
 	defer func() { _ = database.Close() }()
 	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
 
@@ -324,8 +355,8 @@ func TestStaticFilesInjectRuntimeConfigAPIBaseURL(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `<script>window.__CONFIG__ = {"apiBaseUrl":"https://orbit-api.preflite.cn"};</script>`) {
-		t.Fatalf("expected runtime config api base url, got: %s", body)
+	if !strings.Contains(body, `<script>window.__CONFIG__ = {"publicUrl":"https://orbit-api.preflite.cn"};</script>`) {
+		t.Fatalf("expected runtime config public url, got: %s", body)
 	}
 	if recorder.Header().Get("Content-Type") != "text/html; charset=utf-8" {
 		t.Fatalf("unexpected content type: %s", recorder.Header().Get("Content-Type"))
@@ -350,7 +381,7 @@ func TestStaticFilesInjectRuntimeConfigEmptyObject(t *testing.T) {
 
 func TestStaticFilesInjectRuntimeConfigFallbackBeforeHeadEnd(t *testing.T) {
 	server, database := newTestServer(t)
-	server.appCfg.Server.APIBaseURL = "https://orbit-api.preflite.cn"
+	server.appCfg.Server.PublicURL = "https://orbit-api.preflite.cn"
 	defer func() { _ = database.Close() }()
 	withStaticDir(t, "<html><head><title>Orbit</title></head><body>app</body></html>", nil)
 
@@ -360,7 +391,7 @@ func TestStaticFilesInjectRuntimeConfigFallbackBeforeHeadEnd(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", recorder.Code)
 	}
-	want := `<script>window.__CONFIG__ = {"apiBaseUrl":"https://orbit-api.preflite.cn"};</script></head>`
+	want := `<script>window.__CONFIG__ = {"publicUrl":"https://orbit-api.preflite.cn"};</script></head>`
 	if !strings.Contains(recorder.Body.String(), want) {
 		t.Fatalf("expected runtime config before head end, got: %s", recorder.Body.String())
 	}

@@ -49,10 +49,7 @@ export const deploymentApi = {
   },
 
   // 获取部署对应的容器日志
-  getContainerLogs(
-    id: string,
-    params?: { tail?: number }
-  ): Promise<DeploymentContainerLogsResp> {
+  getContainerLogs(id: string, params?: { tail?: number }): Promise<DeploymentContainerLogsResp> {
     return request.get(`/api/cd/deployment/${id}/container-logs`, { params });
   },
 };

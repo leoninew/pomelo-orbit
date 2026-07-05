@@ -815,7 +815,8 @@
 
   const routeForm = reactive({ service_name: '', domain: '', port: 80 });
   const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
-  const routeDomainPattern = /^(localhost|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
+  const routeDomainPattern =
+    /^(localhost|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
   const serviceConfigForm = reactive({ image: '' });
 
   const fileDrawerVisible = ref(false);

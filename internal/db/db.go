@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	gomysql "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
@@ -59,7 +59,11 @@ func configureSQLite(database *sqlx.DB) error {
 }
 
 func openMySQL(cfg config.MySQLConfig) (*sqlx.DB, error) {
-	database, err := sqlx.Open("mysql", cfg.DSN)
+	dsn, err := mysqlDSN(cfg.DSN)
+	if err != nil {
+		return nil, err
+	}
+	database, err := sqlx.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open mysql database: %w", err)
 	}
@@ -71,4 +75,13 @@ func openMySQL(cfg config.MySQLConfig) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("ping mysql database: %w", err)
 	}
 	return database, nil
+}
+
+func mysqlDSN(dsn string) (string, error) {
+	cfg, err := gomysql.ParseDSN(dsn)
+	if err != nil {
+		return "", fmt.Errorf("parse mysql dsn: %w", err)
+	}
+	cfg.MultiStatements = true
+	return cfg.FormatDSN(), nil
 }

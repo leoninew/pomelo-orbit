@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"fmt"
 	"log/slog"
 
 	"github.com/jmoiron/sqlx"
@@ -27,14 +26,11 @@ func OpenDatabase(cfg config.Config) (*sqlx.DB, error) {
 }
 
 func RunMigrations(database *sqlx.DB, driver string) error {
-	if err := db.NewMigrator(database, driver).Up(); err != nil {
-		return fmt.Errorf("run migrations: %w", err)
-	}
-	return nil
+	return db.MigrateUp(database, driver)
 }
 
-func MigrationStatus(database *sqlx.DB, driver string) ([]db.MigrationStatus, error) {
-	return db.NewMigrator(database, driver).Status()
+func MigrationVersion(database *sqlx.DB, driver string) (db.MigrationVersion, error) {
+	return db.ReadMigrationVersion(database, driver)
 }
 
 func NewRepositoryStore(database *sqlx.DB, driver string) repository.Store {

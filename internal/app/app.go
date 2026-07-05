@@ -50,13 +50,13 @@ func (a App) RunWorker(ctx context.Context) error {
 	return worker.Run(ctx)
 }
 
-func (a App) MigrationStatus() ([]db.MigrationStatus, error) {
+func (a App) MigrationVersion() (db.MigrationVersion, error) {
 	database, err := bootstrap.OpenDatabase(a.cfg)
 	if err != nil {
-		return nil, err
+		return db.MigrationVersion{}, err
 	}
 	defer func() { _ = database.Close() }()
-	return bootstrap.MigrationStatus(database, a.cfg.Database.Driver)
+	return bootstrap.MigrationVersion(database, a.cfg.Database.Driver)
 }
 
 func (a App) Serve(ctx context.Context) error {

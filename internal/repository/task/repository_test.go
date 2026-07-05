@@ -19,7 +19,7 @@ func openTestDB(t *testing.T) *sqlx.DB {
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.NewMigrator(database, "sqlite").Up(); err != nil {
+	if err := db.MigrateUp(database, "sqlite"); err != nil {
 		t.Fatal(err)
 	}
 	return database

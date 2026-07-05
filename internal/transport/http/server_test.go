@@ -42,7 +42,7 @@ func newTestServer(t *testing.T) (Server, *sqlx.DB) {
 		t.Fatal(err)
 	}
 	database.SetMaxOpenConns(1)
-	if err := db.NewMigrator(database, config.DatabaseDriverSQLite).Up(); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	cfg := config.Config{Server: config.ServerConfig{Host: "127.0.0.1", Port: 0, ApiPathPrefixes: []string{"/api"}}}

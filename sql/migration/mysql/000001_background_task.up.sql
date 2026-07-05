@@ -1,13 +1,5 @@
 -- v0.1.0: backend-go task queue schema
 
-CREATE TABLE IF NOT EXISTS __migration_history (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL UNIQUE,
-    checksum VARCHAR(64) NOT NULL,
-    executed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    execution_time_ms BIGINT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS background_task (
     id VARCHAR(26) PRIMARY KEY,
     task_type VARCHAR(128) NOT NULL,

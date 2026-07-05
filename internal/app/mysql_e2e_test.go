@@ -68,21 +68,15 @@ func TestMySQLE2E(t *testing.T) {
 	}
 	defer func() { _ = database.Close() }()
 
-	migrator := db.NewMigrator(database, cfg.Database.Driver)
-	if err := migrator.Up(); err != nil {
+	if err := db.MigrateUp(database, cfg.Database.Driver); err != nil {
 		t.Fatal(err)
 	}
-	statuses, err := migrator.Status()
+	version, err := db.ReadMigrationVersion(database, cfg.Database.Driver)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(statuses) != 7 {
-		t.Fatalf("expected 7 migrations, got %d", len(statuses))
-	}
-	for _, migration := range statuses {
-		if !migration.Applied {
-			t.Fatalf("expected migration %s applied", migration.Filename)
-		}
+	if version.Version != 7 || version.Dirty {
+		t.Fatalf("unexpected migration version: %+v", version)
 	}
 
 	var userCount int

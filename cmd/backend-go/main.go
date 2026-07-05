@@ -62,17 +62,15 @@ func run(ctx context.Context, backgroundApp app.App, command string) error {
 	case "migrate-up", "migrate":
 		return backgroundApp.Migrate()
 	case "migrate-status":
-		statuses, err := backgroundApp.MigrationStatus()
+		version, err := backgroundApp.MigrationVersion()
 		if err != nil {
 			return err
 		}
-		for _, status := range statuses {
-			state := "pending"
-			if status.Applied {
-				state = "applied"
-			}
-			fmt.Printf("%s %s %s\n", state, status.Filename, status.Checksum)
+		state := "clean"
+		if version.Dirty {
+			state = "dirty"
 		}
+		fmt.Printf("version=%d state=%s\n", version.Version, state)
 		return nil
 	default:
 		return fmt.Errorf("unknown command: %s", command)

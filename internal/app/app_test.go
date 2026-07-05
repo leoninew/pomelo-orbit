@@ -9,7 +9,7 @@ import (
 	"backend/internal/config"
 )
 
-func TestMigrateAndMigrationStatus(t *testing.T) {
+func TestMigrateAndMigrationVersion(t *testing.T) {
 	cfg := config.Config{
 		Database: config.DatabaseConfig{Driver: config.DatabaseDriverSQLite, SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "backend-go.db")}},
 		Worker:   config.WorkerConfig{MaxAttempts: 3},
@@ -18,16 +18,11 @@ func TestMigrateAndMigrationStatus(t *testing.T) {
 	if err := app.Migrate(); err != nil {
 		t.Fatal(err)
 	}
-	statuses, err := app.MigrationStatus()
+	version, err := app.MigrationVersion()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(statuses) == 0 {
-		t.Fatal("expected migration statuses")
-	}
-	for _, status := range statuses {
-		if !status.Applied {
-			t.Fatalf("expected migration %s applied", status.Filename)
-		}
+	if version.Version != 7 || version.Dirty {
+		t.Fatalf("unexpected migration version: %+v", version)
 	}
 }

@@ -1,6 +1,8 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -8,9 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	cihandler "backend/internal/transport/http/handler/ci"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestPipelineRunDetailRoute(t *testing.T) {
@@ -26,7 +25,7 @@ func TestPipelineRunDetailRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run detail status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run cihandler.PipelineRunResp
+	var run apiv1.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -47,12 +46,12 @@ func TestPipelineRunListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var runs transportresponse.PaginatedResp[cihandler.PipelineRunResp]
+	var runs apiv1.PipelineRunPaginatedResp
 	if err := json.NewDecoder(recorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}
 	if runs.Total == 0 || runs.PerPage != 20 {
-		t.Fatalf("unexpected pipeline run list: %+v", runs)
+		t.Fatalf("unexpected pipeline run list: %+v", &runs)
 	}
 }
 
@@ -76,7 +75,7 @@ func TestPipelineStageLogRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected stage log status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var logResp cihandler.PipelineStageLogResp
+	var logResp apiv1.PipelineStageLogResp
 	if err := json.NewDecoder(recorder.Body).Decode(&logResp); err != nil {
 		t.Fatal(err)
 	}
@@ -92,11 +91,11 @@ func TestPipelineRunCancelRoute(t *testing.T) {
 	insertPipelineRunRouteData(t, database, "run-cancel-test", "running")
 
 	recorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/run/run-cancel-test/cancel", nil, token))
+	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/run/run-cancel-test/cancel", bytes.NewBufferString(`{}`), token))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run cancel status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run cihandler.PipelineRunResp
+	var run apiv1.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -112,11 +111,11 @@ func TestPipelineRunRetryRoute(t *testing.T) {
 	insertPipelineRunRouteData(t, database, "run-retry-test", "faulted")
 
 	recorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/run/run-retry-test/retry", nil, token))
+	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/ci/run/run-retry-test/retry", bytes.NewBufferString(`{}`), token))
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected pipeline run retry status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run cihandler.PipelineRunResp
+	var run apiv1.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}

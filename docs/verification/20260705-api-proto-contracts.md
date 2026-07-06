@@ -1,5 +1,5 @@
 # API 请求响应 Proto 契约化验证
-最后修改时间: 2026-07-06 12:23:11
+最后修改时间: 2026-07-06 17:07:25
 
 ## Review status
 
@@ -8,15 +8,15 @@ Accepted
 ## Requirement alignment
 
 - [x] 为 API 请求体和响应体引入 proto 定义与生成链路。
-  - 已新增 `orbit/api/v1/*.proto`，按领域拆分请求体和响应体 message。
+  - 已新增 `proto/orbit/api/v1/*.proto`，按领域拆分请求体和响应体 message。
   - 已新增 `buf.yaml`、`buf.gen.yaml`、`web/buf.gen.yaml`。
   - 已新增 `Taskfile.yml` 中的 `proto` 任务，统一通过 `./bin/buf` 生成。
-- [x] 后端 `Req` / `Resp` 类型迁移为 generated Go 类型或 handler 局部别名。
-  - 已新增 `internal/transport/http/dto/proto/orbit/api/v1/*.pb.go`。
-  - handler 层 DTO 文件改为引用 `apiv1` generated 类型。
+- [x] 后端 `Req` / `Resp` 类型迁移为 generated Go 类型，且不通过 handler 局部别名 re-export。
+  - 已将 Go 生成产物统一放入 `internal/gen/orbit/api/v1/*.pb.go`。
+  - handler 层直接引用 `apiv1` generated 类型；仅保留非导出的 webhook update presence wrapper。
 - [x] 前端请求/响应类型迁移为 generated TypeScript 类型。
-  - 已新增 `web/src/gen/proto/orbit/api/v1/*.ts`。
-  - 前端 API 与页面直接从 `@/gen/proto/orbit/api/v1/<domain>` import generated types，不通过 `web/src/types` re-export。
+  - 已新增 `web/src/gen/orbit/api/v1/*.ts`。
+  - 前端 API 与页面直接从 `@/gen/orbit/api/v1/<domain>` import generated types，不通过 `web/src/types` re-export。
 - [x] 保持 HTTP JSON transport、路由、状态码、权限、业务校验和响应包装语义。
   - proto 只定义 body message；未引入 RPC runtime。
   - `transportresponse` 对 proto message 使用 `protojson`，保持 snake_case JSON 字段名。
@@ -26,10 +26,10 @@ Accepted
 
 ## Spec alignment
 
-- [x] Proto schema 路径符合最终约定：`orbit/api/v1/*.proto`。
+- [x] Proto schema 路径符合最终约定：`proto/orbit/api/v1/*.proto`。
 - [x] 领域文件名不使用 `ci_` / `cd_` 前缀。
-- [x] `go_package` 保持 HTTP transport boundary：`backend/internal/transport/http/dto/proto/orbit/api/v1;apiv1`。
-- [x] TypeScript 生成目录保持 `web/src/gen/proto`。
+- [x] `go_package` 与后端生成目录对齐：`backend/internal/gen/orbit/api/v1;apiv1`。
+- [x] TypeScript 生成目录保持 `web/src/gen`。
 - [x] `ts-proto` 配置保持 `onlyTypes=true`、`snakeToCamel=false`，不生成 client/runtime 方法。
 - [x] `web/src/types` 不 re-export generated API DTO。
 - [x] presence 语义已覆盖关键 update 场景：`RepositoryUpdateReq.variable_overrides` 使用 optional wrapper message，区分 omitted 与显式空列表。
@@ -54,16 +54,16 @@ Accepted
   - `web/buf.gen.yaml`
   - `tools.go`
 - Proto source：
-  - `orbit/api/v1/*.proto`
+  - `proto/orbit/api/v1/*.proto`
 - Go generated DTO：
-  - `internal/transport/http/dto/proto/orbit/api/v1/*.pb.go`
+  - `internal/gen/orbit/api/v1/*.pb.go`
 - Go HTTP transport：
   - `internal/transport/http/response/response.go`
   - `internal/transport/http/handler/**/dto.go`
   - `internal/transport/http/handler/**/*.go`
   - `internal/transport/http/*_routes_test.go`
 - Frontend generated DTO and usages：
-  - `web/src/gen/proto/orbit/api/v1/*.ts`
+  - `web/src/gen/orbit/api/v1/*.ts`
   - `web/src/api/**`
   - `web/src/views/**`
   - `web/src/stores/**`
@@ -75,8 +75,8 @@ Proto-related diff statistics observed during verification:
 Taskfile.yml                                       |  10 +
 buf.gen.yaml                                       |   7 +
 buf.yaml                                           |   9 +
-internal/transport/http/dto/proto/orbit/api/v1/*   | generated Go DTO files
-orbit/api/v1/*.proto                               | source proto files
+internal/gen/orbit/api/v1/*                  | generated Go DTO files
+proto/orbit/api/v1/*.proto                               | source proto files
 web/buf.gen.yaml                                   |  13 +
 ```
 
@@ -87,11 +87,11 @@ Full working tree includes large generated-code additions and broad DTO usage re
 | Expected | Actual | Result |
 | --- | --- | --- |
 | `buf.yaml` / `buf.gen.yaml` / `web/buf.gen.yaml` | Added/updated | OK |
-| `orbit/api/v1/*.proto` | Added by domain, no `ci_` / `cd_` prefixes | OK |
-| Go generated DTO under HTTP transport boundary | Added under `internal/transport/http/dto/proto/orbit/api/v1` | OK |
-| Handler DTO aliases / construction sites | Updated under `internal/transport/http/handler/**` | OK |
+| `proto/orbit/api/v1/*.proto` | Added by domain, no `ci_` / `cd_` prefixes | OK |
+| Go generated DTO directory | Added under `internal/gen/orbit/api/v1` | OK |
+| Handler DTO aliases / construction sites | Handler alias files removed; construction sites use direct `apiv1` generated DTO | OK |
 | HTTP JSON helper | Updated in `internal/transport/http/response/response.go` for protojson | OK |
-| Frontend generated TS DTO | Added under `web/src/gen/proto/orbit/api/v1` | OK |
+| Frontend generated TS DTO | Added under `web/src/gen/orbit/api/v1` | OK |
 | Frontend API/page type imports | Updated to direct generated imports | OK |
 | Git write operations | None executed | OK |
 | Migration files | Not modified | OK |
@@ -105,7 +105,7 @@ Full working tree includes large generated-code additions and broad DTO usage re
 - [x] 本次最终生成流程不使用 `go run`。
 - [x] proto 只定义 request body / response body message。
 - [x] 未定义 route、method、query/path/header、错误响应或 RPC service。
-- [x] Go handler 使用 generated DTO 或局部别名。
+- [x] Go handler 直接使用 generated DTO，不使用局部别名 re-export。
 - [x] Frontend API/page 直接 import generated DTO，不使用 re-export。
 - [x] 现有 JSON 字段名保持 snake_case。
 - [x] Go fmt/vet/test 通过。
@@ -231,4 +231,4 @@ ok  backend/internal/worker/handler/ci  (cached)
 
 ## Conclusion
 
-验证通过。实现符合 Requirement / Spec / Plan：API body contract 已由 `orbit/api/v1/*.proto` 定义并生成 Go/TypeScript DTO；后端和前端已迁移到 generated DTO；Taskfile 已提供 `install` / `proto` 工具链入口，并从 `bin` 目录工具发起生成；未引入 route/service/RPC 或兼容 re-export 层。
+验证通过。实现符合 Requirement / Spec / Plan：API body contract 已由 `proto/orbit/api/v1/*.proto` 定义并生成 Go/TypeScript DTO；后端和前端已迁移到 generated DTO；Taskfile 已提供 `install` / `proto` 工具链入口，并从 `bin` 目录工具发起生成；未引入 route/service/RPC 或兼容 re-export 层。

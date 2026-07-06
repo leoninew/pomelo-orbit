@@ -13,38 +13,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
-
-	"backend/internal/repository"
 )
-
-type ListResp[T any] struct {
-	Items []T `json:"items"`
-}
-
-type PaginatedResp[T any] struct {
-	Items   []T `json:"items"`
-	Total   int `json:"total"`
-	Page    int `json:"page"`
-	PerPage int `json:"per_page"`
-	Pages   int `json:"pages"`
-}
 
 type ErrorResp[T any] struct {
 	Detail T `json:"detail"`
-}
-
-func NewListResp[T any](items []T) ListResp[T] {
-	if items == nil {
-		items = []T{}
-	}
-	return ListResp[T]{Items: items}
-}
-
-func NewPaginatedResp[T any](page repository.Page[T]) PaginatedResp[T] {
-	if page.Items == nil {
-		page.Items = []T{}
-	}
-	return PaginatedResp[T]{Items: page.Items, Total: page.Total, Page: page.Page, PerPage: page.PerPage, Pages: PageCount(page.Total, page.PerPage)}
 }
 
 func PageCount(total int, perPage int) int {

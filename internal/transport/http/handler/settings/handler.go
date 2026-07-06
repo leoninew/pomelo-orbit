@@ -1,6 +1,7 @@
 package settingshandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"log/slog"
 	"net/http"
 
@@ -49,7 +50,7 @@ func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
 		return
 	}
-	var req SystemConfigUpdateReq
+	var req apiv1.SystemConfigUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -67,7 +68,7 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
 		return
 	}
-	var req SystemConfigResetReq
+	var req apiv1.SystemConfigResetReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -88,14 +89,14 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func systemConfigResponse(config settingssvc.SystemConfig) SystemConfigResp {
-	items := make([]ConfigItemResp, 0, len(config.Items))
+func systemConfigResponse(config settingssvc.SystemConfig) apiv1.SystemConfigResp {
+	items := make([]apiv1.ConfigItemResp, 0, len(config.Items))
 	for _, item := range config.Items {
 		items = append(items, configItemResponse(item))
 	}
-	return SystemConfigResp{Items: transportresponse.Ptrs(items)}
+	return apiv1.SystemConfigResp{Items: transportresponse.Ptrs(items)}
 }
 
-func configItemResponse(item settingssvc.ConfigItem) ConfigItemResp {
-	return ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
+func configItemResponse(item settingssvc.ConfigItem) apiv1.ConfigItemResp {
+	return apiv1.ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
 }

@@ -143,8 +143,8 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { CredentialDetailResp } from '@/gen/proto/orbit/api/v1/credential';
-  import { credentialTypeLabels } from '@/types/ci/credential';
+  import type { CredentialDetailResp } from '@/gen/orbit/api/v1/credential';
+  import { credentialTypeLabels } from '@/constants/credential';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();

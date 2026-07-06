@@ -268,9 +268,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { ApplicationResp } from '@/gen/proto/orbit/api/v1/application';
-  import type { ApplicationImportReq } from '@/gen/proto/orbit/api/v1/application_bundle';
-  import type { ApplicationFormState, ApplicationImportState } from '@/types/cd/application';
+  import type { ApplicationCreateReq, ApplicationResp } from '@/gen/orbit/api/v1/application';
+  import type { ApplicationImportReq } from '@/gen/orbit/api/v1/application_bundle';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
@@ -291,15 +290,15 @@
   const operatingAppId = ref<string | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-  const createForm = reactive<ApplicationFormState>({
+  const createForm = reactive<ApplicationCreateReq>({
     name: '',
     code: '',
     image_pull_policy: 'missing',
     route_managed: false,
   });
   const createErrors = reactive({ name: '', code: '' });
-  const importForm = reactive<ApplicationImportState>({
-    version: undefined,
+  const importForm = reactive<ApplicationImportReq>({
+    version: '',
     name: '',
     code: '',
     image_pull_policy: 'missing',
@@ -369,9 +368,17 @@
     fetchApplications();
   }
 
-  function validateForm(target: ApplicationFormState, errors: { name: string; code: string }) {
-    errors.name = target.name.trim() ? '' : t('application.validation.nameRequired');
-    errors.code = /^[a-z][a-z0-9-]*$/.test(target.code)
+  function validateCreateForm(errors: { name: string; code: string }) {
+    errors.name = createForm.name.trim() ? '' : t('application.validation.nameRequired');
+    errors.code = /^[a-z][a-z0-9-]*$/.test(createForm.code)
+      ? ''
+      : t('application.validation.codeInvalid');
+    return !errors.name && !errors.code;
+  }
+
+  function validateImportForm(errors: { name: string; code: string }) {
+    errors.name = importForm.name.trim() ? '' : t('application.validation.nameRequired');
+    errors.code = /^[a-z][a-z0-9-]*$/.test(importForm.code)
       ? ''
       : t('application.validation.codeInvalid');
     return !errors.name && !errors.code;
@@ -389,7 +396,7 @@
   }
 
   async function handleCreateOk() {
-    if (!validateForm(createForm, createErrors)) {
+    if (!validateCreateForm(createErrors)) {
       return;
     }
     const projectId = projectStore.activeProjectId;
@@ -433,16 +440,7 @@
         toast.error(t('application.validation.importMissingRequiredFields'));
         return;
       }
-      Object.assign(importForm, {
-        version: data.version,
-        name: data.name,
-        code: data.code,
-        image_pull_policy: data.image_pull_policy,
-        route_managed: data.route_managed,
-        config_files: data.config_files ?? [],
-        service_configs: data.service_configs ?? [],
-        routes: data.routes ?? [],
-      });
+      Object.assign(importForm, data);
       Object.assign(importErrors, { name: '', code: '' });
       isImportDialogOpen.value = true;
     } catch {
@@ -453,7 +451,7 @@
   }
 
   async function handleImportOk() {
-    if (!validateForm(importForm, importErrors)) {
+    if (!validateImportForm(importErrors)) {
       return;
     }
     const projectId = projectStore.activeProjectId;
@@ -463,27 +461,7 @@
     }
     try {
       await executeOp(async () => {
-        await applicationApi.importApplication(
-          {
-            version: importForm.version ?? '',
-            name: importForm.name,
-            code: importForm.code,
-            image_pull_policy: importForm.image_pull_policy,
-            route_managed: importForm.route_managed,
-            config_files: importForm.config_files.map((item) => ({
-              path: item.path,
-              content: item.content ?? '',
-            })),
-            service_configs: importForm.service_configs.map((item) => ({
-              service_name: item.service_name,
-              image: item.image ?? undefined,
-              environment: item.environment ?? undefined,
-              volumes: item.volumes ?? undefined,
-            })),
-            routes: importForm.routes,
-          },
-          { project_id: projectId }
-        );
+        await applicationApi.importApplication(importForm, { project_id: projectId });
         toast.success(t('application.toast.importSuccess'));
         isImportDialogOpen.value = false;
         await fetchApplications();
@@ -497,7 +475,7 @@
     operatingAppId.value = app.id;
     try {
       await executeOp(async () => {
-        const { deployment_id } = await applicationApi.deploy(app.id);
+        const { deployment_id } = await applicationApi.deploy(app.id, { force_recreate: false });
         toast.success(t('application.toast.deployTriggered', { name: app.name }));
         router.push(`/cd/deployments/${deployment_id}`);
       });
@@ -512,7 +490,7 @@
     operatingAppId.value = app.id;
     try {
       await executeOp(async () => {
-        const { deployment_id } = await applicationApi.stop(app.id);
+        const { deployment_id } = await applicationApi.stop(app.id, { remove_volumes: false });
         toast.success(t('application.toast.stopTriggered', { name: app.name }));
         router.push(`/cd/deployments/${deployment_id}`);
       });

@@ -1,6 +1,7 @@
 package userhandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"context"
 	"database/sql"
 	"errors"
@@ -84,17 +85,17 @@ func (h Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
 		return
 	}
-	resp := mapPage(users, func(user model.User) UserListResp {
+	resp := mapPage(users, func(user model.User) apiv1.UserListResp {
 		return userListResponse(user, rolesByUserId[user.Id])
 	})
-	transportresponse.JSON(h.logger, w, http.StatusOK, &UserPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.UserPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "user:write"); !ok {
 		return
 	}
-	var req UserCreateReq
+	var req apiv1.UserCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -135,7 +136,7 @@ func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req UserUpdateReq
+	var req apiv1.UserUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -178,7 +179,7 @@ func (h Handler) updateUserRoles(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req UserRoleUpdateReq
+	var req apiv1.UserRoleUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -232,6 +233,11 @@ func (h Handler) disableUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var req apiv1.UserDisableReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	if current.User.Id == user.Id {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Cannot disable current user")
 		return
@@ -252,6 +258,11 @@ func (h Handler) enableUser(w http.ResponseWriter, r *http.Request) {
 	}
 	user, ok := h.loadUserFromPath(w, r)
 	if !ok {
+		return
+	}
+	var req apiv1.UserEnableReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if user.Status != "enabled" {
@@ -313,18 +324,18 @@ func (h Handler) loadUserFromPath(w http.ResponseWriter, r *http.Request) (model
 	return user, true
 }
 
-func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user model.User) (UserResp, bool) {
+func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user model.User) (apiv1.UserResp, bool) {
 	roles, err := h.store.UserRoleDetails(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user roles failed", "user_id", user.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
-		return UserResp{}, false
+		return apiv1.UserResp{}, false
 	}
 	permissions, err := h.store.UserPermissions(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user permissions failed", "user_id", user.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
-		return UserResp{}, false
+		return apiv1.UserResp{}, false
 	}
 	roleIds := make([]string, 0, len(roles))
 	roleCodes := make([]string, 0, len(roles))
@@ -336,20 +347,20 @@ func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user mod
 	if err != nil {
 		h.logger.Error("load role permissions failed", "user_id", user.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
-		return UserResp{}, false
+		return apiv1.UserResp{}, false
 	}
-	return UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes, Permissions: permissions, Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, permissionsByRoleId))}, true
+	return apiv1.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes, Permissions: permissions, Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, permissionsByRoleId))}, true
 }
 
-func userListResponse(user model.User, roles []model.Role) UserListResp {
-	return UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, nil))}
+func userListResponse(user model.User, roles []model.Role) apiv1.UserListResp {
+	return apiv1.UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, nil))}
 }
 
-func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) []UserRoleResp {
+func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) []apiv1.UserRoleResp {
 	if roles == nil {
-		return []UserRoleResp{}
+		return []apiv1.UserRoleResp{}
 	}
-	items := make([]UserRoleResp, 0, len(roles))
+	items := make([]apiv1.UserRoleResp, 0, len(roles))
 	for _, role := range roles {
 		permissionCodes := []string{}
 		if permissionsByRoleId != nil {
@@ -358,7 +369,7 @@ func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) 
 				permissionCodes = []string{}
 			}
 		}
-		items = append(items, UserRoleResp{Id: role.Id, Code: role.Code, Name: role.Name, PermissionCodes: permissionCodes})
+		items = append(items, apiv1.UserRoleResp{Id: role.Id, Code: role.Code, Name: role.Name, PermissionCodes: permissionCodes})
 	}
 	return items
 }

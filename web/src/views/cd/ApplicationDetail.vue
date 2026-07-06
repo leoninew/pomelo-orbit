@@ -763,13 +763,13 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ApplicationResp } from '@/gen/proto/orbit/api/v1/application';
-  import type { ApplicationRouteResp } from '@/gen/proto/orbit/api/v1/application_route';
-  import type { ConfigFileResp } from '@/gen/proto/orbit/api/v1/config_file';
+  import type { ApplicationResp } from '@/gen/orbit/api/v1/application';
+  import type { ApplicationRouteResp } from '@/gen/orbit/api/v1/application_route';
+  import type { ConfigFileResp } from '@/gen/orbit/api/v1/config_file';
   import type {
     ApplicationServiceConfigResp,
     ComposeServiceResp,
-  } from '@/gen/proto/orbit/api/v1/service_config';
+  } from '@/gen/orbit/api/v1/service_config';
   import { appStatusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
@@ -941,7 +941,7 @@
   async function handleStop() {
     try {
       await executeOp(async () => {
-        const res = await applicationApi.stop(applicationId);
+        const res = await applicationApi.stop(applicationId, { remove_volumes: false });
         toast.success(t('application.toast.stopSubmitted'));
         const maxAttempts = 20; // 最多轮询 20 次（60 秒）
         let attempts = 0;
@@ -967,7 +967,7 @@
   async function handleRestart() {
     try {
       await executeOp(async () => {
-        const res = await applicationApi.restart(applicationId);
+        const res = await applicationApi.restart(applicationId, {});
         toast.success(t('application.toast.restartSubmitted'));
         router.push({
           path: `/cd/deployments/${res.deployment_id}`,
@@ -1120,7 +1120,7 @@
         const saved = await applicationApi.updateServiceConfig(
           applicationId,
           pendingDeleteServiceName.value,
-          null
+          {}
         );
         const idx = serviceConfigs.value.findIndex(
           (item) => item.service_name === saved.service_name
@@ -1155,7 +1155,7 @@
         const saved = await applicationApi.updateServiceConfig(
           applicationId,
           active.service_name,
-          serviceConfigForm.image
+          { image: serviceConfigForm.image }
         );
         const idx = serviceConfigs.value.findIndex(
           (item) => item.service_name === saved.service_name
@@ -1227,19 +1227,17 @@
     try {
       await executeFileContent(async () => {
         if (currentFileId.value) {
-          const updated = await applicationApi.writeFile(
-            applicationId,
-            currentFileId.value,
-            currentFilePath.value,
-            content
-          );
+          const updated = await applicationApi.writeFile(applicationId, currentFileId.value, {
+            path: currentFilePath.value,
+            content,
+          });
           const idx = files.value.findIndex((f) => f.id === currentFileId.value);
           if (idx >= 0) {
             files.value[idx] = updated;
           }
           toast.success(t('application.toast.saveSuccess'));
         } else {
-          await applicationApi.createFile(applicationId, currentFilePath.value, content);
+          await applicationApi.createFile(applicationId, { path: currentFilePath.value, content });
           toast.success(t('application.toast.addSuccess'));
         }
         fileDrawerVisible.value = false;
@@ -1277,7 +1275,7 @@
     composePreviewDrawerOpen.value = true;
     try {
       await executeComposePreview(async () => {
-        const { compose_yaml } = await applicationApi.previewCompose(applicationId);
+        const { compose_yaml } = await applicationApi.previewCompose(applicationId, {});
         composePreviewYaml.value = compose_yaml;
       });
     } catch (error) {

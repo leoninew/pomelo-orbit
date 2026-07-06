@@ -1,14 +1,12 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	cihandler "backend/internal/transport/http/handler/ci"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestRepositoryRoutes(t *testing.T) {
@@ -22,7 +20,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created cihandler.RepositoryResp
+	var created apiv1.RepositoryResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -44,12 +42,12 @@ func TestRepositoryRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var repositories transportresponse.PaginatedResp[cihandler.RepositoryResp]
+	var repositories apiv1.RepositoryPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&repositories); err != nil {
 		t.Fatal(err)
 	}
 	if repositories.Total == 0 || repositories.Items == nil {
-		t.Fatalf("unexpected repository list: %+v", repositories)
+		t.Fatalf("unexpected repository list: %+v", &repositories)
 	}
 
 	getRecorder := httptest.NewRecorder()
@@ -66,12 +64,12 @@ func TestRepositoryRoutes(t *testing.T) {
 	if runRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository run list status 200, got %d: %s", runRecorder.Code, runRecorder.Body.String())
 	}
-	var runs transportresponse.PaginatedResp[cihandler.PipelineRunResp]
+	var runs apiv1.PipelineRunPaginatedResp
 	if err := json.NewDecoder(runRecorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}
 	if runs.Total != 1 || len(runs.Items) != 1 || runs.Items[0].RepositoryId != created.Id {
-		t.Fatalf("unexpected repository run list: %+v", runs)
+		t.Fatalf("unexpected repository run list: %+v", &runs)
 	}
 
 	updateRecorder := httptest.NewRecorder()
@@ -79,7 +77,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated cihandler.RepositoryResp
+	var updated apiv1.RepositoryResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +104,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected webhook create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created cihandler.RepositoryWebhookResp
+	var created apiv1.RepositoryWebhookResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +117,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var webhookList cihandler.RepositoryWebhookListResp
+	var webhookList apiv1.RepositoryWebhookListResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&webhookList); err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +137,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated cihandler.RepositoryWebhookResp
+	var updated apiv1.RepositoryWebhookResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +162,7 @@ func TestRepositoryTriggerRouteCreatesSnapshotWhenMissing(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run cihandler.PipelineRunResp
+	var run apiv1.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +194,7 @@ func TestRepositoryTriggerRouteReusesSameVersionSnapshot(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run cihandler.PipelineRunResp
+	var run apiv1.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +223,7 @@ func TestRepositoryTriggerRouteCreatesNewSnapshotForTemplateVersion(t *testing.T
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run cihandler.PipelineRunResp
+	var run apiv1.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}

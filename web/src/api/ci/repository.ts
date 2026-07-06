@@ -1,10 +1,10 @@
-import type { PipelineRunResp, PipelineRunTriggerReq } from '@/gen/proto/orbit/api/v1/pipeline_run';
+import type { PipelineRunResp, PipelineRunTriggerReq } from '@/gen/orbit/api/v1/pipeline_run';
 import type {
   RepositoryCreateReq,
   RepositoryPaginatedResp,
   RepositoryResp,
   RepositoryUpdateReq,
-} from '@/gen/proto/orbit/api/v1/repository';
+} from '@/gen/orbit/api/v1/repository';
 import request from '@/utils/request';
 
 export const repositoryApi = {
@@ -33,7 +33,7 @@ export const repositoryApi = {
     return request.delete(`/api/ci/repository/${id}`, { params });
   },
 
-  trigger(id: string, data: PipelineRunTriggerReq | undefined): Promise<PipelineRunResp> {
-    return request.post(`/api/ci/repository/${id}/trigger`, data || {});
+  trigger(id: string, data: PipelineRunTriggerReq): Promise<PipelineRunResp> {
+    return request.post(`/api/ci/repository/${id}/trigger`, data);
   },
 };

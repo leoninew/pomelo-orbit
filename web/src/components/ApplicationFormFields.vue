@@ -63,22 +63,22 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import SelectControl from '@/components/SelectControl.vue';
-  import type { ApplicationFormState } from '@/types/cd/application';
+  import type { ApplicationCreateReq } from '@/gen/orbit/api/v1/application';
 
   const props = defineProps<{
-    form: ApplicationFormState;
+    form: ApplicationCreateReq;
     errors: { name: string; code: string };
   }>();
 
   const emit = defineEmits<{
-    'update:form': [value: ApplicationFormState];
+    'update:form': [value: ApplicationCreateReq];
   }>();
 
   const { t } = useI18n();
 
-  function updateField<K extends keyof ApplicationFormState>(
+  function updateField<K extends keyof ApplicationCreateReq>(
     field: K,
-    value: ApplicationFormState[K]
+    value: ApplicationCreateReq[K]
   ) {
     emit('update:form', { ...props.form, [field]: value });
   }

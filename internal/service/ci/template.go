@@ -52,7 +52,10 @@ type PipelineTemplateCreateInput struct {
 }
 
 type PipelineTemplateUpdateInput struct {
-	Fields map[string]json.RawMessage
+	Name                 *string
+	Description          *string
+	Orchestration        *[]StageOrchestration
+	VariableDeclarations *[]map[string]any
 }
 
 type PipelineTemplateResolveInput struct {
@@ -134,7 +137,7 @@ func (s Service) UpdatePipelineTemplate(ctx context.Context, userId string, temp
 	if err != nil {
 		return PipelineTemplateDetail{}, err
 	}
-	stages, orchestrationProvided, err := s.applyPipelineTemplateUpdateInput(ctx, &template, input.Fields)
+	stages, orchestrationProvided, err := s.applyPipelineTemplateUpdateInput(ctx, &template, input)
 	if err != nil {
 		return PipelineTemplateDetail{}, err
 	}
@@ -318,15 +321,15 @@ func (s Service) nextPipelineTemplateCopyName(ctx context.Context, projectId str
 	}
 }
 
-func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template *model.PipelineTemplate, req map[string]json.RawMessage) ([]model.PipelineTemplateStage, bool, error) {
+func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template *model.PipelineTemplate, req PipelineTemplateUpdateInput) ([]model.PipelineTemplateStage, bool, error) {
 	projectId := pipelineTemplateProjectId(*template)
 	versionChanged := false
 	orchestrationProvided := false
 	stages := []model.PipelineTemplateStage(nil)
-	if raw, exists := req["name"]; exists {
-		value, err := decodeRequiredString(raw, "Invalid pipeline template fields")
-		if err != nil {
-			return nil, false, err
+	if req.Name != nil {
+		value := strings.TrimSpace(*req.Name)
+		if value == "" {
+			return nil, false, apperror.New(apperror.KindValidation, "Invalid pipeline template fields")
 		}
 		if err := s.ensurePipelineTemplateNameAvailable(ctx, projectId, value, template.Id); err != nil {
 			return nil, false, err
@@ -336,24 +339,14 @@ func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template 
 			versionChanged = true
 		}
 	}
-	if raw, exists := req["description"]; exists {
-		value := ""
-		if string(raw) != "null" {
-			if err := json.Unmarshal(raw, &value); err != nil {
-				return nil, false, apperror.New(apperror.KindValidation, "Invalid pipeline template fields")
-			}
-		}
-		if value != template.Description {
-			template.Description = value
+	if req.Description != nil {
+		if *req.Description != template.Description {
+			template.Description = *req.Description
 			versionChanged = true
 		}
 	}
-	if raw, exists := req["variable_declarations"]; exists && string(raw) != "null" {
-		var variables []map[string]any
-		if err := json.Unmarshal(raw, &variables); err != nil {
-			return nil, false, apperror.New(apperror.KindValidation, "Invalid pipeline template fields")
-		}
-		value, err := marshalPipelineTemplateVariables(sanitizePipelineTemplateVariables(variables))
+	if req.VariableDeclarations != nil {
+		value, err := marshalPipelineTemplateVariables(sanitizePipelineTemplateVariables(*req.VariableDeclarations))
 		if err != nil {
 			return nil, false, err
 		}
@@ -362,12 +355,9 @@ func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template 
 			versionChanged = true
 		}
 	}
-	if raw, exists := req["orchestration"]; exists && string(raw) != "null" {
+	if req.Orchestration != nil {
 		orchestrationProvided = true
-		var orchestration []StageOrchestration
-		if err := json.Unmarshal(raw, &orchestration); err != nil {
-			return nil, false, apperror.New(apperror.KindValidation, "Invalid pipeline template fields")
-		}
+		orchestration := *req.Orchestration
 		loaded, err := s.loadBuildStagesForOrchestration(ctx, projectId, orchestration)
 		if err != nil {
 			return nil, false, err

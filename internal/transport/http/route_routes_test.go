@@ -1,6 +1,7 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"mime/multipart"
@@ -10,9 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	cdhandler "backend/internal/transport/http/handler/cd"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 const testRouteProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
@@ -28,7 +26,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected route create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created cdhandler.RouteResp
+	var created apiv1.RouteResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -41,12 +39,12 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list transportresponse.PaginatedResp[cdhandler.RouteResp]
+	var list apiv1.RoutePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
 	if list.Total == 0 || len(list.Items) == 0 {
-		t.Fatalf("unexpected route list: %+v", list)
+		t.Fatalf("unexpected route list: %+v", &list)
 	}
 
 	updateRecorder := httptest.NewRecorder()
@@ -54,7 +52,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated cdhandler.RouteResp
+	var updated apiv1.RouteResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +75,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	}
 
 	disableRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(disableRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+created.Id+"/disable", nil, token))
+	server.Handler().ServeHTTP(disableRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+created.Id+"/disable", bytes.NewBufferString(`{}`), token))
 	if disableRecorder.Code != http.StatusOK {
 		t.Fatalf("expected disable route status 200, got %d: %s", disableRecorder.Code, disableRecorder.Body.String())
 	}
@@ -86,13 +84,13 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	}
 
 	enableRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(enableRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+created.Id+"/enable", nil, token))
+	server.Handler().ServeHTTP(enableRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+created.Id+"/enable", bytes.NewBufferString(`{}`), token))
 	if enableRecorder.Code != http.StatusOK {
 		t.Fatalf("expected enable route status 200, got %d: %s", enableRecorder.Code, enableRecorder.Body.String())
 	}
 
 	disableAgainRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(disableAgainRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+created.Id+"/disable", nil, token))
+	server.Handler().ServeHTTP(disableAgainRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+created.Id+"/disable", bytes.NewBufferString(`{}`), token))
 	if disableAgainRecorder.Code != http.StatusOK {
 		t.Fatalf("expected disable route status 200, got %d: %s", disableAgainRecorder.Code, disableAgainRecorder.Body.String())
 	}
@@ -119,7 +117,7 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if certRecorder.Code != http.StatusOK {
 		t.Fatalf("expected cert upload status 200, got %d: %s", certRecorder.Code, certRecorder.Body.String())
 	}
-	var withCert cdhandler.RouteResp
+	var withCert apiv1.RouteResp
 	if err := json.NewDecoder(certRecorder.Body).Decode(&withCert); err != nil {
 		t.Fatal(err)
 	}
@@ -140,11 +138,11 @@ func TestRouteCertificateOperations(t *testing.T) {
 	}
 
 	leRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(leRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+route.Id+"/letsencrypt", nil, token))
+	server.Handler().ServeHTTP(leRecorder, authedRequest(http.MethodPost, "/api/cd/route/"+route.Id+"/letsencrypt", bytes.NewBufferString(`{}`), token))
 	if leRecorder.Code != http.StatusOK {
 		t.Fatalf("expected letsencrypt status 200, got %d: %s", leRecorder.Code, leRecorder.Body.String())
 	}
-	var letsEncrypt cdhandler.RouteResp
+	var letsEncrypt apiv1.RouteResp
 	if err := json.NewDecoder(leRecorder.Body).Decode(&letsEncrypt); err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +151,7 @@ func TestRouteCertificateOperations(t *testing.T) {
 	}
 
 	syncRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(syncRecorder, authedRequest(http.MethodPost, "/api/cd/route/sync?project_id="+testRouteProjectId, nil, token))
+	server.Handler().ServeHTTP(syncRecorder, authedRequest(http.MethodPost, "/api/cd/route/sync?project_id="+testRouteProjectId, bytes.NewBufferString(`{}`), token))
 	if syncRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route sync status 200, got %d: %s", syncRecorder.Code, syncRecorder.Body.String())
 	}
@@ -188,14 +186,14 @@ func TestRouteEndpointsRequireAuth(t *testing.T) {
 	}
 }
 
-func createRouteForTest(t *testing.T, server Server, token string, body string) *cdhandler.RouteResp {
+func createRouteForTest(t *testing.T, server Server, token string, body string) *apiv1.RouteResp {
 	t.Helper()
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/cd/route?project_id="+testRouteProjectId, bytes.NewBufferString(body), token))
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected route create status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var route cdhandler.RouteResp
+	var route apiv1.RouteResp
 	if err := json.NewDecoder(recorder.Body).Decode(&route); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package cihandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"net/http"
 
 	cisvc "backend/internal/service/ci"
@@ -24,5 +25,5 @@ func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, artifactResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }

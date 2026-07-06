@@ -187,8 +187,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { CredentialImportReq, CredentialResp } from '@/gen/proto/orbit/api/v1/credential';
-  import { credentialTypeLabels } from '@/types/ci/credential';
+  import type { CredentialImportReq, CredentialResp } from '@/gen/orbit/api/v1/credential';
+  import { credentialTypeLabels } from '@/constants/credential';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 

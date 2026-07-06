@@ -4,7 +4,7 @@ import type {
   RolePaginatedResp,
   RoleResp,
   RoleUpdateReq,
-} from '@/gen/proto/orbit/api/v1/role';
+} from '@/gen/orbit/api/v1/role';
 import request from '@/utils/request';
 
 export const roleApi = {

@@ -135,8 +135,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { ApplicationResp } from '@/gen/proto/orbit/api/v1/application';
-  import type { DeploymentResp } from '@/gen/proto/orbit/api/v1/deployment';
+  import type { ApplicationResp } from '@/gen/orbit/api/v1/application';
+  import type { DeploymentResp } from '@/gen/orbit/api/v1/deployment';
   import { statusTone } from '@/utils/status';
   import { formatDuration, formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
@@ -261,7 +261,7 @@
     const target = deploymentToCancel.value;
     try {
       await executeOp(async () => {
-        await deploymentApi.cancel(target.id);
+        await deploymentApi.cancel(target.id, {});
         toast.success(t('deployment.toast.cancelSuccess'));
         isCancelDialogOpen.value = false;
         deploymentToCancel.value = null;

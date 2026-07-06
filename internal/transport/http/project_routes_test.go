@@ -1,14 +1,12 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	projecthandler "backend/internal/transport/http/handler/project"
-	userhandler "backend/internal/transport/http/handler/user"
 )
 
 func TestProjectRoutes(t *testing.T) {
@@ -21,7 +19,7 @@ func TestProjectRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected project create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created projecthandler.ProjectResp
+	var created apiv1.ProjectResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +38,7 @@ func TestProjectRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated projecthandler.ProjectResp
+	var updated apiv1.ProjectResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +51,7 @@ func TestProjectRoutes(t *testing.T) {
 	if memberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project member list status 200, got %d: %s", memberRecorder.Code, memberRecorder.Body.String())
 	}
-	var memberList projecthandler.ProjectMemberListResp
+	var memberList apiv1.ProjectMemberListResp
 	if err := json.NewDecoder(memberRecorder.Body).Decode(&memberList); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +65,7 @@ func TestProjectRoutes(t *testing.T) {
 	if userRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected user create status 201, got %d: %s", userRecorder.Code, userRecorder.Body.String())
 	}
-	var user userhandler.UserResp
+	var user apiv1.UserResp
 	if err := json.NewDecoder(userRecorder.Body).Decode(&user); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +75,7 @@ func TestProjectRoutes(t *testing.T) {
 	if addMemberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected add member status 200, got %d: %s", addMemberRecorder.Code, addMemberRecorder.Body.String())
 	}
-	memberList = projecthandler.ProjectMemberListResp{}
+	memberList = apiv1.ProjectMemberListResp{}
 	if err := json.NewDecoder(addMemberRecorder.Body).Decode(&memberList); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +89,7 @@ func TestProjectRoutes(t *testing.T) {
 	if removeMemberRecorder.Code != http.StatusOK {
 		t.Fatalf("expected remove member status 200, got %d: %s", removeMemberRecorder.Code, removeMemberRecorder.Body.String())
 	}
-	memberList = projecthandler.ProjectMemberListResp{}
+	memberList = apiv1.ProjectMemberListResp{}
 	if err := json.NewDecoder(removeMemberRecorder.Body).Decode(&memberList); err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +99,7 @@ func TestProjectRoutes(t *testing.T) {
 	}
 
 	deprecateRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(deprecateRecorder, authedRequest(http.MethodPost, "/api/project/"+created.Id+"/deprecate", nil, token))
+	server.Handler().ServeHTTP(deprecateRecorder, authedRequest(http.MethodPost, "/api/project/"+created.Id+"/deprecate", bytes.NewBufferString(`{}`), token))
 	if deprecateRecorder.Code != http.StatusNoContent {
 		t.Fatalf("expected deprecate status 204, got %d: %s", deprecateRecorder.Code, deprecateRecorder.Body.String())
 	}

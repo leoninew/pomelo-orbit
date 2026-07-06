@@ -1,14 +1,12 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	authhandler "backend/internal/transport/http/handler/auth"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestAuthPasswordAndLoginHistoryRoutes(t *testing.T) {
@@ -34,12 +32,12 @@ func TestAuthPasswordAndLoginHistoryRoutes(t *testing.T) {
 	if historyRecorder.Code != http.StatusOK {
 		t.Fatalf("expected login history status 200, got %d: %s", historyRecorder.Code, historyRecorder.Body.String())
 	}
-	var history transportresponse.PaginatedResp[authhandler.LoginHistoryResp]
+	var history apiv1.LoginHistoryPaginatedResp
 	if err := json.NewDecoder(historyRecorder.Body).Decode(&history); err != nil {
 		t.Fatal(err)
 	}
 	if history.Items == nil || history.Total == 0 {
-		t.Fatalf("unexpected login history response: %+v", history)
+		t.Fatalf("unexpected login history response: %+v", &history)
 	}
 }
 

@@ -1,13 +1,13 @@
-import type { PipelineSnapshotResp } from '@/gen/proto/orbit/api/v1/snapshot';
+import type { PipelineSnapshotResp } from '@/gen/orbit/api/v1/snapshot';
 import type {
   PipelineTemplateCreateReq,
+  PipelineTemplateDuplicateReq,
   PipelineTemplatePaginatedResp,
   PipelineTemplateResp,
   PipelineTemplateUpdateReq,
-  StageOrchestrationReq,
+  TemplateVariableResolveReq,
   TemplateVariableResolveResp,
-} from '@/gen/proto/orbit/api/v1/template';
-import type { VariableDeclarationReq } from '@/gen/proto/orbit/api/v1/common';
+} from '@/gen/orbit/api/v1/template';
 import request from '@/utils/request';
 
 export const pipelineTemplateApi = {
@@ -36,10 +36,7 @@ export const pipelineTemplateApi = {
   },
 
   resolveVariables(
-    data: {
-      orchestration: StageOrchestrationReq[];
-      variable_declarations?: VariableDeclarationReq[];
-    },
+    data: TemplateVariableResolveReq,
     params: { project_id: string }
   ): Promise<TemplateVariableResolveResp> {
     return request.post('/api/ci/template/resolve-variables', data, { params });
@@ -49,8 +46,8 @@ export const pipelineTemplateApi = {
     return request.delete(`/api/ci/template/${id}`);
   },
 
-  duplicate(id: string): Promise<PipelineTemplateResp> {
-    return request.post(`/api/ci/template/${id}/duplicate`, {});
+  duplicate(id: string, data: PipelineTemplateDuplicateReq): Promise<PipelineTemplateResp> {
+    return request.post(`/api/ci/template/${id}/duplicate`, data);
   },
 
   getSnapshot(snapshotId: string): Promise<PipelineSnapshotResp> {

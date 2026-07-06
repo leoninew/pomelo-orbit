@@ -1,15 +1,13 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-
-	cihandler "backend/internal/transport/http/handler/ci"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestArtifactListRoute(t *testing.T) {
@@ -24,12 +22,12 @@ func TestArtifactListRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts transportresponse.PaginatedResp[cihandler.ArtifactResp]
+	var artifacts apiv1.ArtifactPaginatedResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}
 	if artifacts.Total != 2 || len(artifacts.Items) != 2 || artifacts.PerPage != 20 {
-		t.Fatalf("unexpected artifact list: %+v", artifacts)
+		t.Fatalf("unexpected artifact list: %+v", &artifacts)
 	}
 	if artifacts.Items[0].Id != "artifact-2" || artifacts.Items[0].RepositoryName != "golang/example" || artifacts.Items[0].Path == nil || *artifacts.Items[0].Path != "dist/test.log" {
 		t.Fatalf("unexpected first artifact: %+v", &artifacts.Items[0])
@@ -48,12 +46,12 @@ func TestArtifactListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected filtered artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts transportresponse.PaginatedResp[cihandler.ArtifactResp]
+	var artifacts apiv1.ArtifactPaginatedResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}
 	if artifacts.Total != 1 || len(artifacts.Items) != 1 || artifacts.Items[0].Id != "artifact-2" {
-		t.Fatalf("unexpected filtered artifact list: %+v", artifacts)
+		t.Fatalf("unexpected filtered artifact list: %+v", &artifacts)
 	}
 }
 
@@ -99,7 +97,7 @@ func TestPipelineRunArtifactsRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected run artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts cihandler.PipelineRunArtifactListResp
+	var artifacts apiv1.PipelineRunArtifactListResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}

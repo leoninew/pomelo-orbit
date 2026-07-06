@@ -1,5 +1,5 @@
 # API 请求响应 Proto 契约化计划
-最后修改时间: 2026-07-06 00:00:00
+最后修改时间: 2026-07-06 17:07:25
 
 ## Review status
 
@@ -53,11 +53,11 @@ Accepted
 - `buf.yaml`
 - `buf.gen.yaml`
 - `web/buf.gen.yaml`
-- `orbit/api/v1/*.proto`
-- `internal/transport/http/dto/proto/**`（生成产物）
+- `proto/orbit/api/v1/*.proto`
+- `internal/gen/orbit/api/v1/*.pb.go`（后端生成产物）
 - `internal/transport/http/**/dto.go`
 - `internal/transport/http/**/*routes*.go` / handler 文件中 DTO 构造处
-- `web/src/gen/proto/**`（生成产物）
+- `web/src/gen/**`（生成产物）
 - `web/src/types/**`
 - `web/src/api/**`
 - `go.mod` / `go.sum`（如需 protobuf runtime）

@@ -213,7 +213,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import type { RouteResp } from '@/gen/proto/orbit/api/v1/route';
+  import type { RouteResp } from '@/gen/orbit/api/v1/route';
   import { routeApi } from '@/api/cd/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -310,7 +310,7 @@
   async function handleEnable() {
     try {
       await executeOp(async () => {
-        await routeApi.enable(routeId);
+        await routeApi.enable(routeId, {});
         toast.success(t('route.toast.enableSuccess'));
         fetchRoute();
       });
@@ -322,7 +322,7 @@
   async function handleDisable() {
     try {
       await executeOp(async () => {
-        await routeApi.disable(routeId);
+        await routeApi.disable(routeId, {});
         toast.success(t('route.toast.disableSuccess'));
         fetchRoute();
       });
@@ -374,7 +374,7 @@
   async function handleEnableLetsencrypt() {
     try {
       await executeOp(async () => {
-        await routeApi.enableLetsencrypt(routeId);
+        await routeApi.enableLetsencrypt(routeId, {});
         toast.success(t('route.toast.letsencryptEnabled'));
         fetchRoute();
       });
@@ -386,7 +386,7 @@
   async function handleEnableMkcert() {
     try {
       await executeOp(async () => {
-        await routeApi.enableMkcert(routeId);
+        await routeApi.enableMkcert(routeId, {});
         toast.success(t('route.toast.mkcertEnabled'));
         fetchRoute();
       });

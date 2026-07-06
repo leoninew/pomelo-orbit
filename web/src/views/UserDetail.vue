@@ -291,9 +291,8 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { RoleResp } from '@/gen/proto/orbit/api/v1/role';
-  import type { UserResp } from '@/gen/proto/orbit/api/v1/user';
-  import type { UserStatus } from '@/types/user';
+  import type { RoleResp } from '@/gen/orbit/api/v1/role';
+  import type { UserResp } from '@/gen/orbit/api/v1/user';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();
@@ -310,10 +309,10 @@
   const isRoleModalOpen = ref(false);
   const isDisableModalOpen = ref(false);
   const isDeleteModalOpen = ref(false);
-  const form = reactive<{ username: string; password: string; status: UserStatus }>({
+  const form = reactive({
     username: '',
     password: '',
-    status: 'enabled',
+    status: '',
   });
   const roleForm = reactive<{ roleIds: string[] }>({ roleIds: [] });
 
@@ -364,7 +363,10 @@
   function openEditModal() {
     form.username = user.value?.username ?? '';
     form.password = '';
-    form.status = (user.value?.status as UserStatus | undefined) ?? 'enabled';
+    if (!user.value) {
+      throw new Error('User detail is not loaded');
+    }
+    form.status = user.value.status;
     isEditModalOpen.value = true;
   }
 
@@ -416,7 +418,7 @@
   async function handleDisable() {
     try {
       await executeOp(async () => {
-        await userApi.disable(props.id);
+        await userApi.disable(props.id, {});
         toast.success(t('userManagement.disabledToast'));
         isDisableModalOpen.value = false;
         await fetchUser();
@@ -429,7 +431,7 @@
   async function handleEnable() {
     try {
       await executeOp(async () => {
-        await userApi.enable(props.id);
+        await userApi.enable(props.id, {});
         toast.success(t('userManagement.enabledToast'));
         await fetchUser();
       });

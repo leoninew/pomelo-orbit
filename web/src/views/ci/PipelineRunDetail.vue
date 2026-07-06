@@ -392,9 +392,9 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ArtifactResp } from '@/gen/proto/orbit/api/v1/artifact';
-  import type { PipelineRunResp, StageRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
-  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
+  import type { ArtifactResp } from '@/gen/orbit/api/v1/artifact';
+  import type { PipelineRunResp, StageRunResp } from '@/gen/orbit/api/v1/pipeline_run';
+  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/orbit/api/v1/snapshot';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
   import StageDAGView from './components/StageDAGView.vue';
@@ -578,7 +578,7 @@
   async function handleRetry() {
     try {
       await executeRetry(async () => {
-        const newRun = await pipelineRunApi.retry(runId.value);
+        const newRun = await pipelineRunApi.retry(runId.value, {});
         toast.success(t('pipelineRun.toast.retrySuccess'));
         router.push(`/ci/run/${newRun.id}`);
       });
@@ -590,7 +590,7 @@
   async function handleCancel() {
     try {
       await executeCancel(async () => {
-        await pipelineRunApi.cancel(runId.value);
+        await pipelineRunApi.cancel(runId.value, {});
         toast.success(t('pipelineRun.toast.cancelSuccess'));
         isCancelDialogOpen.value = false;
         const currentRun = await fetchRun();

@@ -450,17 +450,23 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { BuildStageResp } from '@/gen/proto/orbit/api/v1/build_stage';
-  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
+  import type { BuildStageResp } from '@/gen/orbit/api/v1/build_stage';
+  import type { RepositoryResp } from '@/gen/orbit/api/v1/repository';
   import type {
     PipelineTemplateResp,
     StageOrchestrationResp,
-  } from '@/gen/proto/orbit/api/v1/template';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/api/v1/common';
-  import type { ArtifactDeclaration } from '@/types/ci/template';
+  } from '@/gen/orbit/api/v1/template';
+  import type { VariableDeclarationResp } from '@/gen/orbit/api/v1/common';
   import { detectCircularDependencies } from '@/utils/dag';
   import StageDAGView from './components/StageDAGView.vue';
   import VariableDeclarationRespsTable from './components/VariableDeclarationRespsTable.vue';
+
+  interface ArtifactDeclaration {
+    stageName: string;
+    type: string;
+    name: string;
+    path: string;
+  }
 
   const route = useRoute();
   const router = useRouter();
@@ -708,15 +714,9 @@
 
     try {
       await executeSave(async () => {
-        // Save basic info only; orchestration and variable_declarations are unchanged
         const data = await pipelineTemplateApi.update(templateId.value, {
           name: editForm.name,
           description: editForm.description,
-          orchestration: sortableOrch.value.map((o, i) => ({
-            ...o,
-            sort_order: i,
-          })),
-          variable_declarations: declarations.value,
         });
         applyTemplateState(data);
         toast.success(t('pipelineTemplate.toast.saveSuccess'));
@@ -751,11 +751,13 @@
         const data = await pipelineTemplateApi.update(templateId.value, {
           name: editForm.name,
           description: editForm.description,
-          orchestration: sortableOrch.value.map((o, i) => ({
-            ...o,
-            sort_order: i,
-          })),
-          variable_declarations: declarations.value,
+          orchestration: {
+            items: sortableOrch.value.map((o, i) => ({
+              ...o,
+              sort_order: i,
+            })),
+          },
+          variable_declarations: { items: declarations.value },
         });
         applyTemplateState(data);
         toast.success(t('pipelineTemplate.toast.saveSnapshotSuccess', { version: data.version }));
@@ -768,7 +770,7 @@
   async function handleDuplicate() {
     try {
       await executeDuplicate(async () => {
-        const newTemplate = await pipelineTemplateApi.duplicate(templateId.value);
+        const newTemplate = await pipelineTemplateApi.duplicate(templateId.value, {});
         toast.success(t('pipelineTemplate.toast.duplicateSuccess'));
         router.push(`/ci/template/${newTemplate.id}`);
       });

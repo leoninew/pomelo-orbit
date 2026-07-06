@@ -1,5 +1,5 @@
 # API 请求响应 Proto 契约化规格
-最后修改时间: 2026-07-06 00:00:00
+最后修改时间: 2026-07-06 17:07:25
 
 ## Review status
 
@@ -11,14 +11,14 @@ Accepted
 
 ## Overview
 
-引入以 `buf` 为入口的 proto 工具链：根目录 `orbit/api/v1/` 保存 API 请求体/响应体 message，后端生成 Go 类型，前端生成 TypeScript 类型。HTTP transport 继续使用 JSON 编解码，proto 只作为 schema 与类型生成来源，不定义 service、route 或 transport 细节。
+引入以 `buf` 为入口的 proto 工具链：`proto/orbit/api/v1/` 保存 API 请求体/响应体 message，后端生成 Go 类型，前端生成 TypeScript 类型。HTTP transport 继续使用 JSON 编解码，proto 只作为 schema 与类型生成来源，不定义 service、route 或 transport 细节。
 
 ## Design decisions
 
 1. **只定义 body DTO**：proto 文件只包含现有 `*Req` / `*Resp`、列表/分页响应体和必要的嵌套 message；不包含 route、method、query、path、header、cookie 或错误 envelope。
 2. **JSON 字段名保持 snake_case**：proto 字段使用 snake_case；Go JSON 编解码应使用 proto 生成字段上的 json tag 或兼容配置，前端 ts-proto 使用 `snakeToCamel=false`。
-3. **Go 生成目录**：根据本项目只将 proto 用作 HTTP API body 契约的边界，将 Go 生成产物放入 `internal/transport/http/dto/proto/...`；service/repository 不依赖 API DTO，避免把 transport 契约伪装成 shared domain model。
-4. **前端生成目录**：TypeScript 生成产物放入 `web/src/gen/proto`，前端 API 和页面使用点直接从生成文件 import API Req/Resp 类型；`web/src/types` 仅保留 UI-only 类型、常量或工具层错误 envelope。
+3. **Go 生成目录**：Go 生成产物统一放入 `internal/gen/...`；service/repository 不依赖 API DTO，HTTP transport 直接 import 生成类型，不额外 re-export。
+4. **前端生成目录**：TypeScript 生成产物放入 `web/src/gen`，前端 API 和页面使用点直接从生成文件 import API Req/Resp 类型；`web/src/types` 仅保留 UI-only 类型、常量或工具层错误 envelope。
 5. **presence 处理**：Update/PATCH 请求中的指针字段使用 wrapper 类型或 optional message 字段，确保 JSON 解码后后端仍能判断字段是否传入。
 6. **动态 JSON 值处理**：变量声明中的 `default` / `value` 和 task payload 使用 `google.protobuf.Value` / `Struct` 或字符串方案，以最小破坏现有 JSON 语义为准。
 7. **外层响应包装**：`ListResp`、`PaginatedResp` 属于响应体结构，可在 proto 中定义具体业务列表响应 message；错误响应不纳入本次范围。
@@ -26,10 +26,10 @@ Accepted
 ## Affected components
 
 - 根目录工具链配置：`buf.yaml`、`buf.gen.yaml`、`web/buf.gen.yaml`、必要的生成脚本。
-- Proto schema：`orbit/api/v1/*.proto`，按业务域拆分，文件名使用领域名，不额外添加 `ci_` / `cd_` 前缀。
-- 后端 DTO：`internal/transport/http/**/dto.go`、`internal/transport/http/dto.go`。
+- Proto schema：`proto/orbit/api/v1/*.proto`，按业务域拆分，文件名使用领域名，不额外添加 `ci_` / `cd_` 前缀。
+- 后端生成 DTO：`internal/gen/orbit/api/v1/*.pb.go`。
 - 后端 handler：请求 decode、响应 encode 和 DTO 构造处。
-- 前端生成类型：`web/src/gen/proto/**`。
+- 前端生成类型：`web/src/gen/**`。
 - 前端类型与 API 调用：`web/src/types/**`、`web/src/api/**`，必要时页面组件引用类型。
 
 ## Interfaces
@@ -37,19 +37,19 @@ Accepted
 ### Proto
 
 - package 示例：`orbit.api.v1`。
-- Go package 示例：`backend/internal/transport/http/dto/proto/orbit/api/v1;apiv1`。
+- Go package 示例：`backend/internal/gen/orbit/api/v1;apiv1`。
 - message 命名沿用现有 `LoginReq`、`TokenResp` 等，便于迁移和 review。
 
 ### Go
 
-- handler 包可使用 `type LoginReq = apiv1.LoginReq` 形式保留局部业务命名，或直接改为 `apiv1.LoginReq`。
+- handler 包直接引用 `apiv1.<Message>` generated DTO；不通过 handler 局部 type alias / re-export 间接暴露 API DTO。
 - JSON 编解码仍通过标准 HTTP helper；如 wrapper/presence 与标准 `encoding/json` 不兼容，则增加局部转换/解码辅助，不能改变 HTTP 对外契约。
 
 ### TypeScript
 
 - ts-proto 只生成 types：`onlyTypes=true`，不生成 encode/decode/client/json methods。
 - `snakeToCamel=false`，保证字段名与现有 API JSON 一致。
-- `web/src/types` 不 re-export generated API DTO；前端 API 和页面直接从 `web/src/gen/proto/orbit/api/v1/<domain>` import generated types。
+- `web/src/types` 不 re-export generated API DTO；前端 API 和页面直接从 `web/src/gen/orbit/api/v1/<domain>` import generated types。
 
 ## Technical questions
 

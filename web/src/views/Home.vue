@@ -175,8 +175,8 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';
-  import type { DeploymentResp } from '@/gen/proto/orbit/api/v1/deployment';
-  import type { PipelineRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
+  import type { DeploymentResp } from '@/gen/orbit/api/v1/deployment';
+  import type { PipelineRunResp } from '@/gen/orbit/api/v1/pipeline_run';
   import { statusTone } from '@/utils/status';
   import { formatTime, getTodayStart } from '@/utils/time';
 

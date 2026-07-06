@@ -196,7 +196,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
+  import type { PipelineTemplateResp } from '@/gen/orbit/api/v1/template';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
@@ -299,7 +299,7 @@
   async function handleDuplicate(id: string) {
     try {
       await executeDuplicate(async () => {
-        const newTemplate = await pipelineTemplateApi.duplicate(id);
+        const newTemplate = await pipelineTemplateApi.duplicate(id, {});
         toast.success(t('pipelineTemplate.toast.duplicateSuccess'));
         router.push(`/ci/template/${newTemplate.id}`);
       });

@@ -3,7 +3,7 @@ import type {
   RepositoryWebhookListResp,
   RepositoryWebhookResp,
   RepositoryWebhookUpdateReq,
-} from '@/gen/proto/orbit/api/v1/webhook';
+} from '@/gen/orbit/api/v1/webhook';
 import request from '@/utils/request';
 
 export const webhookApi = {

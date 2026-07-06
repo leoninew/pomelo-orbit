@@ -1,9 +1,10 @@
 import type {
   BuildStageCreateReq,
+  BuildStageDuplicateReq,
   BuildStagePaginatedResp,
   BuildStageResp,
   BuildStageUpdateReq,
-} from '@/gen/proto/orbit/api/v1/build_stage';
+} from '@/gen/orbit/api/v1/build_stage';
 import request from '@/utils/request';
 
 export const buildStageApi = {
@@ -32,7 +33,7 @@ export const buildStageApi = {
     return request.delete(`/api/ci/build-stage/${id}`);
   },
 
-  duplicate(id: string): Promise<BuildStageResp> {
-    return request.post(`/api/ci/build-stage/${id}/duplicate`, {});
+  duplicate(id: string, data: BuildStageDuplicateReq): Promise<BuildStageResp> {
+    return request.post(`/api/ci/build-stage/${id}/duplicate`, data);
   },
 };

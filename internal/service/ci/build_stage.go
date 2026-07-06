@@ -26,7 +26,11 @@ type BuildStageCreateInput struct {
 }
 
 type BuildStageUpdateInput struct {
-	Fields map[string]json.RawMessage
+	Name        *string
+	Image       *string
+	Script      *string
+	Artifacts   *[]ArtifactConfig
+	Description *string
 }
 
 func (s Service) ListBuildStages(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[BuildStageDetail], error) {
@@ -94,7 +98,7 @@ func (s Service) UpdateBuildStage(ctx context.Context, userId string, stageId st
 	if err != nil {
 		return BuildStageDetail{}, err
 	}
-	if err := s.applyBuildStageUpdateInput(ctx, &stage, input.Fields); err != nil {
+	if err := s.applyBuildStageUpdateInput(ctx, &stage, input); err != nil {
 		return BuildStageDetail{}, err
 	}
 	if err := s.store.UpdateBuildStage(ctx, stage); err != nil {
@@ -193,45 +197,41 @@ func (s Service) nextBuildStageCopyName(ctx context.Context, projectId string, n
 	}
 }
 
-func (s Service) applyBuildStageUpdateInput(ctx context.Context, stage *model.BuildStage, req map[string]json.RawMessage) error {
+func (s Service) applyBuildStageUpdateInput(ctx context.Context, stage *model.BuildStage, req BuildStageUpdateInput) error {
 	projectId := buildStageProjectId(*stage)
 	versionChanged := false
-	if raw, exists := req["name"]; exists {
-		value, err := decodeRequiredString(raw, "Invalid build stage fields")
-		if err != nil {
-			return err
+	if req.Name != nil {
+		value := strings.TrimSpace(*req.Name)
+		if value == "" {
+			return apperror.New(apperror.KindValidation, "Invalid build stage fields")
 		}
 		if err := s.ensureBuildStageNameAvailable(ctx, projectId, value, stage.Id); err != nil {
 			return err
 		}
 		stage.Name = value
 	}
-	if raw, exists := req["image"]; exists {
-		value, err := decodeRequiredString(raw, "Invalid build stage fields")
-		if err != nil {
-			return err
+	if req.Image != nil {
+		value := strings.TrimSpace(*req.Image)
+		if value == "" {
+			return apperror.New(apperror.KindValidation, "Invalid build stage fields")
 		}
 		if value != stage.Image {
 			stage.Image = value
 			versionChanged = true
 		}
 	}
-	if raw, exists := req["script"]; exists {
-		value, err := decodeRequiredString(raw, "Invalid build stage fields")
-		if err != nil {
-			return err
+	if req.Script != nil {
+		value := strings.TrimSpace(*req.Script)
+		if value == "" {
+			return apperror.New(apperror.KindValidation, "Invalid build stage fields")
 		}
 		if value != stage.Script {
 			stage.Script = value
 			versionChanged = true
 		}
 	}
-	if raw, exists := req["artifacts"]; exists && string(raw) != "null" {
-		var artifacts []ArtifactConfig
-		if err := json.Unmarshal(raw, &artifacts); err != nil {
-			return apperror.New(apperror.KindValidation, "Invalid build stage fields")
-		}
-		artifactJSON, err := marshalBuildStageArtifacts(artifacts)
+	if req.Artifacts != nil {
+		artifactJSON, err := marshalBuildStageArtifacts(*req.Artifacts)
 		if err != nil {
 			return err
 		}
@@ -240,18 +240,8 @@ func (s Service) applyBuildStageUpdateInput(ctx context.Context, stage *model.Bu
 			versionChanged = true
 		}
 	}
-	if raw, exists := req["description"]; exists {
-		var value *string
-		if string(raw) != "null" {
-			decoded := ""
-			if err := json.Unmarshal(raw, &decoded); err != nil {
-				return apperror.New(apperror.KindValidation, "Invalid build stage fields")
-			}
-			value = &decoded
-		}
-		if value != nil {
-			stage.Description = *value
-		}
+	if req.Description != nil {
+		stage.Description = *req.Description
 	}
 	if versionChanged {
 		stage.Version++

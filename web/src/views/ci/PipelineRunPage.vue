@@ -142,9 +142,9 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { PipelineRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
-  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
+  import type { PipelineRunResp } from '@/gen/orbit/api/v1/pipeline_run';
+  import type { RepositoryResp } from '@/gen/orbit/api/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/orbit/api/v1/template';
   import { statusTone } from '@/utils/status';
   import { formatTime, formatDuration } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';

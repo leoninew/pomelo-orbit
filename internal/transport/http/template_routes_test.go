@@ -1,14 +1,12 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	cihandler "backend/internal/transport/http/handler/ci"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestPipelineTemplateRoutes(t *testing.T) {
@@ -23,7 +21,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected template create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created cihandler.PipelineTemplateResp
+	var created apiv1.PipelineTemplateResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -36,12 +34,12 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var templates transportresponse.PaginatedResp[cihandler.PipelineTemplateResp]
+	var templates apiv1.PipelineTemplatePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&templates); err != nil {
 		t.Fatal(err)
 	}
 	if templates.Total != 1 || len(templates.Items) != 1 || templates.Items[0].Id != created.Id {
-		t.Fatalf("unexpected template list: %+v", templates)
+		t.Fatalf("unexpected template list: %+v", &templates)
 	}
 
 	getRecorder := httptest.NewRecorder()
@@ -51,11 +49,11 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	}
 
 	updateRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(updateRecorder, authedRequest(http.MethodPut, "/api/ci/template/"+created.Id, bytes.NewBufferString(`{"name":"Template One Updated","orchestration":[{"stage_id":"`+stageId+`","stage_name":"ignored","stage_version":1,"depends_on":[],"sort_order":0}],"variable_declarations":[{"name":"working_dir","value":".","secret":false,"source":"template_custom"}]}`), token))
+	server.Handler().ServeHTTP(updateRecorder, authedRequest(http.MethodPut, "/api/ci/template/"+created.Id, bytes.NewBufferString(`{"name":"Template One Updated","orchestration":{"items":[{"stage_id":"`+stageId+`","stage_name":"ignored","stage_version":1,"depends_on":[],"sort_order":0}]},"variable_declarations":{"items":[{"name":"working_dir","value":".","secret":false,"source":"template_custom"}]}}`), token))
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated cihandler.PipelineTemplateResp
+	var updated apiv1.PipelineTemplateResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +66,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if duplicateRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected template duplicate status 201, got %d: %s", duplicateRecorder.Code, duplicateRecorder.Body.String())
 	}
-	var duplicated cihandler.PipelineTemplateResp
+	var duplicated apiv1.PipelineTemplateResp
 	if err := json.NewDecoder(duplicateRecorder.Body).Decode(&duplicated); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +105,7 @@ func TestPipelineTemplateResolveVariablesRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected resolve variables status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var variables cihandler.TemplateVariableResolveResp
+	var variables apiv1.TemplateVariableResolveResp
 	if err := json.NewDecoder(recorder.Body).Decode(&variables); err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +133,7 @@ func TestPipelineTemplateRoutesValidation(t *testing.T) {
 	}
 
 	unknownStageRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(unknownStageRecorder, authedRequest(http.MethodPut, "/api/ci/template/01KNVEJPWVK757139NMNNNCEFE", bytes.NewBufferString(`{"orchestration":[{"stage_id":"missing-stage","stage_name":"missing","stage_version":1,"depends_on":[],"sort_order":0}]}`), token))
+	server.Handler().ServeHTTP(unknownStageRecorder, authedRequest(http.MethodPut, "/api/ci/template/01KNVEJPWVK757139NMNNNCEFE", bytes.NewBufferString(`{"orchestration":{"items":[{"stage_id":"missing-stage","stage_name":"missing","stage_version":1,"depends_on":[],"sort_order":0}]}}`), token))
 	if unknownStageRecorder.Code != http.StatusNotFound {
 		t.Fatalf("expected unknown stage status 404, got %d: %s", unknownStageRecorder.Code, unknownStageRecorder.Body.String())
 	}
@@ -167,7 +165,7 @@ func TestPipelineTemplateRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func hasVariable(variables []*cihandler.VariableDeclarationResp, name string) bool {
+func hasVariable(variables []*apiv1.VariableDeclarationResp, name string) bool {
 	for _, variable := range variables {
 		if variable != nil && variable.Name == name {
 			return true

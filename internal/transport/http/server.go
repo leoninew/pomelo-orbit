@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"backend/internal/config"
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"backend/internal/infrastructure/logstore"
 	"backend/internal/repository"
 	cdrepo "backend/internal/repository/cd"
@@ -94,7 +95,7 @@ func (s Server) Handler() http.Handler {
 	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins, s.appCfg.Server.ApiPathPrefixes))
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		transportresponse.JSON(s.logger, w, http.StatusOK, &HealthResp{Status: "ok"})
+		transportresponse.JSON(s.logger, w, http.StatusOK, &apiv1.HealthResp{Status: "ok"})
 	})
 	authenticator := authz.New(s.logger, s.userRepository, s.tokenService)
 	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)

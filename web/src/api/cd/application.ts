@@ -1,33 +1,38 @@
 import type {
   ApplicationComposePreviewResp,
+  ApplicationComposePreviewReq,
   ApplicationCreateReq,
+  ApplicationDeployReq,
   ApplicationLogsResp,
   ApplicationPaginatedResp,
   ApplicationResp,
+  ApplicationRestartReq,
   ApplicationStatusResp,
+  ApplicationStopReq,
   ApplicationUpdateReq,
   DeploymentActionResp,
-} from '@/gen/proto/orbit/api/v1/application';
+} from '@/gen/orbit/api/v1/application';
 import type {
   ApplicationExportResp,
   ApplicationImportReq,
-} from '@/gen/proto/orbit/api/v1/application_bundle';
+} from '@/gen/orbit/api/v1/application_bundle';
 import type {
   ApplicationRouteListResp,
   ApplicationRouteReq,
   ApplicationRouteResp,
-} from '@/gen/proto/orbit/api/v1/application_route';
+} from '@/gen/orbit/api/v1/application_route';
 import type {
   ApplicationFileContentResp,
   ConfigFileListResp,
   ConfigFileReq,
   ConfigFileResp,
-} from '@/gen/proto/orbit/api/v1/config_file';
+} from '@/gen/orbit/api/v1/config_file';
 import type {
   ApplicationServiceConfigListResp,
   ApplicationServiceConfigResp,
+  ApplicationServiceConfigUpdateReq,
   ComposeServiceListResp,
-} from '@/gen/proto/orbit/api/v1/service_config';
+} from '@/gen/orbit/api/v1/service_config';
 import request from '@/utils/request';
 
 // 应用相关 API
@@ -65,20 +70,18 @@ export const applicationApi = {
   },
 
   // 手动触发部署
-  deploy(id: string, data?: { force_recreate?: boolean }): Promise<DeploymentActionResp> {
-    return request.post(`/api/cd/application/${id}/deploy`, data ?? {});
+  deploy(id: string, data: ApplicationDeployReq): Promise<DeploymentActionResp> {
+    return request.post(`/api/cd/application/${id}/deploy`, data);
   },
 
   // 停止应用
-  stop(id: string, removeVolumes?: boolean): Promise<DeploymentActionResp> {
-    return request.post(`/api/cd/application/${id}/stop`, {
-      remove_volumes: removeVolumes,
-    });
+  stop(id: string, data: ApplicationStopReq): Promise<DeploymentActionResp> {
+    return request.post(`/api/cd/application/${id}/stop`, data);
   },
 
   // 重启应用
-  restart(id: string): Promise<DeploymentActionResp> {
-    return request.post(`/api/cd/application/${id}/restart`);
+  restart(id: string, data: ApplicationRestartReq): Promise<DeploymentActionResp> {
+    return request.post(`/api/cd/application/${id}/restart`, data);
   },
 
   // 获取应用状态
@@ -97,16 +100,13 @@ export const applicationApi = {
   },
 
   // 写入应用文件
-  writeFile(id: string, fileId: string, path: string, content: string): Promise<ConfigFileResp> {
-    return request.put(`/api/cd/application/${id}/file/${fileId}`, {
-      path,
-      content,
-    } satisfies ConfigFileReq);
+  writeFile(id: string, fileId: string, data: ConfigFileReq): Promise<ConfigFileResp> {
+    return request.put(`/api/cd/application/${id}/file/${fileId}`, data);
   },
 
   // 创建应用文件
-  createFile(id: string, path: string, content: string = ''): Promise<ConfigFileResp> {
-    return request.post(`/api/cd/application/${id}/file`, { path, content } satisfies ConfigFileReq);
+  createFile(id: string, data: ConfigFileReq): Promise<ConfigFileResp> {
+    return request.post(`/api/cd/application/${id}/file`, data);
   },
 
   // 获取应用文件列表
@@ -115,8 +115,11 @@ export const applicationApi = {
   },
 
   /** 预览部署时生成的 docker-compose.yml（模板渲染、镜像覆盖、路由 labels） */
-  previewCompose(id: string): Promise<ApplicationComposePreviewResp> {
-    return request.post(`/api/cd/application/${id}/compose-preview`);
+  previewCompose(
+    id: string,
+    data: ApplicationComposePreviewReq
+  ): Promise<ApplicationComposePreviewResp> {
+    return request.post(`/api/cd/application/${id}/compose-preview`, data);
   },
 
   // 删除应用文件
@@ -171,8 +174,8 @@ export const applicationApi = {
   updateServiceConfig(
     id: string,
     serviceName: string,
-    image: string | null
+    data: ApplicationServiceConfigUpdateReq
   ): Promise<ApplicationServiceConfigResp> {
-    return request.put(`/api/cd/application/${id}/service-config/${serviceName}`, { image });
+    return request.put(`/api/cd/application/${id}/service-config/${serviceName}`, data);
   },
 };

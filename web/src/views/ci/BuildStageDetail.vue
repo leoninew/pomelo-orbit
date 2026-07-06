@@ -324,8 +324,7 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ArtifactConfigResp, BuildStageResp } from '@/gen/proto/orbit/api/v1/build_stage';
-  import type { ArtifactType } from '@/types/ci/template';
+  import type { ArtifactConfigResp, BuildStageResp } from '@/gen/orbit/api/v1/build_stage';
   import { formatTime } from '@/utils/time';
 
   const route = useRoute();
@@ -354,7 +353,7 @@
   const artifactForm = reactive({
     isEdit: false,
     order: -1,
-    type: 'docker_image' as ArtifactType,
+    type: 'docker_image',
     name: '',
     path: '',
   });
@@ -415,7 +414,6 @@
       await executeSave(async () => {
         const updated = await buildStageApi.update(stageId.value, {
           script: scriptTemp.value,
-          artifacts: stage.value?.artifacts ?? [],
         });
         stage.value = updated;
         showScriptDrawer.value = false;
@@ -432,7 +430,6 @@
         const updated = await buildStageApi.update(stageId.value, {
           name: form.name,
           image: form.image,
-          artifacts: stage.value?.artifacts ?? [],
           description: form.description,
         });
         stage.value = updated;
@@ -463,7 +460,7 @@
     Object.assign(artifactForm, {
       isEdit: true,
       order: idx,
-      type: artifact.type as ArtifactType,
+      type: artifact.type,
       name: artifact.name,
       path: artifact.path,
     });
@@ -490,7 +487,7 @@
     try {
       await executeSave(async () => {
         stage.value = await buildStageApi.update(stageId.value, {
-          artifacts: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [],
+          artifacts: { items: sortableArtifacts.value.length > 0 ? sortableArtifacts.value : [] },
         });
         toast.success(t('buildStageDetail.deleteSuccess'));
         isDeleteArtifactDialogOpen.value = false;
@@ -528,7 +525,7 @@
     try {
       await executeSave(async () => {
         stage.value = await buildStageApi.update(stageId.value, {
-          artifacts: sortableArtifacts.value,
+          artifacts: { items: sortableArtifacts.value },
         });
         toast.success(
           artifactForm.isEdit
@@ -549,7 +546,7 @@
   async function handleDuplicate() {
     try {
       await executeDuplicate(async () => {
-        const newStage = await buildStageApi.duplicate(stageId.value);
+        const newStage = await buildStageApi.duplicate(stageId.value, {});
         toast.success(t('buildStageDetail.duplicateSuccess'));
         router.push(`/ci/build-stage/${newStage.id}`);
       });

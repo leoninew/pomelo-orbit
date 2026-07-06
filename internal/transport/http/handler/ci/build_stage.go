@@ -1,7 +1,7 @@
 package cihandler
 
 import (
-	"encoding/json"
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -32,7 +32,7 @@ func (h Handler) listBuildStages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, buildStageDetailResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &BuildStagePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.BuildStagePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createBuildStage(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +40,7 @@ func (h Handler) createBuildStage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req BuildStageCreateReq
+	var req apiv1.BuildStageCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -73,12 +73,17 @@ func (h Handler) updateBuildStage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req map[string]json.RawMessage
+	var req apiv1.BuildStageUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	stage, err := h.service.UpdateBuildStage(r.Context(), current.Id, chi.URLParam(r, "stage_id"), cisvc.BuildStageUpdateInput{Fields: req})
+	var artifacts *[]cisvc.ArtifactConfig
+	if req.Artifacts != nil {
+		items := serviceArtifacts(req.Artifacts.Items)
+		artifacts = &items
+	}
+	stage, err := h.service.UpdateBuildStage(r.Context(), current.Id, chi.URLParam(r, "stage_id"), cisvc.BuildStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, Description: req.Description})
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -104,6 +109,11 @@ func (h Handler) duplicateBuildStage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var req apiv1.BuildStageDuplicateReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	stage, err := h.service.DuplicateBuildStage(r.Context(), current.Id, chi.URLParam(r, "stage_id"))
 	if err != nil {
 		h.writeError(w, err)
@@ -113,11 +123,11 @@ func (h Handler) duplicateBuildStage(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
-func buildStageDetailResponse(item cisvc.BuildStageDetail) BuildStageResp {
-	return BuildStageResp{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: transportresponse.Ptrs(artifactConfigsResponse(item.Artifacts)), Description: item.Description, Version: int32(item.Version), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
+func buildStageDetailResponse(item cisvc.BuildStageDetail) apiv1.BuildStageResp {
+	return apiv1.BuildStageResp{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: transportresponse.Ptrs(artifactConfigsResponse(item.Artifacts)), Description: item.Description, Version: int32(item.Version), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
 }
 
-func serviceArtifacts(items []*ArtifactConfigReq) []cisvc.ArtifactConfig {
+func serviceArtifacts(items []*apiv1.ArtifactConfigReq) []cisvc.ArtifactConfig {
 	resp := make([]cisvc.ArtifactConfig, 0, len(items))
 	for _, item := range items {
 		if item == nil {

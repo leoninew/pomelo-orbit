@@ -1,9 +1,10 @@
 import type {
+  DeploymentCancelReq,
   DeploymentContainerLogsResp,
   DeploymentLogsResp,
   DeploymentPaginatedResp,
   DeploymentResp,
-} from '@/gen/proto/orbit/api/v1/deployment';
+} from '@/gen/orbit/api/v1/deployment';
 import request from '@/utils/request';
 
 // 部署记录相关 API
@@ -28,8 +29,8 @@ export const deploymentApi = {
   },
 
   // 取消部署
-  cancel(id: string): Promise<DeploymentResp> {
-    return request.post(`/api/cd/deployment/${id}/cancel`);
+  cancel(id: string, data: DeploymentCancelReq): Promise<DeploymentResp> {
+    return request.post(`/api/cd/deployment/${id}/cancel`, data);
   },
 
   // 获取部署日志（增量读取，回退用）

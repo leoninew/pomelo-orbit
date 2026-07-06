@@ -1,7 +1,7 @@
 import type {
   TraefikConfigResp,
   TraefikRouteListResp,
-} from '@/gen/proto/orbit/api/v1/traefik';
+} from '@/gen/orbit/api/v1/traefik';
 import request from '@/utils/request';
 
 export const traefikRouteApi = {

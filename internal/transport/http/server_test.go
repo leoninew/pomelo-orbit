@@ -1,6 +1,7 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -21,10 +22,6 @@ import (
 	"backend/internal/repository"
 	taskrepo "backend/internal/repository/task"
 	"backend/internal/status"
-	authhandler "backend/internal/transport/http/handler/auth"
-	projecthandler "backend/internal/transport/http/handler/project"
-	taskhandler "backend/internal/transport/http/handler/task"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 type fakeTurnstileVerifier struct {
@@ -78,7 +75,7 @@ func TestCreateAndGetTask(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created taskhandler.TaskResp
+	var created apiv1.TaskResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -105,13 +102,13 @@ func TestEnqueueCIPipelineRun(t *testing.T) {
 	defer func() { _ = database.Close() }()
 
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/background/ci/pipeline-run/run-1/execute", nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/background/ci/pipeline-run/run-1/execute", bytes.NewBufferString(`{}`))
 	server.Handler().ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created taskhandler.TaskResp
+	var created apiv1.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -128,13 +125,13 @@ func TestEnqueueCDApplicationDeploy(t *testing.T) {
 	defer func() { _ = database.Close() }()
 
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/background/cd/application/app-1/deploy/deploy-1", nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/background/cd/application/app-1/deploy/deploy-1", bytes.NewBufferString(`{}`))
 	server.Handler().ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created taskhandler.TaskResp
+	var created apiv1.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -151,13 +148,13 @@ func TestEnqueueCDApplicationStop(t *testing.T) {
 	defer func() { _ = database.Close() }()
 
 	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest(http.MethodPost, "/api/background/cd/application/app-1/stop/deploy-1", nil)
+	request := httptest.NewRequest(http.MethodPost, "/api/background/cd/application/app-1/stop/deploy-1", bytes.NewBufferString(`{}`))
 	server.Handler().ServeHTTP(recorder, request)
 
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created taskhandler.TaskResp
+	var created apiv1.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +202,7 @@ func TestAuthLoginAndMe(t *testing.T) {
 	if loginRecorder.Code != http.StatusOK {
 		t.Fatalf("expected login status 200, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
 	}
-	var token authhandler.TokenResp
+	var token apiv1.TokenResp
 	if err := json.NewDecoder(loginRecorder.Body).Decode(&token); err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +217,7 @@ func TestAuthLoginAndMe(t *testing.T) {
 	if meRecorder.Code != http.StatusOK {
 		t.Fatalf("expected me status 200, got %d: %s", meRecorder.Code, meRecorder.Body.String())
 	}
-	var me authhandler.UserInfoResp
+	var me apiv1.UserInfoResp
 	if err := json.NewDecoder(meRecorder.Body).Decode(&me); err != nil {
 		t.Fatal(err)
 	}
@@ -436,7 +433,7 @@ func TestProjectAndDashboardLists(t *testing.T) {
 	if projectRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project status 200, got %d", projectRecorder.Code)
 	}
-	var projectList projecthandler.ProjectListResp
+	var projectList apiv1.ProjectListResp
 	if err := json.NewDecoder(projectRecorder.Body).Decode(&projectList); err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +461,11 @@ func TestProjectAndDashboardLists(t *testing.T) {
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("expected %s status 200, got %d: %s", path, recorder.Code, recorder.Body.String())
 		}
-		var resp transportresponse.PaginatedResp[map[string]any]
+		var resp struct {
+			Items   []map[string]any `json:"items"`
+			Page    int              `json:"page"`
+			PerPage int              `json:"per_page"`
+		}
 		if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 			t.Fatal(err)
 		}

@@ -23,8 +23,8 @@
   import { MiniMap } from '@vue-flow/minimap';
   import dagre from 'dagre';
   import { computed, markRaw, nextTick, ref, watch } from 'vue';
-  import type { StageRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
-  import type { SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
+  import type { StageRunResp } from '@/gen/orbit/api/v1/pipeline_run';
+  import type { SnapshotStageResp } from '@/gen/orbit/api/v1/snapshot';
   import { statusColor } from '@/utils/status';
   import StageNode from './StageNode.vue';
 

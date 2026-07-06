@@ -59,7 +59,7 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/api/v1/common';
+  import type { VariableDeclarationResp } from '@/gen/orbit/api/v1/common';
   import { getSourceTone, isVariableEditable } from '@/utils/variableSource';
 
   withDefaults(

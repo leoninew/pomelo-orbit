@@ -1,6 +1,7 @@
 package projecthandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -53,11 +54,11 @@ func (h Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list projects")
 		return
 	}
-	resp := make([]ProjectResp, 0, len(items))
+	resp := make([]apiv1.ProjectResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, ProjectResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +66,7 @@ func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req ProjectSaveReq
+	var req apiv1.ProjectSaveReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -93,7 +94,7 @@ func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req ProjectSaveReq
+	var req apiv1.ProjectSaveReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -116,6 +117,11 @@ func (h Handler) deprecateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var req apiv1.ProjectDeprecateReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	if err := h.service.Deprecate(r.Context(), project, current.Id); err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -136,7 +142,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req ProjectMemberReq
+	var req apiv1.ProjectMemberReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -146,7 +152,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
@@ -159,7 +165,7 @@ func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, projectId string) {
@@ -169,7 +175,7 @@ func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, pro
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list project members")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) loadProjectForCurrentUser(w http.ResponseWriter, r *http.Request) (model.Project, bool) {
@@ -197,8 +203,8 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func ProjectResponse(project model.Project) ProjectResp {
-	return ProjectResp{
+func ProjectResponse(project model.Project) apiv1.ProjectResp {
+	return apiv1.ProjectResp{
 		Id:        project.Id,
 		Name:      project.Name,
 		Code:      project.Code,
@@ -208,14 +214,14 @@ func ProjectResponse(project model.Project) ProjectResp {
 	}
 }
 
-func projectMemberResponses(users []model.User) []ProjectMemberResp {
-	resp := make([]ProjectMemberResp, 0, len(users))
+func projectMemberResponses(users []model.User) []apiv1.ProjectMemberResp {
+	resp := make([]apiv1.ProjectMemberResp, 0, len(users))
 	for _, user := range users {
 		resp = append(resp, ProjectMemberResponse(user))
 	}
 	return resp
 }
 
-func ProjectMemberResponse(user model.User) ProjectMemberResp {
-	return ProjectMemberResp{Id: user.Id, Username: user.Username, Email: user.Email, Status: user.Status, AuthSource: user.AuthSource, LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt)}
+func ProjectMemberResponse(user model.User) apiv1.ProjectMemberResp {
+	return apiv1.ProjectMemberResp{Id: user.Id, Username: user.Username, Email: user.Email, Status: user.Status, AuthSource: user.AuthSource, LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt)}
 }

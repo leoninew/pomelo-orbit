@@ -1,7 +1,7 @@
 package cihandler
 
 import (
-	"encoding/json"
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"io"
 	"log/slog"
 	"net/http"
@@ -60,7 +60,7 @@ func (h Handler) listRepositories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, repositoryListResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &RepositoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RepositoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createRepository(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +68,7 @@ func (h Handler) createRepository(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req RepositoryCreateReq
+	var req apiv1.RepositoryCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -101,7 +101,7 @@ func (h Handler) updateRepository(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req RepositoryUpdateReq
+	var req apiv1.RepositoryUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -142,11 +142,11 @@ func (h Handler) listRepositoryWebhooks(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	resp := make([]RepositoryWebhookResp, 0, len(items))
+	resp := make([]apiv1.RepositoryWebhookResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, repositoryWebhookResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &RepositoryWebhookListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RepositoryWebhookListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +154,7 @@ func (h Handler) createRepositoryWebhook(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	var req RepositoryWebhookCreateReq
+	var req apiv1.RepositoryWebhookCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -187,12 +187,12 @@ func (h Handler) updateRepositoryWebhook(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	var req RepositoryWebhookUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var req repositoryWebhookUpdateReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	webhook, err := h.service.UpdateRepositoryWebhook(r.Context(), current.Id, chi.URLParam(r, "repository_id"), chi.URLParam(r, "webhook_id"), cisvc.WebhookUpdateInput{Name: req.Name, TemplateId: req.TemplateId, Secret: req.Secret, BranchFilter: req.BranchFilter, BranchSet: req.BranchSet, Enabled: req.Enabled})
+	webhook, err := h.service.UpdateRepositoryWebhook(r.Context(), current.Id, chi.URLParam(r, "repository_id"), chi.URLParam(r, "webhook_id"), cisvc.WebhookUpdateInput{Name: req.Body.Name, TemplateId: req.Body.TemplateId, Secret: req.Body.Secret, BranchFilter: req.Body.BranchFilter, BranchSet: req.BranchSet, Enabled: req.Body.Enabled})
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -225,7 +225,7 @@ func (h Handler) receiveRepositoryWebhook(w http.ResponseWriter, r *http.Request
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &RepositoryWebhookReceiveResp{Status: result.Status, Reason: result.Reason, RunId: result.RunId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RepositoryWebhookReceiveResp{Status: result.Status, Reason: result.Reason, RunId: result.RunId})
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
@@ -235,17 +235,17 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func repositoryListResponse(item model.Repository) RepositoryResp {
-	return RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func repositoryListResponse(item model.Repository) apiv1.RepositoryResp {
+	return apiv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func repositoryDetailResponse(detail cisvc.RepositoryDetail) RepositoryResp {
+func repositoryDetailResponse(detail cisvc.RepositoryDetail) apiv1.RepositoryResp {
 	item := detail.Repository
-	return RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return apiv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func repositoryWebhookResponse(item model.RepositoryWebhook) RepositoryWebhookResp {
-	return RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Secret: item.EncryptedSecret, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func repositoryWebhookResponse(item model.RepositoryWebhook) apiv1.RepositoryWebhookResp {
+	return apiv1.RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Secret: item.EncryptedSecret, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func requestHeaders(r *http.Request) map[string]string {

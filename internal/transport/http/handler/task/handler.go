@@ -1,6 +1,7 @@
 package taskhandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -41,8 +42,8 @@ func (h Handler) Register(r router) {
 }
 
 func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
-	var req CreateTaskReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var req apiv1.CreateTaskReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -57,6 +58,11 @@ func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) enqueueCIPipelineRun(w http.ResponseWriter, r *http.Request) {
+	var req apiv1.PipelineRunExecuteTaskReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	runId := strings.TrimSpace(chi.URLParam(r, "run_id"))
 	if runId == "" {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "run_id is required")
@@ -66,6 +72,11 @@ func (h Handler) enqueueCIPipelineRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) enqueueCDApplicationDeploy(w http.ResponseWriter, r *http.Request) {
+	var req apiv1.ApplicationDeployTaskReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	appId := strings.TrimSpace(chi.URLParam(r, "app_id"))
 	deploymentId := strings.TrimSpace(chi.URLParam(r, "deployment_id"))
 	if appId == "" || deploymentId == "" {
@@ -76,6 +87,11 @@ func (h Handler) enqueueCDApplicationDeploy(w http.ResponseWriter, r *http.Reque
 }
 
 func (h Handler) enqueueCDApplicationRestart(w http.ResponseWriter, r *http.Request) {
+	var req apiv1.ApplicationRestartTaskReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	appId := strings.TrimSpace(chi.URLParam(r, "app_id"))
 	deploymentId := strings.TrimSpace(chi.URLParam(r, "deployment_id"))
 	if appId == "" || deploymentId == "" {
@@ -86,6 +102,11 @@ func (h Handler) enqueueCDApplicationRestart(w http.ResponseWriter, r *http.Requ
 }
 
 func (h Handler) enqueueCDApplicationStop(w http.ResponseWriter, r *http.Request) {
+	var req apiv1.ApplicationStopTaskReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	appId := strings.TrimSpace(chi.URLParam(r, "app_id"))
 	deploymentId := strings.TrimSpace(chi.URLParam(r, "deployment_id"))
 	if appId == "" || deploymentId == "" {
@@ -115,8 +136,8 @@ func (h Handler) getTask(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
-func taskResponse(item *taskrepo.Task) TaskResp {
-	return TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func taskResponse(item *taskrepo.Task) apiv1.TaskResp {
+	return apiv1.TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func rawPayload(payload *structpb.Value) json.RawMessage {

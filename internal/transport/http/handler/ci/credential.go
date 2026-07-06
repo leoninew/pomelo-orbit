@@ -1,6 +1,7 @@
 package cihandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +34,7 @@ func (h Handler) listCredentials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, credentialResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &CredentialPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.CredentialPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +42,7 @@ func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req CredentialCreateReq
+	var req apiv1.CredentialCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -60,7 +61,7 @@ func (h Handler) importCredential(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req CredentialImportReq
+	var req apiv1.CredentialImportReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -96,7 +97,7 @@ func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req CredentialUpdateReq
+	var req apiv1.CredentialUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -132,14 +133,14 @@ func (h Handler) exportCredential(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
 }
 
-func credentialResponse(item model.Credential) CredentialResp {
-	return CredentialResp{Id: item.Id, Name: item.Name, Type: item.Type, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
+func credentialResponse(item model.Credential) apiv1.CredentialResp {
+	return apiv1.CredentialResp{Id: item.Id, Name: item.Name, Type: item.Type, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
 }
 
-func credentialDetailResponse(item cisvc.CredentialDetail) CredentialDetailResp {
+func credentialDetailResponse(item cisvc.CredentialDetail) apiv1.CredentialDetailResp {
 	credential := credentialResponse(item.Credential)
-	return CredentialDetailResp{Id: credential.Id, Name: credential.Name, Type: credential.Type, Data: item.Data, CreatedAt: credential.CreatedAt}
+	return apiv1.CredentialDetailResp{Id: credential.Id, Name: credential.Name, Type: credential.Type, Data: item.Data, CreatedAt: credential.CreatedAt}
 }

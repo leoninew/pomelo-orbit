@@ -1,6 +1,8 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -8,9 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	cdhandler "backend/internal/transport/http/handler/cd"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 const deploymentRouteProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
@@ -28,12 +27,12 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list transportresponse.PaginatedResp[cdhandler.DeploymentResp]
+	var list apiv1.DeploymentPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
 	if list.Total != 1 || len(list.Items) != 1 || list.Items[0].Id != "deploy-route-test" {
-		t.Fatalf("unexpected deployment list: %+v", list)
+		t.Fatalf("unexpected deployment list: %+v", &list)
 	}
 
 	detailRecorder := httptest.NewRecorder()
@@ -41,7 +40,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if detailRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment detail status 200, got %d: %s", detailRecorder.Code, detailRecorder.Body.String())
 	}
-	var detail cdhandler.DeploymentResp
+	var detail apiv1.DeploymentResp
 	if err := json.NewDecoder(detailRecorder.Body).Decode(&detail); err != nil {
 		t.Fatal(err)
 	}
@@ -75,11 +74,11 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	}
 
 	cancelRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(cancelRecorder, authedRequest(http.MethodPost, "/api/cd/deployment/deploy-route-test/cancel", nil, token))
+	server.Handler().ServeHTTP(cancelRecorder, authedRequest(http.MethodPost, "/api/cd/deployment/deploy-route-test/cancel", bytes.NewBufferString(`{}`), token))
 	if cancelRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment cancel status 200, got %d: %s", cancelRecorder.Code, cancelRecorder.Body.String())
 	}
-	var canceled cdhandler.DeploymentResp
+	var canceled apiv1.DeploymentResp
 	if err := json.NewDecoder(cancelRecorder.Body).Decode(&canceled); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package authhandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"context"
 	"log/slog"
 	"net"
@@ -63,15 +64,15 @@ func (h Handler) getCSRFToken(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &CSRFTokenResp{Token: token})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.CSRFTokenResp{Token: token})
 }
 
 func (h Handler) getTurnstileConfig(w http.ResponseWriter, r *http.Request) {
-	transportresponse.JSON(h.logger, w, http.StatusOK, &TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey})
 }
 
 func (h Handler) login(w http.ResponseWriter, r *http.Request) {
-	var req LoginReq
+	var req apiv1.LoginReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -98,10 +99,15 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &TokenResp{AccessToken: token, TokenType: "bearer"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.TokenResp{AccessToken: token, TokenType: "bearer"})
 }
 
 func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
+	var req apiv1.LogoutReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -131,7 +137,7 @@ func (h Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req PasswordChangeReq
+	var req apiv1.PasswordChangeReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -161,7 +167,7 @@ func (h Handler) listLoginHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(history, loginHistoryResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) googleOAuth(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +175,7 @@ func (h Handler) googleOAuth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
-	var req GoogleCallbackReq
+	var req apiv1.GoogleCallbackReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -189,14 +195,14 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to sign token")
 }
 
-func userInfo(user model.User, roles []string, permissions []string) UserInfoResp {
+func userInfo(user model.User, roles []string, permissions []string) apiv1.UserInfoResp {
 	if roles == nil {
 		roles = []string{}
 	}
 	if permissions == nil {
 		permissions = []string{}
 	}
-	return UserInfoResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roles, Permissions: permissions}
+	return apiv1.UserInfoResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roles, Permissions: permissions}
 }
 
 func clientIP(r *http.Request) string {
@@ -216,8 +222,8 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-func loginHistoryResponse(history model.LoginHistory) LoginHistoryResp {
-	return LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transportresponse.FormatTime(history.LoginAt), Success: history.Success}
+func loginHistoryResponse(history model.LoginHistory) apiv1.LoginHistoryResp {
+	return apiv1.LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transportresponse.FormatTime(history.LoginAt), Success: history.Success}
 }
 
 func mapPage[T any, U any](page repository.Page[T], convert func(T) U) repository.Page[U] {

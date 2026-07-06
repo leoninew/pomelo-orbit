@@ -1,9 +1,11 @@
 import type {
   PipelineRunArtifactListResp,
+  PipelineRunCancelReq,
   PipelineRunPaginatedResp,
   PipelineRunResp,
+  PipelineRunRetryReq,
   PipelineStageLogResp,
-} from '@/gen/proto/orbit/api/v1/pipeline_run';
+} from '@/gen/orbit/api/v1/pipeline_run';
 import request from '@/utils/request';
 
 // PipelineRun API
@@ -24,12 +26,12 @@ export const pipelineRunApi = {
     return request.get(`/api/ci/run/${id}`);
   },
 
-  retry(id: string): Promise<PipelineRunResp> {
-    return request.post(`/api/ci/run/${id}/retry`, {});
+  retry(id: string, data: PipelineRunRetryReq): Promise<PipelineRunResp> {
+    return request.post(`/api/ci/run/${id}/retry`, data);
   },
 
-  cancel(id: string): Promise<PipelineRunResp> {
-    return request.post(`/api/ci/run/${id}/cancel`, {});
+  cancel(id: string, data: PipelineRunCancelReq): Promise<PipelineRunResp> {
+    return request.post(`/api/ci/run/${id}/cancel`, data);
   },
 
   listArtifacts(runId: string): Promise<PipelineRunArtifactListResp> {

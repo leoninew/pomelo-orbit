@@ -1,10 +1,12 @@
 import type {
   UserCreateReq,
+  UserDisableReq,
+  UserEnableReq,
   UserPaginatedResp,
   UserResp,
   UserRoleUpdateReq,
   UserUpdateReq,
-} from '@/gen/proto/orbit/api/v1/user';
+} from '@/gen/orbit/api/v1/user';
 import request from '@/utils/request';
 
 export const userApi = {
@@ -32,12 +34,12 @@ export const userApi = {
     return request.put(`/api/user/${id}/role`, data);
   },
 
-  disable(id: string): Promise<void> {
-    return request.post(`/api/user/${id}/disable`);
+  disable(id: string, data: UserDisableReq): Promise<void> {
+    return request.post(`/api/user/${id}/disable`, data);
   },
 
-  enable(id: string): Promise<void> {
-    return request.post(`/api/user/${id}/enable`);
+  enable(id: string, data: UserEnableReq): Promise<void> {
+    return request.post(`/api/user/${id}/enable`, data);
   },
 
   delete(id: string): Promise<void> {

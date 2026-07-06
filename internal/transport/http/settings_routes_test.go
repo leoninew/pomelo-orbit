@@ -1,6 +1,7 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"testing"
 
 	settingssvc "backend/internal/service/settings"
-	settingshandler "backend/internal/transport/http/handler/settings"
 )
 
 func TestSettingsConfigRoutes(t *testing.T) {
@@ -27,7 +27,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	if getRecorder.Code != http.StatusOK {
 		t.Fatalf("expected settings get status 200, got %d: %s", getRecorder.Code, getRecorder.Body.String())
 	}
-	var initial settingshandler.SystemConfigResp
+	var initial apiv1.SystemConfigResp
 	if err := json.NewDecoder(getRecorder.Body).Decode(&initial); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected settings update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated settingshandler.SystemConfigResp
+	var updated apiv1.SystemConfigResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	if resetRecorder.Code != http.StatusOK {
 		t.Fatalf("expected settings reset status 200, got %d: %s", resetRecorder.Code, resetRecorder.Body.String())
 	}
-	var reset settingshandler.SystemConfigResp
+	var reset apiv1.SystemConfigResp
 	if err := json.NewDecoder(resetRecorder.Body).Decode(&reset); err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestSettingsConfigRequiresAuth(t *testing.T) {
 	}
 }
 
-func findConfigItem(items []*settingshandler.ConfigItemResp, key string) (*settingshandler.ConfigItemResp, bool) {
+func findConfigItem(items []*apiv1.ConfigItemResp, key string) (*apiv1.ConfigItemResp, bool) {
 	for _, item := range items {
 		if item != nil && item.Key == key {
 			return item, true

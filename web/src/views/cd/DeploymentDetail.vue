@@ -176,7 +176,7 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { DeploymentResp } from '@/gen/proto/orbit/api/v1/deployment';
+  import type { DeploymentResp } from '@/gen/orbit/api/v1/deployment';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import type { editor } from 'monaco-editor';
@@ -294,7 +294,7 @@
 
   async function handleCancel() {
     try {
-      await deploymentApi.cancel(deploymentId);
+      await deploymentApi.cancel(deploymentId, {});
       toast.success('已取消部署');
       stopLog();
       deployment.value = await deploymentApi.get(deploymentId);

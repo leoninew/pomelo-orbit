@@ -3,11 +3,12 @@ import type {
   GoogleCallbackReq,
   LoginHistoryPaginatedResp,
   LoginReq,
+  LogoutReq,
   PasswordChangeReq,
   TokenResp,
   TurnstileConfigResp,
   UserInfoResp,
-} from '@/gen/proto/orbit/api/v1/auth';
+} from '@/gen/orbit/api/v1/auth';
 import request from '@/utils/request';
 
 // 认证相关 API
@@ -28,8 +29,8 @@ export const authApi = {
   },
 
   // 登出
-  logout(): Promise<void> {
-    return request.post('/api/auth/logout');
+  logout(data: LogoutReq): Promise<void> {
+    return request.post('/api/auth/logout', data);
   },
 
   // 获取当前用户信息

@@ -25,14 +25,13 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
-  import type { SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
+  import type { SnapshotStageResp } from '@/gen/orbit/api/v1/snapshot';
   import { statusColor } from '@/utils/status';
-  import type { TaskStatus } from '@/types/common';
 
   interface Props {
     data: {
       stage: SnapshotStageResp;
-      status?: TaskStatus;
+      status?: string;
       readonly?: boolean;
       selected?: boolean;
     };

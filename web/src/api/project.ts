@@ -1,10 +1,11 @@
 import type {
+  ProjectDeprecateReq,
   ProjectListResp,
   ProjectMemberListResp,
   ProjectMemberReq,
   ProjectResp,
   ProjectSaveReq,
-} from '@/gen/proto/orbit/api/v1/project';
+} from '@/gen/orbit/api/v1/project';
 import request from '@/utils/request';
 
 export const projectApi = {
@@ -24,8 +25,8 @@ export const projectApi = {
     return request.put(`/api/project/${id}`, data);
   },
 
-  deprecate(id: string): Promise<void> {
-    return request.post(`/api/project/${id}/deprecate`);
+  deprecate(id: string, data: ProjectDeprecateReq): Promise<void> {
+    return request.post(`/api/project/${id}/deprecate`, data);
   },
 
   listMembers(id: string): Promise<ProjectMemberListResp> {

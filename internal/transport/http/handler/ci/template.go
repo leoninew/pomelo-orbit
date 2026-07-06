@@ -1,7 +1,7 @@
 package cihandler
 
 import (
-	"encoding/json"
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +33,7 @@ func (h Handler) listPipelineTemplates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, pipelineTemplateResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req PipelineTemplateCreateReq
+	var req apiv1.PipelineTemplateCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -74,12 +74,22 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req map[string]json.RawMessage
+	var req apiv1.PipelineTemplateUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.UpdatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"), cisvc.PipelineTemplateUpdateInput{Fields: req})
+	var orchestration *[]cisvc.StageOrchestration
+	if req.Orchestration != nil {
+		items := serviceOrchestration(req.Orchestration.Items)
+		orchestration = &items
+	}
+	var variableDeclarations *[]map[string]any
+	if req.VariableDeclarations != nil {
+		items := variableDeclarationRequestMaps(req.VariableDeclarations.Items)
+		variableDeclarations = &items
+	}
+	detail, err := h.service.UpdatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"), cisvc.PipelineTemplateUpdateInput{Name: req.Name, Description: req.Description, Orchestration: orchestration, VariableDeclarations: variableDeclarations})
 	if err != nil {
 		h.writeError(w, err)
 		return
@@ -105,6 +115,11 @@ func (h Handler) duplicatePipelineTemplate(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
+	var req apiv1.PipelineTemplateDuplicateReq
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
+		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
 	detail, err := h.service.DuplicatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"))
 	if err != nil {
 		h.writeError(w, err)
@@ -119,7 +134,7 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 	if !ok {
 		return
 	}
-	var req TemplateVariableResolveReq
+	var req apiv1.TemplateVariableResolveReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -129,23 +144,23 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
 }
 
-func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) PipelineTemplateResp {
+func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) apiv1.PipelineTemplateResp {
 	item := detail.Template
-	return PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: transportresponse.Ptrs(orchestrationResponse(detail.Orchestration)), Stages: transportresponse.Ptrs(buildStageDetailsResponse(detail.Stages)), VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return apiv1.PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: transportresponse.Ptrs(orchestrationResponse(detail.Orchestration)), Stages: transportresponse.Ptrs(buildStageDetailsResponse(detail.Stages)), VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func orchestrationResponse(items []cisvc.StageOrchestration) []StageOrchestrationResp {
-	resp := make([]StageOrchestrationResp, 0, len(items))
+func orchestrationResponse(items []cisvc.StageOrchestration) []apiv1.StageOrchestrationResp {
+	resp := make([]apiv1.StageOrchestrationResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: int32(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int32(item.SortOrder)})
+		resp = append(resp, apiv1.StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: int32(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int32(item.SortOrder)})
 	}
 	return resp
 }
 
-func serviceOrchestration(items []*StageOrchestrationReq) []cisvc.StageOrchestration {
+func serviceOrchestration(items []*apiv1.StageOrchestrationReq) []cisvc.StageOrchestration {
 	resp := make([]cisvc.StageOrchestration, 0, len(items))
 	for _, item := range items {
 		if item == nil {
@@ -156,38 +171,38 @@ func serviceOrchestration(items []*StageOrchestrationReq) []cisvc.StageOrchestra
 	return resp
 }
 
-func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []BuildStageResp {
-	resp := make([]BuildStageResp, 0, len(items))
+func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []apiv1.BuildStageResp {
+	resp := make([]apiv1.BuildStageResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, buildStageDetailResponse(item))
 	}
 	return resp
 }
 
-func artifactConfigsResponse(items []cisvc.ArtifactConfig) []ArtifactConfigResp {
+func artifactConfigsResponse(items []cisvc.ArtifactConfig) []apiv1.ArtifactConfigResp {
 	if items == nil {
 		return nil
 	}
-	resp := make([]ArtifactConfigResp, 0, len(items))
+	resp := make([]apiv1.ArtifactConfigResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
+		resp = append(resp, apiv1.ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
 	}
 	return resp
 }
 
-func variableDeclarationResponses(items []map[string]any) []VariableDeclarationResp {
-	resp := make([]VariableDeclarationResp, 0, len(items))
+func variableDeclarationResponses(items []map[string]any) []apiv1.VariableDeclarationResp {
+	resp := make([]apiv1.VariableDeclarationResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, variableDeclarationResponse(item))
 	}
 	return resp
 }
 
-func variableDeclarationResponse(item map[string]any) VariableDeclarationResp {
-	return VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: transportresponse.ProtoValue(item["default"]), Value: transportresponse.ProtoValue(item["value"]), Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
+func variableDeclarationResponse(item map[string]any) apiv1.VariableDeclarationResp {
+	return apiv1.VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: transportresponse.ProtoValue(item["default"]), Value: transportresponse.ProtoValue(item["value"]), Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
 }
 
-func variableDeclarationRequestMaps(items []*VariableDeclarationReq) []map[string]any {
+func variableDeclarationRequestMaps(items []*apiv1.VariableDeclarationReq) []map[string]any {
 	resp := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		if item == nil {
@@ -198,7 +213,7 @@ func variableDeclarationRequestMaps(items []*VariableDeclarationReq) []map[strin
 	return resp
 }
 
-func variableDeclarationRequestMap(item *VariableDeclarationReq) map[string]any {
+func variableDeclarationRequestMap(item *apiv1.VariableDeclarationReq) map[string]any {
 	return map[string]any{"name": item.Name, "description": item.Description, "default": transportresponse.NativeValue(item.Default), "value": transportresponse.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable}
 }
 

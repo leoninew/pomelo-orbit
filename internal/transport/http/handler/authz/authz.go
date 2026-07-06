@@ -18,6 +18,11 @@ type Store interface {
 	UserPermissions(ctx context.Context, userId string) ([]string, error)
 }
 
+type CurrentUserContext struct {
+	User        model.User
+	Permissions []string
+}
+
 type Authenticator struct {
 	logger *slog.Logger
 	store  Store

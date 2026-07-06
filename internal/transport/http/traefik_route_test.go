@@ -1,6 +1,7 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 	"testing"
 
 	"backend/internal/repository/model"
-	cdhandler "backend/internal/transport/http/handler/cd"
 	transportresponse "backend/internal/transport/http/response"
 )
 
@@ -62,7 +62,7 @@ func TestTraefikRouteConfigWithoutDashboardRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp cdhandler.TraefikConfigResp
+	var resp apiv1.TraefikConfigResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp cdhandler.TraefikConfigResp
+	var resp apiv1.TraefikConfigResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestTraefikRouteListReturnsRouters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp cdhandler.TraefikRouteListResp
+	var resp apiv1.TraefikRouteListResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}

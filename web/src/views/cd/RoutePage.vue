@@ -180,7 +180,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
-  import type { RouteResp } from '@/gen/proto/orbit/api/v1/route';
+  import type { RouteResp } from '@/gen/orbit/api/v1/route';
   import { routeApi } from '@/api/cd/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -297,7 +297,7 @@
   async function handleEnable(id: string) {
     try {
       await executeOp(async () => {
-        await routeApi.enable(id);
+        await routeApi.enable(id, {});
         toast.success(t('route.toast.enableSuccess'));
         fetchData();
       });
@@ -309,7 +309,7 @@
   async function handleDisable(id: string) {
     try {
       await executeOp(async () => {
-        await routeApi.disable(id);
+        await routeApi.disable(id, {});
         toast.success(t('route.toast.disableSuccess'));
         fetchData();
       });
@@ -326,7 +326,7 @@
     }
     try {
       await executeOp(async () => {
-        await routeApi.sync({ project_id: projectId });
+        await routeApi.sync({}, { project_id: projectId });
         toast.success(t('route.syncSuccess'));
         fetchData();
       });

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { authApi } from '@/api/auth';
-import type { UserInfoResp } from '@/gen/proto/orbit/api/v1/auth';
+import type { UserInfoResp } from '@/gen/orbit/api/v1/auth';
 
 const TOKEN_KEY = 'pomelo_orbit_token';
 
@@ -54,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
   // 登出
   async function logout() {
     try {
-      await authApi.logout();
+      await authApi.logout({});
     } catch (error) {
       console.error('Failed to logout:', error);
     } finally {

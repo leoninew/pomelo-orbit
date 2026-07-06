@@ -186,11 +186,17 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
-  import type { ArtifactDeclaration } from '@/types/ci/template';
+  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/orbit/api/v1/snapshot';
   import { formatTime } from '@/utils/time';
   import StageDAGView from './components/StageDAGView.vue';
   import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+
+  interface ArtifactDeclaration {
+    stageName: string;
+    type: string;
+    name: string;
+    path: string;
+  }
 
   const route = useRoute();
   const router = useRouter();

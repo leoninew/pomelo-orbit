@@ -234,8 +234,7 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { UserListResp } from '@/gen/proto/orbit/api/v1/user';
-  import type { UserStatus } from '@/types/user';
+  import type { UserListResp } from '@/gen/orbit/api/v1/user';
   import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();
@@ -255,10 +254,10 @@
   const isEditDialogOpen = ref(false);
   const editingUser = ref<UserListResp | null>(null);
   const form = reactive({ username: '', email: '', password: '' });
-  const editForm = reactive<{ username: string; password: string; status: UserStatus }>({
+  const editForm = reactive({
     username: '',
     password: '',
-    status: 'enabled',
+    status: '',
   });
   const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
   const userStatusOptions = computed(() => [
@@ -336,13 +335,13 @@
     isDialogOpen.value = true;
   }
 
-  async function openConfirmDialog(type: ConfirmAction['type'], user: UserListResp) {
+  async function openConfirmDialog(type: 'disable', user: UserListResp) {
     confirmAction.value = { type, user };
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();
   }
 
-  function updateUserStatus(userId: string, status: UserStatus) {
+  function updateUserStatus(userId: string, status: string) {
     users.value = users.value.map((user) => (user.id === userId ? { ...user, status } : user));
   }
 
@@ -367,7 +366,7 @@
     editingUser.value = user;
     editForm.username = user.username;
     editForm.password = '';
-    editForm.status = user.status as UserStatus;
+    editForm.status = user.status;
     isEditDialogOpen.value = true;
   }
 
@@ -398,7 +397,7 @@
   async function handleEnable(user: UserListResp) {
     try {
       await executeOp(async () => {
-        await userApi.enable(user.id);
+        await userApi.enable(user.id, {});
         updateUserStatus(user.id, 'enabled');
         toast.success(t('userManagement.enabledToast'));
       });
@@ -414,7 +413,7 @@
     }
     try {
       await executeOp(async () => {
-        await userApi.disable(action.user.id);
+        await userApi.disable(action.user.id, {});
         updateUserStatus(action.user.id, 'disabled');
         toast.success(t('userManagement.disabledToast'));
         confirmAction.value = null;

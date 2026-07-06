@@ -1,6 +1,7 @@
 package rolehandler
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"context"
 	"database/sql"
 	"errors"
@@ -74,10 +75,10 @@ func (h Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
 		return
 	}
-	resp := mapPage(roles, func(role model.Role) RoleResp {
+	resp := mapPage(roles, func(role model.Role) apiv1.RoleResp {
 		return roleResponse(role, permissionsByRoleId[role.Id])
 	})
-	transportresponse.JSON(h.logger, w, http.StatusOK, &RolePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RolePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
@@ -90,11 +91,11 @@ func (h Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list permissions")
 		return
 	}
-	items := make([]PermissionResp, 0, len(permissions))
+	items := make([]apiv1.PermissionResp, 0, len(permissions))
 	for _, permission := range permissions {
 		items = append(items, permissionResponse(permission))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &PermissionListResp{Items: transportresponse.Ptrs(items)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.PermissionListResp{Items: transportresponse.Ptrs(items)})
 }
 
 func (h Handler) getRole(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +117,7 @@ func (h Handler) createRole(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "role:write"); !ok {
 		return
 	}
-	var req RoleCreateReq
+	var req apiv1.RoleCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -138,7 +139,7 @@ func (h Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req RoleUpdateReq
+	var req apiv1.RoleUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -203,25 +204,25 @@ func (h Handler) loadRoleFromPath(w http.ResponseWriter, r *http.Request) (model
 	return role, true
 }
 
-func (h Handler) roleDetailResp(w http.ResponseWriter, r *http.Request, role model.Role) (RoleResp, bool) {
+func (h Handler) roleDetailResp(w http.ResponseWriter, r *http.Request, role model.Role) (apiv1.RoleResp, bool) {
 	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(r.Context(), []string{role.Id})
 	if err != nil {
 		h.logger.Error("load role permissions failed", "role_id", role.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
-		return RoleResp{}, false
+		return apiv1.RoleResp{}, false
 	}
 	return roleResponse(role, permissionsByRoleId[role.Id]), true
 }
 
-func roleResponse(role model.Role, permissionCodes []string) RoleResp {
+func roleResponse(role model.Role, permissionCodes []string) apiv1.RoleResp {
 	if permissionCodes == nil {
 		permissionCodes = []string{}
 	}
-	return RoleResp{Id: role.Id, Code: role.Code, Name: role.Name, Description: role.Description, CreatedAt: transportresponse.FormatTime(role.CreatedAt), UpdatedAt: transportresponse.FormatTime(role.UpdatedAt), PermissionCodes: permissionCodes}
+	return apiv1.RoleResp{Id: role.Id, Code: role.Code, Name: role.Name, Description: role.Description, CreatedAt: transportresponse.FormatTime(role.CreatedAt), UpdatedAt: transportresponse.FormatTime(role.UpdatedAt), PermissionCodes: permissionCodes}
 }
 
-func permissionResponse(permission model.Permission) PermissionResp {
-	return PermissionResp{Id: permission.Id, Code: permission.Code, Name: permission.Name, Description: permission.Description}
+func permissionResponse(permission model.Permission) apiv1.PermissionResp {
+	return apiv1.PermissionResp{Id: permission.Id, Code: permission.Code, Name: permission.Name, Description: permission.Description}
 }
 
 func mapPage[T any, U any](page repository.Page[T], convert func(T) U) repository.Page[U] {

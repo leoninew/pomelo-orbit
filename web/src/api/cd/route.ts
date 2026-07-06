@@ -1,12 +1,17 @@
 import type {
   RouteCreateReq,
+  RouteDisableReq,
   RouteDisableResp,
+  RouteEnableReq,
   RouteEnableResp,
+  RouteLetsEncryptEnableReq,
+  RouteMkcertEnableReq,
   RoutePaginatedResp,
   RouteResp,
+  RouteSyncReq,
   RouteSyncResp,
   RouteUpdateReq,
-} from '@/gen/proto/orbit/api/v1/route';
+} from '@/gen/orbit/api/v1/route';
 import request from '@/utils/request';
 
 export const routeApi = {
@@ -35,16 +40,16 @@ export const routeApi = {
     return request.delete(`/api/cd/route/${id}`);
   },
 
-  enable(id: string): Promise<RouteEnableResp> {
-    return request.post(`/api/cd/route/${id}/enable`);
+  enable(id: string, data: RouteEnableReq): Promise<RouteEnableResp> {
+    return request.post(`/api/cd/route/${id}/enable`, data);
   },
 
-  disable(id: string): Promise<RouteDisableResp> {
-    return request.post(`/api/cd/route/${id}/disable`);
+  disable(id: string, data: RouteDisableReq): Promise<RouteDisableResp> {
+    return request.post(`/api/cd/route/${id}/disable`, data);
   },
 
-  sync(params: { project_id: string }): Promise<RouteSyncResp> {
-    return request.post('/api/cd/route/sync', undefined, { params });
+  sync(data: RouteSyncReq, params: { project_id: string }): Promise<RouteSyncResp> {
+    return request.post('/api/cd/route/sync', data, { params });
   },
 
   uploadCert(id: string, certFile: File): Promise<RouteResp> {
@@ -59,11 +64,11 @@ export const routeApi = {
     return request.delete(`/api/cd/route/${id}/https`);
   },
 
-  enableLetsencrypt(id: string): Promise<RouteResp> {
-    return request.post(`/api/cd/route/${id}/letsencrypt`);
+  enableLetsencrypt(id: string, data: RouteLetsEncryptEnableReq): Promise<RouteResp> {
+    return request.post(`/api/cd/route/${id}/letsencrypt`, data);
   },
 
-  enableMkcert(id: string): Promise<RouteResp> {
-    return request.post(`/api/cd/route/${id}/mkcert`);
+  enableMkcert(id: string, data: RouteMkcertEnableReq): Promise<RouteResp> {
+    return request.post(`/api/cd/route/${id}/mkcert`, data);
   },
 };

@@ -1,14 +1,12 @@
 package transporthttp
 
 import (
+	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	cihandler "backend/internal/transport/http/handler/ci"
-	transportresponse "backend/internal/transport/http/response"
 )
 
 func TestBuildStageRoutes(t *testing.T) {
@@ -22,7 +20,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected build stage create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created cihandler.BuildStageResp
+	var created apiv1.BuildStageResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -35,12 +33,12 @@ func TestBuildStageRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var stages transportresponse.PaginatedResp[cihandler.BuildStageResp]
+	var stages apiv1.BuildStagePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&stages); err != nil {
 		t.Fatal(err)
 	}
 	if stages.Total != 1 || len(stages.Items) != 1 || stages.Items[0].Id != created.Id {
-		t.Fatalf("unexpected build stage list: %+v", stages)
+		t.Fatalf("unexpected build stage list: %+v", &stages)
 	}
 
 	getRecorder := httptest.NewRecorder()
@@ -50,11 +48,11 @@ func TestBuildStageRoutes(t *testing.T) {
 	}
 
 	updateRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(updateRecorder, authedRequest(http.MethodPut, "/api/ci/build-stage/"+created.Id, bytes.NewBufferString(`{"name":"go test custom updated","script":"go test ./internal/...","artifacts":[],"description":"updated"}`), token))
+	server.Handler().ServeHTTP(updateRecorder, authedRequest(http.MethodPut, "/api/ci/build-stage/"+created.Id, bytes.NewBufferString(`{"name":"go test custom updated","script":"go test ./internal/...","artifacts":{"items":[]},"description":"updated"}`), token))
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated cihandler.BuildStageResp
+	var updated apiv1.BuildStageResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +65,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if duplicateRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected build stage duplicate status 201, got %d: %s", duplicateRecorder.Code, duplicateRecorder.Body.String())
 	}
-	var duplicated cihandler.BuildStageResp
+	var duplicated apiv1.BuildStageResp
 	if err := json.NewDecoder(duplicateRecorder.Body).Decode(&duplicated); err != nil {
 		t.Fatal(err)
 	}

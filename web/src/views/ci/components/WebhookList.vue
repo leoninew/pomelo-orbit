@@ -163,8 +163,8 @@
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineTemplateResp } from '@/gen/orbit/api/v1/template';
-  import type { RepositoryWebhookResp } from '@/gen/orbit/api/v1/webhook';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/template';
+  import type { RepositoryWebhookResp } from '@/gen/proto/orbit/webhook';
 
   const props = defineProps<{
     repositoryId: string;

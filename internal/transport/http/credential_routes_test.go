@@ -1,16 +1,16 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"backend/internal/security"
-	cisvc "backend/internal/service/ci"
+	"gitee.com/leoninew/pomelo-orbit/internal/security"
+	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
 )
 
 const credentialRouteFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -41,7 +41,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if strings.Contains(createRecorder.Body.String(), "data") || strings.Contains(createRecorder.Body.String(), "encrypted") {
 		t.Fatalf("credential create leaked secret fields: %s", createRecorder.Body.String())
 	}
-	var created apiv1.CredentialResp
+	var created pomeloorbit.CredentialResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var credentials apiv1.CredentialPaginatedResp
+	var credentials pomeloorbit.CredentialPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&credentials); err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.CredentialResp
+	var updated pomeloorbit.CredentialResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestCredentialRoutes(t *testing.T) {
 	if exportRecorder.Code != http.StatusOK {
 		t.Fatalf("expected credential export status 200, got %d: %s", exportRecorder.Code, exportRecorder.Body.String())
 	}
-	var exported apiv1.CredentialExportResp
+	var exported pomeloorbit.CredentialExportResp
 	if err := json.NewDecoder(exportRecorder.Body).Decode(&exported); err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestCredentialImportRoute(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected credential import status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.CredentialResp
+	var created pomeloorbit.CredentialResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestCredentialImportRoute(t *testing.T) {
 	if exportRecorder.Code != http.StatusOK {
 		t.Fatalf("expected imported credential export status 200, got %d: %s", exportRecorder.Code, exportRecorder.Body.String())
 	}
-	var exported apiv1.CredentialExportResp
+	var exported pomeloorbit.CredentialExportResp
 	if err := json.NewDecoder(exportRecorder.Body).Decode(&exported); err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestCredentialRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func createCredentialForTest(t *testing.T, server Server, token string, projectId string, name string) *apiv1.CredentialResp {
+func createCredentialForTest(t *testing.T, server Server, token string, projectId string, name string) *pomeloorbit.CredentialResp {
 	t.Helper()
 	body := bytes.NewBufferString(`{"name":"` + name + `","type":"github_token","data":"secret"}`)
 	recorder := httptest.NewRecorder()
@@ -248,7 +248,7 @@ func createCredentialForTest(t *testing.T, server Server, token string, projectI
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected credential create status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created apiv1.CredentialResp
+	var created pomeloorbit.CredentialResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}

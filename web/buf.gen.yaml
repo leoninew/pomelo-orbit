@@ -2,7 +2,7 @@ version: v2
 clean: true
 plugins:
   - remote: buf.build/community/stephenh-ts-proto:v2.11.8
-    out: src/gen
+    out: src/gen/proto
     opt:
       - onlyTypes=true
       - outputEncodeMethods=false

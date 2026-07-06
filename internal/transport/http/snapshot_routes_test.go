@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"database/sql"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +20,7 @@ func TestPipelineSnapshotGetRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline snapshot get status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var snapshot apiv1.PipelineSnapshotResp
+	var snapshot pomeloorbit.PipelineSnapshotResp
 	if err := json.NewDecoder(recorder.Body).Decode(&snapshot); err != nil {
 		t.Fatal(err)
 	}

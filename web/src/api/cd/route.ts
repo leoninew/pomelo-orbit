@@ -11,7 +11,7 @@ import type {
   RouteSyncReq,
   RouteSyncResp,
   RouteUpdateReq,
-} from '@/gen/orbit/api/v1/route';
+} from '@/gen/proto/orbit/route';
 import request from '@/utils/request';
 
 export const routeApi = {

@@ -1,10 +1,10 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,7 +27,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list apiv1.DeploymentPaginatedResp
+	var list pomeloorbit.DeploymentPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if detailRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment detail status 200, got %d: %s", detailRecorder.Code, detailRecorder.Body.String())
 	}
-	var detail apiv1.DeploymentResp
+	var detail pomeloorbit.DeploymentResp
 	if err := json.NewDecoder(detailRecorder.Body).Decode(&detail); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 	if cancelRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deployment cancel status 200, got %d: %s", cancelRecorder.Code, cancelRecorder.Body.String())
 	}
-	var canceled apiv1.DeploymentResp
+	var canceled pomeloorbit.DeploymentResp
 	if err := json.NewDecoder(cancelRecorder.Body).Decode(&canceled); err != nil {
 		t.Fatal(err)
 	}

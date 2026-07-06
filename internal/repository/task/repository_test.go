@@ -8,8 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"backend/internal/db"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/db"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 func openTestDB(t *testing.T) *sqlx.DB {

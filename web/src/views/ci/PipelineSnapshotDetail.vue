@@ -186,7 +186,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/orbit/api/v1/snapshot';
+  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/snapshot';
   import { formatTime } from '@/utils/time';
   import StageDAGView from './components/StageDAGView.vue';
   import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';

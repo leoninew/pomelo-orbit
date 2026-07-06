@@ -1,19 +1,19 @@
 package cihandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"io"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/apperror"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	cisvc "backend/internal/service/ci"
-	"backend/internal/transport/http/handler/authz"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
+	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type router interface {
@@ -60,7 +60,7 @@ func (h Handler) listRepositories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, repositoryListResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RepositoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RepositoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createRepository(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +68,7 @@ func (h Handler) createRepository(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RepositoryCreateReq
+	var req pomeloorbit.RepositoryCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -101,7 +101,7 @@ func (h Handler) updateRepository(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RepositoryUpdateReq
+	var req pomeloorbit.RepositoryUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -142,11 +142,11 @@ func (h Handler) listRepositoryWebhooks(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	resp := make([]apiv1.RepositoryWebhookResp, 0, len(items))
+	resp := make([]pomeloorbit.RepositoryWebhookResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, repositoryWebhookResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RepositoryWebhookListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RepositoryWebhookListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createRepositoryWebhook(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +154,7 @@ func (h Handler) createRepositoryWebhook(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	var req apiv1.RepositoryWebhookCreateReq
+	var req pomeloorbit.RepositoryWebhookCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -225,7 +225,7 @@ func (h Handler) receiveRepositoryWebhook(w http.ResponseWriter, r *http.Request
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RepositoryWebhookReceiveResp{Status: result.Status, Reason: result.Reason, RunId: result.RunId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RepositoryWebhookReceiveResp{Status: result.Status, Reason: result.Reason, RunId: result.RunId})
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
@@ -235,17 +235,17 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func repositoryListResponse(item model.Repository) apiv1.RepositoryResp {
-	return apiv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func repositoryListResponse(item model.Repository) pomeloorbit.RepositoryResp {
+	return pomeloorbit.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func repositoryDetailResponse(detail cisvc.RepositoryDetail) apiv1.RepositoryResp {
+func repositoryDetailResponse(detail cisvc.RepositoryDetail) pomeloorbit.RepositoryResp {
 	item := detail.Repository
-	return apiv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return pomeloorbit.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryUrl: item.RepositoryURL, HasCredential: item.GitCredentialId != nil, GitCredentialId: transportresponse.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), DefaultBranch: item.DefaultBranch, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func repositoryWebhookResponse(item model.RepositoryWebhook) apiv1.RepositoryWebhookResp {
-	return apiv1.RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Secret: item.EncryptedSecret, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func repositoryWebhookResponse(item model.RepositoryWebhook) pomeloorbit.RepositoryWebhookResp {
+	return pomeloorbit.RepositoryWebhookResp{Id: item.Id, RepositoryId: item.RepositoryId, Name: item.Name, TemplateId: item.TemplateId, BranchFilter: item.BranchFilter, Secret: item.EncryptedSecret, Enabled: item.Enabled, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func requestHeaders(r *http.Request) map[string]string {

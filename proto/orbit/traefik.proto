@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package orbit.api.v1;
+
+
+message TraefikRouterResp {
+  string name = 1;
+  string provider = 2;
+  string status = 3;
+  string rule = 4;
+  string service = 5;
+  repeated string entrypoints = 6;
+  bool tls = 7;
+}
+
+message TraefikConfigResp {
+  string dashboard_domain = 1;
+  bool https_enabled = 2;
+}
+
+message TraefikRouteListResp {
+  repeated TraefikRouterResp items = 1;
+  int32 total = 2;
+}

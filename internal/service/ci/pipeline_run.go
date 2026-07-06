@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"backend/internal/apperror"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 type PipelineRunTriggerInput struct {

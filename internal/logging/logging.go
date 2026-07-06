@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func New(cfg config.LoggingConfig) (*slog.Logger, func() error, error) {

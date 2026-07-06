@@ -1,16 +1,16 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"backend/internal/repository/model"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 func TestTraefikRouteEndpointsRequireAuth(t *testing.T) {
@@ -62,7 +62,7 @@ func TestTraefikRouteConfigWithoutDashboardRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp apiv1.TraefikConfigResp
+	var resp pomeloorbit.TraefikConfigResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp apiv1.TraefikConfigResp
+	var resp pomeloorbit.TraefikConfigResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestTraefikRouteListReturnsRouters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var resp apiv1.TraefikRouteListResp
+	var resp pomeloorbit.TraefikRouteListResp
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}

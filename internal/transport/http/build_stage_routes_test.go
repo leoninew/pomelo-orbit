@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +20,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected build stage create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.BuildStageResp
+	var created pomeloorbit.BuildStageResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +33,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var stages apiv1.BuildStagePaginatedResp
+	var stages pomeloorbit.BuildStagePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&stages); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected build stage update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.BuildStageResp
+	var updated pomeloorbit.BuildStageResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestBuildStageRoutes(t *testing.T) {
 	if duplicateRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected build stage duplicate status 201, got %d: %s", duplicateRecorder.Code, duplicateRecorder.Body.String())
 	}
-	var duplicated apiv1.BuildStageResp
+	var duplicated pomeloorbit.BuildStageResp
 	if err := json.NewDecoder(duplicateRecorder.Body).Decode(&duplicated); err != nil {
 		t.Fatal(err)
 	}

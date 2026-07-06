@@ -1,10 +1,10 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -25,7 +25,7 @@ func TestPipelineRunDetailRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run detail status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run apiv1.PipelineRunResp
+	var run pomeloorbit.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestPipelineRunListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var runs apiv1.PipelineRunPaginatedResp
+	var runs pomeloorbit.PipelineRunPaginatedResp
 	if err := json.NewDecoder(recorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestPipelineStageLogRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected stage log status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var logResp apiv1.PipelineStageLogResp
+	var logResp pomeloorbit.PipelineStageLogResp
 	if err := json.NewDecoder(recorder.Body).Decode(&logResp); err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestPipelineRunCancelRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected pipeline run cancel status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run apiv1.PipelineRunResp
+	var run pomeloorbit.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestPipelineRunRetryRoute(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected pipeline run retry status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run apiv1.PipelineRunResp
+	var run pomeloorbit.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}

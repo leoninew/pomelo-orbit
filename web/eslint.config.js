@@ -3,6 +3,7 @@ import pluginVue from 'eslint-plugin-vue'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier'
 import stylistic from '@stylistic/eslint-plugin'
+import importPlugin from 'eslint-plugin-import'
 
 export default [
 	{
@@ -23,8 +24,20 @@ export default [
 	{
 		plugins: {
 			'@stylistic': stylistic,
+			import: importPlugin,
+		},
+		settings: {
+			'import/resolver': {
+				alias: {
+					map: [['@', './src']],
+					extensions: ['.ts', '.vue', '.d.ts', '.tsx', '.js'],
+				},
+				node: {},
+			},
+			'import/core-modules': ['vue', 'vue-router', 'vue-i18n', 'lucide-vue-next'],
 		},
 		rules: {
+			'import/no-unresolved': 'error',
 			// Vue 规则
 			'vue/multi-word-component-names': 'off',
 			'vue/no-v-html': 'warn',

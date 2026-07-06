@@ -1,8 +1,8 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +22,7 @@ func TestArtifactListRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts apiv1.ArtifactPaginatedResp
+	var artifacts pomeloorbit.ArtifactPaginatedResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestArtifactListFilters(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected filtered artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts apiv1.ArtifactPaginatedResp
+	var artifacts pomeloorbit.ArtifactPaginatedResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestPipelineRunArtifactsRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected run artifact list status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var artifacts apiv1.PipelineRunArtifactListResp
+	var artifacts pomeloorbit.PipelineRunArtifactListResp
 	if err := json.NewDecoder(recorder.Body).Decode(&artifacts); err != nil {
 		t.Fatal(err)
 	}

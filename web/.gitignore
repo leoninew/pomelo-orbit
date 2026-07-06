@@ -5,7 +5,6 @@ node_modules/
 dist/
 build/
 components.d.ts
-gen/
 
 # Test
 coverage

@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"sync"
 
-	"backend/internal/bootstrap"
-	"backend/internal/config"
-	"backend/internal/db"
+	"gitee.com/leoninew/pomelo-orbit/internal/bootstrap"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/db"
 )
 
 type App struct {

@@ -1,17 +1,17 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	cdsvc "backend/internal/service/cd"
-	"backend/internal/status"
+	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 func TestApplicationRoutesCRUD(t *testing.T) {
@@ -26,7 +26,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.ApplicationResp
+	var created pomeloorbit.ApplicationResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list apiv1.ApplicationPaginatedResp
+	var list pomeloorbit.ApplicationPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.ApplicationResp
+	var updated pomeloorbit.ApplicationResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestDeployApplicationEnqueuesForceRecreateTask(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.ApplicationResp
+	var created pomeloorbit.ApplicationResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestDeployApplicationEnqueuesForceRecreateTask(t *testing.T) {
 	if deployRecorder.Code != http.StatusOK {
 		t.Fatalf("expected deploy status 200, got %d: %s", deployRecorder.Code, deployRecorder.Body.String())
 	}
-	var deployResp apiv1.DeploymentActionResp
+	var deployResp pomeloorbit.DeploymentActionResp
 	if err := json.NewDecoder(deployRecorder.Body).Decode(&deployResp); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestStopApplicationEnqueuesTask(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.ApplicationResp
+	var created pomeloorbit.ApplicationResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestStopApplicationEnqueuesTask(t *testing.T) {
 	if stopRecorder.Code != http.StatusOK {
 		t.Fatalf("expected stop status 200, got %d: %s", stopRecorder.Code, stopRecorder.Body.String())
 	}
-	var stopResp apiv1.DeploymentActionResp
+	var stopResp pomeloorbit.DeploymentActionResp
 	if err := json.NewDecoder(stopRecorder.Body).Decode(&stopResp); err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if importRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application import status 201, got %d: %s", importRecorder.Code, importRecorder.Body.String())
 	}
-	var imported apiv1.ApplicationResp
+	var imported pomeloorbit.ApplicationResp
 	if err := json.NewDecoder(importRecorder.Body).Decode(&imported); err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +313,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if exportRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application export status 200, got %d: %s", exportRecorder.Code, exportRecorder.Body.String())
 	}
-	var exported apiv1.ApplicationExportResp
+	var exported pomeloorbit.ApplicationExportResp
 	if err := json.NewDecoder(exportRecorder.Body).Decode(&exported); err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if fileRecorder.Code != http.StatusOK {
 		t.Fatalf("expected application file create status 200, got %d: %s", fileRecorder.Code, fileRecorder.Body.String())
 	}
-	var createdFile apiv1.ConfigFileResp
+	var createdFile pomeloorbit.ConfigFileResp
 	if err := json.NewDecoder(fileRecorder.Body).Decode(&createdFile); err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 	if serviceRecorder.Code != http.StatusOK {
 		t.Fatalf("expected compose service status 200, got %d: %s", serviceRecorder.Code, serviceRecorder.Body.String())
 	}
-	var serviceList apiv1.ComposeServiceListResp
+	var serviceList pomeloorbit.ComposeServiceListResp
 	if err := json.NewDecoder(serviceRecorder.Body).Decode(&serviceList); err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +408,7 @@ func TestDeleteApplicationRejectsRunningStatus(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected application create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.ApplicationResp
+	var created pomeloorbit.ApplicationResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}

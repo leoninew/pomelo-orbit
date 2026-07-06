@@ -6,15 +6,11 @@ import type {
   UserResp,
   UserRoleUpdateReq,
   UserUpdateReq,
-} from '@/gen/orbit/api/v1/user';
+} from '@/gen/proto/orbit/user';
 import request from '@/utils/request';
 
 export const userApi = {
-  list(params: {
-    page: number;
-    per_page: number;
-    search?: string;
-  }): Promise<UserPaginatedResp> {
+  list(params: { page: number; per_page: number; search?: string }): Promise<UserPaginatedResp> {
     return request.get('/api/user', { params });
   },
 
@@ -46,4 +42,3 @@ export const userApi = {
     return request.delete(`/api/user/${id}`);
   },
 };
-

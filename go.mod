@@ -1,4 +1,4 @@
-module backend
+module gitee.com/leoninew/pomelo-orbit
 
 go 1.26.0
 

@@ -4,7 +4,7 @@ import type {
   BuildStagePaginatedResp,
   BuildStageResp,
   BuildStageUpdateReq,
-} from '@/gen/orbit/api/v1/build_stage';
+} from '@/gen/proto/orbit/build_stage';
 import request from '@/utils/request';
 
 export const buildStageApi = {

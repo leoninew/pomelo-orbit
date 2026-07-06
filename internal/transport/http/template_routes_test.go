@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,7 +21,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected template create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.PipelineTemplateResp
+	var created pomeloorbit.PipelineTemplateResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var templates apiv1.PipelineTemplatePaginatedResp
+	var templates pomeloorbit.PipelineTemplatePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&templates); err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected template update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.PipelineTemplateResp
+	var updated pomeloorbit.PipelineTemplateResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 	if duplicateRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected template duplicate status 201, got %d: %s", duplicateRecorder.Code, duplicateRecorder.Body.String())
 	}
-	var duplicated apiv1.PipelineTemplateResp
+	var duplicated pomeloorbit.PipelineTemplateResp
 	if err := json.NewDecoder(duplicateRecorder.Body).Decode(&duplicated); err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestPipelineTemplateResolveVariablesRoute(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("expected resolve variables status 200, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var variables apiv1.TemplateVariableResolveResp
+	var variables pomeloorbit.TemplateVariableResolveResp
 	if err := json.NewDecoder(recorder.Body).Decode(&variables); err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestPipelineTemplateRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func hasVariable(variables []*apiv1.VariableDeclarationResp, name string) bool {
+func hasVariable(variables []*pomeloorbit.VariableDeclarationResp, name string) bool {
 	for _, variable := range variables {
 		if variable != nil && variable.Name == name {
 			return true

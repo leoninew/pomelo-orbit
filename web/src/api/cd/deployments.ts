@@ -4,7 +4,7 @@ import type {
   DeploymentLogsResp,
   DeploymentPaginatedResp,
   DeploymentResp,
-} from '@/gen/orbit/api/v1/deployment';
+} from '@/gen/proto/orbit/deployment';
 import request from '@/utils/request';
 
 // 部署记录相关 API

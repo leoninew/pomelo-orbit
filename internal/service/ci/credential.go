@@ -6,10 +6,10 @@ import (
 	"errors"
 	"strings"
 
-	"backend/internal/apperror"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	"backend/internal/security"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/security"
 )
 
 const CredentialExportVersion = "1.0"

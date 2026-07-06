@@ -1,7 +1,14 @@
 version: v2
+
+managed:
+  enabled: true
+  override:
+    - file_option: go_package
+      value: gitee.com/leoninew/pomelo-orbit/internal/gen/proto;pomeloorbit
+
 clean: true
 plugins:
-  - local: protoc-gen-go
-    out: internal/gen
+  - local: bin/protoc-gen-go
+    out: internal/gen/proto
     opt:
       - paths=source_relative

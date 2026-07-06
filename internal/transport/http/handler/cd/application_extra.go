@@ -1,14 +1,14 @@
 package cdhandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository/model"
-	cdsvc "backend/internal/service/cd"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 func (h Handler) RegisterApplicationExtraRoutes(r router) {
@@ -38,7 +38,7 @@ func (h Handler) importApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationImportReq
+	var req pomeloorbit.ApplicationImportReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -74,15 +74,15 @@ func (h Handler) exportApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	resp := apiv1.ApplicationExportResp{Version: "1.0", Name: exported.Application.Name, Code: exported.Application.Code, ImagePullPolicy: exported.Application.ImagePullPolicy, RouteManaged: exported.Application.RouteManaged, ConfigFiles: []*apiv1.ApplicationExportConfigFileResp{}, ServiceConfigs: []*apiv1.ApplicationServiceConfigExportResp{}, Routes: []*apiv1.ApplicationExportRouteResp{}}
+	resp := pomeloorbit.ApplicationExportResp{Version: "1.0", Name: exported.Application.Name, Code: exported.Application.Code, ImagePullPolicy: exported.Application.ImagePullPolicy, RouteManaged: exported.Application.RouteManaged, ConfigFiles: []*pomeloorbit.ApplicationExportConfigFileResp{}, ServiceConfigs: []*pomeloorbit.ApplicationServiceConfigExportResp{}, Routes: []*pomeloorbit.ApplicationExportRouteResp{}}
 	for _, file := range exported.ConfigFiles {
-		resp.ConfigFiles = append(resp.ConfigFiles, &apiv1.ApplicationExportConfigFileResp{Path: file.Path, Content: file.Content})
+		resp.ConfigFiles = append(resp.ConfigFiles, &pomeloorbit.ApplicationExportConfigFileResp{Path: file.Path, Content: file.Content})
 	}
 	for _, config := range exported.ServiceConfigs {
-		resp.ServiceConfigs = append(resp.ServiceConfigs, &apiv1.ApplicationServiceConfigExportResp{ServiceName: config.ServiceName, Image: config.Image, Environment: config.Environment, Volumes: config.Volumes})
+		resp.ServiceConfigs = append(resp.ServiceConfigs, &pomeloorbit.ApplicationServiceConfigExportResp{ServiceName: config.ServiceName, Image: config.Image, Environment: config.Environment, Volumes: config.Volumes})
 	}
 	for _, route := range exported.Routes {
-		resp.Routes = append(resp.Routes, &apiv1.ApplicationExportRouteResp{ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port)})
+		resp.Routes = append(resp.Routes, &pomeloorbit.ApplicationExportRouteResp{ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port)})
 	}
 	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
@@ -97,11 +97,11 @@ func (h Handler) listApplicationFiles(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	resp := make([]apiv1.ConfigFileResp, 0, len(files))
+	resp := make([]pomeloorbit.ConfigFileResp, 0, len(files))
 	for _, file := range files {
 		resp = append(resp, configFileResponse(file))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ConfigFileListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ConfigFileListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -109,7 +109,7 @@ func (h Handler) createApplicationFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ConfigFileReq
+	var req pomeloorbit.ConfigFileReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -133,7 +133,7 @@ func (h Handler) readApplicationFile(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationFileContentResp{Content: file.Content, Path: file.Path})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationFileContentResp{Content: file.Content, Path: file.Path})
 }
 
 func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +141,7 @@ func (h Handler) updateApplicationFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ConfigFileReq
+	var req pomeloorbit.ConfigFileReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -172,7 +172,7 @@ func (h Handler) stopApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationStopReq
+	var req pomeloorbit.ApplicationStopReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -182,7 +182,7 @@ func (h Handler) stopApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.DeploymentActionResp{DeploymentId: deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
@@ -190,7 +190,7 @@ func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationRestartReq
+	var req pomeloorbit.ApplicationRestartReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -200,7 +200,7 @@ func (h Handler) restartApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.DeploymentActionResp{DeploymentId: deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) getApplicationStatus(w http.ResponseWriter, r *http.Request) {
@@ -210,10 +210,10 @@ func (h Handler) getApplicationStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	status, err := h.service.ApplicationStatus(r.Context(), current.Id, chi.URLParam(r, "app_id"))
 	if err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, &apiv1.ApplicationStatusResp{Status: status})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, &pomeloorbit.ApplicationStatusResp{Status: status})
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationStatusResp{Status: status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationStatusResp{Status: status})
 }
 
 func (h Handler) getApplicationLogs(w http.ResponseWriter, r *http.Request) {
@@ -223,10 +223,10 @@ func (h Handler) getApplicationLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	logs, err := h.service.ApplicationLogs(r.Context(), current.Id, chi.URLParam(r, "app_id"), transportresponse.QueryInt(r.URL.Query().Get("tail"), 100))
 	if err != nil {
-		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, &apiv1.ApplicationLogsResp{Logs: logs})
+		transportresponse.JSON(h.logger, w, http.StatusInternalServerError, &pomeloorbit.ApplicationLogsResp{Logs: logs})
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationLogsResp{Logs: logs})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationLogsResp{Logs: logs})
 }
 
 func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Request) {
@@ -234,7 +234,7 @@ func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationComposePreviewReq
+	var req pomeloorbit.ApplicationComposePreviewReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -244,7 +244,7 @@ func (h Handler) previewApplicationCompose(w http.ResponseWriter, r *http.Reques
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationComposePreviewResp{ComposeYaml: compose})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationComposePreviewResp{ComposeYaml: compose})
 }
 
 func (h Handler) listApplicationRoutes(w http.ResponseWriter, r *http.Request) {
@@ -257,11 +257,11 @@ func (h Handler) listApplicationRoutes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	resp := make([]apiv1.ApplicationRouteResp, 0, len(routes))
+	resp := make([]pomeloorbit.ApplicationRouteResp, 0, len(routes))
 	for _, route := range routes {
 		resp = append(resp, applicationRouteResponse(route))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationRouteListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationRouteListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) {
@@ -269,7 +269,7 @@ func (h Handler) createApplicationRoute(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationRouteReq
+	var req pomeloorbit.ApplicationRouteReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -288,7 +288,7 @@ func (h Handler) updateApplicationRoute(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationRouteReq
+	var req pomeloorbit.ApplicationRouteReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -324,11 +324,11 @@ func (h Handler) listApplicationComposeServices(w http.ResponseWriter, r *http.R
 		h.writeError(w, err)
 		return
 	}
-	resp := make([]apiv1.ComposeServiceResp, 0, len(views))
+	resp := make([]pomeloorbit.ComposeServiceResp, 0, len(views))
 	for _, view := range views {
-		resp = append(resp, apiv1.ComposeServiceResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort)})
+		resp = append(resp, pomeloorbit.ComposeServiceResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort)})
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ComposeServiceListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ComposeServiceListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) listApplicationServiceConfigs(w http.ResponseWriter, r *http.Request) {
@@ -341,7 +341,7 @@ func (h Handler) listApplicationServiceConfigs(w http.ResponseWriter, r *http.Re
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationServiceConfigListResp{Items: transportresponse.Ptrs(applicationServiceConfigResponses(views))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationServiceConfigListResp{Items: transportresponse.Ptrs(applicationServiceConfigResponses(views))})
 }
 
 func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.Request) {
@@ -349,7 +349,7 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationServiceConfigUpdateReq
+	var req pomeloorbit.ApplicationServiceConfigUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -363,22 +363,22 @@ func (h Handler) updateApplicationServiceConfig(w http.ResponseWriter, r *http.R
 	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
-func configFileResponse(file model.ApplicationConfigFile) apiv1.ConfigFileResp {
-	return apiv1.ConfigFileResp{Id: file.Id, Path: file.Path, CreatedAt: transportresponse.FormatTime(file.CreatedAt)}
+func configFileResponse(file model.ApplicationConfigFile) pomeloorbit.ConfigFileResp {
+	return pomeloorbit.ConfigFileResp{Id: file.Id, Path: file.Path, CreatedAt: transportresponse.FormatTime(file.CreatedAt)}
 }
 
-func applicationRouteResponse(route model.ApplicationRoute) apiv1.ApplicationRouteResp {
-	return apiv1.ApplicationRouteResp{Id: route.Id, ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port), CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
+func applicationRouteResponse(route model.ApplicationRoute) pomeloorbit.ApplicationRouteResp {
+	return pomeloorbit.ApplicationRouteResp{Id: route.Id, ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port), CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }
 
-func applicationServiceConfigResponses(views []cdsvc.ApplicationServiceConfigView) []apiv1.ApplicationServiceConfigResp {
-	resp := make([]apiv1.ApplicationServiceConfigResp, 0, len(views))
+func applicationServiceConfigResponses(views []cdsvc.ApplicationServiceConfigView) []pomeloorbit.ApplicationServiceConfigResp {
+	resp := make([]pomeloorbit.ApplicationServiceConfigResp, 0, len(views))
 	for _, view := range views {
 		resp = append(resp, applicationServiceConfigResponse(view))
 	}
 	return resp
 }
 
-func applicationServiceConfigResponse(view cdsvc.ApplicationServiceConfigView) apiv1.ApplicationServiceConfigResp {
-	return apiv1.ApplicationServiceConfigResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort), BaseImage: view.BaseImage, Image: view.Image, ConfigId: view.ConfigId, CreatedAt: view.CreatedAt, UpdatedAt: view.UpdatedAt}
+func applicationServiceConfigResponse(view cdsvc.ApplicationServiceConfigView) pomeloorbit.ApplicationServiceConfigResp {
+	return pomeloorbit.ApplicationServiceConfigResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort), BaseImage: view.BaseImage, Image: view.Image, ConfigId: view.ConfigId, CreatedAt: view.CreatedAt, UpdatedAt: view.UpdatedAt}
 }

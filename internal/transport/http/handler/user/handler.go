@@ -1,22 +1,22 @@
 package userhandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"context"
 	"database/sql"
 	"errors"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/apperror"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	usersvc "backend/internal/service/user"
-	"backend/internal/transport/http/handler/authz"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	usersvc "gitee.com/leoninew/pomelo-orbit/internal/service/user"
+	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type router interface {
@@ -85,17 +85,17 @@ func (h Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
 		return
 	}
-	resp := mapPage(users, func(user model.User) apiv1.UserListResp {
+	resp := mapPage(users, func(user model.User) pomeloorbit.UserListResp {
 		return userListResponse(user, rolesByUserId[user.Id])
 	})
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.UserPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.UserPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "user:write"); !ok {
 		return
 	}
-	var req apiv1.UserCreateReq
+	var req pomeloorbit.UserCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -136,7 +136,7 @@ func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.UserUpdateReq
+	var req pomeloorbit.UserUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -179,7 +179,7 @@ func (h Handler) updateUserRoles(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.UserRoleUpdateReq
+	var req pomeloorbit.UserRoleUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -233,7 +233,7 @@ func (h Handler) disableUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.UserDisableReq
+	var req pomeloorbit.UserDisableReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -260,7 +260,7 @@ func (h Handler) enableUser(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.UserEnableReq
+	var req pomeloorbit.UserEnableReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -324,18 +324,18 @@ func (h Handler) loadUserFromPath(w http.ResponseWriter, r *http.Request) (model
 	return user, true
 }
 
-func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user model.User) (apiv1.UserResp, bool) {
+func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user model.User) (pomeloorbit.UserResp, bool) {
 	roles, err := h.store.UserRoleDetails(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user roles failed", "user_id", user.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
-		return apiv1.UserResp{}, false
+		return pomeloorbit.UserResp{}, false
 	}
 	permissions, err := h.store.UserPermissions(r.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user permissions failed", "user_id", user.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
-		return apiv1.UserResp{}, false
+		return pomeloorbit.UserResp{}, false
 	}
 	roleIds := make([]string, 0, len(roles))
 	roleCodes := make([]string, 0, len(roles))
@@ -347,20 +347,20 @@ func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user mod
 	if err != nil {
 		h.logger.Error("load role permissions failed", "user_id", user.Id, "error", err)
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
-		return apiv1.UserResp{}, false
+		return pomeloorbit.UserResp{}, false
 	}
-	return apiv1.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes, Permissions: permissions, Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, permissionsByRoleId))}, true
+	return pomeloorbit.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes, Permissions: permissions, Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, permissionsByRoleId))}, true
 }
 
-func userListResponse(user model.User, roles []model.Role) apiv1.UserListResp {
-	return apiv1.UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, nil))}
+func userListResponse(user model.User, roles []model.Role) pomeloorbit.UserListResp {
+	return pomeloorbit.UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, nil))}
 }
 
-func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) []apiv1.UserRoleResp {
+func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) []pomeloorbit.UserRoleResp {
 	if roles == nil {
-		return []apiv1.UserRoleResp{}
+		return []pomeloorbit.UserRoleResp{}
 	}
-	items := make([]apiv1.UserRoleResp, 0, len(roles))
+	items := make([]pomeloorbit.UserRoleResp, 0, len(roles))
 	for _, role := range roles {
 		permissionCodes := []string{}
 		if permissionsByRoleId != nil {
@@ -369,7 +369,7 @@ func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) 
 				permissionCodes = []string{}
 			}
 		}
-		items = append(items, apiv1.UserRoleResp{Id: role.Id, Code: role.Code, Name: role.Name, PermissionCodes: permissionCodes})
+		items = append(items, pomeloorbit.UserRoleResp{Id: role.Id, Code: role.Code, Name: role.Name, PermissionCodes: permissionCodes})
 	}
 	return items
 }

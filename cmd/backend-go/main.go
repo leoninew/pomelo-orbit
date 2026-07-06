@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"backend/internal/app"
-	"backend/internal/config"
-	"backend/internal/logging"
+	"gitee.com/leoninew/pomelo-orbit/internal/app"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/logging"
 )
 
 func main() {

@@ -30,6 +30,7 @@ tasks:
     env:
       PATH: '{{.TASKFILE_DIR}}/bin:$PATH'
     cmds:
+      - ./bin/buf dep update
       - ./bin/buf generate
       - ./bin/buf generate . --template web/buf.gen.yaml --output web
 

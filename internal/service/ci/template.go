@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	"backend/internal/apperror"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
 )
 
 var pipelineTemplateCopyPattern = regexp.MustCompile(` copy( [0-9]+)?$`)

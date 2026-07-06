@@ -6,7 +6,7 @@ import type {
   CredentialPaginatedResp,
   CredentialResp,
   CredentialUpdateReq,
-} from '@/gen/orbit/api/v1/credential';
+} from '@/gen/proto/orbit/credential';
 import request from '@/utils/request';
 
 // Credential API
@@ -40,7 +40,10 @@ export const credentialApi = {
     return request.get(`/api/ci/credential/${id}/export`);
   },
 
-  importCredential(data: CredentialImportReq, params: { project_id: string }): Promise<CredentialResp> {
+  importCredential(
+    data: CredentialImportReq,
+    params: { project_id: string }
+  ): Promise<CredentialResp> {
     return request.post('/api/ci/credential/import', data, { params });
   },
 };

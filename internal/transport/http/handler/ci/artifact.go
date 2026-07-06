@@ -1,11 +1,11 @@
 package cihandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 
-	cisvc "backend/internal/service/ci"
-	transportresponse "backend/internal/transport/http/response"
+	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 func (h Handler) RegisterArtifactRoutes(r router) {
@@ -25,5 +25,5 @@ func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, artifactResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }

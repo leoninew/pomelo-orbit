@@ -3,8 +3,8 @@ package transporthttp
 import (
 	"net/http"
 
-	"backend/internal/repository/model"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 func (s Server) requirePermission(w http.ResponseWriter, r *http.Request, permission string) (currentUserResp, bool) {

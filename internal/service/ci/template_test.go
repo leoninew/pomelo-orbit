@@ -3,7 +3,7 @@ package cisvc
 import (
 	"testing"
 
-	"backend/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
 )
 
 func TestResolveStagesRendersScriptAndArtifacts(t *testing.T) {

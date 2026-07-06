@@ -1,17 +1,17 @@
 package cdhandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/pem"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/repository/model"
-	cdsvc "backend/internal/service/cd"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 func (h Handler) RegisterRouteRoutes(r router) {
@@ -47,7 +47,7 @@ func (h Handler) listRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, routeResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RoutePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RoutePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createRoute(w http.ResponseWriter, r *http.Request) {
@@ -55,7 +55,7 @@ func (h Handler) createRoute(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RouteCreateReq
+	var req pomeloorbit.RouteCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -88,7 +88,7 @@ func (h Handler) updateRoute(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RouteUpdateReq
+	var req pomeloorbit.RouteUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -119,7 +119,7 @@ func (h Handler) enableRoute(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RouteEnableReq
+	var req pomeloorbit.RouteEnableReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -128,7 +128,7 @@ func (h Handler) enableRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RouteEnableResp{Message: "Route enabled successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RouteEnableResp{Message: "Route enabled successfully"})
 }
 
 func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +136,7 @@ func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RouteDisableReq
+	var req pomeloorbit.RouteDisableReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -145,7 +145,7 @@ func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RouteDisableResp{Message: "Route disabled successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RouteDisableResp{Message: "Route disabled successfully"})
 }
 
 func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
@@ -153,7 +153,7 @@ func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RouteSyncReq
+	var req pomeloorbit.RouteSyncReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -162,7 +162,7 @@ func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.RouteSyncResp{Message: "Routes synced successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RouteSyncResp{Message: "Routes synced successfully"})
 }
 
 func (h Handler) uploadRouteCert(w http.ResponseWriter, r *http.Request) {
@@ -215,7 +215,7 @@ func (h Handler) enableRouteLetsEncrypt(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req apiv1.RouteLetsEncryptEnableReq
+	var req pomeloorbit.RouteLetsEncryptEnableReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -234,7 +234,7 @@ func (h Handler) enableRouteMkcert(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.RouteMkcertEnableReq
+	var req pomeloorbit.RouteMkcertEnableReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -280,24 +280,24 @@ func (h Handler) listTraefikRoutes(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
-func routeResponse(route model.Route) apiv1.RouteResp {
-	return apiv1.RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL, Enabled: route.Enabled, HttpsEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
+func routeResponse(route model.Route) pomeloorbit.RouteResp {
+	return pomeloorbit.RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL, Enabled: route.Enabled, HttpsEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }
 
-func traefikConfigResponse(config cdsvc.TraefikConfigResp) apiv1.TraefikConfigResp {
-	return apiv1.TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled}
+func traefikConfigResponse(config cdsvc.TraefikConfigResp) pomeloorbit.TraefikConfigResp {
+	return pomeloorbit.TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled}
 }
 
-func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) apiv1.TraefikRouteListResp {
-	items := make([]apiv1.TraefikRouterResp, 0, len(resp.Items))
+func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) pomeloorbit.TraefikRouteListResp {
+	items := make([]pomeloorbit.TraefikRouterResp, 0, len(resp.Items))
 	for _, item := range resp.Items {
 		items = append(items, traefikRouterResponse(item))
 	}
-	return apiv1.TraefikRouteListResp{Items: transportresponse.Ptrs(items), Total: int32(resp.Total)}
+	return pomeloorbit.TraefikRouteListResp{Items: transportresponse.Ptrs(items), Total: int32(resp.Total)}
 }
 
-func traefikRouterResponse(router cdsvc.TraefikRouterResp) apiv1.TraefikRouterResp {
-	return apiv1.TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, Tls: router.TLS}
+func traefikRouterResponse(router cdsvc.TraefikRouterResp) pomeloorbit.TraefikRouterResp {
+	return pomeloorbit.TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, Tls: router.TLS}
 }
 
 func splitPEM(content []byte) (string, string, bool) {

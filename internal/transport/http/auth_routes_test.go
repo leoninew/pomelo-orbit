@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,7 +32,7 @@ func TestAuthPasswordAndLoginHistoryRoutes(t *testing.T) {
 	if historyRecorder.Code != http.StatusOK {
 		t.Fatalf("expected login history status 200, got %d: %s", historyRecorder.Code, historyRecorder.Body.String())
 	}
-	var history apiv1.LoginHistoryPaginatedResp
+	var history pomeloorbit.LoginHistoryPaginatedResp
 	if err := json.NewDecoder(historyRecorder.Body).Decode(&history); err != nil {
 		t.Fatal(err)
 	}

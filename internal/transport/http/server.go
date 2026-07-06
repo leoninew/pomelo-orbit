@@ -14,35 +14,35 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"backend/internal/config"
-	apiv1 "backend/internal/gen/orbit/api/v1"
-	"backend/internal/infrastructure/logstore"
-	"backend/internal/repository"
-	cdrepo "backend/internal/repository/cd"
-	cirepo "backend/internal/repository/ci"
-	projectrepo "backend/internal/repository/project"
-	rolerepo "backend/internal/repository/role"
-	taskrepo "backend/internal/repository/task"
-	userrepo "backend/internal/repository/user"
-	authsvc "backend/internal/service/auth"
-	cdsvc "backend/internal/service/cd"
-	cisvc "backend/internal/service/ci"
-	projectsvc "backend/internal/service/project"
-	rolesvc "backend/internal/service/role"
-	settingssvc "backend/internal/service/settings"
-	tasksvc "backend/internal/service/task"
-	usersvc "backend/internal/service/user"
-	authhandler "backend/internal/transport/http/handler/auth"
-	"backend/internal/transport/http/handler/authz"
-	cdhandler "backend/internal/transport/http/handler/cd"
-	cihandler "backend/internal/transport/http/handler/ci"
-	projecthandler "backend/internal/transport/http/handler/project"
-	rolehandler "backend/internal/transport/http/handler/role"
-	settingshandler "backend/internal/transport/http/handler/settings"
-	taskhandler "backend/internal/transport/http/handler/task"
-	userhandler "backend/internal/transport/http/handler/user"
-	transportmiddleware "backend/internal/transport/http/middleware"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	"gitee.com/leoninew/pomelo-orbit/internal/infrastructure/logstore"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	cdrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/cd"
+	cirepo "gitee.com/leoninew/pomelo-orbit/internal/repository/ci"
+	projectrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/project"
+	rolerepo "gitee.com/leoninew/pomelo-orbit/internal/repository/role"
+	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
+	userrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/user"
+	authsvc "gitee.com/leoninew/pomelo-orbit/internal/service/auth"
+	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
+	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
+	projectsvc "gitee.com/leoninew/pomelo-orbit/internal/service/project"
+	rolesvc "gitee.com/leoninew/pomelo-orbit/internal/service/role"
+	settingssvc "gitee.com/leoninew/pomelo-orbit/internal/service/settings"
+	tasksvc "gitee.com/leoninew/pomelo-orbit/internal/service/task"
+	usersvc "gitee.com/leoninew/pomelo-orbit/internal/service/user"
+	authhandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/auth"
+	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
+	cdhandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/cd"
+	cihandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/ci"
+	projecthandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/project"
+	rolehandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/role"
+	settingshandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/settings"
+	taskhandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/task"
+	userhandler "gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/user"
+	transportmiddleware "gitee.com/leoninew/pomelo-orbit/internal/transport/http/middleware"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type chiRouter interface {
@@ -95,7 +95,7 @@ func (s Server) Handler() http.Handler {
 	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins, s.appCfg.Server.ApiPathPrefixes))
 
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		transportresponse.JSON(s.logger, w, http.StatusOK, &apiv1.HealthResp{Status: "ok"})
+		transportresponse.JSON(s.logger, w, http.StatusOK, &pomeloorbit.HealthResp{Status: "ok"})
 	})
 	authenticator := authz.New(s.logger, s.userRepository, s.tokenService)
 	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"backend/internal/config"
-	"backend/internal/infrastructure/logstore"
-	"backend/internal/repository/model"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/infrastructure/logstore"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {

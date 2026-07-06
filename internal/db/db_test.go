@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func TestOpenSQLiteConfiguresPragmas(t *testing.T) {

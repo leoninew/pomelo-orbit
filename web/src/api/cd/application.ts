@@ -11,28 +11,28 @@ import type {
   ApplicationStopReq,
   ApplicationUpdateReq,
   DeploymentActionResp,
-} from '@/gen/orbit/api/v1/application';
+} from '@/gen/proto/orbit/application';
 import type {
   ApplicationExportResp,
   ApplicationImportReq,
-} from '@/gen/orbit/api/v1/application_bundle';
+} from '@/gen/proto/orbit/application_bundle';
 import type {
   ApplicationRouteListResp,
   ApplicationRouteReq,
   ApplicationRouteResp,
-} from '@/gen/orbit/api/v1/application_route';
+} from '@/gen/proto/orbit/application_route';
 import type {
   ApplicationFileContentResp,
   ConfigFileListResp,
   ConfigFileReq,
   ConfigFileResp,
-} from '@/gen/orbit/api/v1/config_file';
+} from '@/gen/proto/orbit/config_file';
 import type {
   ApplicationServiceConfigListResp,
   ApplicationServiceConfigResp,
   ApplicationServiceConfigUpdateReq,
   ComposeServiceListResp,
-} from '@/gen/orbit/api/v1/service_config';
+} from '@/gen/proto/orbit/service_config';
 import request from '@/utils/request';
 
 // 应用相关 API
@@ -151,7 +151,11 @@ export const applicationApi = {
   },
 
   // 更新路由托管
-  updateRoute(id: string, routeId: string, data: ApplicationRouteReq): Promise<ApplicationRouteResp> {
+  updateRoute(
+    id: string,
+    routeId: string,
+    data: ApplicationRouteReq
+  ): Promise<ApplicationRouteResp> {
     return request.put(`/api/cd/application/${id}/route/${routeId}`, data);
   },
 

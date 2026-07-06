@@ -763,13 +763,13 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ApplicationResp } from '@/gen/orbit/api/v1/application';
-  import type { ApplicationRouteResp } from '@/gen/orbit/api/v1/application_route';
-  import type { ConfigFileResp } from '@/gen/orbit/api/v1/config_file';
+  import type { ApplicationResp } from '@/gen/proto/orbit/application';
+  import type { ApplicationRouteResp } from '@/gen/proto/orbit/application_route';
+  import type { ConfigFileResp } from '@/gen/proto/orbit/config_file';
   import type {
     ApplicationServiceConfigResp,
     ComposeServiceResp,
-  } from '@/gen/orbit/api/v1/service_config';
+  } from '@/gen/proto/orbit/service_config';
   import { appStatusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
@@ -1152,11 +1152,9 @@
     }
     try {
       await executeServiceConfigSave(async () => {
-        const saved = await applicationApi.updateServiceConfig(
-          applicationId,
-          active.service_name,
-          { image: serviceConfigForm.image }
-        );
+        const saved = await applicationApi.updateServiceConfig(applicationId, active.service_name, {
+          image: serviceConfigForm.image,
+        });
         const idx = serviceConfigs.value.findIndex(
           (item) => item.service_name === saved.service_name
         );

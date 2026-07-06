@@ -6,7 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func openMemoryDB(t *testing.T) *sqlx.DB {

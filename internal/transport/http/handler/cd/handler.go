@@ -1,18 +1,18 @@
 package cdhandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/apperror"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	cdsvc "backend/internal/service/cd"
-	"backend/internal/transport/http/handler/authz"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
+	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type router interface {
@@ -62,7 +62,7 @@ func (h Handler) listApplications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, applicationResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ApplicationPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ApplicationPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationCreateReq
+	var req pomeloorbit.ApplicationCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -103,7 +103,7 @@ func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationUpdateReq
+	var req pomeloorbit.ApplicationUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -134,7 +134,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ApplicationDeployReq
+	var req pomeloorbit.ApplicationDeployReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -144,7 +144,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.DeploymentActionResp{DeploymentId: deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
@@ -160,7 +160,7 @@ func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, deploymentResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.DeploymentPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.DeploymentPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) getDeployment(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +187,7 @@ func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.DeploymentLogsResp{Logs: log.Logs, Offset: int32(log.Offset), IsComplete: log.IsComplete, Status: log.Status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.DeploymentLogsResp{Logs: log.Logs, Offset: int32(log.Offset), IsComplete: log.IsComplete, Status: log.Status})
 }
 
 func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Request) {
@@ -200,7 +200,7 @@ func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Reque
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported})
 }
 
 func (h Handler) cancelDeployment(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +208,7 @@ func (h Handler) cancelDeployment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.DeploymentCancelReq
+	var req pomeloorbit.DeploymentCancelReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -229,20 +229,20 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func applicationResponse(item model.Application) apiv1.ApplicationResp {
+func applicationResponse(item model.Application) pomeloorbit.ApplicationResp {
 	return ApplicationResponse(item)
 }
 
-func deploymentResponse(item model.Deployment) apiv1.DeploymentResp {
+func deploymentResponse(item model.Deployment) pomeloorbit.DeploymentResp {
 	return DeploymentResponse(item)
 }
 
-func ApplicationResponse(item model.Application) apiv1.ApplicationResp {
-	return apiv1.ApplicationResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, ImagePullPolicy: item.ImagePullPolicy, Status: item.Status, RouteManaged: item.RouteManaged, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func ApplicationResponse(item model.Application) pomeloorbit.ApplicationResp {
+	return pomeloorbit.ApplicationResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, ImagePullPolicy: item.ImagePullPolicy, Status: item.Status, RouteManaged: item.RouteManaged, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func DeploymentResponse(item model.Deployment) apiv1.DeploymentResp {
-	return apiv1.DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, CommandText: item.CommandText, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: transportresponse.OptionalInt32(item.DurationMs), LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
+func DeploymentResponse(item model.Deployment) pomeloorbit.DeploymentResp {
+	return pomeloorbit.DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, CommandText: item.CommandText, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: transportresponse.OptionalInt32(item.DurationMs), LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
 }
 
 func mapPage[T any, U any](page repository.Page[T], convert func(T) U) repository.Page[U] {

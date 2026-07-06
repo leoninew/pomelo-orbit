@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	taskrepo "backend/internal/repository/task"
+	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {

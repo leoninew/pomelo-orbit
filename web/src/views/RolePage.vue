@@ -158,7 +158,7 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { RoleResp } from '@/gen/orbit/api/v1/role';
+  import type { RoleResp } from '@/gen/proto/orbit/role';
   import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();

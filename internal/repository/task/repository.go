@@ -9,10 +9,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"backend/internal/db"
-	dbsqlc "backend/internal/db/sqlc"
-	"backend/internal/repository/dbmodel"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/db"
+	dbsqlc "gitee.com/leoninew/pomelo-orbit/internal/db/sqlc"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/dbmodel"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 type Task struct {

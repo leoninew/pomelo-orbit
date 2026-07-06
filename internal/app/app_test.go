@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func TestMigrateAndMigrationVersion(t *testing.T) {

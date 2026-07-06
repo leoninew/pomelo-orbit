@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"backend/internal/infrastructure/logstore"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	"backend/internal/security"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/infrastructure/logstore"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/security"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 type Executor struct {

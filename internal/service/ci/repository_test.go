@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"backend/internal/apperror"
-	"backend/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
 )
 
 func TestNormalizeRepositoryCreateInputCompatibility(t *testing.T) {

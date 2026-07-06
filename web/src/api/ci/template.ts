@@ -1,4 +1,4 @@
-import type { PipelineSnapshotResp } from '@/gen/orbit/api/v1/snapshot';
+import type { PipelineSnapshotResp } from '@/gen/proto/orbit/snapshot';
 import type {
   PipelineTemplateCreateReq,
   PipelineTemplateDuplicateReq,
@@ -7,7 +7,7 @@ import type {
   PipelineTemplateUpdateReq,
   TemplateVariableResolveReq,
   TemplateVariableResolveResp,
-} from '@/gen/orbit/api/v1/template';
+} from '@/gen/proto/orbit/template';
 import request from '@/utils/request';
 
 export const pipelineTemplateApi = {

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"backend/internal/runtimepath"
+	"gitee.com/leoninew/pomelo-orbit/internal/runtimepath"
 )
 
 type cdPhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)

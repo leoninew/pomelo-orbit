@@ -1,11 +1,11 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -17,11 +17,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"backend/internal/config"
-	"backend/internal/db"
-	"backend/internal/repository"
-	taskrepo "backend/internal/repository/task"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/db"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 type fakeTurnstileVerifier struct {
@@ -75,7 +75,7 @@ func TestCreateAndGetTask(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.TaskResp
+	var created pomeloorbit.TaskResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestEnqueueCIPipelineRun(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created apiv1.TaskResp
+	var created pomeloorbit.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestEnqueueCDApplicationDeploy(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created apiv1.TaskResp
+	var created pomeloorbit.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestEnqueueCDApplicationStop(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var created apiv1.TaskResp
+	var created pomeloorbit.TaskResp
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestAuthLoginAndMe(t *testing.T) {
 	if loginRecorder.Code != http.StatusOK {
 		t.Fatalf("expected login status 200, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
 	}
-	var token apiv1.TokenResp
+	var token pomeloorbit.TokenResp
 	if err := json.NewDecoder(loginRecorder.Body).Decode(&token); err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestAuthLoginAndMe(t *testing.T) {
 	if meRecorder.Code != http.StatusOK {
 		t.Fatalf("expected me status 200, got %d: %s", meRecorder.Code, meRecorder.Body.String())
 	}
-	var me apiv1.UserInfoResp
+	var me pomeloorbit.UserInfoResp
 	if err := json.NewDecoder(meRecorder.Body).Decode(&me); err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func TestProjectAndDashboardLists(t *testing.T) {
 	if projectRecorder.Code != http.StatusOK {
 		t.Fatalf("expected project status 200, got %d", projectRecorder.Code)
 	}
-	var projectList apiv1.ProjectListResp
+	var projectList pomeloorbit.ProjectListResp
 	if err := json.NewDecoder(projectRecorder.Body).Decode(&projectList); err != nil {
 		t.Fatal(err)
 	}

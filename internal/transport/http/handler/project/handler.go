@@ -1,18 +1,18 @@
 package projecthandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
-	"backend/internal/apperror"
-	"backend/internal/repository/model"
-	projectsvc "backend/internal/service/project"
-	"backend/internal/transport/http/handler/authz"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	projectsvc "gitee.com/leoninew/pomelo-orbit/internal/service/project"
+	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type router interface {
@@ -54,11 +54,11 @@ func (h Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list projects")
 		return
 	}
-	resp := make([]apiv1.ProjectResp, 0, len(items))
+	resp := make([]pomeloorbit.ProjectResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, ProjectResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +66,7 @@ func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ProjectSaveReq
+	var req pomeloorbit.ProjectSaveReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -94,7 +94,7 @@ func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ProjectSaveReq
+	var req pomeloorbit.ProjectSaveReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -117,7 +117,7 @@ func (h Handler) deprecateProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ProjectDeprecateReq
+	var req pomeloorbit.ProjectDeprecateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -142,7 +142,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req apiv1.ProjectMemberReq
+	var req pomeloorbit.ProjectMemberReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -152,7 +152,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +165,7 @@ func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, projectId string) {
@@ -175,7 +175,7 @@ func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, pro
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list project members")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) loadProjectForCurrentUser(w http.ResponseWriter, r *http.Request) (model.Project, bool) {
@@ -203,8 +203,8 @@ func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func ProjectResponse(project model.Project) apiv1.ProjectResp {
-	return apiv1.ProjectResp{
+func ProjectResponse(project model.Project) pomeloorbit.ProjectResp {
+	return pomeloorbit.ProjectResp{
 		Id:        project.Id,
 		Name:      project.Name,
 		Code:      project.Code,
@@ -214,14 +214,14 @@ func ProjectResponse(project model.Project) apiv1.ProjectResp {
 	}
 }
 
-func projectMemberResponses(users []model.User) []apiv1.ProjectMemberResp {
-	resp := make([]apiv1.ProjectMemberResp, 0, len(users))
+func projectMemberResponses(users []model.User) []pomeloorbit.ProjectMemberResp {
+	resp := make([]pomeloorbit.ProjectMemberResp, 0, len(users))
 	for _, user := range users {
 		resp = append(resp, ProjectMemberResponse(user))
 	}
 	return resp
 }
 
-func ProjectMemberResponse(user model.User) apiv1.ProjectMemberResp {
-	return apiv1.ProjectMemberResp{Id: user.Id, Username: user.Username, Email: user.Email, Status: user.Status, AuthSource: user.AuthSource, LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt)}
+func ProjectMemberResponse(user model.User) pomeloorbit.ProjectMemberResp {
+	return pomeloorbit.ProjectMemberResp{Id: user.Id, Username: user.Username, Email: user.Email, Status: user.Status, AuthSource: user.AuthSource, LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt)}
 }

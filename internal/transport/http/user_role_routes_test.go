@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +17,7 @@ func testToken(t *testing.T, server Server) string {
 	if loginRecorder.Code != http.StatusOK {
 		t.Fatalf("expected login status 200, got %d: %s", loginRecorder.Code, loginRecorder.Body.String())
 	}
-	var token apiv1.TokenResp
+	var token pomeloorbit.TokenResp
 	if err := json.NewDecoder(loginRecorder.Body).Decode(&token); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestUserRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected user list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var users apiv1.UserPaginatedResp
+	var users pomeloorbit.UserPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&users); err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestUserRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected user create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.UserResp
+	var created pomeloorbit.UserResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestUserRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected user update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.UserResp
+	var updated pomeloorbit.UserResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestUserRoutes(t *testing.T) {
 	if roleRecorder.Code != http.StatusOK {
 		t.Fatalf("expected user role update status 200, got %d: %s", roleRecorder.Code, roleRecorder.Body.String())
 	}
-	var withRole apiv1.UserResp
+	var withRole pomeloorbit.UserResp
 	if err := json.NewDecoder(roleRecorder.Body).Decode(&withRole); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestRoleRoutes(t *testing.T) {
 	if permissionsRecorder.Code != http.StatusOK {
 		t.Fatalf("expected permission list status 200, got %d: %s", permissionsRecorder.Code, permissionsRecorder.Body.String())
 	}
-	var permissions apiv1.PermissionListResp
+	var permissions pomeloorbit.PermissionListResp
 	if err := json.NewDecoder(permissionsRecorder.Body).Decode(&permissions); err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestRoleRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected role create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.RoleResp
+	var created pomeloorbit.RoleResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestRoleRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected role list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var roles apiv1.RolePaginatedResp
+	var roles pomeloorbit.RolePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&roles); err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestRoleRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected role update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.RoleResp
+	var updated pomeloorbit.RoleResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}

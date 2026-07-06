@@ -63,7 +63,7 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import SelectControl from '@/components/SelectControl.vue';
-  import type { ApplicationCreateReq } from '@/gen/orbit/api/v1/application';
+  import type { ApplicationCreateReq } from '@/gen/proto/orbit/application';
 
   const props = defineProps<{
     form: ApplicationCreateReq;

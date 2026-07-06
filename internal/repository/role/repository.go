@@ -9,11 +9,11 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"backend/internal/db"
-	dbsqlc "backend/internal/db/sqlc"
-	"backend/internal/repository"
-	"backend/internal/repository/dbmodel"
-	"backend/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/db"
+	dbsqlc "gitee.com/leoninew/pomelo-orbit/internal/db/sqlc"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/dbmodel"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
 )
 
 type Repository struct {

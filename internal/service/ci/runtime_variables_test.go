@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"backend/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
 )
 
 func TestBuildPipelineRunVariablesMergesDefaultsAndProtectsBuiltins(t *testing.T) {

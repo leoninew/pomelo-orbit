@@ -1,14 +1,14 @@
 package settingshandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 
-	"backend/internal/apperror"
-	settingssvc "backend/internal/service/settings"
-	"backend/internal/transport/http/handler/authz"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	settingssvc "gitee.com/leoninew/pomelo-orbit/internal/service/settings"
+	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type router interface {
@@ -50,7 +50,7 @@ func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
 		return
 	}
-	var req apiv1.SystemConfigUpdateReq
+	var req pomeloorbit.SystemConfigUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -68,7 +68,7 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
 		return
 	}
-	var req apiv1.SystemConfigResetReq
+	var req pomeloorbit.SystemConfigResetReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -89,14 +89,14 @@ func (h Handler) writeError(w http.ResponseWriter, err error) {
 	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
 }
 
-func systemConfigResponse(config settingssvc.SystemConfig) apiv1.SystemConfigResp {
-	items := make([]apiv1.ConfigItemResp, 0, len(config.Items))
+func systemConfigResponse(config settingssvc.SystemConfig) pomeloorbit.SystemConfigResp {
+	items := make([]pomeloorbit.ConfigItemResp, 0, len(config.Items))
 	for _, item := range config.Items {
 		items = append(items, configItemResponse(item))
 	}
-	return apiv1.SystemConfigResp{Items: transportresponse.Ptrs(items)}
+	return pomeloorbit.SystemConfigResp{Items: transportresponse.Ptrs(items)}
 }
 
-func configItemResponse(item settingssvc.ConfigItem) apiv1.ConfigItemResp {
-	return apiv1.ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
+func configItemResponse(item settingssvc.ConfigItem) pomeloorbit.ConfigItemResp {
+	return pomeloorbit.ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
 }

@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +20,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.RepositoryResp
+	var created pomeloorbit.RepositoryResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var repositories apiv1.RepositoryPaginatedResp
+	var repositories pomeloorbit.RepositoryPaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&repositories); err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if runRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository run list status 200, got %d: %s", runRecorder.Code, runRecorder.Body.String())
 	}
-	var runs apiv1.PipelineRunPaginatedResp
+	var runs pomeloorbit.PipelineRunPaginatedResp
 	if err := json.NewDecoder(runRecorder.Body).Decode(&runs); err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.RepositoryResp
+	var updated pomeloorbit.RepositoryResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected webhook create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.RepositoryWebhookResp
+	var created pomeloorbit.RepositoryWebhookResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var webhookList apiv1.RepositoryWebhookListResp
+	var webhookList pomeloorbit.RepositoryWebhookListResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&webhookList); err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected webhook update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.RepositoryWebhookResp
+	var updated pomeloorbit.RepositoryWebhookResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestRepositoryTriggerRouteCreatesSnapshotWhenMissing(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run apiv1.PipelineRunResp
+	var run pomeloorbit.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestRepositoryTriggerRouteReusesSameVersionSnapshot(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run apiv1.PipelineRunResp
+	var run pomeloorbit.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestRepositoryTriggerRouteCreatesNewSnapshotForTemplateVersion(t *testing.T
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected repository trigger status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var run apiv1.PipelineRunResp
+	var run pomeloorbit.PipelineRunResp
 	if err := json.NewDecoder(recorder.Body).Decode(&run); err != nil {
 		t.Fatal(err)
 	}

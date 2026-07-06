@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func TestNewReturnsLogger(t *testing.T) {

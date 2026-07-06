@@ -324,7 +324,7 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ArtifactConfigResp, BuildStageResp } from '@/gen/orbit/api/v1/build_stage';
+  import type { ArtifactConfigResp, BuildStageResp } from '@/gen/proto/orbit/build_stage';
   import { formatTime } from '@/utils/time';
 
   const route = useRoute();

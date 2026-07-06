@@ -10,10 +10,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"backend/internal/db"
-	"backend/internal/repository"
-	"backend/internal/repository/model"
-	"backend/internal/status"
+	"gitee.com/leoninew/pomelo-orbit/internal/db"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository"
+	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
 )
 
 // Repository provides persistence for CD application, deployment, and route use cases.

@@ -1,9 +1,9 @@
 package transporthttp
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"bytes"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +26,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if createRecorder.Code != http.StatusCreated {
 		t.Fatalf("expected route create status 201, got %d: %s", createRecorder.Code, createRecorder.Body.String())
 	}
-	var created apiv1.RouteResp
+	var created pomeloorbit.RouteResp
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if listRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route list status 200, got %d: %s", listRecorder.Code, listRecorder.Body.String())
 	}
-	var list apiv1.RoutePaginatedResp
+	var list pomeloorbit.RoutePaginatedResp
 	if err := json.NewDecoder(listRecorder.Body).Decode(&list); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected route update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
-	var updated apiv1.RouteResp
+	var updated pomeloorbit.RouteResp
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if certRecorder.Code != http.StatusOK {
 		t.Fatalf("expected cert upload status 200, got %d: %s", certRecorder.Code, certRecorder.Body.String())
 	}
-	var withCert apiv1.RouteResp
+	var withCert pomeloorbit.RouteResp
 	if err := json.NewDecoder(certRecorder.Body).Decode(&withCert); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if leRecorder.Code != http.StatusOK {
 		t.Fatalf("expected letsencrypt status 200, got %d: %s", leRecorder.Code, leRecorder.Body.String())
 	}
-	var letsEncrypt apiv1.RouteResp
+	var letsEncrypt pomeloorbit.RouteResp
 	if err := json.NewDecoder(leRecorder.Body).Decode(&letsEncrypt); err != nil {
 		t.Fatal(err)
 	}
@@ -186,14 +186,14 @@ func TestRouteEndpointsRequireAuth(t *testing.T) {
 	}
 }
 
-func createRouteForTest(t *testing.T, server Server, token string, body string) *apiv1.RouteResp {
+func createRouteForTest(t *testing.T, server Server, token string, body string) *pomeloorbit.RouteResp {
 	t.Helper()
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/cd/route?project_id="+testRouteProjectId, bytes.NewBufferString(body), token))
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected route create status 201, got %d: %s", recorder.Code, recorder.Body.String())
 	}
-	var route apiv1.RouteResp
+	var route pomeloorbit.RouteResp
 	if err := json.NewDecoder(recorder.Body).Decode(&route); err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package orbit.api.v1;
+
+
+import "google/protobuf/struct.proto";
+
+message HealthResp {
+  string status = 1;
+}
+
+message StringListResp {
+  repeated string items = 1;
+}
+
+message VariableDeclarationResp {
+  string name = 1;
+  string description = 2;
+  google.protobuf.Value default = 3;
+  google.protobuf.Value value = 4;
+  bool secret = 5;
+  string source = 6;
+  bool editable = 7;
+}
+
+message VariableDeclarationReq {
+  string name = 1;
+  string description = 2;
+  google.protobuf.Value default = 3;
+  google.protobuf.Value value = 4;
+  bool secret = 5;
+  string source = 6;
+  bool editable = 7;
+}
+
+message VariableDeclarationListReq {
+  repeated VariableDeclarationReq items = 1;
+}
+
+message RawJsonReq {
+  google.protobuf.Struct fields = 1;
+}

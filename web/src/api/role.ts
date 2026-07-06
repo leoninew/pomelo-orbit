@@ -4,15 +4,11 @@ import type {
   RolePaginatedResp,
   RoleResp,
   RoleUpdateReq,
-} from '@/gen/orbit/api/v1/role';
+} from '@/gen/proto/orbit/role';
 import request from '@/utils/request';
 
 export const roleApi = {
-  list(params: {
-    page: number;
-    per_page: number;
-    search?: string;
-  }): Promise<RolePaginatedResp> {
+  list(params: { page: number; per_page: number; search?: string }): Promise<RolePaginatedResp> {
     return request.get('/api/role', { params });
   },
   get(id: string): Promise<RoleResp> {

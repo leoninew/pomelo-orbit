@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package orbit.api.v1;
+
+
+message PermissionResp {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  optional string description = 4;
+}
+
+message PermissionListResp {
+  repeated PermissionResp items = 1;
+}
+
+message RoleResp {
+  string id = 1;
+  string code = 2;
+  string name = 3;
+  optional string description = 4;
+  string created_at = 5;
+  string updated_at = 6;
+  repeated string permission_codes = 7;
+}
+
+message RoleCreateReq {
+  string code = 1;
+  string name = 2;
+  optional string description = 3;
+  repeated string permission_codes = 4;
+}
+
+message RoleUpdateReq {
+  string code = 1;
+  string name = 2;
+  optional string description = 3;
+  repeated string permission_codes = 4;
+}
+
+message RolePaginatedResp {
+  repeated RoleResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

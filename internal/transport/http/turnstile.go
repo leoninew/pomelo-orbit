@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 type turnstileVerifier interface {

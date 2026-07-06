@@ -69,7 +69,7 @@
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { LoginHistoryResp } from '@/gen/orbit/api/v1/auth';
+  import type { LoginHistoryResp } from '@/gen/proto/orbit/auth';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 

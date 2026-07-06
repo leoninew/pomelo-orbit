@@ -5,7 +5,7 @@ import type {
   ProjectMemberReq,
   ProjectResp,
   ProjectSaveReq,
-} from '@/gen/orbit/api/v1/project';
+} from '@/gen/proto/orbit/project';
 import request from '@/utils/request';
 
 export const projectApi = {

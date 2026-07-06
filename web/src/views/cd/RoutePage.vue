@@ -180,7 +180,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
-  import type { RouteResp } from '@/gen/orbit/api/v1/route';
+  import type { RouteResp } from '@/gen/proto/orbit/route';
   import { routeApi } from '@/api/cd/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';

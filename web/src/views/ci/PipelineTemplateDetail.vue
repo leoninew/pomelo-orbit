@@ -174,7 +174,7 @@
             {{ t('pipelineTemplate.addVariable') }}
           </button>
         </div>
-        <VariableDeclarationRespsTable
+        <VariableDeclarationsTable
           :declarations="declarations"
           :readonly="false"
           @edit="openEditVarModal"
@@ -450,16 +450,13 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { BuildStageResp } from '@/gen/orbit/api/v1/build_stage';
-  import type { RepositoryResp } from '@/gen/orbit/api/v1/repository';
-  import type {
-    PipelineTemplateResp,
-    StageOrchestrationResp,
-  } from '@/gen/orbit/api/v1/template';
-  import type { VariableDeclarationResp } from '@/gen/orbit/api/v1/common';
+  import type { BuildStageResp } from '@/gen/proto/orbit/build_stage';
+  import type { RepositoryResp } from '@/gen/proto/orbit/repository';
+  import type { PipelineTemplateResp, StageOrchestrationResp } from '@/gen/proto/orbit/template';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/common';
   import { detectCircularDependencies } from '@/utils/dag';
   import StageDAGView from './components/StageDAGView.vue';
-  import VariableDeclarationRespsTable from './components/VariableDeclarationRespsTable.vue';
+  import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
 
   interface ArtifactDeclaration {
     stageName: string;

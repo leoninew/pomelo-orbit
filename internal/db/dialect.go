@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	"backend/internal/config"
+	"gitee.com/leoninew/pomelo-orbit/internal/config"
 )
 
 func NowExpr(driver string) string {

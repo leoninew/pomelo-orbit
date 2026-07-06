@@ -1,8 +1,8 @@
 package taskhandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
 	"encoding/json"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -11,11 +11,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"backend/internal/apperror"
-	taskrepo "backend/internal/repository/task"
-	tasksvc "backend/internal/service/task"
-	"backend/internal/status"
-	transportresponse "backend/internal/transport/http/response"
+	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
+	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
+	tasksvc "gitee.com/leoninew/pomelo-orbit/internal/service/task"
+	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 type router interface {
@@ -42,7 +42,7 @@ func (h Handler) Register(r router) {
 }
 
 func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
-	var req apiv1.CreateTaskReq
+	var req pomeloorbit.CreateTaskReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -58,7 +58,7 @@ func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) enqueueCIPipelineRun(w http.ResponseWriter, r *http.Request) {
-	var req apiv1.PipelineRunExecuteTaskReq
+	var req pomeloorbit.PipelineRunExecuteTaskReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -72,7 +72,7 @@ func (h Handler) enqueueCIPipelineRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) enqueueCDApplicationDeploy(w http.ResponseWriter, r *http.Request) {
-	var req apiv1.ApplicationDeployTaskReq
+	var req pomeloorbit.ApplicationDeployTaskReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -87,7 +87,7 @@ func (h Handler) enqueueCDApplicationDeploy(w http.ResponseWriter, r *http.Reque
 }
 
 func (h Handler) enqueueCDApplicationRestart(w http.ResponseWriter, r *http.Request) {
-	var req apiv1.ApplicationRestartTaskReq
+	var req pomeloorbit.ApplicationRestartTaskReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -102,7 +102,7 @@ func (h Handler) enqueueCDApplicationRestart(w http.ResponseWriter, r *http.Requ
 }
 
 func (h Handler) enqueueCDApplicationStop(w http.ResponseWriter, r *http.Request) {
-	var req apiv1.ApplicationStopTaskReq
+	var req pomeloorbit.ApplicationStopTaskReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -136,8 +136,8 @@ func (h Handler) getTask(w http.ResponseWriter, r *http.Request) {
 	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
-func taskResponse(item *taskrepo.Task) apiv1.TaskResp {
-	return apiv1.TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+func taskResponse(item *taskrepo.Task) pomeloorbit.TaskResp {
+	return pomeloorbit.TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func rawPayload(payload *structpb.Value) json.RawMessage {

@@ -1,13 +1,13 @@
 package cihandler
 
 import (
-	apiv1 "backend/internal/gen/orbit/api/v1"
+	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	cisvc "backend/internal/service/ci"
-	transportresponse "backend/internal/transport/http/response"
+	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
+	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
 )
 
 func (h Handler) RegisterTemplateRoutes(r router) {
@@ -33,7 +33,7 @@ func (h Handler) listPipelineTemplates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(items, pipelineTemplateResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req apiv1.PipelineTemplateCreateReq
+	var req pomeloorbit.PipelineTemplateCreateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -74,7 +74,7 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	var req apiv1.PipelineTemplateUpdateReq
+	var req pomeloorbit.PipelineTemplateUpdateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -115,7 +115,7 @@ func (h Handler) duplicatePipelineTemplate(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	var req apiv1.PipelineTemplateDuplicateReq
+	var req pomeloorbit.PipelineTemplateDuplicateReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -134,7 +134,7 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 	if !ok {
 		return
 	}
-	var req apiv1.TemplateVariableResolveReq
+	var req pomeloorbit.TemplateVariableResolveReq
 	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -144,23 +144,23 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &apiv1.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
 }
 
-func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) apiv1.PipelineTemplateResp {
+func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) pomeloorbit.PipelineTemplateResp {
 	item := detail.Template
-	return apiv1.PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: transportresponse.Ptrs(orchestrationResponse(detail.Orchestration)), Stages: transportresponse.Ptrs(buildStageDetailsResponse(detail.Stages)), VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return pomeloorbit.PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: transportresponse.Ptrs(orchestrationResponse(detail.Orchestration)), Stages: transportresponse.Ptrs(buildStageDetailsResponse(detail.Stages)), VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func orchestrationResponse(items []cisvc.StageOrchestration) []apiv1.StageOrchestrationResp {
-	resp := make([]apiv1.StageOrchestrationResp, 0, len(items))
+func orchestrationResponse(items []cisvc.StageOrchestration) []pomeloorbit.StageOrchestrationResp {
+	resp := make([]pomeloorbit.StageOrchestrationResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, apiv1.StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: int32(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int32(item.SortOrder)})
+		resp = append(resp, pomeloorbit.StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: int32(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int32(item.SortOrder)})
 	}
 	return resp
 }
 
-func serviceOrchestration(items []*apiv1.StageOrchestrationReq) []cisvc.StageOrchestration {
+func serviceOrchestration(items []*pomeloorbit.StageOrchestrationReq) []cisvc.StageOrchestration {
 	resp := make([]cisvc.StageOrchestration, 0, len(items))
 	for _, item := range items {
 		if item == nil {
@@ -171,38 +171,38 @@ func serviceOrchestration(items []*apiv1.StageOrchestrationReq) []cisvc.StageOrc
 	return resp
 }
 
-func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []apiv1.BuildStageResp {
-	resp := make([]apiv1.BuildStageResp, 0, len(items))
+func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []pomeloorbit.BuildStageResp {
+	resp := make([]pomeloorbit.BuildStageResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, buildStageDetailResponse(item))
 	}
 	return resp
 }
 
-func artifactConfigsResponse(items []cisvc.ArtifactConfig) []apiv1.ArtifactConfigResp {
+func artifactConfigsResponse(items []cisvc.ArtifactConfig) []pomeloorbit.ArtifactConfigResp {
 	if items == nil {
 		return nil
 	}
-	resp := make([]apiv1.ArtifactConfigResp, 0, len(items))
+	resp := make([]pomeloorbit.ArtifactConfigResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, apiv1.ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
+		resp = append(resp, pomeloorbit.ArtifactConfigResp{Type: item.Type, Path: item.Path, Name: item.Name})
 	}
 	return resp
 }
 
-func variableDeclarationResponses(items []map[string]any) []apiv1.VariableDeclarationResp {
-	resp := make([]apiv1.VariableDeclarationResp, 0, len(items))
+func variableDeclarationResponses(items []map[string]any) []pomeloorbit.VariableDeclarationResp {
+	resp := make([]pomeloorbit.VariableDeclarationResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, variableDeclarationResponse(item))
 	}
 	return resp
 }
 
-func variableDeclarationResponse(item map[string]any) apiv1.VariableDeclarationResp {
-	return apiv1.VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: transportresponse.ProtoValue(item["default"]), Value: transportresponse.ProtoValue(item["value"]), Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
+func variableDeclarationResponse(item map[string]any) pomeloorbit.VariableDeclarationResp {
+	return pomeloorbit.VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: transportresponse.ProtoValue(item["default"]), Value: transportresponse.ProtoValue(item["value"]), Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
 }
 
-func variableDeclarationRequestMaps(items []*apiv1.VariableDeclarationReq) []map[string]any {
+func variableDeclarationRequestMaps(items []*pomeloorbit.VariableDeclarationReq) []map[string]any {
 	resp := make([]map[string]any, 0, len(items))
 	for _, item := range items {
 		if item == nil {
@@ -213,7 +213,7 @@ func variableDeclarationRequestMaps(items []*apiv1.VariableDeclarationReq) []map
 	return resp
 }
 
-func variableDeclarationRequestMap(item *apiv1.VariableDeclarationReq) map[string]any {
+func variableDeclarationRequestMap(item *pomeloorbit.VariableDeclarationReq) map[string]any {
 	return map[string]any{"name": item.Name, "description": item.Description, "default": transportresponse.NativeValue(item.Default), "value": transportresponse.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable}
 }
 

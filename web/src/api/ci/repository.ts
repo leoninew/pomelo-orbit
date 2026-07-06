@@ -1,10 +1,10 @@
-import type { PipelineRunResp, PipelineRunTriggerReq } from '@/gen/orbit/api/v1/pipeline_run';
+import type { PipelineRunResp, PipelineRunTriggerReq } from '@/gen/proto/orbit/pipeline_run';
 import type {
   RepositoryCreateReq,
   RepositoryPaginatedResp,
   RepositoryResp,
   RepositoryUpdateReq,
-} from '@/gen/orbit/api/v1/repository';
+} from '@/gen/proto/orbit/repository';
 import request from '@/utils/request';
 
 export const repositoryApi = {

@@ -196,7 +196,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/template';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/template';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 

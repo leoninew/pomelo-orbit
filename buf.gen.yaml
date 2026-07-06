@@ -3,8 +3,11 @@ version: v2
 managed:
   enabled: true
   override:
-    - file_option: go_package
-      value: gitee.com/leoninew/pomelo-orbit/internal/gen/proto;pomeloorbit
+    - file_option: go_package_prefix
+      value: gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto
+  except:
+    - buf.build/googleapis/googleapis
+    - buf.build/grpc/grpc
 
 clean: true
 plugins:

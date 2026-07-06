@@ -145,7 +145,7 @@
   import { useToast } from '@/composables/useToast';
   import { PERMISSIONS } from '@/constants/permissions';
   import { useAuthStore } from '@/stores/auth';
-  import type { ConfigItemResp, SystemConfigResp } from '@/gen/proto/orbit/settings';
+  import type { ConfigItemResp, SystemConfigResp } from '@/gen/proto/orbit/v1/settings';
 
   const { t } = useI18n();
   const authStore = useAuthStore();

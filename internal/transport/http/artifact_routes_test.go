@@ -2,7 +2,7 @@ package transporthttp
 
 import (
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 	"net/http/httptest"
 	"testing"

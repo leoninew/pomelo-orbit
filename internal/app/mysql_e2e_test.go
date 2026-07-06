@@ -12,12 +12,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	"gitee.com/leoninew/pomelo-orbit/internal/db"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
-	transporthttp "gitee.com/leoninew/pomelo-orbit/internal/transport/http"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/db"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
+	transporthttp "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http"
 )
 
 func TestMySQLE2E(t *testing.T) {

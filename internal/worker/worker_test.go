@@ -11,9 +11,9 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/db"
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/db"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 func openTestDB(t *testing.T) *sqlx.DB {

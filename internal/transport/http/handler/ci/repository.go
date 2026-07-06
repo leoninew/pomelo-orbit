@@ -1,19 +1,19 @@
 package cihandler
 
 import (
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"io"
 	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
-	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type router interface {

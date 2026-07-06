@@ -8,8 +8,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 func TestRepositoryPipelineRunRepositorySnapshot(t *testing.T) {

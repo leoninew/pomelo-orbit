@@ -1,4 +1,4 @@
-import type { ArtifactPaginatedResp } from '@/gen/proto/orbit/artifact';
+import type { ArtifactPaginatedResp } from '@/gen/proto/orbit/v1/artifact';
 import request from '@/utils/request';
 
 export const artifactApi = {

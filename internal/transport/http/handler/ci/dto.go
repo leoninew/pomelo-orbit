@@ -3,7 +3,7 @@ package cihandler
 import (
 	"encoding/json"
 
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 
 	"google.golang.org/protobuf/encoding/protojson"
 )

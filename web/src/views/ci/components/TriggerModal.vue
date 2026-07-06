@@ -58,9 +58,9 @@
   import AppDialog from '@/components/AppDialog.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useToast } from '@/composables/useToast';
-  import type { RepositoryResp } from '@/gen/proto/orbit/repository';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/template';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/common';
+  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/template';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common';
 
   const props = defineProps<{
     repositoryId: string;

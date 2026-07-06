@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"time"
 
-	dbsqlc "gitee.com/leoninew/pomelo-orbit/internal/db/sqlc"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	dbsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/db/sqlc"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 )
 
 func NullString(value *string) sql.NullString {

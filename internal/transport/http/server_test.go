@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -17,11 +17,11 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	"gitee.com/leoninew/pomelo-orbit/internal/db"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/db"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 type fakeTurnstileVerifier struct {

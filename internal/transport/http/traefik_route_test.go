@@ -2,15 +2,15 @@ package transporthttp
 
 import (
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func TestTraefikRouteEndpointsRequireAuth(t *testing.T) {

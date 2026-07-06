@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
-	"gitee.com/leoninew/pomelo-orbit/internal/templatex"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/templatex"
 )
 
 type ExecutePipelineRunInput struct {

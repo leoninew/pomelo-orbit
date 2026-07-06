@@ -2,19 +2,19 @@ package authhandler
 
 import (
 	"context"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net"
 	"net/http"
 	"strings"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	authsvc "gitee.com/leoninew/pomelo-orbit/internal/service/auth"
-	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/auth"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type router interface {

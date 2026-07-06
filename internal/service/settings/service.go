@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
 const envPrefix = "POMELO_ORBIT_"

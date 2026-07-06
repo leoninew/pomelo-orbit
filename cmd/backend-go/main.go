@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/app"
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	"gitee.com/leoninew/pomelo-orbit/internal/logging"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/app"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/logging"
 )
 
 func main() {

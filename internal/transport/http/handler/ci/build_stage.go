@@ -1,13 +1,13 @@
 package cihandler
 
 import (
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 
-	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func (h Handler) RegisterBuildStageRoutes(r router) {

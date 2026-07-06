@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func TestTurnstileVerifierSuccess(t *testing.T) {

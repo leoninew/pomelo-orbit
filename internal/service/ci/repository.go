@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/infrastructure/logstore"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)

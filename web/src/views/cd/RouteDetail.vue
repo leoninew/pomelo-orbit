@@ -213,7 +213,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import type { RouteResp } from '@/gen/proto/orbit/route';
+  import type { RouteResp } from '@/gen/proto/orbit/v1/route';
   import { routeApi } from '@/api/cd/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';

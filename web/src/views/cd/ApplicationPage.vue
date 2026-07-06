@@ -268,8 +268,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { ApplicationCreateReq, ApplicationResp } from '@/gen/proto/orbit/application';
-  import type { ApplicationImportReq } from '@/gen/proto/orbit/application_bundle';
+  import type { ApplicationCreateReq, ApplicationResp } from '@/gen/proto/orbit/v1/application';
+  import type { ApplicationImportReq } from '@/gen/proto/orbit/v1/application_bundle';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';

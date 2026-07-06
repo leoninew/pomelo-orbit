@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	authsvc "gitee.com/leoninew/pomelo-orbit/internal/service/auth"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/auth"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type Store interface {

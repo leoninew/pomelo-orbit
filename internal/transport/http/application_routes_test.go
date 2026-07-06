@@ -3,15 +3,15 @@ package transporthttp
 import (
 	"bytes"
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
-	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/cd"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 func TestApplicationRoutesCRUD(t *testing.T) {

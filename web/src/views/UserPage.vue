@@ -234,7 +234,7 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { UserListResp } from '@/gen/proto/orbit/user';
+  import type { UserListResp } from '@/gen/proto/orbit/v1/user';
   import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();

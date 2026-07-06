@@ -10,10 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	"gitee.com/leoninew/pomelo-orbit/internal/infrastructure/logstore"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {

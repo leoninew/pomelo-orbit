@@ -210,8 +210,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { ProjectMemberResp, ProjectResp } from '@/gen/proto/orbit/project';
-  import type { UserListResp } from '@/gen/proto/orbit/user';
+  import type { ProjectMemberResp, ProjectResp } from '@/gen/proto/orbit/v1/project';
+  import type { UserListResp } from '@/gen/proto/orbit/v1/user';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();

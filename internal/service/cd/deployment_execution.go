@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {

@@ -392,9 +392,9 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ArtifactResp } from '@/gen/proto/orbit/artifact';
-  import type { PipelineRunResp, StageRunResp } from '@/gen/proto/orbit/pipeline_run';
-  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/snapshot';
+  import type { ArtifactResp } from '@/gen/proto/orbit/v1/artifact';
+  import type { PipelineRunResp, StageRunResp } from '@/gen/proto/orbit/v1/pipeline_run';
+  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/v1/snapshot';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
   import StageDAGView from './components/StageDAGView.vue';

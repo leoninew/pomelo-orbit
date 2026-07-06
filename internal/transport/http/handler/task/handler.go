@@ -2,7 +2,7 @@ package taskhandler
 
 import (
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -11,11 +11,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
-	tasksvc "gitee.com/leoninew/pomelo-orbit/internal/service/task"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/task"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type router interface {

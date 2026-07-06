@@ -5,7 +5,7 @@ import type {
   PipelineRunResp,
   PipelineRunRetryReq,
   PipelineStageLogResp,
-} from '@/gen/proto/orbit/pipeline_run';
+} from '@/gen/proto/orbit/v1/pipeline_run';
 import request from '@/utils/request';
 
 // PipelineRun API

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
 )
 
 type Repository interface {

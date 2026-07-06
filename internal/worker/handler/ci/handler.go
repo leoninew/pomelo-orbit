@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	taskrepo "gitee.com/leoninew/pomelo-orbit/internal/repository/task"
-	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
 )
 
 type ExecutePayload struct {

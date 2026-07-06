@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package orbit.v1;
+
+
+message ArtifactResp {
+  string id = 1;
+  string pipeline_run_id = 2;
+  string repository_id = 3;
+  string repository_name = 4;
+  string template_id = 5;
+  string template_name = 6;
+  string stage_name = 7;
+  string type = 8;
+  string name = 9;
+  optional string path = 10;
+  string created_at = 11;
+}
+
+message ArtifactPaginatedResp {
+  repeated ArtifactResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

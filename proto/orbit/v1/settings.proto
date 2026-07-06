@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package orbit.v1;
+
+
+import "google/protobuf/struct.proto";
+
+message ConfigItemResp {
+  string key = 1;
+  google.protobuf.Value value = 2;
+  google.protobuf.Value default = 3;
+  bool is_overridden = 4;
+  bool secret = 5;
+  string description = 6;
+}
+
+message SystemConfigResp {
+  repeated ConfigItemResp items = 1;
+}
+
+message SystemConfigUpdateReq {
+  string key = 1;
+  google.protobuf.Value value = 2;
+}
+
+message SystemConfigResetReq {
+  repeated string keys = 1;
+}

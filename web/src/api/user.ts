@@ -6,7 +6,7 @@ import type {
   UserResp,
   UserRoleUpdateReq,
   UserUpdateReq,
-} from '@/gen/proto/orbit/user';
+} from '@/gen/proto/orbit/v1/user';
 import request from '@/utils/request';
 
 export const userApi = {

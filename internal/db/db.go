@@ -10,7 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
 func Open(cfg config.DatabaseConfig) (*sqlx.DB, error) {

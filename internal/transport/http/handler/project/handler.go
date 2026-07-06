@@ -1,18 +1,18 @@
 package projecthandler
 
 import (
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	projectsvc "gitee.com/leoninew/pomelo-orbit/internal/service/project"
-	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/project"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type router interface {

@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package orbit.v1;
+
+
+message ApplicationServiceConfigUpdateReq {
+  optional string image = 1;
+}
+
+message ComposeServiceResp {
+  string service_name = 1;
+  string default_domain = 2;
+  int32 default_port = 3;
+}
+
+message ApplicationServiceConfigResp {
+  string service_name = 1;
+  string default_domain = 2;
+  int32 default_port = 3;
+  optional string base_image = 4;
+  optional string image = 5;
+  optional string config_id = 6;
+  optional string created_at = 7;
+  optional string updated_at = 8;
+}
+
+message ApplicationServiceConfigImportReq {
+  string service_name = 1;
+  optional string image = 2;
+  optional string environment = 3;
+  optional string volumes = 4;
+}
+
+message ApplicationServiceConfigExportResp {
+  string service_name = 1;
+  optional string image = 2;
+  optional string environment = 3;
+  optional string volumes = 4;
+}
+
+message ComposeServiceListResp {
+  repeated ComposeServiceResp items = 1;
+}
+
+message ApplicationServiceConfigListResp {
+  repeated ApplicationServiceConfigResp items = 1;
+}

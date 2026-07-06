@@ -3,14 +3,14 @@ package transporthttp
 import (
 	"bytes"
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/security"
-	cisvc "gitee.com/leoninew/pomelo-orbit/internal/service/ci"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/security"
+	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
 )
 
 const credentialRouteFernetKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

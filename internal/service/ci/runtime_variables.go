@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 )
 
 func buildPipelineRunVariables(repo model.Repository, template model.PipelineTemplate, snapshot model.PipelineSnapshot, triggerRef string, runtimeOverrides map[string]string) (string, error) {

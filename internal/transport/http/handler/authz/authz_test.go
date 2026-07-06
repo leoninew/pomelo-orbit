@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	authsvc "gitee.com/leoninew/pomelo-orbit/internal/service/auth"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/auth"
 )
 
 const testSecret = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

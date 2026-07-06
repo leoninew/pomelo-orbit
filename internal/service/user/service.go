@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 
 	"golang.org/x/crypto/bcrypt"
 )

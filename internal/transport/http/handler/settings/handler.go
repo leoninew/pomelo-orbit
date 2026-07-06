@@ -1,14 +1,14 @@
 package settingshandler
 
 import (
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net/http"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/apperror"
-	settingssvc "gitee.com/leoninew/pomelo-orbit/internal/service/settings"
-	"gitee.com/leoninew/pomelo-orbit/internal/transport/http/handler/authz"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
+	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/settings"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/handler/authz"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type router interface {

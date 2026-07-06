@@ -220,7 +220,7 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { PermissionResp, RoleResp } from '@/gen/proto/orbit/role';
+  import type { PermissionResp, RoleResp } from '@/gen/proto/orbit/v1/role';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();

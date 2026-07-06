@@ -98,7 +98,7 @@
   import { computed, onMounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';
-  import type { TraefikRouterResp } from '@/gen/proto/orbit/traefik';
+  import type { TraefikRouterResp } from '@/gen/proto/orbit/v1/traefik';
   import { traefikRouteApi } from '@/api/cd/traefik-route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';

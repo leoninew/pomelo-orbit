@@ -289,11 +289,11 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { CredentialResp } from '@/gen/proto/orbit/credential';
-  import type { RepositoryResp } from '@/gen/proto/orbit/repository';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/template';
-  import type { RepositoryWebhookResp } from '@/gen/proto/orbit/webhook';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/common';
+  import type { CredentialResp } from '@/gen/proto/orbit/v1/credential';
+  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/template';
+  import type { RepositoryWebhookResp } from '@/gen/proto/orbit/v1/webhook';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common';
   import { credentialTypeLabels } from '@/constants/credential';
   import { formatTime } from '@/utils/time';
   import TriggerModal from './components/TriggerModal.vue';

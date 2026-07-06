@@ -128,9 +128,9 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { ArtifactResp } from '@/gen/proto/orbit/artifact';
-  import type { RepositoryResp } from '@/gen/proto/orbit/repository';
-  import type { PipelineTemplateResp } from '@/gen/proto/orbit/template';
+  import type { ArtifactResp } from '@/gen/proto/orbit/v1/artifact';
+  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/template';
   import { formatTime } from '@/utils/time';
 
   const { status, error, execute } = useStatusAsync();

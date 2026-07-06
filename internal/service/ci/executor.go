@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/infrastructure/logstore"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository"
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	"gitee.com/leoninew/pomelo-orbit/internal/security"
-	"gitee.com/leoninew/pomelo-orbit/internal/status"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/security"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/status"
 )
 
 type Executor struct {

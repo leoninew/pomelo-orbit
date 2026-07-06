@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
   import { computed } from 'vue';
-  import type { SnapshotStageResp } from '@/gen/proto/orbit/snapshot';
+  import type { SnapshotStageResp } from '@/gen/proto/orbit/v1/snapshot';
   import { statusColor } from '@/utils/status';
 
   interface Props {

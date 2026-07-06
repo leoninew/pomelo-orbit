@@ -14,8 +14,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/config"
-	migrationfiles "gitee.com/leoninew/pomelo-orbit/sql"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	migrationfiles "gitee.com/leoninew/PomeloOrbit-go/sql"
 )
 
 const migrationsRoot = "migration"

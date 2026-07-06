@@ -176,7 +176,7 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { DeploymentResp } from '@/gen/proto/orbit/deployment';
+  import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import type { editor } from 'monaco-editor';

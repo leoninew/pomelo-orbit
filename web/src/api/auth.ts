@@ -8,7 +8,7 @@ import type {
   TokenResp,
   TurnstileConfigResp,
   UserInfoResp,
-} from '@/gen/proto/orbit/auth';
+} from '@/gen/proto/orbit/v1/auth';
 import request from '@/utils/request';
 
 // 认证相关 API

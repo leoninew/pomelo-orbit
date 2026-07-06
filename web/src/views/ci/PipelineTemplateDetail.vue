@@ -450,10 +450,10 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { BuildStageResp } from '@/gen/proto/orbit/build_stage';
-  import type { RepositoryResp } from '@/gen/proto/orbit/repository';
-  import type { PipelineTemplateResp, StageOrchestrationResp } from '@/gen/proto/orbit/template';
-  import type { VariableDeclarationResp } from '@/gen/proto/orbit/common';
+  import type { BuildStageResp } from '@/gen/proto/orbit/v1/build_stage';
+  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository';
+  import type { PipelineTemplateResp, StageOrchestrationResp } from '@/gen/proto/orbit/v1/template';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common';
   import { detectCircularDependencies } from '@/utils/dag';
   import StageDAGView from './components/StageDAGView.vue';
   import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';

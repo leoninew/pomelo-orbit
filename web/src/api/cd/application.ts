@@ -11,28 +11,28 @@ import type {
   ApplicationStopReq,
   ApplicationUpdateReq,
   DeploymentActionResp,
-} from '@/gen/proto/orbit/application';
+} from '@/gen/proto/orbit/v1/application';
 import type {
   ApplicationExportResp,
   ApplicationImportReq,
-} from '@/gen/proto/orbit/application_bundle';
+} from '@/gen/proto/orbit/v1/application_bundle';
 import type {
   ApplicationRouteListResp,
   ApplicationRouteReq,
   ApplicationRouteResp,
-} from '@/gen/proto/orbit/application_route';
+} from '@/gen/proto/orbit/v1/application_route';
 import type {
   ApplicationFileContentResp,
   ConfigFileListResp,
   ConfigFileReq,
   ConfigFileResp,
-} from '@/gen/proto/orbit/config_file';
+} from '@/gen/proto/orbit/v1/config_file';
 import type {
   ApplicationServiceConfigListResp,
   ApplicationServiceConfigResp,
   ApplicationServiceConfigUpdateReq,
   ComposeServiceListResp,
-} from '@/gen/proto/orbit/service_config';
+} from '@/gen/proto/orbit/v1/service_config';
 import request from '@/utils/request';
 
 // 应用相关 API

@@ -155,7 +155,7 @@
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';
-  import type { ProjectResp } from '@/gen/proto/orbit/project';
+  import type { ProjectResp } from '@/gen/proto/orbit/v1/project';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';

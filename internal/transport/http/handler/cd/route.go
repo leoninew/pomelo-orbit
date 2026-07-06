@@ -3,15 +3,15 @@ package cdhandler
 import (
 	"bytes"
 	"encoding/pem"
-	pomeloorbit "gitee.com/leoninew/pomelo-orbit/internal/gen/proto/orbit"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
 
-	"gitee.com/leoninew/pomelo-orbit/internal/repository/model"
-	cdsvc "gitee.com/leoninew/pomelo-orbit/internal/service/cd"
-	transportresponse "gitee.com/leoninew/pomelo-orbit/internal/transport/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
+	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/cd"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func (h Handler) RegisterRouteRoutes(r router) {

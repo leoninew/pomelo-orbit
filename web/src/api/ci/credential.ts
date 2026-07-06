@@ -6,7 +6,7 @@ import type {
   CredentialPaginatedResp,
   CredentialResp,
   CredentialUpdateReq,
-} from '@/gen/proto/orbit/credential';
+} from '@/gen/proto/orbit/v1/credential';
 import request from '@/utils/request';
 
 // Credential API

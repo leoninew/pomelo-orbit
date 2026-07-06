@@ -1,6 +1,6 @@
-module gitee.com/leoninew/pomelo-orbit
+module gitee.com/leoninew/PomeloOrbit-go
 
-go 1.26.0
+go 1.25.0
 
 require (
 	github.com/go-chi/chi/v5 v5.2.3
@@ -11,7 +11,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/osteele/liquid v1.8.1
 	github.com/spf13/viper v1.20.1
-	github.com/sqlc-dev/sqlc v1.31.1
+	github.com/sqlc-dev/sqlc v1.30.0
 	golang.org/x/crypto v0.49.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -38,9 +38,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/ncruces/go-sqlite3 v0.32.0 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
-	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/osteele/tuesday v1.0.4 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pganalyze/pg_query_go/v6 v6.2.2 // indirect
@@ -56,7 +54,6 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/sqlc-dev/doubleclick v1.0.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tetratelabs/wazero v1.11.0 // indirect
 	github.com/wasilibs/go-pgquery v0.0.0-20250409022910-10ac41983c07 // indirect

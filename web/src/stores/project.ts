@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { projectApi } from '@/api/project';
 import { ACTIVE_PROJECT_ID_KEY } from '@/constants/project';
 import { useStorageStore } from '@/stores/storage';
-import type { ProjectResp, ProjectSaveReq } from '@/gen/proto/orbit/project';
+import type { ProjectResp, ProjectSaveReq } from '@/gen/proto/orbit/v1/project';
 
 export const useProjectStore = defineStore('project', () => {
   const storageStore = useStorageStore();

@@ -58,15 +58,16 @@
   import AppDialog from '@/components/AppDialog.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useToast } from '@/composables/useToast';
-  import type { Repository } from '@/types/ci/repository';
-  import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
+  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/api/v1/common';
 
   const props = defineProps<{
     repositoryId: string;
-    templates: PipelineTemplate[];
+    templates: PipelineTemplateResp[];
     defaultBranch?: string;
-    projectVariables?: VariableDeclaration[];
-    repository?: Repository;
+    projectVariables?: VariableDeclarationResp[];
+    repository?: RepositoryResp;
   }>();
 
   const emit = defineEmits<{
@@ -111,7 +112,7 @@
     return result;
   });
 
-  function isBuiltinVariable(variable: VariableDeclaration): boolean {
+  function isBuiltinVariable(variable: VariableDeclarationResp): boolean {
     return variable.source === 'template' || variable.source === 'repository';
   }
 
@@ -130,11 +131,11 @@
     return hasValue(form.variables[name]);
   }
 
-  function effectiveVariableValue(variable: VariableDeclaration): unknown {
+  function effectiveVariableValue(variable: VariableDeclarationResp): unknown {
     return variable.value ?? variable.default;
   }
 
-  function getBuiltinDisplayValue(variable: VariableDeclaration): string {
+  function getBuiltinDisplayValue(variable: VariableDeclarationResp): string {
     if (variable.description) {
       return variable.description;
     }

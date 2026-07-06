@@ -163,13 +163,13 @@
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineTemplate } from '@/types/ci/template';
-  import type { RepositoryWebhook } from '@/types/ci/webhook';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
+  import type { RepositoryWebhookResp } from '@/gen/proto/orbit/api/v1/webhook';
 
   const props = defineProps<{
     repositoryId: string;
-    webhooks: RepositoryWebhook[];
-    templates: PipelineTemplate[];
+    webhooks: RepositoryWebhookResp[];
+    templates: PipelineTemplateResp[];
   }>();
 
   const emit = defineEmits<{
@@ -182,8 +182,8 @@
   const isDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const isSecretVisible = ref(true);
-  const editingWebhook = ref<RepositoryWebhook>();
-  const deletingWebhook = ref<RepositoryWebhook>();
+  const editingWebhook = ref<RepositoryWebhookResp>();
+  const deletingWebhook = ref<RepositoryWebhookResp>();
 
   const form = reactive({
     name: '',
@@ -240,7 +240,7 @@
     isDialogOpen.value = true;
   }
 
-  function openEditModal(wh: RepositoryWebhook) {
+  function openEditModal(wh: RepositoryWebhookResp) {
     editingWebhook.value = wh;
     Object.assign(form, {
       name: wh.name,
@@ -272,7 +272,7 @@
           await webhookApi.update(props.repositoryId, editingWebhook.value.id, {
             name: form.name,
             template_id: form.template_id,
-            branch_filter: form.branch_filter || null,
+            branch_filter: form.branch_filter || undefined,
             secret: form.secret,
             enabled: form.enabled,
           });
@@ -282,7 +282,7 @@
             name: form.name,
             template_id: form.template_id,
             secret: form.secret,
-            branch_filter: form.branch_filter || null,
+            branch_filter: form.branch_filter || undefined,
           });
           toast.success('创建成功');
         }
@@ -294,7 +294,7 @@
     }
   }
 
-  async function handleDelete(wh: RepositoryWebhook) {
+  async function handleDelete(wh: RepositoryWebhookResp) {
     deletingWebhook.value = wh;
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();

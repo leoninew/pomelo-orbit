@@ -143,7 +143,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { CredentialDetail } from '@/types/ci/credential';
+  import type { CredentialDetailResp } from '@/gen/proto/orbit/api/v1/credential';
   import { credentialTypeLabels } from '@/types/ci/credential';
   import { formatTime } from '@/utils/time';
 
@@ -153,7 +153,7 @@
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const credential = ref<CredentialDetail>();
+  const credential = ref<CredentialDetailResp>();
   const isCredentialDataVisible = ref(false);
   const isEditModalOpen = ref(false);
   const isDeleteModalOpen = ref(false);

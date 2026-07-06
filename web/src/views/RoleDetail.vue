@@ -220,7 +220,7 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { PermissionResp, RoleResp } from '@/types/role';
+  import type { PermissionResp, RoleResp } from '@/gen/proto/orbit/api/v1/role';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();
@@ -285,7 +285,7 @@
         await roleApi.update(props.id, {
           code: form.code.trim(),
           name: form.name.trim(),
-          description: form.description.trim() || null,
+          description: form.description.trim() || undefined,
           permission_codes: permissionCodes,
         });
         toast.success(t('roleManagement.updated'));

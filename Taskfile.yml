@@ -15,6 +15,8 @@ tasks:
       - yarn --cwd web install
       - mkdir -p bin
       - go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+      - go install github.com/bufbuild/buf/cmd/buf@v1.59.0
+      - go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
       - go mod download
       - go mod tidy
 
@@ -22,6 +24,14 @@ tasks:
     desc: Generate sqlc query code
     cmds:
       - ./bin/sqlc generate
+
+  proto:
+    desc: Generate Go and TypeScript proto DTOs
+    env:
+      PATH: '{{.TASKFILE_DIR}}/bin:$PATH'
+    cmds:
+      - ./bin/buf generate
+      - ./bin/buf generate . --template web/buf.gen.yaml --output web
 
   run:
     desc: Start the development orchestrator

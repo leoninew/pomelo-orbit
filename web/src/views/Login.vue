@@ -115,7 +115,7 @@
   import { useAuthStore } from '@/stores/auth';
   import { useToast } from '@/composables/useToast';
   import { ApiError } from '@/utils/request';
-  import type { TurnstileConfigResp } from '@/types/auth';
+  import type { TurnstileConfigResp } from '@/gen/proto/orbit/api/v1/auth';
 
   const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-script';
   const TURNSTILE_SCRIPT_SRC =

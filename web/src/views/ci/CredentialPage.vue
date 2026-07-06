@@ -187,7 +187,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { Credential, CredentialImportReq } from '@/types/ci/credential';
+  import type { CredentialImportReq, CredentialResp } from '@/gen/proto/orbit/api/v1/credential';
   import { credentialTypeLabels } from '@/types/ci/credential';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
@@ -197,7 +197,7 @@
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const credentials = ref<Credential[]>([]);
+  const credentials = ref<CredentialResp[]>([]);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
@@ -217,7 +217,12 @@
     { value: 'git_ssh', label: 'Git SSH 密钥' },
   ];
   const errors = reactive({ name: '', data: '' });
-  const importForm = reactive({ name: '', type: 'github_token' as string, data: '' });
+  const importForm = reactive<CredentialImportReq>({
+    version: '',
+    name: '',
+    type: 'github_token',
+    data: '',
+  });
   const importErrors = reactive({ name: '', data: '' });
 
   function validate() {
@@ -272,7 +277,7 @@
     showCredentialDialog.value = true;
   }
 
-  async function openEditModal(record: Credential) {
+  async function openEditModal(record: CredentialResp) {
     try {
       await executeOp(async () => {
         const detail = await credentialApi.get(record.id);
@@ -368,7 +373,12 @@
     }
     try {
       const data = JSON.parse(await file.text()) as CredentialImportReq;
+      if (!data.version) {
+        toast.error('凭据导入文件缺少版本号');
+        return;
+      }
       Object.assign(importForm, {
+        version: data.version,
         name: data.name || '',
         type: data.type || 'git_ssh',
         data: data.data || '',
@@ -397,8 +407,9 @@
       await executeOp(async () => {
         await credentialApi.importCredential(
           {
+            version: importForm.version,
             name: importForm.name,
-            type: importForm.type as CredentialImportReq['type'],
+            type: importForm.type,
             data: importForm.data,
           },
           { project_id: projectId }

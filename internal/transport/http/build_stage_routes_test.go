@@ -27,7 +27,7 @@ func TestBuildStageRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Name != "go test custom" || created.Version != 1 || len(created.Artifacts) != 1 {
-		t.Fatalf("unexpected created build stage: %+v", created)
+		t.Fatalf("unexpected created build stage: %+v", &created)
 	}
 
 	listRecorder := httptest.NewRecorder()
@@ -58,8 +58,8 @@ func TestBuildStageRoutes(t *testing.T) {
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "go test custom updated" || updated.Script != "go test ./internal/..." || updated.Version != 2 || updated.Artifacts != nil {
-		t.Fatalf("unexpected updated build stage: %+v", updated)
+	if updated.Name != "go test custom updated" || updated.Script != "go test ./internal/..." || updated.Version != 2 || len(updated.Artifacts) != 0 {
+		t.Fatalf("unexpected updated build stage: %+v", &updated)
 	}
 
 	duplicateRecorder := httptest.NewRecorder()
@@ -72,7 +72,7 @@ func TestBuildStageRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if duplicated.Id == created.Id || duplicated.Name != "go test custom updated copy" || duplicated.Version != 1 {
-		t.Fatalf("unexpected duplicated build stage: %+v", duplicated)
+		t.Fatalf("unexpected duplicated build stage: %+v", &duplicated)
 	}
 
 	deleteDuplicateRecorder := httptest.NewRecorder()

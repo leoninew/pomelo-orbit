@@ -1,36 +1,10 @@
 package rolehandler
 
-import transportresponse "backend/internal/transport/http/response"
+import apiv1 "backend/internal/transport/http/dto/proto/orbit/api/v1"
 
-type PermissionResp struct {
-	Id          string  `json:"id"`
-	Code        string  `json:"code"`
-	Name        string  `json:"name"`
-	Description *string `json:"description"`
-}
-
-type PermissionListResp = transportresponse.ListResp[PermissionResp]
-
-type RoleResp struct {
-	Id              string   `json:"id"`
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	Description     *string  `json:"description"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
-	PermissionCodes []string `json:"permission_codes"`
-}
-
-type RoleCreateReq struct {
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	Description     *string  `json:"description"`
-	PermissionCodes []string `json:"permission_codes"`
-}
-
-type RoleUpdateReq struct {
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	Description     *string  `json:"description"`
-	PermissionCodes []string `json:"permission_codes"`
-}
+type PermissionResp = apiv1.PermissionResp
+type PermissionListResp = apiv1.PermissionListResp
+type RoleResp = apiv1.RoleResp
+type RoleCreateReq = apiv1.RoleCreateReq
+type RoleUpdateReq = apiv1.RoleUpdateReq
+type RolePaginatedResp = apiv1.RolePaginatedResp

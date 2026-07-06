@@ -46,7 +46,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if detail.ApplicationId == nil || *detail.ApplicationId != deploymentRouteApplicationId || detail.ApplicationName != "FileBrowser" || detail.CommandText != "docker compose -f docker-compose.yml up -d --remove-orphans --pull missing" {
-		t.Fatalf("unexpected deployment detail: %+v", detail)
+		t.Fatalf("unexpected deployment detail: %+v", &detail)
 	}
 
 	logDir := filepath.Join(server.appCfg.DataRoot(), "cd", "filebrowser", "deployments")
@@ -84,7 +84,7 @@ func TestDeploymentListDetailLogsAndCancelRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if canceled.Status != "canceled" || canceled.FinishedAt == nil || canceled.ErrorMessage == nil || *canceled.ErrorMessage != "Cancelled by user" {
-		t.Fatalf("unexpected canceled deployment: %+v", canceled)
+		t.Fatalf("unexpected canceled deployment: %+v", &canceled)
 	}
 }
 

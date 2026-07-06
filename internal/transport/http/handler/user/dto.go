@@ -1,50 +1,11 @@
 package userhandler
 
-type UserRoleResp struct {
-	Id              string   `json:"id"`
-	Code            string   `json:"code"`
-	Name            string   `json:"name"`
-	PermissionCodes []string `json:"permission_codes"`
-}
+import apiv1 "backend/internal/transport/http/dto/proto/orbit/api/v1"
 
-type UserListResp struct {
-	Id          string         `json:"id"`
-	Username    string         `json:"username"`
-	Email       *string        `json:"email"`
-	AuthSource  string         `json:"auth_source"`
-	CreatedAt   string         `json:"created_at"`
-	LastLoginAt *string        `json:"last_login_at"`
-	Status      string         `json:"status"`
-	UpdatedAt   string         `json:"updated_at"`
-	RoleItems   []UserRoleResp `json:"role_items"`
-}
-
-type UserResp struct {
-	Id          string         `json:"id"`
-	Username    string         `json:"username"`
-	Email       *string        `json:"email"`
-	AuthSource  string         `json:"auth_source"`
-	CreatedAt   string         `json:"created_at"`
-	LastLoginAt *string        `json:"last_login_at"`
-	Roles       []string       `json:"roles"`
-	Permissions []string       `json:"permissions"`
-	Status      string         `json:"status"`
-	UpdatedAt   string         `json:"updated_at"`
-	RoleItems   []UserRoleResp `json:"role_items"`
-}
-
-type UserCreateReq struct {
-	Username string  `json:"username"`
-	Password string  `json:"password"`
-	Email    *string `json:"email"`
-}
-
-type UserUpdateReq struct {
-	Username *string `json:"username"`
-	Password *string `json:"password"`
-	Status   *string `json:"status"`
-}
-
-type UserRoleUpdateReq struct {
-	RoleIds []string `json:"role_ids"`
-}
+type UserRoleResp = apiv1.UserRoleResp
+type UserListResp = apiv1.UserListResp
+type UserResp = apiv1.UserResp
+type UserCreateReq = apiv1.UserCreateReq
+type UserUpdateReq = apiv1.UserUpdateReq
+type UserRoleUpdateReq = apiv1.UserRoleUpdateReq
+type UserPaginatedResp = apiv1.UserPaginatedResp

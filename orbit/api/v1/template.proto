@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package orbit.api.v1;
+
+option go_package = "backend/internal/transport/http/dto/proto/orbit/api/v1;apiv1";
+
+import "orbit/api/v1/build_stage.proto";
+import "orbit/api/v1/common.proto";
+
+message PipelineTemplateResp {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  repeated StageOrchestrationResp orchestration = 4;
+  repeated BuildStageResp stages = 5;
+  repeated VariableDeclarationResp variable_declarations = 6;
+  int32 version = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message StageOrchestrationResp {
+  string stage_id = 1;
+  string stage_name = 2;
+  int32 stage_version = 3;
+  repeated string depends_on = 4;
+  int32 sort_order = 5;
+}
+
+message StageOrchestrationReq {
+  string stage_id = 1;
+  string stage_name = 2;
+  int32 stage_version = 3;
+  repeated string depends_on = 4;
+  int32 sort_order = 5;
+}
+
+message TemplateVariableResolveResp {
+  repeated VariableDeclarationResp items = 1;
+}
+
+message PipelineTemplateCreateReq {
+  string name = 1;
+  string description = 2;
+  repeated VariableDeclarationReq variable_declarations = 3;
+}
+
+message PipelineTemplateUpdateReq {
+  optional string name = 1;
+  optional string description = 2;
+  repeated StageOrchestrationReq orchestration = 3;
+  repeated VariableDeclarationReq variable_declarations = 4;
+}
+
+message TemplateVariableResolveReq {
+  repeated StageOrchestrationReq orchestration = 1;
+  repeated VariableDeclarationReq variable_declarations = 2;
+}
+
+message PipelineTemplatePaginatedResp {
+  repeated PipelineTemplateResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

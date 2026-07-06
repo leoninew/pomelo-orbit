@@ -32,7 +32,7 @@ func TestArtifactListRoute(t *testing.T) {
 		t.Fatalf("unexpected artifact list: %+v", artifacts)
 	}
 	if artifacts.Items[0].Id != "artifact-2" || artifacts.Items[0].RepositoryName != "golang/example" || artifacts.Items[0].Path == nil || *artifacts.Items[0].Path != "dist/test.log" {
-		t.Fatalf("unexpected first artifact: %+v", artifacts.Items[0])
+		t.Fatalf("unexpected first artifact: %+v", &artifacts.Items[0])
 	}
 }
 
@@ -104,7 +104,7 @@ func TestPipelineRunArtifactsRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(artifacts.Items) != 2 || artifacts.Items[0].Id != "artifact-1" || artifacts.Items[1].Id != "artifact-2" {
-		t.Fatalf("unexpected run artifact list: %+v", artifacts)
+		t.Fatalf("unexpected run artifact list: %+v", &artifacts)
 	}
 }
 

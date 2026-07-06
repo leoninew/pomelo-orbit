@@ -1,7 +1,6 @@
 package settingshandler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 
@@ -42,7 +41,8 @@ func (h Handler) getConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, systemConfigResponse(resp))
+	body := systemConfigResponse(resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &body)
 }
 
 func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
@@ -50,16 +50,17 @@ func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req SystemConfigUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	resp, err := h.service.Update(r.Context(), req.Key, req.Value)
+	resp, err := h.service.Update(r.Context(), req.Key, transportresponse.NativeValue(req.Value))
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, systemConfigResponse(resp))
+	body := systemConfigResponse(resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &body)
 }
 
 func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +68,7 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req SystemConfigResetReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -76,7 +77,8 @@ func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, systemConfigResponse(resp))
+	body := systemConfigResponse(resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &body)
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
@@ -91,9 +93,9 @@ func systemConfigResponse(config settingssvc.SystemConfig) SystemConfigResp {
 	for _, item := range config.Items {
 		items = append(items, configItemResponse(item))
 	}
-	return SystemConfigResp{Items: items}
+	return SystemConfigResp{Items: transportresponse.Ptrs(items)}
 }
 
 func configItemResponse(item settingssvc.ConfigItem) ConfigItemResp {
-	return ConfigItemResp{Key: item.Key, Value: item.Value, Default: item.Default, IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
+	return ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
 }

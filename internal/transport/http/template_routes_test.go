@@ -28,7 +28,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Name != "Template One" || created.Version != 1 || len(created.VariableDeclarations) == 0 {
-		t.Fatalf("unexpected created template: %+v", created)
+		t.Fatalf("unexpected created template: %+v", &created)
 	}
 
 	listRecorder := httptest.NewRecorder()
@@ -60,7 +60,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "Template One Updated" || updated.Version != 2 || len(updated.Orchestration) != 1 || updated.Orchestration[0].StageId != stageId || updated.Orchestration[0].StageName != "golang:1.23 test" || len(updated.Stages) != 1 {
-		t.Fatalf("unexpected updated template: %+v", updated)
+		t.Fatalf("unexpected updated template: %+v", &updated)
 	}
 
 	duplicateRecorder := httptest.NewRecorder()
@@ -73,7 +73,7 @@ func TestPipelineTemplateRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if duplicated.Id == created.Id || duplicated.Name != "Template One Updated copy" || duplicated.Version != 1 || len(duplicated.Orchestration) != 1 {
-		t.Fatalf("unexpected duplicated template: %+v", duplicated)
+		t.Fatalf("unexpected duplicated template: %+v", &duplicated)
 	}
 
 	deleteDuplicateRecorder := httptest.NewRecorder()
@@ -112,7 +112,7 @@ func TestPipelineTemplateResolveVariablesRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !hasVariable(variables.Items, "working_dir") {
-		t.Fatalf("expected working_dir variable, got %+v", variables)
+		t.Fatalf("expected working_dir variable, got %+v", &variables)
 	}
 }
 
@@ -167,9 +167,9 @@ func TestPipelineTemplateRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func hasVariable(variables []cihandler.VariableDeclarationResp, name string) bool {
+func hasVariable(variables []*cihandler.VariableDeclarationResp, name string) bool {
 	for _, variable := range variables {
-		if variable.Name == name {
+		if variable != nil && variable.Name == name {
 			return true
 		}
 	}

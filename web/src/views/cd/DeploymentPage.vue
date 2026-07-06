@@ -135,8 +135,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { Application } from '@/types/cd/application';
-  import type { Deployment } from '@/types/cd/deployment';
+  import type { ApplicationResp } from '@/gen/proto/orbit/api/v1/application';
+  import type { DeploymentResp } from '@/gen/proto/orbit/api/v1/deployment';
   import { statusTone } from '@/utils/status';
   import { formatDuration, formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
@@ -149,18 +149,18 @@
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const deployments = ref<Deployment[]>([]);
+  const deployments = ref<DeploymentResp[]>([]);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const isCancelDialogOpen = ref(false);
-  const deploymentToCancel = ref<Deployment | null>(null);
+  const deploymentToCancel = ref<DeploymentResp | null>(null);
 
   const query = reactive({
     search: '',
     application_id: (route.query.application_id as string) || '',
   });
 
-  const appOptions = ref<Application[]>([]);
+  const appOptions = ref<ApplicationResp[]>([]);
   const appSelectOptions = computed(() =>
     appOptions.value.map((app) => ({
       value: app.id,
@@ -245,11 +245,11 @@
     fetchDeployments();
   }
 
-  function isCancelable(deployment: Deployment) {
+  function isCancelable(deployment: DeploymentResp) {
     return ['running', 'waiting_to_run'].includes(deployment.status);
   }
 
-  function openCancelDialog(deployment: Deployment) {
+  function openCancelDialog(deployment: DeploymentResp) {
     deploymentToCancel.value = deployment;
     isCancelDialogOpen.value = true;
   }

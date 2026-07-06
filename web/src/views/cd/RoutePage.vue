@@ -180,7 +180,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
-  import type { Route } from '@/api/cd/route';
+  import type { RouteResp } from '@/gen/proto/orbit/api/v1/route';
   import { routeApi } from '@/api/cd/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -199,7 +199,7 @@
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const routes = ref<Route[]>([]);
+  const routes = ref<RouteResp[]>([]);
   const searchText = ref('');
   const isCreateDialogOpen = ref(false);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });

@@ -38,7 +38,7 @@ export function getSourceLabel(source: VariableSource): string {
 /**
  * 获取变量来源的徽章样式
  */
-export function getSourceTone(source: VariableSource): BadgeTone {
+export function getSourceTone(source: string): BadgeTone {
   const tones: Record<VariableSource, BadgeTone> = {
     global: 'primary',
     repository: 'info',
@@ -48,14 +48,14 @@ export function getSourceTone(source: VariableSource): BadgeTone {
     template_custom: 'warning',
     runtime: 'default',
   };
-  return tones[source];
+  return tones[source as VariableSource] ?? 'default';
 }
 
 /**
  * 判断变量是否可编辑
  * template_stage 变量（从 Stage 脚本提取）可在触发时覆盖其 default 值
  */
-export function isVariableEditable(source: VariableSource): boolean {
+export function isVariableEditable(source: string): boolean {
   return (
     source === 'repository_custom' || source === 'template_custom' || source === 'template_stage'
   );

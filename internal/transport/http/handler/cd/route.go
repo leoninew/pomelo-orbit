@@ -2,7 +2,6 @@ package cdhandler
 
 import (
 	"bytes"
-	"encoding/json"
 	"encoding/pem"
 	"net/http"
 	"strings"
@@ -46,7 +45,8 @@ func (h Handler) listRoutes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, routeResponse)))
+	resp := mapPage(items, routeResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &RoutePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createRoute(w http.ResponseWriter, r *http.Request) {
@@ -55,16 +55,17 @@ func (h Handler) createRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RouteCreateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.CreateRoute(r.Context(), current.Id, r.URL.Query().Get("project_id"), cdsvc.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetURL, Enabled: req.Enabled})
+	route, err := h.service.CreateRoute(r.Context(), current.Id, r.URL.Query().Get("project_id"), cdsvc.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) getRoute(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +78,8 @@ func (h Handler) getRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) updateRoute(w http.ResponseWriter, r *http.Request) {
@@ -86,16 +88,17 @@ func (h Handler) updateRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RouteUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.UpdateRoute(r.Context(), current.Id, chi.URLParam(r, "route_id"), cdsvc.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetURL, Enabled: req.Enabled})
+	route, err := h.service.UpdateRoute(r.Context(), current.Id, chi.URLParam(r, "route_id"), cdsvc.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
 	if err != nil {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) deleteRoute(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +122,7 @@ func (h Handler) enableRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, RouteEnableResp{Message: "Route enabled successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &RouteEnableResp{Message: "Route enabled successfully"})
 }
 
 func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +134,7 @@ func (h Handler) disableRoute(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, RouteDisableResp{Message: "Route disabled successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &RouteDisableResp{Message: "Route disabled successfully"})
 }
 
 func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +146,7 @@ func (h Handler) syncRoutes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, RouteSyncResp{Message: "Routes synced successfully"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &RouteSyncResp{Message: "Routes synced successfully"})
 }
 
 func (h Handler) uploadRouteCert(w http.ResponseWriter, r *http.Request) {
@@ -173,7 +176,8 @@ func (h Handler) uploadRouteCert(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) disableRouteHTTPS(w http.ResponseWriter, r *http.Request) {
@@ -186,7 +190,8 @@ func (h Handler) disableRouteHTTPS(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) enableRouteLetsEncrypt(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +204,8 @@ func (h Handler) enableRouteLetsEncrypt(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) enableRouteMkcert(w http.ResponseWriter, r *http.Request) {
@@ -212,7 +218,8 @@ func (h Handler) enableRouteMkcert(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, routeResponse(route))
+	resp := routeResponse(route)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) getTraefikRouteConfig(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +232,8 @@ func (h Handler) getTraefikRouteConfig(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, traefikConfigResponse(config))
+	resp := traefikConfigResponse(config)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) listTraefikRoutes(w http.ResponseWriter, r *http.Request) {
@@ -242,15 +250,16 @@ func (h Handler) listTraefikRoutes(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, traefikRouteListResponse(items))
+	resp := traefikRouteListResponse(items)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func routeResponse(route model.Route) RouteResp {
-	return RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetURL: route.TargetURL, Enabled: route.Enabled, HTTPSEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
+	return RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL, Enabled: route.Enabled, HttpsEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }
 
 func traefikConfigResponse(config cdsvc.TraefikConfigResp) TraefikConfigResp {
-	return TraefikConfigResp{DashboardDomain: config.DashboardDomain, HTTPSEnabled: config.HTTPSEnabled}
+	return TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled}
 }
 
 func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) TraefikRouteListResp {
@@ -258,11 +267,11 @@ func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) TraefikRouteListR
 	for _, item := range resp.Items {
 		items = append(items, traefikRouterResponse(item))
 	}
-	return TraefikRouteListResp{Items: items, Total: resp.Total}
+	return TraefikRouteListResp{Items: transportresponse.Ptrs(items), Total: int32(resp.Total)}
 }
 
 func traefikRouterResponse(router cdsvc.TraefikRouterResp) TraefikRouterResp {
-	return TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, TLS: router.TLS}
+	return TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, Tls: router.TLS}
 }
 
 func splitPEM(content []byte) (string, string, bool) {

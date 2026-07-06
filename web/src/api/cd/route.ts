@@ -1,46 +1,13 @@
-import type { PaginatedResp } from '@/types/common';
+import type {
+  RouteCreateReq,
+  RouteDisableResp,
+  RouteEnableResp,
+  RoutePaginatedResp,
+  RouteResp,
+  RouteSyncResp,
+  RouteUpdateReq,
+} from '@/gen/proto/orbit/api/v1/route';
 import request from '@/utils/request';
-
-export interface Route {
-  id: string;
-  name: string;
-  domain: string;
-  path_prefix: string;
-  target_url: string;
-  enabled: boolean;
-  https_enabled: boolean;
-  cert_type: string; // manual / letsencrypt
-  created_at: string;
-  updated_at: string;
-}
-
-export interface RouteCreateReq {
-  name: string;
-  domain: string;
-  path_prefix: string;
-  target_url: string;
-  enabled: boolean;
-}
-
-export interface RouteUpdateReq {
-  name?: string;
-  domain?: string;
-  path_prefix?: string;
-  target_url?: string;
-  enabled?: boolean;
-}
-
-export interface RouteEnableResp {
-  message: string;
-}
-
-export interface RouteDisableResp {
-  message: string;
-}
-
-export interface RouteSyncResp {
-  message: string;
-}
 
 export const routeApi = {
   list(params?: {
@@ -48,19 +15,19 @@ export const routeApi = {
     per_page?: number;
     search?: string;
     project_id: string;
-  }): Promise<PaginatedResp<Route>> {
+  }): Promise<RoutePaginatedResp> {
     return request.get('/api/cd/route', { params });
   },
 
-  get(id: string): Promise<Route> {
+  get(id: string): Promise<RouteResp> {
     return request.get(`/api/cd/route/${id}`);
   },
 
-  create(data: RouteCreateReq, params: { project_id: string }): Promise<Route> {
+  create(data: RouteCreateReq, params: { project_id: string }): Promise<RouteResp> {
     return request.post('/api/cd/route', data, { params });
   },
 
-  update(id: string, data: RouteUpdateReq): Promise<Route> {
+  update(id: string, data: RouteUpdateReq): Promise<RouteResp> {
     return request.put(`/api/cd/route/${id}`, data);
   },
 
@@ -80,7 +47,7 @@ export const routeApi = {
     return request.post('/api/cd/route/sync', undefined, { params });
   },
 
-  uploadCert(id: string, certFile: File): Promise<Route> {
+  uploadCert(id: string, certFile: File): Promise<RouteResp> {
     const formData = new FormData();
     formData.append('pem', certFile);
     return request.post(`/api/cd/route/${id}/cert`, formData, {
@@ -88,15 +55,15 @@ export const routeApi = {
     });
   },
 
-  disableHttps(id: string): Promise<Route> {
+  disableHttps(id: string): Promise<RouteResp> {
     return request.delete(`/api/cd/route/${id}/https`);
   },
 
-  enableLetsencrypt(id: string): Promise<Route> {
+  enableLetsencrypt(id: string): Promise<RouteResp> {
     return request.post(`/api/cd/route/${id}/letsencrypt`);
   },
 
-  enableMkcert(id: string): Promise<Route> {
+  enableMkcert(id: string): Promise<RouteResp> {
     return request.post(`/api/cd/route/${id}/mkcert`);
   },
 };

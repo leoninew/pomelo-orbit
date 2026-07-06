@@ -30,7 +30,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Server.Host != "127.0.0.1" {
 		t.Fatalf("unexpected server host: %s", cfg.Server.Host)
 	}
-	if cfg.Server.Port != 9020 {
+	if cfg.Server.Port != 9021 {
 		t.Fatalf("unexpected server port: %d", cfg.Server.Port)
 	}
 	if len(cfg.Server.CORSAllowedOrigins) != 0 {
@@ -658,7 +658,7 @@ const defaultConfigContent = `app:
   debug: false
 server:
   host: 127.0.0.1
-  port: 9020
+  port: 9021
   cors_allowed_origins: []
   api_path_prefixes:
     - /api

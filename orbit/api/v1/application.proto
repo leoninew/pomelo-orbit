@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package orbit.api.v1;
+
+option go_package = "backend/internal/transport/http/dto/proto/orbit/api/v1;apiv1";
+
+message ApplicationResp {
+  string id = 1;
+  optional string project_id = 2;
+  string name = 3;
+  string code = 4;
+  string image_pull_policy = 5;
+  string status = 6;
+  bool route_managed = 7;
+  string created_at = 8;
+  string updated_at = 9;
+}
+
+message ApplicationCreateReq {
+  string name = 1;
+  string code = 2;
+  string image_pull_policy = 3;
+  bool route_managed = 4;
+}
+
+message ApplicationUpdateReq {
+  optional string name = 1;
+  optional string code = 2;
+  optional string image_pull_policy = 3;
+  optional bool route_managed = 4;
+}
+
+message ApplicationDeployReq {
+  bool force_recreate = 1;
+}
+
+message ApplicationStopReq {
+  bool remove_volumes = 1;
+}
+
+message DeploymentActionResp {
+  string deployment_id = 1;
+}
+
+message ApplicationStatusResp {
+  string status = 1;
+}
+
+message ApplicationLogsResp {
+  string logs = 1;
+}
+
+message ApplicationComposePreviewResp {
+  string compose_yaml = 1;
+}
+
+message ApplicationPaginatedResp {
+  repeated ApplicationResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

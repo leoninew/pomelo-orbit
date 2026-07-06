@@ -32,7 +32,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != projectId || created.Name != "Route App" || created.Code != "route-app" || created.Status != status.ApplicationStatusUndeployed || created.ImagePullPolicy != "missing" || !created.RouteManaged {
-		t.Fatalf("unexpected created application: %+v", created)
+		t.Fatalf("unexpected created application: %+v", &created)
 	}
 
 	getRecorder := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestApplicationRoutesCRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "Route App 2" || updated.Code != "route-app-2" || updated.ImagePullPolicy != "always" || !updated.RouteManaged {
-		t.Fatalf("unexpected updated application: %+v", updated)
+		t.Fatalf("unexpected updated application: %+v", &updated)
 	}
 
 	appDir := filepath.Join(server.appCfg.DataRoot(), "cd", updated.Code)
@@ -120,7 +120,7 @@ func TestDeployApplicationEnqueuesForceRecreateTask(t *testing.T) {
 	}
 	deploymentId := deployResp.DeploymentId
 	if deploymentId == "" {
-		t.Fatalf("expected deployment_id, got %+v", deployResp)
+		t.Fatalf("expected deployment_id, got %q", deployResp.DeploymentId)
 	}
 
 	var task struct {
@@ -183,7 +183,7 @@ func TestStopApplicationEnqueuesTask(t *testing.T) {
 	}
 	deploymentId := stopResp.DeploymentId
 	if deploymentId == "" {
-		t.Fatalf("expected deployment_id, got %+v", stopResp)
+		t.Fatalf("expected deployment_id, got %q", stopResp.DeploymentId)
 	}
 
 	var task struct {
@@ -319,7 +319,7 @@ func TestApplicationImportExportFilesRoutesAndServiceConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if exported.Name != "Imported App" || len(exported.ConfigFiles) != 1 || len(exported.ServiceConfigs) != 1 || len(exported.Routes) != 1 {
-		t.Fatalf("unexpected exported application: %+v", exported)
+		t.Fatalf("unexpected exported application: %+v", &exported)
 	}
 
 	fileRecorder := httptest.NewRecorder()

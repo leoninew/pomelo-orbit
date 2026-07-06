@@ -1,11 +1,10 @@
-import type { PaginatedResp } from '@/types/common';
 import type {
   UserCreateReq,
-  UserListResp,
+  UserPaginatedResp,
   UserResp,
   UserRoleUpdateReq,
   UserUpdateReq,
-} from '@/types/user';
+} from '@/gen/proto/orbit/api/v1/user';
 import request from '@/utils/request';
 
 export const userApi = {
@@ -13,7 +12,7 @@ export const userApi = {
     page: number;
     per_page: number;
     search?: string;
-  }): Promise<PaginatedResp<UserListResp>> {
+  }): Promise<UserPaginatedResp> {
     return request.get('/api/user', { params });
   },
 
@@ -45,3 +44,4 @@ export const userApi = {
     return request.delete(`/api/user/${id}`);
   },
 };
+

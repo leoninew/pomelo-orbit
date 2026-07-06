@@ -26,7 +26,7 @@ func TestProjectRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Code != "second" || !created.IsActive {
-		t.Fatalf("unexpected created project: %+v", created)
+		t.Fatalf("unexpected created project: %+v", &created)
 	}
 
 	getRecorder := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestProjectRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "Second Project Updated" || updated.Code != "second-updated" {
-		t.Fatalf("unexpected updated project: %+v", updated)
+		t.Fatalf("unexpected updated project: %+v", &updated)
 	}
 
 	memberRecorder := httptest.NewRecorder()

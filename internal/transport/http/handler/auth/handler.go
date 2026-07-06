@@ -2,7 +2,6 @@ package authhandler
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net"
 	"net/http"
@@ -64,20 +63,20 @@ func (h Handler) getCSRFToken(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, CSRFTokenResp{Token: token})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &CSRFTokenResp{Token: token})
 }
 
 func (h Handler) getTurnstileConfig(w http.ResponseWriter, r *http.Request) {
-	transportresponse.JSON(h.logger, w, http.StatusOK, TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey})
 }
 
 func (h Handler) login(w http.ResponseWriter, r *http.Request) {
 	var req LoginReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	loginInput := authsvc.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CSRFToken, IP: clientIP(r), UserAgent: r.UserAgent()}
+	loginInput := authsvc.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: clientIP(r), UserAgent: r.UserAgent()}
 	if err := authsvc.ValidateLoginInput(loginInput); err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -99,7 +98,7 @@ func (h Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, TokenResp{AccessToken: token, TokenType: "bearer"})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &TokenResp{AccessToken: token, TokenType: "bearer"})
 }
 
 func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +122,8 @@ func (h Handler) getMe(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, userInfo(user, roles, permissions))
+	resp := userInfo(user, roles, permissions)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) changePassword(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +132,7 @@ func (h Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req PasswordChangeReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -161,7 +161,7 @@ func (h Handler) listLoginHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := mapPage(history, loginHistoryResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(resp))
+	transportresponse.JSON(h.logger, w, http.StatusOK, &LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) googleOAuth(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +170,7 @@ func (h Handler) googleOAuth(w http.ResponseWriter, r *http.Request) {
 
 func (h Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	var req GoogleCallbackReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}

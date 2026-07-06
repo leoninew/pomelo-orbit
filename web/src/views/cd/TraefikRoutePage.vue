@@ -98,7 +98,7 @@
   import { computed, onMounted, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';
-  import type { TraefikRouter } from '@/api/cd/traefik-route';
+  import type { TraefikRouterResp } from '@/gen/proto/orbit/api/v1/traefik';
   import { traefikRouteApi } from '@/api/cd/traefik-route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -112,7 +112,7 @@
   const { t } = useI18n();
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
-  const routes = ref<TraefikRouter[]>([]);
+  const routes = ref<TraefikRouterResp[]>([]);
   const searchText = ref('');
 
   const filteredRoutes = computed(() => {

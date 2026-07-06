@@ -1,19 +1,10 @@
-import type { Deployment, DeploymentDetail } from '@/types/cd/deployment';
-import type { PaginatedResp } from '@/types/common';
+import type {
+  DeploymentContainerLogsResp,
+  DeploymentLogsResp,
+  DeploymentPaginatedResp,
+  DeploymentResp,
+} from '@/gen/proto/orbit/api/v1/deployment';
 import request from '@/utils/request';
-
-export interface DeploymentLogsResp {
-  logs: string;
-  offset: number;
-  is_complete: boolean;
-  status: string;
-}
-
-export interface DeploymentContainerLogsResp {
-  logs: string;
-  source: 'since' | 'tail';
-  is_realtime_supported: boolean;
-}
 
 // 部署记录相关 API
 export const deploymentApi = {
@@ -27,17 +18,17 @@ export const deploymentApi = {
     date_from?: string;
     date_to?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<Deployment>> {
+  }): Promise<DeploymentPaginatedResp> {
     return request.get('/api/cd/deployment', { params });
   },
 
   // 获取部署记录详情
-  get(id: string): Promise<DeploymentDetail> {
+  get(id: string): Promise<DeploymentResp> {
     return request.get(`/api/cd/deployment/${id}`);
   },
 
   // 取消部署
-  cancel(id: string): Promise<Deployment> {
+  cancel(id: string): Promise<DeploymentResp> {
     return request.post(`/api/cd/deployment/${id}/cancel`);
   },
 

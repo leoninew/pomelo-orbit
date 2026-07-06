@@ -2,7 +2,7 @@ import type {
   SystemConfigResetReq,
   SystemConfigResp,
   SystemConfigUpdateReq,
-} from '@/types/cd/settings';
+} from '@/gen/proto/orbit/api/v1/settings';
 import request from '@/utils/request';
 
 export const settingApi = {

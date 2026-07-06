@@ -176,7 +176,7 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { DeploymentDetail } from '@/types/cd/deployment';
+  import type { DeploymentResp } from '@/gen/proto/orbit/api/v1/deployment';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import type { editor } from 'monaco-editor';
@@ -187,9 +187,9 @@
   const toast = useToast();
   const { status, execute } = useStatusAsync();
 
-  const deployment = ref<DeploymentDetail>();
+  const deployment = ref<DeploymentResp>();
   const logText = ref('');
-  const containerLogSource = ref<'since' | 'tail'>('since');
+  const containerLogSource = ref('since');
   const isCancelDialogOpen = ref(false);
   const isLogPolling = ref(false);
   const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error' | 'not_applicable'>(

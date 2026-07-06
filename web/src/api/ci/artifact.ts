@@ -1,5 +1,4 @@
-import type { PaginatedResp } from '@/types/common';
-import type { Artifact } from '@/types/ci/stage_run';
+import type { ArtifactPaginatedResp } from '@/gen/proto/orbit/api/v1/artifact';
 import request from '@/utils/request';
 
 export const artifactApi = {
@@ -10,7 +9,7 @@ export const artifactApi = {
     template_id?: string;
     search?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<Artifact>> {
+  }): Promise<ArtifactPaginatedResp> {
     return request.get('/api/ci/artifact', { params });
   },
 };

@@ -162,8 +162,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { Credential } from '@/types/ci/credential';
-  import type { RepositoryListItem } from '@/types/ci/repository';
+  import type { CredentialResp } from '@/gen/proto/orbit/api/v1/credential';
+  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
@@ -174,8 +174,8 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
-  const repositories = ref<RepositoryListItem[]>([]);
-  const credentials = ref<Credential[]>([]);
+  const repositories = ref<RepositoryResp[]>([]);
+  const credentials = ref<CredentialResp[]>([]);
   const gitCredentials = computed(() =>
     credentials.value.filter(
       (c) => c.type === 'git_ssh' || c.type === 'github_token' || c.type === 'gitee_token'
@@ -298,6 +298,7 @@
             code: form.code,
             repository_url: form.repository_url,
             git_credential_id: form.git_credential_id || undefined,
+            variable_overrides: [],
             default_branch: form.default_branch,
           },
           { project_id: projectId }

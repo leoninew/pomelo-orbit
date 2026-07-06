@@ -196,7 +196,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { PipelineTemplate } from '@/types/ci/template';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
@@ -208,7 +208,7 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-  const templates = ref<PipelineTemplate[]>([]);
+  const templates = ref<PipelineTemplateResp[]>([]);
   const viewMode = ref<'card' | 'table'>('table');
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
@@ -280,7 +280,7 @@
         const tpl = await pipelineTemplateApi.create(
           {
             name: form.name,
-            description: form.description || undefined,
+            description: form.description,
             variable_declarations: [],
           },
           { project_id: projectId }

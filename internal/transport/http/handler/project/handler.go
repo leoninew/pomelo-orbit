@@ -1,7 +1,6 @@
 package projecthandler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -58,7 +57,7 @@ func (h Handler) listProjects(w http.ResponseWriter, r *http.Request) {
 	for _, item := range items {
 		resp = append(resp, ProjectResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectListResp{Items: resp})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +66,7 @@ func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req ProjectSaveReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -76,7 +75,8 @@ func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, ProjectResponse(project))
+	resp := ProjectResponse(project)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) getProject(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +84,8 @@ func (h Handler) getProject(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectResponse(project))
+	resp := ProjectResponse(project)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +94,7 @@ func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req ProjectSaveReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -102,7 +103,8 @@ func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectResponse(updated))
+	resp := ProjectResponse(updated)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) deprecateProject(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +137,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req ProjectMemberReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -144,7 +146,7 @@ func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectMemberListResp{Items: projectMemberResponses(members)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +159,7 @@ func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectMemberListResp{Items: projectMemberResponses(members)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, projectId string) {
@@ -167,7 +169,7 @@ func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, pro
 		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list project members")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, ProjectMemberListResp{Items: projectMemberResponses(members)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) loadProjectForCurrentUser(w http.ResponseWriter, r *http.Request) (model.Project, bool) {

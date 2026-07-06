@@ -1,5 +1,9 @@
-import type { BuildStage, BuildStageCreateReq, BuildStageUpdateReq } from '@/types/ci/template';
-import type { PaginatedResp } from '@/types/common';
+import type {
+  BuildStageCreateReq,
+  BuildStagePaginatedResp,
+  BuildStageResp,
+  BuildStageUpdateReq,
+} from '@/gen/proto/orbit/api/v1/build_stage';
 import request from '@/utils/request';
 
 export const buildStageApi = {
@@ -8,19 +12,19 @@ export const buildStageApi = {
     per_page?: number;
     search?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<BuildStage>> {
+  }): Promise<BuildStagePaginatedResp> {
     return request.get('/api/ci/build-stage', { params });
   },
 
-  get(id: string): Promise<BuildStage> {
+  get(id: string): Promise<BuildStageResp> {
     return request.get(`/api/ci/build-stage/${id}`);
   },
 
-  create(data: BuildStageCreateReq, params: { project_id: string }): Promise<BuildStage> {
+  create(data: BuildStageCreateReq, params: { project_id: string }): Promise<BuildStageResp> {
     return request.post('/api/ci/build-stage', data, { params });
   },
 
-  update(id: string, data: BuildStageUpdateReq): Promise<BuildStage> {
+  update(id: string, data: BuildStageUpdateReq): Promise<BuildStageResp> {
     return request.put(`/api/ci/build-stage/${id}`, data);
   },
 
@@ -28,7 +32,7 @@ export const buildStageApi = {
     return request.delete(`/api/ci/build-stage/${id}`);
   },
 
-  duplicate(id: string): Promise<BuildStage> {
+  duplicate(id: string): Promise<BuildStageResp> {
     return request.post(`/api/ci/build-stage/${id}/duplicate`, {});
   },
 };

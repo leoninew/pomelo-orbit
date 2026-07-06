@@ -1,7 +1,6 @@
 package cihandler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -34,7 +33,8 @@ func (h Handler) listRepositoryRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineRunResponse)))
+	resp := mapPage(items, pipelineRunResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +43,7 @@ func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req PipelineRunTriggerReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -52,7 +52,8 @@ func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineRunResponse(detail))
+	resp := pipelineRunResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +68,8 @@ func (h Handler) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineRunResponse)))
+	resp := mapPage(items, pipelineRunResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) getPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +82,8 @@ func (h Handler) getPipelineRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineRunResponse(detail))
+	resp := pipelineRunResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +100,7 @@ func (h Handler) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request
 	for _, item := range items {
 		responses = append(responses, artifactResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, PipelineRunArtifactListResp{Items: responses})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &PipelineRunArtifactListResp{Items: transportresponse.Ptrs(responses)})
 }
 
 func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +113,7 @@ func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, PipelineStageLogResp{Logs: result.Logs, Offset: result.Offset, IsComplete: result.IsComplete})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &PipelineStageLogResp{Logs: result.Logs, Offset: int32(result.Offset), IsComplete: result.IsComplete})
 }
 
 func (h Handler) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +126,8 @@ func (h Handler) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineRunResponse(detail))
+	resp := pipelineRunResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -136,18 +140,19 @@ func (h Handler) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineRunResponse(detail))
+	resp := pipelineRunResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func pipelineRunResponse(detail cisvc.PipelineRunDetail) PipelineRunResp {
 	item := detail.Run
-	return PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: item.TemplateVersion, Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot), Status: item.Status, RetryOf: item.RetryOf, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), StageRuns: stageRunsResponse(detail.StageRuns)}
+	return PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: int32(item.TemplateVersion), Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: transportresponse.Ptrs(pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot)), Status: item.Status, RetryOf: item.RetryOf, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), StageRuns: transportresponse.Ptrs(stageRunsResponse(detail.StageRuns))}
 }
 
 func pipelineRunVariableDeclarationResponses(items []model.VariableDeclaration) []VariableDeclarationResp {
 	resp := make([]VariableDeclarationResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: item.Default, Value: item.Value, Secret: item.Secret, Source: item.Source, Editable: item.Editable})
+		resp = append(resp, VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transportresponse.ProtoValue(item.Default), Value: transportresponse.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable})
 	}
 	return resp
 }
@@ -161,7 +166,7 @@ func stageRunsResponse(items []model.StageRun) []StageRunResp {
 }
 
 func stageRunResponse(item model.StageRun) StageRunResp {
-	return StageRunResp{Id: item.Id, PipelineRunId: item.PipelineRunId, StageId: item.StageId, StageName: item.StageName, Status: item.Status, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ExitCode: item.ExitCode, ErrorMessage: item.ErrorMessage}
+	return StageRunResp{Id: item.Id, PipelineRunId: item.PipelineRunId, StageId: item.StageId, StageName: item.StageName, Status: item.Status, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ExitCode: transportresponse.OptionalInt32(item.ExitCode), ErrorMessage: item.ErrorMessage}
 }
 
 func artifactResponse(item model.Artifact) ArtifactResp {

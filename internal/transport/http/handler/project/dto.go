@@ -1,33 +1,10 @@
 package projecthandler
 
-import transportresponse "backend/internal/transport/http/response"
+import apiv1 "backend/internal/transport/http/dto/proto/orbit/api/v1"
 
-type ProjectResp struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Code      string `json:"code"`
-	IsActive  bool   `json:"is_active"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-}
-
-type ProjectMemberResp struct {
-	Id          string  `json:"id"`
-	Username    string  `json:"username"`
-	Email       *string `json:"email"`
-	Status      string  `json:"status"`
-	AuthSource  string  `json:"auth_source"`
-	LastLoginAt *string `json:"last_login_at"`
-}
-
-type ProjectListResp = transportresponse.ListResp[ProjectResp]
-type ProjectMemberListResp = transportresponse.ListResp[ProjectMemberResp]
-
-type ProjectSaveReq struct {
-	Name string `json:"name"`
-	Code string `json:"code"`
-}
-
-type ProjectMemberReq struct {
-	UserId string `json:"user_id"`
-}
+type ProjectResp = apiv1.ProjectResp
+type ProjectMemberResp = apiv1.ProjectMemberResp
+type ProjectListResp = apiv1.ProjectListResp
+type ProjectMemberListResp = apiv1.ProjectMemberListResp
+type ProjectSaveReq = apiv1.ProjectSaveReq
+type ProjectMemberReq = apiv1.ProjectMemberReq

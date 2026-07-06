@@ -129,7 +129,7 @@
             <tbody>
               <tr v-if="sortableArtifacts.length === 0">
                 <td colspan="5" class="text-center text-muted-foreground">
-                  {{ t('buildStageDetail.noArtifactConfig') }}
+                  {{ t('buildStageDetail.noArtifactConfigResp') }}
                 </td>
               </tr>
               <tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
@@ -324,7 +324,8 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { ArtifactConfig, ArtifactType, BuildStage } from '@/types/ci/template';
+  import type { ArtifactConfigResp, BuildStageResp } from '@/gen/proto/orbit/api/v1/build_stage';
+  import type { ArtifactType } from '@/types/ci/template';
   import { formatTime } from '@/utils/time';
 
   const route = useRoute();
@@ -338,7 +339,7 @@
   const { loading: deleting, execute: executeDelete } = useStatusAsync();
   const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-  const stage = ref<BuildStage>();
+  const stage = ref<BuildStageResp>();
   const isDeleteDialogOpen = ref(false);
   const isEditDialogOpen = ref(false);
   const isArtifactDialogOpen = ref(false);
@@ -357,7 +358,7 @@
     name: '',
     path: '',
   });
-  const sortableArtifacts = ref<ArtifactConfig[]>([]);
+  const sortableArtifacts = ref<ArtifactConfigResp[]>([]);
   const artifactToDelete = ref(-1);
 
   async function fetchStage() {
@@ -414,6 +415,7 @@
       await executeSave(async () => {
         const updated = await buildStageApi.update(stageId.value, {
           script: scriptTemp.value,
+          artifacts: stage.value?.artifacts ?? [],
         });
         stage.value = updated;
         showScriptDrawer.value = false;
@@ -430,6 +432,7 @@
         const updated = await buildStageApi.update(stageId.value, {
           name: form.name,
           image: form.image,
+          artifacts: stage.value?.artifacts ?? [],
           description: form.description,
         });
         stage.value = updated;
@@ -460,14 +463,14 @@
     Object.assign(artifactForm, {
       isEdit: true,
       order: idx,
-      type: artifact.type,
+      type: artifact.type as ArtifactType,
       name: artifact.name,
       path: artifact.path,
     });
     isArtifactDialogOpen.value = true;
   }
 
-  function getArtifactTypeLabel(type: ArtifactType) {
+  function getArtifactTypeLabel(type: string) {
     return artifactTypeOptions.value.find((option) => option.value === type)?.label ?? type;
   }
 

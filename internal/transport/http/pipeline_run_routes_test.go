@@ -31,7 +31,7 @@ func TestPipelineRunDetailRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if run.Id != "run-detail-test" || run.RepositoryId != "01KNNRBH52BQJYT9487B2H8N62" || len(run.VariablesSnapshot) != 1 || len(run.StageRuns) != 1 {
-		t.Fatalf("unexpected pipeline run detail: %+v", run)
+		t.Fatalf("unexpected pipeline run detail: %+v", &run)
 	}
 }
 
@@ -81,7 +81,7 @@ func TestPipelineStageLogRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if logResp.Logs != "world\n" || logResp.Offset != 12 || logResp.IsComplete {
-		t.Fatalf("unexpected stage log response: %+v", logResp)
+		t.Fatalf("unexpected stage log response: %+v", &logResp)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestPipelineRunCancelRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if run.Status != "canceled" || run.FinishedAt == nil {
-		t.Fatalf("unexpected canceled run: %+v", run)
+		t.Fatalf("unexpected canceled run: %+v", &run)
 	}
 }
 
@@ -121,7 +121,7 @@ func TestPipelineRunRetryRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if run.Id == "run-retry-test" || run.RetryOf == nil || *run.RetryOf != "run-retry-test" || run.Status != "waiting_to_run" {
-		t.Fatalf("unexpected retry run: %+v", run)
+		t.Fatalf("unexpected retry run: %+v", &run)
 	}
 }
 

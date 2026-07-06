@@ -32,7 +32,8 @@ func (h Handler) listPipelineTemplates(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, pipelineTemplateResponse)))
+	resp := mapPage(items, pipelineTemplateResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +42,7 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var req PipelineTemplateCreateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -50,7 +51,8 @@ func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineTemplateResponse(detail))
+	resp := pipelineTemplateResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) getPipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +65,8 @@ func (h Handler) getPipelineTemplate(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineTemplateResponse(detail))
+	resp := pipelineTemplateResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +75,7 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var req map[string]json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -81,7 +84,8 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineTemplateResponse(detail))
+	resp := pipelineTemplateResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) deletePipelineTemplate(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +110,8 @@ func (h Handler) duplicatePipelineTemplate(w http.ResponseWriter, r *http.Reques
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, pipelineTemplateResponse(detail))
+	resp := pipelineTemplateResponse(detail)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +120,7 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 		return
 	}
 	var req TemplateVariableResolveReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -124,26 +129,29 @@ func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, TemplateVariableResolveResp{Items: variableDeclarationResponses(variables)})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
 }
 
 func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) PipelineTemplateResp {
 	item := detail.Template
-	return PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: orchestrationResponse(detail.Orchestration), Stages: buildStageDetailsResponse(detail.Stages), VariableDeclarations: variableDeclarationResponses(detail.VariableDeclarations), Version: item.Version, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: transportresponse.Ptrs(orchestrationResponse(detail.Orchestration)), Stages: transportresponse.Ptrs(buildStageDetailsResponse(detail.Stages)), VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
 func orchestrationResponse(items []cisvc.StageOrchestration) []StageOrchestrationResp {
 	resp := make([]StageOrchestrationResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: item.StageVersion, DependsOn: item.DependsOn, SortOrder: item.SortOrder})
+		resp = append(resp, StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: int32(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int32(item.SortOrder)})
 	}
 	return resp
 }
 
-func serviceOrchestration(items []StageOrchestrationReq) []cisvc.StageOrchestration {
+func serviceOrchestration(items []*StageOrchestrationReq) []cisvc.StageOrchestration {
 	resp := make([]cisvc.StageOrchestration, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, cisvc.StageOrchestration{StageId: item.StageId, StageName: item.StageName, StageVersion: item.StageVersion, DependsOn: item.DependsOn, SortOrder: item.SortOrder})
+		if item == nil {
+			continue
+		}
+		resp = append(resp, cisvc.StageOrchestration{StageId: item.StageId, StageName: item.StageName, StageVersion: int(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int(item.SortOrder)})
 	}
 	return resp
 }
@@ -176,19 +184,22 @@ func variableDeclarationResponses(items []map[string]any) []VariableDeclarationR
 }
 
 func variableDeclarationResponse(item map[string]any) VariableDeclarationResp {
-	return VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: item["default"], Value: item["value"], Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
+	return VariableDeclarationResp{Name: stringFromMap(item, "name"), Description: stringFromMap(item, "description"), Default: transportresponse.ProtoValue(item["default"]), Value: transportresponse.ProtoValue(item["value"]), Secret: boolFromMap(item, "secret"), Source: stringFromMap(item, "source"), Editable: boolFromMap(item, "editable")}
 }
 
-func variableDeclarationRequestMaps(items []VariableDeclarationReq) []map[string]any {
+func variableDeclarationRequestMaps(items []*VariableDeclarationReq) []map[string]any {
 	resp := make([]map[string]any, 0, len(items))
 	for _, item := range items {
+		if item == nil {
+			continue
+		}
 		resp = append(resp, variableDeclarationRequestMap(item))
 	}
 	return resp
 }
 
-func variableDeclarationRequestMap(item VariableDeclarationReq) map[string]any {
-	return map[string]any{"name": item.Name, "description": item.Description, "default": item.Default, "value": item.Value, "secret": item.Secret, "source": item.Source, "editable": item.Editable}
+func variableDeclarationRequestMap(item *VariableDeclarationReq) map[string]any {
+	return map[string]any{"name": item.Name, "description": item.Description, "default": transportresponse.NativeValue(item.Default), "value": transportresponse.NativeValue(item.Value), "secret": item.Secret, "source": item.Source, "editable": item.Editable}
 }
 
 func stringFromMap(item map[string]any, key string) string {

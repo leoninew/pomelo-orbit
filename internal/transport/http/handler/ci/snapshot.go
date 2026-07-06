@@ -24,18 +24,19 @@ func (h Handler) getPipelineSnapshot(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, pipelineSnapshotResponse(snapshot))
+	resp := pipelineSnapshotResponse(snapshot)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func pipelineSnapshotResponse(detail cisvc.PipelineSnapshotDetail) PipelineSnapshotResp {
 	item := detail.Snapshot
-	return PipelineSnapshotResp{Id: item.Id, TemplateId: item.TemplateId, Version: item.Version, StagesSnapshot: snapshotStageResponses(detail.StagesSnapshot), VariablesSnapshot: pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot), CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
+	return PipelineSnapshotResp{Id: item.Id, TemplateId: item.TemplateId, Version: int32(item.Version), StagesSnapshot: transportresponse.Ptrs(snapshotStageResponses(detail.StagesSnapshot)), VariablesSnapshot: transportresponse.Ptrs(pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot)), CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
 }
 
 func snapshotStageResponses(items []model.StageDefinition) []SnapshotStageResp {
 	resp := make([]SnapshotStageResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, SnapshotStageResp{Name: item.Name, Id: item.Id, Image: item.Image, Version: item.Version, DependsOn: item.DependsOn, Script: item.Script, Artifacts: snapshotArtifactConfigResponses(item.Artifacts)})
+		resp = append(resp, SnapshotStageResp{Name: item.Name, Id: item.Id, Image: item.Image, Version: int32(item.Version), DependsOn: item.DependsOn, Script: item.Script, Artifacts: transportresponse.Ptrs(snapshotArtifactConfigResponses(item.Artifacts))})
 	}
 	return resp
 }

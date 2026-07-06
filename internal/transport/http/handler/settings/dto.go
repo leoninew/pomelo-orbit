@@ -1,23 +1,8 @@
 package settingshandler
 
-type ConfigItemResp struct {
-	Key          string `json:"key"`
-	Value        any    `json:"value"`
-	Default      any    `json:"default"`
-	IsOverridden bool   `json:"is_overridden"`
-	Secret       bool   `json:"secret"`
-	Description  string `json:"description,omitempty"`
-}
+import apiv1 "backend/internal/transport/http/dto/proto/orbit/api/v1"
 
-type SystemConfigResp struct {
-	Items []ConfigItemResp `json:"items"`
-}
-
-type SystemConfigUpdateReq struct {
-	Key   string `json:"key"`
-	Value any    `json:"value"`
-}
-
-type SystemConfigResetReq struct {
-	Keys []string `json:"keys"`
-}
+type ConfigItemResp = apiv1.ConfigItemResp
+type SystemConfigResp = apiv1.SystemConfigResp
+type SystemConfigUpdateReq = apiv1.SystemConfigUpdateReq
+type SystemConfigResetReq = apiv1.SystemConfigResetReq

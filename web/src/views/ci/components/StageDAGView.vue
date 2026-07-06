@@ -23,20 +23,20 @@
   import { MiniMap } from '@vue-flow/minimap';
   import dagre from 'dagre';
   import { computed, markRaw, nextTick, ref, watch } from 'vue';
-  import type { StageRun } from '@/types/ci/stage_run';
-  import type { SnapshotStage } from '@/types/ci/snapshot';
+  import type { StageRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
+  import type { SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
   import { statusColor } from '@/utils/status';
   import StageNode from './StageNode.vue';
 
   interface Props {
-    stages: SnapshotStage[];
-    stageRuns?: StageRun[];
+    stages: SnapshotStageResp[];
+    stageRuns?: StageRunResp[];
     showMinimap?: boolean;
     animated?: boolean;
   }
 
   const props = withDefaults(defineProps<Props>(), { showMinimap: false, animated: false });
-  const emit = defineEmits<(e: 'view-stage', stageRun: StageRun) => void>();
+  const emit = defineEmits<(e: 'view-stage', stageRun: StageRunResp) => void>();
 
   const { fitView, updateNodeData } = useVueFlow();
   const isReady = ref(false);
@@ -44,7 +44,7 @@
 
   // ── 布局：只算一次 ────────────────────────────────────────────────────────────
 
-  function buildLayoutedNodes(stages: SnapshotStage[]): Node[] {
+  function buildLayoutedNodes(stages: SnapshotStageResp[]): Node[] {
     const g = new dagre.graphlib.Graph();
     g.setDefaultEdgeLabel(() => ({}));
     g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
@@ -67,7 +67,7 @@
   const initialNodes = ref<Node[]>(buildLayoutedNodes(props.stages));
 
   const edges = computed<Edge[]>(() => {
-    const stageRunMap = new Map<string, StageRun>();
+    const stageRunMap = new Map<string, StageRunResp>();
     for (const sr of props.stageRuns ?? []) {
       stageRunMap.set(sr.stage_id, sr);
     }
@@ -114,7 +114,7 @@
   // ── 状态更新：用 updateNodeData，不重新布局 ───────────────────────────────────
 
   function syncStatus() {
-    const map = new Map<string, StageRun>();
+    const map = new Map<string, StageRunResp>();
     for (const sr of props.stageRuns ?? []) {
       map.set(sr.stage_id, sr);
     }
@@ -148,7 +148,7 @@
   // ── 交互 ─────────────────────────────────────────────────────────────────────
 
   function handleNodeClick(event: { node: Node }) {
-    const sr = (event.node.data as { stageRun?: StageRun }).stageRun;
+    const sr = (event.node.data as { stageRun?: StageRunResp }).stageRun;
     if (sr) {
       emit('view-stage', sr);
     }

@@ -27,12 +27,12 @@ func TestRepositoryRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Code != "repo-one" || created.DefaultBranch != "main" || len(created.VariableDeclarations) != 6 {
-		t.Fatalf("unexpected created repository: %+v", created)
+		t.Fatalf("unexpected created repository: %+v", &created)
 	}
-	if created.VariableDeclarations[0].Name != "repository_id" || created.VariableDeclarations[0].Default != created.Id {
+	if created.VariableDeclarations[0].Name != "repository_id" || created.VariableDeclarations[0].Default.AsInterface() != created.Id {
 		t.Fatalf("unexpected repository_id variable: %+v", created.VariableDeclarations[0])
 	}
-	if created.VariableDeclarations[1].Name != "repository_name" || created.VariableDeclarations[1].Default != "Repo One" {
+	if created.VariableDeclarations[1].Name != "repository_name" || created.VariableDeclarations[1].Default.AsInterface() != "Repo One" {
 		t.Fatalf("unexpected repository_name variable: %+v", created.VariableDeclarations[1])
 	}
 	if created.VariableDeclarations[5].Name != "FOO" || created.VariableDeclarations[5].Source != "repository_custom" {
@@ -75,7 +75,7 @@ func TestRepositoryRoutes(t *testing.T) {
 	}
 
 	updateRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(updateRecorder, authedRequest(http.MethodPut, "/api/ci/repository/"+created.Id, bytes.NewBufferString(`{"name":"Repo One Updated","repository_url":"https://example.test/repo2.git","default_branch":"develop","variable_overrides":[]}`), token))
+	server.Handler().ServeHTTP(updateRecorder, authedRequest(http.MethodPut, "/api/ci/repository/"+created.Id, bytes.NewBufferString(`{"name":"Repo One Updated","repository_url":"https://example.test/repo2.git","default_branch":"develop","variable_overrides":{"items":[]}}`), token))
 	if updateRecorder.Code != http.StatusOK {
 		t.Fatalf("expected repository update status 200, got %d: %s", updateRecorder.Code, updateRecorder.Body.String())
 	}
@@ -84,7 +84,7 @@ func TestRepositoryRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "Repo One Updated" || updated.DefaultBranch != "develop" {
-		t.Fatalf("unexpected updated repository: %+v", updated)
+		t.Fatalf("unexpected updated repository: %+v", &updated)
 	}
 
 	deleteRecorder := httptest.NewRecorder()
@@ -111,7 +111,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.RepositoryId != repositoryId || created.TemplateId != templateId || !created.Enabled {
-		t.Fatalf("unexpected created webhook: %+v", created)
+		t.Fatalf("unexpected created webhook: %+v", &created)
 	}
 
 	listRecorder := httptest.NewRecorder()
@@ -144,7 +144,7 @@ func TestRepositoryWebhookRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "github updated" || updated.BranchFilter == nil || *updated.BranchFilter != "release/*" || updated.Enabled {
-		t.Fatalf("unexpected updated webhook: %+v", updated)
+		t.Fatalf("unexpected updated webhook: %+v", &updated)
 	}
 
 	deleteRecorder := httptest.NewRecorder()
@@ -169,7 +169,7 @@ func TestRepositoryTriggerRouteCreatesSnapshotWhenMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	if run.Id == "" || run.RepositoryId != "01KNNRBH52BQJYT9487B2H8N62" || run.Status != "waiting_to_run" {
-		t.Fatalf("unexpected triggered run: %+v", run)
+		t.Fatalf("unexpected triggered run: %+v", &run)
 	}
 	if run.SnapshotId == "" || run.TemplateVersion != 7 {
 		t.Fatalf("expected created snapshot on run, got snapshot=%q version=%d", run.SnapshotId, run.TemplateVersion)

@@ -268,12 +268,9 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type {
-    Application,
-    ApplicationFormState,
-    ApplicationImportReq,
-    ApplicationImportState,
-  } from '@/types/cd/application';
+  import type { ApplicationResp } from '@/gen/proto/orbit/api/v1/application';
+  import type { ApplicationImportReq } from '@/gen/proto/orbit/api/v1/application_bundle';
+  import type { ApplicationFormState, ApplicationImportState } from '@/types/cd/application';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
@@ -285,7 +282,7 @@
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const applications = ref<Application[]>([]);
+  const applications = ref<ApplicationResp[]>([]);
   const searchText = ref('');
   const viewMode = ref<'card' | 'table'>('card');
   const isCreateDialogOpen = ref(false);
@@ -330,7 +327,7 @@
     );
   }
 
-  function isAppOperating(app: Application) {
+  function isAppOperating(app: ApplicationResp) {
     return operating && operatingAppId.value === app.id;
   }
 
@@ -468,13 +465,21 @@
       await executeOp(async () => {
         await applicationApi.importApplication(
           {
-            version: importForm.version,
+            version: importForm.version ?? '',
             name: importForm.name,
             code: importForm.code,
             image_pull_policy: importForm.image_pull_policy,
             route_managed: importForm.route_managed,
-            config_files: importForm.config_files,
-            service_configs: importForm.service_configs,
+            config_files: importForm.config_files.map((item) => ({
+              path: item.path,
+              content: item.content ?? '',
+            })),
+            service_configs: importForm.service_configs.map((item) => ({
+              service_name: item.service_name,
+              image: item.image ?? undefined,
+              environment: item.environment ?? undefined,
+              volumes: item.volumes ?? undefined,
+            })),
             routes: importForm.routes,
           },
           { project_id: projectId }
@@ -488,7 +493,7 @@
     }
   }
 
-  async function handleDeploy(app: Application) {
+  async function handleDeploy(app: ApplicationResp) {
     operatingAppId.value = app.id;
     try {
       await executeOp(async () => {
@@ -503,7 +508,7 @@
     }
   }
 
-  async function handleStop(app: Application) {
+  async function handleStop(app: ApplicationResp) {
     operatingAppId.value = app.id;
     try {
       await executeOp(async () => {

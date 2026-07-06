@@ -213,7 +213,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
-  import type { Route } from '@/api/cd/route';
+  import type { RouteResp } from '@/gen/proto/orbit/api/v1/route';
   import { routeApi } from '@/api/cd/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -231,7 +231,7 @@
   const { loading: basicInfoLoading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const routeData = ref<Route>();
+  const routeData = ref<RouteResp>();
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
 

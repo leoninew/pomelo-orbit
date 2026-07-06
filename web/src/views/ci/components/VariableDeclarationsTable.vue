@@ -59,12 +59,12 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
-  import type { VariableDeclaration } from '@/types/ci/template';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/api/v1/common';
   import { getSourceTone, isVariableEditable } from '@/utils/variableSource';
 
   withDefaults(
     defineProps<{
-      declarations: VariableDeclaration[];
+      declarations: VariableDeclarationResp[];
       readonly?: boolean;
     }>(),
     {
@@ -89,18 +89,18 @@
     return true;
   }
 
-  function effectiveValue(decl: VariableDeclaration) {
+  function effectiveValue(decl: VariableDeclarationResp) {
     return decl.value ?? decl.default;
   }
 
-  function canEdit(decl: VariableDeclaration) {
+  function canEdit(decl: VariableDeclarationResp) {
     if (decl.editable !== undefined) {
       return decl.editable;
     }
     return isVariableEditable(requireSource(decl));
   }
 
-  function requireSource(decl: VariableDeclaration) {
+  function requireSource(decl: VariableDeclarationResp) {
     if (!decl.source) {
       throw new Error(`Variable declaration source is required: ${decl.name}`);
     }

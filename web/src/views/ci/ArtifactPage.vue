@@ -128,25 +128,25 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { Artifact } from '@/types/ci/stage_run';
-  import type { Repository } from '@/types/ci/repository';
-  import type { PipelineTemplate } from '@/types/ci/template';
+  import type { ArtifactResp } from '@/gen/proto/orbit/api/v1/artifact';
+  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
   import { formatTime } from '@/utils/time';
 
   const { status, error, execute } = useStatusAsync();
   const toast = useToast();
   const projectStore = useProjectStore();
-  const artifacts = ref<Artifact[]>([]);
+  const artifacts = ref<ArtifactResp[]>([]);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
   const query = reactive({ search: '', repository_id: '', template_id: '' });
 
-  const repoOptions = ref<Repository[]>([]);
-  const templateOptions = ref<PipelineTemplate[]>([]);
+  const repoOptions = ref<RepositoryResp[]>([]);
+  const templateOptions = ref<PipelineTemplateResp[]>([]);
 
-  function artifactTypeLabel(type: Artifact['type']) {
-    const map: Record<Artifact['type'], string> = {
+  function artifactTypeLabel(type: string) {
+    const map: Record<string, string> = {
       docker_image: 'Docker 镜像',
       binary: '二进制文件',
     };

@@ -1,5 +1,10 @@
-import type { ListResp, PaginatedResp } from '@/types/common';
-import type { PermissionResp, RoleCreateReq, RoleResp, RoleUpdateReq } from '@/types/role';
+import type {
+  PermissionListResp,
+  RoleCreateReq,
+  RolePaginatedResp,
+  RoleResp,
+  RoleUpdateReq,
+} from '@/gen/proto/orbit/api/v1/role';
 import request from '@/utils/request';
 
 export const roleApi = {
@@ -7,13 +12,13 @@ export const roleApi = {
     page: number;
     per_page: number;
     search?: string;
-  }): Promise<PaginatedResp<RoleResp>> {
+  }): Promise<RolePaginatedResp> {
     return request.get('/api/role', { params });
   },
   get(id: string): Promise<RoleResp> {
     return request.get(`/api/role/${id}`);
   },
-  listPermissions(): Promise<ListResp<PermissionResp>> {
+  listPermissions(): Promise<PermissionListResp> {
     return request.get('/api/role/permission');
   },
   create(data: RoleCreateReq): Promise<RoleResp> {

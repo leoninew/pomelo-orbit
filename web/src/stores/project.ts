@@ -3,11 +3,11 @@ import { computed, ref } from 'vue';
 import { projectApi } from '@/api/project';
 import { ACTIVE_PROJECT_ID_KEY } from '@/constants/project';
 import { useStorageStore } from '@/stores/storage';
-import type { Project, ProjectCreateReq, ProjectUpdateReq } from '@/types/project';
+import type { ProjectResp, ProjectSaveReq } from '@/gen/proto/orbit/api/v1/project';
 
 export const useProjectStore = defineStore('project', () => {
   const storageStore = useStorageStore();
-  const projects = ref<Project[]>([]);
+  const projects = ref<ProjectResp[]>([]);
   const activeProjectId = ref<string | null>(storageStore.getItem<string>(ACTIVE_PROJECT_ID_KEY));
   const loading = ref(false);
 
@@ -26,7 +26,7 @@ export const useProjectStore = defineStore('project', () => {
     storageStore.removeItem(ACTIVE_PROJECT_ID_KEY);
   }
 
-  function selectFallbackProject(items: Project[]) {
+  function selectFallbackProject(items: ProjectResp[]) {
     if (items.length === 0) {
       clearProjects();
       return;
@@ -49,13 +49,13 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
-  async function createProject(data: ProjectCreateReq) {
+  async function createProject(data: ProjectSaveReq) {
     const project = await projectApi.create(data);
     await fetchProjects();
     return project;
   }
 
-  async function updateProject(id: string, data: ProjectUpdateReq) {
+  async function updateProject(id: string, data: ProjectSaveReq) {
     const project = await projectApi.update(id, data);
     await fetchProjects();
     return project;

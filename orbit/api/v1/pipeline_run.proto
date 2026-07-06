@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package orbit.api.v1;
+
+option go_package = "backend/internal/transport/http/dto/proto/orbit/api/v1;apiv1";
+
+import "orbit/api/v1/artifact.proto";
+import "orbit/api/v1/common.proto";
+
+message PipelineRunTriggerReq {
+  string template_id = 1;
+  string trigger_ref = 2;
+  map<string, string> variables = 3;
+}
+
+message PipelineRunResp {
+  string id = 1;
+  optional string project_id = 2;
+  string repository_id = 3;
+  string repository_name = 4;
+  string snapshot_id = 5;
+  string template_id = 6;
+  string template_name = 7;
+  int32 template_version = 8;
+  string trigger = 9;
+  string trigger_ref = 10;
+  repeated VariableDeclarationResp variables_snapshot = 11;
+  string status = 12;
+  optional string retry_of = 13;
+  optional string started_at = 14;
+  optional string finished_at = 15;
+  optional string error_message = 16;
+  string created_at = 17;
+  repeated StageRunResp stage_runs = 18;
+}
+
+message StageRunResp {
+  string id = 1;
+  string pipeline_run_id = 2;
+  string stage_id = 3;
+  string stage_name = 4;
+  string status = 5;
+  optional string started_at = 6;
+  optional string finished_at = 7;
+  optional int32 exit_code = 8;
+  optional string error_message = 9;
+}
+
+message PipelineRunArtifactListResp {
+  repeated ArtifactResp items = 1;
+}
+
+message PipelineStageLogResp {
+  string logs = 1;
+  int32 offset = 2;
+  bool is_complete = 3;
+}
+
+message PipelineRunPaginatedResp {
+  repeated PipelineRunResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

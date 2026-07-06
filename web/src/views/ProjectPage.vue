@@ -155,7 +155,7 @@
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';
-  import type { Project } from '@/types/project';
+  import type { ProjectResp } from '@/gen/proto/orbit/api/v1/project';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -177,8 +177,8 @@
   const searchText = ref('');
   const isDialogOpen = ref(false);
   const isDeprecateDialogOpen = ref(false);
-  const editingProject = ref<Project | null>(null);
-  const deprecatingProject = ref<Project | null>(null);
+  const editingProject = ref<ProjectResp | null>(null);
+  const deprecatingProject = ref<ProjectResp | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10 });
   const form = reactive({ name: '', code: '' });
   const errors = reactive({ name: '', code: '' });
@@ -201,7 +201,7 @@
     return filteredProjects.value.slice(start, start + pagination.pageSize);
   });
 
-  function resetForm(project?: Project) {
+  function resetForm(project?: ProjectResp) {
     form.name = project?.name ?? '';
     form.code = project?.code ?? '';
     errors.name = '';
@@ -220,13 +220,13 @@
     isDialogOpen.value = true;
   }
 
-  function openEditDialog(project: Project) {
+  function openEditDialog(project: ProjectResp) {
     editingProject.value = project;
     resetForm(project);
     isDialogOpen.value = true;
   }
 
-  async function openDeprecateDialog(project: Project) {
+  async function openDeprecateDialog(project: ProjectResp) {
     deprecatingProject.value = project;
     (document.activeElement as HTMLElement)?.blur();
     await nextTick();

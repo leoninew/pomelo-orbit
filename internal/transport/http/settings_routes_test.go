@@ -32,7 +32,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, ok := findConfigItem(initial.Items, "logging__level"); !ok {
-		t.Fatalf("expected logging__level in settings response: %+v", initial)
+		t.Fatalf("expected logging__level in settings response: %+v", &initial)
 	}
 
 	updateRecorder := httptest.NewRecorder()
@@ -45,7 +45,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	loggingLevel, ok := findConfigItem(updated.Items, "logging__level")
-	if !ok || loggingLevel.Value != "debug" || !loggingLevel.IsOverridden {
+	if !ok || loggingLevel.Value.AsInterface() != "debug" || !loggingLevel.IsOverridden {
 		t.Fatalf("unexpected updated logging level: %+v", loggingLevel)
 	}
 	content, err := os.ReadFile(envFilePath)
@@ -66,7 +66,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	loggingLevel, ok = findConfigItem(reset.Items, "logging__level")
-	if !ok || loggingLevel.Value != server.appCfg.Logging.Level || loggingLevel.IsOverridden {
+	if !ok || loggingLevel.Value.AsInterface() != server.appCfg.Logging.Level || loggingLevel.IsOverridden {
 		t.Fatalf("unexpected reset logging level: %+v", loggingLevel)
 	}
 }
@@ -83,11 +83,11 @@ func TestSettingsConfigRequiresAuth(t *testing.T) {
 	}
 }
 
-func findConfigItem(items []settingshandler.ConfigItemResp, key string) (settingshandler.ConfigItemResp, bool) {
+func findConfigItem(items []*settingshandler.ConfigItemResp, key string) (*settingshandler.ConfigItemResp, bool) {
 	for _, item := range items {
-		if item.Key == key {
+		if item != nil && item.Key == key {
 			return item, true
 		}
 	}
-	return settingshandler.ConfigItemResp{}, false
+	return nil, false
 }

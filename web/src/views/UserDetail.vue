@@ -291,9 +291,9 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { AuthSource } from '@/types/auth';
-  import type { RoleResp } from '@/types/role';
-  import type { UserResp, UserStatus } from '@/types/user';
+  import type { RoleResp } from '@/gen/proto/orbit/api/v1/role';
+  import type { UserResp } from '@/gen/proto/orbit/api/v1/user';
+  import type { UserStatus } from '@/types/user';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();
@@ -328,7 +328,7 @@
     { value: 'disabled', label: t('userManagement.disabled') },
   ]);
 
-  function formatAuthSource(authSource: AuthSource) {
+  function formatAuthSource(authSource: string) {
     switch (authSource) {
       case 'oauth':
         return t('userManagement.authSourceOAuth');
@@ -364,7 +364,7 @@
   function openEditModal() {
     form.username = user.value?.username ?? '';
     form.password = '';
-    form.status = user.value?.status ?? 'enabled';
+    form.status = (user.value?.status as UserStatus | undefined) ?? 'enabled';
     isEditModalOpen.value = true;
   }
 
@@ -378,7 +378,7 @@
       await executeOp(async () => {
         await userApi.update(props.id, {
           username: form.username.trim(),
-          password: form.password.trim() || null,
+          password: form.password.trim() || undefined,
           status: form.status,
         });
         if (props.id === authStore.user?.id) {

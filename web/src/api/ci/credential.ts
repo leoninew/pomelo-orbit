@@ -1,12 +1,12 @@
 import type {
-  Credential,
   CredentialCreateReq,
-  CredentialDetail,
+  CredentialDetailResp,
   CredentialExportResp,
   CredentialImportReq,
+  CredentialPaginatedResp,
+  CredentialResp,
   CredentialUpdateReq,
-} from '@/types/ci/credential';
-import type { PaginatedResp } from '@/types/common';
+} from '@/gen/proto/orbit/api/v1/credential';
 import request from '@/utils/request';
 
 // Credential API
@@ -16,19 +16,19 @@ export const credentialApi = {
     per_page?: number;
     search?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<Credential>> {
+  }): Promise<CredentialPaginatedResp> {
     return request.get('/api/ci/credential', { params });
   },
 
-  get(id: string): Promise<CredentialDetail> {
+  get(id: string): Promise<CredentialDetailResp> {
     return request.get(`/api/ci/credential/${id}`);
   },
 
-  create(data: CredentialCreateReq, params: { project_id: string }): Promise<Credential> {
+  create(data: CredentialCreateReq, params: { project_id: string }): Promise<CredentialResp> {
     return request.post('/api/ci/credential', data, { params });
   },
 
-  update(id: string, data: CredentialUpdateReq): Promise<Credential> {
+  update(id: string, data: CredentialUpdateReq): Promise<CredentialResp> {
     return request.put(`/api/ci/credential/${id}`, data);
   },
 
@@ -40,7 +40,7 @@ export const credentialApi = {
     return request.get(`/api/ci/credential/${id}/export`);
   },
 
-  importCredential(data: CredentialImportReq, params: { project_id: string }): Promise<Credential> {
+  importCredential(data: CredentialImportReq, params: { project_id: string }): Promise<CredentialResp> {
     return request.post('/api/ci/credential/import', data, { params });
   },
 };

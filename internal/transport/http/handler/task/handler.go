@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"backend/internal/apperror"
 	taskrepo "backend/internal/repository/task"
@@ -45,12 +47,13 @@ func (h Handler) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	item, err := h.service.Create(r.Context(), tasksvc.CreateInput{Id: req.Id, TaskType: req.TaskType, Payload: req.Payload, PayloadJSON: req.PayloadJSON, MaxAttempts: req.MaxAttempts})
+	item, err := h.service.Create(r.Context(), tasksvc.CreateInput{Id: req.Id, TaskType: req.TaskType, Payload: rawPayload(req.Payload), PayloadJSON: req.PayloadJson, MaxAttempts: int(req.MaxAttempts)})
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, taskResponse(item))
+	resp := taskResponse(item)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) enqueueCIPipelineRun(w http.ResponseWriter, r *http.Request) {
@@ -98,7 +101,8 @@ func (h Handler) enqueueTypedTask(w http.ResponseWriter, r *http.Request, taskTy
 		h.writeServiceError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, taskResponse(item))
+	resp := taskResponse(item)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) getTask(w http.ResponseWriter, r *http.Request) {
@@ -107,11 +111,23 @@ func (h Handler) getTask(w http.ResponseWriter, r *http.Request) {
 		transportresponse.Error(h.logger, w, http.StatusNotFound, "Task not found")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, taskResponse(item))
+	resp := taskResponse(item)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func taskResponse(item *taskrepo.Task) TaskResp {
-	return TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJSON: item.PayloadJSON, Status: item.Status, Attempts: item.Attempts, MaxAttempts: item.MaxAttempts, LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+	return TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
+}
+
+func rawPayload(payload *structpb.Value) json.RawMessage {
+	if payload == nil {
+		return nil
+	}
+	data, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 func (h Handler) writeServiceError(w http.ResponseWriter, err error) {

@@ -142,9 +142,9 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { Repository } from '@/types/ci/repository';
-  import type { PipelineRun } from '@/types/ci/run';
-  import type { PipelineTemplate } from '@/types/ci/template';
+  import type { PipelineRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
+  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
   import { statusTone } from '@/utils/status';
   import { formatTime, formatDuration } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
@@ -156,9 +156,9 @@
   const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
 
-  const runs = ref<PipelineRun[]>([]);
-  const repositories = ref<Repository[]>([]);
-  const templates = ref<PipelineTemplate[]>([]);
+  const runs = ref<PipelineRunResp[]>([]);
+  const repositories = ref<RepositoryResp[]>([]);
+  const templates = ref<PipelineTemplateResp[]>([]);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const query = reactive({ repository_id: '', template_id: '' });

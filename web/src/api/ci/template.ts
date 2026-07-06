@@ -1,13 +1,13 @@
-import type { ListResp, PaginatedResp } from '@/types/common';
-import type { PipelineSnapshot } from '@/types/ci/snapshot';
+import type { PipelineSnapshotResp } from '@/gen/proto/orbit/api/v1/snapshot';
 import type {
-  PipelineTemplate,
   PipelineTemplateCreateReq,
-  StageOrchestrationReq,
+  PipelineTemplatePaginatedResp,
+  PipelineTemplateResp,
   PipelineTemplateUpdateReq,
-  VariableDeclaration,
-  VariableDeclarationReq,
-} from '@/types/ci/template';
+  StageOrchestrationReq,
+  TemplateVariableResolveResp,
+} from '@/gen/proto/orbit/api/v1/template';
+import type { VariableDeclarationReq } from '@/gen/proto/orbit/api/v1/common';
 import request from '@/utils/request';
 
 export const pipelineTemplateApi = {
@@ -16,22 +16,22 @@ export const pipelineTemplateApi = {
     per_page?: number;
     search?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<PipelineTemplate>> {
+  }): Promise<PipelineTemplatePaginatedResp> {
     return request.get('/api/ci/template', { params });
   },
 
-  get(id: string): Promise<PipelineTemplate> {
+  get(id: string): Promise<PipelineTemplateResp> {
     return request.get(`/api/ci/template/${id}`);
   },
 
   create(
     data: PipelineTemplateCreateReq,
     params: { project_id: string }
-  ): Promise<PipelineTemplate> {
+  ): Promise<PipelineTemplateResp> {
     return request.post('/api/ci/template', data, { params });
   },
 
-  update(id: string, data: PipelineTemplateUpdateReq): Promise<PipelineTemplate> {
+  update(id: string, data: PipelineTemplateUpdateReq): Promise<PipelineTemplateResp> {
     return request.put(`/api/ci/template/${id}`, data);
   },
 
@@ -41,7 +41,7 @@ export const pipelineTemplateApi = {
       variable_declarations?: VariableDeclarationReq[];
     },
     params: { project_id: string }
-  ): Promise<ListResp<VariableDeclaration>> {
+  ): Promise<TemplateVariableResolveResp> {
     return request.post('/api/ci/template/resolve-variables', data, { params });
   },
 
@@ -49,11 +49,11 @@ export const pipelineTemplateApi = {
     return request.delete(`/api/ci/template/${id}`);
   },
 
-  duplicate(id: string): Promise<PipelineTemplate> {
+  duplicate(id: string): Promise<PipelineTemplateResp> {
     return request.post(`/api/ci/template/${id}/duplicate`, {});
   },
 
-  getSnapshot(snapshotId: string): Promise<PipelineSnapshot> {
+  getSnapshot(snapshotId: string): Promise<PipelineSnapshotResp> {
     return request.get(`/api/ci/snapshot/${snapshotId}`);
   },
 };

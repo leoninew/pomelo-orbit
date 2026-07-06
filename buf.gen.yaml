@@ -1,0 +1,7 @@
+version: v2
+clean: true
+plugins:
+  - local: protoc-gen-go
+    out: internal/transport/http/dto/proto
+    opt:
+      - paths=source_relative

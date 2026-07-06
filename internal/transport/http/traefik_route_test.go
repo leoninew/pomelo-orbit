@@ -66,8 +66,8 @@ func TestTraefikRouteConfigWithoutDashboardRoute(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
-	if resp.DashboardDomain != "traefik.lvh.me" || resp.HTTPSEnabled {
-		t.Fatalf("unexpected traefik config response: %+v", resp)
+	if resp.DashboardDomain != "traefik.lvh.me" || resp.HttpsEnabled {
+		t.Fatalf("unexpected traefik config response: %+v", &resp)
 	}
 }
 
@@ -100,8 +100,8 @@ func TestTraefikRouteConfigWithHTTPSDashboardRoute(t *testing.T) {
 	if err := json.NewDecoder(recorder.Body).Decode(&resp); err != nil {
 		t.Fatal(err)
 	}
-	if resp.DashboardDomain != "traefik.lvh.me" || !resp.HTTPSEnabled {
-		t.Fatalf("unexpected traefik config response: %+v", resp)
+	if resp.DashboardDomain != "traefik.lvh.me" || !resp.HttpsEnabled {
+		t.Fatalf("unexpected traefik config response: %+v", &resp)
 	}
 }
 
@@ -150,12 +150,12 @@ func TestTraefikRouteListReturnsRouters(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp.Total != 2 || len(resp.Items) != 2 {
-		t.Fatalf("unexpected traefik route list response: %+v", resp)
+		t.Fatalf("unexpected traefik route list response: %+v", &resp)
 	}
-	if resp.Items[0].Name != "api@docker" || resp.Items[0].Entrypoints[0] != "websecure" || !resp.Items[0].TLS {
+	if resp.Items[0].Name != "api@docker" || resp.Items[0].Entrypoints[0] != "websecure" || !resp.Items[0].Tls {
 		t.Fatalf("unexpected first traefik route: %+v", resp.Items[0])
 	}
-	if resp.Items[1].TLS {
+	if resp.Items[1].Tls {
 		t.Fatalf("unexpected tls for second traefik route: %+v", resp.Items[1])
 	}
 }

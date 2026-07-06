@@ -525,7 +525,7 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">
-        {{ t('application.detail.dialog.deleteConfigFileConfirm') }}
+        {{ t('application.detail.dialog.deleteConfigFileRespConfirm') }}
       </p>
       <template #footer>
         <button class="app-button" @click="isDeleteFileDialogOpen = false">
@@ -763,13 +763,13 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { ApplicationResp } from '@/gen/proto/orbit/api/v1/application';
+  import type { ApplicationRouteResp } from '@/gen/proto/orbit/api/v1/application_route';
+  import type { ConfigFileResp } from '@/gen/proto/orbit/api/v1/config_file';
   import type {
-    Application,
-    ApplicationRoute,
-    ApplicationServiceConfig,
+    ApplicationServiceConfigResp,
     ComposeServiceResp,
-    ConfigFile,
-  } from '@/types/cd/application';
+  } from '@/gen/proto/orbit/api/v1/service_config';
   import { appStatusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
@@ -789,11 +789,11 @@
   const { loading: serviceConfigSaving, execute: executeServiceConfigSave } = useStatusAsync();
   const { loading: composePreviewLoading, execute: executeComposePreview } = useStatusAsync();
 
-  const application = ref<Application>();
-  const files = ref<ConfigFile[]>([]);
-  const appRoutes = ref<ApplicationRoute[]>([]);
+  const application = ref<ApplicationResp>();
+  const files = ref<ConfigFileResp[]>([]);
+  const appRoutes = ref<ApplicationRouteResp[]>([]);
   const composeServices = ref<ComposeServiceResp[]>([]);
-  const serviceConfigs = ref<ApplicationServiceConfig[]>([]);
+  const serviceConfigs = ref<ApplicationServiceConfigResp[]>([]);
   const selectedServiceName = ref('');
   const serviceConfigError = ref('');
 
@@ -1060,7 +1060,7 @@
         files.value = resp.items;
       });
     } catch {
-      toast.error(t('application.toast.loadConfigFilesFailed'));
+      toast.error(t('application.toast.loadConfigFileRespsFailed'));
     }
   }
 
@@ -1078,27 +1078,27 @@
     }
   }
 
-  function getServiceDisplayImage(serviceConfig: ApplicationServiceConfig) {
+  function getServiceDisplayImage(serviceConfig: ApplicationServiceConfigResp) {
     return serviceConfig.image?.trim() || serviceConfig.base_image || '';
   }
 
-  function isServiceOverridden(serviceConfig: ApplicationServiceConfig) {
+  function isServiceOverridden(serviceConfig: ApplicationServiceConfigResp) {
     const overrideImage = serviceConfig.image?.trim() || '';
     const baseImage = serviceConfig.base_image?.trim() || '';
     return Boolean(overrideImage) && overrideImage !== baseImage;
   }
 
-  function canResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
+  function canResetServiceConfig(serviceConfig: ApplicationServiceConfigResp) {
     return Boolean(serviceConfig.image?.trim());
   }
 
-  function openEditServiceConfigModal(serviceConfig: ApplicationServiceConfig) {
+  function openEditServiceConfigModal(serviceConfig: ApplicationServiceConfigResp) {
     selectedServiceName.value = serviceConfig.service_name;
     serviceConfigForm.image = getServiceDisplayImage(serviceConfig);
     isServiceConfigDialogOpen.value = true;
   }
 
-  function confirmResetServiceConfig(serviceConfig: ApplicationServiceConfig) {
+  function confirmResetServiceConfig(serviceConfig: ApplicationServiceConfigResp) {
     if (!canResetServiceConfig(serviceConfig)) {
       return;
     }
@@ -1346,7 +1346,7 @@
     isRouteDialogOpen.value = true;
   }
 
-  async function openEditRouteModal(r: ApplicationRoute) {
+  async function openEditRouteModal(r: ApplicationRouteResp) {
     if (!application.value?.route_managed) {
       return;
     }

@@ -118,8 +118,8 @@ func TestEnqueueCIPipelineRun(t *testing.T) {
 	if created.TaskType != status.TaskTypeCIPipelineRunExecute {
 		t.Fatalf("unexpected task type: %s", created.TaskType)
 	}
-	if created.PayloadJSON != `{"pipeline_run_id":"run-1"}` {
-		t.Fatalf("unexpected payload: %s", created.PayloadJSON)
+	if created.PayloadJson != `{"pipeline_run_id":"run-1"}` {
+		t.Fatalf("unexpected payload: %s", created.PayloadJson)
 	}
 }
 
@@ -141,8 +141,8 @@ func TestEnqueueCDApplicationDeploy(t *testing.T) {
 	if created.TaskType != status.TaskTypeCDApplicationDeploy {
 		t.Fatalf("unexpected task type: %s", created.TaskType)
 	}
-	if created.PayloadJSON != `{"application_id":"app-1","deployment_id":"deploy-1"}` {
-		t.Fatalf("unexpected payload: %s", created.PayloadJSON)
+	if created.PayloadJson != `{"application_id":"app-1","deployment_id":"deploy-1"}` {
+		t.Fatalf("unexpected payload: %s", created.PayloadJson)
 	}
 }
 
@@ -164,8 +164,8 @@ func TestEnqueueCDApplicationStop(t *testing.T) {
 	if created.TaskType != status.TaskTypeCDApplicationStop {
 		t.Fatalf("unexpected task type: %s", created.TaskType)
 	}
-	if created.PayloadJSON != `{"application_id":"app-1","deployment_id":"deploy-1"}` {
-		t.Fatalf("unexpected payload: %s", created.PayloadJSON)
+	if created.PayloadJson != `{"application_id":"app-1","deployment_id":"deploy-1"}` {
+		t.Fatalf("unexpected payload: %s", created.PayloadJson)
 	}
 }
 
@@ -210,7 +210,7 @@ func TestAuthLoginAndMe(t *testing.T) {
 		t.Fatal(err)
 	}
 	if token.AccessToken == "" || token.TokenType != "bearer" {
-		t.Fatalf("unexpected token response: %+v", token)
+		t.Fatalf("unexpected token response: %+v", &token)
 	}
 
 	meRecorder := httptest.NewRecorder()
@@ -225,7 +225,7 @@ func TestAuthLoginAndMe(t *testing.T) {
 		t.Fatal(err)
 	}
 	if me.Username != "admin" || len(me.Roles) == 0 || len(me.Permissions) == 0 {
-		t.Fatalf("unexpected me response: %+v", me)
+		t.Fatalf("unexpected me response: %+v", &me)
 	}
 }
 

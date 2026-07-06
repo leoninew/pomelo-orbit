@@ -175,8 +175,8 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';
-  import type { Deployment } from '@/types/cd/deployment';
-  import type { PipelineRun } from '@/types/ci/run';
+  import type { DeploymentResp } from '@/gen/proto/orbit/api/v1/deployment';
+  import type { PipelineRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
   import { statusTone } from '@/utils/status';
   import { formatTime, getTodayStart } from '@/utils/time';
 
@@ -195,8 +195,8 @@
 
   const ciStats = reactive({ projectCount: 0, todayRuns: 0 });
   const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 });
-  const recentRuns = ref<PipelineRun[]>([]);
-  const recentDeploys = ref<Deployment[]>([]);
+  const recentRuns = ref<PipelineRunResp[]>([]);
+  const recentDeploys = ref<DeploymentResp[]>([]);
 
   const cardImages = [image1, image2, image3, image4];
 

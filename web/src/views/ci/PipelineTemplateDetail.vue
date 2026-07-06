@@ -174,7 +174,7 @@
             {{ t('pipelineTemplate.addVariable') }}
           </button>
         </div>
-        <VariableDeclarationsTable
+        <VariableDeclarationRespsTable
           :declarations="declarations"
           :readonly="false"
           @edit="openEditVarModal"
@@ -450,17 +450,17 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
+  import type { BuildStageResp } from '@/gen/proto/orbit/api/v1/build_stage';
+  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
   import type {
-    ArtifactDeclaration,
-    BuildStage,
-    PipelineTemplate,
-    StageOrchestration,
-    VariableDeclaration,
-  } from '@/types/ci/template';
-  import type { Repository } from '@/types/ci/repository';
+    PipelineTemplateResp,
+    StageOrchestrationResp,
+  } from '@/gen/proto/orbit/api/v1/template';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/api/v1/common';
+  import type { ArtifactDeclaration } from '@/types/ci/template';
   import { detectCircularDependencies } from '@/utils/dag';
   import StageDAGView from './components/StageDAGView.vue';
-  import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+  import VariableDeclarationRespsTable from './components/VariableDeclarationRespsTable.vue';
 
   const route = useRoute();
   const router = useRouter();
@@ -475,13 +475,13 @@
   const { loading: running, execute: executeRun } = useStatusAsync();
   const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-  const template = ref<PipelineTemplate>();
-  const sortableOrch = ref<StageOrchestration[]>([]);
-  const declarations = ref<VariableDeclaration[]>([]);
-  const stageCache = reactive<Record<string, BuildStage>>({});
+  const template = ref<PipelineTemplateResp>();
+  const sortableOrch = ref<StageOrchestrationResp[]>([]);
+  const declarations = ref<VariableDeclarationResp[]>([]);
+  const stageCache = reactive<Record<string, BuildStageResp>>({});
   const viewMode = ref<'list' | 'dag'>('list');
 
-  const stageOptions = ref<BuildStage[]>([]);
+  const stageOptions = ref<BuildStageResp[]>([]);
 
   const stageSelectOptions = computed(() => {
     const inOrch = new Set(sortableOrch.value.map((o) => o.stage_id));
@@ -494,7 +494,7 @@
       }));
   });
 
-  const repoOptions = ref<Repository[]>([]);
+  const repoOptions = ref<RepositoryResp[]>([]);
   const repoSelectOptions = computed(() =>
     repoOptions.value.map((repo) => ({
       value: repo.id,
@@ -587,6 +587,7 @@
         script: stage?.script ?? '',
         version: stage?.version ?? 1,
         depends_on: orch.depends_on,
+        artifacts: stage?.artifacts ?? [],
       };
     })
   );
@@ -604,7 +605,7 @@
     }
   );
 
-  function applyTemplateState(tmpl: PipelineTemplate) {
+  function applyTemplateState(tmpl: PipelineTemplateResp) {
     template.value = tmpl;
     sortableOrch.value = [...tmpl.orchestration].sort((a, b) => a.sort_order - b.sort_order);
     declarations.value = [...tmpl.variable_declarations];
@@ -711,6 +712,11 @@
         const data = await pipelineTemplateApi.update(templateId.value, {
           name: editForm.name,
           description: editForm.description,
+          orchestration: sortableOrch.value.map((o, i) => ({
+            ...o,
+            sort_order: i,
+          })),
+          variable_declarations: declarations.value,
         });
         applyTemplateState(data);
         toast.success(t('pipelineTemplate.toast.saveSuccess'));
@@ -806,7 +812,7 @@
     if (!stage) {
       return;
     }
-    const newOrch: StageOrchestration = {
+    const newOrch: StageOrchestrationResp = {
       stage_id: addOrchForm.stageId,
       stage_name: stage.name,
       stage_version: stage.version,
@@ -967,10 +973,12 @@
 
     declarations.value.push({
       name: varForm.name,
+      description: varForm.description,
+      default: undefined,
       value: varForm.value || undefined,
-      description: varForm.description || undefined,
-      source: 'template_custom',
       secret: false,
+      source: 'template_custom',
+      editable: true,
     });
 
     isAddVarDialogOpen.value = false;
@@ -991,7 +999,7 @@
     const decl = declarations.value.find((d) => d.name === varForm.name);
     if (decl) {
       decl.value = varForm.value || undefined;
-      decl.description = varForm.description || undefined;
+      decl.description = varForm.description;
     }
     isEditVarDialogOpen.value = false;
   }

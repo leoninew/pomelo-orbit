@@ -1,52 +1,13 @@
 package authhandler
 
-type LoginHistoryResp struct {
-	Id        string  `json:"id"`
-	UserId    string  `json:"user_id"`
-	Username  string  `json:"username"`
-	IpAddress *string `json:"ip_address"`
-	UserAgent *string `json:"user_agent"`
-	LoginAt   string  `json:"login_at"`
-	Success   bool    `json:"success"`
-}
+import apiv1 "backend/internal/transport/http/dto/proto/orbit/api/v1"
 
-type TokenResp struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-}
-
-type UserInfoResp struct {
-	Id          string   `json:"id"`
-	Username    string   `json:"username"`
-	Email       *string  `json:"email"`
-	AuthSource  string   `json:"auth_source"`
-	CreatedAt   string   `json:"created_at"`
-	LastLoginAt *string  `json:"last_login_at"`
-	Roles       []string `json:"roles"`
-	Permissions []string `json:"permissions"`
-}
-
-type CSRFTokenResp struct {
-	Token string `json:"token"`
-}
-
-type LoginReq struct {
-	Username       string `json:"username"`
-	Password       string `json:"password"`
-	CSRFToken      string `json:"csrf_token"`
-	TurnstileToken string `json:"turnstile_token"`
-}
-
-type PasswordChangeReq struct {
-	OldPassword string `json:"old_password"`
-	NewPassword string `json:"new_password"`
-}
-
-type GoogleCallbackReq struct {
-	Code string `json:"code"`
-}
-
-type TurnstileConfigResp struct {
-	Enabled bool   `json:"enabled"`
-	SiteKey string `json:"site_key"`
-}
+type LoginHistoryResp = apiv1.LoginHistoryResp
+type LoginHistoryPaginatedResp = apiv1.LoginHistoryPaginatedResp
+type TokenResp = apiv1.TokenResp
+type UserInfoResp = apiv1.UserInfoResp
+type CSRFTokenResp = apiv1.CSRFTokenResp
+type LoginReq = apiv1.LoginReq
+type PasswordChangeReq = apiv1.PasswordChangeReq
+type GoogleCallbackReq = apiv1.GoogleCallbackReq
+type TurnstileConfigResp = apiv1.TurnstileConfigResp

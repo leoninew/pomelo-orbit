@@ -186,7 +186,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
+  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
   import type { ArtifactDeclaration } from '@/types/ci/template';
   import { formatTime } from '@/utils/time';
   import StageDAGView from './components/StageDAGView.vue';
@@ -198,11 +198,11 @@
   const toast = useToast();
 
   const { status, execute } = useStatusAsync();
-  const snapshot = ref<PipelineSnapshot>();
+  const snapshot = ref<PipelineSnapshotResp>();
   const stagesView = ref<'list' | 'dag'>('list');
 
-  const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
-    const map: Record<string, SnapshotStage> = {};
+  const snapshotStageMap = computed<Record<string, SnapshotStageResp>>(() => {
+    const map: Record<string, SnapshotStageResp> = {};
     for (const s of snapshot.value?.stages_snapshot ?? []) {
       map[s.id] = s;
     }

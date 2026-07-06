@@ -32,8 +32,8 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if err := json.NewDecoder(createRecorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Id == "" || created.Name != "api-route" || created.PathPrefix != "/api" || created.CertType != "manual" || created.HTTPSEnabled {
-		t.Fatalf("unexpected created route: %+v", created)
+	if created.Id == "" || created.Name != "api-route" || created.PathPrefix != "/api" || created.CertType != "manual" || created.HttpsEnabled {
+		t.Fatalf("unexpected created route: %+v", &created)
 	}
 
 	listRecorder := httptest.NewRecorder()
@@ -58,8 +58,8 @@ func TestRouteCRUDAndStatus(t *testing.T) {
 	if err := json.NewDecoder(updateRecorder.Body).Decode(&updated); err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "api-route-2" || updated.TargetURL != "http://host.docker.internal:8082" || !updated.Enabled {
-		t.Fatalf("unexpected updated route: %+v", updated)
+	if updated.Name != "api-route-2" || updated.TargetUrl != "http://host.docker.internal:8082" || !updated.Enabled {
+		t.Fatalf("unexpected updated route: %+v", &updated)
 	}
 	configPath := filepath.Join(routeConfigDir(server), "api-route-2.yml")
 	configData, err := os.ReadFile(configPath)
@@ -123,8 +123,8 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if err := json.NewDecoder(certRecorder.Body).Decode(&withCert); err != nil {
 		t.Fatal(err)
 	}
-	if !withCert.HTTPSEnabled || withCert.CertType != "manual" {
-		t.Fatalf("unexpected cert route: %+v", withCert)
+	if !withCert.HttpsEnabled || withCert.CertType != "manual" {
+		t.Fatalf("unexpected cert route: %+v", &withCert)
 	}
 	if _, err := os.Stat(filepath.Join(routeCertDir(server), "cert-route.pem")); err != nil {
 		t.Fatalf("expected cert file: %v", err)
@@ -148,8 +148,8 @@ func TestRouteCertificateOperations(t *testing.T) {
 	if err := json.NewDecoder(leRecorder.Body).Decode(&letsEncrypt); err != nil {
 		t.Fatal(err)
 	}
-	if !letsEncrypt.HTTPSEnabled || letsEncrypt.CertType != "letsencrypt" {
-		t.Fatalf("unexpected letsencrypt route: %+v", letsEncrypt)
+	if !letsEncrypt.HttpsEnabled || letsEncrypt.CertType != "letsencrypt" {
+		t.Fatalf("unexpected letsencrypt route: %+v", &letsEncrypt)
 	}
 
 	syncRecorder := httptest.NewRecorder()
@@ -188,7 +188,7 @@ func TestRouteEndpointsRequireAuth(t *testing.T) {
 	}
 }
 
-func createRouteForTest(t *testing.T, server Server, token string, body string) cdhandler.RouteResp {
+func createRouteForTest(t *testing.T, server Server, token string, body string) *cdhandler.RouteResp {
 	t.Helper()
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, authedRequest(http.MethodPost, "/api/cd/route?project_id="+testRouteProjectId, bytes.NewBufferString(body), token))
@@ -199,7 +199,7 @@ func createRouteForTest(t *testing.T, server Server, token string, body string) 
 	if err := json.NewDecoder(recorder.Body).Decode(&route); err != nil {
 		t.Fatal(err)
 	}
-	return route
+	return &route
 }
 
 func multipartRouteCertRequest(t *testing.T, path string, token string, content string) *http.Request {

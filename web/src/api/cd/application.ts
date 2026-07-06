@@ -1,37 +1,34 @@
 import type {
-  Application,
+  ApplicationComposePreviewResp,
   ApplicationCreateReq,
+  ApplicationLogsResp,
+  ApplicationPaginatedResp,
+  ApplicationResp,
+  ApplicationStatusResp,
+  ApplicationUpdateReq,
+  DeploymentActionResp,
+} from '@/gen/proto/orbit/api/v1/application';
+import type {
   ApplicationExportResp,
   ApplicationImportReq,
-  ApplicationRoute,
-  ApplicationServiceConfig,
-  ApplicationUpdateReq,
-  ComposeServiceResp,
-  ConfigFile,
-} from '@/types/cd/application';
-import type { ListResp, PaginatedResp } from '@/types/common';
+} from '@/gen/proto/orbit/api/v1/application_bundle';
+import type {
+  ApplicationRouteListResp,
+  ApplicationRouteReq,
+  ApplicationRouteResp,
+} from '@/gen/proto/orbit/api/v1/application_route';
+import type {
+  ApplicationFileContentResp,
+  ConfigFileListResp,
+  ConfigFileReq,
+  ConfigFileResp,
+} from '@/gen/proto/orbit/api/v1/config_file';
+import type {
+  ApplicationServiceConfigListResp,
+  ApplicationServiceConfigResp,
+  ComposeServiceListResp,
+} from '@/gen/proto/orbit/api/v1/service_config';
 import request from '@/utils/request';
-
-export interface DeploymentActionResp {
-  deployment_id: string;
-}
-
-export interface ApplicationStatusResp {
-  status: string;
-}
-
-export interface ApplicationLogsResp {
-  logs: string;
-}
-
-export interface ApplicationFileContentResp {
-  content: string;
-  path: string;
-}
-
-export interface ApplicationComposePreviewResp {
-  compose_yaml: string;
-}
 
 // 应用相关 API
 export const applicationApi = {
@@ -41,22 +38,22 @@ export const applicationApi = {
     per_page?: number;
     search?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<Application>> {
+  }): Promise<ApplicationPaginatedResp> {
     return request.get('/api/cd/application', { params });
   },
 
   // 获取应用详情
-  get(id: string): Promise<Application> {
+  get(id: string): Promise<ApplicationResp> {
     return request.get(`/api/cd/application/${id}`);
   },
 
   // 创建应用
-  create(data: ApplicationCreateReq, params: { project_id: string }): Promise<Application> {
+  create(data: ApplicationCreateReq, params: { project_id: string }): Promise<ApplicationResp> {
     return request.post('/api/cd/application', data, { params });
   },
 
   // 更新应用
-  update(id: string, data: ApplicationUpdateReq): Promise<Application> {
+  update(id: string, data: ApplicationUpdateReq): Promise<ApplicationResp> {
     return request.put(`/api/cd/application/${id}`, data);
   },
 
@@ -100,20 +97,20 @@ export const applicationApi = {
   },
 
   // 写入应用文件
-  writeFile(id: string, fileId: string, path: string, content: string): Promise<ConfigFile> {
+  writeFile(id: string, fileId: string, path: string, content: string): Promise<ConfigFileResp> {
     return request.put(`/api/cd/application/${id}/file/${fileId}`, {
       path,
       content,
-    });
+    } satisfies ConfigFileReq);
   },
 
   // 创建应用文件
-  createFile(id: string, path: string, content: string = ''): Promise<ConfigFile> {
-    return request.post(`/api/cd/application/${id}/file`, { path, content });
+  createFile(id: string, path: string, content: string = ''): Promise<ConfigFileResp> {
+    return request.post(`/api/cd/application/${id}/file`, { path, content } satisfies ConfigFileReq);
   },
 
   // 获取应用文件列表
-  listFiles(id: string): Promise<ListResp<ConfigFile>> {
+  listFiles(id: string): Promise<ConfigFileListResp> {
     return request.get(`/api/cd/application/${id}/files`);
   },
 
@@ -136,29 +133,22 @@ export const applicationApi = {
   importApplication(
     data: ApplicationImportReq,
     params: { project_id: string }
-  ): Promise<Application> {
+  ): Promise<ApplicationResp> {
     return request.post('/api/cd/application/import', data, { params });
   },
 
   // 获取路由托管列表
-  listRoutes(id: string): Promise<ListResp<ApplicationRoute>> {
+  listRoutes(id: string): Promise<ApplicationRouteListResp> {
     return request.get(`/api/cd/application/${id}/route`);
   },
 
   // 创建路由托管
-  createRoute(
-    id: string,
-    data: { service_name: string; domain: string; port: number }
-  ): Promise<ApplicationRoute> {
+  createRoute(id: string, data: ApplicationRouteReq): Promise<ApplicationRouteResp> {
     return request.post(`/api/cd/application/${id}/route`, data);
   },
 
   // 更新路由托管
-  updateRoute(
-    id: string,
-    routeId: string,
-    data: { service_name: string; domain: string; port: number }
-  ): Promise<ApplicationRoute> {
+  updateRoute(id: string, routeId: string, data: ApplicationRouteReq): Promise<ApplicationRouteResp> {
     return request.put(`/api/cd/application/${id}/route/${routeId}`, data);
   },
 
@@ -168,12 +158,12 @@ export const applicationApi = {
   },
 
   // 解析 docker-compose service 列表
-  listComposeServices(id: string): Promise<ListResp<ComposeServiceResp>> {
+  listComposeServices(id: string): Promise<ComposeServiceListResp> {
     return request.get(`/api/cd/application/${id}/compose-service`);
   },
 
   // 获取 service 级配置
-  listServiceConfigs(id: string): Promise<ListResp<ApplicationServiceConfig>> {
+  listServiceConfigs(id: string): Promise<ApplicationServiceConfigListResp> {
     return request.get(`/api/cd/application/${id}/service-config`);
   },
 
@@ -182,7 +172,7 @@ export const applicationApi = {
     id: string,
     serviceName: string,
     image: string | null
-  ): Promise<ApplicationServiceConfig> {
+  ): Promise<ApplicationServiceConfigResp> {
     return request.put(`/api/cd/application/${id}/service-config/${serviceName}`, { image });
   },
 };

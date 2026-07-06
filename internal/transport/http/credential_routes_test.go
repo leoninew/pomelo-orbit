@@ -47,7 +47,7 @@ func TestCredentialRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Name != "GitHub Token" || created.Type != "github_token" || created.CreatedAt == "" {
-		t.Fatalf("unexpected created credential: %+v", created)
+		t.Fatalf("unexpected created credential: %+v", &created)
 	}
 	stored, err := database.Queryx(`SELECT encrypted_data FROM credential WHERE id = ?`, created.Id)
 	if err != nil {
@@ -106,7 +106,7 @@ func TestCredentialRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "GitHub Token Updated" {
-		t.Fatalf("unexpected updated credential: %+v", updated)
+		t.Fatalf("unexpected updated credential: %+v", &updated)
 	}
 
 	exportRecorder := httptest.NewRecorder()
@@ -119,7 +119,7 @@ func TestCredentialRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if exported.Version != cisvc.CredentialExportVersion || exported.Name != "GitHub Token Updated" || exported.Type != "github_token" || exported.Data != updatedPlainData {
-		t.Fatalf("unexpected exported credential: %+v", exported)
+		t.Fatalf("unexpected exported credential: %+v", &exported)
 	}
 
 	deleteRecorder := httptest.NewRecorder()
@@ -157,7 +157,7 @@ func TestCredentialImportRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if exported.Data != "imported-secret" || exported.Version != cisvc.CredentialExportVersion {
-		t.Fatalf("unexpected imported credential export: %+v", exported)
+		t.Fatalf("unexpected imported credential export: %+v", &exported)
 	}
 }
 
@@ -241,7 +241,7 @@ func TestCredentialRoutesRequireAuth(t *testing.T) {
 	}
 }
 
-func createCredentialForTest(t *testing.T, server Server, token string, projectId string, name string) cihandler.CredentialResp {
+func createCredentialForTest(t *testing.T, server Server, token string, projectId string, name string) *cihandler.CredentialResp {
 	t.Helper()
 	body := bytes.NewBufferString(`{"name":"` + name + `","type":"github_token","data":"secret"}`)
 	recorder := httptest.NewRecorder()
@@ -253,5 +253,5 @@ func createCredentialForTest(t *testing.T, server Server, token string, projectI
 	if err := json.NewDecoder(recorder.Body).Decode(&created); err != nil {
 		t.Fatal(err)
 	}
-	return created
+	return &created
 }

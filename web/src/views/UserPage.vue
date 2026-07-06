@@ -234,8 +234,8 @@
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
-  import type { AuthSource } from '@/types/auth';
-  import type { UserListResp, UserStatus } from '@/types/user';
+  import type { UserListResp } from '@/gen/proto/orbit/api/v1/user';
+  import type { UserStatus } from '@/types/user';
   import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();
@@ -284,7 +284,7 @@
     form.password = '';
   }
 
-  function formatAuthSource(authSource: AuthSource) {
+  function formatAuthSource(authSource: string) {
     switch (authSource) {
       case 'oauth':
         return t('userManagement.authSourceOAuth');
@@ -351,7 +351,7 @@
       await executeOp(async () => {
         const user = await userApi.create({
           username: form.username.trim(),
-          email: form.email.trim() || null,
+          email: form.email.trim() || undefined,
           password: form.password.trim(),
         });
         toast.success(t('userManagement.created'));
@@ -367,7 +367,7 @@
     editingUser.value = user;
     editForm.username = user.username;
     editForm.password = '';
-    editForm.status = user.status;
+    editForm.status = user.status as UserStatus;
     isEditDialogOpen.value = true;
   }
 
@@ -380,7 +380,7 @@
       await executeOp(async () => {
         await userApi.update(user.id, {
           username: editForm.username.trim(),
-          password: editForm.password.trim() || null,
+          password: editForm.password.trim() || undefined,
           status: editForm.status,
         });
         updateUserStatus(user.id, editForm.status);

@@ -1,7 +1,6 @@
 package cdhandler
 
 import (
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -62,7 +61,8 @@ func (h Handler) listApplications(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, applicationResponse)))
+	resp := mapPage(items, applicationResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &ApplicationPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req ApplicationCreateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -80,7 +80,8 @@ func (h Handler) createApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, applicationResponse(app))
+	resp := applicationResponse(app)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) getApplication(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +94,8 @@ func (h Handler) getApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, applicationResponse(app))
+	resp := applicationResponse(app)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +104,7 @@ func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req ApplicationUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -111,7 +113,8 @@ func (h Handler) updateApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, applicationResponse(app))
+	resp := applicationResponse(app)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) deleteApplication(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +136,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	var req ApplicationDeployReq
 	if r.Body != nil {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
+		if err := transportresponse.DecodeJSON(r.Body, &req); err != nil && err != io.EOF {
 			transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 			return
 		}
@@ -143,7 +146,7 @@ func (h Handler) deployApplication(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentActionResp{DeploymentId: deploymentId})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &DeploymentActionResp{DeploymentId: deploymentId})
 }
 
 func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +161,8 @@ func (h Handler) listDeployments(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, deploymentResponse)))
+	resp := mapPage(items, deploymentResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &DeploymentPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) getDeployment(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +175,8 @@ func (h Handler) getDeployment(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, deploymentResponse(deployment))
+	resp := deploymentResponse(deployment)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +189,7 @@ func (h Handler) getDeploymentLogs(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentLogsResp{Logs: log.Logs, Offset: log.Offset, IsComplete: log.IsComplete, Status: log.Status})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &DeploymentLogsResp{Logs: log.Logs, Offset: int32(log.Offset), IsComplete: log.IsComplete, Status: log.Status})
 }
 
 func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +202,7 @@ func (h Handler) getDeploymentContainerLogs(w http.ResponseWriter, r *http.Reque
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported})
 }
 
 func (h Handler) cancelDeployment(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +215,8 @@ func (h Handler) cancelDeployment(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, deploymentResponse(deployment))
+	resp := deploymentResponse(deployment)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) writeError(w http.ResponseWriter, err error) {
@@ -233,7 +239,7 @@ func ApplicationResponse(item model.Application) ApplicationResp {
 }
 
 func DeploymentResponse(item model.Deployment) DeploymentResp {
-	return DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, CommandText: item.CommandText, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: item.DurationMs, LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
+	return DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, CommandText: item.CommandText, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: transportresponse.OptionalInt32(item.DurationMs), LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
 }
 
 func mapPage[T any, U any](page repository.Page[T], convert func(T) U) repository.Page[U] {

@@ -26,12 +26,12 @@ func TestPipelineSnapshotGetRoute(t *testing.T) {
 		t.Fatal(err)
 	}
 	if snapshot.Id != "snapshot-route-test" || snapshot.TemplateId != "01KNVEJPWVK757139NMNNNCEFE" || snapshot.Version != 99 || snapshot.CreatedAt == "" {
-		t.Fatalf("unexpected pipeline snapshot: %+v", snapshot)
+		t.Fatalf("unexpected pipeline snapshot: %+v", &snapshot)
 	}
 	if len(snapshot.StagesSnapshot) != 1 || snapshot.StagesSnapshot[0].Name != "build" || len(snapshot.StagesSnapshot[0].Artifacts) != 1 {
 		t.Fatalf("unexpected pipeline snapshot stages: %+v", snapshot.StagesSnapshot)
 	}
-	if len(snapshot.VariablesSnapshot) != 1 || snapshot.VariablesSnapshot[0].Name != "FOO" || snapshot.VariablesSnapshot[0].Value != "baz" {
+	if len(snapshot.VariablesSnapshot) != 1 || snapshot.VariablesSnapshot[0].Name != "FOO" || snapshot.VariablesSnapshot[0].Value.AsInterface() != "baz" {
 		t.Fatalf("unexpected pipeline snapshot variables: %+v", snapshot.VariablesSnapshot)
 	}
 }

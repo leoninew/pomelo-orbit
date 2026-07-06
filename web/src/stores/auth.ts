@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { authApi } from '@/api/auth';
-import type { UserInfo } from '@/types/auth';
+import type { UserInfoResp } from '@/gen/proto/orbit/api/v1/auth';
 
 const TOKEN_KEY = 'pomelo_orbit_token';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem(TOKEN_KEY));
-  const user = ref<UserInfo>();
+  const user = ref<UserInfoResp>();
 
   const isAuthenticated = computed(() => !!token.value);
 
@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // 设置用户信息
-  function setUser(userInfo: UserInfo) {
+  function setUser(userInfo: UserInfoResp) {
     user.value = userInfo;
   }
 
@@ -44,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
       username,
       password,
       csrf_token: csrfToken,
-      turnstile_token: turnstileToken,
+      turnstile_token: turnstileToken ?? '',
     });
     setToken(response.access_token);
     await fetchUser();

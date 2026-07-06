@@ -186,7 +186,7 @@
                 </tr>
                 <tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
                   <td colspan="8" class="text-center text-muted-foreground">
-                    {{ t('pipelineRun.noStageRun') }}
+                    {{ t('pipelineRun.noStageRunResp') }}
                   </td>
                 </tr>
                 <tr v-for="(stage, index) in snapshot?.stages_snapshot ?? []" :key="stage.id">
@@ -248,7 +248,7 @@
             v-if="!snapshot?.stages_snapshot || snapshot.stages_snapshot.length === 0"
             class="text-center text-muted-foreground"
           >
-            {{ t('pipelineRun.noStageRun') }}
+            {{ t('pipelineRun.noStageRunResp') }}
           </div>
           <div v-else class="h-[500px]">
             <StageDAGView
@@ -318,7 +318,7 @@
 
     <AppDrawer
       :open="showLogsDrawer"
-      :title="`${currentStageRun?.stage_name ?? ''} - ${t('pipelineRun.log')}`"
+      :title="`${currentStageRunResp?.stage_name ?? ''} - ${t('pipelineRun.log')}`"
       width-class="w-[min(960px,100vw)]"
       body-class="min-h-0 flex-1 overflow-hidden p-0"
       @update:open="handleLogDrawerOpenChange"
@@ -392,9 +392,9 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { PipelineSnapshot, SnapshotStage } from '@/types/ci/snapshot';
-  import type { PipelineRun } from '@/types/ci/run';
-  import type { Artifact, StageRun } from '@/types/ci/stage_run';
+  import type { ArtifactResp } from '@/gen/proto/orbit/api/v1/artifact';
+  import type { PipelineRunResp, StageRunResp } from '@/gen/proto/orbit/api/v1/pipeline_run';
+  import type { PipelineSnapshotResp, SnapshotStageResp } from '@/gen/proto/orbit/api/v1/snapshot';
   import { isTerminalStatus, statusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
   import StageDAGView from './components/StageDAGView.vue';
@@ -411,10 +411,10 @@
   const { loading: retrying, execute: executeRetry } = useStatusAsync();
   const { loading: canceling, execute: executeCancel } = useStatusAsync();
 
-  const run = ref<PipelineRun>();
-  const snapshot = ref<PipelineSnapshot>();
-  const artifacts = ref<Artifact[]>([]);
-  const currentStageRun = ref<StageRun>();
+  const run = ref<PipelineRunResp>();
+  const snapshot = ref<PipelineSnapshotResp>();
+  const artifacts = ref<ArtifactResp[]>([]);
+  const currentStageRunResp = ref<StageRunResp>();
   const showLogsDrawer = ref(false);
   const isCancelDialogOpen = ref(false);
   const stagesView = ref<'list' | 'dag'>('list');
@@ -423,15 +423,15 @@
 
   const runVariableDeclarations = computed(() => run.value?.variables_snapshot ?? []);
   const stageRuns = computed(() => run.value?.stage_runs ?? []);
-  const stageRunMap = computed<Record<string, StageRun>>(() => {
-    const map: Record<string, StageRun> = {};
+  const stageRunMap = computed<Record<string, StageRunResp>>(() => {
+    const map: Record<string, StageRunResp> = {};
     for (const sr of stageRuns.value) {
       map[sr.stage_id] = sr;
     }
     return map;
   });
-  const snapshotStageMap = computed<Record<string, SnapshotStage>>(() => {
-    const map: Record<string, SnapshotStage> = {};
+  const snapshotStageMap = computed<Record<string, SnapshotStageResp>>(() => {
+    const map: Record<string, SnapshotStageResp> = {};
     for (const stage of snapshot.value?.stages_snapshot ?? []) {
       map[stage.id] = stage;
     }
@@ -461,9 +461,9 @@
     return t(`pipelineRun.status.${status}`);
   }
 
-  function openLogDrawer(sr: StageRun) {
+  function openLogDrawer(sr: StageRunResp) {
     logPollAbort?.abort();
-    currentStageRun.value = sr;
+    currentStageRunResp.value = sr;
     logsText.value = '';
     stageLogStatus.value = 'loading';
     stageLogError.value = '';
@@ -493,14 +493,14 @@
   }
 
   function retryStageLog() {
-    if (!currentStageRun.value) {
+    if (!currentStageRunResp.value) {
       return;
     }
     logPollAbort?.abort();
     logsText.value = '';
     stageLogStatus.value = 'loading';
     stageLogError.value = '';
-    startLogPolling(currentStageRun.value.id);
+    startLogPolling(currentStageRunResp.value.id);
   }
 
   async function startLogPolling(stageRunId: string) {
@@ -515,7 +515,7 @@
         if (signal.aborted) {
           break;
         }
-        if (currentStageRun.value?.id !== stageRunId) {
+        if (currentStageRunResp.value?.id !== stageRunId) {
           break;
         }
         if (resp.logs) {
@@ -643,7 +643,7 @@
     artifacts.value = [];
   }
 
-  async function handleRunStatus(currentRun: PipelineRun | undefined) {
+  async function handleRunStatus(currentRun: PipelineRunResp | undefined) {
     if (!currentRun) {
       return;
     }

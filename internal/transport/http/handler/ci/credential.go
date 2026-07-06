@@ -1,7 +1,6 @@
 package cihandler
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -33,7 +32,8 @@ func (h Handler) listCredentials(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(mapPage(items, credentialResponse)))
+	resp := mapPage(items, credentialResponse)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &CredentialPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +42,7 @@ func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req CredentialCreateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -51,7 +51,8 @@ func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, credentialResponse(created))
+	resp := credentialResponse(created)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) importCredential(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +61,7 @@ func (h Handler) importCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req CredentialImportReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -72,7 +73,8 @@ func (h Handler) importCredential(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, credentialResponse(created))
+	resp := credentialResponse(created)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) getCredential(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +87,8 @@ func (h Handler) getCredential(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, credentialDetailResponse(credential))
+	resp := credentialDetailResponse(credential)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +97,7 @@ func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req CredentialUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -103,7 +106,8 @@ func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, credentialResponse(updated))
+	resp := credentialResponse(updated)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) deleteCredential(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +132,7 @@ func (h Handler) exportCredential(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
 }
 
 func credentialResponse(item model.Credential) CredentialResp {

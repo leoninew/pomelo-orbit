@@ -109,7 +109,7 @@
             添加自定义变量
           </button>
         </div>
-        <VariableDeclarationsTable
+        <VariableDeclarationRespsTable
           :declarations="repositoryVariableRows"
           :readonly="false"
           @edit="openEditVariableDialog"
@@ -289,14 +289,15 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { Credential } from '@/types/ci/credential';
+  import type { CredentialResp } from '@/gen/proto/orbit/api/v1/credential';
+  import type { RepositoryResp } from '@/gen/proto/orbit/api/v1/repository';
+  import type { PipelineTemplateResp } from '@/gen/proto/orbit/api/v1/template';
+  import type { RepositoryWebhookResp } from '@/gen/proto/orbit/api/v1/webhook';
+  import type { VariableDeclarationResp } from '@/gen/proto/orbit/api/v1/common';
   import { credentialTypeLabels } from '@/types/ci/credential';
-  import type { Repository } from '@/types/ci/repository';
-  import type { PipelineTemplate, VariableDeclaration } from '@/types/ci/template';
-  import type { RepositoryWebhook } from '@/types/ci/webhook';
   import { formatTime } from '@/utils/time';
   import TriggerModal from './components/TriggerModal.vue';
-  import VariableDeclarationsTable from './components/VariableDeclarationsTable.vue';
+  import VariableDeclarationRespsTable from './components/VariableDeclarationRespsTable.vue';
   import WebhookList from './components/WebhookList.vue';
 
   const route = useRoute();
@@ -308,10 +309,10 @@
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const repository = ref<Repository>();
-  const templates = ref<PipelineTemplate[]>([]);
-  const webhooks = ref<RepositoryWebhook[]>([]);
-  const credentials = ref<Credential[]>([]);
+  const repository = ref<RepositoryResp>();
+  const templates = ref<PipelineTemplateResp[]>([]);
+  const webhooks = ref<RepositoryWebhookResp[]>([]);
+  const credentials = ref<CredentialResp[]>([]);
 
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
@@ -389,7 +390,7 @@
     return !editErrors.name && !editErrors.repository_url;
   }
 
-  function variableOverridesWith(nextVariable?: VariableDeclaration) {
+  function variableOverridesWith(nextVariable?: VariableDeclarationResp) {
     const next = repositoryCustomVariables.value.filter(
       (variable) => variable.name !== nextVariable?.name
     );
@@ -495,7 +496,7 @@
         const updated = await repositoryApi.update(repositoryId, {
           name: editForm.name,
           repository_url: editForm.repository_url,
-          git_credential_id: editForm.git_credential_id || null,
+          git_credential_id: editForm.git_credential_id || undefined,
           default_branch: editForm.default_branch || 'master',
         });
         repository.value = updated;
@@ -565,15 +566,17 @@
     }
     try {
       await executeOp(async () => {
-        const nextVariable: VariableDeclaration = {
+        const nextVariable: VariableDeclarationResp = {
           name: variableForm.name.trim(),
+          description: variableForm.description.trim(),
+          default: undefined,
           value: variableForm.value,
-          description: variableForm.description.trim() || undefined,
           secret: false,
           source: 'repository_custom',
+          editable: true,
         };
         const updated = await repositoryApi.update(repositoryId, {
-          variable_overrides: variableOverridesWith(nextVariable),
+          variable_overrides: { items: variableOverridesWith(nextVariable) },
         });
         repository.value = updated;
         toast.success('添加成功');
@@ -602,11 +605,13 @@
           return;
         }
         const updated = await repositoryApi.update(repositoryId, {
-          variable_overrides: variableOverridesWith({
-            ...current,
-            value: variableForm.value,
-            description: variableForm.description.trim() || undefined,
-          }),
+          variable_overrides: {
+            items: variableOverridesWith({
+              ...current,
+              value: variableForm.value,
+              description: variableForm.description.trim(),
+            }),
+          },
         });
         repository.value = updated;
         toast.success('更新成功');
@@ -626,9 +631,9 @@
     try {
       await executeOp(async () => {
         const updated = await repositoryApi.update(repositoryId, {
-          variable_overrides: repositoryCustomVariables.value.filter(
-            (variable) => variable.name !== name
-          ),
+          variable_overrides: {
+            items: repositoryCustomVariables.value.filter((variable) => variable.name !== name),
+          },
         });
         repository.value = updated;
         toast.success('删除成功');

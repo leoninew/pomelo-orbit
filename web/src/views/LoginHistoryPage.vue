@@ -69,14 +69,14 @@
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { LoginHistory } from '@/types/auth';
+  import type { LoginHistoryResp } from '@/gen/proto/orbit/api/v1/auth';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();
   const toast = useToast();
   const { status, execute } = useStatusAsync();
-  const history = ref<LoginHistory[]>([]);
+  const history = ref<LoginHistoryResp[]>([]);
   const searchText = ref('');
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));

@@ -68,7 +68,7 @@ func TestUserRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Username != "operator" || created.Status != "enabled" {
-		t.Fatalf("unexpected created user: %+v", created)
+		t.Fatalf("unexpected created user: %+v", &created)
 	}
 
 	updateRecorder := httptest.NewRecorder()
@@ -81,7 +81,7 @@ func TestUserRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Username != "operator2" || updated.Status != "disabled" {
-		t.Fatalf("unexpected updated user: %+v", updated)
+		t.Fatalf("unexpected updated user: %+v", &updated)
 	}
 
 	enableRecorder := httptest.NewRecorder()
@@ -100,7 +100,7 @@ func TestUserRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(withRole.RoleItems) != 1 || withRole.RoleItems[0].Code != "admin" || len(withRole.RoleItems[0].PermissionCodes) == 0 {
-		t.Fatalf("unexpected user roles: %+v", withRole)
+		t.Fatalf("unexpected user roles: %+v", &withRole)
 	}
 
 	deleteRecorder := httptest.NewRecorder()
@@ -149,7 +149,7 @@ func TestRoleRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if created.Id == "" || created.Code != "auditor" || len(created.PermissionCodes) != 1 {
-		t.Fatalf("unexpected created role: %+v", created)
+		t.Fatalf("unexpected created role: %+v", &created)
 	}
 
 	listRecorder := httptest.NewRecorder()
@@ -175,7 +175,7 @@ func TestRoleRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updated.Name != "Auditor Updated" || len(updated.PermissionCodes) != 2 {
-		t.Fatalf("unexpected updated role: %+v", updated)
+		t.Fatalf("unexpected updated role: %+v", &updated)
 	}
 
 	deleteRecorder := httptest.NewRecorder()

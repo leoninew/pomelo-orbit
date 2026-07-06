@@ -131,7 +131,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { BuildStage } from '@/types/ci/template';
+  import type { BuildStageResp } from '@/gen/proto/orbit/api/v1/build_stage';
   import { formatTime } from '@/utils/time';
 
   const router = useRouter();
@@ -141,7 +141,7 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
   const { loading: duplicating, execute: executeDuplicate } = useStatusAsync();
 
-  const stages = ref<BuildStage[]>([]);
+  const stages = ref<BuildStageResp[]>([]);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const searchText = ref('');
@@ -219,6 +219,7 @@
             name: form.name,
             image: form.image,
             script: '',
+            artifacts: [],
             description: form.description,
           },
           { project_id: projectId }

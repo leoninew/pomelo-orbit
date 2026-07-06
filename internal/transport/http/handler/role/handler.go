@@ -3,7 +3,6 @@ package rolehandler
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -78,7 +77,7 @@ func (h Handler) listRoles(w http.ResponseWriter, r *http.Request) {
 	resp := mapPage(roles, func(role model.Role) RoleResp {
 		return roleResponse(role, permissionsByRoleId[role.Id])
 	})
-	transportresponse.JSON(h.logger, w, http.StatusOK, transportresponse.NewPaginatedResp(resp))
+	transportresponse.JSON(h.logger, w, http.StatusOK, &RolePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
 }
 
 func (h Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +94,7 @@ func (h Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
 	for _, permission := range permissions {
 		items = append(items, permissionResponse(permission))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, PermissionListResp{Items: items})
+	transportresponse.JSON(h.logger, w, http.StatusOK, &PermissionListResp{Items: transportresponse.Ptrs(items)})
 }
 
 func (h Handler) getRole(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +109,7 @@ func (h Handler) getRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) createRole(w http.ResponseWriter, r *http.Request) {
@@ -118,7 +117,7 @@ func (h Handler) createRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RoleCreateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -127,7 +126,8 @@ func (h Handler) createRole(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err, "Failed to create role")
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, roleResponse(role, req.PermissionCodes))
+	resp := roleResponse(role, req.PermissionCodes)
+	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
 }
 
 func (h Handler) updateRole(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +139,7 @@ func (h Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req RoleUpdateReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
 		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
@@ -152,7 +152,7 @@ func (h Handler) updateRole(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, resp)
+	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
 }
 
 func (h Handler) deleteRole(w http.ResponseWriter, r *http.Request) {

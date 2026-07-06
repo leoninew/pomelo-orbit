@@ -1,6 +1,10 @@
-import type { PipelineRun, PipelineRunTriggerReq } from '@/types/ci/run';
-import type { PaginatedResp } from '@/types/common';
-import type { Repository, RepositoryCreateReq, RepositoryUpdateReq } from '@/types/ci/repository';
+import type { PipelineRunResp, PipelineRunTriggerReq } from '@/gen/proto/orbit/api/v1/pipeline_run';
+import type {
+  RepositoryCreateReq,
+  RepositoryPaginatedResp,
+  RepositoryResp,
+  RepositoryUpdateReq,
+} from '@/gen/proto/orbit/api/v1/repository';
 import request from '@/utils/request';
 
 export const repositoryApi = {
@@ -9,19 +13,19 @@ export const repositoryApi = {
     per_page?: number;
     search?: string;
     project_id?: string;
-  }): Promise<PaginatedResp<Repository>> {
+  }): Promise<RepositoryPaginatedResp> {
     return request.get('/api/ci/repository', { params });
   },
 
-  get(id: string): Promise<Repository> {
+  get(id: string): Promise<RepositoryResp> {
     return request.get(`/api/ci/repository/${id}`);
   },
 
-  create(data: RepositoryCreateReq, params: { project_id: string }): Promise<Repository> {
+  create(data: RepositoryCreateReq, params: { project_id: string }): Promise<RepositoryResp> {
     return request.post('/api/ci/repository', data, { params });
   },
 
-  update(id: string, data: RepositoryUpdateReq): Promise<Repository> {
+  update(id: string, data: RepositoryUpdateReq): Promise<RepositoryResp> {
     return request.put(`/api/ci/repository/${id}`, data);
   },
 
@@ -29,7 +33,7 @@ export const repositoryApi = {
     return request.delete(`/api/ci/repository/${id}`, { params });
   },
 
-  trigger(id: string, data: PipelineRunTriggerReq | undefined): Promise<PipelineRun> {
+  trigger(id: string, data: PipelineRunTriggerReq | undefined): Promise<PipelineRunResp> {
     return request.post(`/api/ci/repository/${id}/trigger`, data || {});
   },
 };

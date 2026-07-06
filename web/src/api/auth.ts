@@ -1,20 +1,19 @@
 import type {
-  CsrfTokenResp,
+  CSRFTokenResp,
   GoogleCallbackReq,
-  LoginHistory,
+  LoginHistoryPaginatedResp,
   LoginReq,
   PasswordChangeReq,
   TokenResp,
   TurnstileConfigResp,
-  UserInfo,
-} from '@/types/auth';
-import type { PaginatedResp } from '@/types/common';
+  UserInfoResp,
+} from '@/gen/proto/orbit/api/v1/auth';
 import request from '@/utils/request';
 
 // 认证相关 API
 export const authApi = {
   // 获取 CSRF Token
-  getCsrfToken(): Promise<CsrfTokenResp> {
+  getCsrfToken(): Promise<CSRFTokenResp> {
     return request.get('/api/auth/csrf-token');
   },
 
@@ -34,7 +33,7 @@ export const authApi = {
   },
 
   // 获取当前用户信息
-  getCurrentUser(): Promise<UserInfo> {
+  getCurrentUser(): Promise<UserInfoResp> {
     return request.get('/api/auth/me');
   },
 
@@ -48,7 +47,7 @@ export const authApi = {
     page?: number;
     per_page?: number;
     search?: string;
-  }): Promise<PaginatedResp<LoginHistory>> {
+  }): Promise<LoginHistoryPaginatedResp> {
     return request.get('/api/auth/login-history', { params });
   },
 

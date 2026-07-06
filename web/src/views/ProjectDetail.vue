@@ -210,9 +210,8 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { AuthSource } from '@/types/auth';
-  import type { Project, ProjectMember } from '@/types/project';
-  import type { UserListResp } from '@/types/user';
+  import type { ProjectMemberResp, ProjectResp } from '@/gen/proto/orbit/api/v1/project';
+  import type { UserListResp } from '@/gen/proto/orbit/api/v1/user';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();
@@ -223,10 +222,10 @@
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const project = ref<Project>();
+  const project = ref<ProjectResp>();
   const isEditModalOpen = ref(false);
   const isMemberModalOpen = ref(false);
-  const members = ref<ProjectMember[]>([]);
+  const members = ref<ProjectMemberResp[]>([]);
   const users = ref<UserListResp[]>([]);
   const selectedUserId = ref('');
   const form = reactive({ name: '', code: '' });
@@ -246,7 +245,7 @@
     }))
   );
 
-  function formatAuthSource(authSource: AuthSource) {
+  function formatAuthSource(authSource: string) {
     switch (authSource) {
       case 'oauth':
         return t('userManagement.authSourceOAuth');

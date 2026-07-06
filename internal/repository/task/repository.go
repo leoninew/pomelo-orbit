@@ -10,6 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"backend/internal/db"
+	dbsqlc "backend/internal/db/sqlc"
+	"backend/internal/repository/dbmodel"
 	"backend/internal/status"
 )
 
@@ -30,22 +32,20 @@ type Task struct {
 }
 
 type Repository struct {
-	db     *sqlx.DB
-	driver string
+	db      *sqlx.DB
+	driver  string
+	queries *dbsqlc.Queries
 }
 
 func NewRepository(db *sqlx.DB, driver string) Repository {
-	return Repository{db: db, driver: driver}
+	return Repository{db: db, driver: driver, queries: dbsqlc.New(db)}
 }
 
 func (r Repository) Enqueue(ctx context.Context, id string, taskType string, payloadJSON string, maxAttempts int) error {
 	if maxAttempts < 1 {
 		return errors.New("maxAttempts must be at least 1")
 	}
-	_, err := r.db.ExecContext(ctx, `
-			INSERT INTO background_task (id, task_type, payload_json, status, attempts, max_attempts)
-			VALUES (?, ?, ?, ?, 0, ?)
-		`, id, taskType, payloadJSON, status.TaskPending, maxAttempts)
+	err := r.queries.EnqueueTask(ctx, dbsqlc.EnqueueTaskParams{ID: id, TaskType: taskType, PayloadJson: payloadJSON, Status: status.TaskPending, MaxAttempts: int64(maxAttempts)})
 	if err != nil {
 		return fmt.Errorf("enqueue task: %w", err)
 	}
@@ -60,16 +60,8 @@ func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout 
 	defer func() { _ = tx.Rollback() }()
 
 	cutoff := time.Now().UTC().Add(-lockTimeout)
-	var task Task
-	err = tx.GetContext(ctx, &task, `
-			SELECT id, task_type, payload_json, status, attempts, max_attempts, locked_by, locked_at,
-			       started_at, finished_at, error_message, created_at, updated_at
-			FROM background_task
-			WHERE status = ?
-			   OR (status = ? AND locked_at IS NOT NULL AND locked_at < ?)
-			ORDER BY created_at ASC
-			LIMIT 1
-		`, status.TaskPending, status.TaskRunning, cutoff)
+	queries := dbsqlc.New(tx)
+	task, err := queries.TaskToClaim(ctx, dbsqlc.TaskToClaimParams{Status: status.TaskPending, Status_2: status.TaskRunning, LockedAt: sql.NullTime{Time: cutoff, Valid: true}})
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -79,14 +71,14 @@ func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout 
 
 	now := db.NowExpr(r.driver)
 	result, err := tx.ExecContext(ctx, fmt.Sprintf(`
-			UPDATE background_task
-			SET status = ?, attempts = attempts + 1, locked_by = ?, locked_at = %s,
-			    started_at = COALESCE(started_at, %s), updated_at = %s, error_message = NULL
-			WHERE id = ?
-			  AND (status = ? OR (status = ? AND locked_at IS NOT NULL AND locked_at < ?))
-		`, now, now, now), status.TaskRunning, workerId, task.Id, status.TaskPending, status.TaskRunning, cutoff)
+				UPDATE background_task
+				SET status = ?, attempts = attempts + 1, locked_by = ?, locked_at = %s,
+				    started_at = COALESCE(started_at, %s), updated_at = %s, error_message = NULL
+				WHERE id = ?
+				  AND (status = ? OR (status = ? AND locked_at IS NOT NULL AND locked_at < ?))
+			`, now, now, now), status.TaskRunning, workerId, task.ID, status.TaskPending, status.TaskRunning, cutoff)
 	if err != nil {
-		return nil, fmt.Errorf("claim task %s: %w", task.Id, err)
+		return nil, fmt.Errorf("claim task %s: %w", task.ID, err)
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
@@ -99,7 +91,7 @@ func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout 
 		return nil, fmt.Errorf("commit claim transaction: %w", err)
 	}
 
-	claimed, err := r.FindById(ctx, task.Id)
+	claimed, err := r.FindById(ctx, task.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -109,11 +101,11 @@ func (r Repository) ClaimNext(ctx context.Context, workerId string, lockTimeout 
 func (r Repository) Complete(ctx context.Context, taskId string) error {
 	now := db.NowExpr(r.driver)
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
-			UPDATE background_task
-			SET status = ?, locked_by = NULL, locked_at = NULL, finished_at = %s,
-			    updated_at = %s, error_message = NULL
-			WHERE id = ?
-		`, now, now), status.TaskSucceeded, taskId)
+				UPDATE background_task
+				SET status = ?, locked_by = NULL, locked_at = NULL, finished_at = %s,
+				    updated_at = %s, error_message = NULL
+				WHERE id = ?
+			`, now, now), status.TaskSucceeded, taskId)
 	if err != nil {
 		return fmt.Errorf("complete task %s: %w", taskId, err)
 	}
@@ -123,13 +115,13 @@ func (r Repository) Complete(ctx context.Context, taskId string) error {
 func (r Repository) Fail(ctx context.Context, taskId string, message string) error {
 	now := db.NowExpr(r.driver)
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`
-			UPDATE background_task
-			SET status = CASE WHEN attempts >= max_attempts THEN ? ELSE ? END,
-			    locked_by = NULL, locked_at = NULL,
-			    finished_at = CASE WHEN attempts >= max_attempts THEN %s ELSE finished_at END,
-			    updated_at = %s, error_message = ?
-			WHERE id = ?
-		`, now, now), status.TaskFailed, status.TaskPending, message, taskId)
+				UPDATE background_task
+				SET status = CASE WHEN attempts >= max_attempts THEN ? ELSE ? END,
+				    locked_by = NULL, locked_at = NULL,
+				    finished_at = CASE WHEN attempts >= max_attempts THEN %s ELSE finished_at END,
+				    updated_at = %s, error_message = ?
+				WHERE id = ?
+			`, now, now), status.TaskFailed, status.TaskPending, message, taskId)
 	if err != nil {
 		return fmt.Errorf("fail task %s: %w", taskId, err)
 	}
@@ -137,15 +129,14 @@ func (r Repository) Fail(ctx context.Context, taskId string, message string) err
 }
 
 func (r Repository) FindById(ctx context.Context, id string) (*Task, error) {
-	var task Task
-	err := r.db.GetContext(ctx, &task, `
-			SELECT id, task_type, payload_json, status, attempts, max_attempts, locked_by, locked_at,
-			       started_at, finished_at, error_message, created_at, updated_at
-			FROM background_task
-			WHERE id = ?
-		`, id)
+	task, err := r.queries.FindTaskByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("find task %s: %w", id, err)
 	}
-	return &task, nil
+	converted := taskFromSQLC(task)
+	return &converted, nil
+}
+
+func taskFromSQLC(task dbsqlc.BackgroundTask) Task {
+	return Task{Id: task.ID, TaskType: task.TaskType, PayloadJSON: task.PayloadJson, Status: task.Status, Attempts: int(task.Attempts), MaxAttempts: int(task.MaxAttempts), LockedBy: dbmodel.StringPtr(task.LockedBy), LockedAt: dbmodel.TimePtr(task.LockedAt), StartedAt: dbmodel.TimePtr(task.StartedAt), FinishedAt: dbmodel.TimePtr(task.FinishedAt), ErrorMessage: dbmodel.StringPtr(task.ErrorMessage), CreatedAt: task.CreatedAt, UpdatedAt: task.UpdatedAt}
 }

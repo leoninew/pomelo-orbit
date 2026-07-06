@@ -8,10 +8,20 @@ tasks:
 
   install:
     desc: Install web and Go dependencies
+    env:
+      CGO_ENABLED: '0'
+      GOBIN: '{{.TASKFILE_DIR}}/bin'
     cmds:
-      - bash -c 'cd web && yarn install'
+      - yarn --cwd web install
+      - mkdir -p bin
+      - go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
       - go mod download
       - go mod tidy
+
+  sqlc:
+    desc: Generate sqlc query code
+    cmds:
+      - ./bin/sqlc generate
 
   run:
     desc: Start the development orchestrator
@@ -21,9 +31,9 @@ tasks:
   check:
     desc: Run web and Go checks
     cmds:
-      - bash -c 'cd web && yarn lint:fix'
-      - bash -c 'cd web && yarn format'
-      - bash -c 'cd web && yarn typecheck'
+      - yarn --cwd web lint:fix
+      - yarn --cwd web format
+      - yarn --cwd web typecheck
       - go fmt ./cmd/... ./internal/...
       - go vet ./cmd/... ./internal/...
       - go test ./cmd/... ./internal/...
@@ -31,31 +41,29 @@ tasks:
   test:
     desc: Run web and Go tests
     cmds:
-      - bash -c 'cd web && yarn test'
+      - yarn --cwd web test
       - go test ./cmd/... ./internal/...
 
   build:
-    desc: Build the Docker image, optionally with TAG=<tag> and CN=1
+    desc: Build the Docker image, optionally with TAG=<tag> and cn=1
     vars:
       TAG: '{{if .TAG}}{{.TAG}}{{else}}latest{{end}}'
-      CN: '{{.CN}}'
+      CN: '{{.cn}}'
     cmds:
       - |
-        bash -c '
-          TAG="{{.TAG}}"
-          CN="{{.CN}}"
-          DOCKERFILE="Dockerfile"
+        TAG="{{.TAG}}"
+        CN="{{.CN}}"
+        DOCKERFILE="Dockerfile"
 
-          if [[ "$CN" == "1" ]]; then
-            DOCKERFILE="Dockerfile.cn"
-          fi
+        if [ "$CN" = "1" ]; then
+          DOCKERFILE="Dockerfile.cn"
+        fi
 
-          docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .
-          printf "image built: pomelo-orbit:%s\n" "$TAG"
-        '
+        docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .
+        printf "image built: pomelo-orbit:%s\n" "$TAG"
 
   clean:
     desc: Remove local build artifacts
     cmds:
-      - bash -c 'rm -rf bin web/dist web/coverage'
-      - bash -c 'echo "clean complete"'
+      - rm -rf bin web/dist web/coverage
+      - printf "clean complete\n"

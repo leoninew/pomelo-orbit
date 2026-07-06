@@ -10,54 +10,48 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"backend/internal/db"
+	dbsqlc "backend/internal/db/sqlc"
 	"backend/internal/repository"
+	"backend/internal/repository/dbmodel"
 	"backend/internal/repository/model"
 )
 
 type Repository struct {
-	db     *sqlx.DB
-	driver string
+	db      *sqlx.DB
+	driver  string
+	queries *dbsqlc.Queries
 }
 
 func NewRepository(db *sqlx.DB, driver string) Repository {
-	return Repository{db: db, driver: driver}
+	return Repository{db: db, driver: driver, queries: dbsqlc.New(db)}
 }
 
 func (r Repository) UserByUsername(ctx context.Context, username string) (model.User, error) {
-	var user model.User
-	err := r.db.GetContext(ctx, &user, `SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
-		email, auth_source, created_at, updated_at, last_login_at FROM user WHERE username = ?`, username)
+	user, err := r.queries.UserByUsername(ctx, username)
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by username %s: %w", username, err)
 	}
-	return user, nil
+	return dbmodel.UserFromByUsername(user), nil
 }
 
 func (r Repository) UserById(ctx context.Context, id string) (model.User, error) {
-	var user model.User
-	err := r.db.GetContext(ctx, &user, `SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
-		email, auth_source, created_at, updated_at, last_login_at FROM user WHERE id = ?`, id)
+	user, err := r.queries.UserByID(ctx, id)
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user %s: %w", id, err)
 	}
-	return user, nil
+	return dbmodel.UserFromByID(user), nil
 }
 
 func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, error) {
-	var user model.User
-	err := r.db.GetContext(ctx, &user, `SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
-		email, auth_source, created_at, updated_at, last_login_at FROM user WHERE email = ?`, email)
+	user, err := r.queries.UserByEmail(ctx, sql.NullString{String: email, Valid: true})
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by email %s: %w", email, err)
 	}
-	return user, nil
+	return dbmodel.UserFromByEmail(user), nil
 }
 
 func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, error) {
-	var roles []string
-	err := r.db.SelectContext(ctx, &roles, `SELECT role.code FROM role
-		JOIN user_role ON user_role.role_id = role.id
-		WHERE user_role.user_id = ? ORDER BY role.code`, userId)
+	roles, err := r.queries.UserRoles(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("load user roles %s: %w", userId, err)
 	}
@@ -65,11 +59,7 @@ func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, err
 }
 
 func (r Repository) UserPermissions(ctx context.Context, userId string) ([]string, error) {
-	var permissions []string
-	err := r.db.SelectContext(ctx, &permissions, `SELECT DISTINCT permission.code FROM permission
-		JOIN role_permission ON role_permission.permission_id = permission.id
-		JOIN user_role ON user_role.role_id = role_permission.role_id
-		WHERE user_role.user_id = ? ORDER BY permission.code`, userId)
+	permissions, err := r.queries.UserPermissions(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("load user permissions %s: %w", userId, err)
 	}
@@ -121,19 +111,31 @@ func (r Repository) UserRolesByUserIds(ctx context.Context, userIds []string) (m
 }
 
 func (r Repository) UserRoleDetails(ctx context.Context, userId string) ([]model.Role, error) {
-	var roles []model.Role
-	err := r.db.SelectContext(ctx, &roles, `SELECT role.id, role.code, role.name, role.description, role.created_at, role.updated_at FROM role
-		JOIN user_role ON user_role.role_id = role.id
-		WHERE user_role.user_id = ? ORDER BY role.code`, userId)
+	rows, err := r.queries.UserRoleDetails(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("load user role details %s: %w", userId, err)
+	}
+	roles := make([]model.Role, 0, len(rows))
+	for _, row := range rows {
+		roles = append(roles, dbmodel.RoleFromSQLC(row))
 	}
 	return roles, nil
 }
 
 func (r Repository) CreateUser(ctx context.Context, user model.User) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO user (id, username, password_hash, status, oauth_provider, oauth_provider_id, email, auth_source, created_at, updated_at, last_login_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, user.Id, user.Username, user.PasswordHash, user.Status, user.OAuthProvider, user.OAuthProviderId, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt)
+	err := r.queries.CreateUser(ctx, dbsqlc.CreateUserParams{
+		ID:              user.Id,
+		Username:        user.Username,
+		PasswordHash:    user.PasswordHash,
+		Status:          user.Status,
+		OauthProvider:   user.OAuthProvider,
+		OauthProviderID: user.OAuthProviderId,
+		Email:           dbmodel.NullString(user.Email),
+		AuthSource:      user.AuthSource,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
+		LastLoginAt:     dbmodel.NullTime(user.LastLoginAt),
+	})
 	if err != nil {
 		return fmt.Errorf("create user %s: %w", user.Username, err)
 	}
@@ -187,7 +189,7 @@ func (r Repository) SetUserRoles(ctx context.Context, userId string, roleIds []s
 }
 
 func (r Repository) DeleteUser(ctx context.Context, userId string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM user WHERE id = ?`, userId)
+	err := r.queries.DeleteUser(ctx, userId)
 	if err != nil {
 		return fmt.Errorf("delete user %s: %w", userId, err)
 	}
@@ -203,7 +205,15 @@ func (r Repository) MarkUserLoggedIn(ctx context.Context, userId string) error {
 }
 
 func (r Repository) SaveLoginHistory(ctx context.Context, history model.LoginHistory) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO login_history (id, user_id, username, ip_address, user_agent, login_at, success) VALUES (?, ?, ?, ?, ?, ?, ?)`, history.Id, history.UserId, history.Username, history.IpAddress, history.UserAgent, history.LoginAt, history.Success)
+	err := r.queries.SaveLoginHistory(ctx, dbsqlc.SaveLoginHistoryParams{
+		ID:        history.Id,
+		UserID:    history.UserId,
+		Username:  history.Username,
+		IpAddress: dbmodel.NullString(history.IpAddress),
+		UserAgent: dbmodel.NullString(history.UserAgent),
+		LoginAt:   history.LoginAt,
+		Success:   dbmodel.BoolInt(history.Success),
+	})
 	if err != nil {
 		return fmt.Errorf("save login history %s: %w", history.Id, err)
 	}

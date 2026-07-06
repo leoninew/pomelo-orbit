@@ -10,44 +10,44 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"backend/internal/db"
+	dbsqlc "backend/internal/db/sqlc"
 	"backend/internal/repository"
+	"backend/internal/repository/dbmodel"
 	"backend/internal/repository/model"
 )
 
 type Repository struct {
-	db     *sqlx.DB
-	driver string
+	db      *sqlx.DB
+	driver  string
+	queries *dbsqlc.Queries
 }
 
 func NewRepository(db *sqlx.DB, driver string) Repository {
-	return Repository{db: db, driver: driver}
+	return Repository{db: db, driver: driver, queries: dbsqlc.New(db)}
 }
 
 func (r Repository) RoleById(ctx context.Context, id string) (model.Role, error) {
-	var role model.Role
-	err := r.db.GetContext(ctx, &role, `SELECT id, code, name, description, created_at, updated_at FROM role WHERE id = ?`, id)
+	role, err := r.queries.RoleByID(ctx, id)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role %s: %w", id, err)
 	}
-	return role, nil
+	return dbmodel.RoleFromSQLC(role), nil
 }
 
 func (r Repository) RoleByCode(ctx context.Context, code string) (model.Role, error) {
-	var role model.Role
-	err := r.db.GetContext(ctx, &role, `SELECT id, code, name, description, created_at, updated_at FROM role WHERE code = ?`, code)
+	role, err := r.queries.RoleByCode(ctx, code)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role by code %s: %w", code, err)
 	}
-	return role, nil
+	return dbmodel.RoleFromSQLC(role), nil
 }
 
 func (r Repository) RoleByName(ctx context.Context, name string) (model.Role, error) {
-	var role model.Role
-	err := r.db.GetContext(ctx, &role, `SELECT id, code, name, description, created_at, updated_at FROM role WHERE name = ?`, name)
+	role, err := r.queries.RoleByName(ctx, name)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role by name %s: %w", name, err)
 	}
-	return role, nil
+	return dbmodel.RoleFromSQLC(role), nil
 }
 
 func (r Repository) ListRoles(ctx context.Context, page int, perPage int, search string) (repository.Page[model.Role], error) {
@@ -67,10 +67,13 @@ func (r Repository) ListRoles(ctx context.Context, page int, perPage int, search
 }
 
 func (r Repository) ListPermissions(ctx context.Context) ([]model.Permission, error) {
-	var permissions []model.Permission
-	err := r.db.SelectContext(ctx, &permissions, `SELECT id, code, name, description, created_at, updated_at FROM permission ORDER BY code`)
+	rows, err := r.queries.ListPermissions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list permissions: %w", err)
+	}
+	permissions := make([]model.Permission, 0, len(rows))
+	for _, row := range rows {
+		permissions = append(permissions, dbmodel.PermissionFromSQLC(row))
 	}
 	return permissions, nil
 }
@@ -170,7 +173,7 @@ func (r Repository) UpdateRole(ctx context.Context, role model.Role, permissionC
 }
 
 func (r Repository) DeleteRole(ctx context.Context, roleId string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM role WHERE id = ?`, roleId)
+	err := r.queries.DeleteRole(ctx, roleId)
 	if err != nil {
 		return fmt.Errorf("delete role %s: %w", roleId, err)
 	}
@@ -182,12 +185,13 @@ func IsNotFound(err error) bool {
 }
 
 func setRolePermissionsTx(ctx context.Context, tx *sqlx.Tx, driver string, roleId string, permissionCodes []string) error {
+	queries := dbsqlc.New(tx)
 	if _, err := tx.ExecContext(ctx, `DELETE FROM role_permission WHERE role_id = ?`, roleId); err != nil {
 		return fmt.Errorf("delete role permissions %s: %w", roleId, err)
 	}
 	for _, code := range permissionCodes {
-		var permissionId string
-		if err := tx.GetContext(ctx, &permissionId, `SELECT id FROM permission WHERE code = ?`, code); err != nil {
+		permissionId, err := queries.PermissionIDByCode(ctx, code)
+		if err != nil {
 			return fmt.Errorf("load permission %s: %w", code, err)
 		}
 		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO role_permission (role_id, permission_id, created_at) VALUES (?, ?, %s)`, db.NowExpr(driver)), roleId, permissionId); err != nil {

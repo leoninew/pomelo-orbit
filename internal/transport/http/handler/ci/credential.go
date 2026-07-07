@@ -2,9 +2,9 @@ package cihandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
@@ -12,128 +12,128 @@ import (
 )
 
 func (h Handler) RegisterCredentialRoutes(r router) {
-	r.Get("/api/ci/credential", h.listCredentials)
-	r.Post("/api/ci/credential", h.createCredential)
-	r.Post("/api/ci/credential/import", h.importCredential)
-	r.Get("/api/ci/credential/{credential_id}", h.getCredential)
-	r.Put("/api/ci/credential/{credential_id}", h.updateCredential)
-	r.Delete("/api/ci/credential/{credential_id}", h.deleteCredential)
-	r.Get("/api/ci/credential/{credential_id}/export", h.exportCredential)
+	r.GET("/api/ci/credential", h.listCredentials)
+	r.POST("/api/ci/credential", h.createCredential)
+	r.POST("/api/ci/credential/import", h.importCredential)
+	r.GET("/api/ci/credential/:credential_id", h.getCredential)
+	r.PUT("/api/ci/credential/:credential_id", h.updateCredential)
+	r.DELETE("/api/ci/credential/:credential_id", h.deleteCredential)
+	r.GET("/api/ci/credential/:credential_id/export", h.exportCredential)
 }
 
-func (h Handler) listCredentials(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listCredentials(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListCredentials(r.Context(), current.Id, r.URL.Query().Get("project_id"), page, perPage, r.URL.Query().Get("search"))
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
+	items, err := h.service.ListCredentials(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := mapPage(items, credentialResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.CredentialPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.CredentialPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) createCredential(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) createCredential(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.CredentialCreateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	created, err := h.service.CreateCredential(r.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
+	created, err := h.service.CreateCredential(c.Request.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := credentialResponse(created)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) importCredential(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) importCredential(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.CredentialImportReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
 	if req.Version == "" {
 		req.Version = cisvc.CredentialExportVersion
 	}
-	created, err := h.service.ImportCredential(r.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
+	created, err := h.service.ImportCredential(c.Request.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := credentialResponse(created)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) getCredential(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) getCredential(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	credential, err := h.service.CredentialDetailForUser(r.Context(), current.Id, chi.URLParam(r, "credential_id"))
+	credential, err := h.service.CredentialDetailForUser(c.Request.Context(), current.Id, c.Param("credential_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := credentialDetailResponse(credential)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) updateCredential(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) updateCredential(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.CredentialUpdateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	updated, err := h.service.UpdateCredential(r.Context(), current.Id, chi.URLParam(r, "credential_id"), cisvc.CredentialUpdateInput{Name: req.Name, Data: req.Data})
+	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Param("credential_id"), cisvc.CredentialUpdateInput{Name: req.Name, Data: req.Data})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := credentialResponse(updated)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) deleteCredential(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) deleteCredential(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteCredential(r.Context(), current.Id, chi.URLParam(r, "credential_id")); err != nil {
-		h.writeError(w, err)
+	if err := h.service.DeleteCredential(c.Request.Context(), current.Id, c.Param("credential_id")); err != nil {
+		h.writeError(c, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) exportCredential(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) exportCredential(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	exported, err := h.service.ExportCredential(r.Context(), current.Id, chi.URLParam(r, "credential_id"))
+	exported, err := h.service.ExportCredential(c.Request.Context(), current.Id, c.Param("credential_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data}})
 }
 
 func credentialResponse(item model.Credential) pomeloorbit.CredentialResp {

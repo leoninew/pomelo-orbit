@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -20,10 +20,10 @@ import (
 )
 
 type router interface {
-	Get(pattern string, handlerFn http.HandlerFunc)
-	Post(pattern string, handlerFn http.HandlerFunc)
-	Put(pattern string, handlerFn http.HandlerFunc)
-	Delete(pattern string, handlerFn http.HandlerFunc)
+	GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	POST(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	PUT(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	DELETE(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
 }
 
 type Store interface {
@@ -45,170 +45,170 @@ func New(logger *slog.Logger, service rolesvc.Service, authenticator authz.Authe
 }
 
 func (h Handler) Register(r router) {
-	r.Get("/api/role", h.listRoles)
-	r.Post("/api/role", h.createRole)
-	r.Get("/api/role/permission", h.listPermissions)
-	r.Get("/api/role/{role_id}", h.getRole)
-	r.Put("/api/role/{role_id}", h.updateRole)
-	r.Delete("/api/role/{role_id}", h.deleteRole)
+	r.GET("/api/role", h.listRoles)
+	r.POST("/api/role", h.createRole)
+	r.GET("/api/role/permission", h.listPermissions)
+	r.GET("/api/role/:role_id", h.getRole)
+	r.PUT("/api/role/:role_id", h.updateRole)
+	r.DELETE("/api/role/:role_id", h.deleteRole)
 }
 
-func (h Handler) listRoles(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "role:read"); !ok {
+func (h Handler) listRoles(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "role:read"); !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 10)
-	roles, err := h.store.ListRoles(r.Context(), page, perPage, r.URL.Query().Get("search"))
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	roles, err := h.store.ListRoles(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list roles failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list roles")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to list roles"})
 		return
 	}
 	roleIds := make([]string, 0, len(roles.Items))
 	for _, role := range roles.Items {
 		roleIds = append(roleIds, role.Id)
 	}
-	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(r.Context(), roleIds)
+	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(c.Request.Context(), roleIds)
 	if err != nil {
 		h.logger.Error("load role permissions failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load role permissions"})
 		return
 	}
 	resp := mapPage(roles, func(role model.Role) pomeloorbit.RoleResp {
 		return roleResponse(role, permissionsByRoleId[role.Id])
 	})
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.RolePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.RolePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) listPermissions(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "role:read"); !ok {
+func (h Handler) listPermissions(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "role:read"); !ok {
 		return
 	}
-	permissions, err := h.store.ListPermissions(r.Context())
+	permissions, err := h.store.ListPermissions(c.Request.Context())
 	if err != nil {
 		h.logger.Error("list permissions failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to list permissions"})
 		return
 	}
 	items := make([]pomeloorbit.PermissionResp, 0, len(permissions))
 	for _, permission := range permissions {
 		items = append(items, permissionResponse(permission))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PermissionListResp{Items: transportresponse.Ptrs(items)})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PermissionListResp{Items: transportresponse.Ptrs(items)}})
 }
 
-func (h Handler) getRole(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "role:read"); !ok {
+func (h Handler) getRole(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "role:read"); !ok {
 		return
 	}
-	role, ok := h.loadRoleFromPath(w, r)
+	role, ok := h.loadRoleFromPath(c)
 	if !ok {
 		return
 	}
-	resp, ok := h.roleDetailResp(w, r, role)
+	resp, ok := h.roleDetailResp(c, role)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) createRole(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "role:write"); !ok {
+func (h Handler) createRole(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "role:write"); !ok {
 		return
 	}
 	var req pomeloorbit.RoleCreateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	role, err := h.service.Create(r.Context(), rolesvc.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
+	role, err := h.service.Create(c.Request.Context(), rolesvc.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
 	if err != nil {
-		h.writeServiceError(w, err, "Failed to create role")
+		h.writeServiceError(c, err, "Failed to create role")
 		return
 	}
 	resp := roleResponse(role, req.PermissionCodes)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) updateRole(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "role:write"); !ok {
+func (h Handler) updateRole(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "role:write"); !ok {
 		return
 	}
-	role, ok := h.loadRoleFromPath(w, r)
+	role, ok := h.loadRoleFromPath(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RoleUpdateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	updated, err := h.service.Update(r.Context(), rolesvc.SaveInput{Role: role, Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
+	updated, err := h.service.Update(c.Request.Context(), rolesvc.SaveInput{Role: role, Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
 	if err != nil {
-		h.writeServiceError(w, err, "Failed to update role")
+		h.writeServiceError(c, err, "Failed to update role")
 		return
 	}
-	resp, ok := h.roleDetailResp(w, r, updated)
+	resp, ok := h.roleDetailResp(c, updated)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) deleteRole(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "role:write"); !ok {
+func (h Handler) deleteRole(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "role:write"); !ok {
 		return
 	}
-	role, ok := h.loadRoleFromPath(w, r)
+	role, ok := h.loadRoleFromPath(c)
 	if !ok {
 		return
 	}
-	if err := h.service.Delete(r.Context(), role.Id); err != nil {
+	if err := h.service.Delete(c.Request.Context(), role.Id); err != nil {
 		h.logger.Error("delete role failed", "role_id", role.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to delete role")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to delete role"})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) writeServiceError(w http.ResponseWriter, err error, internalDetail string) {
+func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail string) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
 		return
 	}
 	if apperror.IsKind(err, apperror.KindConflict) {
-		transportresponse.Error(h.logger, w, http.StatusConflict, err.Error())
+		c.JSON(http.StatusConflict, gin.H{"detail": err.Error()})
 		return
 	}
 	if apperror.IsKind(err, apperror.KindNotFound) {
-		transportresponse.Error(h.logger, w, http.StatusNotFound, err.Error())
+		c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
 		return
 	}
 	h.logger.Error("role service failed", "error", err)
-	transportresponse.Error(h.logger, w, http.StatusInternalServerError, internalDetail)
+	c.JSON(http.StatusInternalServerError, gin.H{"detail": internalDetail})
 }
 
-func (h Handler) loadRoleFromPath(w http.ResponseWriter, r *http.Request) (model.Role, bool) {
-	roleId := strings.TrimSpace(chi.URLParam(r, "role_id"))
-	role, err := h.store.RoleById(r.Context(), roleId)
+func (h Handler) loadRoleFromPath(c *gin.Context) (model.Role, bool) {
+	roleId := strings.TrimSpace(c.Param("role_id"))
+	role, err := h.store.RoleById(c.Request.Context(), roleId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			transportresponse.Error(h.logger, w, http.StatusNotFound, "Role "+roleId+" not found")
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Role " + roleId + " not found"})
 			return model.Role{}, false
 		}
 		h.logger.Error("load role failed", "role_id", roleId, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load role"})
 		return model.Role{}, false
 	}
 	return role, true
 }
 
-func (h Handler) roleDetailResp(w http.ResponseWriter, r *http.Request, role model.Role) (pomeloorbit.RoleResp, bool) {
-	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(r.Context(), []string{role.Id})
+func (h Handler) roleDetailResp(c *gin.Context, role model.Role) (pomeloorbit.RoleResp, bool) {
+	permissionsByRoleId, err := h.store.RolePermissionCodesByRoleIds(c.Request.Context(), []string{role.Id})
 	if err != nil {
 		h.logger.Error("load role permissions failed", "role_id", role.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load role permissions"})
 		return pomeloorbit.RoleResp{}, false
 	}
 	return roleResponse(role, permissionsByRoleId[role.Id]), true

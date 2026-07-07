@@ -2,9 +2,9 @@ package cihandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
@@ -12,21 +12,21 @@ import (
 )
 
 func (h Handler) RegisterSnapshotRoutes(r router) {
-	r.Get("/api/ci/snapshot/{snapshot_id}", h.getPipelineSnapshot)
+	r.GET("/api/ci/snapshot/:snapshot_id", h.getPipelineSnapshot)
 }
 
-func (h Handler) getPipelineSnapshot(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) getPipelineSnapshot(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	snapshot, err := h.service.PipelineSnapshotForUser(r.Context(), current.Id, chi.URLParam(r, "snapshot_id"))
+	snapshot, err := h.service.PipelineSnapshotForUser(c.Request.Context(), current.Id, c.Param("snapshot_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineSnapshotResponse(snapshot)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
 func pipelineSnapshotResponse(detail cisvc.PipelineSnapshotDetail) pomeloorbit.PipelineSnapshotResp {

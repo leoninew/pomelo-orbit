@@ -1,22 +1,25 @@
 package middleware
 
 import (
-	"bufio"
 	"bytes"
 	"io"
 	"log/slog"
 	"mime"
-	"net"
 	"net/http"
 	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-const TruncatedBodySuffix = "..."
+const (
+	RequestIDKey        = "request_id"
+	RequestIDHeader     = "X-Request-Id"
+	TruncatedBodySuffix = "..."
+)
 
 type LogRequestConfig struct {
 	BodyEnabled          bool
@@ -24,57 +27,101 @@ type LogRequestConfig struct {
 	SkipAssets200Enabled bool
 }
 
-func LogRequest(logger *slog.Logger, cfg LogRequestConfig) func(http.Handler) http.Handler {
-	if cfg.BodyEnabled && cfg.BodyMaxBytes <= 0 {
-		panic("http body max bytes must be positive")
-	}
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			startedAt := time.Now()
-			requestAttrs := requestLogAttrs(r)
-			requestBody, bodyErr := readRequestBodyForLog(r, cfg)
-
-			startedAttrs := append([]any{}, requestAttrs...)
-			if requestBody != "" {
-				startedAttrs = append(startedAttrs, "request_body", requestBody)
-			}
-			if bodyErr != nil {
-				startedAttrs = append(startedAttrs, "body_read_error", bodyErr.Error())
-			}
-			delayStartedLog := cfg.SkipAssets200Enabled && isSkippableAssetPath(r.URL.Path)
-			if !delayStartedLog {
-				logger.Info("request started", startedAttrs...)
-			}
-
-			responseWriter := newLoggingResponseWriter(w, cfg)
-			next.ServeHTTP(responseWriter, r)
-			if shouldSkipRequestLog(r, responseWriter.Status(), cfg) {
-				return
-			}
-			if delayStartedLog {
-				logger.Info("request started", startedAttrs...)
-			}
-
-			completedAttrs := append([]any{}, requestAttrs...)
-			completedAttrs = append(completedAttrs,
-				"status", responseWriter.Status(),
-				"bytes", responseWriter.BytesWritten(),
-				"duration_ms", time.Since(startedAt).Milliseconds(),
-			)
-			if responseBody := responseWriter.Body(); responseBody != "" {
-				completedAttrs = append(completedAttrs, "response_body", responseBody)
-			}
-			logger.Info("request completed", completedAttrs...)
-		})
+func RequestID() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		requestID := strings.TrimSpace(c.GetHeader(RequestIDHeader))
+		if requestID == "" {
+			requestID = uuid.NewString()
+		}
+		c.Set(RequestIDKey, requestID)
+		c.Writer.Header().Set(RequestIDHeader, requestID)
+		c.Next()
 	}
 }
 
-func requestLogAttrs(r *http.Request) []any {
+func RequestIDFromContext(c *gin.Context) string {
+	value, ok := c.Get(RequestIDKey)
+	if !ok {
+		return ""
+	}
+	requestID, _ := value.(string)
+	return requestID
+}
+
+func RealIP() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-For")); forwarded != "" {
+			parts := strings.Split(forwarded, ",")
+			if realIP := strings.TrimSpace(parts[0]); realIP != "" {
+				c.Request.RemoteAddr = realIP
+			}
+		} else if realIP := strings.TrimSpace(c.GetHeader("X-Real-IP")); realIP != "" {
+			c.Request.RemoteAddr = realIP
+		}
+		c.Next()
+	}
+}
+
+func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
+	if cfg.BodyEnabled && cfg.BodyMaxBytes <= 0 {
+		panic("http body max bytes must be positive")
+	}
+	return func(c *gin.Context) {
+		startedAt := time.Now()
+		requestAttrs := requestLogAttrs(c)
+		requestBody, bodyErr := readRequestBodyForLog(c.Request, cfg)
+
+		startedAttrs := append([]any{}, requestAttrs...)
+		if requestBody != "" {
+			startedAttrs = append(startedAttrs, "request_body", requestBody)
+		}
+		if bodyErr != nil {
+			startedAttrs = append(startedAttrs, "body_read_error", bodyErr.Error())
+		}
+		delayStartedLog := cfg.SkipAssets200Enabled && isSkippableAssetPath(c.Request.URL.Path)
+		if !delayStartedLog {
+			logger.Info("request started", startedAttrs...)
+		}
+
+		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, cfg: cfg}
+		c.Writer = bodyWriter
+		c.Next()
+
+		status := c.Writer.Status()
+		if shouldSkipRequestLog(c.Request, status, cfg) {
+			return
+		}
+		if delayStartedLog {
+			logger.Info("request started", startedAttrs...)
+		}
+
+		completedAttrs := append([]any{}, requestAttrs...)
+		completedAttrs = append(completedAttrs,
+			"status", status,
+			"bytes", c.Writer.Size(),
+			"duration_ms", time.Since(startedAt).Milliseconds(),
+		)
+		if responseBody := bodyWriter.Body(); responseBody != "" {
+			completedAttrs = append(completedAttrs, "response_body", responseBody)
+		}
+		logger.Info("request completed", completedAttrs...)
+	}
+}
+
+func Recovery(logger *slog.Logger) gin.HandlerFunc {
+	_ = logger
+	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
+		c.AbortWithStatus(http.StatusInternalServerError)
+	})
+}
+
+func requestLogAttrs(c *gin.Context) []any {
+	r := c.Request
 	return []any{
 		"method", r.Method,
 		"path", r.URL.Path,
 		"uri", r.URL.RequestURI(),
-		"request_id", chimiddleware.GetReqID(r.Context()),
+		"request_id", RequestIDFromContext(c),
 		"remote_addr", r.RemoteAddr,
 		"user_agent", r.UserAgent(),
 	}
@@ -149,89 +196,34 @@ func (r *prefixReadCloser) Close() error {
 	return r.closer.Close()
 }
 
-type loggingResponseWriter struct {
-	http.ResponseWriter
-	status       int
-	bytes        int
-	body         bytes.Buffer
-	bodyEnabled  bool
-	bodyMaxBytes int
+type bodyLogWriter struct {
+	gin.ResponseWriter
+	cfg  LogRequestConfig
+	body bytes.Buffer
 }
 
-func newLoggingResponseWriter(w http.ResponseWriter, cfg LogRequestConfig) *loggingResponseWriter {
-	return &loggingResponseWriter{ResponseWriter: w, bodyEnabled: cfg.BodyEnabled, bodyMaxBytes: cfg.BodyMaxBytes}
-}
-
-func (w *loggingResponseWriter) WriteHeader(status int) {
-	if w.status != 0 {
-		return
-	}
-	w.status = status
-	w.ResponseWriter.WriteHeader(status)
-}
-
-func (w *loggingResponseWriter) Write(data []byte) (int, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
-	}
+func (w *bodyLogWriter) Write(data []byte) (int, error) {
 	w.captureBody(data)
-	n, err := w.ResponseWriter.Write(data)
-	w.bytes += n
-	return n, err
+	return w.ResponseWriter.Write(data)
 }
 
-func (w *loggingResponseWriter) Status() int {
-	if w.status == 0 {
-		return http.StatusOK
-	}
-	return w.status
+func (w *bodyLogWriter) WriteString(data string) (int, error) {
+	w.captureBody([]byte(data))
+	return w.ResponseWriter.WriteString(data)
 }
 
-func (w *loggingResponseWriter) BytesWritten() int {
-	return w.bytes
-}
-
-func (w *loggingResponseWriter) Body() string {
-	if !w.bodyEnabled || w.body.Len() == 0 {
+func (w *bodyLogWriter) Body() string {
+	if !w.cfg.BodyEnabled || w.body.Len() == 0 {
 		return ""
 	}
-	return truncateLogBody(w.body.Bytes(), w.bodyMaxBytes)
+	return truncateLogBody(w.body.Bytes(), w.cfg.BodyMaxBytes)
 }
 
-func (w *loggingResponseWriter) Flush() {
-	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
-func (w *loggingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hijacker, ok := w.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, http.ErrNotSupported
-	}
-	if w.status == 0 {
-		w.status = http.StatusSwitchingProtocols
-	}
-	return hijacker.Hijack()
-}
-
-func (w *loggingResponseWriter) Push(target string, opts *http.PushOptions) error {
-	pusher, ok := w.ResponseWriter.(http.Pusher)
-	if !ok {
-		return http.ErrNotSupported
-	}
-	return pusher.Push(target, opts)
-}
-
-func (w *loggingResponseWriter) Unwrap() http.ResponseWriter {
-	return w.ResponseWriter
-}
-
-func (w *loggingResponseWriter) captureBody(data []byte) {
-	if !w.bodyEnabled || !isJSONContentType(w.Header().Get("Content-Type")) || len(data) == 0 {
+func (w *bodyLogWriter) captureBody(data []byte) {
+	if !w.cfg.BodyEnabled || !isJSONContentType(w.Header().Get("Content-Type")) || len(data) == 0 {
 		return
 	}
-	limit := w.bodyMaxBytes + 1
+	limit := w.cfg.BodyMaxBytes + 1
 	if w.body.Len() >= limit {
 		return
 	}
@@ -241,8 +233,3 @@ func (w *loggingResponseWriter) captureBody(data []byte) {
 	}
 	_, _ = w.body.Write(data)
 }
-
-var _ http.Flusher = (*loggingResponseWriter)(nil)
-var _ http.Hijacker = (*loggingResponseWriter)(nil)
-var _ http.Pusher = (*loggingResponseWriter)(nil)
-var _ interface{ Unwrap() http.ResponseWriter } = (*loggingResponseWriter)(nil)

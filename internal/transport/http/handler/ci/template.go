@@ -2,81 +2,81 @@ package cihandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func (h Handler) RegisterTemplateRoutes(r router) {
-	r.Get("/api/ci/template", h.listPipelineTemplates)
-	r.Post("/api/ci/template", h.createPipelineTemplate)
-	r.Post("/api/ci/template/resolve-variables", h.resolvePipelineTemplateVariables)
-	r.Get("/api/ci/template/{template_id}", h.getPipelineTemplate)
-	r.Put("/api/ci/template/{template_id}", h.updatePipelineTemplate)
-	r.Delete("/api/ci/template/{template_id}", h.deletePipelineTemplate)
-	r.Post("/api/ci/template/{template_id}/duplicate", h.duplicatePipelineTemplate)
+	r.GET("/api/ci/template", h.listPipelineTemplates)
+	r.POST("/api/ci/template", h.createPipelineTemplate)
+	r.POST("/api/ci/template/resolve-variables", h.resolvePipelineTemplateVariables)
+	r.GET("/api/ci/template/:template_id", h.getPipelineTemplate)
+	r.PUT("/api/ci/template/:template_id", h.updatePipelineTemplate)
+	r.DELETE("/api/ci/template/:template_id", h.deletePipelineTemplate)
+	r.POST("/api/ci/template/:template_id/duplicate", h.duplicatePipelineTemplate)
 }
 
-func (h Handler) listPipelineTemplates(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listPipelineTemplates(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListPipelineTemplates(r.Context(), current.Id, r.URL.Query().Get("project_id"), page, perPage, r.URL.Query().Get("search"))
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	items, err := h.service.ListPipelineTemplates(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := mapPage(items, pipelineTemplateResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) createPipelineTemplate(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) createPipelineTemplate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineTemplateCreateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.CreatePipelineTemplate(r.Context(), current.Id, cisvc.PipelineTemplateCreateInput{ProjectId: r.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
+	detail, err := h.service.CreatePipelineTemplate(c.Request.Context(), current.Id, cisvc.PipelineTemplateCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) getPipelineTemplate(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) getPipelineTemplate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	detail, err := h.service.PipelineTemplateForUser(r.Context(), current.Id, chi.URLParam(r, "template_id"))
+	detail, err := h.service.PipelineTemplateForUser(c.Request.Context(), current.Id, c.Param("template_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) updatePipelineTemplate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineTemplateUpdateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
 	var orchestration *[]cisvc.StageOrchestration
@@ -89,62 +89,62 @@ func (h Handler) updatePipelineTemplate(w http.ResponseWriter, r *http.Request) 
 		items := variableDeclarationRequestMaps(req.VariableDeclarations.Items)
 		variableDeclarations = &items
 	}
-	detail, err := h.service.UpdatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"), cisvc.PipelineTemplateUpdateInput{Name: req.Name, Description: req.Description, Orchestration: orchestration, VariableDeclarations: variableDeclarations})
+	detail, err := h.service.UpdatePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id"), cisvc.PipelineTemplateUpdateInput{Name: req.Name, Description: req.Description, Orchestration: orchestration, VariableDeclarations: variableDeclarations})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) deletePipelineTemplate(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) deletePipelineTemplate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeletePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id")); err != nil {
-		h.writeError(w, err)
+	if err := h.service.DeletePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id")); err != nil {
+		h.writeError(c, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) duplicatePipelineTemplate(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) duplicatePipelineTemplate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineTemplateDuplicateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.DuplicatePipelineTemplate(r.Context(), current.Id, chi.URLParam(r, "template_id"))
+	detail, err := h.service.DuplicatePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) resolvePipelineTemplateVariables(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) resolvePipelineTemplateVariables(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.TemplateVariableResolveReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	variables, err := h.service.ResolvePipelineTemplateVariables(r.Context(), current.Id, cisvc.PipelineTemplateResolveInput{ProjectId: r.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
+	variables, err := h.service.ResolvePipelineTemplateVariables(c.Request.Context(), current.Id, cisvc.PipelineTemplateResolveInput{ProjectId: c.Request.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))}})
 }
 
 func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) pomeloorbit.PipelineTemplateResp {

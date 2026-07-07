@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestCIListRoutesKeepPaginatedResponseShape(t *testing.T) {
+func TestCIListRoutesUseGinJSONPaginatedResponseShape(t *testing.T) {
 	server, database := newTestServer(t)
 	defer func() { _ = database.Close() }()
 	server.appCfg.JWT.SecretKey = credentialRouteFernetKey

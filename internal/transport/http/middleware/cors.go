@@ -3,6 +3,8 @@ package middleware
 import (
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -11,35 +13,35 @@ const (
 	corsMaxAge       = "600"
 )
 
-func CORS(allowedOrigins []string, apiPathPrefixes []string) func(http.Handler) http.Handler {
+func CORS(allowedOrigins []string, apiPathPrefixes []string) gin.HandlerFunc {
 	origins := parseCORSAllowedOrigins(allowedOrigins)
-	return func(next http.Handler) http.Handler {
+	return func(c *gin.Context) {
 		if len(origins) == 0 {
-			return next
+			c.Next()
+			return
 		}
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := normalizeCORSOrigin(r.Header.Get("Origin"))
-			if !isAPIPath(r.URL.Path, apiPathPrefixes) || origin == "" {
-				next.ServeHTTP(w, r)
-				return
-			}
 
-			if origins[origin] {
-				setCORSHeaders(w.Header(), origin)
-				if r.Method == http.MethodOptions {
-					w.WriteHeader(http.StatusNoContent)
-					return
-				}
-				next.ServeHTTP(w, r)
-				return
-			}
+		origin := normalizeCORSOrigin(c.GetHeader("Origin"))
+		if !isAPIPath(c.Request.URL.Path, apiPathPrefixes) || origin == "" {
+			c.Next()
+			return
+		}
 
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusForbidden)
+		if origins[origin] {
+			setCORSHeaders(c.Writer.Header(), origin)
+			if c.Request.Method == http.MethodOptions {
+				c.AbortWithStatus(http.StatusNoContent)
 				return
 			}
-			next.ServeHTTP(w, r)
-		})
+			c.Next()
+			return
+		}
+
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.Next()
 	}
 }
 

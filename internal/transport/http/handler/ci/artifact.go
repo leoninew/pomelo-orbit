@@ -2,6 +2,8 @@ package cihandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"net/http"
 
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
@@ -9,21 +11,21 @@ import (
 )
 
 func (h Handler) RegisterArtifactRoutes(r router) {
-	r.Get("/api/ci/artifact", h.listArtifacts)
+	r.GET("/api/ci/artifact", h.listArtifacts)
 }
 
-func (h Handler) listArtifacts(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listArtifacts(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListArtifacts(r.Context(), current.Id, cisvc.ArtifactListInput{ProjectId: r.URL.Query().Get("project_id"), RepositoryId: r.URL.Query().Get("repository_id"), TemplateId: r.URL.Query().Get("template_id"), Search: r.URL.Query().Get("search"), Page: page, PerPage: perPage})
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
+	items, err := h.service.ListArtifacts(c.Request.Context(), current.Id, cisvc.ArtifactListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), Search: c.Request.URL.Query().Get("search"), Page: page, PerPage: perPage})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := mapPage(items, artifactResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ArtifactPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }

@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -20,10 +20,10 @@ import (
 )
 
 type router interface {
-	Get(pattern string, handlerFn http.HandlerFunc)
-	Post(pattern string, handlerFn http.HandlerFunc)
-	Put(pattern string, handlerFn http.HandlerFunc)
-	Delete(pattern string, handlerFn http.HandlerFunc)
+	GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	POST(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	PUT(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	DELETE(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
 }
 
 type Store interface {
@@ -53,288 +53,288 @@ func New(logger *slog.Logger, service usersvc.Service, authenticator authz.Authe
 }
 
 func (h Handler) Register(r router) {
-	r.Get("/api/user", h.listUsers)
-	r.Post("/api/user", h.createUser)
-	r.Get("/api/user/{user_id}", h.getUser)
-	r.Put("/api/user/{user_id}", h.updateUser)
-	r.Put("/api/user/{user_id}/role", h.updateUserRoles)
-	r.Post("/api/user/{user_id}/disable", h.disableUser)
-	r.Post("/api/user/{user_id}/enable", h.enableUser)
-	r.Delete("/api/user/{user_id}", h.deleteUser)
+	r.GET("/api/user", h.listUsers)
+	r.POST("/api/user", h.createUser)
+	r.GET("/api/user/:user_id", h.getUser)
+	r.PUT("/api/user/:user_id", h.updateUser)
+	r.PUT("/api/user/:user_id/role", h.updateUserRoles)
+	r.POST("/api/user/:user_id/disable", h.disableUser)
+	r.POST("/api/user/:user_id/enable", h.enableUser)
+	r.DELETE("/api/user/:user_id", h.deleteUser)
 }
 
-func (h Handler) listUsers(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "user:read"); !ok {
+func (h Handler) listUsers(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "user:read"); !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 10)
-	users, err := h.store.ListUsers(r.Context(), page, perPage, r.URL.Query().Get("search"))
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	users, err := h.store.ListUsers(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list users failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list users")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to list users"})
 		return
 	}
 	userIds := make([]string, 0, len(users.Items))
 	for _, user := range users.Items {
 		userIds = append(userIds, user.Id)
 	}
-	rolesByUserId, err := h.store.UserRolesByUserIds(r.Context(), userIds)
+	rolesByUserId, err := h.store.UserRolesByUserIds(c.Request.Context(), userIds)
 	if err != nil {
 		h.logger.Error("load users roles failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user roles"})
 		return
 	}
 	resp := mapPage(users, func(user model.User) pomeloorbit.UserListResp {
 		return userListResponse(user, rolesByUserId[user.Id])
 	})
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.UserPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.UserPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) createUser(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "user:write"); !ok {
+func (h Handler) createUser(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "user:write"); !ok {
 		return
 	}
 	var req pomeloorbit.UserCreateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	user, err := h.service.Create(r.Context(), usersvc.CreateInput{Username: req.Username, Password: req.Password, Email: req.Email})
+	user, err := h.service.Create(c.Request.Context(), usersvc.CreateInput{Username: req.Username, Password: req.Password, Email: req.Email})
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
-	resp, ok := h.userDetailResp(w, r, user)
+	resp, ok := h.userDetailResp(c, user)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) getUser(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "user:read"); !ok {
+func (h Handler) getUser(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "user:read"); !ok {
 		return
 	}
-	user, ok := h.loadUserFromPath(w, r)
+	user, ok := h.loadUserFromPath(c)
 	if !ok {
 		return
 	}
-	resp, ok := h.userDetailResp(w, r, user)
+	resp, ok := h.userDetailResp(c, user)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) updateUser(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.RequirePermission(w, r, "user:write")
+func (h Handler) updateUser(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "user:write")
 	if !ok {
 		return
 	}
-	user, ok := h.loadUserFromPath(w, r)
+	user, ok := h.loadUserFromPath(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.UserUpdateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	if req.Password != nil && *req.Password != "" && !h.canResetPassword(r, current, user.Id) {
-		transportresponse.Error(h.logger, w, http.StatusForbidden, "Permission denied")
+	if req.Password != nil && *req.Password != "" && !h.canResetPassword(c, current, user.Id) {
+		c.JSON(http.StatusForbidden, gin.H{"detail": "Permission denied"})
 		return
 	}
 	if req.Status != nil && current.User.Id == user.Id && strings.TrimSpace(*req.Status) == "disabled" {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Cannot disable current user")
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Cannot disable current user"})
 		return
 	}
-	if _, err := h.service.Update(r.Context(), usersvc.UpdateInput{User: user, Username: req.Username, Password: req.Password, Status: req.Status}); err != nil {
-		h.writeServiceError(w, err)
+	if _, err := h.service.Update(c.Request.Context(), usersvc.UpdateInput{User: user, Username: req.Username, Password: req.Password, Status: req.Status}); err != nil {
+		h.writeServiceError(c, err)
 		return
 	}
-	updated, err := h.store.UserById(r.Context(), user.Id)
+	updated, err := h.store.UserById(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load updated user failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user"})
 		return
 	}
-	resp, ok := h.userDetailResp(w, r, updated)
+	resp, ok := h.userDetailResp(c, updated)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) updateUserRoles(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.RequirePermission(w, r, "user:write")
+func (h Handler) updateUserRoles(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "user:write")
 	if !ok {
 		return
 	}
 	if !authz.HasPermission(current.Permissions, "role:write") {
-		transportresponse.Error(h.logger, w, http.StatusForbidden, "Permission denied")
+		c.JSON(http.StatusForbidden, gin.H{"detail": "Permission denied"})
 		return
 	}
-	user, ok := h.loadUserFromPath(w, r)
+	user, ok := h.loadUserFromPath(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.UserRoleUpdateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
 	seen := map[string]struct{}{}
 	for _, roleId := range req.RoleIds {
 		roleId = strings.TrimSpace(roleId)
 		if roleId == "" {
-			transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid role id")
+			c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid role id"})
 			return
 		}
 		if _, exists := seen[roleId]; exists {
-			transportresponse.Error(h.logger, w, http.StatusBadRequest, "role_ids must be unique")
+			c.JSON(http.StatusBadRequest, gin.H{"detail": "role_ids must be unique"})
 			return
 		}
 		seen[roleId] = struct{}{}
-		if _, err := h.roleStore.RoleById(r.Context(), roleId); err != nil {
+		if _, err := h.roleStore.RoleById(c.Request.Context(), roleId); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				transportresponse.Error(h.logger, w, http.StatusNotFound, "Role "+roleId+" not found")
+				c.JSON(http.StatusNotFound, gin.H{"detail": "Role " + roleId + " not found"})
 				return
 			}
 			h.logger.Error("load role failed", "role_id", roleId, "error", err)
-			transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role")
+			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load role"})
 			return
 		}
 	}
-	if err := h.store.SetUserRoles(r.Context(), user.Id, req.RoleIds); err != nil {
+	if err := h.store.SetUserRoles(c.Request.Context(), user.Id, req.RoleIds); err != nil {
 		h.logger.Error("update user roles failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to update user roles")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to update user roles"})
 		return
 	}
-	updated, err := h.store.UserById(r.Context(), user.Id)
+	updated, err := h.store.UserById(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load updated user failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user"})
 		return
 	}
-	resp, ok := h.userDetailResp(w, r, updated)
+	resp, ok := h.userDetailResp(c, updated)
 	if !ok {
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) disableUser(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.RequirePermission(w, r, "user:write")
+func (h Handler) disableUser(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "user:write")
 	if !ok {
 		return
 	}
-	user, ok := h.loadUserFromPath(w, r)
+	user, ok := h.loadUserFromPath(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.UserDisableReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
 	if current.User.Id == user.Id {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Cannot disable current user")
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Cannot disable current user"})
 		return
 	}
 	if user.Status != "disabled" {
-		if err := h.service.SetStatus(r.Context(), user.Id, "disabled"); err != nil {
+		if err := h.service.SetStatus(c.Request.Context(), user.Id, "disabled"); err != nil {
 			h.logger.Error("disable user failed", "user_id", user.Id, "error", err)
-			transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to disable user")
+			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to disable user"})
 			return
 		}
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) enableUser(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "user:write"); !ok {
+func (h Handler) enableUser(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "user:write"); !ok {
 		return
 	}
-	user, ok := h.loadUserFromPath(w, r)
+	user, ok := h.loadUserFromPath(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.UserEnableReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
 	if user.Status != "enabled" {
-		if err := h.service.SetStatus(r.Context(), user.Id, "enabled"); err != nil {
+		if err := h.service.SetStatus(c.Request.Context(), user.Id, "enabled"); err != nil {
 			h.logger.Error("enable user failed", "user_id", user.Id, "error", err)
-			transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to enable user")
+			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to enable user"})
 			return
 		}
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.RequirePermission(w, r, "user:write")
+func (h Handler) deleteUser(c *gin.Context) {
+	current, ok := h.authenticator.RequirePermission(c, "user:write")
 	if !ok {
 		return
 	}
-	user, ok := h.loadUserFromPath(w, r)
+	user, ok := h.loadUserFromPath(c)
 	if !ok {
 		return
 	}
 	if current.User.Id == user.Id {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Cannot delete current user")
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Cannot delete current user"})
 		return
 	}
-	if err := h.service.Delete(r.Context(), user.Id); err != nil {
+	if err := h.service.Delete(c.Request.Context(), user.Id); err != nil {
 		h.logger.Error("delete user failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to delete user")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to delete user"})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
+func (h Handler) writeServiceError(c *gin.Context, err error) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
 		return
 	}
 	if apperror.IsKind(err, apperror.KindConflict) {
-		transportresponse.Error(h.logger, w, http.StatusConflict, err.Error())
+		c.JSON(http.StatusConflict, gin.H{"detail": err.Error()})
 		return
 	}
 	h.logger.Error("user service failed", "error", err)
-	transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to create user")
+	c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to create user"})
 }
 
-func (h Handler) loadUserFromPath(w http.ResponseWriter, r *http.Request) (model.User, bool) {
-	userId := strings.TrimSpace(chi.URLParam(r, "user_id"))
-	user, err := h.store.UserById(r.Context(), userId)
+func (h Handler) loadUserFromPath(c *gin.Context) (model.User, bool) {
+	userId := strings.TrimSpace(c.Param("user_id"))
+	user, err := h.store.UserById(c.Request.Context(), userId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			transportresponse.Error(h.logger, w, http.StatusNotFound, "User "+userId+" not found")
+			c.JSON(http.StatusNotFound, gin.H{"detail": "User " + userId + " not found"})
 			return model.User{}, false
 		}
 		h.logger.Error("load user failed", "user_id", userId, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user"})
 		return model.User{}, false
 	}
 	return user, true
 }
 
-func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user model.User) (pomeloorbit.UserResp, bool) {
-	roles, err := h.store.UserRoleDetails(r.Context(), user.Id)
+func (h Handler) userDetailResp(c *gin.Context, user model.User) (pomeloorbit.UserResp, bool) {
+	roles, err := h.store.UserRoleDetails(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user roles failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user roles"})
 		return pomeloorbit.UserResp{}, false
 	}
-	permissions, err := h.store.UserPermissions(r.Context(), user.Id)
+	permissions, err := h.store.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user permissions"})
 		return pomeloorbit.UserResp{}, false
 	}
 	roleIds := make([]string, 0, len(roles))
@@ -343,10 +343,10 @@ func (h Handler) userDetailResp(w http.ResponseWriter, r *http.Request, user mod
 		roleIds = append(roleIds, role.Id)
 		roleCodes = append(roleCodes, role.Code)
 	}
-	permissionsByRoleId, err := h.roleStore.RolePermissionCodesByRoleIds(r.Context(), roleIds)
+	permissionsByRoleId, err := h.roleStore.RolePermissionCodesByRoleIds(c.Request.Context(), roleIds)
 	if err != nil {
 		h.logger.Error("load role permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load role permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load role permissions"})
 		return pomeloorbit.UserResp{}, false
 	}
 	return pomeloorbit.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes, Permissions: permissions, Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(roles, permissionsByRoleId))}, true
@@ -374,11 +374,11 @@ func roleResponses(roles []model.Role, permissionsByRoleId map[string][]string) 
 	return items
 }
 
-func (h Handler) canResetPassword(r *http.Request, current authz.CurrentUserContext, targetUserId string) bool {
+func (h Handler) canResetPassword(c *gin.Context, current authz.CurrentUserContext, targetUserId string) bool {
 	if current.User.Id == targetUserId || authz.HasPermission(current.Permissions, "role:write") {
 		return true
 	}
-	targetPermissions, err := h.store.UserPermissions(r.Context(), targetUserId)
+	targetPermissions, err := h.store.UserPermissions(c.Request.Context(), targetUserId)
 	if err != nil {
 		h.logger.Warn("load target user permissions failed", "user_id", targetUserId, "error", err)
 		return false

@@ -2,11 +2,11 @@ package projecthandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/apperror"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
@@ -16,10 +16,10 @@ import (
 )
 
 type router interface {
-	Get(pattern string, handlerFn http.HandlerFunc)
-	Post(pattern string, handlerFn http.HandlerFunc)
-	Put(pattern string, handlerFn http.HandlerFunc)
-	Delete(pattern string, handlerFn http.HandlerFunc)
+	GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	POST(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	PUT(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	DELETE(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
 }
 
 type Handler struct {
@@ -33,174 +33,174 @@ func New(logger *slog.Logger, service projectsvc.Service, authenticator authz.Au
 }
 
 func (h Handler) Register(r router) {
-	r.Get("/api/project", h.listProjects)
-	r.Post("/api/project", h.createProject)
-	r.Get("/api/project/{project_id}", h.getProject)
-	r.Put("/api/project/{project_id}", h.updateProject)
-	r.Post("/api/project/{project_id}/deprecate", h.deprecateProject)
-	r.Get("/api/project/{project_id}/member", h.listProjectMembers)
-	r.Post("/api/project/{project_id}/member", h.addProjectMember)
-	r.Delete("/api/project/{project_id}/member/{user_id}", h.removeProjectMember)
+	r.GET("/api/project", h.listProjects)
+	r.POST("/api/project", h.createProject)
+	r.GET("/api/project/:project_id", h.getProject)
+	r.PUT("/api/project/:project_id", h.updateProject)
+	r.POST("/api/project/:project_id/deprecate", h.deprecateProject)
+	r.GET("/api/project/:project_id/member", h.listProjectMembers)
+	r.POST("/api/project/:project_id/member", h.addProjectMember)
+	r.DELETE("/api/project/:project_id/member/:user_id", h.removeProjectMember)
 }
 
-func (h Handler) listProjects(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listProjects(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	items, err := h.service.ListByMember(r.Context(), current.Id)
+	items, err := h.service.ListByMember(c.Request.Context(), current.Id)
 	if err != nil {
 		h.logger.Error("list projects failed", "user_id", current.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list projects")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to list projects"})
 		return
 	}
 	resp := make([]pomeloorbit.ProjectResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, ProjectResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectListResp{Items: transportresponse.Ptrs(resp)})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ProjectListResp{Items: transportresponse.Ptrs(resp)}})
 }
 
-func (h Handler) createProject(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) createProject(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ProjectSaveReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	project, err := h.service.Create(r.Context(), current.Id, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
+	project, err := h.service.Create(c.Request.Context(), current.Id, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
 	resp := ProjectResponse(project)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) getProject(w http.ResponseWriter, r *http.Request) {
-	project, ok := h.loadProjectForCurrentUser(w, r)
+func (h Handler) getProject(c *gin.Context) {
+	project, ok := h.loadProjectForCurrentUser(c)
 	if !ok {
 		return
 	}
 	resp := ProjectResponse(project)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) updateProject(w http.ResponseWriter, r *http.Request) {
-	project, ok := h.loadProjectForCurrentUser(w, r)
+func (h Handler) updateProject(c *gin.Context) {
+	project, ok := h.loadProjectForCurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ProjectSaveReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	updated, err := h.service.Update(r.Context(), project, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
+	updated, err := h.service.Update(c.Request.Context(), project, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
 	resp := ProjectResponse(updated)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) deprecateProject(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) deprecateProject(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	project, ok := h.loadProjectForUser(w, r, current.Id)
+	project, ok := h.loadProjectForUser(c, current.Id)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ProjectDeprecateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	if err := h.service.Deprecate(r.Context(), project, current.Id); err != nil {
-		h.writeServiceError(w, err)
+	if err := h.service.Deprecate(c.Request.Context(), project, current.Id); err != nil {
+		h.writeServiceError(c, err)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) listProjectMembers(w http.ResponseWriter, r *http.Request) {
-	project, ok := h.loadProjectForCurrentUser(w, r)
+func (h Handler) listProjectMembers(c *gin.Context) {
+	project, ok := h.loadProjectForCurrentUser(c)
 	if !ok {
 		return
 	}
-	h.writeProjectMembers(w, r, project.Id)
+	h.writeProjectMembers(c, project.Id)
 }
 
-func (h Handler) addProjectMember(w http.ResponseWriter, r *http.Request) {
-	project, ok := h.loadProjectForCurrentUser(w, r)
+func (h Handler) addProjectMember(c *gin.Context) {
+	project, ok := h.loadProjectForCurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ProjectMemberReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	members, err := h.service.AddMember(r.Context(), project.Id, req.UserId)
+	members, err := h.service.AddMember(c.Request.Context(), project.Id, req.UserId)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))}})
 }
 
-func (h Handler) removeProjectMember(w http.ResponseWriter, r *http.Request) {
-	project, ok := h.loadProjectForCurrentUser(w, r)
+func (h Handler) removeProjectMember(c *gin.Context) {
+	project, ok := h.loadProjectForCurrentUser(c)
 	if !ok {
 		return
 	}
-	members, err := h.service.RemoveMember(r.Context(), project.Id, chi.URLParam(r, "user_id"))
+	members, err := h.service.RemoveMember(c.Request.Context(), project.Id, c.Param("user_id"))
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))}})
 }
 
-func (h Handler) writeProjectMembers(w http.ResponseWriter, r *http.Request, projectId string) {
-	members, err := h.service.Members(r.Context(), projectId)
+func (h Handler) writeProjectMembers(c *gin.Context, projectId string) {
+	members, err := h.service.Members(c.Request.Context(), projectId)
 	if err != nil {
 		h.logger.Error("list project members failed", "project_id", projectId, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list project members")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to list project members"})
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))}})
 }
 
-func (h Handler) loadProjectForCurrentUser(w http.ResponseWriter, r *http.Request) (model.Project, bool) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) loadProjectForCurrentUser(c *gin.Context) (model.Project, bool) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return model.Project{}, false
 	}
-	return h.loadProjectForUser(w, r, current.Id)
+	return h.loadProjectForUser(c, current.Id)
 }
 
-func (h Handler) loadProjectForUser(w http.ResponseWriter, r *http.Request, userId string) (model.Project, bool) {
-	projectId := strings.TrimSpace(chi.URLParam(r, "project_id"))
-	project, err := h.service.LoadForUser(r.Context(), projectId, userId)
+func (h Handler) loadProjectForUser(c *gin.Context, userId string) (model.Project, bool) {
+	projectId := strings.TrimSpace(c.Param("project_id"))
+	project, err := h.service.LoadForUser(c.Request.Context(), projectId, userId)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return model.Project{}, false
 	}
 	return project, true
 }
 
-func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
+func (h Handler) writeServiceError(c *gin.Context, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("project request failed", "error", err)
 	}
-	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
+	c.JSON(apperror.StatusCode(err), gin.H{"detail": err.Error()})
 }
 
 func ProjectResponse(project model.Project) pomeloorbit.ProjectResp {

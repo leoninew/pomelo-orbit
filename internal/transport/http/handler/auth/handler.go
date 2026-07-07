@@ -3,6 +3,8 @@ package authhandler
 import (
 	"context"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net"
 	"net/http"
@@ -18,9 +20,9 @@ import (
 )
 
 type router interface {
-	Get(pattern string, handlerFn http.HandlerFunc)
-	Post(pattern string, handlerFn http.HandlerFunc)
-	Put(pattern string, handlerFn http.HandlerFunc)
+	GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	POST(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	PUT(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
 }
 
 type Store interface {
@@ -46,153 +48,153 @@ func New(logger *slog.Logger, turnstile config.TurnstileConfig, service authsvc.
 }
 
 func (h Handler) Register(r router) {
-	r.Get("/api/auth/csrf-token", h.getCSRFToken)
-	r.Get("/api/auth/turnstile-config", h.getTurnstileConfig)
-	r.Post("/api/auth/login", h.login)
-	r.Post("/api/auth/logout", h.logout)
-	r.Get("/api/auth/me", h.getMe)
-	r.Put("/api/auth/password", h.changePassword)
-	r.Get("/api/auth/login-history", h.listLoginHistory)
-	r.Get("/api/auth/google", h.googleOAuth)
-	r.Post("/api/auth/google/callback", h.googleCallback)
+	r.GET("/api/auth/csrf-token", h.getCSRFToken)
+	r.GET("/api/auth/turnstile-config", h.getTurnstileConfig)
+	r.POST("/api/auth/login", h.login)
+	r.POST("/api/auth/logout", h.logout)
+	r.GET("/api/auth/me", h.getMe)
+	r.PUT("/api/auth/password", h.changePassword)
+	r.GET("/api/auth/login-history", h.listLoginHistory)
+	r.GET("/api/auth/google", h.googleOAuth)
+	r.POST("/api/auth/google/callback", h.googleCallback)
 }
 
-func (h Handler) getCSRFToken(w http.ResponseWriter, r *http.Request) {
+func (h Handler) getCSRFToken(c *gin.Context) {
 	token, err := h.service.NewCSRFToken()
 	if err != nil {
 		h.logger.Error("generate csrf token failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to generate token")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to generate token"})
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.CSRFTokenResp{Token: token})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.CSRFTokenResp{Token: token}})
 }
 
-func (h Handler) getTurnstileConfig(w http.ResponseWriter, r *http.Request) {
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey})
+func (h Handler) getTurnstileConfig(c *gin.Context) {
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey}})
 }
 
-func (h Handler) login(w http.ResponseWriter, r *http.Request) {
+func (h Handler) login(c *gin.Context) {
 	var req pomeloorbit.LoginReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	loginInput := authsvc.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: clientIP(r), UserAgent: r.UserAgent()}
+	loginInput := authsvc.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: clientIP(c), UserAgent: c.Request.UserAgent()}
 	if err := authsvc.ValidateLoginInput(loginInput); err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
 	if h.turnstile.Enabled {
 		turnstileToken := strings.TrimSpace(req.TurnstileToken)
 		if turnstileToken == "" {
-			h.writeServiceError(w, authsvc.ErrMissingLoginFields)
+			h.writeServiceError(c, authsvc.ErrMissingLoginFields)
 			return
 		}
-		if err := h.turnstileVerifier.Verify(r.Context(), turnstileToken, clientIP(r)); err != nil {
+		if err := h.turnstileVerifier.Verify(c.Request.Context(), turnstileToken, clientIP(c)); err != nil {
 			h.logger.Warn("turnstile verification failed", "error", err)
-			transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid verification")
+			c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid verification"})
 			return
 		}
 	}
-	token, err := h.service.Login(r.Context(), loginInput)
+	token, err := h.service.Login(c.Request.Context(), loginInput)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.writeServiceError(c, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.TokenResp{AccessToken: token, TokenType: "bearer"})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.TokenResp{AccessToken: token, TokenType: "bearer"}})
 }
 
-func (h Handler) logout(w http.ResponseWriter, r *http.Request) {
+func (h Handler) logout(c *gin.Context) {
 	var req pomeloorbit.LogoutReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) getMe(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) getMe(c *gin.Context) {
+	user, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	roles, err := h.store.UserRoles(r.Context(), user.Id)
+	roles, err := h.store.UserRoles(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user roles failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user roles")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user roles"})
 		return
 	}
-	permissions, err := h.store.UserPermissions(r.Context(), user.Id)
+	permissions, err := h.store.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user permissions"})
 		return
 	}
 	resp := userInfo(user, roles, permissions)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) changePassword(w http.ResponseWriter, r *http.Request) {
-	user, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) changePassword(c *gin.Context) {
+	user, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PasswordChangeReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	if err := h.service.ChangePassword(r.Context(), authsvc.ChangePasswordInput{User: user, OldPassword: req.OldPassword, NewPassword: req.NewPassword}); err != nil {
+	if err := h.service.ChangePassword(c.Request.Context(), authsvc.ChangePasswordInput{User: user, OldPassword: req.OldPassword, NewPassword: req.NewPassword}); err != nil {
 		if apperror.IsKind(err, apperror.KindValidation) || apperror.IsKind(err, apperror.KindUnauthorized) {
-			h.writeServiceError(w, err)
+			h.writeServiceError(c, err)
 			return
 		}
 		h.logger.Error("change password failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to change password")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to change password"})
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) listLoginHistory(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "login:read"); !ok {
+func (h Handler) listLoginHistory(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "login:read"); !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 10)
-	history, err := h.service.ListLoginHistory(r.Context(), page, perPage, r.URL.Query().Get("search"))
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	history, err := h.service.ListLoginHistory(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list login history failed", "error", err)
-		transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to list login history")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to list login history"})
 		return
 	}
 	resp := mapPage(history, loginHistoryResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) googleOAuth(w http.ResponseWriter, r *http.Request) {
-	transportresponse.Error(h.logger, w, http.StatusServiceUnavailable, "Google OAuth is not configured")
+func (h Handler) googleOAuth(c *gin.Context) {
+	c.JSON(http.StatusServiceUnavailable, gin.H{"detail": "Google OAuth is not configured"})
 }
 
-func (h Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
+func (h Handler) googleCallback(c *gin.Context) {
 	var req pomeloorbit.GoogleCallbackReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	transportresponse.Error(h.logger, w, http.StatusServiceUnavailable, "Google OAuth is not configured")
+	c.JSON(http.StatusServiceUnavailable, gin.H{"detail": "Google OAuth is not configured"})
 }
 
-func (h Handler) writeServiceError(w http.ResponseWriter, err error) {
+func (h Handler) writeServiceError(c *gin.Context, err error) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
 		return
 	}
 	if apperror.IsKind(err, apperror.KindUnauthorized) {
-		transportresponse.Error(h.logger, w, http.StatusUnauthorized, err.Error())
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": err.Error()})
 		return
 	}
-	transportresponse.Error(h.logger, w, http.StatusInternalServerError, "Failed to sign token")
+	c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to sign token"})
 }
 
 func userInfo(user model.User, roles []string, permissions []string) pomeloorbit.UserInfoResp {
@@ -205,19 +207,19 @@ func userInfo(user model.User, roles []string, permissions []string) pomeloorbit
 	return pomeloorbit.UserInfoResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roles, Permissions: permissions}
 }
 
-func clientIP(r *http.Request) string {
-	forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
+func clientIP(c *gin.Context) string {
+	forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-For"))
 	if forwarded != "" {
 		parts := strings.Split(forwarded, ",")
 		return strings.TrimSpace(parts[0])
 	}
-	realIP := strings.TrimSpace(r.Header.Get("X-Real-IP"))
+	realIP := strings.TrimSpace(c.GetHeader("X-Real-IP"))
 	if realIP != "" {
 		return realIP
 	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	host, _, err := net.SplitHostPort(c.Request.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		return c.Request.RemoteAddr
 	}
 	return host
 }

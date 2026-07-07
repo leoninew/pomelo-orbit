@@ -1,21 +1,21 @@
 package transporthttp
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
-func (s Server) requirePermission(w http.ResponseWriter, r *http.Request, permission string) (currentUserResp, bool) {
-	user, ok := s.currentUser(w, r)
+func (s Server) requirePermission(c *gin.Context, permission string) (currentUserResp, bool) {
+	user, ok := s.currentUser(c)
 	if !ok {
 		return currentUserResp{}, false
 	}
-	permissions, err := s.userRepository.UserPermissions(r.Context(), user.Id)
+	permissions, err := s.userRepository.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		s.logger.Error("load current user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(s.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user permissions"})
 		return currentUserResp{}, false
 	}
 	for _, item := range permissions {
@@ -23,7 +23,7 @@ func (s Server) requirePermission(w http.ResponseWriter, r *http.Request, permis
 			return currentUserResp{User: user, Permissions: permissions}, true
 		}
 	}
-	transportresponse.Error(s.logger, w, http.StatusForbidden, "Permission denied")
+	c.JSON(http.StatusForbidden, gin.H{"detail": "Permission denied"})
 	return currentUserResp{}, false
 }
 

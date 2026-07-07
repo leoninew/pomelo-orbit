@@ -2,13 +2,11 @@ package transporthttp
 
 import (
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func TestTurnstileVerifierSuccess(t *testing.T) {
@@ -26,7 +24,7 @@ func TestTurnstileVerifierSuccess(t *testing.T) {
 		if req.Secret != "secret" || req.Response != "token" || req.RemoteIP != "127.0.0.1" {
 			t.Fatalf("unexpected request: %+v", req)
 		}
-		transportresponse.JSON(slog.Default(), w, http.StatusOK, turnstileVerifyResp{Success: true})
+		writeJSON(w, http.StatusOK, turnstileVerifyResp{Success: true})
 	}))
 	defer server.Close()
 
@@ -38,7 +36,7 @@ func TestTurnstileVerifierSuccess(t *testing.T) {
 
 func TestTurnstileVerifierRejectsFailure(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		transportresponse.JSON(slog.Default(), w, http.StatusOK, turnstileVerifyResp{Success: false, ErrorCodes: []string{"invalid-input-response"}})
+		writeJSON(w, http.StatusOK, turnstileVerifyResp{Success: false, ErrorCodes: []string{"invalid-input-response"}})
 	}))
 	defer server.Close()
 
@@ -70,4 +68,10 @@ func TestTurnstileVerifierRejectsInvalidJSON(t *testing.T) {
 	if err := verifier.Verify(t.Context(), "token", "127.0.0.1"); err == nil {
 		t.Fatal("expected error")
 	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
 }

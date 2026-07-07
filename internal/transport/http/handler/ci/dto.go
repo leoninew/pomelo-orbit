@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-
-	"google.golang.org/protobuf/encoding/protojson"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
 )
 
 type repositoryWebhookUpdateReq struct {
@@ -19,7 +18,7 @@ func (r *repositoryWebhookUpdateReq) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	decoded := &pomeloorbit.RepositoryWebhookUpdateReq{}
-	if err := (protojson.UnmarshalOptions{DiscardUnknown: false}).Unmarshal(data, decoded); err != nil {
+	if err := transportcodec.UnmarshalProtoJSON(data, decoded); err != nil {
 		return err
 	}
 	r.Body = decoded

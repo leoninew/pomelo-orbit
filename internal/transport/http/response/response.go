@@ -2,17 +2,15 @@ package response
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
-	"log/slog"
-	"net/http"
-	"reflect"
 	"strconv"
 	"time"
 
-	"google.golang.org/protobuf/encoding/protojson"
+	"github.com/gin-gonic/gin"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
 )
 
 type ErrorResp[T any] struct {
@@ -26,55 +24,19 @@ func PageCount(total int, perPage int) int {
 	return (total + perPage - 1) / perPage
 }
 
-func DecodeJSON(r io.Reader, value any) error {
+func DecodeJSON(c *gin.Context, value any) error {
+	return DecodeJSONReader(c.Request.Body, value)
+}
+
+func DecodeJSONReader(r io.Reader, value any) error {
 	if message, ok := value.(proto.Message); ok {
 		data, err := io.ReadAll(r)
 		if err != nil {
 			return err
 		}
-		return protojson.UnmarshalOptions{DiscardUnknown: false}.Unmarshal(data, message)
+		return codec.UnmarshalProtoJSON(data, message)
 	}
 	return json.NewDecoder(r).Decode(value)
-}
-
-func protoMessage(value any) (proto.Message, bool) {
-	if message, ok := value.(proto.Message); ok {
-		return message, true
-	}
-	reflected := reflect.ValueOf(value)
-	if !reflected.IsValid() {
-		return nil, false
-	}
-	if reflected.Kind() == reflect.Pointer {
-		return nil, false
-	}
-	copyValue := reflect.New(reflected.Type())
-	copyValue.Elem().Set(reflected)
-	message, ok := copyValue.Interface().(proto.Message)
-	return message, ok
-}
-
-func JSON(logger *slog.Logger, w http.ResponseWriter, status int, value any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	if message, ok := protoMessage(value); ok {
-		data, err := protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: true}.Marshal(message)
-		if err != nil {
-			logger.Error("marshal proto response failed", "error", err)
-			return
-		}
-		if _, err := w.Write(append(data, '\n')); err != nil && !errors.Is(err, http.ErrHandlerTimeout) {
-			logger.Error("write response failed", "error", err)
-		}
-		return
-	}
-	if err := json.NewEncoder(w).Encode(value); err != nil && !errors.Is(err, http.ErrHandlerTimeout) {
-		logger.Error("write response failed", "error", err)
-	}
-}
-
-func Error(logger *slog.Logger, w http.ResponseWriter, status int, detail string) {
-	JSON(logger, w, status, ErrorResp[string]{Detail: detail})
 }
 
 func Ptrs[T any](items []T) []*T {

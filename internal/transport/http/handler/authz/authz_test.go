@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/auth"
 )
@@ -36,7 +38,7 @@ func TestCurrentUserReturnsServiceUnavailableForUserLoadError(t *testing.T) {
 	authenticator := New(slog.Default(), fakeAuthStore{err: errors.New("database is locked")}, authsvc.NewTokenService(testSecret))
 
 	recorder := httptest.NewRecorder()
-	authenticator.CurrentUser(recorder, authedRequest(token))
+	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))
 
 	if recorder.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected status 503, got %d: %s", recorder.Code, recorder.Body.String())
@@ -48,7 +50,7 @@ func TestCurrentUserReturnsUnauthorizedForMissingUser(t *testing.T) {
 	authenticator := New(slog.Default(), fakeAuthStore{err: sql.ErrNoRows}, authsvc.NewTokenService(testSecret))
 
 	recorder := httptest.NewRecorder()
-	authenticator.CurrentUser(recorder, authedRequest(token))
+	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))
 
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d: %s", recorder.Code, recorder.Body.String())
@@ -60,7 +62,7 @@ func TestCurrentUserReturnsUnauthorizedForDisabledUser(t *testing.T) {
 	authenticator := New(slog.Default(), fakeAuthStore{user: model.User{Id: "user-1", Status: "disabled"}}, authsvc.NewTokenService(testSecret))
 
 	recorder := httptest.NewRecorder()
-	authenticator.CurrentUser(recorder, authedRequest(token))
+	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))
 
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d: %s", recorder.Code, recorder.Body.String())
@@ -71,11 +73,18 @@ func TestCurrentUserReturnsUnauthorizedForInvalidToken(t *testing.T) {
 	authenticator := New(slog.Default(), fakeAuthStore{user: model.User{Id: "user-1", Status: "enabled"}}, authsvc.NewTokenService(testSecret))
 
 	recorder := httptest.NewRecorder()
-	authenticator.CurrentUser(recorder, authedRequest("invalid-token"))
+	authenticator.CurrentUser(testContext(recorder, authedRequest("invalid-token")))
 
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d: %s", recorder.Code, recorder.Body.String())
 	}
+}
+
+func testContext(recorder *httptest.ResponseRecorder, request *http.Request) *gin.Context {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = request
+	return c
 }
 
 func signedToken(t *testing.T) string {

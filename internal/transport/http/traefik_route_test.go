@@ -3,14 +3,12 @@ package transporthttp
 import (
 	"encoding/json"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 func TestTraefikRouteEndpointsRequireAuth(t *testing.T) {
@@ -113,7 +111,7 @@ func TestTraefikRouteListReturnsRouters(t *testing.T) {
 		if r.URL.Path != "/api/http/routers" {
 			t.Fatalf("unexpected path: %s", r.URL.Path)
 		}
-		transportresponse.JSON(slog.Default(), w, http.StatusOK, []map[string]any{
+		writeJSON(w, http.StatusOK, []map[string]any{
 			{
 				"name":        "api@docker",
 				"provider":    "docker",

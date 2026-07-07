@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,8 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/gin-gonic/gin"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
@@ -42,15 +42,7 @@ import (
 	taskhandler "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/handler/task"
 	userhandler "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/handler/user"
 	transportmiddleware "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/middleware"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
-
-type chiRouter interface {
-	Get(pattern string, handlerFn http.HandlerFunc)
-	Post(pattern string, handlerFn http.HandlerFunc)
-	Put(pattern string, handlerFn http.HandlerFunc)
-	Delete(pattern string, handlerFn http.HandlerFunc)
-}
 
 type Server struct {
 	appCfg            config.Config
@@ -87,15 +79,16 @@ func New(cfg config.Config, logger *slog.Logger, store repository.Store, tasks t
 }
 
 func (s Server) Handler() http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(transportmiddleware.RequestID())
+	r.Use(transportmiddleware.RealIP())
 	r.Use(transportmiddleware.LogRequest(s.logger, transportmiddleware.LogRequestConfig{BodyEnabled: s.appCfg.Logging.HTTPBodyEnabled, BodyMaxBytes: s.appCfg.Logging.HTTPBodyMaxBytes, SkipAssets200Enabled: s.appCfg.Logging.HTTPSkipAssets200Enabled}))
-	r.Use(middleware.Recoverer)
+	r.Use(transportmiddleware.Recovery(s.logger))
 	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins, s.appCfg.Server.ApiPathPrefixes))
 
-	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
-		transportresponse.JSON(s.logger, w, http.StatusOK, &pomeloorbit.HealthResp{Status: "ok"})
+	r.GET("/api/health", func(c *gin.Context) {
+		c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.HealthResp{Status: "ok"}})
 	})
 	authenticator := authz.New(s.logger, s.userRepository, s.tokenService)
 	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)
@@ -120,21 +113,21 @@ func (s Server) Handler() http.Handler {
 	cdHandler.RegisterRouteRoutes(r)
 	cdHandler.RegisterTraefikRouteRoutes(r)
 	taskhandler.New(s.logger, s.taskService).Register(r)
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		if isAPIPath(r.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
-			transportresponse.Error(s.logger, w, http.StatusNotFound, "Not Found")
+	r.NoRoute(func(c *gin.Context) {
+		if isAPIPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Not Found"})
 			return
 		}
-		if s.serveStatic(w, r, "static") {
+		if s.serveStatic(c, "static") {
 			return
 		}
-		transportresponse.Error(s.logger, w, http.StatusNotFound, "Not Found")
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Not Found"})
 	})
 	return r
 }
 
-func (s Server) serveStatic(w http.ResponseWriter, r *http.Request, staticDir string) bool {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+func (s Server) serveStatic(c *gin.Context, staticDir string) bool {
+	if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
 		return false
 	}
 
@@ -143,32 +136,33 @@ func (s Server) serveStatic(w http.ResponseWriter, r *http.Request, staticDir st
 		return false
 	}
 
-	requestPath := path.Clean("/" + r.URL.Path)
+	requestPath := path.Clean("/" + c.Request.URL.Path)
 	if requestPath != "/" {
 		filePath := filepath.Join(staticDir, filepath.FromSlash(strings.TrimPrefix(requestPath, "/")))
 		info, err := os.Stat(filePath)
 		if err == nil && !info.IsDir() {
 			if filepath.Clean(filePath) == filepath.Clean(indexPath) {
-				return s.serveIndexHTML(w, r, indexPath)
+				return s.serveIndexHTML(c, indexPath)
 			}
-			http.ServeFile(w, r, filePath)
+			http.ServeFile(c.Writer, c.Request, filePath)
 			return true
 		}
 	}
 
-	return s.serveIndexHTML(w, r, indexPath)
+	return s.serveIndexHTML(c, indexPath)
 }
 
-func (s Server) serveIndexHTML(w http.ResponseWriter, r *http.Request, indexPath string) bool {
+func (s Server) serveIndexHTML(c *gin.Context, indexPath string) bool {
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
 		return false
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if r.Method == http.MethodHead {
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Status(http.StatusOK)
+	if c.Request.Method == http.MethodHead {
 		return true
 	}
-	_, _ = w.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicURL))
+	_, _ = c.Writer.Write(injectRuntimeConfig(content, s.appCfg.Server.PublicURL))
 	return true
 }
 
@@ -209,8 +203,4 @@ func hasAPIPathPrefix(requestPath string, prefixes []string) bool {
 		}
 	}
 	return false
-}
-
-func urlParam(r *http.Request, key string) string {
-	return strings.TrimSpace(chi.URLParam(r, key))
 }

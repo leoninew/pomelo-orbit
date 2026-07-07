@@ -2,6 +2,8 @@ package settingshandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
 
@@ -12,9 +14,9 @@ import (
 )
 
 type router interface {
-	Get(pattern string, handlerFn http.HandlerFunc)
-	Put(pattern string, handlerFn http.HandlerFunc)
-	Delete(pattern string, handlerFn http.HandlerFunc)
+	GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	PUT(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	DELETE(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
 }
 
 type Handler struct {
@@ -28,65 +30,65 @@ func New(logger *slog.Logger, service settingssvc.Service, authenticator authz.A
 }
 
 func (h Handler) Register(r router) {
-	r.Get("/api/settings/config", h.getConfig)
-	r.Put("/api/settings/config", h.updateConfig)
-	r.Delete("/api/settings/config", h.resetConfig)
+	r.GET("/api/settings/config", h.getConfig)
+	r.PUT("/api/settings/config", h.updateConfig)
+	r.DELETE("/api/settings/config", h.resetConfig)
 }
 
-func (h Handler) getConfig(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "setting:read"); !ok {
+func (h Handler) getConfig(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "setting:read"); !ok {
 		return
 	}
-	resp, err := h.service.Config(r.Context())
+	resp, err := h.service.Config(c.Request.Context())
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	body := systemConfigResponse(resp)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &body)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &body})
 }
 
-func (h Handler) updateConfig(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
+func (h Handler) updateConfig(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "setting:write"); !ok {
 		return
 	}
 	var req pomeloorbit.SystemConfigUpdateReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	resp, err := h.service.Update(r.Context(), req.Key, transportresponse.NativeValue(req.Value))
+	resp, err := h.service.Update(c.Request.Context(), req.Key, transportresponse.NativeValue(req.Value))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	body := systemConfigResponse(resp)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &body)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &body})
 }
 
-func (h Handler) resetConfig(w http.ResponseWriter, r *http.Request) {
-	if _, ok := h.authenticator.RequirePermission(w, r, "setting:write"); !ok {
+func (h Handler) resetConfig(c *gin.Context) {
+	if _, ok := h.authenticator.RequirePermission(c, "setting:write"); !ok {
 		return
 	}
 	var req pomeloorbit.SystemConfigResetReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	resp, err := h.service.Reset(r.Context(), req.Keys)
+	resp, err := h.service.Reset(c.Request.Context(), req.Keys)
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	body := systemConfigResponse(resp)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &body)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &body})
 }
 
-func (h Handler) writeError(w http.ResponseWriter, err error) {
+func (h Handler) writeError(c *gin.Context, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("settings request failed", "error", err)
 	}
-	transportresponse.Error(h.logger, w, apperror.StatusCode(err), err.Error())
+	c.JSON(apperror.StatusCode(err), gin.H{"detail": err.Error()})
 }
 
 func systemConfigResponse(config settingssvc.SystemConfig) pomeloorbit.SystemConfigResp {

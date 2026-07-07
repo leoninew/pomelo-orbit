@@ -8,9 +8,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/auth"
-	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/response"
 )
 
 type Store interface {
@@ -33,49 +34,49 @@ func New(logger *slog.Logger, store Store, tokens authsvc.TokenService) Authenti
 	return Authenticator{logger: logger, store: store, tokens: tokens}
 }
 
-func (a Authenticator) CurrentUser(w http.ResponseWriter, r *http.Request) (model.User, bool) {
-	token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+func (a Authenticator) CurrentUser(c *gin.Context) (model.User, bool) {
+	token := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
 	if token == "" {
-		transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Not authenticated")
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Not authenticated"})
 		return model.User{}, false
 	}
 	claims, err := a.tokens.Verify(token)
 	if err != nil {
-		transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Invalid token")
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid token"})
 		return model.User{}, false
 	}
-	user, err := a.store.UserById(r.Context(), claims.Sub)
+	user, err := a.store.UserById(c.Request.Context(), claims.Sub)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Invalid token")
+			c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid token"})
 			return model.User{}, false
 		}
 		a.logger.Error("load current user failed", "user_id", claims.Sub, "error", err)
-		transportresponse.Error(a.logger, w, http.StatusServiceUnavailable, "Authentication service unavailable")
+		c.JSON(http.StatusServiceUnavailable, gin.H{"detail": "Authentication service unavailable"})
 		return model.User{}, false
 	}
 	if user.Status != "enabled" {
-		transportresponse.Error(a.logger, w, http.StatusUnauthorized, "Invalid token")
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid token"})
 		return model.User{}, false
 	}
 	return user, true
 }
 
-func (a Authenticator) RequirePermission(w http.ResponseWriter, r *http.Request, permission string) (CurrentUserContext, bool) {
-	user, ok := a.CurrentUser(w, r)
+func (a Authenticator) RequirePermission(c *gin.Context, permission string) (CurrentUserContext, bool) {
+	user, ok := a.CurrentUser(c)
 	if !ok {
 		return CurrentUserContext{}, false
 	}
-	permissions, err := a.store.UserPermissions(r.Context(), user.Id)
+	permissions, err := a.store.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		a.logger.Error("load current user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(a.logger, w, http.StatusInternalServerError, "Failed to load user permissions")
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user permissions"})
 		return CurrentUserContext{}, false
 	}
 	if HasPermission(permissions, permission) {
 		return CurrentUserContext{User: user, Permissions: permissions}, true
 	}
-	transportresponse.Error(a.logger, w, http.StatusForbidden, "Permission denied")
+	c.JSON(http.StatusForbidden, gin.H{"detail": "Permission denied"})
 	return CurrentUserContext{}, false
 }
 

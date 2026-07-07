@@ -2,9 +2,9 @@ package cihandler
 
 import (
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/transport/http/codec"
+	"github.com/gin-gonic/gin"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/model"
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
@@ -12,147 +12,147 @@ import (
 )
 
 func (h Handler) RegisterPipelineRunRoutes(r router) {
-	r.Get("/api/ci/repository/{repository_id}/run", h.listRepositoryRuns)
-	r.Post("/api/ci/repository/{repository_id}/trigger", h.triggerRepository)
-	r.Get("/api/ci/run", h.listPipelineRuns)
-	r.Get("/api/ci/run/{run_id}", h.getPipelineRun)
-	r.Get("/api/ci/run/{run_id}/artifacts", h.listPipelineRunArtifacts)
-	r.Get("/api/ci/run/{run_id}/stages/{stage_run_id}/log", h.getPipelineStageLog)
-	r.Post("/api/ci/run/{run_id}/cancel", h.cancelPipelineRun)
-	r.Post("/api/ci/run/{run_id}/retry", h.retryPipelineRun)
+	r.GET("/api/ci/repository/:repository_id/run", h.listRepositoryRuns)
+	r.POST("/api/ci/repository/:repository_id/trigger", h.triggerRepository)
+	r.GET("/api/ci/run", h.listPipelineRuns)
+	r.GET("/api/ci/run/:run_id", h.getPipelineRun)
+	r.GET("/api/ci/run/:run_id/artifacts", h.listPipelineRunArtifacts)
+	r.GET("/api/ci/run/:run_id/stages/:stage_run_id/log", h.getPipelineStageLog)
+	r.POST("/api/ci/run/:run_id/cancel", h.cancelPipelineRun)
+	r.POST("/api/ci/run/:run_id/retry", h.retryPipelineRun)
 }
 
-func (h Handler) listRepositoryRuns(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listRepositoryRuns(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListRepositoryRuns(r.Context(), current.Id, chi.URLParam(r, "repository_id"), page, perPage)
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	items, err := h.service.ListRepositoryRuns(c.Request.Context(), current.Id, c.Param("repository_id"), page, perPage)
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := mapPage(items, pipelineRunResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) triggerRepository(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) triggerRepository(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineRunTriggerReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.TriggerRepository(r.Context(), current.Id, cisvc.PipelineRunTriggerInput{RepositoryId: chi.URLParam(r, "repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
+	detail, err := h.service.TriggerRepository(c.Request.Context(), current.Id, cisvc.PipelineRunTriggerInput{RepositoryId: c.Param("repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) listPipelineRuns(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listPipelineRuns(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(r.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(r.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListPipelineRuns(r.Context(), current.Id, cisvc.PipelineRunListInput{ProjectId: r.URL.Query().Get("project_id"), RepositoryId: r.URL.Query().Get("repository_id"), TemplateId: r.URL.Query().Get("template_id"), DateFrom: r.URL.Query().Get("date_from"), DateTo: r.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
+	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
+	items, err := h.service.ListPipelineRuns(c.Request.Context(), current.Id, cisvc.PipelineRunListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := mapPage(items, pipelineRunResponse)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PipelineRunPaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
 }
 
-func (h Handler) getPipelineRun(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) getPipelineRun(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	detail, err := h.service.PipelineRunForUser(r.Context(), current.Id, chi.URLParam(r, "run_id"))
+	detail, err := h.service.PipelineRunForUser(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) listPipelineRunArtifacts(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) listPipelineRunArtifacts(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	items, err := h.service.ListPipelineRunArtifacts(r.Context(), current.Id, chi.URLParam(r, "run_id"))
+	items, err := h.service.ListPipelineRunArtifacts(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	responses := make([]pomeloorbit.ArtifactResp, 0, len(items))
 	for _, item := range items {
 		responses = append(responses, artifactResponse(item))
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PipelineRunArtifactListResp{Items: transportresponse.Ptrs(responses)})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PipelineRunArtifactListResp{Items: transportresponse.Ptrs(responses)}})
 }
 
-func (h Handler) getPipelineStageLog(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) getPipelineStageLog(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	result, err := h.service.PipelineStageLog(r.Context(), current.Id, chi.URLParam(r, "run_id"), chi.URLParam(r, "stage_run_id"), transportresponse.QueryInt(r.URL.Query().Get("offset"), 0))
+	result, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Param("run_id"), c.Param("stage_run_id"), transportresponse.QueryInt(c.Request.URL.Query().Get("offset"), 0))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
-	transportresponse.JSON(h.logger, w, http.StatusOK, &pomeloorbit.PipelineStageLogResp{Logs: result.Logs, Offset: int32(result.Offset), IsComplete: result.IsComplete})
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PipelineStageLogResp{Logs: result.Logs, Offset: int32(result.Offset), IsComplete: result.IsComplete}})
 }
 
-func (h Handler) cancelPipelineRun(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) cancelPipelineRun(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineRunCancelReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.CancelPipelineRun(r.Context(), current.Id, chi.URLParam(r, "run_id"))
+	detail, err := h.service.CancelPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusOK, &resp)
+	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func (h Handler) retryPipelineRun(w http.ResponseWriter, r *http.Request) {
-	current, ok := h.authenticator.CurrentUser(w, r)
+func (h Handler) retryPipelineRun(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineRunRetryReq
-	if err := transportresponse.DecodeJSON(r.Body, &req); err != nil {
-		transportresponse.Error(h.logger, w, http.StatusBadRequest, "Invalid JSON body")
+	if err := transportresponse.DecodeJSON(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.RetryPipelineRun(r.Context(), current.Id, chi.URLParam(r, "run_id"))
+	detail, err := h.service.RetryPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(c, err)
 		return
 	}
 	resp := pipelineRunResponse(detail)
-	transportresponse.JSON(h.logger, w, http.StatusCreated, &resp)
+	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
 func pipelineRunResponse(detail cisvc.PipelineRunDetail) pomeloorbit.PipelineRunResp {

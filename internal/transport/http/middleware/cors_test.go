@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestCORSNoopWhenNotConfigured(t *testing.T) {
@@ -136,15 +138,18 @@ func serveCORSRequest(t *testing.T, allowedOrigins []string, method string, path
 
 func serveCORSRequestWithPrefixes(t *testing.T, allowedOrigins []string, apiPathPrefixes []string, method string, path string, origin string) *httptest.ResponseRecorder {
 	t.Helper()
-	handler := CORS(allowedOrigins, apiPathPrefixes)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(CORS(allowedOrigins, apiPathPrefixes))
+	router.NoRoute(func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
 	request := httptest.NewRequest(method, path, nil)
 	if origin != "" {
 		request.Header.Set("Origin", origin)
 	}
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, request)
+	router.ServeHTTP(recorder, request)
 	return recorder
 }
 

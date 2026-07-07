@@ -1,19 +1,16 @@
 package middleware
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/gin-gonic/gin"
 )
 
 const testBodyMaxBytes = 32
@@ -253,12 +250,13 @@ func TestLogRequestTruncatesRequestBodyByConfiguredBytesAndRestoresBody(t *testi
 func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
-	router := chi.NewRouter()
-	router.Use(chimiddleware.RequestID)
-	router.Use(chimiddleware.RealIP)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(RequestID())
+	router.Use(RealIP())
 	router.Use(LogRequest(logger, testLogRequestConfig()))
-	router.Use(chimiddleware.Recoverer)
-	router.Get("/api/panic", func(w http.ResponseWriter, r *http.Request) {
+	router.Use(Recovery(logger))
+	router.GET("/api/panic", func(c *gin.Context) {
 		panic("boom")
 	})
 
@@ -272,41 +270,6 @@ func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 	assertLogValue(t, started, "level", "INFO")
 	assertLogValue(t, completed, "level", "INFO")
 	assertLogNumber(t, completed, "status", http.StatusInternalServerError)
-}
-
-func TestLoggingResponseWriterExposesOptionalInterfaces(t *testing.T) {
-	writer := newLoggingResponseWriter(httptest.NewRecorder(), testLogRequestConfig())
-	if _, ok := any(writer).(http.Flusher); !ok {
-		t.Fatal("expected http.Flusher")
-	}
-	if _, ok := any(writer).(http.Hijacker); !ok {
-		t.Fatal("expected http.Hijacker")
-	}
-	if _, ok := any(writer).(http.Pusher); !ok {
-		t.Fatal("expected http.Pusher")
-	}
-	if got := writer.Unwrap(); got == nil {
-		t.Fatal("expected Unwrap to return underlying writer")
-	}
-}
-
-func TestLoggingResponseWriterHijackSetsSwitchingProtocols(t *testing.T) {
-	underlying := &hijackableResponseWriter{}
-	writer := newLoggingResponseWriter(underlying, testLogRequestConfig())
-	if _, _, err := writer.Hijack(); err != nil {
-		t.Fatalf("Hijack() error = %v", err)
-	}
-	if got := writer.Status(); got != http.StatusSwitchingProtocols {
-		t.Fatalf("expected status %d, got %d", http.StatusSwitchingProtocols, got)
-	}
-}
-
-func TestLoggingResponseWriterUnwrap(t *testing.T) {
-	underlying := httptest.NewRecorder()
-	writer := newLoggingResponseWriter(underlying, testLogRequestConfig())
-	if got := writer.Unwrap(); got != underlying {
-		t.Fatalf("expected Unwrap to return underlying writer, got %#v", got)
-	}
 }
 
 func runLoggedRequest(t *testing.T, method string, target string, contentType string, body string, handler http.Handler) ([]map[string]any, *httptest.ResponseRecorder) {
@@ -324,11 +287,14 @@ func runLoggedRequestContentWithConfig(t *testing.T, cfg LogRequestConfig, metho
 	t.Helper()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
-	router := chi.NewRouter()
-	router.Use(chimiddleware.RequestID)
-	router.Use(chimiddleware.RealIP)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(RequestID())
+	router.Use(RealIP())
 	router.Use(LogRequest(logger, cfg))
-	router.Handle("/*", handler)
+	router.NoRoute(func(c *gin.Context) {
+		handler.ServeHTTP(c.Writer, c.Request)
+	})
 
 	request := httptest.NewRequest(method, target, strings.NewReader(body))
 	request.Header.Set("User-Agent", "test-agent")
@@ -416,37 +382,4 @@ func writeTestJSON(w http.ResponseWriter, status int, value any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(value)
-}
-
-type hijackableResponseWriter struct {
-	header http.Header
-	status int
-}
-
-func (w *hijackableResponseWriter) Header() http.Header {
-	if w.header == nil {
-		w.header = http.Header{}
-	}
-	return w.header
-}
-
-func (w *hijackableResponseWriter) WriteHeader(status int) {
-	w.status = status
-}
-
-func (w *hijackableResponseWriter) Write(data []byte) (int, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
-	}
-	return len(data), nil
-}
-
-func (w *hijackableResponseWriter) Flush() {}
-
-func (w *hijackableResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return nil, nil, nil
-}
-
-func (w *hijackableResponseWriter) Push(string, *http.PushOptions) error {
-	return nil
 }

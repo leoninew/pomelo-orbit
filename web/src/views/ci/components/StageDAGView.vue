@@ -21,7 +21,7 @@
   import type { Edge, Node, NodeComponent, NodeTypesObject } from '@vue-flow/core';
   import { useVueFlow, VueFlow } from '@vue-flow/core';
   import { MiniMap } from '@vue-flow/minimap';
-  import dagre from 'dagre';
+  import { graphlib, layout } from 'dagre';
   import { computed, markRaw, nextTick, ref, watch } from 'vue';
   import type { StageRunResp } from '@/gen/proto/orbit/v1/pipeline_run';
   import type { SnapshotStageResp } from '@/gen/proto/orbit/v1/snapshot';
@@ -45,12 +45,12 @@
   // ── 布局：只算一次 ────────────────────────────────────────────────────────────
 
   function buildLayoutedNodes(stages: SnapshotStageResp[]): Node[] {
-    const g = new dagre.graphlib.Graph();
+    const g = new graphlib.Graph();
     g.setDefaultEdgeLabel(() => ({}));
     g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
     stages.forEach((s) => g.setNode(s.id, { width: 160, height: 80 }));
     stages.forEach((s) => s.depends_on.forEach((dep) => g.setEdge(dep, s.id)));
-    dagre.layout(g);
+    layout(g);
     return stages
       .filter((s) => s.id && s.name)
       .map((stage) => {

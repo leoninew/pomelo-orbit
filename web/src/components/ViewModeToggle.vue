@@ -28,7 +28,7 @@
 
   const props = withDefaults(
     defineProps<{
-      modelValue: 'list' | 'dag';
+      modelValue?: 'list' | 'dag';
     }>(),
     {
       modelValue: 'list',

@@ -1,9 +1,15 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
 import pluginVue from 'eslint-plugin-vue'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier'
-import stylistic from '@stylistic/eslint-plugin'
-import importPlugin from 'eslint-plugin-import'
+import { createNodeResolver, importX } from 'eslint-plugin-import-x'
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
+import globals from 'globals'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const srcPath = resolve(__dirname, 'src')
 
 export default [
 	{
@@ -12,7 +18,8 @@ export default [
 	js.configs.recommended,
 	...tseslint.configs.recommended,
 	...pluginVue.configs['flat/recommended'],
-	eslintConfigPrettier,
+	importX.flatConfigs.recommended,
+	importX.flatConfigs.typescript,
 	{
 		files: ['**/*.vue'],
 		languageOptions: {
@@ -22,29 +29,35 @@ export default [
 		},
 	},
 	{
-		plugins: {
-			'@stylistic': stylistic,
-			import: importPlugin,
+		languageOptions: {
+			globals: globals.browser,
 		},
 		settings: {
-			'import/resolver': {
-				alias: {
-					map: [['@', './src']],
-					extensions: ['.ts', '.vue', '.d.ts', '.tsx', '.js'],
-				},
-				node: {},
-			},
-			'import/core-modules': ['vue', 'vue-router', 'vue-i18n', 'lucide-vue-next'],
+			'import-x/resolver-next': [
+				createTypeScriptImportResolver({
+					alwaysTryTypes: true,
+					project: './tsconfig.json',
+				}),
+				createNodeResolver({
+					alias: { '@': [srcPath] },
+					extensions: ['.ts', '.tsx', '.vue', '.js', '.jsx', '.json'],
+				}),
+			],
+			'import-x/core-modules': ['vue', 'vue-router', 'vue-i18n', 'lucide-vue-next'],
 		},
 		rules: {
-			'import/no-unresolved': 'error',
+			'import-x/no-unresolved': 'error',
 			// Vue 规则
 			'vue/multi-word-component-names': 'off',
 			'vue/no-v-html': 'warn',
 			'vue/require-default-prop': 'off',
 			'vue/require-explicit-emits': 'warn',
 			'vue/component-definition-name-casing': ['error', 'PascalCase'],
-			'vue/custom-event-name-casing': ['error', 'kebab-case'],
+			'vue/custom-event-name-casing': [
+				'error',
+				'kebab-case',
+				{ ignores: ['update:modelValue'] },
+			],
 			'vue/no-unused-refs': 'warn',
 			'vue/block-order': ['error', { order: ['template', 'script', 'style'] }],
 			// 缩进由 Prettier 统一处理，避免 lint:fix 与 format 来回改动
@@ -58,14 +71,6 @@ export default [
 			'@typescript-eslint/no-empty-function': 'off',
 			'@typescript-eslint/no-require-imports': 'off',
 
-			// 代码风格规则 - interface 成员使用分号，与 Prettier 默认风格保持一致
-			'@stylistic/member-delimiter-style': [
-				'error',
-				{
-					multiline: { delimiter: 'semi', requireLast: true },
-					singleline: { delimiter: 'semi', requireLast: false },
-				},
-			],
 
 			// 通用规则
 			'no-console': ['warn', { allow: ['error'] }],
@@ -75,4 +80,5 @@ export default [
 			'curly': ['error', 'all'],
 		},
 	},
+	eslintConfigPrettier,
 ]

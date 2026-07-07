@@ -1,5 +1,4 @@
-import type { AxiosRequestConfig } from 'axios';
-import axios, { type AxiosError } from 'axios';
+import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
 import config from '@/config';
 import { useAuthStore } from '@/stores/auth';
 import { handleUnauthorized } from '@/utils/handle-unauthorized';

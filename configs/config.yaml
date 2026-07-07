@@ -18,6 +18,8 @@ logging:
   max_backups: 7
   http_body_enabled: false
   http_body_max_bytes: 4096
+  # 开启后跳过 /assets 下 js/css/html 文件的 200 访问日志，保留非 200 和其他资源类型日志。
+  http_skip_assets_200_enabled: true
 
 database:
   driver: sqlite

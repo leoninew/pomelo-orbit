@@ -55,12 +55,13 @@ type ServerConfig struct {
 }
 
 type LoggingConfig struct {
-	Level            string `mapstructure:"level" yaml:"level"`
-	File             string `mapstructure:"file" yaml:"file"`
-	MaxSizeMB        int    `mapstructure:"max_size_mb" yaml:"max_size_mb"`
-	MaxBackups       int    `mapstructure:"max_backups" yaml:"max_backups"`
-	HTTPBodyEnabled  bool   `mapstructure:"http_body_enabled" yaml:"http_body_enabled"`
-	HTTPBodyMaxBytes int    `mapstructure:"http_body_max_bytes" yaml:"http_body_max_bytes"`
+	Level                    string `mapstructure:"level" yaml:"level"`
+	File                     string `mapstructure:"file" yaml:"file"`
+	MaxSizeMB                int    `mapstructure:"max_size_mb" yaml:"max_size_mb"`
+	MaxBackups               int    `mapstructure:"max_backups" yaml:"max_backups"`
+	HTTPBodyEnabled          bool   `mapstructure:"http_body_enabled" yaml:"http_body_enabled"`
+	HTTPBodyMaxBytes         int    `mapstructure:"http_body_max_bytes" yaml:"http_body_max_bytes"`
+	HTTPSkipAssets200Enabled bool   `mapstructure:"http_skip_assets_200_enabled" yaml:"http_skip_assets_200_enabled"`
 }
 
 const (
@@ -259,6 +260,7 @@ func bindEnv(loader *viper.Viper) {
 		"logging.max_backups",
 		"logging.http_body_enabled",
 		"logging.http_body_max_bytes",
+		"logging.http_skip_assets_200_enabled",
 		"database.driver",
 		"database.sqlite.path",
 		"database.mysql.dsn",

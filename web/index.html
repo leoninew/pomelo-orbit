@@ -1,18 +1,25 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pomelo Orbit</title>
-    <!-- 运行时配置注入点：后端服务 index.html 时替换为 window.__CONFIG__。只放公开配置，不能放密钥。 -->
-    <!-- __RUNTIME_CONFIG__ -->
-  </head>
-  <body data-theme="light">
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomelo Orbit</title>
+  <!-- 运行时配置注入点：后端服务 index.html 时替换为 window.__CONFIG__。只放公开配置，不能放密钥。 -->
+  <!-- __RUNTIME_CONFIG__ -->
+</head>
+
+<body data-theme="light">
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+  <!-- Cloudflare Web Analytics -->
+  <script defer src='https://static.cloudflareinsights.com/beacon.min.js'
+    data-cf-beacon='{"token": "610de703360d4a4eb4282807cb379be9"}'></script>
+  <!-- End Cloudflare Web Analytics -->
+</body>
+
 </html>

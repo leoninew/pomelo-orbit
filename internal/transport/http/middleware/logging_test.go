@@ -75,6 +75,60 @@ func TestLogRequestKeepsInfoLevelForErrorStatus(t *testing.T) {
 	assertLogNumber(t, completed, "status", http.StatusInternalServerError)
 }
 
+func TestLogRequestSkipsAssets200WhenEnabled(t *testing.T) {
+	cfg := LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes, SkipAssets200Enabled: true}
+	cases := []string{
+		"/assets/app.js",
+		"/assets/app.css?v=1",
+		"/assets/page.html",
+	}
+	for _, target := range cases {
+		content, recorder := runLoggedRequestContentWithConfig(t, cfg, http.MethodGet, target, "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("asset"))
+		}))
+		if content != "" {
+			t.Fatalf("expected no log entries for %s, got %s", target, content)
+		}
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("expected status 200 for %s, got %d", target, recorder.Code)
+		}
+	}
+}
+
+func TestLogRequestKeepsNonSkippedAssetLogs(t *testing.T) {
+	cfg := LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes, SkipAssets200Enabled: true}
+	cases := []struct {
+		name   string
+		target string
+		status int
+	}{
+		{name: "asset js not found", target: "/assets/app.js", status: http.StatusNotFound},
+		{name: "asset js not modified", target: "/assets/app.js", status: http.StatusNotModified},
+		{name: "asset png ok", target: "/assets/app.png", status: http.StatusOK},
+		{name: "asset prefix mismatch", target: "/assets-old/app.js", status: http.StatusOK},
+		{name: "asserts typo", target: "/asserts/app.js", status: http.StatusOK},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entries, _ := runLoggedRequestWithConfig(t, cfg, http.MethodGet, tc.target, "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.status)
+			}))
+			_, completed := assertStartedAndCompleted(t, entries)
+			assertLogNumber(t, completed, "status", tc.status)
+		})
+	}
+}
+
+func TestLogRequestKeepsAssets200WhenSkipDisabled(t *testing.T) {
+	cfg := LogRequestConfig{BodyEnabled: true, BodyMaxBytes: testBodyMaxBytes, SkipAssets200Enabled: false}
+	entries, _ := runLoggedRequestWithConfig(t, cfg, http.MethodGet, "/assets/app.js", "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	_, completed := assertStartedAndCompleted(t, entries)
+	assertLogNumber(t, completed, "status", http.StatusOK)
+}
+
 func TestLogRequestSkipsBodiesWhenDisabled(t *testing.T) {
 	body := `{"name":"demo"}`
 	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{BodyEnabled: false, BodyMaxBytes: testBodyMaxBytes}, http.MethodPost, "/api/test", "application/json", body, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -262,6 +316,12 @@ func runLoggedRequest(t *testing.T, method string, target string, contentType st
 
 func runLoggedRequestWithConfig(t *testing.T, cfg LogRequestConfig, method string, target string, contentType string, body string, handler http.Handler) ([]map[string]any, *httptest.ResponseRecorder) {
 	t.Helper()
+	content, recorder := runLoggedRequestContentWithConfig(t, cfg, method, target, contentType, body, handler)
+	return decodeLogEntries(t, content), recorder
+}
+
+func runLoggedRequestContentWithConfig(t *testing.T, cfg LogRequestConfig, method string, target string, contentType string, body string, handler http.Handler) (string, *httptest.ResponseRecorder) {
+	t.Helper()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
 	router := chi.NewRouter()
@@ -277,7 +337,7 @@ func runLoggedRequestWithConfig(t *testing.T, cfg LogRequestConfig, method strin
 	}
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
-	return decodeLogEntries(t, logBuffer.String()), recorder
+	return logBuffer.String(), recorder
 }
 
 func testLogRequestConfig() LogRequestConfig {

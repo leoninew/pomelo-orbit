@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -18,8 +19,9 @@ import (
 const TruncatedBodySuffix = "..."
 
 type LogRequestConfig struct {
-	BodyEnabled  bool
-	BodyMaxBytes int
+	BodyEnabled          bool
+	BodyMaxBytes         int
+	SkipAssets200Enabled bool
 }
 
 func LogRequest(logger *slog.Logger, cfg LogRequestConfig) func(http.Handler) http.Handler {
@@ -39,10 +41,19 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) func(http.Handler) ht
 			if bodyErr != nil {
 				startedAttrs = append(startedAttrs, "body_read_error", bodyErr.Error())
 			}
-			logger.Info("request started", startedAttrs...)
+			delayStartedLog := cfg.SkipAssets200Enabled && isSkippableAssetPath(r.URL.Path)
+			if !delayStartedLog {
+				logger.Info("request started", startedAttrs...)
+			}
 
 			responseWriter := newLoggingResponseWriter(w, cfg)
 			next.ServeHTTP(responseWriter, r)
+			if shouldSkipRequestLog(r, responseWriter.Status(), cfg) {
+				return
+			}
+			if delayStartedLog {
+				logger.Info("request started", startedAttrs...)
+			}
 
 			completedAttrs := append([]any{}, requestAttrs...)
 			completedAttrs = append(completedAttrs,
@@ -66,6 +77,23 @@ func requestLogAttrs(r *http.Request) []any {
 		"request_id", chimiddleware.GetReqID(r.Context()),
 		"remote_addr", r.RemoteAddr,
 		"user_agent", r.UserAgent(),
+	}
+}
+
+func shouldSkipRequestLog(r *http.Request, status int, cfg LogRequestConfig) bool {
+	return cfg.SkipAssets200Enabled && status == http.StatusOK && isSkippableAssetPath(r.URL.Path)
+}
+
+func isSkippableAssetPath(requestPath string) bool {
+	requestPath = path.Clean("/" + requestPath)
+	if !strings.HasPrefix(requestPath, "/assets/") {
+		return false
+	}
+	switch strings.ToLower(path.Ext(requestPath)) {
+	case ".js", ".css", ".html":
+		return true
+	default:
+		return false
 	}
 }
 

@@ -153,6 +153,7 @@ func settingDefinitions(cfg config.Config) []Definition {
 		{Key: "logging__max_backups", Default: cfg.Logging.MaxBackups, Description: "Maximum number of rotated log files"},
 		{Key: "logging__http_body_enabled", Default: cfg.Logging.HTTPBodyEnabled, Description: "Enable HTTP request and response body logging"},
 		{Key: "logging__http_body_max_bytes", Default: cfg.Logging.HTTPBodyMaxBytes, Description: "Maximum HTTP request and response body bytes to log"},
+		{Key: "logging__http_skip_assets_200_enabled", Default: cfg.Logging.HTTPSkipAssets200Enabled, Description: "Skip HTTP request logs for successful /assets .js/.css/.html requests"},
 		{Key: "database__driver", Default: cfg.Database.Driver, Description: "Database driver"},
 		{Key: "database__sqlite__path", Default: cfg.Database.SQLite.Path, Description: "SQLite database file path"},
 		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.DSN, Description: "MySQL DSN"},

@@ -57,6 +57,9 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.HTTPBodyMaxBytes != 4096 {
 		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
 	}
+	if !cfg.Logging.HTTPSkipAssets200Enabled {
+		t.Fatal("expected http assets 200 log skipping enabled")
+	}
 	if cfg.JWT.SecretKey != testJWTSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
 	}
@@ -92,6 +95,7 @@ func TestLoadConfigMergesEnvConfig(t *testing.T) {
   max_backups: 3
   http_body_enabled: true
   http_body_max_bytes: 2048
+  http_skip_assets_200_enabled: false
 database:
   sqlite:
     path: "data/test.db"
@@ -121,6 +125,9 @@ worker:
 	}
 	if cfg.Logging.HTTPBodyMaxBytes != 2048 {
 		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
+	}
+	if cfg.Logging.HTTPSkipAssets200Enabled {
+		t.Fatal("expected http assets 200 log skipping disabled")
 	}
 	if cfg.Worker.Id != "worker-1" {
 		t.Fatalf("unexpected worker id: %s", cfg.Worker.Id)
@@ -171,6 +178,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
 	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_BODY_ENABLED", "true")
 	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_BODY_MAX_BYTES", "8192")
+	t.Setenv("POMELO_ORBIT_LOGGING__HTTP_SKIP_ASSETS_200_ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
@@ -213,6 +221,9 @@ worker:
 	}
 	if cfg.Logging.HTTPBodyMaxBytes != 8192 {
 		t.Fatalf("unexpected http body max bytes: %d", cfg.Logging.HTTPBodyMaxBytes)
+	}
+	if cfg.Logging.HTTPSkipAssets200Enabled {
+		t.Fatal("expected http assets 200 log skipping disabled")
 	}
 	if cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile disabled")
@@ -670,6 +681,7 @@ logging:
   max_backups: 7
   http_body_enabled: false
   http_body_max_bytes: 4096
+  http_skip_assets_200_enabled: true
 database:
   driver: sqlite
   sqlite:

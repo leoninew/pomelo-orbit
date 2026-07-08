@@ -1,4 +1,4 @@
--- v0.1.0: backend-go task queue schema
+-- v0.1.0: pomelo-orbit task queue schema
 
 CREATE TABLE IF NOT EXISTS background_task (
     id VARCHAR(26) PRIMARY KEY,

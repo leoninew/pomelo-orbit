@@ -13,7 +13,7 @@ server:
 
 logging:
   level: info
-  file: logs/backend-go.log
+  file: logs/pomelo-orbit.log
   max_size_mb: 100
   max_backups: 7
   http_body_enabled: false

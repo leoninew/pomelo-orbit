@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
 type Handler interface {

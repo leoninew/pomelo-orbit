@@ -34,7 +34,7 @@ COPY internal ./internal
 COPY sql ./sql
 
 # Build backend binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend-go ./cmd/backend-go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/pomelo-orbit ./cmd/server
 
 # Stage 3: Final image
 FROM debian:trixie-slim
@@ -52,7 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker compose version
 
 # Copy backend binary and configuration
-COPY --from=backend-builder /out/backend-go /usr/local/bin/backend-go
+COPY --from=backend-builder /out/pomelo-orbit /usr/local/bin/pomelo-orbit
 COPY configs ./configs
 
 # Copy web build from stage 1
@@ -69,5 +69,5 @@ ENV POMELO_ORBIT_SERVER__PORT=80
 EXPOSE 80
 
 # Run the API server and background worker in one process.
-ENTRYPOINT ["backend-go"]
+ENTRYPOINT ["pomelo-orbit"]
 CMD ["serve"]

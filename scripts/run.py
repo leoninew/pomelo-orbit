@@ -153,7 +153,7 @@ def main() -> int:
         DevProcess(
             name="后端服务",
             cwd=ROOT_DIR,
-            command=[command_path("air"), "-c", ".air.api.toml"],
+            command=[command_path("air"), "-c", ".air.server.toml"],
         ),
         DevProcess(
             name="前端服务",

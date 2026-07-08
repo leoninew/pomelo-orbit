@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	ciactivity "gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {
@@ -42,10 +42,10 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 }
 
 type fakeExecutor struct {
-	input cisvc.ExecutePipelineRunInput
+	input ciactivity.ExecutePipelineRunInput
 }
 
-func (e *fakeExecutor) ExecutePipelineRun(ctx context.Context, input cisvc.ExecutePipelineRunInput) error {
+func (e *fakeExecutor) ExecutePipelineRun(ctx context.Context, input ciactivity.ExecutePipelineRunInput) error {
 	e.input = input
 	return nil
 }

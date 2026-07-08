@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/task"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/service/ci"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	ciactivity "gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci"
 )
 
 type ExecutePayload struct {
@@ -15,7 +15,7 @@ type ExecutePayload struct {
 }
 
 type PipelineExecutor interface {
-	ExecutePipelineRun(ctx context.Context, input cisvc.ExecutePipelineRunInput) error
+	ExecutePipelineRun(ctx context.Context, input ciactivity.ExecutePipelineRunInput) error
 }
 
 type Handler struct {
@@ -34,5 +34,5 @@ func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
 	if payload.PipelineRunId == "" {
 		return fmt.Errorf("pipeline_run_id is required")
 	}
-	return h.executor.ExecutePipelineRun(ctx, cisvc.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, Variables: payload.Variables})
+	return h.executor.ExecutePipelineRun(ctx, ciactivity.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, Variables: payload.Variables})
 }

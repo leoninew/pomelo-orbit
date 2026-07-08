@@ -42,7 +42,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Server.PublicURL != "" {
 		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicURL)
 	}
-	if cfg.Logging.File != "logs/backend-go.log" {
+	if cfg.Logging.File != "logs/pomelo-orbit.log" {
 		t.Fatalf("unexpected logging file: %s", cfg.Logging.File)
 	}
 	if cfg.Logging.MaxSizeMB != 100 {
@@ -676,7 +676,7 @@ server:
   public_url: ""
 logging:
   level: info
-  file: logs/backend-go.log
+  file: logs/pomelo-orbit.log
   max_size_mb: 100
   max_backups: 7
   http_body_enabled: false

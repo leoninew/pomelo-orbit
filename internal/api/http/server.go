@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	"log/slog"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 
 	"github.com/gin-gonic/gin"
 
@@ -34,6 +35,7 @@ import (
 	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/config/envfile"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/traefik"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
@@ -77,7 +79,7 @@ func New(cfg config.Config, logger *slog.Logger, store store.Store, tasks taskre
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
 	logStore := logstore.LogStore{}
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, logStore: logStore, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger, logStore), cdService: newCDService(cdRepository, taskService, cfg, logger, logStore), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, logStore: logStore, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg, envfile.NewStore(cfg)), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger, logStore), cdService: newCDService(cdRepository, taskService, cfg, logger, logStore), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
 }
 
 func (s Server) Handler() http.Handler {

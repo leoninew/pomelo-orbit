@@ -3,13 +3,11 @@ package settingssvc
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
@@ -35,16 +33,23 @@ type Definition struct {
 	Secret      bool
 }
 
+type EnvStore interface {
+	Load(ctx context.Context) (map[string]string, error)
+	Set(ctx context.Context, values map[string]string) error
+	Delete(ctx context.Context, keys []string) error
+}
+
 type Service struct {
-	cfg config.Config
+	cfg      config.Config
+	envStore EnvStore
 }
 
-func New(cfg config.Config) Service {
-	return Service{cfg: cfg}
+func New(cfg config.Config, envStore EnvStore) Service {
+	return Service{cfg: cfg, envStore: envStore}
 }
 
-func (s Service) Config(context.Context) (SystemConfig, error) {
-	envMap, err := readEnvFile(s.envPath())
+func (s Service) Config(ctx context.Context) (SystemConfig, error) {
+	envMap, err := s.envStore.Load(ctx)
 	if err != nil {
 		return SystemConfig{}, err
 	}
@@ -98,7 +103,7 @@ func (s Service) Update(ctx context.Context, key string, value any) (SystemConfi
 	if key == "" {
 		return SystemConfig{}, apperror.New(apperror.KindValidation, "key is required")
 	}
-	if err := writeEnvValues(s.envPath(), map[string]string{settingEnvKey(key): settingValueString(value)}); err != nil {
+	if err := s.envStore.Set(ctx, map[string]string{settingEnvKey(key): settingValueString(value)}); err != nil {
 		return SystemConfig{}, err
 	}
 	return s.Config(ctx)
@@ -112,7 +117,7 @@ func (s Service) Reset(ctx context.Context, keys []string) (SystemConfig, error)
 			envKeys = append(envKeys, settingEnvKey(key))
 		}
 	}
-	if err := deleteEnvValues(s.envPath(), envKeys); err != nil {
+	if err := s.envStore.Delete(ctx, envKeys); err != nil {
 		return SystemConfig{}, err
 	}
 	return s.Config(ctx)
@@ -123,13 +128,6 @@ func (s Service) baseConfig() config.Config {
 		return *s.cfg.Base
 	}
 	return s.cfg
-}
-
-func (s Service) envPath() string {
-	if s.cfg.EnvFilePath != "" {
-		return filepath.Clean(s.cfg.EnvFilePath)
-	}
-	return filepath.Join(s.cfg.OrbitRoot(), ".env")
 }
 
 func settingDefinitions(cfg config.Config) []Definition {
@@ -185,73 +183,6 @@ func settingDescription(description string) string {
 		return "Requires pomelo-orbit restart to take effect"
 	}
 	return description + " (requires pomelo-orbit restart to take effect)"
-}
-
-func readEnvFile(path string) (map[string]string, error) {
-	content, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return map[string]string{}, nil
-		}
-		return nil, err
-	}
-	result := map[string]string{}
-	for _, line := range strings.Split(string(content), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-		result[key] = strings.Trim(value, `"'`)
-	}
-	return result, nil
-}
-
-func writeEnvValues(path string, values map[string]string) error {
-	envMap, err := readEnvFile(path)
-	if err != nil {
-		return err
-	}
-	for key, value := range values {
-		envMap[key] = value
-	}
-	return writeEnvFile(path, envMap)
-}
-
-func deleteEnvValues(path string, keys []string) error {
-	envMap, err := readEnvFile(path)
-	if err != nil {
-		return err
-	}
-	for _, key := range keys {
-		delete(envMap, key)
-	}
-	return writeEnvFile(path, envMap)
-}
-
-func writeEnvFile(path string, envMap map[string]string) error {
-	keys := make([]string, 0, len(envMap))
-	for key := range envMap {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	lines := make([]string, 0, len(keys))
-	for _, key := range keys {
-		lines = append(lines, fmt.Sprintf("%s=%s", key, envMap[key]))
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	content := strings.Join(lines, "\n")
-	if content != "" {
-		content += "\n"
-	}
-	return os.WriteFile(path, []byte(content), 0o644)
 }
 
 func settingEnvKey(key string) string {

@@ -3,14 +3,16 @@ package transporthttp
 import (
 	"bytes"
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
 
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+
 	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/config/envfile"
 )
 
 func TestSettingsConfigRoutes(t *testing.T) {
@@ -18,7 +20,7 @@ func TestSettingsConfigRoutes(t *testing.T) {
 	envFilePath := filepath.Join(t.TempDir(), ".env")
 	server.appCfg.Orbit.Root = t.TempDir()
 	server.appCfg.EnvFilePath = envFilePath
-	server.settingsService = settingssvc.New(server.appCfg)
+	server.settingsService = settingssvc.New(server.appCfg, envfile.NewStore(server.appCfg))
 	defer func() { _ = database.Close() }()
 	token := testToken(t, server)
 

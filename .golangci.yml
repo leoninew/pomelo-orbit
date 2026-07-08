@@ -1,12 +1,13 @@
-linters-settings:
-  revive:
-    rules:
-      - name: package-comments
-        disabled: true
-      - name: exported
-        disabled: true
+version: "2"
 
 linters:
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: exported
+          disabled: true
   enable:
     - errcheck
     - govet
@@ -17,6 +18,3 @@ linters:
 
 run:
   timeout: 5m
-
-issues:
-  exclude-use-default: false

@@ -7,9 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/civariable"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -17,7 +17,6 @@ import (
 )
 
 var pipelineTemplateCopyPattern = regexp.MustCompile(` copy( [0-9]+)?$`)
-var templateVariablePattern = regexp.MustCompile(`\{\{\s*([A-Za-z][A-Za-z0-9_]*)(?:\s*\|\s*default\s*:\s*['\"]([^'\"]*)['\"])?\s*\}\}`)
 
 type ArtifactConfig struct {
 	Type string `json:"type"`
@@ -110,7 +109,7 @@ func (s Service) CreatePipelineTemplate(ctx context.Context, userId string, inpu
 	if err := s.ensurePipelineTemplateNameAvailable(ctx, projectId, name, ""); err != nil {
 		return PipelineTemplateDetail{}, err
 	}
-	variables, err := marshalPipelineTemplateVariables(sanitizePipelineTemplateVariables(input.VariableDeclarations))
+	variables, err := marshalPipelineTemplateVariables(civariable.SanitizePipelineTemplateVariables(input.VariableDeclarations))
 	if err != nil {
 		return PipelineTemplateDetail{}, err
 	}
@@ -217,7 +216,7 @@ func (s Service) ResolvePipelineTemplateVariables(ctx context.Context, userId st
 	if err != nil {
 		return nil, err
 	}
-	return resolveTemplateVariables(stages, sanitizePipelineTemplateVariables(input.VariableDeclarations)), nil
+	return civariable.ResolveTemplateVariables(stages, civariable.SanitizePipelineTemplateVariables(input.VariableDeclarations)), nil
 }
 
 func (s Service) loadPipelineTemplateForUser(ctx context.Context, userId string, templateId string) (model.PipelineTemplate, error) {
@@ -244,7 +243,7 @@ func (s Service) pipelineTemplateDetail(ctx context.Context, template model.Pipe
 	if err != nil {
 		return PipelineTemplateDetail{}, err
 	}
-	variables, err := pipelineTemplateVariables(template.VariableDeclarations)
+	variables, err := civariable.PipelineTemplateVariables(template.VariableDeclarations)
 	if err != nil {
 		return PipelineTemplateDetail{}, err
 	}
@@ -347,7 +346,7 @@ func (s Service) applyPipelineTemplateUpdateInput(ctx context.Context, template 
 		}
 	}
 	if req.VariableDeclarations != nil {
-		value, err := marshalPipelineTemplateVariables(sanitizePipelineTemplateVariables(*req.VariableDeclarations))
+		value, err := marshalPipelineTemplateVariables(civariable.SanitizePipelineTemplateVariables(*req.VariableDeclarations))
 		if err != nil {
 			return nil, false, err
 		}
@@ -443,17 +442,6 @@ func buildStageDetail(stage model.BuildStage) BuildStageDetail {
 
 const timeFormatRFC3339 = "2006-01-02T15:04:05Z07:00"
 
-func pipelineTemplateVariables(value string) ([]map[string]any, error) {
-	if strings.TrimSpace(value) == "" {
-		return []map[string]any{}, nil
-	}
-	var variables []map[string]any
-	if err := json.Unmarshal([]byte(value), &variables); err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Invalid pipeline template variables", err)
-	}
-	return variables, nil
-}
-
 func marshalPipelineTemplateVariables(variables []map[string]any) (string, error) {
 	if variables == nil {
 		variables = []map[string]any{}
@@ -487,41 +475,6 @@ func marshalPipelineTemplateDependsOn(dependsOn []string) (string, error) {
 	return string(data), nil
 }
 
-func sanitizePipelineTemplateVariables(variables []map[string]any) []map[string]any {
-	result := make([]map[string]any, 0, len(variables))
-	for _, variable := range variables {
-		name, _ := variable["name"].(string)
-		name = strings.TrimSpace(name)
-		if name == "" || isPipelineTemplateBuiltinVariable(name) {
-			continue
-		}
-		source, _ := variable["source"].(string)
-		if source == "" {
-			source = "template_custom"
-		}
-		_, hasValue := variable["value"]
-		if source != "template_custom" && source != "repository_custom" && (source != "template_stage" || !hasValue || variable["value"] == nil) {
-			continue
-		}
-		copy := map[string]any{}
-		for key, value := range variable {
-			copy[key] = value
-		}
-		copy["name"] = name
-		if source == "template_stage" {
-			copy["source"] = "template_custom"
-		} else {
-			copy["source"] = source
-		}
-		copy["editable"] = true
-		if _, exists := copy["secret"]; !exists {
-			copy["secret"] = false
-		}
-		result = append(result, copy)
-	}
-	return result
-}
-
 func resolveTemplateVariablesFromResponses(stages []BuildStageDetail, custom []map[string]any) []map[string]any {
 	converted := make([]model.BuildStage, 0, len(stages))
 	for _, stage := range stages {
@@ -529,107 +482,5 @@ func resolveTemplateVariablesFromResponses(stages []BuildStageDetail, custom []m
 		artifactString := string(artifacts)
 		converted = append(converted, model.BuildStage{Name: stage.Name, Script: stage.Script, Artifacts: &artifactString})
 	}
-	return resolveTemplateVariables(converted, custom)
-}
-
-func resolveTemplateVariables(stages []model.BuildStage, custom []map[string]any) []map[string]any {
-	extracted := map[string]any{}
-	for _, stage := range stages {
-		extractTemplateVariables(stage.Script, extracted)
-		if stage.Artifacts != nil && strings.TrimSpace(*stage.Artifacts) != "" {
-			var artifacts []ArtifactConfig
-			if err := json.Unmarshal([]byte(*stage.Artifacts), &artifacts); err == nil {
-				for _, artifact := range artifacts {
-					extractTemplateVariables(artifact.Path, extracted)
-					extractTemplateVariables(artifact.Name, extracted)
-				}
-			}
-		}
-	}
-	custom = sanitizePipelineTemplateVariables(custom)
-	customByName := make(map[string]map[string]any, len(custom))
-	for _, variable := range custom {
-		name, _ := variable["name"].(string)
-		customByName[name] = variable
-	}
-	builtinNames := sortedPipelineTemplateBuiltinVariableNames()
-	result := []map[string]any{}
-	if len(extracted) == 0 {
-		for _, name := range builtinNames {
-			result = append(result, pipelineTemplateBuiltinVariable(name))
-		}
-		for _, variable := range custom {
-			name, _ := variable["name"].(string)
-			if !isPipelineTemplateBuiltinVariable(name) {
-				result = append(result, variable)
-			}
-		}
-		return result
-	}
-	extractedNames := make([]string, 0, len(extracted))
-	for name := range extracted {
-		extractedNames = append(extractedNames, name)
-	}
-	sort.Strings(extractedNames)
-	for _, name := range extractedNames {
-		if isPipelineTemplateBuiltinVariable(name) {
-			result = append(result, pipelineTemplateBuiltinVariable(name))
-			continue
-		}
-		if existing, ok := customByName[name]; ok {
-			if _, exists := existing["default"]; !exists && extracted[name] != nil {
-				existing["default"] = extracted[name]
-			}
-			result = append(result, existing)
-			continue
-		}
-		result = append(result, map[string]any{"name": name, "description": "", "default": extracted[name], "value": nil, "secret": false, "source": "template_stage", "editable": true})
-	}
-	return result
-}
-
-func extractTemplateVariables(text string, found map[string]any) {
-	for _, match := range templateVariablePattern.FindAllStringSubmatch(text, -1) {
-		name := match[1]
-		defaultValue := any(nil)
-		if len(match) > 2 && match[2] != "" {
-			defaultValue = match[2]
-		}
-		if current, exists := found[name]; !exists || current == nil && defaultValue != nil {
-			found[name] = defaultValue
-		}
-	}
-}
-
-func isPipelineTemplateBuiltinVariable(name string) bool {
-	_, ok := pipelineTemplateBuiltinVariableSpecs()[name]
-	return ok
-}
-
-func sortedPipelineTemplateBuiltinVariableNames() []string {
-	names := make([]string, 0, len(pipelineTemplateBuiltinVariableSpecs()))
-	for name := range pipelineTemplateBuiltinVariableSpecs() {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
-}
-
-func pipelineTemplateBuiltinVariable(name string) map[string]any {
-	spec := pipelineTemplateBuiltinVariableSpecs()[name]
-	return map[string]any{"name": name, "description": spec, "default": nil, "value": nil, "secret": false, "source": "template", "editable": false}
-}
-
-func pipelineTemplateBuiltinVariableSpecs() map[string]string {
-	return map[string]string{
-		"repository_id":    "运行时注入: 当前项目 ID",
-		"repository_name":  "运行时注入: 当前项目名称",
-		"repository_code":  "运行时注入: 当前项目编码",
-		"repository_url":   "运行时注入: 当前仓库地址",
-		"repository_ref":   "运行时注入: 当前分支",
-		"template_id":      "运行时注入: 当前模板 ID",
-		"template_name":    "运行时注入: 当前模板名称",
-		"template_version": "运行时注入: 当前模板版本",
-		"runtime_datetime": "运行时注入: 流水线启动时间 (UTC, 格式 YYYYmmdd-HHmmss)",
-	}
+	return civariable.ResolveTemplateVariables(converted, custom)
 }

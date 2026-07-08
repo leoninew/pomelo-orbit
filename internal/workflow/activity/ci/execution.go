@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/civariable"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -103,11 +104,11 @@ func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]
 }
 
 func (s Service) pipelineRunExecutionVariables(repo model.Repository, template model.PipelineTemplate, snapshot model.PipelineSnapshot, run model.PipelineRun) (map[string]any, error) {
-	declarations, err := completeSnapshotVariableDeclarations(snapshot, template)
+	declarations, err := civariable.CompleteSnapshotVariableDeclarations(snapshot, template)
 	if err != nil {
 		return nil, err
 	}
-	return buildRuntimeVariables(repo, template, run.TriggerRef, pipelineRunRuntimeOverrides(run.VariablesSnapshot), declarations)
+	return civariable.BuildRuntimeVariables(repo, template, run.TriggerRef, pipelineRunRuntimeOverrides(run.VariablesSnapshot), declarations)
 }
 
 func pipelineRunRuntimeOverrides(value string) map[string]string {
@@ -118,7 +119,7 @@ func pipelineRunRuntimeOverrides(value string) map[string]string {
 	var declarations []model.VariableDeclaration
 	if err := json.Unmarshal([]byte(value), &declarations); err == nil {
 		for _, declaration := range declarations {
-			if isPipelineTemplateBuiltinVariable(declaration.Name) || !hasRuntimeValue(declaration.Value) {
+			if civariable.IsPipelineTemplateBuiltinVariable(declaration.Name) || !civariable.HasRuntimeValue(declaration.Value) {
 				continue
 			}
 			overrides[declaration.Name] = fmt.Sprint(declaration.Value)

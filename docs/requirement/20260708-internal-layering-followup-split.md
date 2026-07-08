@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分
-最后修改时间: 2026-07-08 17:00:41
+最后修改时间: 2026-07-08 17:48:59
 
 Review status: Draft
 
@@ -46,7 +46,7 @@ Review status: Draft
 |---|---|---|---|---|---|
 | 1 | `internal/application/cd/route.go` | application 层直接包含文件系统写入/删除、YAML 生成、Traefik reload、Traefik HTTP API client、mkcert 命令调用等基础设施细节。 | 已完成大搬家：Traefik 文件发布、Traefik API client、Docker reload、mkcert 证书生成已搬到 `internal/infrastructure/traefik`，application 只保留权限、校验、状态流转和接口编排。 | 高 | 已实施，检查通过 |
 | 2 | `internal/application/settings/service.go` | settings application service 直接读写 `.env` 文件，应用层与本地配置文件存储耦合。 | 已完成拆分：settings application 保留系统配置用例、key/value 转换、默认值与展示规则；`.env` 文件解析、写入、删除、路径解析移动到 `internal/infrastructure/config/envfile`，由 `EnvStore` 接口注入。 | 高 | 已实施，检查通过 |
-| 3 | `internal/application/ci/runtime_variables.go` 与 `internal/workflow/activity/ci/runtime_variables.go` | runtime variable 逻辑跨触发与执行，迁移后 application/activity 两侧存在相近逻辑，可能出现重复和规则漂移。 | 对比两份实现的输入输出与调用点；将纯规则计算沉到 shared domain/common 位置，application 与 activity 只调用同一规则，避免复制。 | 高 | 待处理 |
+| 3 | `internal/application/ci/runtime_variables.go` 与 `internal/workflow/activity/ci/runtime_variables.go` | runtime variable 逻辑跨触发与执行，迁移后 application/activity 两侧存在相近逻辑，可能出现重复和规则漂移。 | 已完成拆分：runtime variable、template variable 解析/清洗/内置变量/快照补全等纯规则集中到 `internal/common/civariable`；application 与 workflow activity 直接调用共享规则；删除 workflow activity wrapper-only 文件，不保留占位或兼容层。 | 高 | 已实施，检查通过 |
 | 4 | `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` | CI workspace 路径、artifact/log 路径和 Docker mount 计算跨 application/activity 使用，当前可能有重复实现。 | 先梳理 application 与 activity 各自需要的 workspace 能力；如果是纯路径规则，抽到公共 workspace/path 组件；如果涉及执行环境，保留在 workflow activity。 | 中 | 待处理 |
 | 5 | `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` | CD workspace 路径计算与物理数据根解析跨 application/activity 使用，当前边界需要确认。 | 与 CI workspace 同步审视；把稳定路径规则与执行时副作用分离，避免 application 依赖 activity 私有实现。 | 中 | 待处理 |
 | 6 | `internal/repository/impl/sqlc/task/repository.go` | task repository 实现里包含 Task 持久化模型，repository impl 与模型定义边界不清。 | 读取文件确认模型是否只服务 sqlc impl；若为跨层任务模型，应迁到 `internal/model` 或 `internal/queue/task`；sqlc impl 只保留转换和持久化。 | 中 | 待处理 |
@@ -265,6 +265,62 @@ go test ./cmd/... ./internal/...
 - [x] `internal/application/settings/service.go` 不再直接执行 `.env` 文件读写、目录创建或路径解析。
 - [x] `.env` 解析、写入、删除行为保持原规则：缺失文件返回空 map、忽略空行和注释、按 `=` 拆分、trim quote、写入时按 key 排序并追加尾随换行。
 - [x] settings HTTP config get/update/reset 既有测试继续通过。
+- [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
+
+验证结果：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：通过，`golangci-lint run` 输出 `0 issues.`。
+
+## 问题 3 分析：CI runtime variables 规则
+
+### 参考架构依据
+
+`internal/application/ci` 负责触发流水线、创建 snapshot、校验运行变量等应用用例；`internal/workflow/activity/ci` 负责执行流水线 activity。runtime variable 的内置变量、模板变量提取、变量声明清洗、snapshot 补全和值合并规则同时服务触发侧和执行侧，属于跨 application/activity 的纯规则，不应复制在两侧。
+
+### 当前读取结论
+
+原实现中相近规则分散在：
+
+- `internal/application/ci/runtime_variables.go`：创建 pipeline run 时构建、校验并序列化 runtime variable snapshot。
+- `internal/workflow/activity/ci/runtime_variables.go`：执行 pipeline run 时补全 declarations 并构建执行变量。
+- `internal/application/ci/template.go` 与 `internal/application/ci/repository.go`：template/repository variable 的清洗、内置变量判断和 template stage 变量提取。
+- `internal/workflow/activity/ci/runtime_helpers.go` 与 `internal/workflow/activity/ci/template_builtin.go`：workflow activity 侧的 wrapper 和重复 builtin specs。
+
+问题成立：如果这些规则继续分散在 application 与 workflow activity，两侧可能在内置变量列表、空值判断、default/value 优先级、template_stage 变量处理等细节上漂移。
+
+### 实施结果
+
+- 新增 `internal/common/civariable/runtime.go`，集中承载 CI variable 纯规则：
+  - snapshot declarations 补全；
+  - runtime variables 构建；
+  - runtime variables 校验与 snapshot 序列化；
+  - repository/template builtin variables；
+  - template variables 解析、清洗、提取和排序；
+  - `HasRuntimeValue` 空值判断。
+- `internal/application/ci/runtime_variables.go` 只保留 application 用例函数 `buildPipelineRunVariables`，直接调用 `civariable` 规则完成补全、构建、校验和序列化。
+- `internal/application/ci/snapshot.go` 创建/读取 snapshot 时直接调用 `civariable.PipelineSnapshotStages`、`civariable.PipelineTemplateVariables`、`civariable.ResolveTemplateVariablesFromStageDefinitions` 和 `civariable.VariableDeclarationsFromMaps`。
+- `internal/application/ci/template.go` 与 `internal/application/ci/repository.go` 删除重复的 template variable/builtin 规则实现，改为直接调用 `civariable`；保留 application 专属的 DTO 转换和模板 CRUD 编排。
+- `internal/workflow/activity/ci/execution.go` 执行 pipeline run 时直接调用 `civariable.CompleteSnapshotVariableDeclarations`、`civariable.BuildRuntimeVariables`、`civariable.IsPipelineTemplateBuiltinVariable` 和 `civariable.HasRuntimeValue`。
+- 删除 wrapper-only 文件：
+  - `internal/workflow/activity/ci/runtime_variables.go`
+  - `internal/workflow/activity/ci/runtime_helpers.go`
+  - `internal/workflow/activity/ci/template_builtin.go`
+- `internal/application/ci/template_test.go` 中 template variable 规则测试改为直接覆盖 `civariable.ResolveTemplateVariables`。
+
+验收标准：
+
+- [x] application 与 workflow activity 不再各自维护 runtime variable 规则副本。
+- [x] workflow activity 侧不保留仅转调 `civariable` 的占位/兼容 wrapper 文件。
+- [x] 内置变量列表、`runtime_datetime` 格式、default/value 优先级、template variable 提取和空值判断保持原规则。
+- [x] repository/template/snapshot/run execution 调用点均直接依赖共享规则包。
 - [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
 
 验证结果：

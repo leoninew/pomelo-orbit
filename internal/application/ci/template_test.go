@@ -3,6 +3,7 @@ package cisvc
 import (
 	"testing"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/civariable"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -36,7 +37,7 @@ func TestResolveStagesRejectsMissingVariable(t *testing.T) {
 }
 
 func TestResolveTemplateVariablesExtractsLiquidDefault(t *testing.T) {
-	variables := resolveTemplateVariables([]model.BuildStage{{Script: "cd {{ working_dir | default: '.' }}"}}, nil)
+	variables := civariable.ResolveTemplateVariables([]model.BuildStage{{Script: "cd {{ working_dir | default: '.' }}"}}, nil)
 	if len(variables) != 1 {
 		t.Fatalf("expected one variable, got %+v", variables)
 	}

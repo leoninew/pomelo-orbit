@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/civariable"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -32,7 +33,7 @@ func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, sna
 			return PipelineSnapshotDetail{}, err
 		}
 	}
-	stages, err := pipelineSnapshotStages(snapshot.StagesSnapshot)
+	stages, err := civariable.PipelineSnapshotStages(snapshot.StagesSnapshot)
 	if err != nil {
 		return PipelineSnapshotDetail{}, err
 	}
@@ -71,11 +72,11 @@ func (s Service) createPipelineSnapshot(ctx context.Context, template model.Pipe
 	if err != nil {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Invalid pipeline snapshot stages", err)
 	}
-	custom, err := pipelineTemplateVariables(template.VariableDeclarations)
+	custom, err := civariable.PipelineTemplateVariables(template.VariableDeclarations)
 	if err != nil {
 		return model.PipelineSnapshot{}, err
 	}
-	variables, err := variableDeclarationsFromMaps(resolveTemplateVariablesFromStageDefinitions(stages, custom))
+	variables, err := civariable.VariableDeclarationsFromMaps(civariable.ResolveTemplateVariablesFromStageDefinitions(stages, custom))
 	if err != nil {
 		return model.PipelineSnapshot{}, err
 	}
@@ -145,17 +146,6 @@ func buildStageArtifactConfigs(stage model.BuildStage) ([]model.ArtifactConfig, 
 		return nil, apperror.New(apperror.KindInternal, "Invalid build stage artifacts")
 	}
 	return artifacts, nil
-}
-
-func pipelineSnapshotStages(value string) ([]model.StageDefinition, error) {
-	if strings.TrimSpace(value) == "" {
-		return []model.StageDefinition{}, nil
-	}
-	var stages []model.StageDefinition
-	if err := json.Unmarshal([]byte(value), &stages); err != nil {
-		return nil, apperror.New(apperror.KindInternal, "Invalid pipeline snapshot stages")
-	}
-	return stages, nil
 }
 
 func pipelineSnapshotVariables(value string) ([]model.VariableDeclaration, error) {

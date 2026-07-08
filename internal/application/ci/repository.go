@@ -9,14 +9,15 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"maps"
 	"regexp"
 	"strings"
 	"time"
 
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-
+	"gitee.com/leoninew/PomeloOrbit-go/internal/common/civariable"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -654,7 +655,7 @@ func repositoryBuiltinVariableDeclarations(repo model.Repository) []map[string]a
 }
 
 func repositoryBuiltinVariableDeclaration(name string, defaultValue any) map[string]any {
-	return map[string]any{"name": name, "description": pipelineTemplateBuiltinVariableSpecs()[name], "default": defaultValue, "value": nil, "secret": false, "source": "repository", "editable": name == "repository_ref"}
+	return map[string]any{"name": name, "description": civariable.PipelineTemplateBuiltinVariableSpecs()[name], "default": defaultValue, "value": nil, "secret": false, "source": "repository", "editable": name == "repository_ref"}
 }
 
 func sanitizeRepositoryVariables(variables []map[string]any) []map[string]any {
@@ -662,13 +663,11 @@ func sanitizeRepositoryVariables(variables []map[string]any) []map[string]any {
 	for _, variable := range variables {
 		name, _ := variable["name"].(string)
 		name = strings.TrimSpace(name)
-		if name == "" || isPipelineTemplateBuiltinVariable(name) {
+		if name == "" || civariable.IsPipelineTemplateBuiltinVariable(name) {
 			continue
 		}
 		copy := map[string]any{}
-		for key, value := range variable {
-			copy[key] = value
-		}
+		maps.Copy(copy, variable)
 		copy["name"] = name
 		copy["source"] = "repository_custom"
 		copy["editable"] = true

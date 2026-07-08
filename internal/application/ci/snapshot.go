@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 

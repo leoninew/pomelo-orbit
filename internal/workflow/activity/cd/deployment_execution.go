@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 

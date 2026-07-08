@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -14,12 +13,14 @@ import (
 	"strings"
 	"testing"
 
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	store "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )

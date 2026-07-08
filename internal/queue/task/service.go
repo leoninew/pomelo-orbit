@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 

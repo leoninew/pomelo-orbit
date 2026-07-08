@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
 type MkcertGenerator struct{}

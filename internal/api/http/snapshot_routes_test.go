@@ -3,10 +3,11 @@ package transporthttp
 import (
 	"database/sql"
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 )
 
 func TestPipelineSnapshotGetRoute(t *testing.T) {

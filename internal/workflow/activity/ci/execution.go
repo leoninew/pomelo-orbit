@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 

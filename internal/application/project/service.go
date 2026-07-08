@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"regexp"
 	"strings"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 

@@ -2,18 +2,19 @@ package authhandler
 
 import (
 	"context"
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net"
 	"net/http"
 	"strings"
 
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	"github.com/gin-gonic/gin"
+
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"

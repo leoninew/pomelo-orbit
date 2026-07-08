@@ -1,17 +1,18 @@
 package cihandler
 
 import (
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	"github.com/gin-gonic/gin"
 	"io"
 	"log/slog"
 	"net/http"
 
+	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	"github.com/gin-gonic/gin"
+
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )

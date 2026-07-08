@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 

@@ -10,8 +10,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )

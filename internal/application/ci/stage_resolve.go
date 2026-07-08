@@ -1,7 +1,7 @@
 package cisvc
 
 import (
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
+	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 

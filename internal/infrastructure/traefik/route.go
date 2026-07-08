@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gopkg.in/yaml.v3"

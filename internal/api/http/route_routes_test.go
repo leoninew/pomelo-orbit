@@ -3,7 +3,6 @@ package transporthttp
 import (
 	"bytes"
 	"encoding/json"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 )
 
 const testRouteProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"

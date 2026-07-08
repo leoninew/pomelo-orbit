@@ -9,9 +9,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	dbsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
 )
 

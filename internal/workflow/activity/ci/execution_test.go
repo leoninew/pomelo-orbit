@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )

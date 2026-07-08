@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
+	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
 )
 
 type physicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)

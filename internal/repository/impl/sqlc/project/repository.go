@@ -8,7 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	dbsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
 )

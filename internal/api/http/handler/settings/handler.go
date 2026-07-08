@@ -1,16 +1,17 @@
 package settingshandler
 
 import (
+	"log/slog"
+	"net/http"
+
 	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
-	"log/slog"
-	"net/http"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
 type router interface {

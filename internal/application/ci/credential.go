@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+
+	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )

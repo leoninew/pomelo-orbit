@@ -1,4 +1,4 @@
-package cisvc
+package ciworkspace
 
 import (
 	"context"
@@ -10,26 +10,32 @@ import (
 	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
 )
 
-type physicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
+type PhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
 
-type CIWorkspace struct {
+type VolumeMount struct {
+	HostPath      string
+	ContainerPath string
+	Mode          string
+}
+
+type Workspace struct {
 	logicalDataRoot string
-	resolver        physicalDataRootResolver
+	resolver        PhysicalDataRootResolver
 
 	physicalOnce     sync.Once
 	physicalDataRoot string
 	physicalErr      error
 }
 
-func NewCIWorkspace(dataRoot string) *CIWorkspace {
-	return newCIWorkspaceWithResolver(dataRoot, runtimepath.ResolvePhysicalDataRoot)
+func New(dataRoot string) *Workspace {
+	return NewWithResolver(dataRoot, runtimepath.ResolvePhysicalDataRoot)
 }
 
-func newCIWorkspaceWithResolver(dataRoot string, resolver physicalDataRootResolver) *CIWorkspace {
-	return &CIWorkspace{logicalDataRoot: filepath.Clean(dataRoot), resolver: resolver}
+func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Workspace {
+	return &Workspace{logicalDataRoot: filepath.Clean(dataRoot), resolver: resolver}
 }
 
-func (w *CIWorkspace) CreateRunDirectories(projectCode string, runId string) error {
+func (w *Workspace) CreateRunDirectories(projectCode string, runId string) error {
 	paths := []string{
 		w.WorkspacePath(projectCode),
 		w.ArtifactsPath(runId),
@@ -42,19 +48,19 @@ func (w *CIWorkspace) CreateRunDirectories(projectCode string, runId string) err
 	return nil
 }
 
-func (w *CIWorkspace) WorkspacePath(projectCode string) string {
+func (w *Workspace) WorkspacePath(projectCode string) string {
 	return filepath.Join(w.logicalDataRoot, "ci", projectCode, "workspace")
 }
 
-func (w *CIWorkspace) ArtifactsPath(runId string) string {
+func (w *Workspace) ArtifactsPath(runId string) string {
 	return filepath.Join(w.logicalDataRoot, "ci", "runs", runId, "artifacts")
 }
 
-func (w *CIWorkspace) StageLogPath(runId string, stageRunId string) string {
+func (w *Workspace) StageLogPath(runId string, stageRunId string) string {
 	return filepath.Join(w.logicalDataRoot, "ci", "runs", runId, "stages", stageRunId+".log")
 }
 
-func (w *CIWorkspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]VolumeMount, error) {
+func (w *Workspace) DockerStageMounts(ctx context.Context, projectCode string, runId string) ([]VolumeMount, error) {
 	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
 	if err != nil {
 		return nil, err
@@ -65,7 +71,7 @@ func (w *CIWorkspace) DockerStageMounts(ctx context.Context, projectCode string,
 	}, nil
 }
 
-func (w *CIWorkspace) PhysicalDataRoot(ctx context.Context) (string, error) {
+func (w *Workspace) PhysicalDataRoot(ctx context.Context) (string, error) {
 	w.physicalOnce.Do(func() {
 		w.physicalDataRoot, w.physicalErr = w.resolver(ctx, w.logicalDataRoot)
 	})

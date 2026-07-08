@@ -7,19 +7,15 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-)
 
-type VolumeMount struct {
-	HostPath      string
-	ContainerPath string
-	Mode          string
-}
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
+)
 
 type RunOptions struct {
 	Image       string
 	Script      string
 	Environment []string
-	Volumes     []VolumeMount
+	Volumes     []ciworkspace.VolumeMount
 	LogWriter   io.Writer
 }
 
@@ -64,7 +60,7 @@ func dockerRunArgs(opts RunOptions) ([]string, error) {
 	return args, nil
 }
 
-func dockerBindMountArg(volume VolumeMount) (string, error) {
+func dockerBindMountArg(volume ciworkspace.VolumeMount) (string, error) {
 	hostPath := strings.TrimSpace(volume.HostPath)
 	containerPath := strings.TrimSpace(volume.ContainerPath)
 	mode := strings.TrimSpace(volume.Mode)

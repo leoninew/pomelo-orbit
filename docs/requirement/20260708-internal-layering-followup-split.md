@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分
-最后修改时间: 2026-07-08 17:48:59
+最后修改时间: 2026-07-08 18:10:42
 
 Review status: Draft
 
@@ -47,7 +47,7 @@ Review status: Draft
 | 1 | `internal/application/cd/route.go` | application 层直接包含文件系统写入/删除、YAML 生成、Traefik reload、Traefik HTTP API client、mkcert 命令调用等基础设施细节。 | 已完成大搬家：Traefik 文件发布、Traefik API client、Docker reload、mkcert 证书生成已搬到 `internal/infrastructure/traefik`，application 只保留权限、校验、状态流转和接口编排。 | 高 | 已实施，检查通过 |
 | 2 | `internal/application/settings/service.go` | settings application service 直接读写 `.env` 文件，应用层与本地配置文件存储耦合。 | 已完成拆分：settings application 保留系统配置用例、key/value 转换、默认值与展示规则；`.env` 文件解析、写入、删除、路径解析移动到 `internal/infrastructure/config/envfile`，由 `EnvStore` 接口注入。 | 高 | 已实施，检查通过 |
 | 3 | `internal/application/ci/runtime_variables.go` 与 `internal/workflow/activity/ci/runtime_variables.go` | runtime variable 逻辑跨触发与执行，迁移后 application/activity 两侧存在相近逻辑，可能出现重复和规则漂移。 | 已完成拆分：runtime variable、template variable 解析/清洗/内置变量/快照补全等纯规则集中到 `internal/common/civariable`；application 与 workflow activity 直接调用共享规则；删除 workflow activity wrapper-only 文件，不保留占位或兼容层。 | 高 | 已实施，检查通过 |
-| 4 | `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` | CI workspace 路径、artifact/log 路径和 Docker mount 计算跨 application/activity 使用，当前可能有重复实现。 | 先梳理 application 与 activity 各自需要的 workspace 能力；如果是纯路径规则，抽到公共 workspace/path 组件；如果涉及执行环境，保留在 workflow activity。 | 中 | 待处理 |
+| 4 | `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` | CI workspace 路径、artifact/log 路径和 Docker mount 计算跨 application/activity 使用，当前存在重复实现。 | 已完成拆分：共享 CI workspace 包位于 `internal/infrastructure/storage/local/ciworkspace`，集中承载路径规则、目录创建、physical root 解析缓存和 Docker mount 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper-only 兼容层。 | 中 | 已实施，检查通过 |
 | 5 | `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` | CD workspace 路径计算与物理数据根解析跨 application/activity 使用，当前边界需要确认。 | 与 CI workspace 同步审视；把稳定路径规则与执行时副作用分离，避免 application 依赖 activity 私有实现。 | 中 | 待处理 |
 | 6 | `internal/repository/impl/sqlc/task/repository.go` | task repository 实现里包含 Task 持久化模型，repository impl 与模型定义边界不清。 | 读取文件确认模型是否只服务 sqlc impl；若为跨层任务模型，应迁到 `internal/model` 或 `internal/queue/task`；sqlc impl 只保留转换和持久化。 | 中 | 待处理 |
 | 7 | `internal/infrastructure/logger/logstore/logstore.go` | logstore 已放入 logger，但需要确认 logging 与 logstore 的 package/API 命名是否表达清晰。 | 检查 logger/logging/logstore 三者调用关系；若只是命名问题，优先小范围重命名或补清晰接口，不做大迁移。 | 低 | 待处理 |
@@ -321,6 +321,84 @@ go test ./cmd/... ./internal/...
 - [x] workflow activity 侧不保留仅转调 `civariable` 的占位/兼容 wrapper 文件。
 - [x] 内置变量列表、`runtime_datetime` 格式、default/value 优先级、template variable 提取和空值判断保持原规则。
 - [x] repository/template/snapshot/run execution 调用点均直接依赖共享规则包。
+- [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
+
+验证结果：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：通过，`golangci-lint run` 输出 `0 issues.`。
+
+## 问题 4 分析：CI workspace 规则
+
+### 参考架构依据
+
+`internal/application/ci` 负责 pipeline run 查询、stage log 读取等应用用例；`internal/workflow/activity/ci` 负责执行 pipeline run、创建运行目录、写入 stage log、挂载 workspace/artifacts 到 Docker。CI workspace 的逻辑路径规则同时服务两侧，不应在 application 与 workflow activity 中复制。
+
+### 当前读取结论
+
+`internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` 当前几乎完全一致，均包含：
+
+- `CIWorkspace` 数据结构；
+- `NewCIWorkspace` / `newCIWorkspaceWithResolver`；
+- `WorkspacePath(projectCode)`；
+- `ArtifactsPath(runId)`；
+- `StageLogPath(runId, stageRunId)`；
+- `CreateRunDirectories(projectCode, runId)`；
+- `DockerStageMounts(ctx, projectCode, runId)`；
+- `PhysicalDataRoot(ctx)`。
+
+问题成立：workspace 逻辑路径、artifact/log 路径、physical root 解析缓存、Docker mount 生成规则如果继续双份维护，后续很容易出现 application 读 log 路径与 workflow activity 写 log 路径不一致，或 Docker artifact mount 与 artifact 保存路径不一致。
+
+额外发现：`internal/application/ci/runner.go` 与 `internal/workflow/activity/ci/runner.go` 也重复定义 `VolumeMount` / `RunOptions` / `ContainerRunner` / `DockerRunner` 等执行器结构。Issue 4 不扩大为完整 runner 重构，但为了让 workspace 的 Docker mount 返回值能被两侧直接使用，需要把 `VolumeMount` 类型纳入共享 workspace 包或共享执行类型。
+
+### 拆分策略
+
+本 issue 只处理 CI workspace 相关重复，不顺手重构整个 runner：
+
+1. 新增共享包 `internal/infrastructure/storage/local/ciworkspace`。
+2. 将 `CIWorkspace` 改名为共享语义更清晰的 `Workspace`。
+3. 将 `VolumeMount` 类型放入 `ciworkspace`，让 workspace 直接返回共享 mount 类型。
+4. 共享包承载：
+   - 逻辑路径规则：workspace、artifacts、stage log；
+   - `CreateRunDirectories` 目录创建；
+   - `PhysicalDataRoot` 缓存；
+   - `DockerStageMounts` 生成 `/workspace`、`/artifacts` bind mount。
+5. application 与 workflow activity 的 Service/Executor 直接依赖 `*ciworkspace.Workspace`。
+6. 删除 `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go`，不保留仅转调共享包的 wrapper-only 文件。
+7. application/workflow activity 的 runner 保留现有 DockerRunner 行为，仅将 `RunOptions.Volumes` 切换为 `[]ciworkspace.VolumeMount`；不在本 issue 中合并 DockerRunner。
+8. 将现有 workflow activity workspace 测试迁移到 `internal/infrastructure/storage/local/ciworkspace`，保持现有断言。
+
+### 实施结果
+
+- 新增 `internal/infrastructure/storage/local/ciworkspace/workspace.go`：集中承载 CI workspace 逻辑路径、artifacts 路径、stage log 路径、运行目录创建、physical root 缓存和 Docker stage mounts。
+- 新增 `internal/infrastructure/storage/local/ciworkspace/workspace_test.go`：迁移并保留原 workspace physical root 与 Docker mount 行为断言。
+- 删除重复实现：
+  - `internal/application/ci/workspace.go`
+  - `internal/workflow/activity/ci/workspace.go`
+- `internal/application/ci/repository.go` 中的 service workspace 改为 `*ciworkspace.Workspace`，构造时直接使用 `ciworkspace.New(dataRoot)`。
+- `internal/workflow/activity/ci/service.go` 与 `internal/workflow/activity/ci/executor.go` 中的 workflow activity workspace 改为 `*ciworkspace.Workspace`。
+- `internal/application/ci/runner.go` 与 `internal/workflow/activity/ci/runner.go` 保留各自 Docker runner 行为，只将 `RunOptions.Volumes` 切换为 `[]ciworkspace.VolumeMount`，避免在本 issue 中扩大为 runner 合并。
+- `internal/workflow/activity/ci/workspace_test.go` 保留 Docker run args 相关测试，workspace 行为测试迁移到共享包。
+
+### 验收标准
+
+- [x] `internal/application/ci/workspace.go` 删除。
+- [x] `internal/workflow/activity/ci/workspace.go` 删除。
+- [x] 新共享 workspace 包承载路径规则、目录创建、physical root 缓存和 Docker mount 生成。
+- [x] application 与 workflow activity 都直接调用共享 workspace 包，不保留 wrapper-only 兼容层。
+- [x] workspace 行为保持不变：
+  - logical path 仍为 `dataRoot/ci/<projectCode>/workspace`；
+  - artifacts path 仍为 `dataRoot/ci/runs/<runId>/artifacts`；
+  - stage log path 仍为 `dataRoot/ci/runs/<runId>/stages/<stageRunId>.log`；
+  - Docker mounts 仍映射到 `/workspace` 和 `/artifacts`；
+  - Docker host path 仍使用 `ResolvePhysicalDataRoot` 解析后的 physical root。
 - [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
 
 验证结果：

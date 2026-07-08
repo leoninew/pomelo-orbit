@@ -11,6 +11,7 @@ import (
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -247,7 +248,7 @@ func (failingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, st
 type recordingContainerRunner struct {
 	script      string
 	environment []string
-	volumes     []VolumeMount
+	volumes     []ciworkspace.VolumeMount
 }
 
 func (r *recordingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {

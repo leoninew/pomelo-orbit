@@ -19,6 +19,7 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
@@ -103,7 +104,7 @@ type Service struct {
 	store          RepositoryStore
 	executionStore PipelineExecutionStore
 	tasks          TaskService
-	workspace      *CIWorkspace
+	workspace      *ciworkspace.Workspace
 	logStore       logstore.LogStore
 	secretKey      string
 	logger         *slog.Logger
@@ -171,12 +172,12 @@ func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, se
 	if !ok {
 		panic("ci service store must implement PipelineExecutionStore")
 	}
-	workspace := NewCIWorkspace(dataRoot)
+	workspace := ciworkspace.New(dataRoot)
 	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
 func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore logstore.LogStore) Service {
-	workspace := NewCIWorkspace(dataRoot)
+	workspace := ciworkspace.New(dataRoot)
 	return Service{executionStore: store, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -23,7 +24,7 @@ type PipelineExecutionStore interface {
 
 type Service struct {
 	executionStore PipelineExecutionStore
-	workspace      *CIWorkspace
+	workspace      *ciworkspace.Workspace
 	logStore       logstore.LogStore
 	secretKey      string
 	logger         *slog.Logger
@@ -31,6 +32,6 @@ type Service struct {
 }
 
 func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore logstore.LogStore) Service {
-	workspace := NewCIWorkspace(dataRoot)
+	workspace := ciworkspace.New(dataRoot)
 	return Service{executionStore: store, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }

@@ -78,15 +78,33 @@ type TaskService interface {
 	EnqueueTyped(ctx context.Context, taskType string, payload any) (*taskrepo.Task, error)
 }
 
+type RouteConfigPublisher interface {
+	Sync(ctx context.Context, route model.Route) error
+	Revoke(ctx context.Context, routeName string) error
+	RevokeCertificate(ctx context.Context, routeName string) error
+}
+
+type RouteCertificateGenerator interface {
+	Generate(ctx context.Context, domain string) (string, string, error)
+}
+
+type TraefikRouterClient interface {
+	ListRouters(ctx context.Context) ([]model.TraefikRouter, error)
+	IsConnectionError(err error) bool
+}
+
 type Service struct {
-	store          Store
-	executionStore DeploymentExecutionStore
-	tasks          TaskService
-	cfg            config.Config
-	workspace      *Workspace
-	logStore       logstore.LogStore
-	logger         *slog.Logger
-	runner         CommandRunner
+	store                Store
+	executionStore       DeploymentExecutionStore
+	tasks                TaskService
+	cfg                  config.Config
+	workspace            *Workspace
+	logStore             logstore.LogStore
+	logger               *slog.Logger
+	runner               CommandRunner
+	routePublisher       RouteConfigPublisher
+	certificateGenerator RouteCertificateGenerator
+	traefikRouterClient  TraefikRouterClient
 }
 
 type ApplicationCreateInput struct {
@@ -136,16 +154,16 @@ type DeploymentContainerLog struct {
 	IsRealtimeSupported bool
 }
 
-func New(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, logStore logstore.LogStore) Service {
-	return NewWithRunner(store, tasks, cfg, logger, ShellRunner{}, logStore)
+func New(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, logStore logstore.LogStore, routePublisher RouteConfigPublisher, certificateGenerator RouteCertificateGenerator, traefikRouterClient TraefikRouterClient) Service {
+	return NewWithRunner(store, tasks, cfg, logger, ShellRunner{}, logStore, routePublisher, certificateGenerator, traefikRouterClient)
 }
 
-func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore) Service {
+func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore, routePublisher RouteConfigPublisher, certificateGenerator RouteCertificateGenerator, traefikRouterClient TraefikRouterClient) Service {
 	executionStore, ok := store.(DeploymentExecutionStore)
 	if !ok {
 		panic("cd service store must implement DeploymentExecutionStore")
 	}
-	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner, routePublisher: routePublisher, certificateGenerator: certificateGenerator, traefikRouterClient: traefikRouterClient}
 }
 
 func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore) Service {

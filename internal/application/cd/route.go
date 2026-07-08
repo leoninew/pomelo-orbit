@@ -3,25 +3,15 @@ package cdsvc
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"net"
-	"net/http"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
-	"time"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
-
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -51,16 +41,7 @@ type RouteUpdateInput struct {
 	Enabled    *bool
 }
 
-// TraefikRouterResp mirrors the Traefik API response used by the HTTP handler.
-type TraefikRouterResp struct {
-	Name        string   `json:"name"`
-	Provider    string   `json:"provider"`
-	Status      string   `json:"status"`
-	Rule        string   `json:"rule"`
-	Service     string   `json:"service"`
-	Entrypoints []string `json:"entrypoints"`
-	TLS         bool     `json:"tls"`
-}
+type TraefikRouterResp = model.TraefikRouter
 
 // TraefikConfigResp reports the dashboard route state.
 type TraefikConfigResp struct {
@@ -344,7 +325,7 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId s
 	if err != nil {
 		return model.Route{}, err
 	}
-	certPEM, keyPEM, err := generateMkcert(ctx, route.Domain)
+	certPEM, keyPEM, err := s.certificateGenerator.Generate(ctx, route.Domain)
 	if err != nil {
 		return model.Route{}, err
 	}
@@ -394,9 +375,9 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return TraefikRouteListResp{}, err
 	}
-	items, err := fetchTraefikRouters(ctx, s.cfg.Traefik.APIURL)
+	items, err := s.traefikRouterClient.ListRouters(ctx)
 	if err != nil {
-		if isTraefikConnectionError(err) {
+		if s.traefikRouterClient.IsConnectionError(err) {
 			return TraefikRouteListResp{}, apperror.New(apperror.KindValidation, fmt.Sprintf("无法连接到 Traefik: %v", err))
 		}
 		return TraefikRouteListResp{}, apperror.Wrap(apperror.KindInternal, "Failed to list Traefik routes", err)
@@ -423,225 +404,15 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 }
 
 func (s Service) syncRouteFiles(ctx context.Context, route model.Route) error {
-	if route.HTTPSEnabled && route.CertPEM != nil && route.CertKey != nil {
-		if err := s.writeRouteCertFiles(ctx, route.Name, *route.CertPEM, *route.CertKey); err != nil {
-			return err
-		}
-	}
-	if route.Enabled {
-		return s.deployRouteFile(ctx, route)
-	}
-	return s.revokeRouteFiles(ctx, route.Name)
-}
-
-func (s Service) deployRouteFile(ctx context.Context, route model.Route) error {
-	configDir := s.routeConfigDir()
-	if err := os.MkdirAll(configDir, 0o755); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to create route config directory", err)
-	}
-	data, err := yaml.Marshal(routeTraefikConfig(route))
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to marshal route config", err)
-	}
-	path := filepath.Join(configDir, route.Name+".yml")
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to write route config", err)
-	}
-	return s.reloadTraefik(ctx)
+	return s.routePublisher.Sync(ctx, route)
 }
 
 func (s Service) revokeRouteFiles(ctx context.Context, routeName string) error {
-	path := filepath.Join(s.routeConfigDir(), routeName+".yml")
-	if err := removeIfExists(path); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to revoke route config", err)
-	}
-	return s.reloadTraefik(ctx)
-}
-
-func (s Service) writeRouteCertFiles(ctx context.Context, routeName string, certPEM string, certKey string) error {
-	certDir := s.routeCertDir()
-	if err := os.MkdirAll(certDir, 0o755); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to create route cert directory", err)
-	}
-	if err := os.WriteFile(filepath.Join(certDir, routeName+".pem"), []byte(certPEM), 0o600); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to write route certificate", err)
-	}
-	if err := os.WriteFile(filepath.Join(certDir, routeName+"-key.pem"), []byte(certKey), 0o600); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to write route certificate key", err)
-	}
-	return nil
+	return s.routePublisher.Revoke(ctx, routeName)
 }
 
 func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) error {
-	for _, suffix := range []string{".pem", "-key.pem"} {
-		path := filepath.Join(s.routeCertDir(), routeName+suffix)
-		if err := removeIfExists(path); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to revoke route certificate", err)
-		}
-	}
-	return s.reloadTraefik(ctx)
-}
-
-func (s Service) routeConfigDir() string {
-	if strings.TrimSpace(s.cfg.Traefik.DynamicRouteDir) == "" {
-		return filepath.Join(s.workspace.AppDir("traefik"), "data", "dynamic")
-	}
-	return cleanConfigPath(s.cfg.OrbitRoot(), s.cfg.Traefik.DynamicRouteDir)
-}
-
-func (s Service) routeCertDir() string {
-	if strings.TrimSpace(s.cfg.Traefik.CertDir) == "" {
-		return filepath.Join(s.workspace.AppDir("traefik"), "data", "certs")
-	}
-	return cleanConfigPath(s.cfg.OrbitRoot(), s.cfg.Traefik.CertDir)
-}
-
-func cleanConfigPath(root string, path string) string {
-	path = filepath.Clean(strings.TrimSpace(path))
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(root, path)
-}
-
-func (s Service) reloadTraefik(ctx context.Context) error {
-	if runtime.GOOS != "windows" {
-		return nil
-	}
-	containerName := strings.TrimSpace(s.cfg.Traefik.ContainerName)
-	if containerName == "" {
-		containerName = "traefik"
-	}
-	ps := exec.CommandContext(ctx, "docker", "ps", "-q", "-f", "name="+containerName)
-	output, err := ps.Output()
-	if err != nil || strings.TrimSpace(string(output)) == "" {
-		return nil
-	}
-	if err := exec.CommandContext(ctx, "docker", "kill", "--signal=HUP", containerName).Run(); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to reload Traefik", err)
-	}
-	return nil
-}
-
-func routeTraefikConfig(route model.Route) map[string]any {
-	serviceName := route.Name + "-service"
-	routerName := route.Name + "-route"
-	rule := "Host(`" + route.Domain + "`)"
-	if route.PathPrefix != "/" {
-		rule += " && PathPrefix(`" + route.PathPrefix + "`)"
-	}
-	router := map[string]any{"rule": rule, "service": serviceName}
-	if route.HTTPSEnabled {
-		router["entryPoints"] = []string{"websecure"}
-		if route.CertType == certTypeLetsEncrypt {
-			router["tls"] = map[string]any{"certResolver": "letsencrypt"}
-		} else if route.CertPEM != nil {
-			router["tls"] = map[string]any{}
-		}
-	} else {
-		router["entryPoints"] = []string{"web"}
-	}
-	config := map[string]any{
-		"http": map[string]any{
-			"routers":  map[string]any{routerName: router},
-			"services": map[string]any{serviceName: map[string]any{"loadBalancer": map[string]any{"servers": []map[string]string{{"url": route.TargetURL}}}}},
-		},
-	}
-	if route.HTTPSEnabled && route.CertType != certTypeLetsEncrypt && route.CertPEM != nil {
-		config["tls"] = map[string]any{"certificates": []map[string]string{{"certFile": "/etc/traefik/certs/" + route.Name + ".pem", "keyFile": "/etc/traefik/certs/" + route.Name + "-key.pem"}}}
-	}
-	return config
-}
-
-func isTraefikConnectionError(err error) bool {
-	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true
-	}
-	var opErr *net.OpError
-	return errors.As(err, &opErr)
-}
-
-func fetchTraefikRouters(ctx context.Context, apiURL string) ([]TraefikRouterResp, error) {
-	url := strings.TrimRight(strings.TrimSpace(apiURL), "/") + "/api/http/routers"
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create traefik request: %w", err)
-	}
-	client := http.Client{Timeout: 10 * time.Second}
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("request traefik routers: %w", err)
-	}
-	defer func() { _ = response.Body.Close() }()
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("traefik returned status %d", response.StatusCode)
-	}
-	var routers []struct {
-		Name        string           `json:"name"`
-		Provider    string           `json:"provider"`
-		Status      string           `json:"status"`
-		Rule        string           `json:"rule"`
-		Service     string           `json:"service"`
-		Entrypoints []string         `json:"entryPoints"`
-		TLS         *json.RawMessage `json:"tls"`
-	}
-	if err := json.NewDecoder(response.Body).Decode(&routers); err != nil {
-		return nil, fmt.Errorf("decode traefik routers: %w", err)
-	}
-	items := make([]TraefikRouterResp, 0, len(routers))
-	for _, router := range routers {
-		items = append(items, TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, TLS: router.TLS != nil && string(*router.TLS) != "null"})
-	}
-	return items, nil
-}
-
-func generateMkcert(ctx context.Context, domain string) (string, string, error) {
-	if _, err := exec.LookPath("mkcert"); err != nil {
-		return "", "", apperror.New(apperror.KindValidation, "mkcert 未安装或不可用,请参考 https://github.com/FiloSottile/mkcert#installation")
-	}
-	caRootOutput, err := exec.CommandContext(ctx, "mkcert", "-CAROOT").Output()
-	if err != nil {
-		return "", "", apperror.New(apperror.KindValidation, "mkcert CA 未安装到系统信任库。请先运行 mkcert -install 然后重启浏览器")
-	}
-	caRoot := strings.TrimSpace(string(caRootOutput))
-	if caRoot == "" {
-		return "", "", apperror.New(apperror.KindValidation, "mkcert CA 未安装到系统信任库。请先运行 mkcert -install 然后重启浏览器")
-	}
-	if _, err := os.Stat(filepath.Join(caRoot, "rootCA.pem")); err != nil {
-		return "", "", apperror.New(apperror.KindValidation, "mkcert CA 未安装到系统信任库。请先运行 mkcert -install 然后重启浏览器")
-	}
-	tmp, err := os.MkdirTemp("", "pomelo-route-cert-*")
-	if err != nil {
-		return "", "", err
-	}
-	defer func() { _ = os.RemoveAll(tmp) }()
-	certFile := filepath.Join(tmp, "cert.pem")
-	keyFile := filepath.Join(tmp, "key.pem")
-	cmd := exec.CommandContext(ctx, "mkcert", "-cert-file", certFile, "-key-file", keyFile, domain)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		message := strings.TrimSpace(string(output))
-		if message == "" {
-			message = err.Error()
-		}
-		return "", "", apperror.New(apperror.KindValidation, "mkcert 生成证书失败: "+message)
-	}
-	certPEM, err := os.ReadFile(certFile)
-	if err != nil {
-		return "", "", err
-	}
-	keyPEM, err := os.ReadFile(keyFile)
-	if err != nil {
-		return "", "", err
-	}
-	return string(certPEM), string(keyPEM), nil
-}
-
-func removeIfExists(path string) error {
-	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	return nil
+	return s.routePublisher.RevokeCertificate(ctx, routeName)
 }
 
 func normalizeRouteInput(name string, domain string, pathPrefix string, targetURL string, enabled bool) (string, string, string, string, bool, error) {

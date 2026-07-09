@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -48,7 +48,7 @@ func (h Handler) createCredential(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	created, err := h.service.CreateCredential(c.Request.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
+	created, err := h.service.CreateCredential(c.Request.Context(), current.Id, cidto.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -68,9 +68,9 @@ func (h Handler) importCredential(c *gin.Context) {
 		return
 	}
 	if req.Version == "" {
-		req.Version = cisvc.CredentialExportVersion
+		req.Version = cidto.CredentialExportVersion
 	}
-	created, err := h.service.ImportCredential(c.Request.Context(), current.Id, cisvc.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
+	created, err := h.service.ImportCredential(c.Request.Context(), current.Id, cidto.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -103,7 +103,7 @@ func (h Handler) updateCredential(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Param("credential_id"), cisvc.CredentialUpdateInput{Name: req.Name, Data: req.Data})
+	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Param("credential_id"), cidto.CredentialUpdateInput{Name: req.Name, Data: req.Data})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -141,7 +141,7 @@ func credentialResponse(item model.Credential) pomeloorbit.CredentialResp {
 	return pomeloorbit.CredentialResp{Id: item.Id, Name: item.Name, Type: item.Type, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
 }
 
-func credentialDetailResponse(item cisvc.CredentialDetail) pomeloorbit.CredentialDetailResp {
+func credentialDetailResponse(item cidto.CredentialDetail) pomeloorbit.CredentialDetailResp {
 	credential := credentialResponse(item.Credential)
 	return pomeloorbit.CredentialDetailResp{Id: credential.Id, Name: credential.Name, Type: credential.Type, Data: item.Data, CreatedAt: credential.CreatedAt}
 }

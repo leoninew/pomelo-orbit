@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd"
+	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -61,7 +61,7 @@ func (h Handler) createRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), cdsvc.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
+	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), cddto.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -94,7 +94,7 @@ func (h Handler) updateRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), cdsvc.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
+	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), cddto.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -285,11 +285,11 @@ func routeResponse(route model.Route) pomeloorbit.RouteResp {
 	return pomeloorbit.RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL, Enabled: route.Enabled, HttpsEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }
 
-func traefikConfigResponse(config cdsvc.TraefikConfigResp) pomeloorbit.TraefikConfigResp {
+func traefikConfigResponse(config cddto.TraefikConfigResp) pomeloorbit.TraefikConfigResp {
 	return pomeloorbit.TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled}
 }
 
-func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) pomeloorbit.TraefikRouteListResp {
+func traefikRouteListResponse(resp cddto.TraefikRouteListResp) pomeloorbit.TraefikRouteListResp {
 	items := make([]pomeloorbit.TraefikRouterResp, 0, len(resp.Items))
 	for _, item := range resp.Items {
 		items = append(items, traefikRouterResponse(item))
@@ -297,7 +297,7 @@ func traefikRouteListResponse(resp cdsvc.TraefikRouteListResp) pomeloorbit.Traef
 	return pomeloorbit.TraefikRouteListResp{Items: transportresponse.Ptrs(items), Total: int32(resp.Total)}
 }
 
-func traefikRouterResponse(router cdsvc.TraefikRouterResp) pomeloorbit.TraefikRouterResp {
+func traefikRouterResponse(router cddto.TraefikRouterResp) pomeloorbit.TraefikRouterResp {
 	return pomeloorbit.TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, Tls: router.TLS}
 }
 

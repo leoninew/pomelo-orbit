@@ -11,7 +11,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/project"
+	projectdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/dto"
+	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
@@ -72,7 +73,7 @@ func (h Handler) createProject(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	project, err := h.service.Create(c.Request.Context(), current.Id, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
+	project, err := h.service.Create(c.Request.Context(), current.Id, projectdto.SaveInput{Name: req.Name, Code: req.Code})
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
@@ -100,7 +101,7 @@ func (h Handler) updateProject(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	updated, err := h.service.Update(c.Request.Context(), project, projectsvc.SaveInput{Name: req.Name, Code: req.Code})
+	updated, err := h.service.Update(c.Request.Context(), project, projectdto.SaveInput{Name: req.Name, Code: req.Code})
 	if err != nil {
 		h.writeServiceError(c, err)
 		return

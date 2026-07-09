@@ -14,7 +14,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user"
+	userdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/dto"
+	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -101,7 +102,7 @@ func (h Handler) createUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	user, err := h.service.Create(c.Request.Context(), usersvc.CreateInput{Username: req.Username, Password: req.Password, Email: req.Email})
+	user, err := h.service.Create(c.Request.Context(), userdto.CreateInput{Username: req.Username, Password: req.Password, Email: req.Email})
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
@@ -150,7 +151,7 @@ func (h Handler) updateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Cannot disable current user"})
 		return
 	}
-	if _, err := h.service.Update(c.Request.Context(), usersvc.UpdateInput{User: user, Username: req.Username, Password: req.Password, Status: req.Status}); err != nil {
+	if _, err := h.service.Update(c.Request.Context(), userdto.UpdateInput{User: user, Username: req.Username, Password: req.Password, Status: req.Status}); err != nil {
 		h.writeServiceError(c, err)
 		return
 	}

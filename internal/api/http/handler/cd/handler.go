@@ -10,7 +10,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd"
+	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
+	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -76,7 +77,7 @@ func (h Handler) createApplication(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	app, err := h.service.CreateApplication(c.Request.Context(), current.Id, cdsvc.ApplicationCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
+	app, err := h.service.CreateApplication(c.Request.Context(), current.Id, cddto.ApplicationCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -109,7 +110,7 @@ func (h Handler) updateApplication(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Param("app_id"), cdsvc.ApplicationUpdateInput{Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
+	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationUpdateInput{Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -123,7 +124,7 @@ func (h Handler) deleteApplication(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id"), cdsvc.ApplicationDeleteInput{RemoveDir: c.Request.URL.Query().Get("remove_dir") == "true"}); err != nil {
+	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationDeleteInput{RemoveDir: c.Request.URL.Query().Get("remove_dir") == "true"}); err != nil {
 		h.writeError(c, err)
 		return
 	}
@@ -140,7 +141,7 @@ func (h Handler) deployApplication(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	deploymentId, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), cdsvc.ApplicationDeployInput{ForceRecreate: req.ForceRecreate})
+	deploymentId, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationDeployInput{ForceRecreate: req.ForceRecreate})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -155,7 +156,7 @@ func (h Handler) listDeployments(c *gin.Context) {
 	}
 	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListDeployments(c.Request.Context(), current.Id, cdsvc.DeploymentListInput{ProjectId: c.Request.URL.Query().Get("project_id"), ApplicationId: c.Request.URL.Query().Get("application_id"), Status: c.Request.URL.Query().Get("status"), Search: c.Request.URL.Query().Get("search"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
+	items, err := h.service.ListDeployments(c.Request.Context(), current.Id, cddto.DeploymentListInput{ProjectId: c.Request.URL.Query().Get("project_id"), ApplicationId: c.Request.URL.Query().Get("application_id"), Status: c.Request.URL.Query().Get("status"), Search: c.Request.URL.Query().Get("search"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
 	if err != nil {
 		h.writeError(c, err)
 		return

@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 )
 
 func (h Handler) RegisterArtifactRoutes(r router) {
@@ -22,7 +22,7 @@ func (h Handler) listArtifacts(c *gin.Context) {
 	}
 	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListArtifacts(c.Request.Context(), current.Id, cisvc.ArtifactListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), Search: c.Request.URL.Query().Get("search"), Page: page, PerPage: perPage})
+	items, err := h.service.ListArtifacts(c.Request.Context(), current.Id, cidto.ArtifactListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), Search: c.Request.URL.Query().Get("search"), Page: page, PerPage: perPage})
 	if err != nil {
 		h.writeError(c, err)
 		return

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/common/civariable"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/rule/civariable"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"

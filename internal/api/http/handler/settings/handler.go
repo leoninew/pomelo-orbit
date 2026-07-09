@@ -10,7 +10,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings"
+	settingsdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/dto"
+	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
@@ -92,7 +93,7 @@ func (h Handler) writeError(c *gin.Context, err error) {
 	c.JSON(apperror.StatusCode(err), gin.H{"detail": err.Error()})
 }
 
-func systemConfigResponse(config settingssvc.SystemConfig) pomeloorbit.SystemConfigResp {
+func systemConfigResponse(config settingsdto.SystemConfig) pomeloorbit.SystemConfigResp {
 	items := make([]pomeloorbit.ConfigItemResp, 0, len(config.Items))
 	for _, item := range config.Items {
 		items = append(items, configItemResponse(item))
@@ -100,6 +101,6 @@ func systemConfigResponse(config settingssvc.SystemConfig) pomeloorbit.SystemCon
 	return pomeloorbit.SystemConfigResp{Items: transportresponse.Ptrs(items)}
 }
 
-func configItemResponse(item settingssvc.ConfigItem) pomeloorbit.ConfigItemResp {
+func configItemResponse(item settingsdto.ConfigItem) pomeloorbit.ConfigItemResp {
 	return pomeloorbit.ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
 }

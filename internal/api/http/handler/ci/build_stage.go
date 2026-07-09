@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 )
 
 func (h Handler) RegisterBuildStageRoutes(r router) {
@@ -46,7 +46,7 @@ func (h Handler) createBuildStage(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	stage, err := h.service.CreateBuildStage(c.Request.Context(), current.Id, cisvc.BuildStageCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
+	stage, err := h.service.CreateBuildStage(c.Request.Context(), current.Id, cidto.BuildStageCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -79,12 +79,12 @@ func (h Handler) updateBuildStage(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	var artifacts *[]cisvc.ArtifactConfig
+	var artifacts *[]cidto.ArtifactConfig
 	if req.Artifacts != nil {
 		items := serviceArtifacts(req.Artifacts.Items)
 		artifacts = &items
 	}
-	stage, err := h.service.UpdateBuildStage(c.Request.Context(), current.Id, c.Param("stage_id"), cisvc.BuildStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, Description: req.Description})
+	stage, err := h.service.UpdateBuildStage(c.Request.Context(), current.Id, c.Param("stage_id"), cidto.BuildStageUpdateInput{Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: artifacts, Description: req.Description})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -124,17 +124,17 @@ func (h Handler) duplicateBuildStage(c *gin.Context) {
 	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func buildStageDetailResponse(item cisvc.BuildStageDetail) pomeloorbit.BuildStageResp {
+func buildStageDetailResponse(item cidto.BuildStageDetail) pomeloorbit.BuildStageResp {
 	return pomeloorbit.BuildStageResp{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: transportresponse.Ptrs(artifactConfigsResponse(item.Artifacts)), Description: item.Description, Version: int32(item.Version), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
 }
 
-func serviceArtifacts(items []*pomeloorbit.ArtifactConfigReq) []cisvc.ArtifactConfig {
-	resp := make([]cisvc.ArtifactConfig, 0, len(items))
+func serviceArtifacts(items []*pomeloorbit.ArtifactConfigReq) []cidto.ArtifactConfig {
+	resp := make([]cidto.ArtifactConfig, 0, len(items))
 	for _, item := range items {
 		if item == nil {
 			continue
 		}
-		resp = append(resp, cisvc.ArtifactConfig{Type: item.Type, Path: item.Path, Name: item.Name})
+		resp = append(resp, cidto.ArtifactConfig{Type: item.Type, Path: item.Path, Name: item.Name})
 	}
 	return resp
 }

@@ -13,7 +13,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth"
+	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
+	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -80,7 +81,7 @@ func (h Handler) login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	loginInput := authsvc.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: clientIP(c), UserAgent: c.Request.UserAgent()}
+	loginInput := authdto.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: clientIP(c), UserAgent: c.Request.UserAgent()}
 	if err := authsvc.ValidateLoginInput(loginInput); err != nil {
 		h.writeServiceError(c, err)
 		return
@@ -145,7 +146,7 @@ func (h Handler) changePassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	if err := h.service.ChangePassword(c.Request.Context(), authsvc.ChangePasswordInput{User: user, OldPassword: req.OldPassword, NewPassword: req.NewPassword}); err != nil {
+	if err := h.service.ChangePassword(c.Request.Context(), authdto.ChangePasswordInput{User: user, OldPassword: req.OldPassword, NewPassword: req.NewPassword}); err != nil {
 		if apperror.IsKind(err, apperror.KindValidation) || apperror.IsKind(err, apperror.KindUnauthorized) {
 			h.writeServiceError(c, err)
 			return

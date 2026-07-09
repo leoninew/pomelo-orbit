@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -49,7 +49,7 @@ func (h Handler) triggerRepository(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.TriggerRepository(c.Request.Context(), current.Id, cisvc.PipelineRunTriggerInput{RepositoryId: c.Param("repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
+	detail, err := h.service.TriggerRepository(c.Request.Context(), current.Id, cidto.PipelineRunTriggerInput{RepositoryId: c.Param("repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -65,7 +65,7 @@ func (h Handler) listPipelineRuns(c *gin.Context) {
 	}
 	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 20)
-	items, err := h.service.ListPipelineRuns(c.Request.Context(), current.Id, cisvc.PipelineRunListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
+	items, err := h.service.ListPipelineRuns(c.Request.Context(), current.Id, cidto.PipelineRunListInput{ProjectId: c.Request.URL.Query().Get("project_id"), RepositoryId: c.Request.URL.Query().Get("repository_id"), TemplateId: c.Request.URL.Query().Get("template_id"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -156,7 +156,7 @@ func (h Handler) retryPipelineRun(c *gin.Context) {
 	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func pipelineRunResponse(detail cisvc.PipelineRunDetail) pomeloorbit.PipelineRunResp {
+func pipelineRunResponse(detail cidto.PipelineRunDetail) pomeloorbit.PipelineRunResp {
 	item := detail.Run
 	return pomeloorbit.PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, TemplateId: item.TemplateId, TemplateName: item.TemplateName, TemplateVersion: int32(item.TemplateVersion), Trigger: item.Trigger, TriggerRef: item.TriggerRef, VariablesSnapshot: transportresponse.Ptrs(pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot)), Status: item.Status, RetryOf: item.RetryOf, StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), StageRuns: transportresponse.Ptrs(stageRunsResponse(detail.StageRuns))}
 }

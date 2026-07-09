@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -30,7 +30,7 @@ func (h Handler) getPipelineSnapshot(c *gin.Context) {
 	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func pipelineSnapshotResponse(detail cisvc.PipelineSnapshotDetail) pomeloorbit.PipelineSnapshotResp {
+func pipelineSnapshotResponse(detail cidto.PipelineSnapshotDetail) pomeloorbit.PipelineSnapshotResp {
 	item := detail.Snapshot
 	return pomeloorbit.PipelineSnapshotResp{Id: item.Id, TemplateId: item.TemplateId, Version: int32(item.Version), StagesSnapshot: transportresponse.Ptrs(snapshotStageResponses(detail.StagesSnapshot)), VariablesSnapshot: transportresponse.Ptrs(pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot)), CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
 }

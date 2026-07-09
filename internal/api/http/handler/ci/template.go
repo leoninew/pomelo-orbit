@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 )
 
 func (h Handler) RegisterTemplateRoutes(r router) {
@@ -47,7 +47,7 @@ func (h Handler) createPipelineTemplate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	detail, err := h.service.CreatePipelineTemplate(c.Request.Context(), current.Id, cisvc.PipelineTemplateCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
+	detail, err := h.service.CreatePipelineTemplate(c.Request.Context(), current.Id, cidto.PipelineTemplateCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -80,7 +80,7 @@ func (h Handler) updatePipelineTemplate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	var orchestration *[]cisvc.StageOrchestration
+	var orchestration *[]cidto.StageOrchestration
 	if req.Orchestration != nil {
 		items := serviceOrchestration(req.Orchestration.Items)
 		orchestration = &items
@@ -90,7 +90,7 @@ func (h Handler) updatePipelineTemplate(c *gin.Context) {
 		items := variableDeclarationRequestMaps(req.VariableDeclarations.Items)
 		variableDeclarations = &items
 	}
-	detail, err := h.service.UpdatePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id"), cisvc.PipelineTemplateUpdateInput{Name: req.Name, Description: req.Description, Orchestration: orchestration, VariableDeclarations: variableDeclarations})
+	detail, err := h.service.UpdatePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id"), cidto.PipelineTemplateUpdateInput{Name: req.Name, Description: req.Description, Orchestration: orchestration, VariableDeclarations: variableDeclarations})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -140,7 +140,7 @@ func (h Handler) resolvePipelineTemplateVariables(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	variables, err := h.service.ResolvePipelineTemplateVariables(c.Request.Context(), current.Id, cisvc.PipelineTemplateResolveInput{ProjectId: c.Request.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
+	variables, err := h.service.ResolvePipelineTemplateVariables(c.Request.Context(), current.Id, cidto.PipelineTemplateResolveInput{ProjectId: c.Request.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -148,12 +148,12 @@ func (h Handler) resolvePipelineTemplateVariables(c *gin.Context) {
 	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))}})
 }
 
-func pipelineTemplateResponse(detail cisvc.PipelineTemplateDetail) pomeloorbit.PipelineTemplateResp {
+func pipelineTemplateResponse(detail cidto.PipelineTemplateDetail) pomeloorbit.PipelineTemplateResp {
 	item := detail.Template
 	return pomeloorbit.PipelineTemplateResp{Id: item.Id, Name: item.Name, Description: item.Description, Orchestration: transportresponse.Ptrs(orchestrationResponse(detail.Orchestration)), Stages: transportresponse.Ptrs(buildStageDetailsResponse(detail.Stages)), VariableDeclarations: transportresponse.Ptrs(variableDeclarationResponses(detail.VariableDeclarations)), Version: int32(item.Version), CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 
-func orchestrationResponse(items []cisvc.StageOrchestration) []pomeloorbit.StageOrchestrationResp {
+func orchestrationResponse(items []cidto.StageOrchestration) []pomeloorbit.StageOrchestrationResp {
 	resp := make([]pomeloorbit.StageOrchestrationResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, pomeloorbit.StageOrchestrationResp{StageId: item.StageId, StageName: item.StageName, StageVersion: int32(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int32(item.SortOrder)})
@@ -161,18 +161,18 @@ func orchestrationResponse(items []cisvc.StageOrchestration) []pomeloorbit.Stage
 	return resp
 }
 
-func serviceOrchestration(items []*pomeloorbit.StageOrchestrationReq) []cisvc.StageOrchestration {
-	resp := make([]cisvc.StageOrchestration, 0, len(items))
+func serviceOrchestration(items []*pomeloorbit.StageOrchestrationReq) []cidto.StageOrchestration {
+	resp := make([]cidto.StageOrchestration, 0, len(items))
 	for _, item := range items {
 		if item == nil {
 			continue
 		}
-		resp = append(resp, cisvc.StageOrchestration{StageId: item.StageId, StageName: item.StageName, StageVersion: int(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int(item.SortOrder)})
+		resp = append(resp, cidto.StageOrchestration{StageId: item.StageId, StageName: item.StageName, StageVersion: int(item.StageVersion), DependsOn: item.DependsOn, SortOrder: int(item.SortOrder)})
 	}
 	return resp
 }
 
-func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []pomeloorbit.BuildStageResp {
+func buildStageDetailsResponse(items []cidto.BuildStageDetail) []pomeloorbit.BuildStageResp {
 	resp := make([]pomeloorbit.BuildStageResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, buildStageDetailResponse(item))
@@ -180,7 +180,7 @@ func buildStageDetailsResponse(items []cisvc.BuildStageDetail) []pomeloorbit.Bui
 	return resp
 }
 
-func artifactConfigsResponse(items []cisvc.ArtifactConfig) []pomeloorbit.ArtifactConfigResp {
+func artifactConfigsResponse(items []cidto.ArtifactConfig) []pomeloorbit.ArtifactConfigResp {
 	if items == nil {
 		return nil
 	}

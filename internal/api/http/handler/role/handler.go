@@ -14,7 +14,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	rolesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/role"
+	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
+	rolesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -123,7 +124,7 @@ func (h Handler) createRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	role, err := h.service.Create(c.Request.Context(), rolesvc.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
+	role, err := h.service.Create(c.Request.Context(), roledto.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to create role")
 		return
@@ -145,7 +146,7 @@ func (h Handler) updateRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	updated, err := h.service.Update(c.Request.Context(), rolesvc.SaveInput{Role: role, Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
+	updated, err := h.service.Update(c.Request.Context(), roledto.SaveInput{Role: role, Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes})
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to update role")
 		return

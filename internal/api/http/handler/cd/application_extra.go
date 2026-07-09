@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd"
+	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -44,19 +44,19 @@ func (h Handler) importApplication(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	files := make([]cdsvc.ConfigFileInput, 0, len(req.ConfigFiles))
+	files := make([]cddto.ConfigFileInput, 0, len(req.ConfigFiles))
 	for _, file := range req.ConfigFiles {
-		files = append(files, cdsvc.ConfigFileInput{Path: file.Path, Content: file.Content})
+		files = append(files, cddto.ConfigFileInput{Path: file.Path, Content: file.Content})
 	}
-	serviceConfigs := make([]cdsvc.ApplicationServiceConfigImportInput, 0, len(req.ServiceConfigs))
+	serviceConfigs := make([]cddto.ApplicationServiceConfigImportInput, 0, len(req.ServiceConfigs))
 	for _, item := range req.ServiceConfigs {
-		serviceConfigs = append(serviceConfigs, cdsvc.ApplicationServiceConfigImportInput{ServiceName: item.ServiceName, Image: item.Image, Environment: item.Environment, Volumes: item.Volumes})
+		serviceConfigs = append(serviceConfigs, cddto.ApplicationServiceConfigImportInput{ServiceName: item.ServiceName, Image: item.Image, Environment: item.Environment, Volumes: item.Volumes})
 	}
-	routes := make([]cdsvc.ApplicationRouteInput, 0, len(req.Routes))
+	routes := make([]cddto.ApplicationRouteInput, 0, len(req.Routes))
 	for _, item := range req.Routes {
-		routes = append(routes, cdsvc.ApplicationRouteInput{ServiceName: item.ServiceName, Domain: item.Domain, Port: int(item.Port)})
+		routes = append(routes, cddto.ApplicationRouteInput{ServiceName: item.ServiceName, Domain: item.Domain, Port: int(item.Port)})
 	}
-	app, err := h.service.ImportApplication(c.Request.Context(), current.Id, cdsvc.ApplicationImportInput{ProjectId: c.Request.URL.Query().Get("project_id"), Version: req.Version, Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged, ConfigFiles: files, ServiceConfigs: serviceConfigs, ApplicationRoutes: routes})
+	app, err := h.service.ImportApplication(c.Request.Context(), current.Id, cddto.ApplicationImportInput{ProjectId: c.Request.URL.Query().Get("project_id"), Version: req.Version, Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged, ConfigFiles: files, ServiceConfigs: serviceConfigs, ApplicationRoutes: routes})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -115,7 +115,7 @@ func (h Handler) createApplicationFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	file, err := h.service.CreateApplicationFile(c.Request.Context(), current.Id, c.Param("app_id"), cdsvc.ConfigFileInput{Path: req.Path, Content: req.Content})
+	file, err := h.service.CreateApplicationFile(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ConfigFileInput{Path: req.Path, Content: req.Content})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -147,7 +147,7 @@ func (h Handler) updateApplicationFile(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	file, err := h.service.UpdateApplicationFile(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("file_id"), cdsvc.ConfigFileInput{Path: req.Path, Content: req.Content})
+	file, err := h.service.UpdateApplicationFile(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("file_id"), cddto.ConfigFileInput{Path: req.Path, Content: req.Content})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -275,7 +275,7 @@ func (h Handler) createApplicationRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	route, err := h.service.CreateApplicationRoute(c.Request.Context(), current.Id, c.Param("app_id"), cdsvc.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)})
+	route, err := h.service.CreateApplicationRoute(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -294,7 +294,7 @@ func (h Handler) updateApplicationRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
 		return
 	}
-	route, err := h.service.UpdateApplicationRoute(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("route_id"), cdsvc.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)})
+	route, err := h.service.UpdateApplicationRoute(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("route_id"), cddto.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)})
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -372,7 +372,7 @@ func applicationRouteResponse(route model.ApplicationRoute) pomeloorbit.Applicat
 	return pomeloorbit.ApplicationRouteResp{Id: route.Id, ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port), CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
 }
 
-func applicationServiceConfigResponses(views []cdsvc.ApplicationServiceConfigView) []pomeloorbit.ApplicationServiceConfigResp {
+func applicationServiceConfigResponses(views []cddto.ApplicationServiceConfigView) []pomeloorbit.ApplicationServiceConfigResp {
 	resp := make([]pomeloorbit.ApplicationServiceConfigResp, 0, len(views))
 	for _, view := range views {
 		resp = append(resp, applicationServiceConfigResponse(view))
@@ -380,6 +380,6 @@ func applicationServiceConfigResponses(views []cdsvc.ApplicationServiceConfigVie
 	return resp
 }
 
-func applicationServiceConfigResponse(view cdsvc.ApplicationServiceConfigView) pomeloorbit.ApplicationServiceConfigResp {
+func applicationServiceConfigResponse(view cddto.ApplicationServiceConfigView) pomeloorbit.ApplicationServiceConfigResp {
 	return pomeloorbit.ApplicationServiceConfigResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort), BaseImage: view.BaseImage, Image: view.Image, ConfigId: view.ConfigId, CreatedAt: view.CreatedAt, UpdatedAt: view.UpdatedAt}
 }

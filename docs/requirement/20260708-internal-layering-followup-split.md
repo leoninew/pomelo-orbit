@@ -1,7 +1,7 @@
 # internal 分层后续逐条拆分
-最后修改时间: 2026-07-08 18:10:42
+最后修改时间: 2026-07-09 08:37:55
 
-Review status: Draft
+Review status: Accepted
 
 ## Background
 
@@ -48,7 +48,7 @@ Review status: Draft
 | 2 | `internal/application/settings/service.go` | settings application service 直接读写 `.env` 文件，应用层与本地配置文件存储耦合。 | 已完成拆分：settings application 保留系统配置用例、key/value 转换、默认值与展示规则；`.env` 文件解析、写入、删除、路径解析移动到 `internal/infrastructure/config/envfile`，由 `EnvStore` 接口注入。 | 高 | 已实施，检查通过 |
 | 3 | `internal/application/ci/runtime_variables.go` 与 `internal/workflow/activity/ci/runtime_variables.go` | runtime variable 逻辑跨触发与执行，迁移后 application/activity 两侧存在相近逻辑，可能出现重复和规则漂移。 | 已完成拆分：runtime variable、template variable 解析/清洗/内置变量/快照补全等纯规则集中到 `internal/common/civariable`；application 与 workflow activity 直接调用共享规则；删除 workflow activity wrapper-only 文件，不保留占位或兼容层。 | 高 | 已实施，检查通过 |
 | 4 | `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` | CI workspace 路径、artifact/log 路径和 Docker mount 计算跨 application/activity 使用，当前存在重复实现。 | 已完成拆分：共享 CI workspace 包位于 `internal/infrastructure/storage/local/ciworkspace`，集中承载路径规则、目录创建、physical root 解析缓存和 Docker mount 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper-only 兼容层。 | 中 | 已实施，检查通过 |
-| 5 | `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` | CD workspace 路径计算与物理数据根解析跨 application/activity 使用，当前边界需要确认。 | 与 CI workspace 同步审视；把稳定路径规则与执行时副作用分离，避免 application 依赖 activity 私有实现。 | 中 | 待处理 |
+| 5 | `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` | CD workspace 路径计算与物理数据根解析跨 application/activity 使用，当前存在重复实现，且依赖本地 physical data root 解析。 | 已完成拆分：共享 CD workspace 包位于 `internal/infrastructure/storage/local/cdworkspace`，集中承载 CD app/log 路径、physical root 解析缓存和 slash 格式 physical path 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper、别名、适配或兼容层。 | 中 | 已实施，检查通过 |
 | 6 | `internal/repository/impl/sqlc/task/repository.go` | task repository 实现里包含 Task 持久化模型，repository impl 与模型定义边界不清。 | 读取文件确认模型是否只服务 sqlc impl；若为跨层任务模型，应迁到 `internal/model` 或 `internal/queue/task`；sqlc impl 只保留转换和持久化。 | 中 | 待处理 |
 | 7 | `internal/infrastructure/logger/logstore/logstore.go` | logstore 已放入 logger，但需要确认 logging 与 logstore 的 package/API 命名是否表达清晰。 | 检查 logger/logging/logstore 三者调用关系；若只是命名问题，优先小范围重命名或补清晰接口，不做大迁移。 | 低 | 待处理 |
 | 8 | 根目录 `proto/` 与 `internal/gen/proto` | `internal/gen/proto` 是生成代码，根目录 `proto/` 是否作为 IDL 源目录保留尚未形成明确决策。 | 单独检查 proto 生成链路、Make/Task/Buf 配置；若根目录是源码约定，应保留并记录；不要强行迁入 internal。 | 低 | 待处理 |
@@ -399,6 +399,90 @@ go test ./cmd/... ./internal/...
   - stage log path 仍为 `dataRoot/ci/runs/<runId>/stages/<stageRunId>.log`；
   - Docker mounts 仍映射到 `/workspace` 和 `/artifacts`；
   - Docker host path 仍使用 `ResolvePhysicalDataRoot` 解析后的 physical root。
+- [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
+
+验证结果：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：通过，`golangci-lint run` 输出 `0 issues.`。
+
+## 问题 5 分析：CD workspace 规则
+
+### 参考架构依据
+
+参考 `D:\SourceCodes\mywork\k12-force\docs\analyze\arch.md`：
+
+- `application/` 负责 command/query/workflow orchestration，即应用用例编排。
+- `workflow/activity` 负责工作流 activity 执行。
+- `infrastructure/storage/local` 负责本地文件存储。
+- `common/` 只放通用错误、常量、工具、校验等，不承载具体本地文件系统布局和 physical host path 解析。
+
+CD workspace 规则依赖 `internal/infrastructure/storage/local.ResolvePhysicalDataRoot`，并描述 `dataRoot/cd/<appCode>` 下的本地文件布局，因此目标包应放在 `internal/infrastructure/storage/local/cdworkspace`，而不是 `common`。
+
+### 当前读取结论
+
+`internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` 当前实现完全重复，均包含：
+
+- `Workspace` 数据结构；
+- `NewWorkspace` / `newWorkspaceWithResolver`；
+- `AppDir(appCode)`；
+- `DeploymentLogPath(appCode, deploymentId)`；
+- `PhysicalDataRoot(ctx)`；
+- `PhysicalDir(ctx)`；
+- `PhysicalAppDir(ctx, appCode)`。
+
+application 侧使用这些规则删除应用目录、读取部署日志、执行 compose 状态/日志命令、渲染模板 physical path；workflow activity 侧使用同一规则写部署日志、执行 deploy/restart/stop 命令、渲染部署模板。如果继续双份维护，application 读日志路径和 activity 写日志路径、模板中的 physical path 规则都可能漂移。
+
+### 拆分策略
+
+本 issue 只处理 CD workspace 重复实现，不扩大为 command runner、`os.RemoveAll` 或部署执行编排拆分：
+
+1. 新增共享包 `internal/infrastructure/storage/local/cdworkspace`。
+2. 共享包承载 CD workspace 逻辑路径、部署日志路径、physical root 解析缓存、slash 格式 physical path 生成。
+3. 暴露 `New(dataRoot)` 与 `NewWithResolver(dataRoot, resolver)`；测试使用 `NewWithResolver` 注入 resolver。
+4. 保持现有方法语义：
+   - `AppDir(appCode)`；
+   - `DeploymentLogPath(appCode, deploymentId)`；
+   - `PhysicalDataRoot(ctx)`；
+   - `PhysicalDir(ctx)`；
+   - `PhysicalAppDir(ctx, appCode)`。
+5. `internal/application/cd/service.go` 与 `internal/workflow/activity/cd/service.go` 中的 workspace 字段直接改为 `*cdworkspace.Workspace`，构造时直接调用 `cdworkspace.New(cfg.DataRoot())`。
+6. 测试中需要注入 resolver 的地方直接使用 `cdworkspace.NewWithResolver(...)`。
+7. 删除 `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go`，不保留 wrapper-only 文件、类型别名、转发构造函数、适配层或新旧逻辑并存。
+8. 将现有 workflow activity workspace 行为测试迁移到 `internal/infrastructure/storage/local/cdworkspace/workspace_test.go`，保持现有断言。
+
+### 实施结果
+
+- 新增 `internal/infrastructure/storage/local/cdworkspace/workspace.go`：集中承载 CD app 目录、deployment log 路径、physical root 缓存、slash 格式 physical dir/app dir 生成。
+- 新增 `internal/infrastructure/storage/local/cdworkspace/workspace_test.go`：迁移原 workflow activity CD workspace 行为测试，保留 logical path、physical path、resolver cache 和错误传播断言。
+- 删除重复实现：
+  - `internal/application/cd/workspace.go`
+  - `internal/workflow/activity/cd/workspace.go`
+  - `internal/workflow/activity/cd/workspace_test.go`
+- `internal/application/cd/service.go` 中的 workspace 改为 `*cdworkspace.Workspace`，构造时直接使用 `cdworkspace.New(cfg.DataRoot())`。
+- `internal/workflow/activity/cd/service.go` 中的 workspace 改为 `*cdworkspace.Workspace`，构造时直接使用 `cdworkspace.New(cfg.DataRoot())`。
+- `internal/application/cd/compose_test.go` 与 `internal/workflow/activity/cd/deployment_execution_test.go` 中需要注入 resolver 的测试直接使用 `cdworkspace.NewWithResolver(...)`。
+
+### 验收标准
+
+- [x] `internal/infrastructure/storage/local/cdworkspace` 新增并承载 CD workspace 规则。
+- [x] `internal/application/cd/workspace.go` 删除。
+- [x] `internal/workflow/activity/cd/workspace.go` 删除。
+- [x] application 与 workflow activity 都直接依赖 `*cdworkspace.Workspace`。
+- [x] 不保留 wrapper、别名、适配、兼容转发或新旧逻辑并存。
+- [x] workspace 行为保持不变：
+  - app dir 仍为 `dataRoot/cd/<appCode>`；
+  - deployment log path 仍为 `dataRoot/cd/<appCode>/deployments/<deploymentId>.log`；
+  - `PhysicalDir` 仍返回 slash 格式 physical root；
+  - `PhysicalAppDir` 仍返回 slash 格式 `<physicalRoot>/cd/<appCode>`；
+  - physical root resolver 仍只执行一次并缓存错误。
 - [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
 
 验证结果：

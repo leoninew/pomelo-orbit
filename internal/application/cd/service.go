@@ -17,6 +17,7 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
@@ -99,7 +100,7 @@ type Service struct {
 	executionStore       DeploymentExecutionStore
 	tasks                TaskService
 	cfg                  config.Config
-	workspace            *Workspace
+	workspace            *cdworkspace.Workspace
 	logStore             logstore.LogStore
 	logger               *slog.Logger
 	runner               CommandRunner
@@ -164,11 +165,11 @@ func NewWithRunner(store Store, tasks TaskService, cfg config.Config, logger *sl
 	if !ok {
 		panic("cd service store must implement DeploymentExecutionStore")
 	}
-	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner, routePublisher: routePublisher, certificateGenerator: certificateGenerator, traefikRouterClient: traefikRouterClient}
+	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner, routePublisher: routePublisher, certificateGenerator: certificateGenerator, traefikRouterClient: traefikRouterClient}
 }
 
 func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore) Service {
-	return Service{executionStore: store, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
+	return Service{executionStore: store, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {

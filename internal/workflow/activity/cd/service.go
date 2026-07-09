@@ -6,6 +6,7 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -23,12 +24,12 @@ type DeploymentExecutionStore interface {
 type Service struct {
 	executionStore DeploymentExecutionStore
 	cfg            config.Config
-	workspace      *Workspace
+	workspace      *cdworkspace.Workspace
 	logStore       logstore.LogStore
 	logger         *slog.Logger
 	runner         CommandRunner
 }
 
 func NewExecutionService(store DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner CommandRunner, logStore logstore.LogStore) Service {
-	return Service{executionStore: store, cfg: cfg, workspace: NewWorkspace(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
+	return Service{executionStore: store, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
 }

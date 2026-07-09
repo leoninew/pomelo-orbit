@@ -1,4 +1,4 @@
-package cdsvc
+package cdworkspace
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestWorkspaceUsesLogicalDataRootForApplicationFiles(t *testing.T) {
-	workspace := newWorkspaceWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
+	workspace := NewWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return t.TempDir(), nil
 	})
 
@@ -22,7 +22,7 @@ func TestWorkspaceUsesLogicalDataRootForApplicationFiles(t *testing.T) {
 
 func TestWorkspaceUsesPhysicalDataRootForComposePaths(t *testing.T) {
 	physicalRoot := filepath.Join(t.TempDir(), "host-data")
-	workspace := newWorkspaceWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
+	workspace := NewWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
 		if logicalDataRoot != filepath.Clean("data") {
 			t.Fatalf("unexpected logical data root: %q", logicalDataRoot)
 		}
@@ -48,7 +48,7 @@ func TestWorkspaceUsesPhysicalDataRootForComposePaths(t *testing.T) {
 
 func TestWorkspaceCachesPhysicalDataRootResolver(t *testing.T) {
 	calls := 0
-	workspace := newWorkspaceWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
+	workspace := NewWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
 		calls++
 		return t.TempDir(), nil
 	})
@@ -66,7 +66,7 @@ func TestWorkspaceCachesPhysicalDataRootResolver(t *testing.T) {
 
 func TestWorkspaceReturnsPhysicalDataRootError(t *testing.T) {
 	wantErr := errors.New("missing host mount")
-	workspace := newWorkspaceWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
+	workspace := NewWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return "", wantErr
 	})
 

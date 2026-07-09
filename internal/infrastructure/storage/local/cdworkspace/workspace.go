@@ -1,4 +1,4 @@
-package cdsvc
+package cdworkspace
 
 import (
 	"context"
@@ -8,22 +8,22 @@ import (
 	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
 )
 
-type cdPhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
+type PhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
 
 type Workspace struct {
 	logicalDataRoot string
-	resolver        cdPhysicalDataRootResolver
+	resolver        PhysicalDataRootResolver
 
 	physicalOnce     sync.Once
 	physicalDataRoot string
 	physicalErr      error
 }
 
-func NewWorkspace(dataRoot string) *Workspace {
-	return newWorkspaceWithResolver(dataRoot, runtimepath.ResolvePhysicalDataRoot)
+func New(dataRoot string) *Workspace {
+	return NewWithResolver(dataRoot, runtimepath.ResolvePhysicalDataRoot)
 }
 
-func newWorkspaceWithResolver(dataRoot string, resolver cdPhysicalDataRootResolver) *Workspace {
+func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Workspace {
 	return &Workspace{logicalDataRoot: filepath.Clean(dataRoot), resolver: resolver}
 }
 

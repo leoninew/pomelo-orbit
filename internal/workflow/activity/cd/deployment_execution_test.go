@@ -13,6 +13,7 @@ import (
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -144,7 +145,7 @@ func TestExecuteApplicationDeployFailsWhenPhysicalDataRootCannotBeResolved(t *te
 		},
 	}
 	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
-	service.workspace = newWorkspaceWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
+	service.workspace = cdworkspace.NewWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return "", errors.New("missing host mount")
 	})
 
@@ -171,7 +172,7 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 	}
 	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
 	physicalRoot := filepath.Join(t.TempDir(), "host-data")
-	service.workspace = newWorkspaceWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
+	service.workspace = cdworkspace.NewWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return physicalRoot, nil
 	})
 

@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分验证
-最后修改时间: 2026-07-09 10:42:00
+最后修改时间: 2026-07-09 12:58:56
 
 Review status: Accepted
 
@@ -481,3 +481,192 @@ ok   gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci
 ## Conclusion
 
 Issue 7 logger/logstore 命名与边界拆分已完成并通过验证。实现符合 requirement 中的分层目标：CI/CD execution log 本地读写已迁入 `internal/infrastructure/storage/local/executionlog`，旧 `logger/logstore` 删除，application 与 workflow activity 通过消费侧最小接口使用 execution log 能力，未保留兼容层、别名或 wrapper，runtime logger 配置与 execution log 行为保持不变，后端检查全部通过。
+
+---
+
+# Issue 9：HTTP server 路由与依赖组装边界验证
+
+## Verification target
+
+本次追加验证范围为 light / 轻量模式下的 issue 9：`internal/api/http/server.go` 中 HTTP adapter 与 composition-root/bootstrap 职责拆分。
+
+对应 requirement 文档：
+
+- `docs/requirement/20260708-internal-layering-followup-split.md`
+
+本节只验证 issue 9，不重新验证 issue 5/6/7，也不验证 issue 10。
+
+## Requirement alignment
+
+需求要求：
+
+- `api/http` 只保留 Gin 入站适配职责：engine、middleware、route registration、health、static SPA fallback、runtime config 注入。
+- repository implementation、application service、infrastructure adapter 的选择与组装移到 `bootstrap/provider.go`。
+- `transporthttp.New` 不保留旧签名，不新增兼容 wrapper 或新旧构造路径并存。
+- `Handler()` 不再重复构造 CI/CD services，并拆成清晰私有 route registration 函数。
+- Cloudflare Turnstile concrete HTTP verifier 不继续留在 `api/http`，由 infrastructure 包承载并通过 auth handler 的接口消费。
+- 清理 root `internal/api/http/*_routes_test.go` 中与源码职责不匹配的孤儿测试；需要保留的业务覆盖迁到对应 application 包。
+- 不修改 API route path、request/response contract、application service 行为、repository SQL/mapper、worker/bootstrap lifecycle、前端或数据库迁移。
+
+实际实现与 requirement 对齐：
+
+- `internal/api/http/server.go` 当前不再 import sqlc repository implementation、envfile、executionlog、traefik、turnstile infrastructure、jwt 或 task repository implementation。
+- `transporthttp.New` 当前签名为 `New(cfg config.Config, logger *slog.Logger, deps ServerDependencies) Server`，未保留旧 `store/taskRepo/maxAttempts` 构造路径。
+- `ServerDependencies` 显式接收 HTTP route registration 所需的 application services、authenticator、handler stores、task service 和 turnstile verifier。
+- `Handler()` 只创建 Gin engine，并调用 `registerMiddleware`、`registerHealthRoutes`、`registerAuthRoutes`、`registerUserRoutes`、`registerRoleRoutes`、`registerSettingsRoutes`、`registerProjectRoutes`、`registerCIRoutes`、`registerCDRoutes`、`registerTaskRoutes`、`registerFallbackRoutes`。
+- `internal/bootstrap/provider.go` 负责构造 token service、sqlc repositories、application services、envfile store、executionlog store、Traefik route manager、mkcert generator、Turnstile verifier，并注入 `transporthttp.New`。
+- Cloudflare Turnstile verifier concrete implementation 已迁到 `internal/infrastructure/turnstile/verifier.go`；`api/http` 下没有旧 concrete verifier 或 wrapper。
+- `internal/test/e2e/mysql_e2e_test.go` 改用 `bootstrap.NewHTTPServer`，不继续调用旧 `transporthttp.New` 签名。
+- root HTTP route tests 中实际覆盖 application service / repository / filesystem / task enqueue 业务组合的孤儿测试已删除；保留业务覆盖已按源码归属重建到 `internal/application/{auth,cd,ci,project,role,settings,user}` 的 service integration tests。
+
+## Spec alignment
+
+不适用。当前任务使用 light / 轻量模式，未创建独立 spec 文档。
+
+## Plan alignment
+
+不适用。当前任务使用 light / 轻量模式，按 requirement 中的 issue 9 拆分策略实施。
+
+## Actual diff summary
+
+当前 issue 9 diff 覆盖以下文件：
+
+- `docs/requirement/20260708-internal-layering-followup-split.md`
+  - 记录 issue 9 架构依据、拆分策略、实施结果、验收标准和验证结果。
+- `internal/api/http/server.go`
+  - 新增 `ServerDependencies`；`New` 接收已装配依赖；`Handler()` 拆成私有 route registration 方法；删除 repository/service/infrastructure adapter 构造。
+- `internal/bootstrap/provider.go`
+  - 将 HTTP server 所需 repository、application service、infra adapter、authenticator、Turnstile verifier 的组装集中到 bootstrap。
+- `internal/infrastructure/turnstile/verifier.go`
+  - 从 `internal/api/http/turnstile.go` 迁出 Cloudflare Turnstile concrete HTTP client。
+- `internal/infrastructure/turnstile/verifier_test.go`
+  - Turnstile verifier 测试随 concrete implementation 迁到 infrastructure 包。
+- `internal/api/http/server_test.go`
+  - 调整为只覆盖 HTTP server/static/runtime config/fallback 等 adapter 责任，并适配 `ServerDependencies` 构造。
+- `internal/test/e2e/mysql_e2e_test.go`
+  - 改用 `bootstrap.NewHTTPServer` 装配 HTTP server。
+- 删除 root HTTP route 集成测试：
+  - `internal/api/http/application_routes_test.go`
+  - `internal/api/http/artifact_routes_test.go`
+  - `internal/api/http/auth_routes_test.go`
+  - `internal/api/http/build_stage_routes_test.go`
+  - `internal/api/http/ci_api_compatibility_test.go`
+  - `internal/api/http/credential_routes_test.go`
+  - `internal/api/http/deployment_routes_test.go`
+  - `internal/api/http/pipeline_run_routes_test.go`
+  - `internal/api/http/project_routes_test.go`
+  - `internal/api/http/repository_routes_test.go`
+  - `internal/api/http/route_routes_test.go`
+  - `internal/api/http/settings_routes_test.go`
+  - `internal/api/http/snapshot_routes_test.go`
+  - `internal/api/http/template_routes_test.go`
+  - `internal/api/http/traefik_route_test.go`
+  - `internal/api/http/user_role_routes_test.go`
+- 新增 application service integration tests：
+  - `internal/application/auth/service_integration_test.go`
+  - `internal/application/cd/service_integration_test.go`
+  - `internal/application/ci/service_integration_test.go`
+  - `internal/application/project/service_integration_test.go`
+  - `internal/application/role/service_integration_test.go`
+  - `internal/application/settings/service_integration_test.go`
+  - `internal/application/user/service_integration_test.go`
+
+## Expected vs actual changed files
+
+预期改动：
+
+- 修改 `internal/api/http/server.go`，让 HTTP server 只接收已装配依赖并注册 Gin routes/middleware/static fallback。
+- 修改 `internal/bootstrap/provider.go`，集中承担 HTTP server 依赖组装。
+- 迁移 Turnstile concrete verifier 到 infrastructure。
+- 调整受构造签名影响的 HTTP server/e2e 测试。
+- 清理 root HTTP route orphan tests，并把需要保留的业务覆盖放到对应 application package。
+- 更新 requirement 和 verification 文档。
+
+实际改动与预期一致。
+
+`git diff --name-status` 将 Turnstile concrete implementation 识别为 rename：
+
+```text
+R072 internal/api/http/turnstile.go internal/infrastructure/turnstile/verifier.go
+R066 internal/api/http/turnstile_test.go internal/infrastructure/turnstile/verifier_test.go
+```
+
+未发现 issue 9 范围外的产品代码重构；未触碰前端、数据库迁移、API route path、request/response contract、worker lifecycle 或 bootstrap app lifecycle。
+
+## Acceptance checklist
+
+- [x] `internal/api/http/server.go` 不再 import sqlc repository implementation packages。
+- [x] `internal/api/http/server.go` 不再构造 application services、repository implementation 或 infrastructure adapters。
+- [x] HTTP server 只负责 Gin engine、middleware、route registration、static fallback 和 HTTP adapter 依赖持有。
+- [x] `bootstrap/provider.go` 负责选择并装配 HTTP server 所需 repository/service/infrastructure dependencies。
+- [x] `Handler()` 不再重复构造 CI/CD services。
+- [x] route registration 已拆为清晰私有函数。
+- [x] Cloudflare Turnstile concrete HTTP client 不再作为 concrete implementation 留在 `api/http`；auth handler 仍通过接口消费。
+- [x] 不保留旧 `transporthttp.New` 签名、兼容 wrapper、别名或新旧构造路径并存。
+- [x] API 路由、middleware 顺序、static SPA fallback、runtime config 注入行为保持不变。
+- [x] root HTTP orphan route tests 已清理；保留的业务覆盖已迁到对应 application service tests。
+- [x] 后端检查通过。
+
+## Test results
+
+已运行命令：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：
+
+- `go fmt ./cmd/... ./internal/...`：通过。
+- `./bin/golangci-lint fmt ./cmd/... ./internal/...`：通过。
+- `./bin/golangci-lint run ./cmd/... ./internal/...`：通过，输出 `0 issues.`。
+- `go vet ./cmd/... ./internal/...`：通过。
+- `go test ./cmd/... ./internal/...`：通过。
+
+关键相关包：
+
+```text
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/api/http
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/auth
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/cd
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/ci
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/project
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/role
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/settings
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/user
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/turnstile
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/test/e2e
+```
+
+## Missed or expanded scope
+
+未发现范围偏离。
+
+本次没有处理以下事项，符合 issue 9 边界：
+
+- 未修改 API route path 或 request/response contract。
+- 未修改 handler 内部业务映射逻辑。
+- 未修改 application service 行为。
+- 未修改 repository SQL/mapper。
+- 未修改 worker lifecycle 或 bootstrap app lifecycle。
+- 未拆分 `internal/bootstrap/app.go` / `internal/bootstrap/provider.go` 的生命周期边界；该事项属于 issue 10。
+- 未修改前端或数据库迁移。
+
+## Risks
+
+当前未发现遗留实现风险。
+
+注意：本次验证观察到 issue 9 代码变更和 requirement 文档变更已处于 index 侧；追加 verification 文档后，verification 文档本身为新的工作区变更。本次验证未执行 `git add`、`git commit` 或 `git push`。
+
+## Incomplete items
+
+无。
+
+## Conclusion
+
+Issue 9 HTTP server 路由与依赖组装边界拆分已完成并通过验证。实现符合 requirement 中的分层目标：`api/http` 不再选择 repository implementation、不再构造 application services 或 infrastructure adapters，HTTP server 只负责 Gin adapter 相关职责；依赖装配集中到 bootstrap；Turnstile concrete verifier 已迁入 infrastructure；孤儿 HTTP route tests 已清理且需要保留的业务覆盖已放回对应 application 包；未保留兼容层、别名、wrapper 或新旧构造路径，后端检查全部通过。

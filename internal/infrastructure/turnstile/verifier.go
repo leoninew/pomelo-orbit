@@ -1,4 +1,4 @@
-package transporthttp
+package turnstile
 
 import (
 	"bytes"
@@ -11,39 +11,35 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
-type turnstileVerifier interface {
-	Verify(ctx context.Context, token string, remoteIP string) error
-}
-
-type cloudflareTurnstileVerifier struct {
+type Verifier struct {
 	secretKey string
 	verifyURL string
 	client    *http.Client
 }
 
-type turnstileVerifyReq struct {
+type verifyReq struct {
 	Secret   string `json:"secret"`
 	Response string `json:"response"`
 	RemoteIP string `json:"remoteip,omitempty"`
 }
 
-type turnstileVerifyResp struct {
+type verifyResp struct {
 	Success    bool     `json:"success"`
 	ErrorCodes []string `json:"error-codes"`
 	Hostname   string   `json:"hostname"`
 	Action     string   `json:"action"`
 }
 
-func newTurnstileVerifier(cfg config.TurnstileConfig) turnstileVerifier {
-	return cloudflareTurnstileVerifier{
+func NewVerifier(cfg config.TurnstileConfig) Verifier {
+	return Verifier{
 		secretKey: cfg.SecretKey,
 		verifyURL: cfg.VerifyURL,
 		client:    &http.Client{Timeout: 3 * time.Second},
 	}
 }
 
-func (v cloudflareTurnstileVerifier) Verify(ctx context.Context, token string, remoteIP string) error {
-	payload, err := json.Marshal(turnstileVerifyReq{Secret: v.secretKey, Response: token, RemoteIP: remoteIP})
+func (v Verifier) Verify(ctx context.Context, token string, remoteIP string) error {
+	payload, err := json.Marshal(verifyReq{Secret: v.secretKey, Response: token, RemoteIP: remoteIP})
 	if err != nil {
 		return fmt.Errorf("marshal turnstile verification request: %w", err)
 	}
@@ -62,7 +58,7 @@ func (v cloudflareTurnstileVerifier) Verify(ctx context.Context, token string, r
 		return fmt.Errorf("turnstile verification failed: status=%d", response.StatusCode)
 	}
 
-	var result turnstileVerifyResp
+	var result verifyResp
 	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
 		return fmt.Errorf("decode turnstile verification response: %w", err)
 	}

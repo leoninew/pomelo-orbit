@@ -32,76 +32,92 @@ import (
 	rolesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/role"
 	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings"
 	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user"
-	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/config/envfile"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/traefik"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
-	store "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc"
-	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/cd"
-	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/ci"
-	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
-	rolerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/role"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
-	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
 )
 
-type Server struct {
-	appCfg            config.Config
-	cfg               config.ServerConfig
-	logger            *slog.Logger
-	store             store.Store
-	logStore          executionlog.Store
-	ciRepository      cirepo.Repository
-	cdRepository      cdrepo.Repository
-	authService       authsvc.Service
-	roleService       rolesvc.Service
-	userService       usersvc.Service
-	projectService    projectsvc.Service
-	settingsService   settingssvc.Service
-	ciService         cisvc.Service
-	cdService         cdsvc.Service
-	tokenService      jwt.TokenService
-	taskService       tasksvc.Service
-	userRepository    userrepo.Repository
-	roleRepository    rolerepo.Repository
-	turnstileVerifier turnstileVerifier
+type ServerDependencies struct {
+	Authenticator     authz.Authenticator
+	AuthService       authsvc.Service
+	RoleService       rolesvc.Service
+	UserService       usersvc.Service
+	ProjectService    projectsvc.Service
+	SettingsService   settingssvc.Service
+	CIService         cisvc.Service
+	CDService         cdsvc.Service
+	TaskService       tasksvc.Service
+	AuthHandlerStore  authhandler.Store
+	UserStore         userhandler.Store
+	RoleStore         rolehandler.Store
+	UserRoleStore     userhandler.RoleStore
+	TurnstileVerifier authhandler.TurnstileVerifier
 }
 
-func New(cfg config.Config, logger *slog.Logger, store store.Store, tasks taskrepo.Repository, defaultMaxAttempts int) Server {
-	tokenService := jwt.NewTokenService(cfg.JWT.SecretKey)
-	userRepository := userrepo.NewRepository(store.DB(), store.Driver())
-	roleRepository := rolerepo.NewRepository(store.DB(), store.Driver())
-	projectRepository := projectrepo.NewRepository(store.DB(), store.Driver())
-	taskService := tasksvc.New(tasks, defaultMaxAttempts)
-	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
-	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
-	logStore := executionlog.Store{}
-	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, store: store, logStore: logStore, ciRepository: ciRepository, cdRepository: cdRepository, authService: authsvc.New(userRepository, tokenService, logger), roleService: rolesvc.New(roleRepository), userService: usersvc.New(userRepository), projectService: projectsvc.New(projectRepository, userRepository), settingsService: settingssvc.New(cfg, envfile.NewStore(cfg)), ciService: cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger, logStore), cdService: newCDService(cdRepository, taskService, cfg, logger, logStore), tokenService: tokenService, taskService: taskService, userRepository: userRepository, roleRepository: roleRepository, turnstileVerifier: newTurnstileVerifier(cfg.Turnstile)}
+type Server struct {
+	appCfg config.Config
+	cfg    config.ServerConfig
+	logger *slog.Logger
+	deps   ServerDependencies
+}
+
+func New(cfg config.Config, logger *slog.Logger, deps ServerDependencies) Server {
+	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, deps: deps}
 }
 
 func (s Server) Handler() http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
+	s.registerMiddleware(r)
+	s.registerHealthRoutes(r)
+	s.registerAuthRoutes(r)
+	s.registerUserRoutes(r)
+	s.registerRoleRoutes(r)
+	s.registerSettingsRoutes(r)
+	s.registerProjectRoutes(r)
+	s.registerCIRoutes(r)
+	s.registerCDRoutes(r)
+	s.registerTaskRoutes(r)
+	s.registerFallbackRoutes(r)
+	return r
+}
+
+func (s Server) registerMiddleware(r *gin.Engine) {
 	r.Use(transportmiddleware.RequestID())
 	r.Use(transportmiddleware.RealIP())
 	r.Use(transportmiddleware.LogRequest(s.logger, transportmiddleware.LogRequestConfig{BodyEnabled: s.appCfg.Logging.HTTPBodyEnabled, BodyMaxBytes: s.appCfg.Logging.HTTPBodyMaxBytes, SkipAssets200Enabled: s.appCfg.Logging.HTTPSkipAssets200Enabled}))
 	r.Use(transportmiddleware.Recovery(s.logger))
 	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins, s.appCfg.Server.ApiPathPrefixes))
+}
 
+func (s Server) registerHealthRoutes(r *gin.Engine) {
 	r.GET("/api/health", func(c *gin.Context) {
 		c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.HealthResp{Status: "ok"}})
 	})
-	authenticator := authz.New(s.logger, s.userRepository, s.tokenService)
-	authhandler.New(s.logger, s.appCfg.Turnstile, s.authService, authenticator, s.turnstileVerifier, s.userRepository).Register(r)
-	userhandler.New(s.logger, s.userService, authenticator, s.userRepository, s.roleRepository).Register(r)
-	rolehandler.New(s.logger, s.roleService, authenticator, s.roleRepository).Register(r)
-	settingshandler.New(s.logger, s.settingsService, authenticator).Register(r)
-	projecthandler.New(s.logger, s.projectService, authenticator).Register(r)
-	ciService := cisvc.New(s.ciRepository, s.taskService, s.appCfg.DataRoot(), s.appCfg.JWT.SecretKey, s.logger, s.logStore)
-	ciHandler := cihandler.New(s.logger, ciService, authenticator)
+}
+
+func (s Server) registerAuthRoutes(r *gin.Engine) {
+	authhandler.New(s.logger, s.appCfg.Turnstile, s.deps.AuthService, s.deps.Authenticator, s.deps.TurnstileVerifier, s.deps.AuthHandlerStore).Register(r)
+}
+
+func (s Server) registerUserRoutes(r *gin.Engine) {
+	userhandler.New(s.logger, s.deps.UserService, s.deps.Authenticator, s.deps.UserStore, s.deps.UserRoleStore).Register(r)
+}
+
+func (s Server) registerRoleRoutes(r *gin.Engine) {
+	rolehandler.New(s.logger, s.deps.RoleService, s.deps.Authenticator, s.deps.RoleStore).Register(r)
+}
+
+func (s Server) registerSettingsRoutes(r *gin.Engine) {
+	settingshandler.New(s.logger, s.deps.SettingsService, s.deps.Authenticator).Register(r)
+}
+
+func (s Server) registerProjectRoutes(r *gin.Engine) {
+	projecthandler.New(s.logger, s.deps.ProjectService, s.deps.Authenticator).Register(r)
+}
+
+func (s Server) registerCIRoutes(r *gin.Engine) {
+	ciHandler := cihandler.New(s.logger, s.deps.CIService, s.deps.Authenticator)
 	ciHandler.RegisterRepositoryRoutes(r)
 	ciHandler.RegisterTemplateRoutes(r)
 	ciHandler.RegisterBuildStageRoutes(r)
@@ -109,14 +125,22 @@ func (s Server) Handler() http.Handler {
 	ciHandler.RegisterSnapshotRoutes(r)
 	ciHandler.RegisterArtifactRoutes(r)
 	ciHandler.RegisterCredentialRoutes(r)
-	cdService := newCDService(s.cdRepository, s.taskService, s.appCfg, s.logger, s.logStore)
-	cdHandler := cdhandler.New(s.logger, cdService, authenticator)
+}
+
+func (s Server) registerCDRoutes(r *gin.Engine) {
+	cdHandler := cdhandler.New(s.logger, s.deps.CDService, s.deps.Authenticator)
 	cdHandler.RegisterApplicationRoutes(r)
 	cdHandler.RegisterDeploymentRoutes(r)
 	cdHandler.RegisterApplicationExtraRoutes(r)
 	cdHandler.RegisterRouteRoutes(r)
 	cdHandler.RegisterTraefikRouteRoutes(r)
-	taskhandler.New(s.logger, s.taskService).Register(r)
+}
+
+func (s Server) registerTaskRoutes(r *gin.Engine) {
+	taskhandler.New(s.logger, s.deps.TaskService).Register(r)
+}
+
+func (s Server) registerFallbackRoutes(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
 		if isAPIPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "Not Found"})
@@ -127,7 +151,6 @@ func (s Server) Handler() http.Handler {
 		}
 		c.JSON(http.StatusNotFound, gin.H{"detail": "Not Found"})
 	})
-	return r
 }
 
 func (s Server) serveStatic(c *gin.Context, staticDir string) bool {
@@ -194,11 +217,6 @@ func injectRuntimeConfig(content []byte, publicURL string) []byte {
 
 func (s Server) Addr() string {
 	return fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
-}
-
-func newCDService(store cdsvc.Store, tasks cdsvc.TaskService, cfg config.Config, logger *slog.Logger, logStore executionlog.Store) cdsvc.Service {
-	routeManager := traefik.NewRouteManager(cfg)
-	return cdsvc.New(store, tasks, cfg, logger, logStore, routeManager, traefik.MkcertGenerator{}, routeManager)
 }
 
 func isAPIPath(requestPath string, prefixes []string) bool {

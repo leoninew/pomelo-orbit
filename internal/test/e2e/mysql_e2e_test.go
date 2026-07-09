@@ -14,11 +14,10 @@ import (
 
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 
-	transporthttp "gitee.com/leoninew/PomeloOrbit-go/internal/api/http"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	sqlcstore "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
@@ -104,8 +103,8 @@ func TestMySQLE2E(t *testing.T) {
 	}
 
 	cfg.Turnstile.Enabled = false
-	store := sqlcstore.NewStore(database, cfg.Database.Driver)
-	server := transporthttp.New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), store, taskRepo, cfg.Worker.MaxAttempts)
+	store := bootstrap.NewRepositoryStore(database, cfg.Database.Driver)
+	server := bootstrap.NewHTTPServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), store, taskRepo)
 	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
 	loginRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))

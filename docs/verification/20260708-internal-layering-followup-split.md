@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分验证
-最后修改时间: 2026-07-09 09:28:24
+最后修改时间: 2026-07-09 10:42:00
 
 Review status: Accepted
 
@@ -312,3 +312,172 @@ ok   gitee.com/leoninew/PomeloOrbit-go/internal/worker/handler/ci
 ## Conclusion
 
 Issue 6 task runtime model 边界拆分已完成并通过验证。实现符合 requirement 中的分层目标：`Task` runtime model 已迁入 `internal/queue/task`，sqlc task repository 只保留持久化与 row conversion，queue、worker、handler 和 application 调用点不再为了模型类型依赖 sqlc repository impl，未保留兼容层、别名或适配层，后端检查全部通过。
+
+---
+
+# Issue 7：logger/logstore 命名与边界验证
+
+## Verification target
+
+本次追加验证范围为 light / 轻量模式下的 issue 7：logger/logstore 命名与边界拆分。
+
+对应 requirement 文档：
+
+- `docs/requirement/20260708-internal-layering-followup-split.md`
+
+本节只验证 issue 7，不重新验证 issue 5/6，也不验证 issue 8 及后续待处理项。
+
+## Requirement alignment
+
+需求要求：
+
+- 区分 application/server runtime logger 与 CI/CD execution log storage。
+- 将实际承载 execution log 本地文件读写的实现从 `internal/infrastructure/logger/logstore` 移到更准确的本地存储边界。
+- 新位置为 `internal/infrastructure/storage/local/executionlog`，concrete type 表达为 `executionlog.Store`。
+- application / workflow 消费侧不继续暴露旧 concrete infrastructure type，而是按“谁消费，谁定义”定义最小接口。
+- 删除无调用点的 `Exists` 方法。
+- 不保留旧包、类型别名、转发 wrapper、兼容层或新旧实现并存。
+- 不修改 runtime logger、CI/CD workspace 路径规则、execution 编排或 API contract。
+- 保持 execution log 读写行为不变。
+
+实际实现与 requirement 对齐：
+
+- 新增 `internal/infrastructure/storage/local/executionlog/store.go`，提供 `Store.Writer` 与 `Store.Read`。
+- 删除 `internal/infrastructure/logger/logstore/logstore.go`。
+- application CI/CD 定义并依赖本包 `LogReader` 接口，只暴露 `Read` 能力。
+- workflow activity CI 定义并依赖本包 `ExecutionLogStore` 接口，暴露 `Writer` + `Read` 能力。
+- workflow activity CD 定义并依赖本包 `LogWriter` 接口，只暴露 `Writer` 能力。
+- bootstrap 与 HTTP server 作为组装位置构造并注入 `executionlog.Store{}`。
+- 未迁移 `Exists`，且新包中不存在该方法。
+- 未改 `internal/infrastructure/logger/logging`。
+
+## Spec alignment
+
+不适用。当前任务使用 light / 轻量模式，未创建独立 spec 文档。
+
+## Plan alignment
+
+不适用。当前任务使用 light / 轻量模式，按 requirement 中的 issue 7 拆分策略实施。
+
+## Actual diff summary
+
+当前 issue 7 diff 覆盖以下文件：
+
+- `docs/requirement/20260708-internal-layering-followup-split.md`
+  - 记录 issue 7 架构依据、拆分策略、实施结果、验收标准和验证结果。
+- `internal/infrastructure/storage/local/executionlog/store.go`
+  - 从旧 logstore 迁入 execution log 本地读写实现，并将类型命名为 `Store`。
+  - 保留 `Writer` / `Read` 行为；不迁移未使用的 `Exists`。
+- `internal/infrastructure/logger/logstore/logstore.go`
+  - 删除旧 package。
+- `internal/application/ci/repository.go`
+  - 删除旧 logstore import；新增消费侧 `LogReader` 接口；Service 构造和字段改用接口。
+- `internal/application/cd/service.go`
+  - 删除旧 logstore import；新增消费侧 `LogReader` 接口；Service 构造和字段改用接口。
+- `internal/workflow/activity/ci/service.go`
+  - 删除旧 logstore import；新增消费侧 `ExecutionLogStore` 接口；Service 构造和字段改用接口。
+- `internal/workflow/activity/ci/executor.go`
+  - executor 字段改用 `ExecutionLogStore`。
+- `internal/workflow/activity/cd/service.go`
+  - 删除旧 logstore import；新增消费侧 `LogWriter` 接口；Service 构造和字段改用接口。
+- `internal/bootstrap/provider.go`
+  - concrete implementation 改为 `executionlog.Store{}`。
+- `internal/api/http/server.go`
+  - server 字段、构造和 CD service wiring 改用 `executionlog.Store`。
+- `internal/workflow/activity/ci/execution_test.go`
+  - 测试注入改为 `executionlog.Store{}`。
+- `internal/workflow/activity/cd/deployment_execution_test.go`
+  - 测试注入改为 `executionlog.Store{}`。
+
+## Expected vs actual changed files
+
+预期改动：
+
+- 新增 `internal/infrastructure/storage/local/executionlog`。
+- 删除 `internal/infrastructure/logger/logstore`。
+- 更新 application / workflow / bootstrap / HTTP server / 测试调用点。
+- 更新 requirement 记录 issue 7 状态。
+
+实际改动与预期一致。
+
+`git diff --cached --name-status` 将旧文件到新文件识别为 rename：
+
+```text
+R068 internal/infrastructure/logger/logstore/logstore.go internal/infrastructure/storage/local/executionlog/store.go
+```
+
+这符合“迁移实现并删除旧包”的预期；新包没有保留旧 package、类型别名或兼容 wrapper。
+
+未发现 issue 7 范围外的产品代码重构；未触碰前端、数据库迁移、API contract、CI/CD workspace 路径规则、deployment/stage execution 编排或 runtime logger 配置。
+
+## Acceptance checklist
+
+- [x] `internal/infrastructure/logger/logstore/logstore.go` 删除。
+- [x] `internal/infrastructure/storage/local/executionlog` 新增并承载 execution log 本地文件读写实现。
+- [x] `internal/infrastructure/logger/logging` 保持只负责应用 runtime logger 初始化，不混入 execution log storage。
+- [x] application CI/CD 不再直接依赖 concrete `executionlog.Store`；只依赖本包消费侧读取接口。
+- [x] workflow activity CI/CD 不再直接依赖旧 `logger/logstore` 包；写入/读取 execution log 通过本包消费侧最小接口完成。
+- [x] 未保留旧包、类型别名、转发 wrapper、兼容层或新旧实现并存。
+- [x] execution log 行为保持不变：缺失文件读取返回空内容与原 offset；写入自动创建目录并 append；offset 读取返回新 offset。
+- [x] 未修改 CI/CD workspace 路径规则、deployment/stage execution 编排、应用 runtime logger 配置或 API contract。
+- [x] 后端检查通过。
+
+## Test results
+
+已运行命令：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：
+
+- `go fmt ./cmd/... ./internal/...`：通过。
+- `./bin/golangci-lint fmt ./cmd/... ./internal/...`：通过。
+- `./bin/golangci-lint run ./cmd/... ./internal/...`：通过，输出 `0 issues.`。
+- `go vet ./cmd/... ./internal/...`：通过。
+- `go test ./cmd/... ./internal/...`：通过。
+
+关键相关包：
+
+```text
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/api/http
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/cd
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/application/ci
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap
+?    gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog [no test files]
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/cd
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci
+```
+
+## Missed or expanded scope
+
+未发现范围偏离。
+
+本次没有处理以下事项，符合 issue 7 边界：
+
+- 未重构 `internal/infrastructure/logger/logging`、`slog` 或 `lumberjack` 初始化。
+- 未修改 CI/CD workspace 路径规则。
+- 未调整 deployment/stage execution 编排。
+- 未改变 API contract 或路由。
+- 未修改数据库 schema 或已执行迁移。
+- 未处理 issue 8 及后续条目。
+- 未修改前端。
+
+## Risks
+
+当前未发现遗留实现风险。
+
+注意：本次验证观察到 issue 7 代码变更和 requirement 文档变更已处于 index 侧；追加 verification 文档后，verification 文档本身为新的工作区变更。本次验证未执行 `git add`、`git commit` 或 `git push`。
+
+## Incomplete items
+
+无。
+
+## Conclusion
+
+Issue 7 logger/logstore 命名与边界拆分已完成并通过验证。实现符合 requirement 中的分层目标：CI/CD execution log 本地读写已迁入 `internal/infrastructure/storage/local/executionlog`，旧 `logger/logstore` 删除，application 与 workflow activity 通过消费侧最小接口使用 execution log 能力，未保留兼容层、别名或 wrapper，runtime logger 配置与 execution log 行为保持不变，后端检查全部通过。

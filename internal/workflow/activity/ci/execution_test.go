@@ -10,8 +10,8 @@ import (
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -26,7 +26,7 @@ func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
 			{"id":"stage-2","name":"deploy","image":"alpine","depends_on":["stage-1"],"script":"echo deploy"}
 		]`},
 	}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), failingContainerRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), failingContainerRunner{}, executionlog.Store{})
 
 	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
@@ -63,7 +63,7 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 		repo:     model.Repository{Id: "repo-1", Code: "repo"},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
 	}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), fakeContainerRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), fakeContainerRunner{}, executionlog.Store{})
 
 	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
 	if err != nil {
@@ -103,7 +103,7 @@ func TestExecutePipelineRunInjectsGiteeCredentialRewrite(t *testing.T) {
 		snapshot:   model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"git clone","image":"alpine/git","script":"git remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}"}]`, VariablesSnapshot: `[{"name":"repository_url","source":"template","editable":false},{"name":"repository_ref","source":"template","editable":false}]`},
 	}
 	runner := &recordingContainerRunner{}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, logstore.LogStore{})
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
 	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
@@ -142,7 +142,7 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"cd {{ working_dir }} && echo {{ repository_code }}"}]`, VariablesSnapshot: `[{"name":"working_dir","default":".","source":"template_stage","editable":true},{"name":"repository_code","source":"template","editable":false}]`},
 	}
 	runner := &recordingContainerRunner{}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, logstore.LogStore{})
+	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
 	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)

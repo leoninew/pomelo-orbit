@@ -9,7 +9,7 @@ import (
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	store "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc"
 	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/cd"
 	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/ci"
@@ -49,7 +49,7 @@ func NewTaskRouter(store store.Store, cfg config.Config, logger *slog.Logger) *w
 	router := worker.NewRouter()
 	ciRepository := cirepo.NewRepository(store.DB(), store.Driver())
 	cdRepository := cdrepo.NewRepository(store.DB(), store.Driver())
-	logStore := logstore.LogStore{}
+	logStore := executionlog.Store{}
 	ciService := ciactivity.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, ciactivity.DockerRunner{}, logStore)
 	cdService := cdactivity.NewExecutionService(cdRepository, cfg, logger, cdactivity.ShellRunner{}, logStore)
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciService))

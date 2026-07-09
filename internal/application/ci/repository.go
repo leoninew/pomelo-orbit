@@ -18,7 +18,6 @@ import (
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
@@ -100,12 +99,16 @@ type TaskService interface {
 	EnqueueTyped(ctx context.Context, taskType string, payload any) (*tasksvc.Task, error)
 }
 
+type LogReader interface {
+	Read(logPath string, offset int) ([]byte, int, error)
+}
+
 type Service struct {
 	store          RepositoryStore
 	executionStore PipelineExecutionStore
 	tasks          TaskService
 	workspace      *ciworkspace.Workspace
-	logStore       logstore.LogStore
+	logStore       LogReader
 	secretKey      string
 	logger         *slog.Logger
 	runner         ContainerRunner
@@ -163,11 +166,11 @@ type WebhookReceiveResult struct {
 	RunId  string
 }
 
-func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, logStore logstore.LogStore) Service {
+func New(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, logStore LogReader) Service {
 	return NewWithRunner(store, tasks, dataRoot, secretKey, logger, DockerRunner{}, logStore)
 }
 
-func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore logstore.LogStore) Service {
+func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore LogReader) Service {
 	executionStore, ok := store.(PipelineExecutionStore)
 	if !ok {
 		panic("ci service store must implement PipelineExecutionStore")
@@ -176,7 +179,7 @@ func NewWithRunner(store RepositoryStore, tasks TaskService, dataRoot string, se
 	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
-func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore logstore.LogStore) Service {
+func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore LogReader) Service {
 	workspace := ciworkspace.New(dataRoot)
 	return Service{executionStore: store, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }

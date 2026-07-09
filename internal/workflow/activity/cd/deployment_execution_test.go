@@ -12,14 +12,14 @@ import (
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
 func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), fakeCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationRestart(context.Background(), "app-1", "deploy-1")
 	if err != nil {
@@ -36,7 +36,7 @@ func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
 	runner := &recordingCommandRunner{}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, logstore.LogStore{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, executionlog.Store{})
 
 	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", true)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 
 func TestExecuteApplicationStopMarksDeploymentFaultedOnRunnerError(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", false)
 	if err == nil {
@@ -75,7 +75,7 @@ func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.
 		deployment: model.Deployment{Id: "deploy-1"},
 		files:      []model.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
 	}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), failingCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err == nil {
@@ -98,7 +98,7 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 		},
 	}
 	runner := &recordingCommandRunner{}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, logstore.LogStore{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, executionlog.Store{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestExecuteApplicationDeployForceRecreatesApplication(t *testing.T) {
 		},
 	}
 	runner := &recordingCommandRunner{}
-	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, logstore.LogStore{})
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), runner, executionlog.Store{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", true)
 	if err != nil {
@@ -144,7 +144,7 @@ func TestExecuteApplicationDeployFailsWhenPhysicalDataRootCannotBeResolved(t *te
 			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
 		},
 	}
-	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, executionlog.Store{})
 	service.workspace = cdworkspace.NewWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return "", errors.New("missing host mount")
 	})
@@ -170,7 +170,7 @@ func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
 			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
 		},
 	}
-	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, executionlog.Store{})
 	physicalRoot := filepath.Join(t.TempDir(), "host-data")
 	service.workspace = cdworkspace.NewWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return physicalRoot, nil
@@ -201,7 +201,7 @@ func TestApplicationComposePreviewMatchesDeployRouteLabels(t *testing.T) {
 		{ServiceName: "web", Domain: "alt.example.com", Port: 80},
 	}
 	store := &fakeDeploymentExecutionStore{app: app, deployment: model.Deployment{Id: "deploy-1"}, files: []model.ApplicationConfigFile{compose}, routes: routes}
-	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, logstore.LogStore{})
+	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, executionlog.Store{})
 
 	preview, err := service.renderApplicationCompose(context.Background(), app, compose)
 	if err != nil {

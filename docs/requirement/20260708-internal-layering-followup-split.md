@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分
-最后修改时间: 2026-07-09 09:00:47
+最后修改时间: 2026-07-09 10:12:07
 
 Review status: Accepted
 
@@ -50,7 +50,7 @@ Review status: Accepted
 | 4 | `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` | CI workspace 路径、artifact/log 路径和 Docker mount 计算跨 application/activity 使用，当前存在重复实现。 | 已完成拆分：共享 CI workspace 包位于 `internal/infrastructure/storage/local/ciworkspace`，集中承载路径规则、目录创建、physical root 解析缓存和 Docker mount 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper-only 兼容层。 | 中 | 已实施，检查通过 |
 | 5 | `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` | CD workspace 路径计算与物理数据根解析跨 application/activity 使用，当前存在重复实现，且依赖本地 physical data root 解析。 | 已完成拆分：共享 CD workspace 包位于 `internal/infrastructure/storage/local/cdworkspace`，集中承载 CD app/log 路径、physical root 解析缓存和 slash 格式 physical path 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper、别名、适配或兼容层。 | 中 | 已实施，检查通过 |
 | 6 | `internal/repository/impl/sqlc/task/repository.go` | task repository 实现里包含跨层使用的 `Task` runtime model，导致 queue、worker、HTTP handler、application 接口依赖 sqlc repository impl。 | 已完成拆分：`Task` runtime model 迁到 `internal/queue/task`；sqlc task repository 只保留持久化和 SQLC row 转换；queue、worker、handler、application 调用点直接依赖 queue task model，不保留别名、wrapper 或适配层。 | 中 | 已实施，检查通过 |
-| 7 | `internal/infrastructure/logger/logstore/logstore.go` | logstore 已放入 logger，但需要确认 logging 与 logstore 的 package/API 命名是否表达清晰。 | 检查 logger/logging/logstore 三者调用关系；若只是命名问题，优先小范围重命名或补清晰接口，不做大迁移。 | 低 | 待处理 |
+| 7 | `internal/infrastructure/logger/logstore/logstore.go` | logstore 已放入 logger，但它实际承载 CI/CD execution log 的本地文件读写，不是应用 logger 初始化或 slog handler；当前包路径与 `logging` 并列容易误导职责边界，且 application/workflow 构造参数暴露 concrete infrastructure type。 | 已完成拆分：execution log 本地文件读写迁到 `internal/infrastructure/storage/local/executionlog`，旧 `logger/logstore` 删除；application/workflow 各自定义最小消费接口，bootstrap/server 注入 `executionlog.Store`；删除未使用的 `Exists`，不保留旧包、别名或适配层。 | 低 | 已实施，检查通过 |
 | 8 | 根目录 `proto/` 与 `internal/gen/proto` | `internal/gen/proto` 是生成代码，根目录 `proto/` 是否作为 IDL 源目录保留尚未形成明确决策。 | 单独检查 proto 生成链路、Make/Task/Buf 配置；若根目录是源码约定，应保留并记录；不要强行迁入 internal。 | 低 | 待处理 |
 | 9 | `internal/api/http/server.go` | HTTP server 是路由和依赖组装中心，当前可工作，但后续可能继续膨胀。 | 暂不优先拆；只有当新增路由继续增加 server 复杂度时，再按 route group 拆注册函数。 | 低 | 待处理 |
 | 10 | `internal/bootstrap/app.go` 与 `internal/bootstrap/provider.go` | bootstrap 是生命周期和依赖组装中心，当前合理，但可能随功能增长变胖。 | 暂不优先拆；后续只在 provider 出现明显多职责或循环依赖时再拆。 | 低 | 待处理 |
@@ -554,6 +554,156 @@ go test ./cmd/... ./internal/...
 - [x] sqlc task repository 直接返回 `*tasksvc.Task`，只保留持久化与 row conversion 职责。
 - [x] 不保留类型别名、wrapper-only 文件、适配层或新旧模型并存。
 - [x] 任务入队、claim、complete、fail、HTTP create/get task、CI/CD worker handler 行为不变。
+- [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
+
+验证结果：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：通过，`golangci-lint run` 输出 `0 issues.`。
+
+## 问题 7 分析：logger/logstore 命名与边界
+
+### 参考架构依据
+
+参考 `D:\SourceCodes\mywork\best-practices\docs\guides\backend-service-architecture.md`：
+
+- `infrastructure/logger` 用于日志实现，典型职责是日志初始化与适配。
+- `infrastructure/storage` 用于本地/S3 对象存储等文件或对象存储实现。
+- `application` 负责用例编排，可以记录用例级关键节点，但不应依赖具体基础设施实现类型；需要外部能力时应按“谁消费，谁定义”定义端口。
+- `workflow`、`queue`、`scheduler` 是执行机制，不应沉淀业务核心；执行日志写入属于执行过程的技术支撑能力，应通过清晰端口使用。
+- 日志相关建议区分：Handler 记录请求级信息，Application 记录用例级关键节点，Infrastructure 记录外部调用失败、耗时、状态码、重试次数。
+
+据此，需要区分两类概念：
+
+1. application/server runtime logger：当前 `internal/infrastructure/logger/logging` 初始化 `slog.Logger` 和 rolling file writer。
+2. CI/CD execution log storage：当前 `internal/infrastructure/logger/logstore` 读写 pipeline stage / deployment 的业务执行日志文件。
+
+二者虽然都叫“log”，但职责不同。后者更像本地文件存储 adapter，不是 logger 实现。
+
+### 当前读取结论
+
+当前 logger 相关包只有：
+
+- `internal/infrastructure/logger/logging/logging.go`
+  - `logging.New(cfg config.LoggingConfig) (*slog.Logger, func() error, error)`；
+  - 校验 logging config；
+  - 创建日志目录；
+  - 使用 `lumberjack.Logger` 写应用运行日志；
+  - 设置 `slog` 默认 logger。
+
+- `internal/infrastructure/logger/logstore/logstore.go`
+  - `LogStore.Writer(logPath string) (io.WriteCloser, error)`；
+  - `LogStore.Read(logPath string, offset int) ([]byte, int, error)`；
+  - `LogStore.Exists(logPath string) bool`。
+
+`logstore.LogStore` 实际调用点：
+
+- application 查询 execution log：
+  - `internal/application/ci/pipeline_run.go` 使用 `Read` 读取 stage log；
+  - `internal/application/cd/service.go` 使用 `Read` 读取 deployment log。
+- workflow activity 写 execution log：
+  - `internal/workflow/activity/ci/executor.go` 使用 `Writer` 写 stage log，失败时使用 `Read` 取最后日志片段；
+  - `internal/workflow/activity/cd/deployment_execution.go` 使用 `Writer` 写 deploy/restart/stop log。
+- 组装：
+  - `internal/bootstrap/provider.go` 和 `internal/api/http/server.go` 构造 `logstore.LogStore{}` 并注入。
+
+额外确认：`LogStore.Exists` 当前没有调用点。
+
+### 问题判断
+
+Issue 7 成立，但性质是“小边界/命名修正”，不是需要大迁移的核心架构问题。
+
+问题不在 `LogStore` 的读写逻辑本身；当前 `Writer` 创建目录并 append 写文件、`Read` 按 offset 增量读取且缺失文件返回空内容，这些行为符合 execution log 存储需求。
+
+真正的问题有两点：
+
+1. 包路径误导：
+   - `internal/infrastructure/logger/logging` 表达 runtime logger 初始化。
+   - `internal/infrastructure/logger/logstore` 实际表达 execution log 文件存储。
+   - 把 execution log storage 放在 logger 下，会让“应用运行日志”和“CI/CD 执行日志文件存储”两个概念混在一起。
+
+2. concrete infrastructure type 穿透 application/workflow 构造签名：
+   - `application/ci`、`application/cd`、`workflow/activity/ci`、`workflow/activity/cd` 的 Service 字段和构造函数直接使用 `logstore.LogStore`。
+   - 按 best-practices 中“谁消费，谁定义接口”和 application 不依赖具体 infrastructure 实现的原则，调用侧应定义自己需要的最小端口：读取侧只需要 `Read`，写入侧需要 `Writer`，CI executor 需要 `Writer` + `Read`。
+
+### 拆分策略
+
+本 issue 只处理 execution log storage 的包边界与最小端口，不扩大为日志系统、CI/CD workspace 或 execution 编排重构：
+
+1. 新增 `internal/infrastructure/storage/local/executionlog`。
+2. 将 `LogStore` 改名为 `Store`，放入新包，表达 execution log 的本地文件存储实现。
+3. 保持行为不变：
+   - `Writer(logPath)` 创建父目录；
+   - 写入仍为 append/create/write-only；
+   - writer 仍用 mutex 串行化 `Write` 和 `Close`；
+   - `Read(logPath, offset)` 仍从 offset 读取全部新增内容；
+   - 文件不存在仍返回 `nil, offset, nil`。
+4. 删除未使用的 `Exists` 方法，不迁移无调用点 API。
+5. 在消费侧定义最小接口，而不是让 application/workflow 直接暴露 concrete store：
+   - application CI/CD 查询侧定义 `LogReader`：`Read(logPath string, offset int) ([]byte, int, error)`；
+   - workflow CD execution 定义 `LogWriter`：`Writer(logPath string) (io.WriteCloser, error)`；
+   - workflow CI executor 需要写入并读取失败尾部日志，可定义 `LogStore` 或 `ExecutionLogStore` 包内接口，包含 `Writer` + `Read`。
+6. `bootstrap/provider.go` 与 `api/http/server.go` 使用 `executionlog.Store{}` 作为 concrete implementation 注入。
+7. 删除 `internal/infrastructure/logger/logstore/logstore.go`，不保留旧包、类型别名、转发构造或兼容 wrapper。
+8. 不改 `internal/infrastructure/logger/logging`，因为它职责明确：初始化应用 runtime logger。
+
+### 不建议的做法
+
+- 不建议把 execution log storage 放进 `common`：它有具体文件存储和 CI/CD execution log 语义，不是跨项目通用工具。
+- 不建议只把 `logstore` 改名后仍留在 `internal/infrastructure/logger`：这样仍混淆 runtime logger 与 execution log storage。
+- 不建议为了测试方便保留 `type LogStore = executionlog.Store`：这违反当前“不做兼容或适配”的约束。
+- 不建议在本 issue 合并 CI/CD workspace 或改 deployment/stage log 路径规则；路径规则已分别归属 `ciworkspace` 和 `cdworkspace`。
+- 不建议重构 `logging.New` 或 slog/lumberjack 初始化；这不是 issue 7 的问题。
+
+### 实现边界
+
+只处理 issue 7，不顺手处理 issue 8 proto、issue 9 server 或 issue 10 bootstrap。
+
+实现可接受的文件范围：
+
+- 新增 `internal/infrastructure/storage/local/executionlog/store.go`。
+- 删除 `internal/infrastructure/logger/logstore/logstore.go`。
+- 更新以下调用点的 import、字段类型和构造参数：
+  - `internal/application/ci/repository.go`
+  - `internal/application/cd/service.go`
+  - `internal/workflow/activity/ci/service.go`
+  - `internal/workflow/activity/ci/executor.go`
+  - `internal/workflow/activity/cd/service.go`
+  - `internal/bootstrap/provider.go`
+  - `internal/api/http/server.go`
+  - 相关测试文件。
+- 如需新增消费侧接口，应放在消费包内，不新增共享 wrapper 包。
+- 更新本 requirement 文档的 issue 7 实施结果与验收状态。
+
+### 实施结果
+
+- 新增 `internal/infrastructure/storage/local/executionlog/store.go`：承载 execution log 本地文件读写实现，保留原 `Writer` / `Read` 行为。
+- 删除 `internal/infrastructure/logger/logstore/logstore.go`：不保留旧包、类型别名、转发 wrapper 或兼容层。
+- `internal/application/ci/repository.go` 与 `internal/application/cd/service.go` 新增消费侧 `LogReader` 接口，只暴露 application 查询 execution log 所需的 `Read` 能力。
+- `internal/workflow/activity/ci/service.go` 新增消费侧 `ExecutionLogStore` 接口，覆盖 CI executor 写 stage log 与失败时读取日志尾部所需的 `Writer` + `Read` 能力。
+- `internal/workflow/activity/cd/service.go` 新增消费侧 `LogWriter` 接口，只暴露 CD execution 写部署日志所需的 `Writer` 能力。
+- `internal/bootstrap/provider.go` 与 `internal/api/http/server.go` 改为构造并注入 `executionlog.Store{}`。
+- workflow activity 相关测试改为直接使用 `executionlog.Store{}`。
+- 未修改 `internal/infrastructure/logger/logging`，保持 runtime logger 初始化职责不变。
+- 未迁移原 `Exists` 方法，因为实现前确认无调用点。
+
+验收标准：
+
+- [x] `internal/infrastructure/logger/logstore/logstore.go` 删除。
+- [x] `internal/infrastructure/storage/local/executionlog` 新增并承载 execution log 本地文件读写实现。
+- [x] `internal/infrastructure/logger/logging` 保持只负责应用 runtime logger 初始化，不混入 execution log storage。
+- [x] application CI/CD 不再直接依赖 concrete `executionlog.Store`；只依赖本包消费侧读取接口。
+- [x] workflow activity CI/CD 不再直接依赖旧 `logger/logstore` 包；写入/读取 execution log 通过本包消费侧最小接口完成。
+- [x] 未保留旧包、类型别名、转发 wrapper、兼容层或新旧实现并存。
+- [x] execution log 行为保持不变：缺失文件读取返回空内容与原 offset；写入自动创建目录并 append；offset 读取返回新 offset。
+- [x] 未修改 CI/CD workspace 路径规则、deployment/stage execution 编排、应用 runtime logger 配置或 API contract。
 - [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
 
 验证结果：

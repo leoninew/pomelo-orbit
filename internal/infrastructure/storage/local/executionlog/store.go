@@ -1,4 +1,4 @@
-package logstore
+package executionlog
 
 import (
 	"io"
@@ -7,17 +7,17 @@ import (
 	"sync"
 )
 
-type LogStore struct{}
+type Store struct{}
 
-func (LogStore) Writer(logPath string) (io.WriteCloser, error) {
+func (Store) Writer(logPath string) (io.WriteCloser, error) {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return nil, err
 	}
-	return &logWriter{file: f}, nil
+	return &logWriter{file: file}, nil
 }
 
 type logWriter struct {
@@ -37,7 +37,7 @@ func (w *logWriter) Close() error {
 	return w.file.Close()
 }
 
-func (LogStore) Read(logPath string, offset int) ([]byte, int, error) {
+func (Store) Read(logPath string, offset int) ([]byte, int, error) {
 	file, err := os.Open(logPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -54,9 +54,4 @@ func (LogStore) Read(logPath string, offset int) ([]byte, int, error) {
 		return nil, offset, err
 	}
 	return content, offset + len(content), nil
-}
-
-func (LogStore) Exists(logPath string) bool {
-	_, err := os.Stat(logPath)
-	return err == nil
 }

@@ -16,7 +16,6 @@ import (
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
@@ -24,7 +23,7 @@ import (
 type Executor struct {
 	store     PipelineExecutionStore
 	workspace *ciworkspace.Workspace
-	logStore  logstore.LogStore
+	logStore  ExecutionLogStore
 	secretKey string
 	logger    *slog.Logger
 	runner    ContainerRunner

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	ciactivity "gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci"
 )
 
@@ -26,7 +26,7 @@ func NewHandler(executor PipelineExecutor) Handler {
 	return Handler{executor: executor}
 }
 
-func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
+func (h Handler) Handle(ctx context.Context, item tasksvc.Task) error {
 	var payload ExecutePayload
 	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
 		return fmt.Errorf("parse ci task payload: %w", err)

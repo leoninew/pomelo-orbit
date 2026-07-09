@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {
 	handler := NewDeployHandler(&fakeDeployer{})
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{invalid`})
 	if err == nil || !strings.Contains(err.Error(), "parse cd task payload") {
 		t.Fatalf("expected parse error, got %v", err)
 	}
@@ -18,7 +18,7 @@ func TestHandleRejectsInvalidPayload(t *testing.T) {
 
 func TestHandleRequiresApplicationAndDeploymentId(t *testing.T) {
 	handler := NewDeployHandler(&fakeDeployer{})
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{}`})
 	if err == nil || !strings.Contains(err.Error(), "application_id and deployment_id are required") {
 		t.Fatalf("expected required field error, got %v", err)
 	}
@@ -28,7 +28,7 @@ func TestHandleDeploysApplication(t *testing.T) {
 	deployer := &fakeDeployer{}
 	handler := NewDeployHandler(deployer)
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestHandleDeploysApplicationWithForceRecreate(t *testing.T) {
 	deployer := &fakeDeployer{}
 	handler := NewDeployHandler(deployer)
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1","force_recreate":true}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1","force_recreate":true}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestHandleRestartsApplication(t *testing.T) {
 	deployer := &fakeDeployer{}
 	handler := NewRestartHandler(deployer)
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1"}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestHandleStopsApplication(t *testing.T) {
 	deployer := &fakeDeployer{}
 	handler := NewStopHandler(deployer)
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1","remove_volumes":true}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"application_id":"app-1","deployment_id":"deploy-1","remove_volumes":true}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}

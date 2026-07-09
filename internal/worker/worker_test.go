@@ -13,6 +13,7 @@ import (
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
@@ -38,7 +39,7 @@ func TestWorkerCompletesTask(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := NewRouter()
-	router.Register(status.TaskTypeCIPipelineRunExecute, HandlerFunc(func(ctx context.Context, item taskrepo.Task) error { return nil }))
+	router.Register(status.TaskTypeCIPipelineRunExecute, HandlerFunc(func(ctx context.Context, item tasksvc.Task) error { return nil }))
 	worker := New(repo, router, slog.New(slog.NewTextHandler(io.Discard, nil)), Config{WorkerId: "worker-1", PollInterval: time.Millisecond, LeaseDuration: time.Minute, Concurrency: 1})
 
 	if err := worker.runOnce(context.Background(), 0); err != nil {
@@ -63,7 +64,7 @@ func TestWorkerRequeuesFailedTask(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := NewRouter()
-	router.Register(status.TaskTypeCIPipelineRunExecute, HandlerFunc(func(ctx context.Context, item taskrepo.Task) error { return errors.New("boom") }))
+	router.Register(status.TaskTypeCIPipelineRunExecute, HandlerFunc(func(ctx context.Context, item tasksvc.Task) error { return errors.New("boom") }))
 	worker := New(repo, router, slog.New(slog.NewTextHandler(io.Discard, nil)), Config{WorkerId: "worker-1", PollInterval: time.Millisecond, LeaseDuration: time.Minute, Concurrency: 1})
 
 	if err := worker.runOnce(context.Background(), 0); err != nil {

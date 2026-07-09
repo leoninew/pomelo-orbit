@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
 type Payload struct {
@@ -38,7 +38,7 @@ func NewStopHandler(deployer ApplicationDeployer) Handler {
 	return Handler{deployer: deployer, operation: "stop"}
 }
 
-func (h Handler) Handle(ctx context.Context, item taskrepo.Task) error {
+func (h Handler) Handle(ctx context.Context, item tasksvc.Task) error {
 	var payload Payload
 	if err := json.Unmarshal([]byte(item.PayloadJSON), &payload); err != nil {
 		return fmt.Errorf("parse cd task payload: %w", err)

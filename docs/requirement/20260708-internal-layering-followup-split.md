@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分
-最后修改时间: 2026-07-09 08:37:55
+最后修改时间: 2026-07-09 09:00:47
 
 Review status: Accepted
 
@@ -49,7 +49,7 @@ Review status: Accepted
 | 3 | `internal/application/ci/runtime_variables.go` 与 `internal/workflow/activity/ci/runtime_variables.go` | runtime variable 逻辑跨触发与执行，迁移后 application/activity 两侧存在相近逻辑，可能出现重复和规则漂移。 | 已完成拆分：runtime variable、template variable 解析/清洗/内置变量/快照补全等纯规则集中到 `internal/common/civariable`；application 与 workflow activity 直接调用共享规则；删除 workflow activity wrapper-only 文件，不保留占位或兼容层。 | 高 | 已实施，检查通过 |
 | 4 | `internal/application/ci/workspace.go` 与 `internal/workflow/activity/ci/workspace.go` | CI workspace 路径、artifact/log 路径和 Docker mount 计算跨 application/activity 使用，当前存在重复实现。 | 已完成拆分：共享 CI workspace 包位于 `internal/infrastructure/storage/local/ciworkspace`，集中承载路径规则、目录创建、physical root 解析缓存和 Docker mount 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper-only 兼容层。 | 中 | 已实施，检查通过 |
 | 5 | `internal/application/cd/workspace.go` 与 `internal/workflow/activity/cd/workspace.go` | CD workspace 路径计算与物理数据根解析跨 application/activity 使用，当前存在重复实现，且依赖本地 physical data root 解析。 | 已完成拆分：共享 CD workspace 包位于 `internal/infrastructure/storage/local/cdworkspace`，集中承载 CD app/log 路径、physical root 解析缓存和 slash 格式 physical path 生成；application 与 workflow activity 直接依赖共享包，不保留 wrapper、别名、适配或兼容层。 | 中 | 已实施，检查通过 |
-| 6 | `internal/repository/impl/sqlc/task/repository.go` | task repository 实现里包含 Task 持久化模型，repository impl 与模型定义边界不清。 | 读取文件确认模型是否只服务 sqlc impl；若为跨层任务模型，应迁到 `internal/model` 或 `internal/queue/task`；sqlc impl 只保留转换和持久化。 | 中 | 待处理 |
+| 6 | `internal/repository/impl/sqlc/task/repository.go` | task repository 实现里包含跨层使用的 `Task` runtime model，导致 queue、worker、HTTP handler、application 接口依赖 sqlc repository impl。 | 已完成拆分：`Task` runtime model 迁到 `internal/queue/task`；sqlc task repository 只保留持久化和 SQLC row 转换；queue、worker、handler、application 调用点直接依赖 queue task model，不保留别名、wrapper 或适配层。 | 中 | 已实施，检查通过 |
 | 7 | `internal/infrastructure/logger/logstore/logstore.go` | logstore 已放入 logger，但需要确认 logging 与 logstore 的 package/API 命名是否表达清晰。 | 检查 logger/logging/logstore 三者调用关系；若只是命名问题，优先小范围重命名或补清晰接口，不做大迁移。 | 低 | 待处理 |
 | 8 | 根目录 `proto/` 与 `internal/gen/proto` | `internal/gen/proto` 是生成代码，根目录 `proto/` 是否作为 IDL 源目录保留尚未形成明确决策。 | 单独检查 proto 生成链路、Make/Task/Buf 配置；若根目录是源码约定，应保留并记录；不要强行迁入 internal。 | 低 | 待处理 |
 | 9 | `internal/api/http/server.go` | HTTP server 是路由和依赖组装中心，当前可工作，但后续可能继续膨胀。 | 暂不优先拆；只有当新增路由继续增加 server 复杂度时，再按 route group 拆注册函数。 | 低 | 待处理 |
@@ -483,6 +483,77 @@ application 侧使用这些规则删除应用目录、读取部署日志、执�
   - `PhysicalDir` 仍返回 slash 格式 physical root；
   - `PhysicalAppDir` 仍返回 slash 格式 `<physicalRoot>/cd/<appCode>`；
   - physical root resolver 仍只执行一次并缓存错误。
+- [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
+
+验证结果：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：通过，`golangci-lint run` 输出 `0 issues.`。
+
+## 问题 6 分析：task runtime model 边界
+
+### 参考架构依据
+
+参考 `D:\SourceCodes\mywork\k12-force\docs\analyze\arch.md`：
+
+- `repository/impl/sqlc` 是 repository 的 sqlc 持久化实现。
+- `queue/` 承载消息定义、生产消费、dispatcher、worker、retry、codec 等队列运行时能力。
+- `application/` 负责用例编排，不应暴露具体 repository implementation type。
+- `api/http` 负责协议适配和响应转换，不应为了 DTO 转换依赖 sqlc impl。
+
+因此 background task / queue item / worker dispatch payload 这种 runtime model 不应定义在 `internal/repository/impl/sqlc/task`；它属于 queue 边界。
+
+### 当前读取结论
+
+`internal/repository/impl/sqlc/task/repository.go` 当前定义的 `Task` 已被多层直接使用：
+
+- `internal/queue/task/service.go` 的 service 返回 `*taskrepo.Task`。
+- `internal/worker/worker.go` 的 `Handler`、`HandlerFunc`、`Repository` 使用 `taskrepo.Task`。
+- `internal/worker/handler/ci/handler.go` 与 `internal/worker/handler/cd/handler.go` 的 `Handle` 参数使用 `taskrepo.Task`。
+- `internal/api/http/handler/task/handler.go` 的 `taskResponse` 使用 `*taskrepo.Task`。
+- `internal/application/ci/repository.go` 与 `internal/application/cd/service.go` 的 `TaskService` 接口返回 `*taskrepo.Task`。
+
+这说明 `Task` 不是 sqlc impl 私有模型，而是跨 queue/worker/API/application 使用的 runtime model。继续放在 sqlc impl 下会让上层为了任务模型依赖具体数据库实现包。
+
+### 拆分策略
+
+本 issue 只处理 task runtime model 的边界，不扩大为 task API、worker 生命周期、retry 策略或任务类型常量重构：
+
+1. 新增 `internal/queue/task/model.go`，定义 `Task` runtime model。
+2. 删除 `internal/repository/impl/sqlc/task/repository.go` 中的本地 `Task` 定义。
+3. `internal/repository/impl/sqlc/task` 直接返回 `*tasksvc.Task`，只保留 SQL/transaction/SQLC row 转换职责。
+4. `internal/queue/task/service.go` 使用本包 `Task`，不再 import sqlc task repo 只是为了模型类型。
+5. `internal/worker/worker.go`、`internal/worker/handler/ci/handler.go`、`internal/worker/handler/cd/handler.go` 直接使用 queue task model。
+6. `internal/api/http/handler/task/handler.go` 的 response 转换直接接收 `*tasksvc.Task`。
+7. `internal/application/ci/repository.go` 与 `internal/application/cd/service.go` 的 `TaskService` 接口返回 `*tasksvc.Task`。
+8. 测试中构造 task 的地方直接改为 `tasksvc.Task{...}`。
+9. 不保留 `type Task = ...`、wrapper-only 文件、适配层或新旧模型并存。
+
+### 实施结果
+
+- 新增 `internal/queue/task/model.go`，定义跨 queue/worker/API/application 使用的 `Task` runtime model。
+- `internal/repository/impl/sqlc/task/repository.go` 删除本地 `Task` 定义，`ClaimNext`、`FindById` 与 `taskFromSQLC` 直接使用 `*tasksvc.Task` / `tasksvc.Task`。
+- `internal/queue/task/service.go` 使用本包 `Task`，不再为了模型类型 import sqlc task repository。
+- `internal/worker/worker.go`、`internal/worker/handler/ci/handler.go`、`internal/worker/handler/cd/handler.go` 直接使用 queue task model。
+- `internal/api/http/handler/task/handler.go` 的 response 转换直接使用 `*tasksvc.Task`。
+- `internal/application/ci/repository.go` 与 `internal/application/cd/service.go` 的 `TaskService` 接口返回 `*tasksvc.Task`。
+- worker 相关测试构造 task 时直接使用 `tasksvc.Task{...}`。
+
+### 验收标准
+
+- [x] `internal/repository/impl/sqlc/task/repository.go` 不再定义 `Task`。
+- [x] `Task` model 位于 `internal/queue/task/model.go`。
+- [x] queue service、worker、worker handlers、HTTP task handler、application CI/CD 不再为了 `Task` 类型 import `internal/repository/impl/sqlc/task`。
+- [x] sqlc task repository 直接返回 `*tasksvc.Task`，只保留持久化与 row conversion 职责。
+- [x] 不保留类型别名、wrapper-only 文件、适配层或新旧模型并存。
+- [x] 任务入队、claim、complete、fail、HTTP create/get task、CI/CD worker handler 行为不变。
 - [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
 
 验证结果：

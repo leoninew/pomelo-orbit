@@ -8,16 +8,16 @@ import (
 	"sync"
 	"time"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
 type Handler interface {
-	Handle(ctx context.Context, task taskrepo.Task) error
+	Handle(ctx context.Context, task tasksvc.Task) error
 }
 
-type HandlerFunc func(ctx context.Context, task taskrepo.Task) error
+type HandlerFunc func(ctx context.Context, task tasksvc.Task) error
 
-func (f HandlerFunc) Handle(ctx context.Context, task taskrepo.Task) error {
+func (f HandlerFunc) Handle(ctx context.Context, task tasksvc.Task) error {
 	return f(ctx, task)
 }
 
@@ -33,7 +33,7 @@ func (r *Router) Register(taskType string, handler Handler) {
 	r.handlers[taskType] = handler
 }
 
-func (r *Router) Handle(ctx context.Context, item taskrepo.Task) error {
+func (r *Router) Handle(ctx context.Context, item tasksvc.Task) error {
 	handler, ok := r.handlers[item.TaskType]
 	if !ok {
 		return fmt.Errorf("no handler registered for task type: %s", item.TaskType)
@@ -42,7 +42,7 @@ func (r *Router) Handle(ctx context.Context, item taskrepo.Task) error {
 }
 
 type Repository interface {
-	ClaimNext(ctx context.Context, workerId string, lockTimeout time.Duration) (*taskrepo.Task, error)
+	ClaimNext(ctx context.Context, workerId string, lockTimeout time.Duration) (*tasksvc.Task, error)
 	Complete(ctx context.Context, taskId string) error
 	Fail(ctx context.Context, taskId string, message string) error
 }

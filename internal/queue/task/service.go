@@ -9,12 +9,11 @@ import (
 	"strings"
 
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
 type Repository interface {
 	Enqueue(ctx context.Context, id string, taskType string, payloadJSON string, maxAttempts int) error
-	FindById(ctx context.Context, id string) (*taskrepo.Task, error)
+	FindById(ctx context.Context, id string) (*Task, error)
 }
 
 type Service struct {
@@ -34,7 +33,7 @@ func New(repo Repository, defaultMaxAttempts int) Service {
 	return Service{repo: repo, defaultMaxAttempts: defaultMaxAttempts}
 }
 
-func (s Service) Create(ctx context.Context, input CreateInput) (*taskrepo.Task, error) {
+func (s Service) Create(ctx context.Context, input CreateInput) (*Task, error) {
 	taskType := strings.TrimSpace(input.TaskType)
 	if taskType == "" {
 		return nil, ErrTaskTypeRequired
@@ -79,7 +78,7 @@ func (s Service) Create(ctx context.Context, input CreateInput) (*taskrepo.Task,
 	return item, nil
 }
 
-func (s Service) EnqueueTyped(ctx context.Context, taskType string, payload any) (*taskrepo.Task, error) {
+func (s Service) EnqueueTyped(ctx context.Context, taskType string, payload any) (*Task, error) {
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal task payload: %w", err)
@@ -87,7 +86,7 @@ func (s Service) EnqueueTyped(ctx context.Context, taskType string, payload any)
 	return s.Create(ctx, CreateInput{TaskType: taskType, PayloadJSON: string(payloadJSON)})
 }
 
-func (s Service) FindById(ctx context.Context, id string) (*taskrepo.Task, error) {
+func (s Service) FindById(ctx context.Context, id string) (*Task, error) {
 	return s.repo.FindById(ctx, strings.TrimSpace(id))
 }
 

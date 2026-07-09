@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	ciactivity "gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci"
 )
 
 func TestHandleRejectsInvalidPayload(t *testing.T) {
 	handler := NewHandler(&fakeExecutor{})
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{invalid`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{invalid`})
 	if err == nil || !strings.Contains(err.Error(), "parse ci task payload") {
 		t.Fatalf("expected parse error, got %v", err)
 	}
@@ -19,7 +19,7 @@ func TestHandleRejectsInvalidPayload(t *testing.T) {
 
 func TestHandleRequiresPipelineRunId(t *testing.T) {
 	handler := NewHandler(&fakeExecutor{})
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{}`})
 	if err == nil || !strings.Contains(err.Error(), "pipeline_run_id is required") {
 		t.Fatalf("expected required field error, got %v", err)
 	}
@@ -29,7 +29,7 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 	executor := &fakeExecutor{}
 	handler := NewHandler(executor)
 
-	err := handler.Handle(context.Background(), taskrepo.Task{PayloadJSON: `{"pipeline_run_id":"run-1","variables":{"IMAGE":"demo"}}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"pipeline_run_id":"run-1","variables":{"IMAGE":"demo"}}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}

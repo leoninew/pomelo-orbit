@@ -16,7 +16,6 @@ import (
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
 type router interface {
@@ -137,7 +136,7 @@ func (h Handler) getTask(c *gin.Context) {
 	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
 }
 
-func taskResponse(item *taskrepo.Task) pomeloorbit.TaskResp {
+func taskResponse(item *tasksvc.Task) pomeloorbit.TaskResp {
 	return pomeloorbit.TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
 }
 

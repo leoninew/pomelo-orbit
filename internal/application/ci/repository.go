@@ -21,8 +21,8 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logstore"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
@@ -97,7 +97,7 @@ type PipelineExecutionStore interface {
 }
 
 type TaskService interface {
-	EnqueueTyped(ctx context.Context, taskType string, payload any) (*taskrepo.Task, error)
+	EnqueueTyped(ctx context.Context, taskType string, payload any) (*tasksvc.Task, error)
 }
 
 type Service struct {

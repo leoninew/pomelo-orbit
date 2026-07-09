@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分
-最后修改时间: 2026-07-09 12:13:00
+最后修改时间: 2026-07-09 13:16:15
 
 Review status: Accepted
 
@@ -53,7 +53,7 @@ Review status: Accepted
 | 7 | `internal/infrastructure/logger/logstore/logstore.go` | logstore 已放入 logger，但它实际承载 CI/CD execution log 的本地文件读写，不是应用 logger 初始化或 slog handler；当前包路径与 `logging` 并列容易误导职责边界，且 application/workflow 构造参数暴露 concrete infrastructure type。 | 已完成拆分：execution log 本地文件读写迁到 `internal/infrastructure/storage/local/executionlog`，旧 `logger/logstore` 删除；application/workflow 各自定义最小消费接口，bootstrap/server 注入 `executionlog.Store`；删除未使用的 `Exists`，不保留旧包、别名或适配层。 | 低 | 已实施，检查通过 |
 | 8 | 根目录 `proto/` 与 `internal/gen/proto` | `internal/gen/proto` 是生成代码，根目录 `proto/` 是否作为 IDL 源目录保留尚未形成明确决策。 | 已完成分析：根目录 `proto/` 是 Buf module 指定的 IDL 源目录，同时生成 Go `internal/gen/proto` 与前端 `web/src/gen/proto`；该布局符合架构指南中“契约源文件在根目录 proto、生成代码在 gen 隔离层”的约束，不应强行迁入 `internal`，也不需要兼容层或适配层。 | 低 | 已分析，建议不迁移 |
 | 9 | `internal/api/http/server.go` | HTTP server 当前不只是 Gin 入站适配器，还承担 repository impl、application service、infra adapter 的构造与部分重复 service 组装，边界超过 `api/http` 职责。 | 已完成实施：repository/service/infrastructure adapter 组装已移到 `bootstrap/provider.go`；`api/http.Server` 改为接收已装配依赖并只注册 Gin middleware/routes、health、static fallback；Cloudflare Turnstile concrete verifier 已迁到 `internal/infrastructure/turnstile`；孤儿 root HTTP route 集成测试已清理，仅保留与 `api/http` 源码职责对应的 server/static、codec、middleware、authz 测试。 | 低 | 已实施，检查通过 |
-| 10 | `internal/bootstrap/app.go` 与 `internal/bootstrap/provider.go` | bootstrap 是生命周期和依赖组装中心，当前合理，但可能随功能增长变胖。 | 暂不优先拆；后续只在 provider 出现明显多职责或循环依赖时再拆。 | 低 | 待处理 |
+| 10 | `internal/bootstrap/app.go` 与 `internal/bootstrap/provider.go` | bootstrap 同时承载进程生命周期编排、数据库迁移入口、HTTP server/worker 启动协调、repository/service/infra provider 组装；组合根职责本身合理，但当前 `app.go` 的生命周期控制与 `provider.go` 的对象装配边界还可以更清晰，避免后续继续膨胀。 | 已完成实施：保留 bootstrap 作为唯一组合根；database/migration、repository store、HTTP server factory、worker factory、runtime lifecycle 已在 bootstrap 内部分文件承载；删除 provider 大杂烩文件，不保留空占位、兼容构造或新旧装配路径；bootstrap 新增 runtime lifecycle 测试，测试仍跟随源码职责。 | 低 | 已实施，检查通过 |
 
 ## 问题 1 分析：CD route
 
@@ -994,6 +994,193 @@ Issue 9 成立，而且不只是“后续可能膨胀”的文件长度问题。
 - Cloudflare Turnstile concrete HTTP verifier 迁到 `internal/infrastructure/turnstile`，原 `internal/api/http/turnstile.go` 与测试删除，不保留 wrapper 或旧构造路径。
 - `internal/test/e2e/mysql_e2e_test.go` 改用 `bootstrap.NewHTTPServer`，避免测试继续调用旧 `transporthttp.New` 签名。
 - 根据用户反馈清理 root `internal/api/http/*_routes_test.go` 孤儿测试；`api/http` 仅保留与当前源码职责直接对应的 `server_test.go`、`codec`、`middleware`、`handler/authz` 测试。被删除的 route 集成测试主要覆盖 application service / repository / filesystem 业务组合，不再放在 HTTP adapter 根包中伪装成 HTTP 层测试；其中需要保留的业务覆盖已按源码归属重建到 `internal/application/{auth,cd,ci,project,role,settings,user}` 的 service integration tests。
+
+验证结果：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：通过，`golangci-lint run` 输出 `0 issues.`。
+
+## 问题 10 分析：bootstrap 生命周期与 provider 边界
+
+### 参考架构依据
+
+参考 `D:\SourceCodes\mywork\best-practices\docs\guides\backend-service-architecture.md`：
+
+- `bootstrap` 是组合根，允许看见所有层，职责是初始化数据库、HTTP server、queue/worker、workflow 等运行时组件，选择 repository implementation 和 infrastructure adapter，并把实现注入 application 或 adapter。
+- `bootstrap` 不承载业务规则，只负责“把对象接起来”和管理资源关闭顺序。
+- `cmd/*` 只负责进程级参数、配置/日志初始化、根 context 与信号处理，然后调用 `bootstrap`；不应直接 new handler、repository 或第三方 client。
+- `api/http` 是 Gin 入站适配器，不应承担 repository/service/infrastructure 选择。
+- `queue`、`workflow`、`scheduler` 是执行机制，不是业务核心；它们的 runtime 装配可以由 bootstrap 完成。
+- 测试替身和测试归属应按源码职责放置：某个包的生命周期/装配行为由该包测试，application 业务覆盖放 application，HTTP 协议适配放 api/http，基础设施 client 行为放 infrastructure。
+
+据此，Issue 10 的判断重点不是“bootstrap 依赖很多包是否违规”。作为组合根，bootstrap 看见 repository impl、infrastructure、api/http、worker、workflow activity 是合理的；需要判断的是当前 bootstrap 内部是否已经把不同组合根子职责混在同一个文件/函数中，导致后续继续增长时难以维护或测试。
+
+### 当前读取结论
+
+当前 `internal/bootstrap` 只有三个源码文件：
+
+- `app.go`
+  - `App` 保存 `config.Config` 和 `*slog.Logger`。
+  - `Migrate()` 打开数据库、执行迁移并关闭连接。
+  - `MigrationVersion()` 打开数据库、读取迁移版本并关闭连接。
+  - `RunWorker(ctx)` 打开数据库、执行迁移、构造 task repository/store/router/worker 并运行 worker。
+  - `Serve(ctx)` 打开数据库、执行迁移、构造 HTTP server、构造 background worker，同时协调 HTTP server 与 background worker 的生命周期、错误传播和 shutdown。
+
+- `provider.go`
+  - `OpenDatabase` / `RunMigrations` / `MigrationVersion` 包装 database infrastructure。
+  - `NewRepositoryStore` / `NewTaskRepository` 构造 sqlc store 和 task repository。
+  - `NewHTTPServer` 构造 HTTP server 所需依赖：token service、user/role/project/ci/cd repositories、application services、envfile store、executionlog store、Traefik route manager、mkcert generator、Turnstile verifier。
+  - `NewTaskRouter` 构造 CI/CD workflow activity execution services 与 worker handlers。
+  - `NewWorker` 构造 worker runtime。
+
+- `app_test.go`
+  - 目前只覆盖 `App.Migrate()` 与 `App.MigrationVersion()`。
+
+调用点当前也比较集中：
+
+- `cmd/server/main.go` 只调用 `bootstrap.New(cfg, logger)`，再按命令调用 `Serve(ctx)` 或 `RunWorker(ctx)`。
+- `cmd/migrate/main.go` 只调用 `bootstrap.New(cfg, logger)`，再调用 `MigrationVersion()` 或 `Migrate()`。
+- `internal/test/e2e/mysql_e2e_test.go` 调用 `bootstrap.NewHTTPServer(...)` 做 e2e HTTP server 装配。
+
+### 问题判断
+
+Issue 10 部分成立，但不是“跨层依赖错误”。
+
+合理部分：
+
+- `bootstrap/provider.go` import repository impl、infrastructure adapter、application services、worker handlers、workflow activity 是组合根职责，符合架构指南。
+- `App.Serve()` 同时启动 HTTP server 与 background worker，是当前 server 进程模式下的生命周期编排，不属于 application 业务逻辑。
+- `cmd/server` 和 `cmd/migrate` 目前保持薄入口，没有直接装配 repository、handler 或 infrastructure client。
+
+需要改善的部分：
+
+1. `provider.go` 已经变成“所有 provider 放一起”的大杂烩。
+   - database/migration provider、repository provider、HTTP server dependency provider、task router provider、worker provider 全在一个文件。
+   - Issue 9 后 HTTP server 组装集中到 bootstrap 是正确方向，但继续全塞进 `provider.go` 会让组合根内部也失去结构。
+
+2. `app.go` 的 `Serve()` 同时承载多件生命周期细节。
+   - 打开数据库、执行迁移、构造 HTTP server、构造 worker、创建 `http.Server`、启动两个 goroutine、协调 cancel/shutdown/error channel。
+   - 这些仍属于 bootstrap，但可拆为 bootstrap 内部 runtime/lifecycle helper，避免 `App` 方法继续膨胀。
+
+3. database/migration helper 命名与归属可以更明确。
+   - `OpenDatabase`、`RunMigrations`、`MigrationVersion` 目前在 `provider.go`，但它们更像 bootstrap database/migration resource helpers。
+   - 可以移到 `database.go` / `migration.go`，仍保留在 bootstrap 包内。
+
+4. 测试覆盖跟源码职责还不完整。
+   - 目前 bootstrap test 只覆盖 migration happy path。
+   - 如果拆分 lifecycle/provider，应把测试放在 `internal/bootstrap`，只覆盖装配和生命周期协调，不把 application 业务测试塞回 bootstrap。
+   - 用户已明确“测试用例跟着源码走”：application service 测业务，api/http 测 HTTP adapter，infrastructure 测 external/local adapter，bootstrap 测 composition/lifecycle。
+
+因此 Issue 10 建议处理的是 bootstrap 内部职责切分和测试归属，不是把 bootstrap 职责移出 bootstrap，也不是抽一个额外 DI/compat layer。
+
+### 拆分策略
+
+本 issue 可以实施，但要控制边界：只在 `internal/bootstrap` 内按职责重排组合根代码，不改变外部行为，也不把业务逻辑搬进 bootstrap。
+
+建议拆分方向：
+
+1. 保留 `bootstrap.App` 作为对 `cmd` 暴露的进程应用入口。
+   - `cmd/server` 和 `cmd/migrate` 继续只面对 `bootstrap.New(cfg, logger)` 与 `App` 方法。
+   - 不新增 `NewAppV2`、`NewWithProviders`、旧构造兼容层或并存路径。
+
+2. 将 database / migration helper 从 generic `provider.go` 中拆出。
+   - 目标文件建议：`internal/bootstrap/database.go`。
+   - 放置：`OpenDatabase`、`RunMigrations`、`MigrationVersion`。
+   - 仍只是 bootstrap 对 database infrastructure 的薄封装，不新增接口适配层。
+
+3. 将 HTTP server 装配拆到专门文件。
+   - 目标文件建议：`internal/bootstrap/http.go`。
+   - 放置：`NewHTTPServer` 及其私有 helper。
+   - 可以把 HTTP dependencies 组装拆成私有 `newHTTPServerDependencies(...)`，但不要导出额外兼容入口。
+   - 保持 `bootstrap.NewHTTPServer(...)` 作为当前 e2e 装配入口是否保留需谨慎判断：它是当前源码真实入口，不是兼容旧签名；若保留，语义应是“bootstrap HTTP server factory”。如果实施时发现只有 e2e 使用且可改为更高层 App 测试，也可以收敛为私有函数，但不要留下新旧两套。
+
+4. 将 worker / task router 装配拆到专门文件。
+   - 目标文件建议：`internal/bootstrap/worker.go`。
+   - 放置：`NewTaskRouter`、`NewWorker` 及 workflow activity execution service 装配。
+   - 如果 `RunWorker` 和 `Serve` 都需要同样 worker runtime，保持单一路径，避免 server 进程和 worker 命令使用不同装配逻辑。
+
+5. 将 `Serve()` 中 HTTP + worker 并发生命周期协调抽成 bootstrap 内部 runtime helper。
+   - 目标文件建议：`internal/bootstrap/runtime.go` 或保留在 `app.go` 的私有函数。
+   - 可抽出私有函数，例如 `runHTTPAndWorker(ctx, logger, httpServer, worker)`。
+   - 该 helper 只处理 context、shutdown、error propagation，不知道业务 service。
+   - 不启动/停止开发服务器；这里只是产品代码生命周期逻辑，不在分析阶段执行。
+
+6. 保持 `provider.go` 聚焦“跨组件 provider”或删除。
+   - 如果上述拆分后 `provider.go` 为空，应删除，不保留空占位。
+   - 如果仍保留，应只放真正跨多个 runtime 共用的 provider；不要保留 wrapper-only 文件。
+
+7. 测试跟随源码职责。
+   - `internal/bootstrap/app_test.go` 可继续覆盖 `Migrate` / `MigrationVersion`。
+   - 新增或调整 bootstrap tests 时，只测：migration helper、HTTP server factory 装配可生成 handler、worker router 注册/worker config、runtime helper 在 HTTP/worker 失败时能 cancel/shutdown。
+   - 不把已迁到 application 的业务覆盖搬回 bootstrap。
+   - 不在 `api/http` root 恢复 route 集成测试来覆盖 service/repository 业务。
+   - Turnstile verifier 继续由 `internal/infrastructure/turnstile` 测；HTTP static/fallback 继续由 `internal/api/http` 测；application service 行为继续由 `internal/application/*` 测。
+
+### 不建议的做法
+
+- 不建议把 bootstrap provider 下沉回 `api/http`，这会回退 Issue 9。
+- 不建议把 repository/service/infrastructure 组装移到 `cmd/server` 或 `cmd/migrate`，cmd 应保持薄入口。
+- 不建议引入 Wire/Dig/Fx 等 DI 框架；当前问题是文件和职责组织，不是缺少 DI 容器。
+- 不建议新增 provider interface、factory interface、`NewWith...` 等测试专用抽象；这会形成不必要适配层。
+- 不建议把 `App.Serve()` 拆成两个对外入口后让调用方自己协调 HTTP 和 worker；生命周期协调属于 bootstrap。
+- 不建议在本 issue 改 worker 执行业务流、workflow activity 业务规则、task retry/lease/concurrency 语义。
+- 不建议为了“测试方便”恢复 root HTTP route integration tests；测试应跟随源码职责。
+
+### 实现边界
+
+如果用户确认进入实现，Issue 10 可接受改动范围：
+
+- `internal/bootstrap/app.go`
+- `internal/bootstrap/provider.go`
+- 可新增：
+  - `internal/bootstrap/database.go`
+  - `internal/bootstrap/http.go`
+  - `internal/bootstrap/worker.go`
+  - `internal/bootstrap/runtime.go`
+- `internal/bootstrap/app_test.go` 或新增 bootstrap test 文件。
+- 如 HTTP server factory 可见性调整影响 e2e，可调整 `internal/test/e2e/mysql_e2e_test.go`，但不把 e2e 改成覆盖业务细节。
+- 更新本 requirement 文档的 Issue 10 状态、实施结果和验收标准。
+
+不在 Issue 10 中处理：
+
+- 不改 API route path 或 request/response contract。
+- 不改 application service 行为。
+- 不改 repository SQL/mapper。
+- 不改 worker handler / workflow activity 执行业务逻辑。
+- 不改 task retry、lease、concurrency 语义。
+- 不改 config schema。
+- 不改前端。
+- 不改数据库迁移。
+
+### 验收标准
+
+- [x] `bootstrap` 仍是唯一组合根；repository/service/infrastructure 装配不回流到 `api/http`、`application` 或 `cmd`。
+- [x] `cmd/server` 与 `cmd/migrate` 保持薄入口，不直接 new repository、handler、worker handler 或 infrastructure client。
+- [x] database/migration helper 与 repository store factory、HTTP server factory、worker factory、runtime lifecycle 职责在 bootstrap 内部分文件或私有函数中清晰分离。
+- [x] 不保留空 provider、wrapper-only 文件、兼容构造、别名或新旧装配路径并存。
+- [x] `App.Serve()` 行为保持不变：启动 HTTP server 与 background worker；任一失败时取消另一侧；context 取消时 shutdown HTTP；正常退出返回原有语义。
+- [x] `App.RunWorker()` 行为保持不变：打开数据库、执行迁移、构造 task router/worker 并运行。
+- [x] `App.Migrate()` / `App.MigrationVersion()` 行为保持不变。
+- [x] 测试用例跟随源码职责：bootstrap 只测试 composition/lifecycle，application/api/infrastructure 继续测试各自业务或 adapter；不恢复 root HTTP orphan route tests。
+- [x] 后端命令继续通过：`go fmt ./cmd/... ./internal/...`、`./bin/golangci-lint fmt ./cmd/... ./internal/...`、`./bin/golangci-lint run ./cmd/... ./internal/...`、`go vet ./cmd/... ./internal/...`、`go test ./cmd/... ./internal/...`。
+
+### 实施结果
+
+- `internal/bootstrap/database.go` 新增 database/migration helper：`OpenDatabase`、`RunMigrations`、`MigrationVersion`。
+- `internal/bootstrap/repository.go` 新增 repository store factory：`NewRepositoryStore`、`NewTaskRepository`。
+- `internal/bootstrap/http.go` 新增 HTTP server factory：`NewHTTPServer` 与私有 `newHTTPServerDependencies`，继续由 bootstrap 选择 repository/service/infrastructure implementation 并注入 `api/http`。
+- `internal/bootstrap/worker.go` 新增 worker factory：`NewTaskRouter`、`NewWorker`，集中装配 worker router、CI/CD workflow activity execution service 与 worker handlers。
+- `internal/bootstrap/runtime.go` 新增 runtime lifecycle helper：`runHTTPServerAndWorker`，集中处理 HTTP server 与 background worker 并发运行、context cancel、HTTP shutdown 和 error propagation。
+- `internal/bootstrap/app.go` 保留对 `cmd` 暴露的 `App` 生命周期入口，移除 HTTP + worker 并发协调细节，继续调用单一路径的 bootstrap factories。
+- `internal/bootstrap/provider.go` 删除；拆分后没有保留空占位、wrapper-only 文件或兼容路径。
+- `internal/bootstrap/runtime_test.go` 新增 lifecycle 测试，覆盖 HTTP serve error 时取消 worker、context cancel 时 shutdown 并返回 context error；测试仍留在 bootstrap 包内。
 
 验证结果：
 

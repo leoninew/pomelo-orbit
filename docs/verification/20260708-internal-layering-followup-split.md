@@ -1,5 +1,5 @@
 # internal 分层后续逐条拆分验证
-最后修改时间: 2026-07-09 12:58:56
+最后修改时间: 2026-07-09 13:46:57
 
 Review status: Accepted
 
@@ -670,3 +670,165 @@ ok   gitee.com/leoninew/PomeloOrbit-go/internal/test/e2e
 ## Conclusion
 
 Issue 9 HTTP server 路由与依赖组装边界拆分已完成并通过验证。实现符合 requirement 中的分层目标：`api/http` 不再选择 repository implementation、不再构造 application services 或 infrastructure adapters，HTTP server 只负责 Gin adapter 相关职责；依赖装配集中到 bootstrap；Turnstile concrete verifier 已迁入 infrastructure；孤儿 HTTP route tests 已清理且需要保留的业务覆盖已放回对应 application 包；未保留兼容层、别名、wrapper 或新旧构造路径，后端检查全部通过。
+
+---
+
+# Issue 10：bootstrap 生命周期与 provider 边界验证
+
+## Verification target
+
+本次追加验证范围为 light / 轻量模式下的 issue 10：`internal/bootstrap/app.go` 与 `internal/bootstrap/provider.go` 的 bootstrap 生命周期与 provider 边界拆分。
+
+对应 requirement 文档：
+
+- `docs/requirement/20260708-internal-layering-followup-split.md`
+
+本节只验证 issue 10，不重新验证 issue 5/6/7/9。
+
+## Requirement alignment
+
+需求要求：
+
+- `bootstrap` 仍作为唯一组合根，允许看见 repository impl、infrastructure、api/http、worker、workflow activity，但不承载业务规则。
+- `cmd/server` 与 `cmd/migrate` 保持薄入口，不直接 new repository、handler、worker handler 或 infrastructure client。
+- 在 `internal/bootstrap` 内部按职责拆分 database/migration、repository store、HTTP server factory、worker factory、runtime lifecycle。
+- 删除 provider 大杂烩；不保留空 provider、wrapper-only 文件、兼容构造、别名或新旧装配路径并存。
+- `App.Serve()`、`App.RunWorker()`、`App.Migrate()`、`App.MigrationVersion()` 行为保持不变。
+- 测试用例跟随源码职责，bootstrap 只测试 composition/lifecycle，不恢复 root HTTP orphan route tests。
+- 不修改 API contract、application service 行为、repository SQL/mapper、worker handler / workflow activity 业务逻辑、task retry/lease/concurrency、config schema、前端或数据库迁移。
+
+实际实现与 requirement 对齐：
+
+- `internal/bootstrap/database.go` 承载 `OpenDatabase`、`RunMigrations`、`MigrationVersion`。
+- `internal/bootstrap/repository.go` 承载 `NewRepositoryStore`、`NewTaskRepository`。
+- `internal/bootstrap/http.go` 承载 `NewHTTPServer` 和私有 `newHTTPServerDependencies`。
+- `internal/bootstrap/worker.go` 承载 `NewTaskRouter`、`NewWorker`。
+- `internal/bootstrap/runtime.go` 承载私有 `runHTTPServerAndWorker`，只处理 context、HTTP shutdown、error propagation，不知道业务 service。
+- `internal/bootstrap/app.go` 保留 `App` 对 `cmd` 的生命周期入口，`Serve()` 继续打开数据库、执行迁移、构造 HTTP server 与 worker，但并发运行和 shutdown 协调下沉到 runtime helper。
+- `internal/bootstrap/provider.go` 已删除；未留下空占位或 wrapper-only 文件。
+- `internal/bootstrap/runtime_test.go` 新增 bootstrap lifecycle 测试；没有恢复 root HTTP orphan route tests。
+
+## Spec alignment
+
+不适用。当前任务使用 light / 轻量模式，未创建独立 spec 文档。
+
+## Plan alignment
+
+不适用。当前任务使用 light / 轻量模式，按 requirement 中的 issue 10 拆分策略实施。
+
+## Actual diff summary
+
+当前 issue 10 diff 覆盖以下文件：
+
+- `docs/requirement/20260708-internal-layering-followup-split.md`
+  - 记录 issue 10 架构依据、拆分策略、实施结果、验收标准和验证结果。
+- `internal/bootstrap/app.go`
+  - 移除 HTTP server + background worker 并发生命周期协调细节；改为调用 `runHTTPServerAndWorker`。
+- `internal/bootstrap/database.go`
+  - 新增 database/migration helper。
+- `internal/bootstrap/repository.go`
+  - 新增 repository store/task repository factory。
+- `internal/bootstrap/http.go`
+  - 从原 provider 拆出 HTTP server factory 和 HTTP server dependency assembly。
+- `internal/bootstrap/worker.go`
+  - 从原 provider 拆出 task router / worker factory 和 workflow activity execution service 装配。
+- `internal/bootstrap/runtime.go`
+  - 新增 HTTP server 与 background worker 并发生命周期协调 helper。
+- `internal/bootstrap/runtime_test.go`
+  - 新增 bootstrap lifecycle 测试。
+- `internal/bootstrap/provider.go`
+  - 删除 provider 大杂烩文件；当前 diff 中被识别为 `provider.go -> http.go` rename 加新增文件。
+
+## Expected vs actual changed files
+
+预期改动：
+
+- 在 `internal/bootstrap` 内拆分 database/migration、repository store、HTTP server factory、worker factory、runtime lifecycle。
+- 删除或收敛 provider 大杂烩文件。
+- 更新 `App.Serve()` 以使用 runtime lifecycle helper。
+- 新增 bootstrap package 内 lifecycle 测试。
+- 更新 requirement 和 verification 文档。
+
+实际改动与预期一致。
+
+`git diff --name-status` 将 provider 到 HTTP factory 拆分识别为 rename：
+
+```text
+R057 internal/bootstrap/provider.go internal/bootstrap/http.go
+```
+
+同时新增 `database.go`、`repository.go`、`runtime.go`、`runtime_test.go`、`worker.go`。这符合“拆分 provider 大杂烩并删除空占位”的预期；没有保留单独的 `provider.go` 空文件或兼容装配入口。
+
+未发现 issue 10 范围外的产品代码重构；未触碰前端、数据库迁移、API route path、request/response contract、application service、repository SQL/mapper、worker handler / workflow activity 业务逻辑、task retry/lease/concurrency 或 config schema。
+
+## Acceptance checklist
+
+- [x] `bootstrap` 仍是唯一组合根；repository/service/infrastructure 装配未回流到 `api/http`、`application` 或 `cmd`。
+- [x] `cmd/server` 与 `cmd/migrate` 保持薄入口，不直接 new repository、handler、worker handler 或 infrastructure client。
+- [x] database/migration helper 与 repository store factory、HTTP server factory、worker factory、runtime lifecycle 职责在 bootstrap 内部分文件或私有函数中清晰分离。
+- [x] 不保留空 provider、wrapper-only 文件、兼容构造、别名或新旧装配路径并存。
+- [x] `App.Serve()` 行为保持不变：启动 HTTP server 与 background worker；任一失败时取消另一侧；context 取消时 shutdown HTTP；正常退出返回原有语义。
+- [x] `App.RunWorker()` 行为保持不变：打开数据库、执行迁移、构造 task router/worker 并运行。
+- [x] `App.Migrate()` / `App.MigrationVersion()` 行为保持不变。
+- [x] 测试用例跟随源码职责：bootstrap 只测试 composition/lifecycle，application/api/infrastructure 继续测试各自业务或 adapter；未恢复 root HTTP orphan route tests。
+- [x] 后端检查通过。
+
+## Test results
+
+已运行命令：
+
+```text
+go fmt ./cmd/... ./internal/...
+./bin/golangci-lint fmt ./cmd/... ./internal/...
+./bin/golangci-lint run ./cmd/... ./internal/...
+go vet ./cmd/... ./internal/...
+go test ./cmd/... ./internal/...
+```
+
+结果：
+
+- `go fmt ./cmd/... ./internal/...`：通过。
+- `./bin/golangci-lint fmt ./cmd/... ./internal/...`：通过。
+- `./bin/golangci-lint run ./cmd/... ./internal/...`：通过，输出 `0 issues.`。
+- `go vet ./cmd/... ./internal/...`：通过。
+- `go test ./cmd/... ./internal/...`：通过。
+
+关键相关包：
+
+```text
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/api/http
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/test/e2e
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/worker
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/cd
+ok   gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci
+```
+
+## Missed or expanded scope
+
+未发现范围偏离。
+
+本次没有处理以下事项，符合 issue 10 边界：
+
+- 未修改 API route path 或 request/response contract。
+- 未修改 application service 行为。
+- 未修改 repository SQL/mapper。
+- 未修改 worker handler 或 workflow activity 执行业务逻辑。
+- 未修改 task retry、lease、concurrency 语义。
+- 未修改 config schema。
+- 未修改前端。
+- 未修改数据库迁移。
+
+## Risks
+
+当前未发现遗留实现风险。
+
+注意：本次验证观察到 issue 10 代码变更和 requirement 文档变更已处于 index 侧；追加 verification 文档后，verification 文档本身为新的工作区变更。本次验证未执行 `git add`、`git commit` 或 `git push`。
+
+## Incomplete items
+
+无。
+
+## Conclusion
+
+Issue 10 bootstrap 生命周期与 provider 边界拆分已完成并通过验证。实现符合 requirement 中的分层目标：bootstrap 继续作为唯一组合根，`cmd` 保持薄入口，database/migration、repository store、HTTP server factory、worker factory、runtime lifecycle 已在 bootstrap 内部按职责分离，provider 大杂烩文件已删除，未保留兼容层或新旧装配路径；新增测试留在 bootstrap 并只覆盖 lifecycle，后端检查全部通过。

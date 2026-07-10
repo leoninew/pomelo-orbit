@@ -19,21 +19,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Repository interface {
-	UserByUsername(ctx context.Context, username string) (model.User, error)
-	MarkUserLoggedIn(ctx context.Context, id string) error
-	SaveLoginHistory(ctx context.Context, history model.LoginHistory) error
-	ListLoginHistory(ctx context.Context, page int, perPage int, search string) (repository.Page[model.LoginHistory], error)
-	UpdateUser(ctx context.Context, user model.User) error
-}
-
 type Service struct {
-	repo   Repository
+	repo   repository.UserStore
 	tokens jwt.TokenService
 	logger *slog.Logger
 }
 
-func New(repo Repository, tokens jwt.TokenService, logger *slog.Logger) Service {
+func New(repo repository.UserStore, tokens jwt.TokenService, logger *slog.Logger) Service {
 	return Service{repo: repo, tokens: tokens, logger: logger}
 }
 

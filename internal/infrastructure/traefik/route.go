@@ -14,11 +14,14 @@ import (
 	"strings"
 	"time"
 
+	cdport "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/port"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gopkg.in/yaml.v3"
 )
+
+var _ cdport.TraefikRouterClient = RouteManager{}
 
 type RouteManager struct {
 	cfg config.Config
@@ -72,7 +75,7 @@ func (m RouteManager) RevokeCertificate(ctx context.Context, routeName string) e
 	return m.reload(ctx)
 }
 
-func (m RouteManager) ListRouters(ctx context.Context) ([]model.TraefikRouter, error) {
+func (m RouteManager) ListRouters(ctx context.Context) ([]cdport.TraefikRouter, error) {
 	url := strings.TrimRight(strings.TrimSpace(m.cfg.Traefik.APIURL), "/") + "/api/http/routers"
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -99,9 +102,9 @@ func (m RouteManager) ListRouters(ctx context.Context) ([]model.TraefikRouter, e
 	if err := json.NewDecoder(response.Body).Decode(&routers); err != nil {
 		return nil, fmt.Errorf("decode traefik routers: %w", err)
 	}
-	items := make([]model.TraefikRouter, 0, len(routers))
+	items := make([]cdport.TraefikRouter, 0, len(routers))
 	for _, router := range routers {
-		items = append(items, model.TraefikRouter{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, TLS: router.TLS != nil && string(*router.TLS) != "null"})
+		items = append(items, cdport.TraefikRouter{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: append([]string(nil), router.Entrypoints...), TLS: router.TLS != nil && string(*router.TLS) != "null"})
 	}
 	return items, nil
 }

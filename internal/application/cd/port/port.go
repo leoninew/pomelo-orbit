@@ -30,7 +30,18 @@ type RouteCertificateGenerator interface {
 	Generate(ctx context.Context, domain string) (string, string, error)
 }
 
+// TraefikRouter is the router data exposed by the Traefik integration.
+type TraefikRouter struct {
+	Name        string
+	Provider    string
+	Status      string
+	Rule        string
+	Service     string
+	Entrypoints []string
+	TLS         bool
+}
+
 type TraefikRouterClient interface {
-	ListRouters(ctx context.Context) ([]model.TraefikRouter, error)
+	ListRouters(ctx context.Context) ([]TraefikRouter, error)
 	IsConnectionError(err error) bool
 }

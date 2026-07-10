@@ -40,8 +40,7 @@ func (a App) RunWorker(ctx context.Context) error {
 	}
 
 	taskRepo := NewTaskRepository(database, a.cfg.Database.Driver)
-	store := NewRepositoryStore(database, a.cfg.Database.Driver)
-	router := NewTaskRouter(store, a.cfg, a.logger)
+	router := NewTaskRouter(database, a.cfg, a.logger)
 	worker := NewWorker(a.cfg, a.logger, taskRepo, router)
 	return worker.Run(ctx)
 }
@@ -67,10 +66,9 @@ func (a App) Serve(ctx context.Context) error {
 	}
 
 	taskRepo := NewTaskRepository(database, a.cfg.Database.Driver)
-	store := NewRepositoryStore(database, a.cfg.Database.Driver)
-	server := NewHTTPServer(a.cfg, a.logger, store, taskRepo)
+	server := NewHTTPServer(a.cfg, a.logger, database, taskRepo)
 	httpServer := &http.Server{Addr: server.Addr(), Handler: server.Handler()}
-	router := NewTaskRouter(store, a.cfg, a.logger)
+	router := NewTaskRouter(database, a.cfg, a.logger)
 	backgroundWorker := NewWorker(a.cfg, a.logger, taskRepo, router)
 
 	return runHTTPServerAndWorker(ctx, a.logger, server.Addr(), httpServer, backgroundWorker)

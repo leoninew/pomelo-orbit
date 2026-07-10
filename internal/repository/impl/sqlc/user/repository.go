@@ -16,6 +16,8 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
 )
 
+var _ repository.UserStore = Repository{}
+
 type Repository struct {
 	db      *sqlx.DB
 	driver  string

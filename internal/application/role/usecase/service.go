@@ -14,25 +14,16 @@ import (
 	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 var codePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
-type Repository interface {
-	RoleById(ctx context.Context, id string) (model.Role, error)
-	RoleByCode(ctx context.Context, code string) (model.Role, error)
-	RoleByName(ctx context.Context, name string) (model.Role, error)
-	PermissionCodesExist(ctx context.Context, codes []string) (map[string]struct{}, error)
-	CreateRole(ctx context.Context, role model.Role, permissionCodes []string) error
-	UpdateRole(ctx context.Context, role model.Role, permissionCodes []string) error
-	DeleteRole(ctx context.Context, roleId string) error
-}
-
 type Service struct {
-	repo Repository
+	repo repository.RoleStore
 }
 
-func New(repo Repository) Service {
+func New(repo repository.RoleStore) Service {
 	return Service{repo: repo}
 }
 

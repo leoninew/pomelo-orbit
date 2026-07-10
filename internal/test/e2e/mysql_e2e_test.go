@@ -103,8 +103,7 @@ func TestMySQLE2E(t *testing.T) {
 	}
 
 	cfg.Turnstile.Enabled = false
-	store := bootstrap.NewRepositoryStore(database, cfg.Database.Driver)
-	server := bootstrap.NewHTTPServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), store, taskRepo)
+	server := bootstrap.NewHTTPServer(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), database, taskRepo)
 	loginBody := bytes.NewBufferString(`{"username":"admin","password":"admin","csrf_token":"csrf"}`)
 	loginRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(loginRecorder, httptest.NewRequest(http.MethodPost, "/api/auth/login", loginBody))

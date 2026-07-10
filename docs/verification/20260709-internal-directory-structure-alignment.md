@@ -1,212 +1,158 @@
 # Verification: internal 后两级目录结构对齐与架构收敛
 
-最后修改时间: 2026-07-09 23:25:16
+最后修改时间: 2026-07-10 14:27:06
 
 ## Verification target
 
-本次验证覆盖 light / 轻量模式下的两个阶段：
+本次验证完成 light / 轻量模式下的以下已实施 issue：
 
-1. **Issue 1**：`internal/common/civariable` 迁出 `common`（已有验证，重新确认）
-2. **暂存区现状**：Issue 2 已部分移动的 64 个产品文件（实际 diff 远超 Issue 1 计划范围）
+1. **Issue 1**：`internal/common/civariable` 迁出 `common`；
+2. **Issue 2**：`internal/application/<domain>` 重整为 domain-first 的职责子目录。
+3. **Issue 3**：`internal/repository` 的持久化 port 与 SQLC/SQLX implementation 对齐。
 
-对应 requirement 文档：
+对应 requirement：`docs/requirement/20260709-internal-directory-structure-alignment.md`（Review status: Accepted）。
 
-- `docs/requirement/20260709-internal-directory-structure-alignment.md`（已 Accepted）
-- 原 `docs/requirement/20260709-internal-layering-second-pass.md`（已合入上述文档，独立文档已删除）
+## Requirement alignment
 
-## Requirement alignment — Issue 1
+### Issue 1
 
-需求要求：
+- CI runtime/template variable 规则最终位于 `internal/application/ci/rule/civariable`，不再位于 `common`。
+- application CI usecase 与 workflow CI activity 均直接依赖最终位置。
+- 未保留旧路径、wrapper、alias 或兼容转发。
 
-- `common` 按架构指南应保持无业务语义。
-- `internal/common/civariable` 承载 CI runtime/template variable 规则，存在业务名词和业务规则，必须迁出 `common`。
-- 迁到明确的 CI 规则归属位置。
-- application 与 workflow activity 直接依赖新位置。
-- 不保留 wrapper、alias、旧包或适配层。
-- 不修改 CI variable 规则实现。
-- 不修改 API route path、request/response contract、数据库迁移或前端。
+### Issue 2
 
-实际实现与 requirement 对齐：
+| Requirement item | Actual result |
+| --- | --- |
+| application domain 的 usecase 与 DTO 分离 | auth、user、role、project、settings、CI、CD 均已落位到各自 `usecase/` 和 `dto/`。 |
+| application-owned capability port 显式归位 | settings、CI、CD 使用各自 `port/`。 |
+| CI 业务规则迁出通用层 | CI variable 位于 `ci/rule/civariable`。 |
+| CI/CD 的当前 runner 归入职责目录 | 位于各自 `runner/`，仅代表 Issue 2 的目录归位。 |
+| 外层调用点迁移 | HTTP handlers、HTTP server、bootstrap、workflow activities 和测试已使用新路径。 |
+| 清理旧路径 | 审计未发现旧 flat application import；目标 domain 根目录无遗留 Go 源文件。 |
+| DTO 不保留类型别名 | CD `TraefikRouterResp` 已改为独立 application DTO，并在 CD usecase 进行 model 到 DTO 映射。 |
 
-- 新增 `internal/application/civariable/runtime.go`，package 名保持 `civariable`，文件内容保持不变。
-- 删除 `internal/common/civariable/runtime.go` 与空目录 `internal/common/civariable`。
-- 更新以下 6 处 import：
-  - `internal/application/ci/repository.go`
-  - `internal/application/ci/runtime_variables.go`
-  - `internal/application/ci/snapshot.go`
-  - `internal/application/ci/template.go`
-  - `internal/application/ci/template_test.go`
-  - `internal/workflow/activity/ci/execution.go`
-- 未新增 wrapper、alias、兼容转发、类型别名或新旧路径并存。
-- 未修改 CI variable 规则实现。
-- 未修改 API route path、request/response contract、数据库迁移或前端。
+此次验证未改变 API route、request/response contract、后台 task payload key、错误文案、数据库迁移或前端行为。
 
-## Requirement alignment — 暂存区现状（Issue 2 范围）
+### Issue 3
 
-暂存区实际包含 64 个产品文件变更，远超 Issue 1 计划。这些变更属于 Issue 2（application 后两级目录重组）的实现。
+| Requirement item | Actual result |
+| --- | --- |
+| repository root 表达持久化 port | 新增 user、role、project、CI、CD 与 CI/CD execution store；接口只依赖 context、model、基础类型和 repository 的分页值类型。 |
+| application / workflow 不重复持久化 interface | 已移除 usecase 与 workflow activity 中的 persistence interface，统一使用 repository root port。 |
+| impl 目录表达真实技术 | user、role、project、task 保持 `impl/sqlc`；直接 `sqlx` 的 CI/CD adapter 已迁至 `impl/sqlx`。 |
+| bootstrap 负责选择与注入实现 | 移除 `impl/sqlc.Store` 与 `NewRepositoryStore`；HTTP/worker composition root 直接以 DB connection 构造 adapter。 |
+| 不保留迁移兼容层 | 旧 port 定义、`impl/sqlc/{ci,cd}` 路径和 Store 包装均已删除；未保留 alias、wrapper 或转发。 |
 
-对照 requirement 文档 Issue 2 implementation todo：
+Repository adapter 增加编译期 interface assertions。API route、请求/响应契约、task payload、migration 与前端均未改动；既有数据库错误 wrapping 和 `sql.ErrNoRows` 消费语义保持不变。
 
-| 状态 | 项目 |
-|---|---|
-| ✅ 已移动 | `internal/application/{auth,user,role,project,settings,ci,cd}/service.go → usecase/service.go` |
-| ✅ 已新增 | `dto/`、`port/` 子包（auth/user/role/project/settings/ci/cd） |
-| ✅ 已新增 | `internal/application/ci/runner/docker.go`、`internal/application/cd/runner/shell.go` |
-| ✅ 已新增 | `internal/application/ci/port/port.go`、`internal/application/cd/port/port.go` |
-| ✅ 已新增 | `internal/application/ci/dto/ci.go`、`internal/application/cd/dto/cd.go` |
-| ✅ 已移动 | `internal/common/civariable → internal/application/ci/rule/civariable` |
-| ✅ 已更新 | `internal/api/http/handler/**`、`server.go`、`internal/bootstrap/http.go`、`internal/workflow/activity/{ci,cd}/*` import |
+## Spec and plan alignment
 
-说明：暂存区对 Issue 2 的执行**实际已经发生**，但本 verification 作为合并文档仍按 requirement 逐项核对。需求文档 Issue 2 的 Acceptance 尚未逐项验证，且 requirement 显式约定"Requirement 阶段不修改产品代码"。代码先于验证存在是本次验证需要说明的偏差。
-
-## Spec alignment
-
-不适用。当前任务使用 light / 轻量模式，未创建独立 spec 文档。
-
-## Plan alignment
-
-不适用。当前任务使用 light / 轻量模式，按 requirement 中的 Issue 策略实施。
+不适用。当前任务使用 light / 轻量模式，按 requirement 的 Issue 2 实施结果进行验证。
 
 ## Actual diff summary
 
+主体实现由提交 `b26db926` 完成：
+
 ```text
-64 files changed, 1615 insertions(+), 889 deletions(-)
+refactor(application): restructure domain subpackages into usecase/dto/port/runner
+95 files changed, 7689 insertions(+), 6955 deletions(-)
 ```
 
-变更类型：
+本次收尾补充：
 
-- `internal/application/{domain}/service.go → usecase/service.go`，覆盖 auth / user / role / project / settings / ci / cd
-- 新增 `internal/application/{domain}/dto/`、`internal/application/{domain}/port/`
-- 新增 `internal/application/ci/runner/docker.go`、`internal/application/cd/runner/shell.go`
-- 新增 `internal/application/ci/dto/ci.go`、`internal/application/cd/dto/cd.go`
-- 新增 `internal/application/ci/port/port.go`、`internal/application/cd/port/port.go`
-- `internal/common/civariable → internal/application/ci/rule/civariable`
-- 更新 `internal/api/http/handler/**`、`internal/api/http/server.go`、`internal/bootstrap/http.go`、`internal/workflow/activity/{ci,cd}/*`
+- 将 CD `TraefikRouterResp` 从 `model.TraefikRouter` 类型别名改为独立 application DTO；
+- 在 `ListTraefikRoutes` 中完成 model 到 application DTO 的转换；
+- 增加 integration assertion，确认返回 DTO 不与来源 model slice 共享元素；
+- 更新 requirement 与 verification，使 Issue 2 的状态与已提交代码和验证结果一致。
 
 ## Expected vs actual changed files
 
-预期改动（Issue 1 范围）：
+| Expected | Actual |
+| --- | --- |
+| application domain-first 职责拆分 | 已完成：`usecase/`、`dto/`、`port/`、`runner/`、`rule/` 已按 domain 落位。 |
+| 外层 import 与测试随迁移更新 | 已完成。 |
+| 删除旧 flat 路径且不保留兼容层 | 已完成；本次全仓 import 与文件树审计未发现旧路径。 |
+| DTO 与 model 分离 | 已完成；补齐 CD Traefik router DTO 的真实转换，未保留 type alias。 |
+| 保持现有协议与业务行为 | 已完成；全量后端检查通过。 |
 
-- 新增 `internal/application/civariable/runtime.go`
-- 删除 `internal/common/civariable/runtime.go` 与空目录
-- 更新 `internal/application/ci` 与 `internal/workflow/activity/ci` 中 6 处 import
-- 更新 requirement 记录
+## Acceptance checklist
 
-实际改动：
-
-- 包含上述 Issue 1 改动，但更主要是 Issue 2 的 full-scope 重组（64 文件）
-- `internal/common/civariable` 被进一步移到 `internal/application/ci/rule/civariable`（符合要求）
-- 未发现前端、数据库迁移、API route path、request/response contract 改动
-
-结论：
-
-- Issue 1 实际改动与预期一致。
-- Issue 2 的实际改动在结构上符合 requirement 预定的 usecase/dto/port/runner 目录方案，但整体大幅超出本"逐条推进"任务在 Requirement 阶段的约定范围。
-
-## Acceptance checklist — Issue 1
-
-- [x] `internal/common/civariable/runtime.go` 删除。
-- [x] `internal/common/civariable` 空目录删除。
-- [x] `internal/application/civariable` 新增并承载 CI runtime/template variable 规则（后进一步调整为 `internal/application/ci/rule/civariable`）。
-- [x] `internal/application/ci` 与 `internal/workflow/activity/ci` 直接依赖新位置。
-- [x] 不保留 wrapper、alias、旧包或适配层。
-- [x] CI variable 规则实现保持不变。
-- [x] 未修改 API route path、request/response contract、数据库迁移或前端。
-- [x] 后端检查通过。
-
-## Acceptance checklist — Issue 2 实际执行（待逐项确认）
-
-Issue 2 在暂存区已实际改组，但 requirement 的逐项 todo 仍在未勾选状态。本验证仅确认结构落位，不代替完整 per-issue 验收：
-
-- [x] application 各 domain 的 service/usecase 已迁入 `usecase/`
-- [x] 各 domain dto 已迁入 `dto/`
-- [x] 各 domain 端口已迁入 `port/`
-- [x] CI/CD concrete runner 已迁入 `runner/`
-- [x] CI variable 规则已迁入 `internal/application/ci/rule/civariable`
-- [x] 外层调用点（HTTP server / bootstrap / HTTP handlers / workflow activity）已更新 import
-- [ ] behavior 等价性： CI / CD / auth / user / role / project / settings 用例逻辑未验证等价
-- [ ] 测试跟随：integration_test 已随 usecase 移动，但行为等价需测试确认
-- [ ] 旧路径完全清理：不保留 wrapper、alias、类型别名或新旧 import 并存（待全量 git diff 复核）
+- [x] `common` 不再承载 CI variable 业务规则。
+- [x] auth、user、role、project、settings、CI、CD usecase 已迁入各自 `usecase/`。
+- [x] application DTO 已迁入各 domain 的 `dto/`。
+- [x] settings、CI、CD application-owned capability interfaces 已归入 `port/`。
+- [x] CI variable rule 已归入 `ci/rule/civariable`。
+- [x] CI/CD 当前 runner 已归入各自 `runner/`。
+- [x] CD Traefik router response 为独立 application DTO，而非 model 类型别名。
+- [x] HTTP server、bootstrap、HTTP handlers、workflow activities 与测试已更新到新路径。
+- [x] 旧 flat application import 与根目录 Go 源文件已清理；未保留 wrapper、alias、兼容转发或新旧 import 并存。
+- [x] 既有 integration/unit/e2e 回归及后端质量检查通过。
+- [x] 未修改 API route、request/response contract、task payload、数据库迁移或前端行为。
 
 ## Test results
 
-已运行命令：
+| Command | Result |
+| --- | --- |
+| `go fmt ./cmd/... ./internal/...` | 通过。 |
+| `./bin/golangci-lint fmt ./cmd/... ./internal/...` | 通过。 |
+| `./bin/golangci-lint run ./cmd/... ./internal/...` | 通过，`0 issues.` |
+| `go vet ./cmd/... ./internal/...` | 通过。 |
+| `go test ./cmd/... ./internal/...` | 通过。 |
+| `git diff --check` | 通过。 |
+| 旧 flat application import / 根目录 Go 文件审计 | 通过，未发现遗留。 |
+
+重点通过的相关包包括：
 
 ```text
-go build ./...
-go vet ./internal/...
-go fmt ./internal/...
-./bin/golangci-lint fmt ./internal/...
-./bin/golangci-lint run ./internal/...
-go test ./...
+internal/application/{auth,user,role,project,settings,ci,cd}/usecase
+internal/api/http
+internal/bootstrap
+internal/workflow/activity/{ci,cd}
+internal/test/e2e
 ```
 
-结果：
+## Issue 3 actual diff summary
 
-- `go build ./...`：通过，无编译错误。
-- `go vet ./internal/...`：通过。
-- `go fmt ./internal/...`：通过（无文件需格式化）。
-- `./bin/golangci-lint fmt ./internal/...`：通过。
-- `./bin/golangci-lint run ./internal/...`：通过，`0 issues`。
-- `go test ./...`：全部通过，无 FAIL。
+- 新增 `internal/repository/{user,role,project,ci,cd}.go`，集中表达领域持久化和 execution store port。
+- application auth/user/role/project/CI/CD usecase 与 workflow CI/CD activity 改为依赖 repository root port，删除本地重复 interface。
+- CI/CD repository implementation 从错误的 `impl/sqlc` 迁入 `impl/sqlx`；保留真正使用 SQLC 的 user、role、project、task adapter。
+- 删除 `repository/impl/sqlc/store.go` 与 bootstrap `NewRepositoryStore`；bootstrap 直接使用已建立的 `*sqlx.DB` 构造 adapter。
+- 更新 bootstrap、e2e、CI/CD application integration tests 的 concrete adapter import；新增 adapter compile-time conformance assertions。
 
-关键相关包：
+## Issue 3 acceptance checklist
 
-```text
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/project/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/role/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/api/http
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/cd
-ok  gitee.com/leoninew/PomeloOrbit-go/internal/test/e2e
-```
+- [x] repository root 不再仅有分页工具，已承载 user、role、project、CI、CD 及 execution persistence port。
+- [x] application usecase 与 workflow activity 不再定义重复 persistence interface。
+- [x] application-owned external capability port 继续位于 application，未误迁入 repository。
+- [x] `impl/sqlc` 只保留实际 SQLC adapter；CI/CD 直接 SQLX adapter 已迁至 `impl/sqlx`。
+- [x] DB/driver holder 不再伪装为 repository implementation；bootstrap 直接装配 adapter。
+- [x] production application/workflow 不 import `repository/impl/...`。
+- [x] 旧 interface、旧 CI/CD implementation path、Store wrapper 和旧 bootstrap factory 已删除，无兼容层。
+- [x] repository 方法签名、数据库错误 wrapping、task contract 与 worker behavior 未改变。
+- [x] API route、request/response contract、task payload、migration、前端行为未改变。
 
-## Missed or expanded scope
+## Scope deviation
 
-### 发现的范围扩张
+无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition，没有改变 repository 方法行为、runner、queue、HTTP adapter 或 SQLC 生成结构。
 
-暂存区 64 个产品文件变更远超本任务 Issue 1 原定范围，实为 Issue 2 的完整实施。
+## Risks and incomplete items
 
-### 未处理项（符合 requirement 边界）
+以下事项不属于 Issue 2，继续保持未完成：
 
-本 verification 不处理以下事项：
+- [ ] Issue 4：`internal/queue` 与 `internal/worker` 关系重整。
+- [ ] Issue 5：Traefik、Turnstile external adapter 分类。
+- [ ] Issue 6：HTTP adapter 的 router/routes/binding/mapper/validator 结构。
+- [ ] Issue 7：SQLC generated code 的结构结论与实现。
+- [ ] Issue 8：workflow execution/runtime/definition 等职责重整。
+- [ ] C1：将 concrete Docker/Shell process runner 收敛到 infrastructure execution adapter、由 bootstrap 注入；同时处理 CD status/log 的 direct `os/exec` 路径和 CI runner port 中的 workspace infrastructure type。
+- [ ] C2：将 `sql.ErrNoRows` 从 application 用例边界收敛为稳定错误语义。
+- [ ] C3：避免 application task port 直接暴露 queue task implementation contract。
 
-- 未重整 `internal/repository` 端口与 impl 结构（Issue 3）。
-- 未调整 `internal/worker` 与 `internal/queue` 目录关系（Issue 4）。
-- 未调整 `internal/infrastructure/traefik`、`internal/infrastructure/turnstile` 分类（Issue 5）。
-- 未调整 `internal/api/http` 结构（Issue 6）。
-- 未调整 `internal/gen/sqlc` 结构（Issue 7）。
-- 未调整 `internal/workflow` 结构（Issue 8）。
-- 未处理后续架构收敛候选 C1-C3。
-
-## Risks
-
-1. **过程契约风险**：本 requirement 明确约定 Requirement 阶段不改产品代码，但暂存区实际包含 Issue 2 完整改组。从 SpecFlow 协议看是前进了一步，但从 requirement 文字看是偏差。
-2. **commit 边界风险**：需求文档与产品代码在同一个暂存区。若一起提交，commit message 无法同时准确描述"文档"与"Issue 2 实现"两件不同性质的工作。
-3. **runner concrete 归属被模糊化**（C1 视角）：本次 code diff 把 runner 改组到 `internal/application/{ci,cd}/runner/`，**仍为 application 目录下**，但看起来像已经完成 C1。
-4. **sql.ErrNoRows 未处理**（C2）：`internal/application/ci/usecase/pipeline_run.go` 仍然直接分支 `errors.Is(err, sql.ErrNoRows)`。
-5. **queue/task 膨胀**（C3）：未处理。
-
-## Incomplete items
-
-- [ ] Issue 2 行为等价性独立验证（可用单独 verification 文档或在本文档追加补充）。
-- [ ] Issue 3-8 仍需逐条完成 Implementation 与 Verification。
-- [ ] C1-C3 后续架构收敛候选在单独任务中逐条推进。
+未启动、停止或重启开发服务器。
 
 ## Conclusion
 
-**Issue 1 `internal/common/civariable` 迁出 `common` 已完成并通过验证。** 实现符合 requirement 中的分层目标：CI runtime/template variable 规则已迁入 `internal/application/ci/rule/civariable`，application 与 workflow activity 直接依赖新位置，未保留兼容层、别名、wrapper 或新旧路径并存，CI variable 规则实现与后端检查均通过。
+**Issue 2 与 Issue 3 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配。全量后端质量检查及相关回归测试通过。
 
-**暂存区 Issue 2 改组实际已完成结构落位，后端检查全通过。** 结构上符合 requirement 预定的 usecase/dto/port/runner 方案；但 requirement 的 per-issue 验收清单仍需逐项核对 behavior 等价性与旧路径清理。
-
-**建议**：
-
-1. Issue 1 + Issue 2 改组的产品代码可以合入一个 commit，commit scope 建议用 `refactor(application): restructure domain subpackages into usecase/dto/port/runner`。
-2. 合并后的 requirement / verification 文档单独一个 commit，scope `docs(requirement,verification)`。
-3. 后续 Issue 3-8 与 C1-C3 仍按 light / 轻量模式逐条进入 Implementation + Verification。
+严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界和 SQLC 生成结构分别仍属于 Issue 6、Issue 7。

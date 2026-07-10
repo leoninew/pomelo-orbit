@@ -10,8 +10,11 @@ import (
 	dbsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
 )
+
+var _ repository.ProjectStore = Repository{}
 
 type Repository struct {
 	db      *sqlx.DB

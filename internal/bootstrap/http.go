@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"log/slog"
 
+	"github.com/jmoiron/sqlx"
+
 	transporthttp "gitee.com/leoninew/PomeloOrbit-go/internal/api/http"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
@@ -19,26 +21,25 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/traefik"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/turnstile"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
-	store "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc"
-	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/cd"
-	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/ci"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	rolerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/role"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
+	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/cd"
+	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/ci"
 )
 
-func NewHTTPServer(cfg config.Config, logger *slog.Logger, repositoryStore store.Store, taskRepo taskrepo.Repository) transporthttp.Server {
-	return transporthttp.New(cfg, logger, newHTTPServerDependencies(cfg, logger, repositoryStore, taskRepo))
+func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sqlx.DB, taskRepo taskrepo.Repository) transporthttp.Server {
+	return transporthttp.New(cfg, logger, newHTTPServerDependencies(cfg, logger, database, taskRepo))
 }
 
-func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, repositoryStore store.Store, taskRepo taskrepo.Repository) transporthttp.ServerDependencies {
+func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sqlx.DB, taskRepo taskrepo.Repository) transporthttp.ServerDependencies {
 	tokenService := jwt.NewTokenService(cfg.JWT.SecretKey)
-	userRepository := userrepo.NewRepository(repositoryStore.DB(), repositoryStore.Driver())
-	roleRepository := rolerepo.NewRepository(repositoryStore.DB(), repositoryStore.Driver())
-	projectRepository := projectrepo.NewRepository(repositoryStore.DB(), repositoryStore.Driver())
-	ciRepository := cirepo.NewRepository(repositoryStore.DB(), repositoryStore.Driver())
-	cdRepository := cdrepo.NewRepository(repositoryStore.DB(), repositoryStore.Driver())
+	userRepository := userrepo.NewRepository(database, cfg.Database.Driver)
+	roleRepository := rolerepo.NewRepository(database, cfg.Database.Driver)
+	projectRepository := projectrepo.NewRepository(database, cfg.Database.Driver)
+	ciRepository := cirepo.NewRepository(database, cfg.Database.Driver)
+	cdRepository := cdrepo.NewRepository(database, cfg.Database.Driver)
 	taskService := tasksvc.New(taskRepo, cfg.Worker.MaxAttempts)
 	logStore := executionlog.Store{}
 	routeManager := traefik.NewRouteManager(cfg)

@@ -12,24 +12,16 @@ import (
 	userdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/dto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Repository interface {
-	UserByUsername(ctx context.Context, username string) (model.User, error)
-	UserByEmail(ctx context.Context, email string) (model.User, error)
-	CreateUser(ctx context.Context, user model.User) error
-	UpdateUser(ctx context.Context, user model.User) error
-	SetUserStatus(ctx context.Context, userId string, status string) error
-	DeleteUser(ctx context.Context, userId string) error
-}
-
 type Service struct {
-	repo Repository
+	repo repository.UserStore
 }
 
-func New(repo Repository) Service {
+func New(repo repository.UserStore) Service {
 	return Service{repo: repo}
 }
 

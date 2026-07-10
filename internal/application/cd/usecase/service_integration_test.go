@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
+	cdport "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/port"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -23,8 +24,8 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
-	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/cd"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
+	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/cd"
 )
 
 const (
@@ -243,13 +244,22 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if cfg.DashboardDomain != "traefik.lvh.me" || !cfg.HTTPSEnabled {
 		t.Fatalf("unexpected traefik config: %+v", cfg)
 	}
-	client.routers = []model.TraefikRouter{{Name: "api@docker", Provider: "docker", Status: "enabled", Rule: "Host(`api.lvh.me`)", Service: "api-service", Entrypoints: []string{"websecure"}, TLS: true}}
+	client.routers = []cdport.TraefikRouter{{Name: "api@docker", Provider: "docker", Status: "enabled", Rule: "Host(`api.lvh.me`)", Service: "api-service", Entrypoints: []string{"websecure"}, TLS: true}}
 	routes, err := service.ListTraefikRoutes(ctx, cdTestUserId, cdTestProjectId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if routes.Total != 1 || routes.Items[0].Name != "api@docker" || !routes.Items[0].TLS {
+	if routes.Total != 1 || routes.Items[0].Name != "api@docker" || routes.Items[0].Provider != "docker" || routes.Items[0].Status != "enabled" || routes.Items[0].Rule != "Host(`api.lvh.me`)" || routes.Items[0].Service != "api-service" || len(routes.Items[0].Entrypoints) != 1 || routes.Items[0].Entrypoints[0] != "websecure" || !routes.Items[0].TLS {
 		t.Fatalf("unexpected traefik routes: %+v", routes)
+	}
+	client.routers[0].Name = "mutated@docker"
+	client.routers[0].Entrypoints[0] = "web"
+	if routes.Items[0].Name != "api@docker" || routes.Items[0].Entrypoints[0] != "websecure" {
+		t.Fatalf("expected application DTO to be independent from the port data, got %+v", routes)
+	}
+	routes.Items[0].Entrypoints[0] = "mutated-response"
+	if client.routers[0].Entrypoints[0] != "web" {
+		t.Fatalf("expected port data to be independent from the application DTO, got %+v", client.routers)
 	}
 	client.err = errors.New("connection refused")
 	if _, err := service.ListTraefikRoutes(ctx, cdTestUserId, cdTestProjectId); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
@@ -330,11 +340,11 @@ func (recordingCertificateGenerator) Generate(context.Context, string) (string, 
 }
 
 type recordingTraefikClient struct {
-	routers []model.TraefikRouter
+	routers []cdport.TraefikRouter
 	err     error
 }
 
-func (c *recordingTraefikClient) ListRouters(context.Context) ([]model.TraefikRouter, error) {
+func (c *recordingTraefikClient) ListRouters(context.Context) ([]cdport.TraefikRouter, error) {
 	if c.err != nil {
 		return nil, c.err
 	}

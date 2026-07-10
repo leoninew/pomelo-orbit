@@ -121,7 +121,16 @@ type RouteUpdateInput struct {
 	Enabled    *bool
 }
 
-type TraefikRouterResp = model.TraefikRouter
+// TraefikRouterResp describes a router returned by the Traefik integration.
+type TraefikRouterResp struct {
+	Name        string
+	Provider    string
+	Status      string
+	Rule        string
+	Service     string
+	Entrypoints []string
+	TLS         bool
+}
 
 // TraefikConfigResp reports the dashboard route state.
 type TraefikConfigResp struct {

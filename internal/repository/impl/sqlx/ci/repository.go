@@ -16,6 +16,9 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
+var _ repository.CIStore = Repository{}
+var _ repository.PipelineExecutionStore = Repository{}
+
 type Repository struct {
 	db     *sqlx.DB
 	driver string

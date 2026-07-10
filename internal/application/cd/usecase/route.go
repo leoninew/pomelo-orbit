@@ -356,7 +356,11 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 		}
 		return cdto.TraefikRouteListResp{}, apperror.Wrap(apperror.KindInternal, "Failed to list Traefik routes", err)
 	}
-	return cdto.TraefikRouteListResp{Items: items, Total: len(items)}, nil
+	responses := make([]cdto.TraefikRouterResp, 0, len(items))
+	for _, item := range items {
+		responses = append(responses, cdto.TraefikRouterResp{Name: item.Name, Provider: item.Provider, Status: item.Status, Rule: item.Rule, Service: item.Service, Entrypoints: append([]string(nil), item.Entrypoints...), TLS: item.TLS})
+	}
+	return cdto.TraefikRouteListResp{Items: responses, Total: len(responses)}, nil
 }
 
 func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId string) (model.Route, error) {

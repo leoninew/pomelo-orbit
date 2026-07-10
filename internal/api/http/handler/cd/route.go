@@ -298,7 +298,7 @@ func traefikRouteListResponse(resp cddto.TraefikRouteListResp) pomeloorbit.Traef
 }
 
 func traefikRouterResponse(router cddto.TraefikRouterResp) pomeloorbit.TraefikRouterResp {
-	return pomeloorbit.TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: router.Entrypoints, Tls: router.TLS}
+	return pomeloorbit.TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: append([]string(nil), router.Entrypoints...), Tls: router.TLS}
 }
 
 func splitPEM(content []byte) (string, string, bool) {

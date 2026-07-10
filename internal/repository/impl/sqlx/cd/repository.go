@@ -17,6 +17,9 @@ import (
 )
 
 // Repository provides persistence for CD application, deployment, and route use cases.
+var _ repository.CDStore = Repository{}
+var _ repository.DeploymentExecutionStore = Repository{}
+
 type Repository struct {
 	db     *sqlx.DB
 	driver string

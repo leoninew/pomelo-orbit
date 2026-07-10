@@ -14,36 +14,17 @@ import (
 	projectdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/dto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
-type Repository interface {
-	Project(ctx context.Context, id string) (model.Project, error)
-	ListProjectsByMember(ctx context.Context, userId string) ([]model.Project, error)
-	ListActiveProjectsByMember(ctx context.Context, userId string) ([]model.Project, error)
-	ProjectByCode(ctx context.Context, code string) (model.Project, error)
-	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
-	CreateProject(ctx context.Context, project model.Project, userId string) error
-	UpdateProject(ctx context.Context, project model.Project) error
-	DeprecateProject(ctx context.Context, projectId string) error
-	CountProjectRepositories(ctx context.Context, projectId string) (int, error)
-	CountProjectApplications(ctx context.Context, projectId string) (int, error)
-	ProjectMembers(ctx context.Context, projectId string) ([]model.User, error)
-	AddProjectMember(ctx context.Context, projectId string, userId string) error
-	RemoveProjectMember(ctx context.Context, projectId string, userId string) error
-}
-
-type UserRepository interface {
-	UserById(ctx context.Context, id string) (model.User, error)
-}
-
 type Service struct {
-	repo  Repository
-	users UserRepository
+	repo  repository.ProjectStore
+	users repository.UserStore
 }
 
-func New(repo Repository, users UserRepository) Service {
+func New(repo repository.ProjectStore, users repository.UserStore) Service {
 	return Service{repo: repo, users: users}
 }
 

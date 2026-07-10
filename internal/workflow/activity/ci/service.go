@@ -1,26 +1,12 @@
 package cisvc
 
 import (
-	"context"
 	"io"
 	"log/slog"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
-
-type PipelineExecutionStore interface {
-	PipelineRun(ctx context.Context, id string) (model.PipelineRun, error)
-	Repository(ctx context.Context, id string) (model.Repository, error)
-	Credential(ctx context.Context, id string) (model.Credential, error)
-	PipelineSnapshot(ctx context.Context, id string) (model.PipelineSnapshot, error)
-	PipelineTemplate(ctx context.Context, id string) (model.PipelineTemplate, error)
-	MarkPipelineRunRunning(ctx context.Context, id string) error
-	CompletePipelineRun(ctx context.Context, id string, status string, message string) error
-	InsertStageRun(ctx context.Context, stage model.StageRun) error
-	UpdateStageRun(ctx context.Context, stage model.StageRun) error
-	InsertArtifact(ctx context.Context, projectId *string, run model.PipelineRun, stageName string, artifact model.ArtifactConfig, path string) error
-}
 
 type ExecutionLogStore interface {
 	Writer(logPath string) (io.WriteCloser, error)
@@ -28,7 +14,7 @@ type ExecutionLogStore interface {
 }
 
 type Service struct {
-	executionStore PipelineExecutionStore
+	executionStore repository.PipelineExecutionStore
 	workspace      *ciworkspace.Workspace
 	logStore       ExecutionLogStore
 	secretKey      string
@@ -36,7 +22,7 @@ type Service struct {
 	runner         ContainerRunner
 }
 
-func NewExecutionService(store PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore ExecutionLogStore) Service {
+func NewExecutionService(store repository.PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ContainerRunner, logStore ExecutionLogStore) Service {
 	workspace := ciworkspace.New(dataRoot)
 	return Service{executionStore: store, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }

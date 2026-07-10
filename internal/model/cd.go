@@ -77,13 +77,3 @@ type Route struct {
 	CreatedAt    time.Time `db:"created_at"`
 	UpdatedAt    time.Time `db:"updated_at"`
 }
-
-type TraefikRouter struct {
-	Name        string
-	Provider    string
-	Status      string
-	Rule        string
-	Service     string
-	Entrypoints []string
-	TLS         bool
-}

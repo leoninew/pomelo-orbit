@@ -1,14 +1,15 @@
 # Verification: internal 后两级目录结构对齐与架构收敛
 
-最后修改时间: 2026-07-10 14:27:06
+最后修改时间: 2026-07-10 17:20:03
 
 ## Verification target
 
 本次验证完成 light / 轻量模式下的以下已实施 issue：
 
 1. **Issue 1**：`internal/common/civariable` 迁出 `common`；
-2. **Issue 2**：`internal/application/<domain>` 重整为 domain-first 的职责子目录。
-3. **Issue 3**：`internal/repository` 的持久化 port 与 SQLC/SQLX implementation 对齐。
+2. **Issue 2**：`internal/application/<domain>` 重整为 domain-first 的职责子目录；
+3. **Issue 3**：`internal/repository` 的持久化 port 与 SQLC/SQLX implementation 对齐；
+4. **Issue 4**：worker runtime 与 handler dispatch 收拢至 `internal/queue/worker`。
 
 对应 requirement：`docs/requirement/20260709-internal-directory-structure-alignment.md`（Review status: Accepted）。
 
@@ -46,9 +47,21 @@
 
 Repository adapter 增加编译期 interface assertions。API route、请求/响应契约、task payload、migration 与前端均未改动；既有数据库错误 wrapping 和 `sql.ErrNoRows` 消费语义保持不变。
 
+### Issue 4
+
+| Requirement item | Actual result |
+| --- | --- |
+| queue/worker 统一运行机制边界 | worker polling、lease、concurrency、task-type dispatch、complete/fail 已位于 `internal/queue/worker`。 |
+| task model/service 归属明确 | queue task runtime model、enqueue/read service 保持在 `internal/queue/task`；SQLC task persistence adapter 仍在 `repository/impl/sqlc/task`。 |
+| domain handler 归入 queue worker | CI/CD payload adapter 与测试已位于 `internal/queue/worker/handler/{ci,cd}`，仅解析 payload 并委派既有 workflow activity interface。 |
+| bootstrap 装配更新 | bootstrap 是旧 worker import 的唯一 production consumer，已切换到最终 queue worker path，task registration 与 worker config 注入保持不变。 |
+| 清理旧路径 | `internal/worker` tree 与所有 active Go import 已删除；未保留 wrapper、alias、forwarding package 或新旧路径并存。 |
+
+Issue 4 未改变 task model/service、application TaskService port、SQLC task repository 方法集、lease/retry/concurrency 行为、task payload、HTTP route、请求/响应契约、migration 或前端行为。
+
 ## Spec and plan alignment
 
-不适用。当前任务使用 light / 轻量模式，按 requirement 的 Issue 2 实施结果进行验证。
+不适用。当前任务使用 light / 轻量模式，按 requirement 的 Issue 1-4 实施结果进行验证。
 
 ## Actual diff summary
 
@@ -132,15 +145,41 @@ internal/test/e2e
 - [x] repository 方法签名、数据库错误 wrapping、task contract 与 worker behavior 未改变。
 - [x] API route、request/response contract、task payload、migration、前端行为未改变。
 
+## Issue 4 actual diff summary
+
+- worker runtime 从 `internal/worker` 原子迁至 `internal/queue/worker`，保留 polling、slot concurrency、lease、Router dispatch 和 complete/fail 调用流程。
+- CI/CD task payload handler 与同包测试从 `internal/worker/handler/{ci,cd}` 迁至 `internal/queue/worker/handler/{ci,cd}`。
+- bootstrap worker composition 的三个 import 切至最终 queue worker path；CI pipeline execution 与 CD deploy/restart/stop registration 未改变。
+- 删除完整旧 `internal/worker` source tree；静态审计未发现旧 module path 的 active Go import。
+
+## Issue 4 expected vs actual changed files
+
+| Expected | Actual |
+| --- | --- |
+| worker runtime 与测试迁入 queue boundary | 已完成：`internal/queue/worker/{worker.go,worker_test.go}`。 |
+| CI/CD handler 与测试迁入 queue worker | 已完成：`internal/queue/worker/handler/{ci,cd}/`。 |
+| bootstrap 跟随最终路径 | 已完成：仅 `internal/bootstrap/worker.go` 的 production import 发生变化。 |
+| 旧 worker tree 与兼容层删除 | 已完成：旧 `internal/worker` 不存在，未保留 wrapper、alias 或 forwarding package。 |
+| task contract 与执行行为不变 | 已完成：task model/service、repository adapter、payload、worker registration 与 workflow activity delegation 均未修改。 |
+
+## Issue 4 acceptance checklist
+
+- [x] queue runtime worker、Router、handler dispatch、lease/poll/concurrency 机制已位于 `internal/queue/worker`。
+- [x] task runtime model、enqueue/read service 保持位于 `internal/queue/task`。
+- [x] CI/CD payload handler 与测试已归入 `internal/queue/worker/handler/{ci,cd}`。
+- [x] bootstrap 使用最终 queue worker imports，保留全部 CI/CD task type registration 与 runtime config 注入。
+- [x] 旧 `internal/worker` source tree 和 active Go imports 已清除，无兼容层或新旧路径并存。
+- [x] task lifecycle、payload key、HTTP/API contract、migration、workflow activity 委派和前端行为未改变。
+- [x] focused worker/task/application tests 与完整后端质量检查通过。
+
 ## Scope deviation
 
-无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition，没有改变 repository 方法行为、runner、queue、HTTP adapter 或 SQLC 生成结构。
+无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition；Issue 4 仅收拢 queue runtime 与 handler 的目录归属，没有改变 task contract、worker behavior、workflow、HTTP adapter 或 SQLC 生成结构。
 
 ## Risks and incomplete items
 
-以下事项不属于 Issue 2，继续保持未完成：
+以下事项继续保持未完成：
 
-- [ ] Issue 4：`internal/queue` 与 `internal/worker` 关系重整。
 - [ ] Issue 5：Traefik、Turnstile external adapter 分类。
 - [ ] Issue 6：HTTP adapter 的 router/routes/binding/mapper/validator 结构。
 - [ ] Issue 7：SQLC generated code 的结构结论与实现。
@@ -153,6 +192,6 @@ internal/test/e2e
 
 ## Conclusion
 
-**Issue 2 与 Issue 3 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配。全量后端质量检查及相关回归测试通过。
+**Issue 2、Issue 3 与 Issue 4 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配；Issue 4 将 worker runtime 与 CI/CD queue payload handler 收拢至 `internal/queue/worker`，清理原顶层 worker 路径。全量后端质量检查及相关回归测试通过。
 
-严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界和 SQLC 生成结构分别仍属于 Issue 6、Issue 7。
+严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界、SQLC 生成结构和 external adapter 分类分别仍属于 Issue 6、Issue 7、Issue 5。

@@ -1,6 +1,6 @@
 # internal 后两级目录结构对齐与架构收敛
 
-最后修改时间: 2026-07-10 14:27:06
+最后修改时间: 2026-07-10 17:20:03
 
 Review status: Accepted
 
@@ -141,7 +141,7 @@ Review status: Accepted
 | 1 | `internal/common/civariable` | `common` 按指南应无业务语义，但 `civariable` 承载 CI runtime/template variable 规则，存在业务名词和业务规则。 | 必须迁出 common，迁到明确的 CI 规则归属位置；application 与 workflow activity 直接依赖新位置；不保留 wrapper、alias、旧包或适配层。 | 高 | 已实施，检查通过 |
 | 2 | `internal/application/<domain>` | application 的 domain 内端口、DTO、usecase 与规则曾混在同一层级；与指南中的 `port`、`command`、`query`、`dto` 分层差异明显。 | 重整为 domain-first 的职责子目录，明确 port、DTO、usecase 与业务规则；不保留旧路径或兼容层。 | 高 | 已实施并验证完成 |
 | 3 | `internal/repository` | repository 顶层端口曾仅有分页工具，持久化接口散落在 application usecase 与 workflow activity，且 CI/CD 的直接 SQLX adapter 误置于 `impl/sqlc`。 | 将持久化 port 收敛到 repository root，按实际 SQLC/SQLX 技术归类实现；application-owned external capability port 保留在 application。 | 高 | 已实施并验证完成 |
-| 4 | `internal/worker` 与 `internal/queue` | 当前 worker runtime 独立于 queue；指南示例更倾向 queue 下统一 consumer/dispatcher/worker/task。 | 必须处理 queue/worker 目录关系，统一表达 task model/service、worker runtime、handler dispatch、lease/retry/concurrency 边界；保持行为不变但不保留两套含混结构。 | 中 | 待处理 |
+| 4 | `internal/worker` 与 `internal/queue` | worker runtime 曾独立于 queue；指南示例更倾向 queue 下统一 consumer/dispatcher/worker/task。 | 已将 queue task model/service、worker runtime、handler dispatch、lease/retry/concurrency 收拢至清晰的 queue 边界；保持行为不变且不保留旧结构。 | 中 | 已实施并验证完成 |
 | 5 | `internal/infrastructure/traefik`、`internal/infrastructure/turnstile` | 第三方/external adapter 直接放在 infrastructure 一级目录，未归入 `external/<provider>` 或其他明确 category。 | 必须统一 external adapter 分类，优先考虑 `internal/infrastructure/external/<provider>` 或同等清晰结构；迁移时删除旧路径，不留 wrapper/alias。 | 中 | 待处理 |
 | 6 | `internal/api/http` | 当前无单独 `binding` / `validator` / `router.go` / `routes.go` 目录或文件，DTO/mapper 分散在 handler。 | 必须重整 HTTP adapter 结构，明确 router/routes、binding DTO、mapper、response/error、middleware 的归属；不保留职责混杂的 handler 文件。 | 中 | 待处理 |
 | 7 | `internal/gen/sqlc` | 当前 sqlc generated files 为 flat 结构，与指南中按 dialect 拆分的示例不同。 | 必须读取并调整生成配置或形成等价清晰结构；如果按 dialect 拆分，需要同步更新 sqlc 配置、生成文件和 import；不保留新旧 generated path 并存。 | 中 | 待处理 |
@@ -320,7 +320,21 @@ Issue 3 已完成 repository port 与 implementation 的职责对齐。
 
 ### Issue 3 边界说明
 
-本 issue 不改变 repository 方法签名、错误 wrapping 或 `sql.ErrNoRows` 语义；错误边界收敛仍属于 C2。`queue/task.Task` 与 TaskService contract 保持不变，属于 C3；worker/queue 目录关系由 Issue 4 处理；HTTP handler 直连 repository 的调用边界由 Issue 6 处理；SQLC 生成路径与方言结构由 Issue 7 处理。
+本 issue 不改变 repository 方法签名、错误 wrapping 或 `sql.ErrNoRows` 语义；错误边界收敛仍属于 C2。`queue/task.Task` 与 TaskService contract 保持不变，属于 C3；HTTP handler 直连 repository 的调用边界由 Issue 6 处理；SQLC 生成路径与方言结构由 Issue 7 处理。
+
+## Issue 4 实施结果
+
+Issue 4 已完成 queue runtime 与 worker 的目录职责收敛。
+
+- [x] `internal/worker/{worker.go,worker_test.go}` 已迁至 `internal/queue/worker/`；保留 worker polling、concurrency、lease、dispatch、complete/fail 的既有行为。
+- [x] CI/CD task payload handler 及测试已迁至 `internal/queue/worker/handler/{ci,cd}/`；保留 payload schema、字段校验、错误文本和 workflow activity 委派。
+- [x] `internal/queue/task` 继续承载 task runtime model、enqueue/read service；task SQLC adapter 继续位于 `repository/impl/sqlc/task`。
+- [x] bootstrap 已切换至最终 queue worker import，并保持 CI pipeline execution、CD deploy/restart/stop task registration 与 worker config 注入不变。
+- [x] 旧 `internal/worker` tree 已删除；未保留 wrapper、alias、forwarding package、重复 source 或新旧 import 并存。
+
+### Issue 4 边界说明
+
+本 issue 仅调整 queue runtime 的物理目录归属。`queue/task.Task`、task service、application CI/CD TaskService port、SQLC task repository 方法集、task lifecycle/payload 和 workflow activity 委派均保持不变。application task contract 的进一步收敛仍属于 C3；workflow activity 进入 application usecase 的严格边界仍属于 Issue 8/C1。
 
 ## Open questions
 

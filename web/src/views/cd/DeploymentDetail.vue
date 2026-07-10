@@ -4,8 +4,9 @@
       <h1 class="text-xl font-semibold text-foreground">部署详情</h1>
       <div class="flex flex-wrap items-center gap-2">
         <button
-          v-if="deployment && !isTerminalStatus(deployment.status)"
+          v-if="isCancelable"
           class="app-button-danger h-9 px-3"
+          :disabled="isCancelling"
           @click="isCancelDialogOpen = true"
         >
           <X class="size-4" />
@@ -36,9 +37,14 @@
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">应用</dt>
             <dd>
-              <router-link :to="`/cd/applications/${deployment.application_id}`" class="app-link">
+              <router-link
+                v-if="deployment.application_id"
+                :to="`/cd/applications/${deployment.application_id}`"
+                class="app-link"
+              >
                 {{ deployment.application_name || deployment.application_id }}
               </router-link>
+              <span v-else class="text-muted-foreground">—</span>
             </dd>
           </div>
           <div class="flex gap-2">
@@ -52,18 +58,12 @@
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">操作类型</dt>
             <dd class="text-foreground">
-              {{
-                deployment.operation_type === 'deploy'
-                  ? '部署'
-                  : deployment.operation_type === 'stop'
-                    ? '停止'
-                    : '重启'
-              }}
+              {{ operationTypeLabel }}
             </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
-            <dd class="text-foreground">{{ deployment.trigger_type }}</dd>
+            <dd class="text-foreground">{{ triggerTypeLabel }}</dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt class="w-32 shrink-0 text-muted-foreground">执行命令</dt>
@@ -110,13 +110,13 @@
             </p>
           </div>
           <button
-            v-if="showsContainerLogs"
+            v-if="showsContainerLogs && !isTerminalDeployment"
             class="app-button inline-flex h-8 items-center gap-2 px-3"
-            :class="isLogPolling ? 'text-primary' : ''"
-            @click="toggleLogPolling"
+            :class="isAutoRefreshing ? 'text-primary' : ''"
+            @click="toggleAutoRefresh"
           >
-            <Loader2 class="size-4" :class="isLogPolling ? 'animate-spin' : ''" />
-            {{ isLogPolling ? '自动刷新' : '暂停刷新' }}
+            <Loader2 class="size-4" :class="isAutoRefreshing ? 'animate-spin' : ''" />
+            {{ isAutoRefreshing ? '自动刷新' : '暂停刷新' }}
           </button>
         </div>
         <div class="min-h-0 flex-1 p-5">
@@ -134,7 +134,7 @@
               <p v-else-if="logStatus === 'empty'" class="text-sm">暂无容器日志输出</p>
               <div v-else-if="logStatus === 'error'">
                 <p class="text-sm text-destructive">容器日志加载失败</p>
-                <button class="app-link mt-2 text-sm" @click="fetchContainerLogs">重试</button>
+                <button class="app-link mt-2 text-sm" @click="retryContainerLogs">重试</button>
               </div>
             </div>
           </div>
@@ -158,8 +158,12 @@
     >
       <p class="text-sm text-foreground">确定要取消此部署吗？</p>
       <template #footer>
-        <button type="button" class="app-button" @click="isCancelDialogOpen = false">取消</button>
-        <button type="button" class="app-button-destructive" @click="handleCancel">确认取消</button>
+        <button type="button" class="app-button" :disabled="isCancelling" @click="isCancelDialogOpen = false">
+          取消
+        </button>
+        <button type="button" class="app-button-destructive" :disabled="isCancelling" @click="handleCancel">
+          确认取消
+        </button>
       </template>
     </AppDialog>
   </div>
@@ -168,6 +172,7 @@
 <script setup lang="ts">
   import { ArrowLeft, Loader2, X } from 'lucide-vue-next';
   import { computed, onMounted, onUnmounted, ref } from 'vue';
+  import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { deploymentApi } from '@/api/cd/deployments';
   import AppBadge from '@/components/AppBadge.vue';
@@ -183,19 +188,22 @@
 
   const route = useRoute();
   const router = useRouter();
-  const deploymentId = route.params.id as string;
+  const { t, te } = useI18n();
+  const deploymentId = computed(() => String(route.params.id ?? ''));
   const toast = useToast();
   const { status, execute } = useStatusAsync();
+  const { loading: isCancelling, execute: executeCancel } = useStatusAsync();
 
   const deployment = ref<DeploymentResp>();
   const logText = ref('');
   const containerLogSource = ref('since');
   const isCancelDialogOpen = ref(false);
-  const isLogPolling = ref(false);
+  const isAutoRefreshing = ref(false);
   const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error' | 'not_applicable'>(
     'loading'
   );
-  let logAbort: AbortController | null = null;
+  let refreshAbort: AbortController | null = null;
+  let refreshGeneration = 0;
   let logEditorInstance: editor.IStandaloneCodeEditor | null = null;
 
   const backButtonText = computed(() => (route.query.from === 'application' ? '返回应用' : '返回'));
@@ -212,95 +220,155 @@
     deployment.value ? statusTone(deployment.value.status) : 'default'
   );
 
-  const deploymentStatusLabel = computed(() => (deployment.value ? deployment.value.status : ''));
-
-  async function fetchDeployment() {
-    try {
-      await execute(async () => {
-        const data = await deploymentApi.get(deploymentId);
-        deployment.value = data;
-      });
-    } catch {
-      toast.error('获取部署详情失败');
-      router.push('/cd/deployments');
+  const deploymentStatusLabel = computed(() => {
+    if (!deployment.value) {
+      return '';
     }
-  }
-
+    const key = `deployment.status.${deployment.value.status}`;
+    return te(key) ? t(key) : deployment.value.status;
+  });
+  const operationTypeLabel = computed(() => {
+    if (!deployment.value) {
+      return '';
+    }
+    const key = `deployment.operationType.${deployment.value.operation_type}`;
+    return te(key) ? t(key) : deployment.value.operation_type;
+  });
+  const triggerTypeLabel = computed(() => {
+    if (!deployment.value) {
+      return '';
+    }
+    const key = `deployment.triggerType.${deployment.value.trigger_type}`;
+    return te(key) ? t(key) : deployment.value.trigger_type;
+  });
+  const isTerminalDeployment = computed(() => isTerminalStatus(deployment.value?.status ?? ''));
+  const isCancelable = computed(() =>
+    deployment.value ? ['waiting_to_run', 'running'].includes(deployment.value.status) : false
+  );
   const showsContainerLogs = computed(() => deployment.value?.operation_type !== 'stop');
 
-  async function fetchContainerLogs() {
+  function isCurrentRefresh(generation: number, signal: AbortSignal) {
+    return !signal.aborted && generation === refreshGeneration;
+  }
+
+  async function fetchContainerLogs(generation?: number, signal?: AbortSignal) {
     if (!deployment.value || !showsContainerLogs.value) {
       logText.value = '';
       logStatus.value = 'not_applicable';
       return;
     }
     try {
-      const data = await deploymentApi.getContainerLogs(deploymentId, { tail: 200 });
+      const data = await deploymentApi.getContainerLogs(deploymentId.value, { tail: 200 }, { signal });
+      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
+        return;
+      }
       logText.value = data.logs;
       containerLogSource.value = data.source;
-      logStatus.value = isTerminalStatus(deployment.value.status)
-        ? logText.value
-          ? 'done'
-          : 'empty'
-        : 'streaming';
+      logStatus.value = isTerminalDeployment.value ? (logText.value ? 'done' : 'empty') : 'streaming';
       scrollToBottom();
-    } catch (error) {
-      console.error('获取容器日志失败:', error);
-      logStatus.value = 'error';
+    } catch {
+      if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
+        logStatus.value = 'error';
+      }
     }
   }
 
-  function startLogPolling() {
-    if (isLogPolling.value) {
+  function retryContainerLogs() {
+    void fetchContainerLogs();
+  }
+
+  function stopAutoRefresh() {
+    refreshGeneration++;
+    refreshAbort?.abort();
+    refreshAbort = null;
+    isAutoRefreshing.value = false;
+  }
+
+  function startAutoRefresh() {
+    if (isAutoRefreshing.value || !deployment.value || isTerminalDeployment.value) {
       return;
     }
-    logAbort = new AbortController();
-    const signal = logAbort.signal;
-    isLogPolling.value = true;
-    (async () => {
-      await fetchContainerLogs();
-      if (!deployment.value || !showsContainerLogs.value) {
-        isLogPolling.value = false;
-        return;
-      }
-      while (!signal.aborted && showsContainerLogs.value) {
-        await delayAsync(2000);
-        if (signal.aborted) {
+    const generation = ++refreshGeneration;
+    const controller = new AbortController();
+    const { signal } = controller;
+    refreshAbort = controller;
+    isAutoRefreshing.value = true;
+    void (async () => {
+      while (isCurrentRefresh(generation, signal)) {
+        await delayAsync(2000, signal);
+        if (!isCurrentRefresh(generation, signal)) {
           break;
         }
         try {
-          deployment.value = await deploymentApi.get(deploymentId);
-          await fetchContainerLogs();
+          const data = await deploymentApi.get(deploymentId.value, { signal });
+          if (!isCurrentRefresh(generation, signal)) {
+            break;
+          }
+          deployment.value = data;
+          if (showsContainerLogs.value) {
+            await fetchContainerLogs(generation, signal);
+          }
+          if (isTerminalStatus(data.status)) {
+            break;
+          }
         } catch {
-          logStatus.value = 'error';
+          // Continue refreshing after a transient detail request failure.
         }
+      }
+      if (isCurrentRefresh(generation, signal)) {
+        refreshAbort = null;
+        isAutoRefreshing.value = false;
       }
     })();
   }
 
-  function stopLog() {
-    logAbort?.abort();
-    logAbort = null;
-    isLogPolling.value = false;
-  }
-
-  function toggleLogPolling() {
-    if (isLogPolling.value) {
-      stopLog();
+  function toggleAutoRefresh() {
+    if (isAutoRefreshing.value) {
+      stopAutoRefresh();
       return;
     }
-    startLogPolling();
+    startAutoRefresh();
+  }
+
+  function resetState() {
+    stopAutoRefresh();
+    deployment.value = undefined;
+    logText.value = '';
+    containerLogSource.value = 'since';
+    logStatus.value = 'loading';
+    isCancelDialogOpen.value = false;
+  }
+
+  async function loadDeployment() {
+    resetState();
+    try {
+      const currentDeployment = await execute(() => deploymentApi.get(deploymentId.value));
+      deployment.value = currentDeployment;
+    } catch {
+      toast.error(t('deployment.toast.loadFailed'));
+      router.push('/cd/deployments');
+      return;
+    }
+    if (showsContainerLogs.value) {
+      await fetchContainerLogs();
+    } else {
+      logStatus.value = 'not_applicable';
+    }
+    if (!isTerminalDeployment.value) {
+      startAutoRefresh();
+    }
   }
 
   async function handleCancel() {
     try {
-      await deploymentApi.cancel(deploymentId, {});
-      toast.success('已取消部署');
-      stopLog();
-      deployment.value = await deploymentApi.get(deploymentId);
-      isCancelDialogOpen.value = false;
+      await executeCancel(async () => {
+        deployment.value = await deploymentApi.cancel(deploymentId.value, {});
+        stopAutoRefresh();
+        isCancelDialogOpen.value = false;
+        toast.success(t('deployment.toast.cancelSuccess'));
+      });
     } catch {
-      toast.error('取消失败');
+      toast.error(t('deployment.toast.cancelFailed'));
     }
   }
 
@@ -318,16 +386,6 @@
     scrollToBottom();
   }
 
-  onMounted(async () => {
-    await fetchDeployment();
-    if (!deployment.value) {
-      return;
-    }
-    if (!showsContainerLogs.value || isTerminalStatus(deployment.value.status)) {
-      await fetchContainerLogs();
-      return;
-    }
-    startLogPolling();
-  });
-  onUnmounted(stopLog);
+  onMounted(loadDeployment);
+  onUnmounted(stopAutoRefresh);
 </script>

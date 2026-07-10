@@ -52,8 +52,21 @@ export function getTodayStart(): Dayjs {
 /**
  * 延迟指定毫秒数
  */
-export function delayAsync(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export function delayAsync(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(finish, ms);
+    signal?.addEventListener('abort', finish, { once: true });
+
+    function finish() {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    }
+  });
 }
 
 /**

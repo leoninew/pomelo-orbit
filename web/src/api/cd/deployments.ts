@@ -5,7 +5,7 @@ import type {
   DeploymentPaginatedResp,
   DeploymentResp,
 } from '@/gen/proto/orbit/v1/deployment';
-import request from '@/utils/request';
+import request, { type AxiosRequestConfig } from '@/utils/request';
 
 // 部署记录相关 API
 export const deploymentApi = {
@@ -24,8 +24,8 @@ export const deploymentApi = {
   },
 
   // 获取部署记录详情
-  get(id: string): Promise<DeploymentResp> {
-    return request.get(`/api/cd/deployment/${id}`);
+  get(id: string, config?: AxiosRequestConfig): Promise<DeploymentResp> {
+    return request.get(`/api/cd/deployment/${id}`, config);
   },
 
   // 取消部署
@@ -41,7 +41,11 @@ export const deploymentApi = {
   },
 
   // 获取部署对应的容器日志
-  getContainerLogs(id: string, params?: { tail?: number }): Promise<DeploymentContainerLogsResp> {
-    return request.get(`/api/cd/deployment/${id}/container-logs`, { params });
+  getContainerLogs(
+    id: string,
+    params?: { tail?: number },
+    config?: AxiosRequestConfig
+  ): Promise<DeploymentContainerLogsResp> {
+    return request.get(`/api/cd/deployment/${id}/container-logs`, { ...config, params });
   },
 };

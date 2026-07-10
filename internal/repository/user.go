@@ -19,6 +19,9 @@ type UserStore interface {
 	SaveLoginHistory(ctx context.Context, history model.LoginHistory) error
 	ListLoginHistory(ctx context.Context, page int, perPage int, search string) (Page[model.LoginHistory], error)
 	UserRoles(ctx context.Context, userId string) ([]string, error)
+	UserPermissions(ctx context.Context, userId string) ([]string, error)
+	ListUsers(ctx context.Context, page int, perPage int, search string) (Page[model.User], error)
 	UserRolesByUserIds(ctx context.Context, userIds []string) (map[string][]model.Role, error)
+	UserRoleDetails(ctx context.Context, userId string) ([]model.Role, error)
 	SetUserRoles(ctx context.Context, userId string, roleIds []string) error
 }

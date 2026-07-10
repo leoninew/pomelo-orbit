@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/routes"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
@@ -20,7 +21,7 @@ func newServerForServerTest(cfg config.Config) Server {
 	if cfg.Server.ApiPathPrefixes == nil {
 		cfg.Server.ApiPathPrefixes = []string{"/api"}
 	}
-	return New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), ServerDependencies{})
+	return New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), routes.Dependencies{})
 }
 
 func TestHealth(t *testing.T) {

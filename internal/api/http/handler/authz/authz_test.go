@@ -11,8 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 const testSecret = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -29,13 +31,69 @@ func (s fakeAuthStore) UserById(ctx context.Context, id string) (model.User, err
 	return s.user, nil
 }
 
-func (s fakeAuthStore) UserPermissions(ctx context.Context, userId string) ([]string, error) {
+func (s fakeAuthStore) UserRoles(context.Context, string) ([]string, error) {
 	return nil, nil
+}
+
+func (s fakeAuthStore) UserPermissions(context.Context, string) ([]string, error) {
+	return nil, nil
+}
+
+func (s fakeAuthStore) UserByUsername(context.Context, string) (model.User, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) UserByEmail(context.Context, string) (model.User, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) CreateUser(context.Context, model.User) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) UpdateUser(context.Context, model.User) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) SetUserStatus(context.Context, string, string) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) DeleteUser(context.Context, string) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) MarkUserLoggedIn(context.Context, string) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) SaveLoginHistory(context.Context, model.LoginHistory) error {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) ListLoginHistory(context.Context, int, int, string) (repository.Page[model.LoginHistory], error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) ListUsers(context.Context, int, int, string) (repository.Page[model.User], error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) UserRolesByUserIds(context.Context, []string) (map[string][]model.Role, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) UserRoleDetails(context.Context, string) ([]model.Role, error) {
+	panic("unexpected call")
+}
+
+func (s fakeAuthStore) SetUserRoles(context.Context, string, []string) error {
+	panic("unexpected call")
 }
 
 func TestCurrentUserReturnsServiceUnavailableForUserLoadError(t *testing.T) {
 	token := signedToken(t)
-	authenticator := New(slog.Default(), fakeAuthStore{err: errors.New("database is locked")}, jwt.NewTokenService(testSecret))
+	authenticator := testAuthenticator(fakeAuthStore{err: errors.New("database is locked")})
 
 	recorder := httptest.NewRecorder()
 	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))
@@ -47,7 +105,7 @@ func TestCurrentUserReturnsServiceUnavailableForUserLoadError(t *testing.T) {
 
 func TestCurrentUserReturnsUnauthorizedForMissingUser(t *testing.T) {
 	token := signedToken(t)
-	authenticator := New(slog.Default(), fakeAuthStore{err: sql.ErrNoRows}, jwt.NewTokenService(testSecret))
+	authenticator := testAuthenticator(fakeAuthStore{err: sql.ErrNoRows})
 
 	recorder := httptest.NewRecorder()
 	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))
@@ -59,7 +117,7 @@ func TestCurrentUserReturnsUnauthorizedForMissingUser(t *testing.T) {
 
 func TestCurrentUserReturnsUnauthorizedForDisabledUser(t *testing.T) {
 	token := signedToken(t)
-	authenticator := New(slog.Default(), fakeAuthStore{user: model.User{Id: "user-1", Status: "disabled"}}, jwt.NewTokenService(testSecret))
+	authenticator := testAuthenticator(fakeAuthStore{user: model.User{Id: "user-1", Status: "disabled"}})
 
 	recorder := httptest.NewRecorder()
 	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))
@@ -70,7 +128,7 @@ func TestCurrentUserReturnsUnauthorizedForDisabledUser(t *testing.T) {
 }
 
 func TestCurrentUserReturnsUnauthorizedForInvalidToken(t *testing.T) {
-	authenticator := New(slog.Default(), fakeAuthStore{user: model.User{Id: "user-1", Status: "enabled"}}, jwt.NewTokenService(testSecret))
+	authenticator := testAuthenticator(fakeAuthStore{user: model.User{Id: "user-1", Status: "enabled"}})
 
 	recorder := httptest.NewRecorder()
 	authenticator.CurrentUser(testContext(recorder, authedRequest("invalid-token")))
@@ -78,6 +136,10 @@ func TestCurrentUserReturnsUnauthorizedForInvalidToken(t *testing.T) {
 	if recorder.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status 401, got %d: %s", recorder.Code, recorder.Body.String())
 	}
+}
+
+func testAuthenticator(store repository.UserStore) Authenticator {
+	return New(slog.Default(), authsvc.New(store, jwt.NewTokenService(testSecret), slog.Default()))
 }
 
 func testContext(recorder *httptest.ResponseRecorder, request *http.Request) *gin.Context {

@@ -2,6 +2,8 @@ package authsvc
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -47,6 +49,40 @@ func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, e
 	return s.tokens.Sign(user.Id, user.Username)
 }
 
+func (s Service) Authenticate(ctx context.Context, rawJWT string) (authdto.AuthenticatedUser, error) {
+	claims, err := s.tokens.Verify(strings.TrimSpace(rawJWT))
+	if err != nil {
+		return authdto.AuthenticatedUser{}, apperror.New(apperror.KindUnauthorized, "Invalid token")
+	}
+	user, err := s.repo.UserById(ctx, claims.Sub)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return authdto.AuthenticatedUser{}, apperror.New(apperror.KindUnauthorized, "Invalid token")
+		}
+		return authdto.AuthenticatedUser{}, err
+	}
+	if user.Status != "enabled" {
+		return authdto.AuthenticatedUser{}, apperror.New(apperror.KindUnauthorized, "Invalid token")
+	}
+	roles, err := s.repo.UserRoles(ctx, user.Id)
+	if err != nil {
+		return authdto.AuthenticatedUser{}, err
+	}
+	permissions, err := s.repo.UserPermissions(ctx, user.Id)
+	if err != nil {
+		return authdto.AuthenticatedUser{}, err
+	}
+	return authdto.AuthenticatedUser{User: user, Roles: emptyStrings(roles), Permissions: emptyStrings(permissions)}, nil
+}
+
+func (s Service) UserRoles(ctx context.Context, userId string) ([]string, error) {
+	return s.repo.UserRoles(ctx, userId)
+}
+
+func (s Service) UserPermissions(ctx context.Context, userId string) ([]string, error) {
+	return s.repo.UserPermissions(ctx, userId)
+}
+
 func (s Service) ChangePassword(ctx context.Context, input authdto.ChangePasswordInput) error {
 	if input.OldPassword == "" || len(input.NewPassword) < 6 {
 		return ErrInvalidPasswordFields
@@ -79,6 +115,13 @@ func ValidateLoginInput(input authdto.LoginInput) error {
 		return ErrMissingLoginFields
 	}
 	return nil
+}
+
+func emptyStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 func optionalString(value string) *string {

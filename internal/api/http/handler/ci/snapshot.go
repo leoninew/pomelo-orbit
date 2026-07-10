@@ -3,7 +3,6 @@ package cihandler
 import (
 	"net/http"
 
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
 
@@ -12,11 +11,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func (h Handler) RegisterSnapshotRoutes(r router) {
-	r.GET("/api/ci/snapshot/:snapshot_id", h.getPipelineSnapshot)
-}
-
-func (h Handler) getPipelineSnapshot(c *gin.Context) {
+func (h Handler) GetPipelineSnapshot(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -27,7 +22,7 @@ func (h Handler) getPipelineSnapshot(c *gin.Context) {
 		return
 	}
 	resp := pipelineSnapshotResponse(snapshot)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func pipelineSnapshotResponse(detail cidto.PipelineSnapshotDetail) pomeloorbit.PipelineSnapshotResp {

@@ -3,7 +3,7 @@ package cdhandler
 import (
 	"net/http"
 
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
 
@@ -12,36 +12,14 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func (h Handler) RegisterApplicationExtraRoutes(r router) {
-	r.POST("/api/cd/application/import", h.importApplication)
-	r.GET("/api/cd/application/:app_id/export", h.exportApplication)
-	r.POST("/api/cd/application/:app_id/compose-preview", h.previewApplicationCompose)
-	r.GET("/api/cd/application/:app_id/files", h.listApplicationFiles)
-	r.POST("/api/cd/application/:app_id/file", h.createApplicationFile)
-	r.GET("/api/cd/application/:app_id/file/:file_id", h.readApplicationFile)
-	r.PUT("/api/cd/application/:app_id/file/:file_id", h.updateApplicationFile)
-	r.DELETE("/api/cd/application/:app_id/file/:file_id", h.deleteApplicationFile)
-	r.POST("/api/cd/application/:app_id/stop", h.stopApplication)
-	r.POST("/api/cd/application/:app_id/restart", h.restartApplication)
-	r.GET("/api/cd/application/:app_id/status", h.getApplicationStatus)
-	r.GET("/api/cd/application/:app_id/logs", h.getApplicationLogs)
-	r.GET("/api/cd/application/:app_id/route", h.listApplicationRoutes)
-	r.POST("/api/cd/application/:app_id/route", h.createApplicationRoute)
-	r.PUT("/api/cd/application/:app_id/route/:route_id", h.updateApplicationRoute)
-	r.DELETE("/api/cd/application/:app_id/route/:route_id", h.deleteApplicationRoute)
-	r.GET("/api/cd/application/:app_id/compose-service", h.listApplicationComposeServices)
-	r.GET("/api/cd/application/:app_id/service-config", h.listApplicationServiceConfigs)
-	r.PUT("/api/cd/application/:app_id/service-config/:service_name", h.updateApplicationServiceConfig)
-}
-
-func (h Handler) importApplication(c *gin.Context) {
+func (h Handler) ImportApplication(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationImportReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	files := make([]cddto.ConfigFileInput, 0, len(req.ConfigFiles))
@@ -62,10 +40,10 @@ func (h Handler) importApplication(c *gin.Context) {
 		return
 	}
 	resp := applicationResponse(app)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) exportApplication(c *gin.Context) {
+func (h Handler) ExportApplication(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -85,10 +63,10 @@ func (h Handler) exportApplication(c *gin.Context) {
 	for _, route := range exported.Routes {
 		resp.Routes = append(resp.Routes, &pomeloorbit.ApplicationExportRouteResp{ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port)})
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) listApplicationFiles(c *gin.Context) {
+func (h Handler) ListApplicationFiles(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -102,17 +80,17 @@ func (h Handler) listApplicationFiles(c *gin.Context) {
 	for _, file := range files {
 		resp = append(resp, configFileResponse(file))
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ConfigFileListResp{Items: transportresponse.Ptrs(resp)}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ConfigFileListResp{Items: transportresponse.Ptrs(resp)})
 }
 
-func (h Handler) createApplicationFile(c *gin.Context) {
+func (h Handler) CreateApplicationFile(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ConfigFileReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	file, err := h.service.CreateApplicationFile(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ConfigFileInput{Path: req.Path, Content: req.Content})
@@ -121,10 +99,10 @@ func (h Handler) createApplicationFile(c *gin.Context) {
 		return
 	}
 	resp := configFileResponse(file)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) readApplicationFile(c *gin.Context) {
+func (h Handler) ReadApplicationFile(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -134,17 +112,17 @@ func (h Handler) readApplicationFile(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationFileContentResp{Content: file.Content, Path: file.Path}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationFileContentResp{Content: file.Content, Path: file.Path})
 }
 
-func (h Handler) updateApplicationFile(c *gin.Context) {
+func (h Handler) UpdateApplicationFile(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ConfigFileReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	file, err := h.service.UpdateApplicationFile(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("file_id"), cddto.ConfigFileInput{Path: req.Path, Content: req.Content})
@@ -153,10 +131,10 @@ func (h Handler) updateApplicationFile(c *gin.Context) {
 		return
 	}
 	resp := configFileResponse(file)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) deleteApplicationFile(c *gin.Context) {
+func (h Handler) DeleteApplicationFile(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -168,14 +146,14 @@ func (h Handler) deleteApplicationFile(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) stopApplication(c *gin.Context) {
+func (h Handler) StopApplication(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationStopReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	deploymentId, err := h.service.StopApplication(c.Request.Context(), current.Id, c.Param("app_id"), req.RemoveVolumes)
@@ -183,17 +161,17 @@ func (h Handler) stopApplication(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId})
 }
 
-func (h Handler) restartApplication(c *gin.Context) {
+func (h Handler) RestartApplication(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationRestartReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	deploymentId, err := h.service.RestartApplication(c.Request.Context(), current.Id, c.Param("app_id"))
@@ -201,43 +179,43 @@ func (h Handler) restartApplication(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.DeploymentActionResp{DeploymentId: deploymentId})
 }
 
-func (h Handler) getApplicationStatus(c *gin.Context) {
+func (h Handler) GetApplicationStatus(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	status, err := h.service.ApplicationStatus(c.Request.Context(), current.Id, c.Param("app_id"))
 	if err != nil {
-		c.Render(http.StatusInternalServerError, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationStatusResp{Status: status}})
+		transportresponse.ProtoJSON(c, http.StatusInternalServerError, &pomeloorbit.ApplicationStatusResp{Status: status})
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationStatusResp{Status: status}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationStatusResp{Status: status})
 }
 
-func (h Handler) getApplicationLogs(c *gin.Context) {
+func (h Handler) GetApplicationLogs(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	logs, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Param("app_id"), transportresponse.QueryInt(c.Request.URL.Query().Get("tail"), 100))
+	logs, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Param("app_id"), binding.QueryInt(c.Request.URL.Query().Get("tail"), 100))
 	if err != nil {
-		c.Render(http.StatusInternalServerError, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationLogsResp{Logs: logs}})
+		transportresponse.ProtoJSON(c, http.StatusInternalServerError, &pomeloorbit.ApplicationLogsResp{Logs: logs})
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationLogsResp{Logs: logs}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationLogsResp{Logs: logs})
 }
 
-func (h Handler) previewApplicationCompose(c *gin.Context) {
+func (h Handler) PreviewApplicationCompose(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationComposePreviewReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	compose, err := h.service.ApplicationComposePreview(c.Request.Context(), current.Id, c.Param("app_id"))
@@ -245,10 +223,10 @@ func (h Handler) previewApplicationCompose(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationComposePreviewResp{ComposeYaml: compose}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationComposePreviewResp{ComposeYaml: compose})
 }
 
-func (h Handler) listApplicationRoutes(c *gin.Context) {
+func (h Handler) ListApplicationRoutes(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -262,17 +240,17 @@ func (h Handler) listApplicationRoutes(c *gin.Context) {
 	for _, route := range routes {
 		resp = append(resp, applicationRouteResponse(route))
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationRouteListResp{Items: transportresponse.Ptrs(resp)}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationRouteListResp{Items: transportresponse.Ptrs(resp)})
 }
 
-func (h Handler) createApplicationRoute(c *gin.Context) {
+func (h Handler) CreateApplicationRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationRouteReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.CreateApplicationRoute(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)})
@@ -281,17 +259,17 @@ func (h Handler) createApplicationRoute(c *gin.Context) {
 		return
 	}
 	resp := applicationRouteResponse(route)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) updateApplicationRoute(c *gin.Context) {
+func (h Handler) UpdateApplicationRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationRouteReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.UpdateApplicationRoute(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("route_id"), cddto.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)})
@@ -300,10 +278,10 @@ func (h Handler) updateApplicationRoute(c *gin.Context) {
 		return
 	}
 	resp := applicationRouteResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) deleteApplicationRoute(c *gin.Context) {
+func (h Handler) DeleteApplicationRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -315,7 +293,7 @@ func (h Handler) deleteApplicationRoute(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) listApplicationComposeServices(c *gin.Context) {
+func (h Handler) ListApplicationComposeServices(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -329,10 +307,10 @@ func (h Handler) listApplicationComposeServices(c *gin.Context) {
 	for _, view := range views {
 		resp = append(resp, pomeloorbit.ComposeServiceResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort)})
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ComposeServiceListResp{Items: transportresponse.Ptrs(resp)}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ComposeServiceListResp{Items: transportresponse.Ptrs(resp)})
 }
 
-func (h Handler) listApplicationServiceConfigs(c *gin.Context) {
+func (h Handler) ListApplicationServiceConfigs(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -342,17 +320,17 @@ func (h Handler) listApplicationServiceConfigs(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.ApplicationServiceConfigListResp{Items: transportresponse.Ptrs(applicationServiceConfigResponses(views))}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationServiceConfigListResp{Items: transportresponse.Ptrs(applicationServiceConfigResponses(views))})
 }
 
-func (h Handler) updateApplicationServiceConfig(c *gin.Context) {
+func (h Handler) UpdateApplicationServiceConfig(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.ApplicationServiceConfigUpdateReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.UpdateApplicationServiceConfig(c.Request.Context(), current.Id, c.Param("app_id"), c.Param("service_name"), req.Image)
@@ -361,7 +339,7 @@ func (h Handler) updateApplicationServiceConfig(c *gin.Context) {
 		return
 	}
 	resp := applicationServiceConfigResponse(view)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func configFileResponse(file model.ApplicationConfigFile) pomeloorbit.ConfigFileResp {

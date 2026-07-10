@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
@@ -18,11 +19,6 @@ import (
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
-type router interface {
-	GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
-	POST(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
-}
-
 type Handler struct {
 	logger  *slog.Logger
 	service tasksvc.Service
@@ -32,19 +28,10 @@ func New(logger *slog.Logger, service tasksvc.Service) Handler {
 	return Handler{logger: logger, service: service}
 }
 
-func (h Handler) Register(r router) {
-	r.POST("/api/background/task", h.createTask)
-	r.POST("/api/background/ci/pipeline-run/:run_id/execute", h.enqueueCIPipelineRun)
-	r.POST("/api/background/cd/application/:app_id/deploy/:deployment_id", h.enqueueCDApplicationDeploy)
-	r.POST("/api/background/cd/application/:app_id/restart/:deployment_id", h.enqueueCDApplicationRestart)
-	r.POST("/api/background/cd/application/:app_id/stop/:deployment_id", h.enqueueCDApplicationStop)
-	r.GET("/api/background/task/:id", h.getTask)
-}
-
-func (h Handler) createTask(c *gin.Context) {
+func (h Handler) CreateTask(c *gin.Context) {
 	var req pomeloorbit.CreateTaskReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 
@@ -54,63 +41,63 @@ func (h Handler) createTask(c *gin.Context) {
 		return
 	}
 	resp := taskResponse(item)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) enqueueCIPipelineRun(c *gin.Context) {
+func (h Handler) EnqueueCIPipelineRun(c *gin.Context) {
 	var req pomeloorbit.PipelineRunExecuteTaskReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	runId := strings.TrimSpace(c.Param("run_id"))
 	if runId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "run_id is required"})
+		transportresponse.Error(c, http.StatusBadRequest, "run_id is required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": runId})
 }
 
-func (h Handler) enqueueCDApplicationDeploy(c *gin.Context) {
+func (h Handler) EnqueueCDApplicationDeploy(c *gin.Context) {
 	var req pomeloorbit.ApplicationDeployTaskReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "app_id and deployment_id are required"})
+		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeCDApplicationDeploy, map[string]string{"application_id": appId, "deployment_id": deploymentId})
 }
 
-func (h Handler) enqueueCDApplicationRestart(c *gin.Context) {
+func (h Handler) EnqueueCDApplicationRestart(c *gin.Context) {
 	var req pomeloorbit.ApplicationRestartTaskReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "app_id and deployment_id are required"})
+		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeCDApplicationRestart, map[string]string{"application_id": appId, "deployment_id": deploymentId})
 }
 
-func (h Handler) enqueueCDApplicationStop(c *gin.Context) {
+func (h Handler) EnqueueCDApplicationStop(c *gin.Context) {
 	var req pomeloorbit.ApplicationStopTaskReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "app_id and deployment_id are required"})
+		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeCDApplicationStop, map[string]string{"application_id": appId, "deployment_id": deploymentId})
@@ -123,17 +110,17 @@ func (h Handler) enqueueTypedTask(c *gin.Context, taskType string, payload any) 
 		return
 	}
 	resp := taskResponse(item)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) getTask(c *gin.Context) {
+func (h Handler) GetTask(c *gin.Context) {
 	item, err := h.service.FindById(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"detail": "Task not found"})
+		transportresponse.Error(c, http.StatusNotFound, "Task not found")
 		return
 	}
 	resp := taskResponse(item)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func taskResponse(item *tasksvc.Task) pomeloorbit.TaskResp {
@@ -153,9 +140,9 @@ func rawPayload(payload *structpb.Value) json.RawMessage {
 
 func (h Handler) writeServiceError(c *gin.Context, err error) {
 	if apperror.IsKind(err, apperror.KindValidation) {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+		transportresponse.Error(c, http.StatusBadRequest, err.Error())
 		return
 	}
 	h.logger.Error("task service failed", "error", err)
-	c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to process task"})
+	transportresponse.Error(c, http.StatusInternalServerError, "Failed to process task")
 }

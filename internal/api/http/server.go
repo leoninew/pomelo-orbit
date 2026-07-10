@@ -11,145 +11,39 @@ import (
 	"path/filepath"
 	"strings"
 
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 
 	"github.com/gin-gonic/gin"
 
-	authhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/auth"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
-	cdhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/cd"
-	cihandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/ci"
-	projecthandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/project"
-	rolehandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/role"
-	settingshandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/settings"
-	taskhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/task"
-	userhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/user"
-	transportmiddleware "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/middleware"
-	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
-	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase"
-	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/usecase"
-	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/usecase"
-	rolesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/usecase"
-	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase"
-	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/routes"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
-
-type ServerDependencies struct {
-	Authenticator     authz.Authenticator
-	AuthService       authsvc.Service
-	RoleService       rolesvc.Service
-	UserService       usersvc.Service
-	ProjectService    projectsvc.Service
-	SettingsService   settingssvc.Service
-	CIService         cisvc.Service
-	CDService         cdsvc.Service
-	TaskService       tasksvc.Service
-	AuthHandlerStore  authhandler.Store
-	UserStore         userhandler.Store
-	RoleStore         rolehandler.Store
-	UserRoleStore     userhandler.RoleStore
-	TurnstileVerifier authhandler.TurnstileVerifier
-}
 
 type Server struct {
 	appCfg config.Config
 	cfg    config.ServerConfig
 	logger *slog.Logger
-	deps   ServerDependencies
+	deps   routes.Dependencies
 }
 
-func New(cfg config.Config, logger *slog.Logger, deps ServerDependencies) Server {
+func New(cfg config.Config, logger *slog.Logger, deps routes.Dependencies) Server {
 	return Server{appCfg: cfg, cfg: cfg.Server, logger: logger, deps: deps}
 }
 
 func (s Server) Handler() http.Handler {
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.New()
-	s.registerMiddleware(r)
-	s.registerHealthRoutes(r)
-	s.registerAuthRoutes(r)
-	s.registerUserRoutes(r)
-	s.registerRoleRoutes(r)
-	s.registerSettingsRoutes(r)
-	s.registerProjectRoutes(r)
-	s.registerCIRoutes(r)
-	s.registerCDRoutes(r)
-	s.registerTaskRoutes(r)
-	s.registerFallbackRoutes(r)
-	return r
-}
-
-func (s Server) registerMiddleware(r *gin.Engine) {
-	r.Use(transportmiddleware.RequestID())
-	r.Use(transportmiddleware.RealIP())
-	r.Use(transportmiddleware.LogRequest(s.logger, transportmiddleware.LogRequestConfig{BodyEnabled: s.appCfg.Logging.HTTPBodyEnabled, BodyMaxBytes: s.appCfg.Logging.HTTPBodyMaxBytes, SkipAssets200Enabled: s.appCfg.Logging.HTTPSkipAssets200Enabled}))
-	r.Use(transportmiddleware.Recovery(s.logger))
-	r.Use(transportmiddleware.CORS(s.appCfg.Server.CORSAllowedOrigins, s.appCfg.Server.ApiPathPrefixes))
-}
-
-func (s Server) registerHealthRoutes(r *gin.Engine) {
-	r.GET("/api/health", func(c *gin.Context) {
-		c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.HealthResp{Status: "ok"}})
-	})
-}
-
-func (s Server) registerAuthRoutes(r *gin.Engine) {
-	authhandler.New(s.logger, s.appCfg.Turnstile, s.deps.AuthService, s.deps.Authenticator, s.deps.TurnstileVerifier, s.deps.AuthHandlerStore).Register(r)
-}
-
-func (s Server) registerUserRoutes(r *gin.Engine) {
-	userhandler.New(s.logger, s.deps.UserService, s.deps.Authenticator, s.deps.UserStore, s.deps.UserRoleStore).Register(r)
-}
-
-func (s Server) registerRoleRoutes(r *gin.Engine) {
-	rolehandler.New(s.logger, s.deps.RoleService, s.deps.Authenticator, s.deps.RoleStore).Register(r)
-}
-
-func (s Server) registerSettingsRoutes(r *gin.Engine) {
-	settingshandler.New(s.logger, s.deps.SettingsService, s.deps.Authenticator).Register(r)
-}
-
-func (s Server) registerProjectRoutes(r *gin.Engine) {
-	projecthandler.New(s.logger, s.deps.ProjectService, s.deps.Authenticator).Register(r)
-}
-
-func (s Server) registerCIRoutes(r *gin.Engine) {
-	ciHandler := cihandler.New(s.logger, s.deps.CIService, s.deps.Authenticator)
-	ciHandler.RegisterRepositoryRoutes(r)
-	ciHandler.RegisterTemplateRoutes(r)
-	ciHandler.RegisterBuildStageRoutes(r)
-	ciHandler.RegisterPipelineRunRoutes(r)
-	ciHandler.RegisterSnapshotRoutes(r)
-	ciHandler.RegisterArtifactRoutes(r)
-	ciHandler.RegisterCredentialRoutes(r)
-}
-
-func (s Server) registerCDRoutes(r *gin.Engine) {
-	cdHandler := cdhandler.New(s.logger, s.deps.CDService, s.deps.Authenticator)
-	cdHandler.RegisterApplicationRoutes(r)
-	cdHandler.RegisterDeploymentRoutes(r)
-	cdHandler.RegisterApplicationExtraRoutes(r)
-	cdHandler.RegisterRouteRoutes(r)
-	cdHandler.RegisterTraefikRouteRoutes(r)
-}
-
-func (s Server) registerTaskRoutes(r *gin.Engine) {
-	taskhandler.New(s.logger, s.deps.TaskService).Register(r)
+	return routes.New(s.appCfg, s.logger, s.deps, s.registerFallbackRoutes).Handler()
 }
 
 func (s Server) registerFallbackRoutes(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
 		if isAPIPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
-			c.JSON(http.StatusNotFound, gin.H{"detail": "Not Found"})
+			transportresponse.Error(c, http.StatusNotFound, "Not Found")
 			return
 		}
 		if s.serveStatic(c, "static") {
 			return
 		}
-		c.JSON(http.StatusNotFound, gin.H{"detail": "Not Found"})
+		transportresponse.Error(c, http.StatusNotFound, "Not Found")
 	})
 }
 

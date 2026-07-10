@@ -3,7 +3,7 @@ package cihandler
 import (
 	"net/http"
 
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
 
@@ -11,40 +11,33 @@ import (
 	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 )
 
-func (h Handler) RegisterTemplateRoutes(r router) {
-	r.GET("/api/ci/template", h.listPipelineTemplates)
-	r.POST("/api/ci/template", h.createPipelineTemplate)
-	r.POST("/api/ci/template/resolve-variables", h.resolvePipelineTemplateVariables)
-	r.GET("/api/ci/template/:template_id", h.getPipelineTemplate)
-	r.PUT("/api/ci/template/:template_id", h.updatePipelineTemplate)
-	r.DELETE("/api/ci/template/:template_id", h.deletePipelineTemplate)
-	r.POST("/api/ci/template/:template_id/duplicate", h.duplicatePipelineTemplate)
-}
-
-func (h Handler) listPipelineTemplates(c *gin.Context) {
+func (h Handler) ListPipelineTemplates(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListPipelineTemplates(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.writeError(c, err)
 		return
 	}
-	resp := mapPage(items, pipelineTemplateResponse)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
+	resp := make([]pomeloorbit.PipelineTemplateResp, 0, len(items.Items))
+	for _, item := range items.Items {
+		resp = append(resp, pipelineTemplateResponse(item))
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.PipelineTemplatePaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
 
-func (h Handler) createPipelineTemplate(c *gin.Context) {
+func (h Handler) CreatePipelineTemplate(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineTemplateCreateReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.CreatePipelineTemplate(c.Request.Context(), current.Id, cidto.PipelineTemplateCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
@@ -53,10 +46,10 @@ func (h Handler) createPipelineTemplate(c *gin.Context) {
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) getPipelineTemplate(c *gin.Context) {
+func (h Handler) GetPipelineTemplate(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -67,17 +60,17 @@ func (h Handler) getPipelineTemplate(c *gin.Context) {
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) updatePipelineTemplate(c *gin.Context) {
+func (h Handler) UpdatePipelineTemplate(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineTemplateUpdateReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	var orchestration *[]cidto.StageOrchestration
@@ -96,10 +89,10 @@ func (h Handler) updatePipelineTemplate(c *gin.Context) {
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) deletePipelineTemplate(c *gin.Context) {
+func (h Handler) DeletePipelineTemplate(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -111,14 +104,14 @@ func (h Handler) deletePipelineTemplate(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) duplicatePipelineTemplate(c *gin.Context) {
+func (h Handler) DuplicatePipelineTemplate(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.PipelineTemplateDuplicateReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.DuplicatePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id"))
@@ -127,17 +120,17 @@ func (h Handler) duplicatePipelineTemplate(c *gin.Context) {
 		return
 	}
 	resp := pipelineTemplateResponse(detail)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) resolvePipelineTemplateVariables(c *gin.Context) {
+func (h Handler) ResolvePipelineTemplateVariables(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.TemplateVariableResolveReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	variables, err := h.service.ResolvePipelineTemplateVariables(c.Request.Context(), current.Id, cidto.PipelineTemplateResolveInput{ProjectId: c.Request.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
@@ -145,7 +138,7 @@ func (h Handler) resolvePipelineTemplateVariables(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.TemplateVariableResolveResp{Items: transportresponse.Ptrs(variableDeclarationResponses(variables))})
 }
 
 func pipelineTemplateResponse(detail cidto.PipelineTemplateDetail) pomeloorbit.PipelineTemplateResp {

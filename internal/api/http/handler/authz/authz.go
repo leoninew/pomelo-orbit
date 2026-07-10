@@ -1,23 +1,17 @@
 package authz
 
 import (
-	"context"
-	"database/sql"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
-	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
-
-type Store interface {
-	UserById(ctx context.Context, id string) (model.User, error)
-	UserPermissions(ctx context.Context, userId string) ([]string, error)
-}
 
 type CurrentUserContext struct {
 	User        model.User
@@ -25,41 +19,31 @@ type CurrentUserContext struct {
 }
 
 type Authenticator struct {
-	logger *slog.Logger
-	store  Store
-	tokens jwt.TokenService
+	logger  *slog.Logger
+	service authsvc.Service
 }
 
-func New(logger *slog.Logger, store Store, tokens jwt.TokenService) Authenticator {
-	return Authenticator{logger: logger, store: store, tokens: tokens}
+func New(logger *slog.Logger, service authsvc.Service) Authenticator {
+	return Authenticator{logger: logger, service: service}
 }
 
 func (a Authenticator) CurrentUser(c *gin.Context) (model.User, bool) {
 	token := strings.TrimSpace(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
 	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Not authenticated"})
+		transportresponse.Error(c, http.StatusUnauthorized, "Not authenticated")
 		return model.User{}, false
 	}
-	claims, err := a.tokens.Verify(token)
+	authenticated, err := a.service.Authenticate(c.Request.Context(), token)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid token"})
-		return model.User{}, false
-	}
-	user, err := a.store.UserById(c.Request.Context(), claims.Sub)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid token"})
+		if apperror.IsKind(err, apperror.KindUnauthorized) {
+			transportresponse.Error(c, http.StatusUnauthorized, "Invalid token")
 			return model.User{}, false
 		}
-		a.logger.Error("load current user failed", "user_id", claims.Sub, "error", err)
-		c.JSON(http.StatusServiceUnavailable, gin.H{"detail": "Authentication service unavailable"})
+		a.logger.Error("load current user failed", "error", err)
+		transportresponse.Error(c, http.StatusServiceUnavailable, "Authentication service unavailable")
 		return model.User{}, false
 	}
-	if user.Status != "enabled" {
-		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid token"})
-		return model.User{}, false
-	}
-	return user, true
+	return authenticated.User, true
 }
 
 func (a Authenticator) RequirePermission(c *gin.Context, permission string) (CurrentUserContext, bool) {
@@ -67,16 +51,16 @@ func (a Authenticator) RequirePermission(c *gin.Context, permission string) (Cur
 	if !ok {
 		return CurrentUserContext{}, false
 	}
-	permissions, err := a.store.UserPermissions(c.Request.Context(), user.Id)
+	permissions, err := a.service.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		a.logger.Error("load current user permissions failed", "user_id", user.Id, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to load user permissions"})
+		transportresponse.Error(c, http.StatusInternalServerError, "Failed to load user permissions")
 		return CurrentUserContext{}, false
 	}
 	if HasPermission(permissions, permission) {
 		return CurrentUserContext{User: user, Permissions: permissions}, true
 	}
-	c.JSON(http.StatusForbidden, gin.H{"detail": "Permission denied"})
+	transportresponse.Error(c, http.StatusForbidden, "Permission denied")
 	return CurrentUserContext{}, false
 }
 

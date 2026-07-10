@@ -1,9 +1,6 @@
 package response
 
 import (
-	"encoding/json"
-	"io"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,26 +14,19 @@ type ErrorResp[T any] struct {
 	Detail T `json:"detail"`
 }
 
+func ProtoJSON(c *gin.Context, status int, message proto.Message) {
+	c.Render(status, codec.ProtoJSON{Message: message})
+}
+
+func Error[T any](c *gin.Context, status int, detail T) {
+	c.JSON(status, ErrorResp[T]{Detail: detail})
+}
+
 func PageCount(total int, perPage int) int {
 	if perPage <= 0 {
 		return 0
 	}
 	return (total + perPage - 1) / perPage
-}
-
-func DecodeJSON(c *gin.Context, value any) error {
-	return DecodeJSONReader(c.Request.Body, value)
-}
-
-func DecodeJSONReader(r io.Reader, value any) error {
-	if message, ok := value.(proto.Message); ok {
-		data, err := io.ReadAll(r)
-		if err != nil {
-			return err
-		}
-		return codec.UnmarshalProtoJSON(data, message)
-	}
-	return json.NewDecoder(r).Decode(value)
 }
 
 func Ptrs[T any](items []T) []*T {
@@ -78,21 +68,6 @@ func OptionalStringValue(value *string) string {
 		return ""
 	}
 	return *value
-}
-
-func QueryInt(value string, fallback int) int {
-	parsed, err := strconv.Atoi(value)
-	if err != nil {
-		return fallback
-	}
-	return parsed
-}
-
-func QueryProjectId(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
 }
 
 func FormatTime(value time.Time) string {

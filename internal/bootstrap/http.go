@@ -7,6 +7,7 @@ import (
 
 	transporthttp "gitee.com/leoninew/PomeloOrbit-go/internal/api/http"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/routes"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase"
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/usecase"
@@ -33,7 +34,7 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sqlx.DB, ta
 	return transporthttp.New(cfg, logger, newHTTPServerDependencies(cfg, logger, database, taskRepo))
 }
 
-func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sqlx.DB, taskRepo taskrepo.Repository) transporthttp.ServerDependencies {
+func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sqlx.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	tokenService := jwt.NewTokenService(cfg.JWT.SecretKey)
 	userRepository := userrepo.NewRepository(database, cfg.Database.Driver)
 	roleRepository := rolerepo.NewRepository(database, cfg.Database.Driver)
@@ -41,22 +42,19 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	ciRepository := cirepo.NewRepository(database, cfg.Database.Driver)
 	cdRepository := cdrepo.NewRepository(database, cfg.Database.Driver)
 	taskService := tasksvc.New(taskRepo, cfg.Worker.MaxAttempts)
+	authService := authsvc.New(userRepository, tokenService, logger)
 	logStore := executionlog.Store{}
 	routeManager := traefik.NewRouteManager(cfg)
-	return transporthttp.ServerDependencies{
-		Authenticator:     authz.New(logger, userRepository, tokenService),
-		AuthService:       authsvc.New(userRepository, tokenService, logger),
+	return routes.Dependencies{
+		Authenticator:     authz.New(logger, authService),
+		AuthService:       authService,
 		RoleService:       rolesvc.New(roleRepository),
-		UserService:       usersvc.New(userRepository),
+		UserService:       usersvc.New(userRepository, roleRepository),
 		ProjectService:    projectsvc.New(projectRepository, userRepository),
 		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg)),
 		CIService:         cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger, logStore),
 		CDService:         cdsvc.New(cdRepository, taskService, cfg, logger, logStore, routeManager, traefik.MkcertGenerator{}, routeManager),
 		TaskService:       taskService,
-		AuthHandlerStore:  userRepository,
-		UserStore:         userRepository,
-		RoleStore:         roleRepository,
-		UserRoleStore:     roleRepository,
 		TurnstileVerifier: turnstile.NewVerifier(cfg.Turnstile),
 	}
 }

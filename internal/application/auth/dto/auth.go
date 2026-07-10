@@ -15,3 +15,10 @@ type ChangePasswordInput struct {
 	OldPassword string
 	NewPassword string
 }
+
+// AuthenticatedUser is the enabled account resolved from a verified bearer token.
+type AuthenticatedUser struct {
+	User        model.User
+	Roles       []string
+	Permissions []string
+}

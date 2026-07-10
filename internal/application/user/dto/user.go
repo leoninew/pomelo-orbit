@@ -9,8 +9,25 @@ type CreateInput struct {
 }
 
 type UpdateInput struct {
-	User     model.User
 	Username *string
 	Password *string
 	Status   *string
+}
+
+// Actor identifies the account making an actor-sensitive user change.
+type Actor struct {
+	UserId      string
+	Permissions []string
+}
+
+type ListItem struct {
+	User  model.User
+	Roles []model.Role
+}
+
+type Detail struct {
+	User                model.User
+	Roles               []model.Role
+	Permissions         []string
+	PermissionsByRoleId map[string][]string
 }

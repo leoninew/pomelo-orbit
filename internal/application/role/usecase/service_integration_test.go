@@ -27,21 +27,21 @@ func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {
 	if created.Id == "" || created.Code != "auditor" || created.Name != "Auditor" || created.Description == nil || *created.Description != description {
 		t.Fatalf("unexpected created role: %+v", created)
 	}
-	updated, err := service.Update(ctx, roledto.SaveInput{Role: created, Code: "auditor", Name: "Auditor Updated", PermissionCodes: []string{"role:read", "user:read"}})
+	updated, err := service.UpdateByID(ctx, created.Id, roledto.SaveInput{Code: "auditor", Name: "Auditor Updated", PermissionCodes: []string{"role:read", "user:read"}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "Auditor Updated" || updated.Description != nil {
-		t.Fatalf("unexpected updated role: %+v", updated)
+	if updated.Role.Name != "Auditor Updated" || updated.Role.Description != nil {
+		t.Fatalf("unexpected updated role: %+v", updated.Role)
 	}
-	permissions, err := rolerepo.NewRepository(database, config.DatabaseDriverSQLite).RolePermissionCodesByRoleIds(ctx, []string{updated.Id})
+	permissions, err := rolerepo.NewRepository(database, config.DatabaseDriverSQLite).RolePermissionCodesByRoleIds(ctx, []string{updated.Role.Id})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(permissions[updated.Id]) != 2 || permissions[updated.Id][0] != "role:read" || permissions[updated.Id][1] != "user:read" {
+	if len(permissions[updated.Role.Id]) != 2 || permissions[updated.Role.Id][0] != "role:read" || permissions[updated.Role.Id][1] != "user:read" {
 		t.Fatalf("unexpected role permissions: %+v", permissions)
 	}
-	if err := service.Delete(ctx, updated.Id); err != nil {
+	if err := service.Delete(ctx, updated.Role.Id); err != nil {
 		t.Fatal(err)
 	}
 }

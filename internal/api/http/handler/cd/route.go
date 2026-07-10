@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
 
@@ -15,50 +15,33 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func (h Handler) RegisterRouteRoutes(r router) {
-	r.GET("/api/cd/route", h.listRoutes)
-	r.POST("/api/cd/route", h.createRoute)
-	r.POST("/api/cd/route/sync", h.syncRoutes)
-	r.GET("/api/cd/route/:route_id", h.getRoute)
-	r.PUT("/api/cd/route/:route_id", h.updateRoute)
-	r.DELETE("/api/cd/route/:route_id", h.deleteRoute)
-	r.POST("/api/cd/route/:route_id/enable", h.enableRoute)
-	r.POST("/api/cd/route/:route_id/disable", h.disableRoute)
-	r.POST("/api/cd/route/:route_id/cert", h.uploadRouteCert)
-	r.DELETE("/api/cd/route/:route_id/https", h.disableRouteHTTPS)
-	r.POST("/api/cd/route/:route_id/letsencrypt", h.enableRouteLetsEncrypt)
-	r.POST("/api/cd/route/:route_id/mkcert", h.enableRouteMkcert)
-}
-
-func (h Handler) RegisterTraefikRouteRoutes(r router) {
-	r.GET("/api/cd/traefik-route/config", h.getTraefikRouteConfig)
-	r.GET("/api/cd/traefik-route", h.listTraefikRoutes)
-}
-
-func (h Handler) listRoutes(c *gin.Context) {
+func (h Handler) ListRoutes(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	page := transportresponse.QueryInt(c.Request.URL.Query().Get("page"), 1)
-	perPage := transportresponse.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
 	items, err := h.service.ListRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.writeError(c, err)
 		return
 	}
-	resp := mapPage(items, routeResponse)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.RoutePaginatedResp{Items: transportresponse.Ptrs(resp.Items), Total: int32(resp.Total), Page: int32(resp.Page), PerPage: int32(resp.PerPage), Pages: int32(transportresponse.PageCount(resp.Total, resp.PerPage))}})
+	resp := make([]pomeloorbit.RouteResp, 0, len(items.Items))
+	for _, item := range items.Items {
+		resp = append(resp, routeResponse(item))
+	}
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.RoutePaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
 
-func (h Handler) createRoute(c *gin.Context) {
+func (h Handler) CreateRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteCreateReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), cddto.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
@@ -67,10 +50,10 @@ func (h Handler) createRoute(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusCreated, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) getRoute(c *gin.Context) {
+func (h Handler) GetRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -81,17 +64,17 @@ func (h Handler) getRoute(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) updateRoute(c *gin.Context) {
+func (h Handler) UpdateRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteUpdateReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), cddto.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
@@ -100,10 +83,10 @@ func (h Handler) updateRoute(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) deleteRoute(c *gin.Context) {
+func (h Handler) DeleteRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -115,77 +98,77 @@ func (h Handler) deleteRoute(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) enableRoute(c *gin.Context) {
+func (h Handler) EnableRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteEnableReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if _, err := h.service.EnableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.RouteEnableResp{Message: "Route enabled successfully"}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.RouteEnableResp{Message: "Route enabled successfully"})
 }
 
-func (h Handler) disableRoute(c *gin.Context) {
+func (h Handler) DisableRoute(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteDisableReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if _, err := h.service.DisableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.RouteDisableResp{Message: "Route disabled successfully"}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.RouteDisableResp{Message: "Route disabled successfully"})
 }
 
-func (h Handler) syncRoutes(c *gin.Context) {
+func (h Handler) SyncRoutes(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteSyncReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.SyncRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id")); err != nil {
 		h.writeError(c, err)
 		return
 	}
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &pomeloorbit.RouteSyncResp{Message: "Routes synced successfully"}})
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.RouteSyncResp{Message: "Routes synced successfully"})
 }
 
-func (h Handler) uploadRouteCert(c *gin.Context) {
+func (h Handler) UploadRouteCert(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	file, _, err := c.Request.FormFile("pem")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "pem is required"})
+		transportresponse.Error(c, http.StatusBadRequest, "pem is required")
 		return
 	}
 	defer func() { _ = file.Close() }()
 	var content bytes.Buffer
 	if _, err := content.ReadFrom(file); err != nil {
 		h.logger.Error("read certificate upload failed", "route_id", c.Param("route_id"), "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to read certificate"})
+		transportresponse.Error(c, http.StatusInternalServerError, "Failed to read certificate")
 		return
 	}
 	certPEM, certKey, ok := splitPEM(content.Bytes())
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid PEM certificate"})
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid PEM certificate")
 		return
 	}
 	route, err := h.service.UploadRouteCert(c.Request.Context(), current.Id, c.Param("route_id"), certPEM, certKey)
@@ -194,10 +177,10 @@ func (h Handler) uploadRouteCert(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) disableRouteHTTPS(c *gin.Context) {
+func (h Handler) DisableRouteHTTPS(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -208,17 +191,17 @@ func (h Handler) disableRouteHTTPS(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) enableRouteLetsEncrypt(c *gin.Context) {
+func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteLetsEncryptEnableReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"))
@@ -227,17 +210,17 @@ func (h Handler) enableRouteLetsEncrypt(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) enableRouteMkcert(c *gin.Context) {
+func (h Handler) EnableRouteMkcert(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
 	var req pomeloorbit.RouteMkcertEnableReq
-	if err := transportresponse.DecodeJSON(c, &req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON body"})
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.EnableRouteMkcert(c.Request.Context(), current.Id, c.Param("route_id"))
@@ -246,10 +229,10 @@ func (h Handler) enableRouteMkcert(c *gin.Context) {
 		return
 	}
 	resp := routeResponse(route)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) getTraefikRouteConfig(c *gin.Context) {
+func (h Handler) GetTraefikRouteConfig(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -260,10 +243,10 @@ func (h Handler) getTraefikRouteConfig(c *gin.Context) {
 		return
 	}
 	resp := traefikConfigResponse(config)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
-func (h Handler) listTraefikRoutes(c *gin.Context) {
+func (h Handler) ListTraefikRoutes(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -271,14 +254,14 @@ func (h Handler) listTraefikRoutes(c *gin.Context) {
 	items, err := h.service.ListTraefikRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "无法连接到 Traefik:") {
-			c.JSON(http.StatusServiceUnavailable, gin.H{"detail": err.Error()})
+			transportresponse.Error(c, http.StatusServiceUnavailable, err.Error())
 			return
 		}
 		h.writeError(c, err)
 		return
 	}
 	resp := traefikRouteListResponse(items)
-	c.Render(http.StatusOK, transportcodec.ProtoJSON{Message: &resp})
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func routeResponse(route model.Route) pomeloorbit.RouteResp {

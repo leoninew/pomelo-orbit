@@ -27,6 +27,50 @@ func New(repo repository.RoleStore) Service {
 	return Service{repo: repo}
 }
 
+func (s Service) List(ctx context.Context, page int, perPage int, search string) (repository.Page[roledto.Detail], error) {
+	roles, err := s.repo.ListRoles(ctx, page, perPage, search)
+	if err != nil {
+		return repository.Page[roledto.Detail]{}, err
+	}
+	roleIds := make([]string, 0, len(roles.Items))
+	for _, role := range roles.Items {
+		roleIds = append(roleIds, role.Id)
+	}
+	permissionsByRoleId, err := s.repo.RolePermissionCodesByRoleIds(ctx, roleIds)
+	if err != nil {
+		return repository.Page[roledto.Detail]{}, err
+	}
+	items := make([]roledto.Detail, 0, len(roles.Items))
+	for _, role := range roles.Items {
+		items = append(items, roledto.Detail{Role: role, PermissionCodes: emptyStrings(permissionsByRoleId[role.Id])})
+	}
+	return repository.Page[roledto.Detail]{Items: items, Total: roles.Total, Page: roles.Page, PerPage: roles.PerPage}, nil
+}
+
+func (s Service) Detail(ctx context.Context, roleId string) (roledto.Detail, error) {
+	role, err := s.find(ctx, roleId)
+	if err != nil {
+		return roledto.Detail{}, err
+	}
+	permissionsByRoleId, err := s.repo.RolePermissionCodesByRoleIds(ctx, []string{role.Id})
+	if err != nil {
+		return roledto.Detail{}, err
+	}
+	return roledto.Detail{Role: role, PermissionCodes: emptyStrings(permissionsByRoleId[role.Id])}, nil
+}
+
+func (s Service) ListPermissions(ctx context.Context) ([]roledto.Permission, error) {
+	permissions, err := s.repo.ListPermissions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]roledto.Permission, 0, len(permissions))
+	for _, permission := range permissions {
+		items = append(items, roledto.Permission{Id: permission.Id, Code: permission.Code, Name: permission.Name, Description: permission.Description})
+	}
+	return items, nil
+}
+
 func (s Service) Create(ctx context.Context, input roledto.SaveInput) (model.Role, error) {
 	code, name, description, permissions, err := s.normalizeAndValidate(input)
 	if err != nil {
@@ -49,21 +93,40 @@ func (s Service) Create(ctx context.Context, input roledto.SaveInput) (model.Rol
 	return role, nil
 }
 
-func (s Service) Update(ctx context.Context, input roledto.SaveInput) (model.Role, error) {
+func (s Service) UpdateByID(ctx context.Context, roleId string, input roledto.SaveInput) (roledto.Detail, error) {
+	role, err := s.find(ctx, roleId)
+	if err != nil {
+		return roledto.Detail{}, err
+	}
+	updated, err := s.update(ctx, role, input)
+	if err != nil {
+		return roledto.Detail{}, err
+	}
+	return s.Detail(ctx, updated.Id)
+}
+
+func (s Service) Delete(ctx context.Context, roleId string) error {
+	role, err := s.find(ctx, roleId)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteRole(ctx, role.Id)
+}
+
+func (s Service) update(ctx context.Context, role model.Role, input roledto.SaveInput) (model.Role, error) {
 	code, name, description, permissions, err := s.normalizeAndValidate(input)
 	if err != nil {
 		return model.Role{}, err
 	}
-	if err := s.ensureCodeAvailable(ctx, code, input.Role.Id); err != nil {
+	if err := s.ensureCodeAvailable(ctx, code, role.Id); err != nil {
 		return model.Role{}, err
 	}
-	if err := s.ensureNameAvailable(ctx, name, input.Role.Id); err != nil {
+	if err := s.ensureNameAvailable(ctx, name, role.Id); err != nil {
 		return model.Role{}, err
 	}
 	if err := s.ensurePermissionsExist(ctx, permissions); err != nil {
 		return model.Role{}, err
 	}
-	role := input.Role
 	role.Code = code
 	role.Name = name
 	role.Description = description
@@ -73,8 +136,16 @@ func (s Service) Update(ctx context.Context, input roledto.SaveInput) (model.Rol
 	return s.repo.RoleById(ctx, role.Id)
 }
 
-func (s Service) Delete(ctx context.Context, roleId string) error {
-	return s.repo.DeleteRole(ctx, roleId)
+func (s Service) find(ctx context.Context, roleId string) (model.Role, error) {
+	roleId = strings.TrimSpace(roleId)
+	role, err := s.repo.RoleById(ctx, roleId)
+	if err == nil {
+		return role, nil
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Role{}, apperror.New(apperror.KindNotFound, "Role "+roleId+" not found")
+	}
+	return model.Role{}, err
 }
 
 func (s Service) normalizeAndValidate(input roledto.SaveInput) (string, string, *string, []string, error) {
@@ -151,6 +222,13 @@ func normalizePermissions(values []string) ([]string, error) {
 	}
 	sort.Strings(result)
 	return result, nil
+}
+
+func emptyStrings(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return values
 }
 
 func normalizeOptional(value *string) *string {

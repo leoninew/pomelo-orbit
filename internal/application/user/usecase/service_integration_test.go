@@ -12,6 +12,7 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	rolerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/role"
 	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
 )
 
@@ -31,20 +32,21 @@ func TestUserServiceCreateUpdateStatusAndDelete(t *testing.T) {
 	if err := bcrypt.CompareHashAndPassword([]byte(created.PasswordHash), []byte("secret1")); err != nil {
 		t.Fatal(err)
 	}
-	updated, err := service.Update(ctx, userdto.UpdateInput{User: created, Username: stringPtr("operator2"), Password: stringPtr("newpass1"), Status: stringPtr("disabled")})
+	actor := userdto.Actor{UserId: "administrator", Permissions: []string{"user:write"}}
+	updated, err := service.UpdateByActor(ctx, actor, created.Id, userdto.UpdateInput{Username: stringPtr("operator2"), Password: stringPtr("newpass1"), Status: stringPtr("disabled")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Username != "operator2" || updated.Status != "disabled" {
-		t.Fatalf("unexpected updated user: %+v", updated)
+	if updated.User.Username != "operator2" || updated.User.Status != "disabled" {
+		t.Fatalf("unexpected updated user: %+v", updated.User)
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(updated.PasswordHash), []byte("newpass1")); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(updated.User.PasswordHash), []byte("newpass1")); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.SetStatus(ctx, updated.Id, "enabled"); err != nil {
+	if err := service.SetStatusByActor(ctx, actor, updated.User.Id, "enabled"); err != nil {
 		t.Fatal(err)
 	}
-	if err := service.Delete(ctx, updated.Id); err != nil {
+	if err := service.DeleteByActor(ctx, actor, updated.User.Id); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -75,7 +77,10 @@ func newUserIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	return New(userrepo.NewRepository(database, config.DatabaseDriverSQLite)), database
+	return New(
+		userrepo.NewRepository(database, config.DatabaseDriverSQLite),
+		rolerepo.NewRepository(database, config.DatabaseDriverSQLite),
+	), database
 }
 
 func stringPtr(value string) *string {

@@ -1,6 +1,6 @@
 # Verification: internal 后两级目录结构对齐与架构收敛
 
-最后修改时间: 2026-07-10 17:20:03
+最后修改时间: 2026-07-10 18:02:43
 
 ## Verification target
 
@@ -9,7 +9,8 @@
 1. **Issue 1**：`internal/common/civariable` 迁出 `common`；
 2. **Issue 2**：`internal/application/<domain>` 重整为 domain-first 的职责子目录；
 3. **Issue 3**：`internal/repository` 的持久化 port 与 SQLC/SQLX implementation 对齐；
-4. **Issue 4**：worker runtime 与 handler dispatch 收拢至 `internal/queue/worker`。
+4. **Issue 4**：worker runtime 与 handler dispatch 收拢至 `internal/queue/worker`；
+5. **Issue 5**：Traefik 与 Turnstile external adapter 收拢至 `internal/infrastructure/external/<provider>`。
 
 对应 requirement：`docs/requirement/20260709-internal-directory-structure-alignment.md`（Review status: Accepted）。
 
@@ -59,9 +60,20 @@ Repository adapter 增加编译期 interface assertions。API route、请求/响
 
 Issue 4 未改变 task model/service、application TaskService port、SQLC task repository 方法集、lease/retry/concurrency 行为、task payload、HTTP route、请求/响应契约、migration 或前端行为。
 
+### Issue 5
+
+| Requirement item | Actual result |
+| --- | --- |
+| external provider 分类 | Traefik 与 Cloudflare Turnstile concrete adapter 已位于 `internal/infrastructure/external/{traefik,turnstile}`。 |
+| application / HTTP port 边界保持 | CD 的 route/certificate/Traefik ports 仍归 application；Turnstile verifier interface 仍归 HTTP auth handler。 |
+| bootstrap 负责装配 | bootstrap 是旧路径的唯一 active production importer，已切换至最终 external provider paths，构造和注入关系未变。 |
+| 清理旧路径 | 旧一级 provider source tree 与 active Go imports 已删除；未保留 wrapper、alias、forwarding package 或新旧路径并存。 |
+
+Issue 5 未改变 Traefik YAML/certificate/reload/HTTP API behavior、mkcert process behavior、Turnstile timeout/request-response/error semantics、config/API/proto 或前端行为。
+
 ## Spec and plan alignment
 
-不适用。当前任务使用 light / 轻量模式，按 requirement 的 Issue 1-4 实施结果进行验证。
+不适用。当前任务使用 light / 轻量模式，按 requirement 的 Issue 1-5 实施结果进行验证。
 
 ## Actual diff summary
 
@@ -172,15 +184,41 @@ internal/test/e2e
 - [x] task lifecycle、payload key、HTTP/API contract、migration、workflow activity 委派和前端行为未改变。
 - [x] focused worker/task/application tests 与完整后端质量检查通过。
 
+## Issue 5 actual diff summary
+
+- Traefik `RouteManager`、`MkcertGenerator` 与 route adapter test 从 `internal/infrastructure/traefik` 原子迁至 `internal/infrastructure/external/traefik`。
+- Turnstile `Verifier` 与 verifier test 从 `internal/infrastructure/turnstile` 原子迁至 `internal/infrastructure/external/turnstile`。
+- bootstrap HTTP composition 的两条 provider import 切至最终 external path；concrete construction 和 port injection 不变。
+- 删除完整旧 provider source trees；静态审计未发现旧 module path 的 active Go import。
+
+## Issue 5 expected vs actual changed files
+
+| Expected | Actual |
+| --- | --- |
+| Traefik complete adapter package 归入 external provider | 已完成：`internal/infrastructure/external/traefik/{route.go,mkcert.go,route_test.go}`。 |
+| Turnstile complete adapter package 归入 external provider | 已完成：`internal/infrastructure/external/turnstile/{verifier.go,verifier_test.go}`。 |
+| bootstrap 跟随最终路径 | 已完成：仅 `internal/bootstrap/http.go` 的 active production provider imports 发生变化。 |
+| 旧 provider tree 与兼容层删除 | 已完成：旧 `infrastructure/{traefik,turnstile}` 不存在，未保留 wrapper、alias 或 forwarding package。 |
+| port 与行为保持 | 已完成：CD ports、HTTP handler-owned TurnstileVerifier、config/API/proto 及 concrete runtime behavior 均未修改。 |
+
+## Issue 5 acceptance checklist
+
+- [x] Traefik 和 Turnstile external adapters 已位于 `internal/infrastructure/external/<provider>`。
+- [x] adapter package names、public constructors、HTTP/process/file behavior 与原有测试保持不变。
+- [x] bootstrap 使用最终 external provider imports，保留既有 concrete construction 和 port injection。
+- [x] CD application-owned ports 与 HTTP handler-owned TurnstileVerifier 未迁移或重设。
+- [x] 旧 provider source trees 和 active Go imports 已清除，无兼容层或新旧路径并存。
+- [x] 配置、API/proto、route/YAML/certificate、migration、前端和 C1 process runner 收敛未改变。
+- [x] focused external adapter tests 与完整后端质量检查通过。
+
 ## Scope deviation
 
-无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition；Issue 4 仅收拢 queue runtime 与 handler 的目录归属，没有改变 task contract、worker behavior、workflow、HTTP adapter 或 SQLC 生成结构。
+无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition；Issue 4 仅收拢 queue runtime 与 handler 的目录归属；Issue 5 仅将 concrete external provider adapter 收拢至 `infrastructure/external`，没有改变 port、process、HTTP adapter 或应用业务行为。
 
 ## Risks and incomplete items
 
 以下事项继续保持未完成：
 
-- [ ] Issue 5：Traefik、Turnstile external adapter 分类。
 - [ ] Issue 6：HTTP adapter 的 router/routes/binding/mapper/validator 结构。
 - [ ] Issue 7：SQLC generated code 的结构结论与实现。
 - [ ] Issue 8：workflow execution/runtime/definition 等职责重整。
@@ -192,6 +230,6 @@ internal/test/e2e
 
 ## Conclusion
 
-**Issue 2、Issue 3 与 Issue 4 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配；Issue 4 将 worker runtime 与 CI/CD queue payload handler 收拢至 `internal/queue/worker`，清理原顶层 worker 路径。全量后端质量检查及相关回归测试通过。
+**Issue 2、Issue 3、Issue 4 与 Issue 5 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配；Issue 4 将 worker runtime 与 CI/CD queue payload handler 收拢至 `internal/queue/worker`；Issue 5 将 Traefik 与 Turnstile concrete adapter 收拢至 `internal/infrastructure/external/<provider>`，清理原 provider 一级路径。全量后端质量检查及相关回归测试通过。
 
-严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界、SQLC 生成结构和 external adapter 分类分别仍属于 Issue 6、Issue 7、Issue 5。
+严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界和 SQLC 生成结构分别仍属于 Issue 6、Issue 7。

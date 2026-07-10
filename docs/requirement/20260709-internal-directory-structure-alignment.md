@@ -1,6 +1,6 @@
 # internal 后两级目录结构对齐与架构收敛
 
-最后修改时间: 2026-07-10 17:20:03
+最后修改时间: 2026-07-10 18:02:43
 
 Review status: Accepted
 
@@ -142,7 +142,7 @@ Review status: Accepted
 | 2 | `internal/application/<domain>` | application 的 domain 内端口、DTO、usecase 与规则曾混在同一层级；与指南中的 `port`、`command`、`query`、`dto` 分层差异明显。 | 重整为 domain-first 的职责子目录，明确 port、DTO、usecase 与业务规则；不保留旧路径或兼容层。 | 高 | 已实施并验证完成 |
 | 3 | `internal/repository` | repository 顶层端口曾仅有分页工具，持久化接口散落在 application usecase 与 workflow activity，且 CI/CD 的直接 SQLX adapter 误置于 `impl/sqlc`。 | 将持久化 port 收敛到 repository root，按实际 SQLC/SQLX 技术归类实现；application-owned external capability port 保留在 application。 | 高 | 已实施并验证完成 |
 | 4 | `internal/worker` 与 `internal/queue` | worker runtime 曾独立于 queue；指南示例更倾向 queue 下统一 consumer/dispatcher/worker/task。 | 已将 queue task model/service、worker runtime、handler dispatch、lease/retry/concurrency 收拢至清晰的 queue 边界；保持行为不变且不保留旧结构。 | 中 | 已实施并验证完成 |
-| 5 | `internal/infrastructure/traefik`、`internal/infrastructure/turnstile` | 第三方/external adapter 直接放在 infrastructure 一级目录，未归入 `external/<provider>` 或其他明确 category。 | 必须统一 external adapter 分类，优先考虑 `internal/infrastructure/external/<provider>` 或同等清晰结构；迁移时删除旧路径，不留 wrapper/alias。 | 中 | 待处理 |
+| 5 | `internal/infrastructure/traefik`、`internal/infrastructure/turnstile` | 第三方/external adapter 曾直接放在 infrastructure 一级目录，未归入 `external/<provider>`。 | 已收拢至 `internal/infrastructure/external/<provider>`，删除旧路径且不保留 wrapper/alias。 | 中 | 已实施并验证完成 |
 | 6 | `internal/api/http` | 当前无单独 `binding` / `validator` / `router.go` / `routes.go` 目录或文件，DTO/mapper 分散在 handler。 | 必须重整 HTTP adapter 结构，明确 router/routes、binding DTO、mapper、response/error、middleware 的归属；不保留职责混杂的 handler 文件。 | 中 | 待处理 |
 | 7 | `internal/gen/sqlc` | 当前 sqlc generated files 为 flat 结构，与指南中按 dialect 拆分的示例不同。 | 必须读取并调整生成配置或形成等价清晰结构；如果按 dialect 拆分，需要同步更新 sqlc 配置、生成文件和 import；不保留新旧 generated path 并存。 | 中 | 待处理 |
 | 8 | `internal/workflow` | 当前主要沉在 `activity/<domain>`，未形成 execution/runtime/definition/trigger 等清晰边界。 | 必须重整已有 workflow 执行代码的目录结构，明确 activity、execution、runner、runtime/definition 等职责；不创建空占位目录，但已有代码要归位。 | 中 | 待处理 |
@@ -336,11 +336,23 @@ Issue 4 已完成 queue runtime 与 worker 的目录职责收敛。
 
 本 issue 仅调整 queue runtime 的物理目录归属。`queue/task.Task`、task service、application CI/CD TaskService port、SQLC task repository 方法集、task lifecycle/payload 和 workflow activity 委派均保持不变。application task contract 的进一步收敛仍属于 C3；workflow activity 进入 application usecase 的严格边界仍属于 Issue 8/C1。
 
+## Issue 5 实施结果
+
+Issue 5 已完成 external provider adapter 的目录分类。
+
+- [x] Traefik route manager、mkcert generator 及其测试已从 `internal/infrastructure/traefik` 迁至 `internal/infrastructure/external/traefik`。
+- [x] Cloudflare Turnstile verifier 及其测试已从 `internal/infrastructure/turnstile` 迁至 `internal/infrastructure/external/turnstile`。
+- [x] bootstrap 已切换至最终 external provider import，继续构造并注入相同的 `RouteManager`、`MkcertGenerator` 与 `Verifier`。
+- [x] 旧 provider source tree 已删除；未保留 wrapper、alias、forwarding package、重复实现或新旧 import 并存。
+
+### Issue 5 边界说明
+
+本 issue 仅处理 concrete external adapter 的目录归属。CD application-owned `RouteConfigPublisher`、`RouteCertificateGenerator`、`TraefikRouterClient` 和 HTTP handler-owned `TurnstileVerifier` 均保持原职责；Traefik route/YAML/certificate/reload 行为、mkcert process 行为、Turnstile timeout/request-response/error 语义、配置/API/proto 均未改变。C1 process runner 收敛和 Issue 6 HTTP adapter 边界不属于本 issue。
+
 ## Open questions
 
 - Issue 2 已完成 domain-first 下的职责子目录迁移、测试归属与旧路径清理；后续 application 边界变化仅在独立候选任务中处理。
 - Issue 3 已将持久化 port 集中到 `internal/repository`；application-owned external capability port 保持在 application。HTTP handler 直连 repository 的调用边界由 Issue 6 单独处理。
-- `infrastructure` external adapter 目标结构是否统一为 `internal/infrastructure/external/<provider>`，需要在 Issue 5 中结合 Traefik 与 Turnstile 的实际职责确认。
 - `gen/sqlc` 是否按 dialect 拆分，需要在 Issue 7 中读取 `sqlc.yaml` 与 SQL 目录后决定；但该项必须处理并形成结构结论。
 - C1 runner concrete implementation 的目标包命名需要在进入实现前根据实际调用关系确认，不在当前 Requirement 阶段提前定死。
 - C1 的优先级与实施方案在独立任务中确定，不影响已完成的 Issue 2。

@@ -11,8 +11,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
 func (h Handler) ListRoutes(c *gin.Context) {
@@ -27,10 +25,7 @@ func (h Handler) ListRoutes(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	resp := make([]pomeloorbit.RouteResp, 0, len(items.Items))
-	for _, item := range items.Items {
-		resp = append(resp, routeResponse(item))
-	}
+	resp := routeResponses(items.Items)
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.RoutePaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
 
@@ -44,7 +39,7 @@ func (h Handler) CreateRoute(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), cddto.RouteCreateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
+	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeCreateInput(&req))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -77,7 +72,7 @@ func (h Handler) UpdateRoute(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), cddto.RouteUpdateInput{Name: req.Name, Domain: req.Domain, PathPrefix: req.PathPrefix, TargetURL: req.TargetUrl, Enabled: req.Enabled})
+	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), routeUpdateInput(&req))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -262,26 +257,6 @@ func (h Handler) ListTraefikRoutes(c *gin.Context) {
 	}
 	resp := traefikRouteListResponse(items)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
-}
-
-func routeResponse(route model.Route) pomeloorbit.RouteResp {
-	return pomeloorbit.RouteResp{Id: route.Id, Name: route.Name, Domain: route.Domain, PathPrefix: route.PathPrefix, TargetUrl: route.TargetURL, Enabled: route.Enabled, HttpsEnabled: route.HTTPSEnabled, CertType: route.CertType, CreatedAt: transportresponse.FormatTime(route.CreatedAt), UpdatedAt: transportresponse.FormatTime(route.UpdatedAt)}
-}
-
-func traefikConfigResponse(config cddto.TraefikConfigResp) pomeloorbit.TraefikConfigResp {
-	return pomeloorbit.TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled}
-}
-
-func traefikRouteListResponse(resp cddto.TraefikRouteListResp) pomeloorbit.TraefikRouteListResp {
-	items := make([]pomeloorbit.TraefikRouterResp, 0, len(resp.Items))
-	for _, item := range resp.Items {
-		items = append(items, traefikRouterResponse(item))
-	}
-	return pomeloorbit.TraefikRouteListResp{Items: transportresponse.Ptrs(items), Total: int32(resp.Total)}
-}
-
-func traefikRouterResponse(router cddto.TraefikRouterResp) pomeloorbit.TraefikRouterResp {
-	return pomeloorbit.TraefikRouterResp{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: append([]string(nil), router.Entrypoints...), Tls: router.TLS}
 }
 
 func splitPEM(content []byte) (string, string, bool) {

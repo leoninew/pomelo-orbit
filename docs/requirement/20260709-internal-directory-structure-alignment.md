@@ -143,8 +143,8 @@ Review status: Accepted
 | 3 | `internal/repository` | repository 顶层端口曾仅有分页工具，持久化接口散落在 application usecase 与 workflow activity，且 CI/CD 的直接 SQLX adapter 误置于 `impl/sqlc`。 | 将持久化 port 收敛到 repository root，按实际 SQLC/SQLX 技术归类实现；application-owned external capability port 保留在 application。 | 高 | 已实施并验证完成 |
 | 4 | `internal/worker` 与 `internal/queue` | worker runtime 曾独立于 queue；指南示例更倾向 queue 下统一 consumer/dispatcher/worker/task。 | 已将 queue task model/service、worker runtime、handler dispatch、lease/retry/concurrency 收拢至清晰的 queue 边界；保持行为不变且不保留旧结构。 | 中 | 已实施并验证完成 |
 | 5 | `internal/infrastructure/traefik`、`internal/infrastructure/turnstile` | 第三方/external adapter 曾直接放在 infrastructure 一级目录，未归入 `external/<provider>`。 | 已收拢至 `internal/infrastructure/external/<provider>`，删除旧路径且不保留 wrapper/alias。 | 中 | 已实施并验证完成 |
-| 6 | `internal/api/http` | 当前无单独 `binding` / `validator` / `router.go` / `routes.go` 目录或文件，DTO/mapper 分散在 handler。 | 必须重整 HTTP adapter 结构，明确 router/routes、binding DTO、mapper、response/error、middleware 的归属；不保留职责混杂的 handler 文件。 | 中 | 待处理 |
-| 7 | `internal/gen/sqlc` | 当前 sqlc generated files 为 flat 结构，与指南中按 dialect 拆分的示例不同。 | 必须读取并调整生成配置或形成等价清晰结构；如果按 dialect 拆分，需要同步更新 sqlc 配置、生成文件和 import；不保留新旧 generated path 并存。 | 中 | 待处理 |
+| 6 | `internal/api/http` | router/routes、binding、response/error、middleware 已归位；其余 HTTP/application/model/queue 字段转换曾分散在 handler。 | 已将纯 request/response/queue payload 转换收敛到各 domain 同包 `*_mapper.go`；handler 保留协议编排、认证授权、path/query/header 提取、service 调用和错误写出。validator 框架级收敛明确后续单独处理。 | 中 | 已实施并验证完成 |
+| 7 | `internal/gen/sqlc` | 当前 sqlc generated files 为 flat 结构，与指南中按 dialect 拆分的示例不同。 | 已确认单一 SQLite SQLC 配置及可移植 shared query 是当前等价清晰结构；输出固定为 `internal/gen/sqlc`，工具固定为 sqlc v1.30.0，生成代码必须受控且不保留旧 generated path。 | 中 | 已实施并验证完成 |
 | 8 | `internal/workflow` | 当前主要沉在 `activity/<domain>`，未形成 execution/runtime/definition/trigger 等清晰边界。 | 必须重整已有 workflow 执行代码的目录结构，明确 activity、execution、runner、runtime/definition 等职责；不创建空占位目录，但已有代码要归位。 | 中 | 待处理 |
 
 ## 后续架构收敛候选（非目录结构对齐阻塞项）
@@ -226,7 +226,8 @@ Review status: Accepted
 - [x] Requirement 阶段不修改产品代码。
 - [x] 后续每次只选择一条 issue 进入 Implementation，但每条 issue 内部必须拆到正确边界。
 - [x] Issue 1 已实施并检查通过。
-- [ ] Issue 4-8 仍需逐条完成 Implementation 与 Verification。
+- [x] Issue 6 已完成 HTTP mapper 职责收敛与 Verification；validator 的框架级方案后续单独推进。
+- [ ] Issue 8 仍需逐条完成 Implementation 与 Verification。
 - [ ] 后续架构收敛候选 C1-C3 在后续单独任务中逐条推进。
 
 ## Completion definition
@@ -348,6 +349,21 @@ Issue 5 已完成 external provider adapter 的目录分类。
 ### Issue 5 边界说明
 
 本 issue 仅处理 concrete external adapter 的目录归属。CD application-owned `RouteConfigPublisher`、`RouteCertificateGenerator`、`TraefikRouterClient` 和 HTTP handler-owned `TurnstileVerifier` 均保持原职责；Traefik route/YAML/certificate/reload 行为、mkcert process 行为、Turnstile timeout/request-response/error 语义、配置/API/proto 均未改变。C1 process runner 收敛和 Issue 6 HTTP adapter 边界不属于本 issue。
+
+## Issue 7 实施结果
+
+Issue 7 采用单一 SQLite SQLC 生成目标作为当前项目的等价清晰结构，已完成生成路径与工具版本收敛。
+
+- [x] `sqlc.yaml` 保持 SQLite schema 与 shared query 输入，唯一 Go 输出已从过期的 `internal/db/sqlc` 修正为 `internal/gen/sqlc`。
+- [x] SQLC 版本统一为 v1.30.0：`go.mod`、`tools.go`、`Taskfile.yml` 与重新生成的产物保持一致。
+- [x] `internal/gen/sqlc` 保持唯一 flat generated package；不创建未被当前生成配置支撑的 MySQL/SQLite 双目录，也不保留 `internal/db/sqlc` 或任何兼容路径。
+- [x] user、role、project、task 与 dbmodel 的 SQLC consumer 保持使用最终 `internal/gen/sqlc` import；SQLC 类型继续限制在 repository implementation 边界。
+- [x] `Taskfile.yml` 增加 `sqlc-check`，以项目固定 generator 再生并检查 generated output 未漂移。
+- [x] 新增只读 Go verification workflow，在 develop push 与 pull request 中使用 sqlc v1.30.0 再生并检查 `internal/gen/sqlc` 无未提交差异，再运行 Go 格式、vet 与测试。
+
+### Issue 7 边界说明
+
+SQLite 和 MySQL 运行时 driver、migration 与配置支持保持不变；现有 SQLC query 继续使用可移植的 shared query，方言专属动态 SQL 继续由 repository implementation 调用 database dialect helper。SQLC 双方言生成不是当前配置或 consumer 结构的既定能力，未来仅在 shared query 无法保持双运行时语义，或现有 MySQL E2E 证明单一生成输出不足时另行立项。此次不修改 query、已执行 migration、repository port、API contract 或前端行为。
 
 ## Open questions
 

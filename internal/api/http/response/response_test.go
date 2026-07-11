@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 )
@@ -23,8 +24,15 @@ func TestProtoJSONPreservesProtoJSONContract(t *testing.T) {
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, recorder.Code)
 	}
-	if got, want := recorder.Body.String(), `{"access_token":"token", "token_type":""}`; got != want {
-		t.Fatalf("unexpected proto json: got %s, want %s", got, want)
+	response := &pomeloorbit.TokenResp{}
+	if err := protojson.Unmarshal(recorder.Body.Bytes(), response); err != nil {
+		t.Fatalf("decode proto json response: %v", err)
+	}
+	if response.GetAccessToken() != "token" {
+		t.Fatalf("expected access token %q, got %q", "token", response.GetAccessToken())
+	}
+	if response.GetTokenType() != "" {
+		t.Fatalf("expected empty token type, got %q", response.GetTokenType())
 	}
 }
 

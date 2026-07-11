@@ -27,6 +27,14 @@ tasks:
     cmds:
       - ./bin/sqlc generate
 
+  sqlc-check:
+    desc: Verify committed sqlc query code is current
+    cmds:
+      - |
+        grep -Fqx '        out: "internal/gen/sqlc"' sqlc.yaml
+      - task sqlc
+      - git diff --exit-code -- internal/gen/sqlc
+
   proto:
     desc: Generate Go and TypeScript proto DTOs
     env:

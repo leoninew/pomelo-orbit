@@ -10,12 +10,10 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,11 +40,13 @@ func (h Handler) GetCSRFToken(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.CSRFTokenResp{Token: token})
+	resp := csrfTokenResponse(token)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) GetTurnstileConfig(c *gin.Context) {
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.TurnstileConfigResp{Enabled: h.turnstile.Enabled, SiteKey: h.turnstile.SiteKey})
+	resp := turnstileConfigResponse(h.turnstile.Enabled, h.turnstile.SiteKey)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) Login(c *gin.Context) {
@@ -55,8 +55,8 @@ func (h Handler) Login(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	loginInput := authdto.LoginInput{Username: req.Username, Password: req.Password, CSRFToken: req.CsrfToken, IP: clientIP(c), UserAgent: c.Request.UserAgent()}
-	if err := authsvc.ValidateLoginInput(loginInput); err != nil {
+	input := loginInput(&req, clientIP(c), c.Request.UserAgent())
+	if err := authsvc.ValidateLoginInput(input); err != nil {
 		h.writeServiceError(c, err)
 		return
 	}
@@ -72,12 +72,13 @@ func (h Handler) Login(c *gin.Context) {
 			return
 		}
 	}
-	token, err := h.service.Login(c.Request.Context(), loginInput)
+	token, err := h.service.Login(c.Request.Context(), input)
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.TokenResp{AccessToken: token, TokenType: "bearer"})
+	resp := tokenResponse(token)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) Logout(c *gin.Context) {
@@ -106,7 +107,7 @@ func (h Handler) GetMe(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to load user permissions")
 		return
 	}
-	resp := userInfo(user, roles, permissions)
+	resp := userInfoResponse(user, roles, permissions)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
@@ -120,7 +121,7 @@ func (h Handler) ChangePassword(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	if err := h.service.ChangePassword(c.Request.Context(), authdto.ChangePasswordInput{User: user, OldPassword: req.OldPassword, NewPassword: req.NewPassword}); err != nil {
+	if err := h.service.ChangePassword(c.Request.Context(), changePasswordInput(user, &req)); err != nil {
 		if apperror.IsKind(err, apperror.KindValidation) || apperror.IsKind(err, apperror.KindUnauthorized) {
 			h.writeServiceError(c, err)
 			return
@@ -176,16 +177,6 @@ func (h Handler) writeServiceError(c *gin.Context, err error) {
 	transportresponse.Error(c, http.StatusInternalServerError, "Failed to sign token")
 }
 
-func userInfo(user model.User, roles []string, permissions []string) pomeloorbit.UserInfoResp {
-	if roles == nil {
-		roles = []string{}
-	}
-	if permissions == nil {
-		permissions = []string{}
-	}
-	return pomeloorbit.UserInfoResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roles, Permissions: permissions}
-}
-
 func clientIP(c *gin.Context) string {
 	forwarded := strings.TrimSpace(c.GetHeader("X-Forwarded-For"))
 	if forwarded != "" {
@@ -201,8 +192,4 @@ func clientIP(c *gin.Context) string {
 		return c.Request.RemoteAddr
 	}
 	return host
-}
-
-func loginHistoryResponse(history model.LoginHistory) pomeloorbit.LoginHistoryResp {
-	return pomeloorbit.LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transportresponse.FormatTime(history.LoginAt), Success: history.Success}
 }

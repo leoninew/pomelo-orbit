@@ -9,7 +9,6 @@ import (
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
 func (h Handler) ListCredentials(c *gin.Context) {
@@ -128,13 +127,4 @@ func (h Handler) ExportCredential(c *gin.Context) {
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.CredentialExportResp{Version: exported.Version, Name: exported.Name, Type: exported.Type, Data: exported.Data})
-}
-
-func credentialResponse(item model.Credential) pomeloorbit.CredentialResp {
-	return pomeloorbit.CredentialResp{Id: item.Id, Name: item.Name, Type: item.Type, CreatedAt: transportresponse.FormatTime(item.CreatedAt)}
-}
-
-func credentialDetailResponse(item cidto.CredentialDetail) pomeloorbit.CredentialDetailResp {
-	credential := credentialResponse(item.Credential)
-	return pomeloorbit.CredentialDetailResp{Id: credential.Id, Name: credential.Name, Type: credential.Type, Data: item.Data, CreatedAt: credential.CreatedAt}
 }

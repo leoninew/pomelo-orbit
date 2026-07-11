@@ -117,18 +117,3 @@ func (h Handler) DuplicateBuildStage(c *gin.Context) {
 	resp := buildStageDetailResponse(stage)
 	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
-
-func buildStageDetailResponse(item cidto.BuildStageDetail) pomeloorbit.BuildStageResp {
-	return pomeloorbit.BuildStageResp{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: transportresponse.Ptrs(artifactConfigsResponse(item.Artifacts)), Description: item.Description, Version: int32(item.Version), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
-}
-
-func serviceArtifacts(items []*pomeloorbit.ArtifactConfigReq) []cidto.ArtifactConfig {
-	resp := make([]cidto.ArtifactConfig, 0, len(items))
-	for _, item := range items {
-		if item == nil {
-			continue
-		}
-		resp = append(resp, cidto.ArtifactConfig{Type: item.Type, Path: item.Path, Name: item.Name})
-	}
-	return resp
-}

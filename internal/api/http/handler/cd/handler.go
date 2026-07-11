@@ -10,10 +10,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
 type Handler struct {
@@ -38,10 +36,7 @@ func (h Handler) ListApplications(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	resp := make([]pomeloorbit.ApplicationResp, 0, len(items.Items))
-	for _, item := range items.Items {
-		resp = append(resp, applicationResponse(item))
-	}
+	resp := applicationResponses(items.Items)
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
 
@@ -55,7 +50,7 @@ func (h Handler) CreateApplication(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	app, err := h.service.CreateApplication(c.Request.Context(), current.Id, cddto.ApplicationCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
+	app, err := h.service.CreateApplication(c.Request.Context(), current.Id, applicationCreateInput(c.Request.URL.Query().Get("project_id"), &req))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -88,7 +83,7 @@ func (h Handler) UpdateApplication(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationUpdateInput{Name: req.Name, Code: req.Code, ImagePullPolicy: req.ImagePullPolicy, RouteManaged: req.RouteManaged})
+	app, err := h.service.UpdateApplication(c.Request.Context(), current.Id, c.Param("app_id"), applicationUpdateInput(&req))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -102,7 +97,7 @@ func (h Handler) DeleteApplication(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationDeleteInput{RemoveDir: c.Request.URL.Query().Get("remove_dir") == "true"}); err != nil {
+	if err := h.service.DeleteApplication(c.Request.Context(), current.Id, c.Param("app_id"), applicationDeleteInput(c.Request.URL.Query().Get("remove_dir") == "true")); err != nil {
 		h.writeError(c, err)
 		return
 	}
@@ -119,7 +114,7 @@ func (h Handler) DeployApplication(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deploymentId, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), cddto.ApplicationDeployInput{ForceRecreate: req.ForceRecreate})
+	deploymentId, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), applicationDeployInput(&req))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -134,15 +129,12 @@ func (h Handler) ListDeployments(c *gin.Context) {
 	}
 	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListDeployments(c.Request.Context(), current.Id, cddto.DeploymentListInput{ProjectId: c.Request.URL.Query().Get("project_id"), ApplicationId: c.Request.URL.Query().Get("application_id"), Status: c.Request.URL.Query().Get("status"), Search: c.Request.URL.Query().Get("search"), DateFrom: c.Request.URL.Query().Get("date_from"), DateTo: c.Request.URL.Query().Get("date_to"), Page: page, PerPage: perPage})
+	items, err := h.service.ListDeployments(c.Request.Context(), current.Id, deploymentListInput(c.Request.URL.Query().Get("project_id"), c.Request.URL.Query().Get("application_id"), c.Request.URL.Query().Get("status"), c.Request.URL.Query().Get("search"), c.Request.URL.Query().Get("date_from"), c.Request.URL.Query().Get("date_to"), page, perPage))
 	if err != nil {
 		h.writeError(c, err)
 		return
 	}
-	resp := make([]pomeloorbit.DeploymentResp, 0, len(items.Items))
-	for _, item := range items.Items {
-		resp = append(resp, deploymentResponse(item))
-	}
+	resp := deploymentResponses(items.Items)
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.DeploymentPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
 
@@ -170,7 +162,8 @@ func (h Handler) GetDeploymentLogs(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.DeploymentLogsResp{Logs: log.Logs, Offset: int32(log.Offset), IsComplete: log.IsComplete, Status: log.Status})
+	resp := deploymentLogsResponse(log)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) GetDeploymentContainerLogs(c *gin.Context) {
@@ -183,7 +176,8 @@ func (h Handler) GetDeploymentContainerLogs(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported})
+	resp := deploymentContainerLogsResponse(log)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
 func (h Handler) CancelDeployment(c *gin.Context) {
@@ -210,20 +204,4 @@ func (h Handler) writeError(c *gin.Context, err error) {
 		h.logger.Error("cd request failed", "error", err)
 	}
 	transportresponse.Error(c, apperror.StatusCode(err), err.Error())
-}
-
-func applicationResponse(item model.Application) pomeloorbit.ApplicationResp {
-	return ApplicationResponse(item)
-}
-
-func deploymentResponse(item model.Deployment) pomeloorbit.DeploymentResp {
-	return DeploymentResponse(item)
-}
-
-func ApplicationResponse(item model.Application) pomeloorbit.ApplicationResp {
-	return pomeloorbit.ApplicationResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, ImagePullPolicy: item.ImagePullPolicy, Status: item.Status, RouteManaged: item.RouteManaged, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
-}
-
-func DeploymentResponse(item model.Deployment) pomeloorbit.DeploymentResp {
-	return pomeloorbit.DeploymentResp{Id: item.Id, ProjectId: item.ProjectId, ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, OperationType: item.OperationType, TriggerType: item.TriggerType, CommandText: item.CommandText, Status: item.Status, StartedAt: transportresponse.FormatTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), DurationMs: transportresponse.OptionalInt32(item.DurationMs), LogText: item.LogText, ErrorMessage: item.ErrorMessage, IsRollback: item.IsRollback, RollbackFromDeploymentId: item.RollbackFromDeploymentId}
 }

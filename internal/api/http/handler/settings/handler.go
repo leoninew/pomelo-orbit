@@ -10,7 +10,6 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	settingsdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/dto"
 	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
@@ -47,7 +46,7 @@ func (h Handler) UpdateConfig(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	resp, err := h.service.Update(c.Request.Context(), req.Key, transportresponse.NativeValue(req.Value))
+	resp, err := h.service.Update(c.Request.Context(), req.Key, configUpdateValue(&req))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -79,16 +78,4 @@ func (h Handler) writeError(c *gin.Context, err error) {
 		h.logger.Error("settings request failed", "error", err)
 	}
 	transportresponse.Error(c, apperror.StatusCode(err), err.Error())
-}
-
-func systemConfigResponse(config settingsdto.SystemConfig) pomeloorbit.SystemConfigResp {
-	items := make([]pomeloorbit.ConfigItemResp, 0, len(config.Items))
-	for _, item := range config.Items {
-		items = append(items, configItemResponse(item))
-	}
-	return pomeloorbit.SystemConfigResp{Items: transportresponse.Ptrs(items)}
-}
-
-func configItemResponse(item settingsdto.ConfigItem) pomeloorbit.ConfigItemResp {
-	return pomeloorbit.ConfigItemResp{Key: item.Key, Value: transportresponse.ProtoValue(item.Value), Default: transportresponse.ProtoValue(item.Default), IsOverridden: item.IsOverridden, Secret: item.Secret, Description: item.Description}
 }

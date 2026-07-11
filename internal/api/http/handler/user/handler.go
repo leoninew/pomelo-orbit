@@ -8,11 +8,9 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	userdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/dto"
 	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,7 +52,7 @@ func (h Handler) CreateUser(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	user, err := h.service.Create(c.Request.Context(), userdto.CreateInput{Username: req.Username, Password: req.Password, Email: req.Email})
+	user, err := h.service.Create(c.Request.Context(), userCreateInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to create user")
 		return
@@ -91,7 +89,7 @@ func (h Handler) UpdateUser(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	detail, err := h.service.UpdateByActor(c.Request.Context(), actor(current), userID(c), userdto.UpdateInput{Username: req.Username, Password: req.Password, Status: req.Status})
+	detail, err := h.service.UpdateByActor(c.Request.Context(), actor(current), userID(c), userUpdateInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err, "Failed to update user")
 		return
@@ -186,47 +184,6 @@ func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail str
 	transportresponse.Error(c, http.StatusInternalServerError, internalDetail)
 }
 
-func actor(current authz.CurrentUserContext) userdto.Actor {
-	return userdto.Actor{UserId: current.User.Id, Permissions: current.Permissions}
-}
-
 func userID(c *gin.Context) string {
 	return strings.TrimSpace(c.Param("user_id"))
-}
-
-func userDetailResponse(detail userdto.Detail) pomeloorbit.UserResp {
-	user := detail.User
-	return pomeloorbit.UserResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Roles: roleCodes(detail.Roles), Permissions: emptyStrings(detail.Permissions), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(detail.Roles, detail.PermissionsByRoleId))}
-}
-
-func userListResponse(item userdto.ListItem) pomeloorbit.UserListResp {
-	user := item.User
-	return pomeloorbit.UserListResp{Id: user.Id, Username: user.Username, Email: user.Email, AuthSource: user.AuthSource, CreatedAt: transportresponse.FormatTime(user.CreatedAt), LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt), Status: user.Status, UpdatedAt: transportresponse.FormatTime(user.UpdatedAt), RoleItems: transportresponse.Ptrs(roleResponses(item.Roles, nil))}
-}
-
-func roleCodes(roles []model.Role) []string {
-	codes := make([]string, 0, len(roles))
-	for _, role := range roles {
-		codes = append(codes, role.Code)
-	}
-	return codes
-}
-
-func roleResponses(roles []model.Role, permissionsByRoleID map[string][]string) []pomeloorbit.UserRoleResp {
-	items := make([]pomeloorbit.UserRoleResp, 0, len(roles))
-	for _, role := range roles {
-		permissionCodes := []string{}
-		if permissionsByRoleID != nil && permissionsByRoleID[role.Id] != nil {
-			permissionCodes = permissionsByRoleID[role.Id]
-		}
-		items = append(items, pomeloorbit.UserRoleResp{Id: role.Id, Code: role.Code, Name: role.Name, PermissionCodes: permissionCodes})
-	}
-	return items
-}
-
-func emptyStrings(values []string) []string {
-	if values == nil {
-		return []string{}
-	}
-	return values
 }

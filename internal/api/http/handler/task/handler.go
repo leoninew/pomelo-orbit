@@ -1,17 +1,13 @@
 package taskhandler
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
 	"github.com/gin-gonic/gin"
-
-	"google.golang.org/protobuf/types/known/structpb"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
@@ -35,7 +31,7 @@ func (h Handler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	item, err := h.service.Create(c.Request.Context(), tasksvc.CreateInput{Id: req.Id, TaskType: req.TaskType, Payload: rawPayload(req.Payload), PayloadJSON: req.PayloadJson, MaxAttempts: int(req.MaxAttempts)})
+	item, err := h.service.Create(c.Request.Context(), taskCreateInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
@@ -55,7 +51,7 @@ func (h Handler) EnqueueCIPipelineRun(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "run_id is required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": runId})
+	h.enqueueTypedTask(c, status.TaskTypeCIPipelineRunExecute, pipelineRunExecutePayload(runId))
 }
 
 func (h Handler) EnqueueCDApplicationDeploy(c *gin.Context) {
@@ -70,7 +66,7 @@ func (h Handler) EnqueueCDApplicationDeploy(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCDApplicationDeploy, map[string]string{"application_id": appId, "deployment_id": deploymentId})
+	h.enqueueTypedTask(c, status.TaskTypeCDApplicationDeploy, applicationDeploymentPayload(appId, deploymentId))
 }
 
 func (h Handler) EnqueueCDApplicationRestart(c *gin.Context) {
@@ -85,7 +81,7 @@ func (h Handler) EnqueueCDApplicationRestart(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCDApplicationRestart, map[string]string{"application_id": appId, "deployment_id": deploymentId})
+	h.enqueueTypedTask(c, status.TaskTypeCDApplicationRestart, applicationDeploymentPayload(appId, deploymentId))
 }
 
 func (h Handler) EnqueueCDApplicationStop(c *gin.Context) {
@@ -100,7 +96,7 @@ func (h Handler) EnqueueCDApplicationStop(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCDApplicationStop, map[string]string{"application_id": appId, "deployment_id": deploymentId})
+	h.enqueueTypedTask(c, status.TaskTypeCDApplicationStop, applicationDeploymentPayload(appId, deploymentId))
 }
 
 func (h Handler) enqueueTypedTask(c *gin.Context, taskType string, payload any) {
@@ -121,21 +117,6 @@ func (h Handler) GetTask(c *gin.Context) {
 	}
 	resp := taskResponse(item)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
-}
-
-func taskResponse(item *tasksvc.Task) pomeloorbit.TaskResp {
-	return pomeloorbit.TaskResp{Id: item.Id, TaskType: item.TaskType, PayloadJson: item.PayloadJSON, Status: item.Status, Attempts: int32(item.Attempts), MaxAttempts: int32(item.MaxAttempts), LockedBy: item.LockedBy, LockedAt: transportresponse.FormatOptionalTime(item.LockedAt), StartedAt: transportresponse.FormatOptionalTime(item.StartedAt), FinishedAt: transportresponse.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt)}
-}
-
-func rawPayload(payload *structpb.Value) json.RawMessage {
-	if payload == nil {
-		return nil
-	}
-	data, err := transportcodec.MarshalProtoJSON(payload)
-	if err != nil {
-		return nil
-	}
-	return data
 }
 
 func (h Handler) writeServiceError(c *gin.Context, err error) {

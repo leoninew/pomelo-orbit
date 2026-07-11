@@ -37,6 +37,23 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
+
+      - name: Verify generated sqlc code
+        run: |
+          grep -Fqx '        out: "internal/gen/sqlc"' sqlc.yaml
+          "$(go env GOPATH)/bin/sqlc" generate
+          git diff --exit-code -- internal/gen/sqlc
+
+      - name: Verify Go formatting
+        run: |
+          go fmt ./cmd/... ./internal/...
+          git diff --exit-code -- cmd internal
+
+      - name: Run Go vet
+        run: go vet ./cmd/... ./internal/...
+
       - name: Run Go tests
         run: go test ./cmd/... ./internal/...
 

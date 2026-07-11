@@ -11,7 +11,6 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	projectdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/dto"
 	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -40,7 +39,7 @@ func (h Handler) ListProjects(c *gin.Context) {
 	}
 	resp := make([]pomeloorbit.ProjectResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, ProjectResponse(item))
+		resp = append(resp, projectResponse(item))
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ProjectListResp{Items: transportresponse.Ptrs(resp)})
 }
@@ -55,12 +54,12 @@ func (h Handler) CreateProject(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	project, err := h.service.Create(c.Request.Context(), current.Id, projectdto.SaveInput{Name: req.Name, Code: req.Code})
+	project, err := h.service.Create(c.Request.Context(), current.Id, projectSaveInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
 	}
-	resp := ProjectResponse(project)
+	resp := projectResponse(project)
 	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
@@ -69,7 +68,7 @@ func (h Handler) GetProject(c *gin.Context) {
 	if !ok {
 		return
 	}
-	resp := ProjectResponse(project)
+	resp := projectResponse(project)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
@@ -83,12 +82,12 @@ func (h Handler) UpdateProject(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	updated, err := h.service.Update(c.Request.Context(), project, projectdto.SaveInput{Name: req.Name, Code: req.Code})
+	updated, err := h.service.Update(c.Request.Context(), project, projectSaveInput(&req))
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
 	}
-	resp := ProjectResponse(updated)
+	resp := projectResponse(updated)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
@@ -185,27 +184,4 @@ func (h Handler) writeServiceError(c *gin.Context, err error) {
 		h.logger.Error("project request failed", "error", err)
 	}
 	transportresponse.Error(c, apperror.StatusCode(err), err.Error())
-}
-
-func ProjectResponse(project model.Project) pomeloorbit.ProjectResp {
-	return pomeloorbit.ProjectResp{
-		Id:        project.Id,
-		Name:      project.Name,
-		Code:      project.Code,
-		IsActive:  project.IsActive,
-		CreatedAt: transportresponse.FormatTime(project.CreatedAt),
-		UpdatedAt: transportresponse.FormatTime(project.UpdatedAt),
-	}
-}
-
-func projectMemberResponses(users []model.User) []pomeloorbit.ProjectMemberResp {
-	resp := make([]pomeloorbit.ProjectMemberResp, 0, len(users))
-	for _, user := range users {
-		resp = append(resp, ProjectMemberResponse(user))
-	}
-	return resp
-}
-
-func ProjectMemberResponse(user model.User) pomeloorbit.ProjectMemberResp {
-	return pomeloorbit.ProjectMemberResp{Id: user.Id, Username: user.Username, Email: user.Email, Status: user.Status, AuthSource: user.AuthSource, LastLoginAt: transportresponse.FormatOptionalTime(user.LastLoginAt)}
 }

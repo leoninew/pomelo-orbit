@@ -1,6 +1,6 @@
 # Verification: internal 后两级目录结构对齐与架构收敛
 
-最后修改时间: 2026-07-10 18:02:43
+最后修改时间: 2026-07-11
 
 ## Verification target
 
@@ -10,7 +10,9 @@
 2. **Issue 2**：`internal/application/<domain>` 重整为 domain-first 的职责子目录；
 3. **Issue 3**：`internal/repository` 的持久化 port 与 SQLC/SQLX implementation 对齐；
 4. **Issue 4**：worker runtime 与 handler dispatch 收拢至 `internal/queue/worker`；
-5. **Issue 5**：Traefik 与 Turnstile external adapter 收拢至 `internal/infrastructure/external/<provider>`。
+5. **Issue 5**：Traefik 与 Turnstile external adapter 收拢至 `internal/infrastructure/external/<provider>`；
+6. **Issue 6**：HTTP handler 内的纯字段转换收敛至 domain-local mapper；
+7. **Issue 7**：SQLC 生成目录与固定工具版本对齐至 `internal/gen/sqlc` / v1.30.0。
 
 对应 requirement：`docs/requirement/20260709-internal-directory-structure-alignment.md`（Review status: Accepted）。
 
@@ -71,6 +73,33 @@ Issue 4 未改变 task model/service、application TaskService port、SQLC task 
 
 Issue 5 未改变 Traefik YAML/certificate/reload/HTTP API behavior、mkcert process behavior、Turnstile timeout/request-response/error semantics、config/API/proto 或前端行为。
 
+### Issue 6
+
+| Requirement item | Actual result |
+| --- | --- |
+| Router and route registration | `routes.Router.Handler` remains the Gin aggregation point; route registrations and middleware remain outside domain handlers. |
+| Binding and response ownership | Existing `binding` continues to own request decoding and query parsing; `response` continues to own ProtoJSON, time, optional, pointer and dynamic-value conversion primitives. |
+| Domain-local field conversion | Auth, user, role, project, settings and task handlers now delegate request/application DTO, model/proto response, `structpb.Value`, raw JSON and typed task-payload conversions to same-package `*_mapper.go` files. |
+| CI resource boundaries | Artifact, build-stage, credential, pipeline-run, pipeline-snapshot, pipeline-template and variable-declaration conversions are split into resource-local mapper files. Template/repository shared variable-declaration conversion has one authoritative implementation. |
+| CD resource boundaries | Application, deployment, application-bundle and route/Traefik transformations are split into corresponding mapper files; obsolete exported forwarding mappers were removed. |
+| Contract preservation | Mapper code preserves existing nil/empty behavior, optional field presence, `int`/`int32` conversion, UTC RFC3339 formatting, `structpb` conversion and Traefik `Entrypoints` defensive copying. |
+| Validator scope | Validator migration is intentionally excluded: business validation remains in application use cases and the future framework-level validator design is a separate task. |
+
+Issue 6 did not change API paths, HTTP methods/statuses/error text, ProtoJSON options, middleware, binding rules, application validation, migrations, task type/payload keys or frontend behavior.
+
+### Issue 7
+
+| Requirement item | Actual result |
+| --- | --- |
+| 生成路径与受控代码一致 | `sqlc.yaml` 的唯一 Go output 已由过期的 `internal/db/sqlc` 修正为 `internal/gen/sqlc`；未生成或保留旧目录。 |
+| 工具版本可复现 | `go.mod`、`tools.go`、`Taskfile.yml` 与全部 15 个 SQLC 生成文件统一使用 sqlc v1.30.0。 |
+| generated code 结构结论 | 保持单一 flat `internal/gen/sqlc` package：当前 SQLite schema + shared portable query 是项目已确认的等价清晰结构，不引入未被配置和 consumer 支撑的双 dialect package。 |
+| consumer 边界保持 | user、role、project、task 与 dbmodel 继续从 `repository/impl/sqlc` 导入最终生成包；SQLC 类型未扩散至 application、HTTP、queue 或 model。 |
+| 本地漂移检查 | `Taskfile.yml` 新增 `sqlc-check`，重跑固定 generator 后检查 `internal/gen/sqlc` 没有未提交差异。 |
+| CI 漂移门禁 | 新增 `go-verify.yml`，在 develop push 与 pull request 中使用 sqlc v1.30.0 再生并检查 generated output，然后运行 Go 格式、golangci-lint、vet 和测试；Docker publish workflow 在 build/push 前执行 SQLC、格式、vet 与测试门禁。 |
+
+Issue 7 未修改 SQL query、既有 migration、runtime SQLite/MySQL driver 选择、repository port、API contract 或前端行为。MySQL 运行时兼容性仍由现有环境门控 E2E 覆盖；本次默认后端检查不将其表述为已执行。
+
 ## Spec and plan alignment
 
 不适用。当前任务使用 light / 轻量模式，按 requirement 的 Issue 1-5 实施结果进行验证。
@@ -117,9 +146,12 @@ refactor(application): restructure domain subpackages into usecase/dto/port/runn
 
 ## Test results
 
+Issue 6 完成后的实际验证如下；未执行要求独立安装/运行环境的 golangci-lint，其他后端质量门禁均已执行。
+
 | Command | Result |
 | --- | --- |
 | `go fmt ./cmd/... ./internal/...` | 通过。 |
+| `go test ./internal/api/http/handler/{task,ci,cd}` | 通过；覆盖 task payload、CI variable declaration mapper 与既有 Traefik mapper 语义。 |
 | `./bin/golangci-lint fmt ./cmd/... ./internal/...` | 通过。 |
 | `./bin/golangci-lint run ./cmd/... ./internal/...` | 通过，`0 issues.` |
 | `go vet ./cmd/... ./internal/...` | 通过。 |
@@ -211,16 +243,51 @@ internal/test/e2e
 - [x] 配置、API/proto、route/YAML/certificate、migration、前端和 C1 process runner 收敛未改变。
 - [x] focused external adapter tests 与完整后端质量检查通过。
 
+## Issue 6 actual diff summary
+
+- 保持 `routes`、`binding`、`response` 与 middleware 的既有职责不变；未创建通用 mapper package，也未把 validator 迁入 HTTP。
+- 在 auth、user、role、project、settings 与 task handler package 中新增同包 mapper 文件，收敛 application input、model/proto response、`structpb.Value`、原始 JSON 与 typed task payload 的纯转换。
+- CI 转换按 artifact、build stage、credential、pipeline run、pipeline snapshot、pipeline template、variable declaration 拆分；消除 artifact、build-stage/配置、variable declaration 跨 handler 文件隐藏复用。
+- CD 转换按 application、deployment、application bundle、route/Traefik 拆分；删除 `ApplicationResponse` / `DeploymentResponse` 仅转发的旧导出 helper。
+- 新增 task 与 CI variable-declaration mapper 语义单测；保留并通过 Traefik 响应 mapper 的 `Entrypoints` 防 alias 断言。
+
+## Issue 6 acceptance checklist
+
+- [x] route registration、middleware、binding 与 response helper 未迁入 domain handler mapper。
+- [x] auth、user、role、project、settings、task 的纯转换已离开 handler 主文件，且同包仅保留一个权威 mapper 实现。
+- [x] CI mapper 按资源边界拆分，variable declaration 的共享转换不再散落于 template handler。
+- [x] CD mapper 按 application、deployment、bundle、route 边界拆分；无 exported forwarding mapper。
+- [x] 保留 nil/empty、optional presence、数值转换、时间格式、动态值和 Traefik slice defensive-copy 行为。
+- [x] 未新建或迁移 HTTP validator；application 层业务校验与已有 path/query 规则保持不变。
+- [x] 未修改 API route、HTTP method/status、response/error contract、ProtoJSON 选项、task payload key、migration 或前端。
+
+## Issue 7 actual diff summary
+
+- `sqlc.yaml` 的生成 output 由 `internal/db/sqlc` 修正为 `internal/gen/sqlc`；使用固定 sqlc v1.30.0 重新生成 15 个受控文件，产物仅有 header 版本从 v1.31.1 改为 v1.30.0。
+- `Taskfile.yml` 新增 `sqlc-check`，先断言最终 output，再生成并对 `internal/gen/sqlc` 执行 diff 检查。
+- 新增 `.github/workflows/go-verify.yml`；发布 workflow 也在 Docker build 前校验固定 SQLC 生成、Go 格式、vet 和测试。
+- 修正 `internal/api/http/response/response_test.go` 的协议断言：以 `protojson.Unmarshal` 验证实际 ProtoJSON 语义，避免依赖非契约性的 JSON 空白字符。该测试失败在本次全量验证中首次暴露，修正后不改变响应实现或线协议字段语义。
+
+## Issue 7 acceptance checklist
+
+- [x] `sqlc.yaml` 的唯一 Go output 为 `internal/gen/sqlc`。
+- [x] 未生成或保留 `internal/db/sqlc`，不保留 wrapper、alias、兼容路径或重复 generated package。
+- [x] `internal/gen/sqlc` 的 15 个文件均由 sqlc v1.30.0 再生；repository SQLC consumers 无需改动并保持编译。
+- [x] 生成仍使用单一 SQLite schema 与 shared query；未在无消费结构和明确需求的情况下引入双 dialect output。
+- [x] `task sqlc` 可重复生成相同的 working-tree output；CI 使用相同固定 generator 检查 generated source 漂移。
+- [x] Go 格式、golangci-lint、vet、测试和 `git diff --check` 通过。
+- [x] 未修改 SQL query、数据库 migration、runtime driver 选择、repository port、API route/request-response contract 或前端行为。
+
 ## Scope deviation
 
-无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition；Issue 4 仅收拢 queue runtime 与 handler 的目录归属；Issue 5 仅将 concrete external provider adapter 收拢至 `infrastructure/external`，没有改变 port、process、HTTP adapter 或应用业务行为。
+无产品范围扩张。Issue 2 收尾补齐了一个 DTO 边界；Issue 3 仅重整 persistence port、adapter 分类与 bootstrap composition；Issue 4 仅收拢 queue runtime 与 handler 的目录归属；Issue 5 仅将 concrete external provider adapter 收拢至 `infrastructure/external`，没有改变 port、process、HTTP adapter 或应用业务行为。Issue 7 额外修正了既有 ProtoJSON 测试的非语义空格断言，测试范围未扩大且未修改响应实现。
 
 ## Risks and incomplete items
 
 以下事项继续保持未完成：
 
-- [ ] Issue 6：HTTP adapter 的 router/routes/binding/mapper/validator 结构。
-- [ ] Issue 7：SQLC generated code 的结构结论与实现。
+- [x] Issue 6：router/routes、binding、response/error、middleware 与 domain-local mapper 职责已归位；validator 的框架级统一方案明确留作后续任务。
+- [x] Issue 7：SQLC generated code 的单包结构结论、生成路径、v1.30.0 再生与漂移门禁已完成并验证。
 - [ ] Issue 8：workflow execution/runtime/definition 等职责重整。
 - [ ] C1：将 concrete Docker/Shell process runner 收敛到 infrastructure execution adapter、由 bootstrap 注入；同时处理 CD status/log 的 direct `os/exec` 路径和 CI runner port 中的 workspace infrastructure type。
 - [ ] C2：将 `sql.ErrNoRows` 从 application 用例边界收敛为稳定错误语义。
@@ -230,6 +297,6 @@ internal/test/e2e
 
 ## Conclusion
 
-**Issue 2、Issue 3、Issue 4 与 Issue 5 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配；Issue 4 将 worker runtime 与 CI/CD queue payload handler 收拢至 `internal/queue/worker`；Issue 5 将 Traefik 与 Turnstile concrete adapter 收拢至 `internal/infrastructure/external/<provider>`，清理原 provider 一级路径。全量后端质量检查及相关回归测试通过。
+**Issue 2、Issue 3、Issue 4、Issue 5 与 Issue 7 均已完成并验证通过。** Issue 2 完成 application domain-first 职责子目录整理与 CD Traefik router DTO 边界；Issue 3 将持久化 contract 收敛至 repository root、按 SQLC/SQLX 实际技术归类 adapter、移除 DB/driver Store 包装并统一 bootstrap 装配；Issue 4 将 worker runtime 与 CI/CD queue payload handler 收拢至 `internal/queue/worker`；Issue 5 将 Traefik 与 Turnstile concrete adapter 收拢至 `internal/infrastructure/external/<provider>`，清理原 provider 一级路径；Issue 7 则将 SQLC output、生成器版本和 CI/local 漂移校验收敛到受控的单包 `internal/gen/sqlc`。全量后端质量检查及相关回归测试通过。
 
-严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界和 SQLC 生成结构分别仍属于 Issue 6、Issue 7。
+严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍保留为 C1-C3 独立后续任务；HTTP adapter 边界与 workflow execution/runtime 结构分别仍属于 Issue 6、Issue 8。

@@ -4,10 +4,13 @@ import (
 	"context"
 	"log/slog"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
+	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
@@ -28,7 +31,7 @@ func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
 	}
 	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), failingContainerRunner{}, executionlog.Store{})
 
-	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
+	err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1"})
 	if err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
@@ -65,7 +68,7 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 	}
 	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), fakeContainerRunner{}, executionlog.Store{})
 
-	err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"})
+	err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1"})
 	if err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
@@ -105,7 +108,7 @@ func TestExecutePipelineRunInjectsGiteeCredentialRewrite(t *testing.T) {
 	runner := &recordingContainerRunner{}
 	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
-	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1"}); err != nil {
+	if err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1"}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
 	if runner.script != "git remote add origin https://gitee.com/leoninew/pomelo-orbit.git\ngit fetch --depth=1 origin develop" {
@@ -144,7 +147,7 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 	runner := &recordingContainerRunner{}
 	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
-	if err := service.ExecutePipelineRun(context.Background(), ExecutePipelineRunInput{PipelineRunId: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
+	if err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
 	}
 	if runner.script != "cd . && echo repo" {
@@ -235,13 +238,13 @@ func (s *fakeExecutionStore) InsertArtifact(ctx context.Context, projectId *stri
 
 type fakeContainerRunner struct{}
 
-func (fakeContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
+func (fakeContainerRunner) Run(ctx context.Context, opts ciport.RunOptions) (int, string, error) {
 	return 0, "ok", nil
 }
 
 type failingContainerRunner struct{}
 
-func (failingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
+func (failingContainerRunner) Run(ctx context.Context, opts ciport.RunOptions) (int, string, error) {
 	return 1, "line1\nline2\nline3\nline4", nil
 }
 
@@ -251,7 +254,7 @@ type recordingContainerRunner struct {
 	volumes     []ciworkspace.VolumeMount
 }
 
-func (r *recordingContainerRunner) Run(ctx context.Context, opts RunOptions) (int, string, error) {
+func (r *recordingContainerRunner) Run(ctx context.Context, opts ciport.RunOptions) (int, string, error) {
 	r.script = opts.Script
 	r.environment = opts.Environment
 	r.volumes = opts.Volumes
@@ -259,10 +262,5 @@ func (r *recordingContainerRunner) Run(ctx context.Context, opts RunOptions) (in
 }
 
 func containsString(values []string, expected string) bool {
-	for _, value := range values {
-		if value == expected {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, expected)
 }

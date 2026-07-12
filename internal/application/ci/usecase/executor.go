@@ -12,10 +12,10 @@ import (
 	"sync"
 	"time"
 
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-
+	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -24,10 +24,10 @@ import (
 type Executor struct {
 	store     repository.PipelineExecutionStore
 	workspace *ciworkspace.Workspace
-	logStore  ExecutionLogStore
+	logStore  ciport.ExecutionLogStore
 	secretKey string
 	logger    *slog.Logger
-	runner    ContainerRunner
+	runner    ciport.ContainerRunner
 }
 
 func (e Executor) Execute(ctx context.Context, run model.PipelineRun, repo model.Repository, variables map[string]any, stages []model.StageDefinition) (bool, string) {
@@ -65,14 +65,12 @@ func (e Executor) executeLayer(ctx context.Context, run model.PipelineRun, repo 
 	var wg sync.WaitGroup
 	for _, stageId := range layer {
 		stage := stages[stageId]
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			ok := e.executeStage(ctx, run, repo, variables, stage)
 			mu.Lock()
 			results[stage.Name] = ok
 			mu.Unlock()
-		}()
+		})
 	}
 	wg.Wait()
 	return results
@@ -107,9 +105,9 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 		return e.failStage(ctx, stageRun, err.Error())
 	}
 
-	exitCode, _, err := e.runner.Run(ctx, RunOptions{
+	exitCode, _, err := e.runner.Run(ctx, ciport.RunOptions{
 		Image:       stage.Image,
-		Script:      script,
+		Script:      safeCommand(script),
 		Environment: environment,
 		Volumes:     volumes,
 		LogWriter:   logWriter,
@@ -142,7 +140,7 @@ func (e Executor) executeStage(ctx context.Context, run model.PipelineRun, repo 
 }
 
 func (e Executor) stageRunConfig(ctx context.Context, repo model.Repository, variables map[string]any, stage model.StageDefinition) (string, []string, error) {
-	script := safeCommand(commandLines(stage.Script))
+	script := commandLines(stage.Script)
 	environment := envMap(variables)
 	if repo.GitCredentialId == nil || !stageUsesRepositoryURL(stage.Script, repo.RepositoryURL) {
 		return script, environment, nil
@@ -328,4 +326,8 @@ func lastLines(output string, count int) string {
 
 func now() time.Time {
 	return time.Now().UTC().Truncate(time.Microsecond)
+}
+
+func safeCommand(script string) string {
+	return strings.ReplaceAll(script, "\r\n", "\n")
 }

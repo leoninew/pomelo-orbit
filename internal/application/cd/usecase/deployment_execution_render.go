@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func (s Service) renderApplicationCompose(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (string, error) {
+func (s Service) renderDeploymentCompose(ctx context.Context, app model.Application, compose model.ApplicationConfigFile) (string, error) {
 	serviceConfigs, err := s.executionStore.ServiceConfigs(ctx, app.Id)
 	if err != nil {
 		return "", err
@@ -23,23 +23,23 @@ func (s Service) renderApplicationCompose(ctx context.Context, app model.Applica
 			return "", err
 		}
 	}
-	_, content, err := s.renderApplicationConfigFile(ctx, app, compose.Path, compose.Content, serviceConfigs, routes)
+	_, content, err := s.renderDeploymentConfigFile(ctx, app, compose.Path, compose.Content, serviceConfigs, routes)
 	return content, err
 }
 
-func (s Service) renderApplicationConfigFile(ctx context.Context, app model.Application, path string, content string, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) (string, string, error) {
-	if strings.HasSuffix(path, ".liquid") {
-		path = strings.TrimSuffix(path, ".liquid")
-		rendered, err := s.renderApplicationTemplate(ctx, content, app.Code)
+func (s Service) renderDeploymentConfigFile(ctx context.Context, app model.Application, path string, content string, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) (string, string, error) {
+	if strippedPath, ok := strings.CutSuffix(path, ".liquid"); ok {
+		path = strippedPath
+		rendered, err := s.renderDeploymentTemplate(ctx, content, app.Code)
 		if err != nil {
 			return "", "", err
 		}
 		content = rendered
 	}
 	if path == "docker-compose.yml" {
-		content = applyApplicationServiceConfigs(content, serviceConfigs)
+		content = applyDeploymentServiceConfigs(content, serviceConfigs)
 		if app.RouteManaged {
-			rendered, err := injectApplicationRouteLabels(content, routes, s.cfg.Cert.LetsEncrypt.Enabled)
+			rendered, err := injectDeploymentRouteLabels(content, routes, s.cfg.Cert.LetsEncrypt.Enabled)
 			if err != nil {
 				return "", "", err
 			}
@@ -49,7 +49,7 @@ func (s Service) renderApplicationConfigFile(ctx context.Context, app model.Appl
 	return path, content, nil
 }
 
-func (s Service) renderApplicationTemplate(ctx context.Context, content string, appCode string) (string, error) {
+func (s Service) renderDeploymentTemplate(ctx context.Context, content string, appCode string) (string, error) {
 	physicalDir, err := s.workspace.PhysicalDir(ctx)
 	if err != nil {
 		return "", err
@@ -75,7 +75,7 @@ func (s Service) renderApplicationTemplate(ctx context.Context, content string, 
 	return templatex.Render(content, context)
 }
 
-func applyApplicationServiceConfigs(compose string, configs []model.ApplicationServiceConfig) string {
+func applyDeploymentServiceConfigs(compose string, configs []model.ApplicationServiceConfig) string {
 	if len(configs) == 0 {
 		return compose
 	}
@@ -101,7 +101,7 @@ func applyApplicationServiceConfigs(compose string, configs []model.ApplicationS
 	return string(out)
 }
 
-func injectApplicationRouteLabels(compose string, routes []model.ApplicationRoute, letsEncrypt bool) (string, error) {
+func injectDeploymentRouteLabels(compose string, routes []model.ApplicationRoute, letsEncrypt bool) (string, error) {
 	var data map[string]any
 	if err := yaml.Unmarshal([]byte(compose), &data); err != nil {
 		return "", err
@@ -115,12 +115,12 @@ func injectApplicationRouteLabels(compose string, routes []model.ApplicationRout
 			delete(service, "labels")
 		}
 	}
-	for serviceName, group := range groupApplicationRoutes(routes) {
+	for serviceName, group := range groupDeploymentRoutes(routes) {
 		service, ok := services[serviceName].(map[string]any)
 		if !ok {
 			return "", errors.New("service " + serviceName + " not found in docker-compose.yml")
 		}
-		labels, err := applicationRouteLabels(serviceName, group, letsEncrypt)
+		labels, err := deploymentRouteLabels(serviceName, group, letsEncrypt)
 		if err != nil {
 			return "", err
 		}
@@ -133,7 +133,7 @@ func injectApplicationRouteLabels(compose string, routes []model.ApplicationRout
 	return string(out), nil
 }
 
-func groupApplicationRoutes(routes []model.ApplicationRoute) map[string][]model.ApplicationRoute {
+func groupDeploymentRoutes(routes []model.ApplicationRoute) map[string][]model.ApplicationRoute {
 	groups := make(map[string][]model.ApplicationRoute)
 	for _, route := range routes {
 		groups[route.ServiceName] = append(groups[route.ServiceName], route)
@@ -141,7 +141,7 @@ func groupApplicationRoutes(routes []model.ApplicationRoute) map[string][]model.
 	return groups
 }
 
-func applicationRouteLabels(serviceName string, routes []model.ApplicationRoute, letsEncrypt bool) ([]string, error) {
+func deploymentRouteLabels(serviceName string, routes []model.ApplicationRoute, letsEncrypt bool) ([]string, error) {
 	if len(routes) == 0 {
 		return nil, errors.New("application route group is empty")
 	}
@@ -153,7 +153,7 @@ func applicationRouteLabels(serviceName string, routes []model.ApplicationRoute,
 			return nil, errors.New("service " + serviceName + " has routes with different ports")
 		}
 		domain := strings.ToLower(strings.TrimSpace(route.Domain))
-		if !validApplicationRouteDomain(domain) {
+		if !validDeploymentRouteDomain(domain) {
 			return nil, errors.New("service " + serviceName + " has invalid route domain")
 		}
 		if _, exists := seen[domain]; exists {
@@ -175,6 +175,6 @@ func applicationRouteLabels(serviceName string, routes []model.ApplicationRoute,
 	return labels, nil
 }
 
-func validApplicationRouteDomain(domain string) bool {
+func validDeploymentRouteDomain(domain string) bool {
 	return domain != "" && len(domain) <= 253 && !strings.ContainsAny(domain, " `\t\r\n")
 }

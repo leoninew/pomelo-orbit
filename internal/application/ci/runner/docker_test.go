@@ -1,16 +1,17 @@
-package cisvc
+package runner
 
 import (
 	"path/filepath"
 	"strings"
 	"testing"
 
+	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 )
 
 func TestDockerRunArgsUseBindMountSyntax(t *testing.T) {
 	hostPath := filepath.Join(t.TempDir(), "workspace")
-	args, err := dockerRunArgs(RunOptions{
+	args, err := dockerRunArgs(ciport.RunOptions{
 		Image:  "alpine",
 		Script: "echo ok",
 		Volumes: []ciworkspace.VolumeMount{
@@ -31,7 +32,7 @@ func TestDockerRunArgsUseBindMountSyntax(t *testing.T) {
 }
 
 func TestDockerRunArgsRejectRelativeHostPath(t *testing.T) {
-	_, err := dockerRunArgs(RunOptions{
+	_, err := dockerRunArgs(ciport.RunOptions{
 		Image:  "alpine",
 		Script: "echo ok",
 		Volumes: []ciworkspace.VolumeMount{

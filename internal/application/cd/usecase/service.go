@@ -35,6 +35,7 @@ type Service struct {
 	cfg                  config.Config
 	workspace            *cdworkspace.Workspace
 	logStore             cdport.LogReader
+	executionLogStore    cdport.ExecutionLogStore
 	logger               *slog.Logger
 	runner               cdport.CommandRunner
 	routePublisher       cdport.RouteConfigPublisher
@@ -54,8 +55,8 @@ func NewWithRunner(store repository.CDStore, tasks cdport.TaskService, cfg confi
 	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner, routePublisher: routePublisher, certificateGenerator: certificateGenerator, traefikRouterClient: traefikRouterClient}
 }
 
-func NewExecutionService(store repository.DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner cdport.CommandRunner, logStore cdport.LogReader) Service {
-	return Service{executionStore: store, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner}
+func NewExecutionService(store repository.DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner cdport.CommandRunner, logStore cdport.ExecutionLogStore) Service {
+	return Service{executionStore: store, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, executionLogStore: logStore, logger: logger, runner: runner}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {

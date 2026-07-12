@@ -6,19 +6,14 @@ import (
 	"fmt"
 	"strings"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/rule/civariable"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
+	civariable "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/rule/civariable"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-type ExecutePipelineRunInput struct {
-	PipelineRunId string
-	Variables     map[string]any
-}
-
-func (s Service) ExecutePipelineRun(ctx context.Context, input ExecutePipelineRunInput) error {
-	run, err := s.executionStore.PipelineRun(ctx, input.PipelineRunId)
+func (s Service) ExecutePipelineRun(ctx context.Context, input cidto.ExecutePipelineRunInput) error {
+	run, err := s.executionStore.PipelineRun(ctx, input.PipelineRunID)
 	if err != nil {
 		return err
 	}
@@ -56,7 +51,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input ExecutePipelineRu
 		return err
 	}
 
-	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.logStore, secretKey: s.secretKey, logger: s.logger, runner: s.runner}
+	stageExecutor := Executor{store: s.executionStore, workspace: s.workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, runner: s.runner}
 	ok, message := stageExecutor.Execute(ctx, run, repo, variables, stages)
 	current, err := s.executionStore.PipelineRun(ctx, run.Id)
 	if err != nil {
@@ -76,31 +71,6 @@ func (s Service) failRun(ctx context.Context, runId string, message string) erro
 		return err
 	}
 	return nil
-}
-
-func resolveStages(stages []model.StageDefinition, variables map[string]any) ([]model.StageDefinition, error) {
-	resolved := make([]model.StageDefinition, len(stages))
-	copy(resolved, stages)
-	for i := range resolved {
-		script, err := templatex.Render(resolved[i].Script, variables)
-		if err != nil {
-			return nil, err
-		}
-		resolved[i].Script = script
-		for j := range resolved[i].Artifacts {
-			path, err := templatex.Render(resolved[i].Artifacts[j].Path, variables)
-			if err != nil {
-				return nil, err
-			}
-			name, err := templatex.Render(resolved[i].Artifacts[j].Name, variables)
-			if err != nil {
-				return nil, err
-			}
-			resolved[i].Artifacts[j].Path = path
-			resolved[i].Artifacts[j].Name = name
-		}
-	}
-	return resolved, nil
 }
 
 func (s Service) pipelineRunExecutionVariables(repo model.Repository, template model.PipelineTemplate, snapshot model.PipelineSnapshot, run model.PipelineRun) (map[string]any, error) {
@@ -145,7 +115,7 @@ func envMap(variables map[string]any) []string {
 
 func commandLines(script string) string {
 	lines := make([]string, 0)
-	for _, line := range strings.Split(script, "\n") {
+	for line := range strings.SplitSeq(script, "\n") {
 		if strings.TrimSpace(line) != "" {
 			lines = append(lines, line)
 		}

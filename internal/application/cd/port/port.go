@@ -16,6 +16,11 @@ type LogReader interface {
 	Read(logPath string, offset int) ([]byte, int, error)
 }
 
+type ExecutionLogStore interface {
+	LogReader
+	Writer(logPath string) (io.WriteCloser, error)
+}
+
 type CommandRunner interface {
 	Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error
 }

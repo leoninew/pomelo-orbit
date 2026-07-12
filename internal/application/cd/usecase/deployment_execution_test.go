@@ -203,7 +203,7 @@ func TestApplicationComposePreviewMatchesDeployRouteLabels(t *testing.T) {
 	store := &fakeDeploymentExecutionStore{app: app, deployment: model.Deployment{Id: "deploy-1"}, files: []model.ApplicationConfigFile{compose}, routes: routes}
 	service := NewExecutionService(store, cfg, slog.Default(), fakeCommandRunner{}, executionlog.Store{})
 
-	preview, err := service.renderApplicationCompose(context.Background(), app, compose)
+	preview, err := service.renderDeploymentCompose(context.Background(), app, compose)
 	if err != nil {
 		t.Fatal(err)
 	}

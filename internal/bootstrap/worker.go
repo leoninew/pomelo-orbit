@@ -5,6 +5,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	cdrunner "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/runner"
+	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase"
+	cirunner "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/runner"
+	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/usecase"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
@@ -14,8 +18,6 @@ import (
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/cd"
 	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/ci"
-	cdactivity "gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/cd"
-	ciactivity "gitee.com/leoninew/PomeloOrbit-go/internal/workflow/activity/ci"
 )
 
 func NewTaskRouter(database *sqlx.DB, cfg config.Config, logger *slog.Logger) *worker.Router {
@@ -23,8 +25,8 @@ func NewTaskRouter(database *sqlx.DB, cfg config.Config, logger *slog.Logger) *w
 	ciRepository := cirepo.NewRepository(database, cfg.Database.Driver)
 	cdRepository := cdrepo.NewRepository(database, cfg.Database.Driver)
 	logStore := executionlog.Store{}
-	ciService := ciactivity.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, ciactivity.DockerRunner{}, logStore)
-	cdService := cdactivity.NewExecutionService(cdRepository, cfg, logger, cdactivity.ShellRunner{}, logStore)
+	ciService := cisvc.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, cirunner.DockerRunner{}, logStore)
+	cdService := cdsvc.NewExecutionService(cdRepository, cfg, logger, cdrunner.ShellRunner{}, logStore)
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciService))
 	router.Register(status.TaskTypeCDApplicationDeploy, cdworker.NewDeployHandler(cdService))
 	router.Register(status.TaskTypeCDApplicationRestart, cdworker.NewRestartHandler(cdService))

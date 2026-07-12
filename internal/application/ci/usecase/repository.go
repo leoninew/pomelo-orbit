@@ -28,14 +28,15 @@ import (
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 type Service struct {
-	store          repository.CIStore
-	executionStore repository.PipelineExecutionStore
-	tasks          ciport.TaskService
-	workspace      *ciworkspace.Workspace
-	logStore       ciport.LogReader
-	secretKey      string
-	logger         *slog.Logger
-	runner         ciport.ContainerRunner
+	store             repository.CIStore
+	executionStore    repository.PipelineExecutionStore
+	tasks             ciport.TaskService
+	workspace         *ciworkspace.Workspace
+	logStore          ciport.LogReader
+	executionLogStore ciport.ExecutionLogStore
+	secretKey         string
+	logger            *slog.Logger
+	runner            ciport.ContainerRunner
 }
 
 func New(store repository.CIStore, tasks ciport.TaskService, dataRoot string, secretKey string, logger *slog.Logger, logStore ciport.LogReader) Service {
@@ -51,9 +52,9 @@ func NewWithRunner(store repository.CIStore, tasks ciport.TaskService, dataRoot 
 	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
-func NewExecutionService(store repository.PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ciport.ContainerRunner, logStore ciport.LogReader) Service {
+func NewExecutionService(store repository.PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ciport.ContainerRunner, logStore ciport.ExecutionLogStore) Service {
 	workspace := ciworkspace.New(dataRoot)
-	return Service{executionStore: store, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
+	return Service{executionStore: store, workspace: workspace, logStore: logStore, executionLogStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Repository], error) {

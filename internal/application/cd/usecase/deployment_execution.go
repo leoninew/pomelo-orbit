@@ -49,7 +49,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 
 	appDir := s.workspace.AppDir(app.Code)
 	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
-	logWriter, err := s.logStore.Writer(logPath)
+	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 
 	appDir := s.workspace.AppDir(app.Code)
 	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
-	logWriter, err := s.logStore.Writer(logPath)
+	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 
 	appDir := s.workspace.AppDir(app.Code)
 	logPath := s.workspace.DeploymentLogPath(app.Code, deploymentId)
-	logWriter, err := s.logStore.Writer(logPath)
+	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 
 	hasInit := false
 	for _, file := range files {
-		path, content, err := s.renderApplicationConfigFile(ctx, app, file.Path, file.Content, services, routes)
+		path, content, err := s.renderDeploymentConfigFile(ctx, app, file.Path, file.Content, services, routes)
 		if err != nil {
 			return err
 		}

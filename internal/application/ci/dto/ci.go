@@ -163,6 +163,11 @@ type PipelineRunTriggerInput struct {
 	Variables    map[string]string
 }
 
+type ExecutePipelineRunInput struct {
+	PipelineRunID string
+	Variables     map[string]any
+}
+
 type PipelineRunListInput struct {
 	ProjectId    string
 	RepositoryId string

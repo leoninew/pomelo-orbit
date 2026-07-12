@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -51,9 +50,7 @@ func TestRenderApplicationTemplateRejectsMissingVariable(t *testing.T) {
 func TestRenderApplicationTemplateUsesPhysicalPaths(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	physicalRoot := filepath.Join(t.TempDir(), "host-data")
-	service := Service{cfg: cfg, workspace: cdworkspace.NewWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
-		return physicalRoot, nil
-	})}
+	service := Service{cfg: cfg, workspace: testWorkspaceWithPhysicalRoot(cfg.DataRoot(), physicalRoot, nil)}
 
 	got, err := service.renderApplicationTemplate(context.Background(), "{{ app.physical_dir }} {{ app.physical_app_dir }}", "demo")
 	if err != nil {
@@ -67,9 +64,7 @@ func TestRenderApplicationTemplateUsesPhysicalPaths(t *testing.T) {
 
 func newTemplateTestService(t *testing.T, cfg config.Config) Service {
 	t.Helper()
-	return Service{cfg: cfg, workspace: cdworkspace.NewWithResolver(cfg.DataRoot(), func(ctx context.Context, logicalDataRoot string) (string, error) {
-		return logicalDataRoot, nil
-	})}
+	return Service{cfg: cfg, workspace: testWorkspace(cfg.DataRoot())}
 }
 
 func TestInjectApplicationRouteLabelsMatchesManagedRouteSemantics(t *testing.T) {

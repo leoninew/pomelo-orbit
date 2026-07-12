@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"database/sql"
-
 	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -332,7 +330,7 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 	dashboardDomain := fmt.Sprintf("traefik.%s", s.cfg.Traefik.DomainSuffix)
 	route, err := s.store.RouteByDomain(ctx, dashboardDomain)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cdto.TraefikConfigResp{DashboardDomain: dashboardDomain, HTTPSEnabled: false}, nil
 		}
 		return cdto.TraefikConfigResp{}, apperror.Wrap(apperror.KindInternal, "Failed to load Traefik route config", err)
@@ -367,7 +365,7 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 	routeId = strings.TrimSpace(routeId)
 	route, err := s.store.Route(ctx, routeId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.Route{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 		}
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)

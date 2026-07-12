@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -148,7 +145,7 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 		if err != nil {
 			return err
 		}
-		if err := writeDeploymentFile(appDir, path, content); err != nil {
+		if err := s.workspace.WriteConfig(app.Code, path, content); err != nil {
 			return err
 		}
 		if path == "init.sh" {
@@ -167,26 +164,4 @@ func (s Service) writeAndDeploy(ctx context.Context, app model.Application, depl
 func writeWorkingDirectory(writer io.Writer, appDir string) error {
 	_, err := fmt.Fprintf(writer, "Working directory: %s\n", appDir)
 	return err
-}
-
-func writeDeploymentFile(appDir string, name string, content string) error {
-	path := filepath.Join(appDir, name)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	if filepath.Base(path) == "init.sh" {
-		content = normalizeShellScriptLineEndings(content)
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
-	}
-	if filepath.Base(path) == "init.sh" {
-		return os.Chmod(path, 0o755)
-	}
-	return nil
-}
-
-func normalizeShellScriptLineEndings(content string) string {
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	return strings.ReplaceAll(content, "\r", "\n")
 }

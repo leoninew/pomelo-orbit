@@ -1,4 +1,4 @@
-package runner
+package dockerci
 
 import (
 	"context"
@@ -8,13 +8,12 @@ import (
 	"strings"
 
 	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 )
 
 type DockerRunner struct{}
 
 func (DockerRunner) Run(ctx context.Context, opts ciport.RunOptions) (int, string, error) {
-	args, err := dockerRunArgs(opts)
+	args, err := runArgs(opts)
 	if err != nil {
 		return 1, "", err
 	}
@@ -31,13 +30,13 @@ func (DockerRunner) Run(ctx context.Context, opts ciport.RunOptions) (int, strin
 	return 1, "", fmt.Errorf("run container: %w", err)
 }
 
-func dockerRunArgs(opts ciport.RunOptions) ([]string, error) {
+func runArgs(opts ciport.RunOptions) ([]string, error) {
 	args := []string{"run", "--rm", "-w", "/workspace", "--entrypoint", "sh"}
 	for _, env := range opts.Environment {
 		args = append(args, "-e", env)
 	}
 	for _, volume := range opts.Volumes {
-		mount, err := dockerBindMountArg(volume)
+		mount, err := bindMountArg(volume)
 		if err != nil {
 			return nil, err
 		}
@@ -48,7 +47,7 @@ func dockerRunArgs(opts ciport.RunOptions) ([]string, error) {
 	return args, nil
 }
 
-func dockerBindMountArg(volume ciworkspace.VolumeMount) (string, error) {
+func bindMountArg(volume ciport.VolumeMount) (string, error) {
 	hostPath := strings.TrimSpace(volume.HostPath)
 	containerPath := strings.TrimSpace(volume.ContainerPath)
 	mode := strings.TrimSpace(volume.Mode)

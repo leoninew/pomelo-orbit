@@ -3,7 +3,6 @@ package userrepo
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.UserStore = Repository{}
@@ -31,7 +31,7 @@ func NewRepository(db *sqlx.DB, driver string) Repository {
 func (r Repository) UserByUsername(ctx context.Context, username string) (model.User, error) {
 	user, err := r.queries.UserByUsername(ctx, username)
 	if err != nil {
-		return model.User{}, fmt.Errorf("load user by username %s: %w", username, err)
+		return model.User{}, fmt.Errorf("load user by username %s: %w", username, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.UserFromByUsername(user), nil
 }
@@ -39,7 +39,7 @@ func (r Repository) UserByUsername(ctx context.Context, username string) (model.
 func (r Repository) UserById(ctx context.Context, id string) (model.User, error) {
 	user, err := r.queries.UserByID(ctx, id)
 	if err != nil {
-		return model.User{}, fmt.Errorf("load user %s: %w", id, err)
+		return model.User{}, fmt.Errorf("load user %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.UserFromByID(user), nil
 }
@@ -47,7 +47,7 @@ func (r Repository) UserById(ctx context.Context, id string) (model.User, error)
 func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, error) {
 	user, err := r.queries.UserByEmail(ctx, sql.NullString{String: email, Valid: true})
 	if err != nil {
-		return model.User{}, fmt.Errorf("load user by email %s: %w", email, err)
+		return model.User{}, fmt.Errorf("load user by email %s: %w", email, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.UserFromByEmail(user), nil
 }
@@ -236,10 +236,6 @@ func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int,
 		return repository.Page[model.LoginHistory]{}, fmt.Errorf("list login history: %w", err)
 	}
 	return repository.Page[model.LoginHistory]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
-}
-
-func IsNotFound(err error) bool {
-	return errors.Is(err, sql.ErrNoRows)
 }
 
 func userSearchWhere(search string) (string, []any) {

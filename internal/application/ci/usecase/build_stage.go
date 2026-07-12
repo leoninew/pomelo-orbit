@@ -2,7 +2,6 @@ package cisvc
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -141,7 +140,7 @@ func (s Service) loadBuildStageForUser(ctx context.Context, userId string, stage
 	stageId = strings.TrimSpace(stageId)
 	stage, err := s.store.BuildStage(ctx, stageId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.BuildStage{}, apperror.New(apperror.KindNotFound, "Stage "+stageId+" not found")
 		}
 		return model.BuildStage{}, apperror.Wrap(apperror.KindInternal, "Failed to load build stage", err)
@@ -160,7 +159,7 @@ func (s Service) ensureBuildStageNameAvailable(ctx context.Context, projectId st
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check build stage name", err)
 	}
 	return nil
@@ -174,7 +173,7 @@ func (s Service) nextBuildStageCopyName(ctx context.Context, projectId string, n
 			candidate = fmt.Sprintf("%s copy %d", baseName, i)
 		}
 		_, err := s.store.BuildStageByName(ctx, projectId, candidate)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return candidate, nil
 		}
 		if err != nil {

@@ -4,12 +4,14 @@ import (
 	"context"
 	"io"
 
+	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
-type TaskService interface {
-	EnqueueTyped(ctx context.Context, taskType string, payload any) (*tasksvc.Task, error)
+type ApplicationDispatcher interface {
+	DispatchApplicationDeploy(ctx context.Context, input cdto.ApplicationDeployDispatchInput) error
+	DispatchApplicationRestart(ctx context.Context, input cdto.ApplicationRestartDispatchInput) error
+	DispatchApplicationStop(ctx context.Context, input cdto.ApplicationStopDispatchInput) error
 }
 
 type LogReader interface {
@@ -21,8 +23,21 @@ type ExecutionLogStore interface {
 	Writer(logPath string) (io.WriteCloser, error)
 }
 
+type Workspace interface {
+	AppDir(appCode string) string
+	DeploymentLogPath(appCode string, deploymentID string) string
+	PhysicalDir(ctx context.Context) (string, error)
+	PhysicalAppDir(ctx context.Context, appCode string) (string, error)
+	WriteConfig(appCode string, path string, content string) error
+	RemoveAppDir(appCode string) error
+}
+
 type CommandRunner interface {
 	Run(ctx context.Context, cwd string, log io.Writer, name string, args ...string) error
+}
+
+type CommandQueryRunner interface {
+	Run(ctx context.Context, cwd string, name string, args ...string) (string, error)
 }
 
 type RouteConfigPublisher interface {

@@ -2,7 +2,6 @@ package authsvc
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 	"strings"
@@ -56,7 +55,7 @@ func (s Service) Authenticate(ctx context.Context, rawJWT string) (authdto.Authe
 	}
 	user, err := s.repo.UserById(ctx, claims.Sub)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return authdto.AuthenticatedUser{}, apperror.New(apperror.KindUnauthorized, "Invalid token")
 		}
 		return authdto.AuthenticatedUser{}, err

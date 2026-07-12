@@ -2,8 +2,6 @@ package rolerepo
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +12,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.RoleStore = Repository{}
@@ -31,7 +30,7 @@ func NewRepository(db *sqlx.DB, driver string) Repository {
 func (r Repository) RoleById(ctx context.Context, id string) (model.Role, error) {
 	role, err := r.queries.RoleByID(ctx, id)
 	if err != nil {
-		return model.Role{}, fmt.Errorf("load role %s: %w", id, err)
+		return model.Role{}, fmt.Errorf("load role %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.RoleFromSQLC(role), nil
 }
@@ -39,7 +38,7 @@ func (r Repository) RoleById(ctx context.Context, id string) (model.Role, error)
 func (r Repository) RoleByCode(ctx context.Context, code string) (model.Role, error) {
 	role, err := r.queries.RoleByCode(ctx, code)
 	if err != nil {
-		return model.Role{}, fmt.Errorf("load role by code %s: %w", code, err)
+		return model.Role{}, fmt.Errorf("load role by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.RoleFromSQLC(role), nil
 }
@@ -47,7 +46,7 @@ func (r Repository) RoleByCode(ctx context.Context, code string) (model.Role, er
 func (r Repository) RoleByName(ctx context.Context, name string) (model.Role, error) {
 	role, err := r.queries.RoleByName(ctx, name)
 	if err != nil {
-		return model.Role{}, fmt.Errorf("load role by name %s: %w", name, err)
+		return model.Role{}, fmt.Errorf("load role by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.RoleFromSQLC(role), nil
 }
@@ -180,10 +179,6 @@ func (r Repository) DeleteRole(ctx context.Context, roleId string) error {
 		return fmt.Errorf("delete role %s: %w", roleId, err)
 	}
 	return nil
-}
-
-func IsNotFound(err error) bool {
-	return errors.Is(err, sql.ErrNoRows)
 }
 
 func setRolePermissionsTx(ctx context.Context, tx *sqlx.Tx, driver string, roleId string, permissionCodes []string) error {

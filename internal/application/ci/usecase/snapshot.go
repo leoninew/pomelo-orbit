@@ -2,7 +2,6 @@ package cisvc
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -12,13 +11,14 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, snapshotId string) (cidto.PipelineSnapshotDetail, error) {
 	snapshotId = strings.TrimSpace(snapshotId)
 	snapshot, err := s.store.PipelineSnapshot(ctx, snapshotId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.PipelineSnapshotDetail{}, apperror.New(apperror.KindNotFound, "PipelineSnapshot "+snapshotId+" not found")
 		}
 		return cidto.PipelineSnapshotDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
@@ -44,7 +44,7 @@ func (s Service) getOrCreatePipelineSnapshot(ctx context.Context, template model
 	if err == nil && latest.Version == template.Version {
 		return latest, nil
 	}
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return model.PipelineSnapshot{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}
 	snapshot, err := s.createPipelineSnapshot(ctx, template)

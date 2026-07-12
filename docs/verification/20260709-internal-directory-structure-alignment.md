@@ -43,8 +43,10 @@ Issue 8 未修改 API route、request/response contract、task payload、migrati
 - CD 的 deploy/restart/stop execution、workspace materialization、init script normalization、deployment renderer 与 route label 注入迁至 `internal/application/cd/usecase/deployment_execution*.go`。
 - CI execution input 归入 `application/ci/dto`；CI queue handler 删除对 workflow DTO 的依赖。
 - CI/CD application port 分别声明 execution-only log store；worker execution service 取得 writer/read capability，HTTP 查询侧继续依赖 read-only capability。
-- worker bootstrap 改为注入 application CI/CD execution services 与既有 application Docker/Shell runners。
-- workflow-local CI Docker runner 与 CD Shell runner 被删除；CI Docker argument tests 归入 application runner，CI/CD execution tests 归入各自 application usecase。
+- worker bootstrap 改为注入 application CI/CD execution services 与 infrastructure Docker/Shell runner adapters。
+- Docker/Shell runner 与 local workspace filesystem mechanics 已移至 infrastructure；application 仅通过 workspace、streamed command 与 command-query ports 调用，CD status/log 不再 direct `os/exec`。
+- SQLC/SQLX singleton lookup 在 adapter 边界将 `sql.ErrNoRows` 映射为 `repository.ErrNotFound`，application 已移除 database-driver sentinel 依赖。
+- CI/CD command usecase 通过 typed dispatch port 发起业务动作；queue dispatch adapter 独占 task type 和 JSON payload 映射，application 不再依赖 `queue/task.Task` 或 generic payload contract。
 - 已删除完整 `internal/workflow` source tree，未保留 compatibility layer。
 
 ## Expected vs actual changed files
@@ -56,7 +58,9 @@ Issue 8 未修改 API route、request/response contract、task payload、migrati
 | bootstrap 更新最终 composition | 已完成：`internal/bootstrap/worker.go` 构造 application execution services 并保留四个 task registration。 |
 | workflow 旧路径与兼容层删除 | 已完成：`internal/workflow` 不存在，active Go source 无旧 import。 |
 | 行为和 task contract 不变 | 已完成：现有 execution、handler、bootstrap 与全量后端测试通过。 |
-| C1 保持独立 | 已完成：未将 application runner 移入 infrastructure，未修改 CI runner port / workspace type，未修改 CD status/log direct `os/exec` query path。 |
+| C1 execution adapter inversion | 已完成：Docker/Shell runner 与 local workspace 由 infrastructure 实现并经 bootstrap 注入；CI port 使用 application mount/workspace DTO，CD status/log 通过 command-query port 获取输出。 |
+| C2 repository absence semantics | 已完成：SQL adapter 将 no-row 映射至 `repository.ErrNotFound`，application 不再 import `database/sql`。 |
+| C3 typed task dispatch | 已完成：CI/CD application port 使用 typed dispatch input，queue dispatch adapter 保持既有 task type 与 JSON payload。 |
 
 ## Acceptance checklist
 
@@ -65,18 +69,19 @@ Issue 8 未修改 API route、request/response contract、task payload、migrati
 - [x] queue handler 只进行 payload decoding、required-field validation 和 application execution dispatch。
 - [x] CI queue handler 不再 import workflow-local DTO；task payload key 与错误文案未变化。
 - [x] application execution constructor 使用最小 execution log port；HTTP 查询侧仍使用 read-only port。
-- [x] bootstrap 使用 application execution services 和 application runner implementations。
-- [x] CI stage success/failure/cancel、credential non-leak、variables/mounts、CD operation states、Compose arguments、Liquid physical root、route labels 和 init script 现有测试均随最终职责路径保留。
-- [x] 完整 `internal/workflow` tree 已删除，无 wrapper、alias、forwarding package 或新旧路径并存。
+- [x] bootstrap 使用 application execution services 和 infrastructure runner/workspace adapters。
+- [x] application CI/CD 不依赖 local workspace implementation、`os/exec`、`database/sql` 或 `queue/task` implementation；application ports 不暴露 concrete workspace type、SQL sentinel 或 generic queue payload。
+- [x] CI stage success/failure/cancel、credential non-leak、variables/mounts、CD operation states、Compose arguments、Liquid physical root、route labels、init script 和 status/log query 现有测试均随最终职责路径保留。
+- [x] queue dispatch adapter 保持四个 task type、原有 JSON payload key/value、worker handler validation 与 lease/retry/concurrency 生命周期。
+- [x] 完整 `internal/workflow` tree 与旧 application runner implementation 已删除，无 wrapper、alias、forwarding package 或新旧路径并存。
 - [x] 未创建空 workflow directory。
 - [x] 未修改 API route、request/response contract、task payload、migration、queue lifecycle 或前端行为。
-- [x] C1-C3 保持独立后续任务，未被静默纳入 Issue 8。
 
 ## Test results
 
 | Command | Result |
 | --- | --- |
-| `go test ./internal/application/ci/usecase ./internal/application/ci/runner ./internal/application/cd/usecase ./internal/queue/worker/handler/ci ./internal/queue/worker/handler/cd ./internal/bootstrap` | 通过。 |
+| `go test ./internal/repository/... ./internal/application/ci/usecase ./internal/application/cd/usecase ./internal/infrastructure/... ./internal/queue/... ./internal/bootstrap ./internal/api/http/handler/authz` | 通过。 |
 | `go fmt ./cmd/... ./internal/...` | 通过。 |
 | `./bin/golangci-lint fmt ./cmd/... ./internal/...` | 通过。 |
 | `./bin/golangci-lint run ./cmd/... ./internal/...` | 通过，`0 issues.` |
@@ -87,15 +92,13 @@ Issue 8 未修改 API route、request/response contract、task payload、migrati
 
 未启动、停止或重启开发服务器。
 
-## Risks and incomplete items
-
-以下事项继续保持未完成：
+## Completion
 
 - [x] Issue 8：workflow execution 已收敛至 application，workflow tree 已删除。
-- [ ] C1：将 concrete Docker/Shell process runner 收敛到 infrastructure execution adapter、由 bootstrap 注入；同时处理 CD status/log 的 direct `os/exec` 路径和 CI runner port 中的 workspace infrastructure type。
-- [ ] C2：将 `sql.ErrNoRows` 从 application 用例边界收敛为稳定错误语义。
-- [ ] C3：避免 application task port 直接暴露 queue task implementation contract。
+- [x] C1：concrete Docker/Shell runner 与 local workspace adapter 已收敛至 infrastructure 并由 bootstrap 注入；CD status/log 已通过 application command-query port 调用。
+- [x] C2：`sql.ErrNoRows` 已在 SQL repository adapter 边界归一为 `repository.ErrNotFound`；application usecase 不再依赖 database-driver sentinel。
+- [x] C3：CI/CD application command 已通过 typed dispatch port 请求异步业务动作；queue adapter 独占 queue task contract。
 
 ## Conclusion
 
-**Issue 1 至 Issue 8 均已完成并验证通过。** Issue 8 删除了曾承载 CI/CD 业务执行编排的 workflow activity 层，使 queue worker handler 保持为入站 task adapter，而 application CI/CD usecase 成为唯一的执行业务流程。严格的 process runner/infrastructure 收敛、SQL sentinel error 和 queue task contract 问题仍分别保留为 C1-C3 后续任务。
+**Issue 1 至 Issue 8 及后续 C1-C3 均已完成并验证通过。** CI/CD execution 由 application usecase 统一编排，queue worker handler 保持入站 task adapter；workspace、process execution、repository absence 与 task dispatch 均在正确的 infrastructure/repository/queue boundary 实现。

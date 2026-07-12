@@ -1,7 +1,9 @@
-package runner
+package cd
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -27,6 +29,21 @@ func (ShellRunner) Run(ctx context.Context, cwd string, log io.Writer, name stri
 		return fmt.Errorf("run %s: %w", commandText, err)
 	}
 	return nil
+}
+
+type CommandQueryRunner struct{}
+
+func (CommandQueryRunner) Run(ctx context.Context, cwd string, name string, args ...string) (string, error) {
+	if strings.TrimSpace(name) == "" {
+		return "", errors.New("command is required")
+	}
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = cwd
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	err := cmd.Run()
+	return output.String(), err
 }
 
 func shellCommandText(name string, args ...string) string {

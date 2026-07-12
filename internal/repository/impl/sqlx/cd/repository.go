@@ -2,8 +2,6 @@ package cd
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -14,6 +12,7 @@ import (
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
 )
 
 // Repository provides persistence for CD application, deployment, and route use cases.
@@ -33,7 +32,7 @@ func (r Repository) Project(ctx context.Context, id string) (model.Project, erro
 	var project model.Project
 	err := r.db.GetContext(ctx, &project, `SELECT id, name, code, is_active, created_at, updated_at FROM project WHERE id = ?`, id)
 	if err != nil {
-		return model.Project{}, fmt.Errorf("load project %s: %w", id, err)
+		return model.Project{}, fmt.Errorf("load project %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return project, nil
 }
@@ -67,7 +66,7 @@ func (r Repository) Application(ctx context.Context, id string) (model.Applicati
 	var app model.Application
 	err := r.db.GetContext(ctx, &app, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at FROM application WHERE id = ?`, id)
 	if err != nil {
-		return model.Application{}, fmt.Errorf("load application %s: %w", id, err)
+		return model.Application{}, fmt.Errorf("load application %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return app, nil
 }
@@ -76,7 +75,7 @@ func (r Repository) ApplicationByName(ctx context.Context, name string) (model.A
 	var app model.Application
 	err := r.db.GetContext(ctx, &app, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at FROM application WHERE name = ?`, name)
 	if err != nil {
-		return model.Application{}, fmt.Errorf("load application by name %s: %w", name, err)
+		return model.Application{}, fmt.Errorf("load application by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
 	return app, nil
 }
@@ -85,7 +84,7 @@ func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.A
 	var app model.Application
 	err := r.db.GetContext(ctx, &app, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at FROM application WHERE code = ?`, code)
 	if err != nil {
-		return model.Application{}, fmt.Errorf("load application by code %s: %w", code, err)
+		return model.Application{}, fmt.Errorf("load application by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
 	return app, nil
 }
@@ -179,7 +178,7 @@ func (r Repository) ConfigFile(ctx context.Context, id string) (model.Applicatio
 	var file model.ApplicationConfigFile
 	err := r.db.GetContext(ctx, &file, `SELECT id, application_id, path, content, created_at, updated_at FROM application_config_file WHERE id = ?`, id)
 	if err != nil {
-		return model.ApplicationConfigFile{}, fmt.Errorf("load config file %s: %w", id, err)
+		return model.ApplicationConfigFile{}, fmt.Errorf("load config file %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return file, nil
 }
@@ -222,7 +221,7 @@ func (r Repository) ApplicationServiceConfig(ctx context.Context, applicationId 
 	var config model.ApplicationServiceConfig
 	err := r.db.GetContext(ctx, &config, `SELECT id, application_id, service_name, image, environment, volumes, created_at, updated_at FROM application_service WHERE application_id = ? AND service_name = ?`, applicationId, serviceName)
 	if err != nil {
-		return model.ApplicationServiceConfig{}, fmt.Errorf("load application service config %s/%s: %w", applicationId, serviceName, err)
+		return model.ApplicationServiceConfig{}, fmt.Errorf("load application service config %s/%s: %w", applicationId, serviceName, sqlcommon.TranslateError(err))
 	}
 	return config, nil
 }
@@ -260,7 +259,7 @@ func (r Repository) ApplicationRoute(ctx context.Context, id string) (model.Appl
 	var route model.ApplicationRoute
 	err := r.db.GetContext(ctx, &route, `SELECT id, application_id, service_name, domain, port, created_at, updated_at FROM application_route WHERE id = ?`, id)
 	if err != nil {
-		return model.ApplicationRoute{}, fmt.Errorf("load application route %s: %w", id, err)
+		return model.ApplicationRoute{}, fmt.Errorf("load application route %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return route, nil
 }
@@ -329,7 +328,7 @@ func (r Repository) Route(ctx context.Context, id string) (model.Route, error) {
 	var route model.Route
 	err := r.db.GetContext(ctx, &route, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at FROM route WHERE id = ?`, id)
 	if err != nil {
-		return model.Route{}, fmt.Errorf("load route %s: %w", id, err)
+		return model.Route{}, fmt.Errorf("load route %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return route, nil
 }
@@ -338,10 +337,7 @@ func (r Repository) RouteByDomain(ctx context.Context, domain string) (model.Rou
 	var route model.Route
 	err := r.db.GetContext(ctx, &route, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at FROM route WHERE domain = ?`, strings.TrimSpace(domain))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return model.Route{}, sql.ErrNoRows
-		}
-		return model.Route{}, fmt.Errorf("load route by domain %s: %w", domain, err)
+		return model.Route{}, fmt.Errorf("load route by domain %s: %w", domain, sqlcommon.TranslateError(err))
 	}
 	return route, nil
 }
@@ -403,7 +399,7 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 	err := r.db.GetContext(ctx, &deployment, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status,
 		started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id FROM deployment WHERE id = ?`, id)
 	if err != nil {
-		return model.Deployment{}, fmt.Errorf("load deployment %s: %w", id, err)
+		return model.Deployment{}, fmt.Errorf("load deployment %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return deployment, nil
 }

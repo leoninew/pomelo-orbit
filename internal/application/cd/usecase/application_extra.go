@@ -1,7 +1,6 @@
 package cdsvc
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"regexp"
@@ -9,15 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"database/sql"
-	"os/exec"
-
 	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	templatex "gitee.com/leoninew/PomeloOrbit-go/internal/common/template"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gopkg.in/yaml.v3"
 )
 
@@ -148,7 +145,7 @@ func (s Service) ApplicationFileForUser(ctx context.Context, userId string, appl
 	fileId = strings.TrimSpace(fileId)
 	file, err := s.store.ConfigFile(ctx, fileId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.ApplicationConfigFile{}, apperror.New(apperror.KindNotFound, "Config file "+fileId+" not found")
 		}
 		return model.ApplicationConfigFile{}, apperror.Wrap(apperror.KindInternal, "Failed to load application file", err)
@@ -204,7 +201,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationStop, map[string]any{"application_id": app.Id, "deployment_id": deployment.Id, "remove_volumes": removeVolumes}); err != nil {
+	if err := s.dispatcher.DispatchApplicationStop(ctx, cdto.ApplicationStopDispatchInput{ApplicationID: app.Id, DeploymentID: deployment.Id, RemoveVolumes: removeVolumes}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
@@ -226,7 +223,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationRestart, map[string]string{"application_id": app.Id, "deployment_id": deployment.Id}); err != nil {
+	if err := s.dispatcher.DispatchApplicationRestart(ctx, cdto.ApplicationRestartDispatchInput{ApplicationID: app.Id, DeploymentID: deployment.Id}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
@@ -237,7 +234,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	if err != nil {
 		return "", err
 	}
-	output, err := runApplicationCommand(ctx, s.workspace.AppDir(app.Code), "docker", "compose", "-f", "docker-compose.yml", "ps", "--format", "json")
+	output, err := s.queryRunner.Run(ctx, s.workspace.AppDir(app.Code), "docker", "compose", "-f", "docker-compose.yml", "ps", "--format", "json")
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -253,7 +250,7 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 		return "", apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
 	}
 	command := containerLogsTailCommand(strconv.Itoa(tail))
-	output, err := runApplicationCommand(ctx, s.workspace.AppDir(app.Code), command.argv()...)
+	output, err := s.queryRunner.Run(ctx, s.workspace.AppDir(app.Code), command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -279,19 +276,19 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	}
 	app, err := s.store.Application(ctx, *deployment.ApplicationId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cdto.DeploymentContainerLog{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
 		}
 		return cdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
 	appDir := s.workspace.AppDir(app.Code)
 	sinceCommand := containerLogsSinceCommand(deployment.StartedAt.UTC().Format(time.RFC3339))
-	output, err := runApplicationCommand(ctx, appDir, sinceCommand.argv()...)
+	output, err := s.queryRunner.Run(ctx, appDir, sinceCommand.Name, sinceCommand.Args...)
 	if err == nil {
 		return cdto.DeploymentContainerLog{Logs: output, Source: "since", IsRealtimeSupported: true}, nil
 	}
 	tailCommand := containerLogsTailCommand(strconv.Itoa(tail))
-	output, tailErr := runApplicationCommand(ctx, appDir, tailCommand.argv()...)
+	output, tailErr := s.queryRunner.Run(ctx, appDir, tailCommand.Name, tailCommand.Args...)
 	if tailErr != nil {
 		return cdto.DeploymentContainerLog{}, apperror.New(apperror.KindInternal, outputOrError(output, tailErr))
 	}
@@ -407,7 +404,7 @@ func (s Service) UpdateApplicationServiceConfig(ctx context.Context, userId stri
 	image := normalizeOptionalText(imageInput)
 	config, err := s.store.ApplicationServiceConfig(ctx, app.Id, serviceName)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			if image == nil {
 				return s.applicationServiceConfigView(app, serviceName, raw, nil), nil
 			}
@@ -435,7 +432,7 @@ func (s Service) loadApplicationRouteForUser(ctx context.Context, userId string,
 	routeId = strings.TrimSpace(routeId)
 	route, err := s.store.ApplicationRoute(ctx, routeId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.ApplicationRoute{}, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
 		}
 		return model.ApplicationRoute{}, apperror.Wrap(apperror.KindInternal, "Failed to load application route", err)
@@ -489,7 +486,7 @@ func (s Service) renderApplicationCompose(ctx context.Context, app model.Applica
 
 func (s Service) renderApplicationConfigFile(ctx context.Context, app model.Application, path string, content string, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) (string, string, error) {
 	if strings.HasSuffix(path, ".liquid") {
-		path = strings.TrimSuffix(path, ".liquid")
+		path, _ = strings.CutSuffix(path, ".liquid")
 		rendered, err := s.renderApplicationTemplate(ctx, content, app.Code)
 		if err != nil {
 			return "", "", apperror.New(apperror.KindValidation, err.Error())
@@ -593,7 +590,7 @@ func (s Service) ensureApplicationCodeAvailable(ctx context.Context, code string
 	if err == nil {
 		return apperror.New(apperror.KindValidation, "Application code '"+existing.Code+"' already exists")
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check application code", err)
 	}
 	return nil
@@ -613,19 +610,6 @@ func validApplicationRouteDomain(domain string) bool {
 		return false
 	}
 	return applicationRouteDomainPattern.MatchString(domain)
-}
-
-func runApplicationCommand(ctx context.Context, cwd string, args ...string) (string, error) {
-	if len(args) == 0 {
-		return "", errors.New("command is required")
-	}
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
-	cmd.Dir = cwd
-	var output bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-	err := cmd.Run()
-	return output.String(), err
 }
 
 func (s Service) renderApplicationTemplate(ctx context.Context, content string, appCode string) (string, error) {

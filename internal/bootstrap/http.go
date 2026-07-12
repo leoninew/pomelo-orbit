@@ -20,7 +20,13 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/config/envfile"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/traefik"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/turnstile"
+	cdrunner "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/cd"
+	dockerci "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/dockerci"
+	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
+	queuedispatch "gitee.com/leoninew/PomeloOrbit-go/internal/queue/dispatch"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	rolerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/role"
@@ -42,8 +48,12 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 	ciRepository := cirepo.NewRepository(database, cfg.Database.Driver)
 	cdRepository := cdrepo.NewRepository(database, cfg.Database.Driver)
 	taskService := tasksvc.New(taskRepo, cfg.Worker.MaxAttempts)
+	ciDispatcher := queuedispatch.NewCIDispatcher(taskService)
+	cdDispatcher := queuedispatch.NewCDDispatcher(taskService)
 	authService := authsvc.New(userRepository, tokenService, logger)
 	logStore := executionlog.Store{}
+	ciWorkspace := ciworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	cdWorkspace := cdworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
 	routeManager := traefik.NewRouteManager(cfg)
 	return routes.Dependencies{
 		Authenticator:     authz.New(logger, authService),
@@ -52,8 +62,8 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		UserService:       usersvc.New(userRepository, roleRepository),
 		ProjectService:    projectsvc.New(projectRepository, userRepository),
 		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg)),
-		CIService:         cisvc.New(ciRepository, taskService, cfg.DataRoot(), cfg.JWT.SecretKey, logger, logStore),
-		CDService:         cdsvc.New(cdRepository, taskService, cfg, logger, logStore, routeManager, traefik.MkcertGenerator{}, routeManager),
+		CIService:         cisvc.New(ciRepository, ciDispatcher, ciWorkspace, cfg.JWT.SecretKey, logger, dockerci.DockerRunner{}, logStore),
+		CDService:         cdsvc.New(cdRepository, cdDispatcher, cfg, logger, cdWorkspace, cdrunner.CommandQueryRunner{}, logStore, routeManager, traefik.MkcertGenerator{}, routeManager),
 		TaskService:       taskService,
 		TurnstileVerifier: turnstile.NewVerifier(cfg.Turnstile),
 	}

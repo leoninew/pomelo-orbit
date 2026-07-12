@@ -2,7 +2,6 @@ package rolesvc
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"regexp"
 	"sort"
@@ -142,7 +141,7 @@ func (s Service) find(ctx context.Context, roleId string) (model.Role, error) {
 	if err == nil {
 		return role, nil
 	}
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, repository.ErrNotFound) {
 		return model.Role{}, apperror.New(apperror.KindNotFound, "Role "+roleId+" not found")
 	}
 	return model.Role{}, err
@@ -170,7 +169,7 @@ func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentRo
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
 	return nil
@@ -184,7 +183,7 @@ func (s Service) ensureNameAvailable(ctx context.Context, name string, currentRo
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return err
 	}
 	return nil

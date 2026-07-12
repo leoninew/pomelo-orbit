@@ -1,4 +1,4 @@
-package runner
+package dockerci
 
 import (
 	"path/filepath"
@@ -6,15 +6,14 @@ import (
 	"testing"
 
 	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 )
 
-func TestDockerRunArgsUseBindMountSyntax(t *testing.T) {
+func TestRunArgsUseBindMountSyntax(t *testing.T) {
 	hostPath := filepath.Join(t.TempDir(), "workspace")
-	args, err := dockerRunArgs(ciport.RunOptions{
+	args, err := runArgs(ciport.RunOptions{
 		Image:  "alpine",
 		Script: "echo ok",
-		Volumes: []ciworkspace.VolumeMount{
+		Volumes: []ciport.VolumeMount{
 			{HostPath: hostPath, ContainerPath: "/workspace", Mode: "rw"},
 		},
 	})
@@ -31,11 +30,11 @@ func TestDockerRunArgsUseBindMountSyntax(t *testing.T) {
 	}
 }
 
-func TestDockerRunArgsRejectRelativeHostPath(t *testing.T) {
-	_, err := dockerRunArgs(ciport.RunOptions{
+func TestRunArgsRejectRelativeHostPath(t *testing.T) {
+	_, err := runArgs(ciport.RunOptions{
 		Image:  "alpine",
 		Script: "echo ok",
-		Volumes: []ciworkspace.VolumeMount{
+		Volumes: []ciport.VolumeMount{
 			{HostPath: filepath.Join("data", "ci", "repo", "workspace"), ContainerPath: "/workspace", Mode: "rw"},
 		},
 	})

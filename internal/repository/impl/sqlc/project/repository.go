@@ -12,6 +12,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.ProjectStore = Repository{}
@@ -29,7 +30,7 @@ func NewRepository(db *sqlx.DB, driver string) Repository {
 func (r Repository) Project(ctx context.Context, id string) (model.Project, error) {
 	project, err := r.queries.ProjectByID(ctx, id)
 	if err != nil {
-		return model.Project{}, fmt.Errorf("load project %s: %w", id, err)
+		return model.Project{}, fmt.Errorf("load project %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.ProjectFromByID(project), nil
 }
@@ -61,7 +62,7 @@ func (r Repository) ListActiveProjectsByMember(ctx context.Context, userId strin
 func (r Repository) ProjectByCode(ctx context.Context, code string) (model.Project, error) {
 	project, err := r.queries.ProjectByCode(ctx, code)
 	if err != nil {
-		return model.Project{}, fmt.Errorf("load project by code %s: %w", code, err)
+		return model.Project{}, fmt.Errorf("load project by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
 	return dbmodel.ProjectFromByCode(project), nil
 }

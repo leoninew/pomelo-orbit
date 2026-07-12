@@ -5,12 +5,15 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	cdrunner "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/runner"
 	cdsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/usecase"
-	cirunner "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/runner"
 	cisvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/usecase"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
+	cdrunner "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/cd"
+	dockerci "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/dockerci"
+	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker"
 	cdworker "gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker/handler/cd"
@@ -25,8 +28,10 @@ func NewTaskRouter(database *sqlx.DB, cfg config.Config, logger *slog.Logger) *w
 	ciRepository := cirepo.NewRepository(database, cfg.Database.Driver)
 	cdRepository := cdrepo.NewRepository(database, cfg.Database.Driver)
 	logStore := executionlog.Store{}
-	ciService := cisvc.NewExecutionService(ciRepository, cfg.DataRoot(), cfg.JWT.SecretKey, logger, cirunner.DockerRunner{}, logStore)
-	cdService := cdsvc.NewExecutionService(cdRepository, cfg, logger, cdrunner.ShellRunner{}, logStore)
+	ciWorkspace := ciworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	cdWorkspace := cdworkspace.NewWithResolver(cfg.DataRoot(), runtimepath.ResolvePhysicalDataRoot)
+	ciService := cisvc.NewExecutionService(ciRepository, ciWorkspace, cfg.JWT.SecretKey, logger, dockerci.DockerRunner{}, logStore)
+	cdService := cdsvc.NewExecutionService(cdRepository, cfg, logger, cdWorkspace, cdrunner.ShellRunner{}, logStore)
 	router.Register(status.TaskTypeCIPipelineRunExecute, ciworker.NewHandler(ciService))
 	router.Register(status.TaskTypeCDApplicationDeploy, cdworker.NewDeployHandler(cdService))
 	router.Register(status.TaskTypeCDApplicationRestart, cdworker.NewRestartHandler(cdService))

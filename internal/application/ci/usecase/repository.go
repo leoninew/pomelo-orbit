@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -16,11 +15,9 @@ import (
 	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
 	civariable "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/rule/civariable"
-	cirunner "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/runner"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
@@ -30,8 +27,8 @@ var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 type Service struct {
 	store             repository.CIStore
 	executionStore    repository.PipelineExecutionStore
-	tasks             ciport.TaskService
-	workspace         *ciworkspace.Workspace
+	dispatcher        ciport.PipelineRunDispatcher
+	workspace         ciport.Workspace
 	logStore          ciport.LogReader
 	executionLogStore ciport.ExecutionLogStore
 	secretKey         string
@@ -39,21 +36,15 @@ type Service struct {
 	runner            ciport.ContainerRunner
 }
 
-func New(store repository.CIStore, tasks ciport.TaskService, dataRoot string, secretKey string, logger *slog.Logger, logStore ciport.LogReader) Service {
-	return NewWithRunner(store, tasks, dataRoot, secretKey, logger, cirunner.DockerRunner{}, logStore)
-}
-
-func NewWithRunner(store repository.CIStore, tasks ciport.TaskService, dataRoot string, secretKey string, logger *slog.Logger, runner ciport.ContainerRunner, logStore ciport.LogReader) Service {
+func New(store repository.CIStore, dispatcher ciport.PipelineRunDispatcher, workspace ciport.Workspace, secretKey string, logger *slog.Logger, runner ciport.ContainerRunner, logStore ciport.LogReader) Service {
 	executionStore, ok := store.(repository.PipelineExecutionStore)
 	if !ok {
 		panic("ci service store must implement PipelineExecutionStore")
 	}
-	workspace := ciworkspace.New(dataRoot)
-	return Service{store: store, executionStore: executionStore, tasks: tasks, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
+	return Service{store: store, executionStore: executionStore, dispatcher: dispatcher, workspace: workspace, logStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
-func NewExecutionService(store repository.PipelineExecutionStore, dataRoot string, secretKey string, logger *slog.Logger, runner ciport.ContainerRunner, logStore ciport.ExecutionLogStore) Service {
-	workspace := ciworkspace.New(dataRoot)
+func NewExecutionService(store repository.PipelineExecutionStore, workspace ciport.Workspace, secretKey string, logger *slog.Logger, runner ciport.ContainerRunner, logStore ciport.ExecutionLogStore) Service {
 	return Service{executionStore: store, workspace: workspace, logStore: logStore, executionLogStore: logStore, secretKey: secretKey, logger: logger, runner: runner}
 }
 
@@ -220,7 +211,7 @@ func (s Service) RepositoryWebhookForUser(ctx context.Context, userId string, we
 	}
 	repo, err := s.store.Repository(ctx, webhook.RepositoryId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Repository "+webhook.RepositoryId+" not found")
 		}
 		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
@@ -324,14 +315,14 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input cidto.Webho
 	}
 	repo, err := s.store.Repository(ctx, webhook.RepositoryId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.WebhookReceiveResult{}, apperror.New(apperror.KindNotFound, "Repository "+webhook.RepositoryId+" not found")
 		}
 		return cidto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
 	}
 	template, err := s.store.PipelineTemplate(ctx, webhook.TemplateId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.WebhookReceiveResult{}, apperror.New(apperror.KindNotFound, "Pipeline template "+webhook.TemplateId+" not found")
 		}
 		return cidto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
@@ -353,7 +344,7 @@ func (s Service) ReceiveRepositoryWebhook(ctx context.Context, input cidto.Webho
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return cidto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": run.Id}); err != nil {
+	if err := s.dispatcher.DispatchPipelineRun(ctx, cidto.PipelineRunDispatchInput{PipelineRunID: run.Id}); err != nil {
 		return cidto.WebhookReceiveResult{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	return cidto.WebhookReceiveResult{Status: "triggered", RunId: run.Id}, nil
@@ -363,7 +354,7 @@ func (s Service) loadRepositoryForUser(ctx context.Context, userId string, repos
 	repositoryId = strings.TrimSpace(repositoryId)
 	repo, err := s.store.Repository(ctx, repositoryId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 		}
 		return model.Repository{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
@@ -378,7 +369,7 @@ func (s Service) loadRepositoryForUser(ctx context.Context, userId string, repos
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
 	if _, err := s.store.Project(ctx, projectId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
@@ -398,7 +389,7 @@ func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, projectId *s
 	if err == nil {
 		return apperror.New(apperror.KindConflict, "Repository code '"+existing.Code+"' already exists")
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check repository code", err)
 	}
 	return nil
@@ -422,7 +413,7 @@ func (s Service) loadRepositoryWebhook(ctx context.Context, webhookId string) (m
 	webhookId = strings.TrimSpace(webhookId)
 	webhook, err := s.store.RepositoryWebhook(ctx, webhookId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.RepositoryWebhook{}, apperror.New(apperror.KindNotFound, "Webhook "+webhookId+" not found")
 		}
 		return model.RepositoryWebhook{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository webhook", err)
@@ -432,7 +423,7 @@ func (s Service) loadRepositoryWebhook(ctx context.Context, webhookId string) (m
 
 func (s Service) ensurePipelineTemplate(ctx context.Context, templateId string) error {
 	if _, err := s.store.PipelineTemplate(ctx, templateId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)

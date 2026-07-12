@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -16,14 +15,13 @@ import (
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 type Executor struct {
 	store     repository.PipelineExecutionStore
-	workspace *ciworkspace.Workspace
+	workspace ciport.Workspace
 	logStore  ciport.ExecutionLogStore
 	secretKey string
 	logger    *slog.Logger
@@ -248,12 +246,15 @@ func (e Executor) cancelRemaining(ctx context.Context, runId string, layers [][]
 }
 
 func (e Executor) saveArtifacts(ctx context.Context, run model.PipelineRun, stage model.StageDefinition) error {
-	artifactRoot := e.workspace.ArtifactsPath(run.Id)
 	for _, artifact := range stage.Artifacts {
 		artifactPath := artifact.Path
 		if artifact.Type == "binary" {
-			artifactPath = filepath.Join(artifactRoot, artifact.Path)
-			if _, err := os.Stat(artifactPath); err != nil {
+			exists, err := e.workspace.ArtifactExists(run.Id, artifact.Path)
+			if err != nil {
+				return fmt.Errorf("check artifact %s: %w", artifact.Path, err)
+			}
+			artifactPath = filepath.Join(e.workspace.ArtifactsPath(run.Id), artifact.Path)
+			if !exists {
 				e.logger.Warn("artifact file not found, skipping", "run", run.Id, "stage", stage.Name, "path", artifactPath)
 				continue
 			}

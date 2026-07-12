@@ -4,12 +4,11 @@ import (
 	"context"
 	"io"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
-	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
+	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
 )
 
-type TaskService interface {
-	EnqueueTyped(ctx context.Context, taskType string, payload any) (*tasksvc.Task, error)
+type PipelineRunDispatcher interface {
+	DispatchPipelineRun(ctx context.Context, input cidto.PipelineRunDispatchInput) error
 }
 
 type LogReader interface {
@@ -21,11 +20,25 @@ type ExecutionLogStore interface {
 	Writer(logPath string) (io.WriteCloser, error)
 }
 
+type VolumeMount struct {
+	HostPath      string
+	ContainerPath string
+	Mode          string
+}
+
+type Workspace interface {
+	CreateRunDirectories(projectCode string, runID string) error
+	ArtifactsPath(runID string) string
+	ArtifactExists(runID string, artifactPath string) (bool, error)
+	StageLogPath(runID string, stageRunID string) string
+	DockerStageMounts(ctx context.Context, projectCode string, runID string) ([]VolumeMount, error)
+}
+
 type RunOptions struct {
 	Image       string
 	Script      string
 	Environment []string
-	Volumes     []ciworkspace.VolumeMount
+	Volumes     []VolumeMount
 	LogWriter   io.Writer
 }
 

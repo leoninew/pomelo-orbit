@@ -2,7 +2,6 @@ package cisvc
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
 
@@ -165,7 +164,7 @@ func (s Service) loadCredentialForUser(ctx context.Context, userId string, crede
 	credentialId = strings.TrimSpace(credentialId)
 	credential, err := s.store.Credential(ctx, credentialId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.Credential{}, apperror.New(apperror.KindNotFound, "Credential "+credentialId+" not found")
 		}
 		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load credential", err)
@@ -186,7 +185,7 @@ func (s Service) ensureCredentialNameAvailable(ctx context.Context, projectId st
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check credential name", err)
 	}
 	return nil

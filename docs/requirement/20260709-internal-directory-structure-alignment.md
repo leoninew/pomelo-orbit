@@ -60,13 +60,16 @@ application command use case
 
 | 编号 | 内容 | 状态 |
 | --- | --- | --- |
-| C1 | 将 concrete Docker/Shell process runner 收敛至 infrastructure execution adapter；处理 CD status/log direct `os/exec` 与 CI runner port 的 workspace infrastructure type。 | 待处理 |
-| C2 | 将 application 对 `sql.ErrNoRows` 的依赖收敛为稳定错误语义。 | 待处理 |
-| C3 | 避免 application task port 直接暴露 queue task implementation contract。 | 待处理 |
+| C1 | Docker/Shell runner 与 local workspace 收敛至 infrastructure adapter；application 仅依赖 workspace/command port，CD status/log 不再 direct `os/exec`。 | 已实施并验证完成 |
+| C2 | SQLC/SQLX adapter 将 `sql.ErrNoRows` 映射为 `repository.ErrNotFound`；application 仅判断 repository 语义错误。 | 已实施并验证完成 |
+| C3 | CI/CD application 使用 typed dispatch port；queue adapter 独占 task type、JSON payload 与 `queue/task` implementation contract。 | 已实施并验证完成 |
 
 ## Acceptance
 
-- [x] Issue 1-8 均完成 Implementation 与 Verification。
+- [x] Issue 1-8 与 C1-C3 均完成 Implementation 与 Verification。
+- [x] C1：application 仅依赖 workspace/runner/command-query port；concrete runner 与 local filesystem adapter 仅位于 infrastructure 并由 bootstrap 构造。
+- [x] C2：application 不依赖 `database/sql`；repository adapter 将 no-row 统一表达为 `repository.ErrNotFound`。
+- [x] C3：application CI/CD command 仅依赖 typed business dispatch port；queue adapter 独占 `queue/task`、task type 与 JSON transport 细节。
 - [x] 每项均删除旧职责路径，不保留 wrapper、alias、compatibility forwarding 或新旧 import 并存。
 - [x] 未创建空目录或未来预留结构。
 - [x] 每项均在 verification 记录最终职责、实际 diff、风险、未完成项和测试结果。

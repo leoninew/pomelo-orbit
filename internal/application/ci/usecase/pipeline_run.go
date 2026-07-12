@@ -2,7 +2,6 @@ package cisvc
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -40,7 +39,7 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input cid
 	}
 	template, err := s.store.PipelineTemplate(ctx, templateId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
 		}
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
@@ -61,7 +60,7 @@ func (s Service) TriggerRepository(ctx context.Context, userId string, input cid
 	if err := s.store.CreatePipelineRun(ctx, run); err != nil {
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create pipeline run", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": run.Id}); err != nil {
+	if err := s.dispatcher.DispatchPipelineRun(ctx, cidto.PipelineRunDispatchInput{PipelineRunID: run.Id}); err != nil {
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	created, err := s.store.PipelineRun(ctx, run.Id)
@@ -130,7 +129,7 @@ func (s Service) PipelineStageLog(ctx context.Context, userId string, runId stri
 	}
 	stageRun, err := s.store.StageRun(ctx, strings.TrimSpace(stageRunId))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.PipelineStageLog{Offset: offset, IsComplete: true}, nil
 		}
 		return cidto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load stage run", err)
@@ -174,14 +173,14 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	}
 	snapshot, err := s.store.PipelineSnapshot(ctx, original.SnapshotId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Snapshot "+original.SnapshotId+" not found")
 		}
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline snapshot", err)
 	}
 	repo, err := s.store.Repository(ctx, original.RepositoryId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return cidto.PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Repository "+original.RepositoryId+" not found")
 		}
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
@@ -195,7 +194,7 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, runId stri
 	if err := s.store.CreatePipelineRun(ctx, newRun); err != nil {
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create retry pipeline run", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, map[string]string{"pipeline_run_id": newRun.Id}); err != nil {
+	if err := s.dispatcher.DispatchPipelineRun(ctx, cidto.PipelineRunDispatchInput{PipelineRunID: newRun.Id}); err != nil {
 		return cidto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue pipeline run", err)
 	}
 	created, err := s.store.PipelineRun(ctx, newRun.Id)
@@ -209,7 +208,7 @@ func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, runI
 	runId = strings.TrimSpace(runId)
 	run, err := s.store.PipelineRun(ctx, runId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.PipelineRun{}, apperror.New(apperror.KindNotFound, "PipelineRun "+runId+" not found")
 		}
 		return model.PipelineRun{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline run", err)
@@ -257,7 +256,7 @@ func (s Service) ensurePipelineRunRepositoryFilter(ctx context.Context, projectI
 	}
 	repo, err := s.store.Repository(ctx, repositoryId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load repository", err)
@@ -275,7 +274,7 @@ func (s Service) ensurePipelineRunTemplateFilter(ctx context.Context, projectId 
 	}
 	template, err := s.store.PipelineTemplate(ctx, templateId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)

@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"database/sql"
 	"log/slog"
 
 	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
@@ -18,11 +16,8 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
-
-	cdrunner "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/runner"
 )
 
 var applicationCreateCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -31,32 +26,29 @@ var applicationUpdateCodePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 type Service struct {
 	store                repository.CDStore
 	executionStore       repository.DeploymentExecutionStore
-	tasks                cdport.TaskService
+	dispatcher           cdport.ApplicationDispatcher
 	cfg                  config.Config
-	workspace            *cdworkspace.Workspace
+	workspace            cdport.Workspace
 	logStore             cdport.LogReader
 	executionLogStore    cdport.ExecutionLogStore
 	logger               *slog.Logger
 	runner               cdport.CommandRunner
+	queryRunner          cdport.CommandQueryRunner
 	routePublisher       cdport.RouteConfigPublisher
 	certificateGenerator cdport.RouteCertificateGenerator
 	traefikRouterClient  cdport.TraefikRouterClient
 }
 
-func New(store repository.CDStore, tasks cdport.TaskService, cfg config.Config, logger *slog.Logger, logStore cdport.LogReader, routePublisher cdport.RouteConfigPublisher, certificateGenerator cdport.RouteCertificateGenerator, traefikRouterClient cdport.TraefikRouterClient) Service {
-	return NewWithRunner(store, tasks, cfg, logger, cdrunner.ShellRunner{}, logStore, routePublisher, certificateGenerator, traefikRouterClient)
-}
-
-func NewWithRunner(store repository.CDStore, tasks cdport.TaskService, cfg config.Config, logger *slog.Logger, runner cdport.CommandRunner, logStore cdport.LogReader, routePublisher cdport.RouteConfigPublisher, certificateGenerator cdport.RouteCertificateGenerator, traefikRouterClient cdport.TraefikRouterClient) Service {
+func New(store repository.CDStore, dispatcher cdport.ApplicationDispatcher, cfg config.Config, logger *slog.Logger, workspace cdport.Workspace, queryRunner cdport.CommandQueryRunner, logStore cdport.LogReader, routePublisher cdport.RouteConfigPublisher, certificateGenerator cdport.RouteCertificateGenerator, traefikRouterClient cdport.TraefikRouterClient) Service {
 	executionStore, ok := store.(repository.DeploymentExecutionStore)
 	if !ok {
 		panic("cd service store must implement DeploymentExecutionStore")
 	}
-	return Service{store: store, executionStore: executionStore, tasks: tasks, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, logger: logger, runner: runner, routePublisher: routePublisher, certificateGenerator: certificateGenerator, traefikRouterClient: traefikRouterClient}
+	return Service{store: store, executionStore: executionStore, dispatcher: dispatcher, cfg: cfg, workspace: workspace, queryRunner: queryRunner, logStore: logStore, logger: logger, routePublisher: routePublisher, certificateGenerator: certificateGenerator, traefikRouterClient: traefikRouterClient}
 }
 
-func NewExecutionService(store repository.DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, runner cdport.CommandRunner, logStore cdport.ExecutionLogStore) Service {
-	return Service{executionStore: store, cfg: cfg, workspace: cdworkspace.New(cfg.DataRoot()), logStore: logStore, executionLogStore: logStore, logger: logger, runner: runner}
+func NewExecutionService(store repository.DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, workspace cdport.Workspace, runner cdport.CommandRunner, logStore cdport.ExecutionLogStore) Service {
+	return Service{executionStore: store, cfg: cfg, workspace: workspace, logStore: logStore, executionLogStore: logStore, logger: logger, runner: runner}
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {
@@ -153,7 +145,7 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 		return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
 	}
 	if input.RemoveDir {
-		if err := os.RemoveAll(s.workspace.AppDir(app.Code)); err != nil {
+		if err := s.workspace.RemoveAppDir(app.Code); err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to remove application directory", err)
 		}
 	}
@@ -176,7 +168,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if _, err := s.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationDeploy, map[string]any{"application_id": app.Id, "deployment_id": deployment.Id, "force_recreate": input.ForceRecreate}); err != nil {
+	if err := s.dispatcher.DispatchApplicationDeploy(ctx, cdto.ApplicationDeployDispatchInput{ApplicationID: app.Id, DeploymentID: deployment.Id, ForceRecreate: input.ForceRecreate}); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deployment.Id, nil
@@ -246,7 +238,7 @@ func (s Service) loadApplicationForUser(ctx context.Context, userId string, appl
 	applicationId = strings.TrimSpace(applicationId)
 	app, err := s.store.Application(ctx, applicationId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.Application{}, apperror.New(apperror.KindNotFound, "Application "+applicationId+" not found")
 		}
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
@@ -263,7 +255,7 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deplo
 	deploymentId = strings.TrimSpace(deploymentId)
 	deployment, err := s.store.Deployment(ctx, deploymentId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.Deployment{}, apperror.New(apperror.KindNotFound, "Deployment "+deploymentId+" not found")
 		}
 		return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load deployment", err)
@@ -277,7 +269,7 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deplo
 	if deployment.ApplicationId != nil {
 		app, err := s.store.Application(ctx, *deployment.ApplicationId)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, repository.ErrNotFound) {
 				return model.Deployment{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
 			}
 			return model.Deployment{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
@@ -293,7 +285,7 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deplo
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
 	if _, err := s.store.Project(ctx, projectId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
@@ -313,7 +305,7 @@ func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string
 	if err == nil {
 		return apperror.New(apperror.KindValidation, "Application '"+existing.Name+"' already exists")
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check application name", err)
 	}
 	return nil
@@ -338,7 +330,7 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 	}
 	app, err := s.store.Application(ctx, *deployment.ApplicationId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return "", offset, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)

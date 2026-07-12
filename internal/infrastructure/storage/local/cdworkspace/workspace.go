@@ -2,10 +2,10 @@ package cdworkspace
 
 import (
 	"context"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
-
-	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
 )
 
 type PhysicalDataRootResolver func(ctx context.Context, logicalDataRoot string) (string, error)
@@ -19,10 +19,6 @@ type Workspace struct {
 	physicalErr      error
 }
 
-func New(dataRoot string) *Workspace {
-	return NewWithResolver(dataRoot, runtimepath.ResolvePhysicalDataRoot)
-}
-
 func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Workspace {
 	return &Workspace{logicalDataRoot: filepath.Clean(dataRoot), resolver: resolver}
 }
@@ -31,8 +27,29 @@ func (w *Workspace) AppDir(appCode string) string {
 	return filepath.Join(w.logicalDataRoot, "cd", appCode)
 }
 
-func (w *Workspace) DeploymentLogPath(appCode string, deploymentId string) string {
-	return filepath.Join(w.AppDir(appCode), "deployments", deploymentId+".log")
+func (w *Workspace) DeploymentLogPath(appCode string, deploymentID string) string {
+	return filepath.Join(w.AppDir(appCode), "deployments", deploymentID+".log")
+}
+
+func (w *Workspace) WriteConfig(appCode string, path string, content string) error {
+	path = filepath.Join(w.AppDir(appCode), path)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	if filepath.Base(path) == "init.sh" {
+		content = normalizeShellScriptLineEndings(content)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		return err
+	}
+	if filepath.Base(path) == "init.sh" {
+		return os.Chmod(path, 0o755)
+	}
+	return nil
+}
+
+func (w *Workspace) RemoveAppDir(appCode string) error {
+	return os.RemoveAll(w.AppDir(appCode))
 }
 
 func (w *Workspace) PhysicalDataRoot(ctx context.Context) (string, error) {
@@ -56,4 +73,9 @@ func (w *Workspace) PhysicalAppDir(ctx context.Context, appCode string) (string,
 		return "", err
 	}
 	return filepath.ToSlash(filepath.Join(physicalDataRoot, "cd", appCode)), nil
+}
+
+func normalizeShellScriptLineEndings(content string) string {
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	return strings.ReplaceAll(content, "\r", "\n")
 }

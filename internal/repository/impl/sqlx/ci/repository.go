@@ -14,6 +14,7 @@ import (
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlcommon"
 )
 
 var _ repository.CIStore = Repository{}
@@ -32,7 +33,7 @@ func (r Repository) Project(ctx context.Context, id string) (model.Project, erro
 	var project model.Project
 	err := r.db.GetContext(ctx, &project, `SELECT id, name, code, is_active, created_at, updated_at FROM project WHERE id = ?`, id)
 	if err != nil {
-		return model.Project{}, fmt.Errorf("load project %s: %w", id, err)
+		return model.Project{}, fmt.Errorf("load project %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return project, nil
 }
@@ -67,7 +68,7 @@ func (r Repository) Repository(ctx context.Context, id string) (model.Repository
 	err := r.db.GetContext(ctx, &repo, `SELECT id, project_id, name, code, repository_url, git_credential_id,
 		variable_overrides, default_branch, created_at, updated_at FROM repository WHERE id = ?`, id)
 	if err != nil {
-		return model.Repository{}, fmt.Errorf("load repository %s: %w", id, err)
+		return model.Repository{}, fmt.Errorf("load repository %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return repo, nil
 }
@@ -83,7 +84,7 @@ func (r Repository) RepositoryByCode(ctx context.Context, projectId *string, cod
 	err := r.db.GetContext(ctx, &repo, `SELECT id, project_id, name, code, repository_url, git_credential_id,
 		variable_overrides, default_branch, created_at, updated_at FROM repository`+where, args...)
 	if err != nil {
-		return model.Repository{}, fmt.Errorf("load repository by code %s: %w", code, err)
+		return model.Repository{}, fmt.Errorf("load repository by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
 	return repo, nil
 }
@@ -135,7 +136,7 @@ func (r Repository) RepositoryWebhook(ctx context.Context, id string) (model.Rep
 	var webhook model.RepositoryWebhook
 	err := r.db.GetContext(ctx, &webhook, `SELECT id, repository_id, name, template_id, branch_filter, encrypted_secret, enabled, created_at, updated_at FROM repository_webhook WHERE id = ?`, id)
 	if err != nil {
-		return model.RepositoryWebhook{}, fmt.Errorf("load repository webhook %s: %w", id, err)
+		return model.RepositoryWebhook{}, fmt.Errorf("load repository webhook %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return webhook, nil
 }
@@ -185,7 +186,7 @@ func (r Repository) Credential(ctx context.Context, id string) (model.Credential
 	var credential model.Credential
 	err := r.db.GetContext(ctx, &credential, `SELECT id, project_id, name, type, encrypted_data, created_at FROM credential WHERE id = ?`, id)
 	if err != nil {
-		return model.Credential{}, fmt.Errorf("load credential %s: %w", id, err)
+		return model.Credential{}, fmt.Errorf("load credential %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return credential, nil
 }
@@ -194,7 +195,7 @@ func (r Repository) CredentialByName(ctx context.Context, projectId string, name
 	var credential model.Credential
 	err := r.db.GetContext(ctx, &credential, `SELECT id, project_id, name, type, encrypted_data, created_at FROM credential WHERE project_id = ? AND name = ?`, strings.TrimSpace(projectId), strings.TrimSpace(name))
 	if err != nil {
-		return model.Credential{}, fmt.Errorf("load credential by name %s: %w", name, err)
+		return model.Credential{}, fmt.Errorf("load credential by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
 	return credential, nil
 }
@@ -213,7 +214,7 @@ func (r Repository) CredentialName(ctx context.Context, id string) (*string, err
 	}
 	var name string
 	if err := r.db.GetContext(ctx, &name, `SELECT name FROM credential WHERE id = ?`, id); err != nil {
-		return nil, fmt.Errorf("load credential name %s: %w", id, err)
+		return nil, fmt.Errorf("load credential name %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return &name, nil
 }
@@ -271,7 +272,7 @@ func (r Repository) PipelineTemplate(ctx context.Context, id string) (model.Pipe
 	var template model.PipelineTemplate
 	err := r.db.GetContext(ctx, &template, `SELECT id, project_id, name, description, variable_declarations, version, created_at, updated_at FROM pipeline_template WHERE id = ?`, id)
 	if err != nil {
-		return model.PipelineTemplate{}, fmt.Errorf("load pipeline template %s: %w", id, err)
+		return model.PipelineTemplate{}, fmt.Errorf("load pipeline template %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return template, nil
 }
@@ -280,7 +281,7 @@ func (r Repository) PipelineTemplateByName(ctx context.Context, projectId string
 	var template model.PipelineTemplate
 	err := r.db.GetContext(ctx, &template, `SELECT id, project_id, name, description, variable_declarations, version, created_at, updated_at FROM pipeline_template WHERE project_id = ? AND name = ?`, projectId, name)
 	if err != nil {
-		return model.PipelineTemplate{}, fmt.Errorf("load pipeline template by name %s: %w", name, err)
+		return model.PipelineTemplate{}, fmt.Errorf("load pipeline template by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
 	return template, nil
 }
@@ -405,7 +406,7 @@ func (r Repository) BuildStage(ctx context.Context, id string) (model.BuildStage
 	var stage model.BuildStage
 	err := r.db.GetContext(ctx, &stage, `SELECT id, project_id, name, image, script, artifacts, description, version, created_at, updated_at FROM build_stage WHERE id = ?`, id)
 	if err != nil {
-		return model.BuildStage{}, fmt.Errorf("load build stage %s: %w", id, err)
+		return model.BuildStage{}, fmt.Errorf("load build stage %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return stage, nil
 }
@@ -414,7 +415,7 @@ func (r Repository) BuildStageByName(ctx context.Context, projectId string, name
 	var stage model.BuildStage
 	err := r.db.GetContext(ctx, &stage, `SELECT id, project_id, name, image, script, artifacts, description, version, created_at, updated_at FROM build_stage WHERE project_id = ? AND name = ?`, projectId, name)
 	if err != nil {
-		return model.BuildStage{}, fmt.Errorf("load build stage by name %s: %w", name, err)
+		return model.BuildStage{}, fmt.Errorf("load build stage by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
 	return stage, nil
 }
@@ -509,7 +510,7 @@ func (r Repository) PipelineRun(ctx context.Context, id string) (model.PipelineR
 		template_name, template_version, %s, trigger_ref, variables_snapshot, status, retry_of,
 		started_at, finished_at, error_message, created_at FROM pipeline_run WHERE id = ?`, db.QuoteIdent(r.driver, "trigger")), id)
 	if err != nil {
-		return model.PipelineRun{}, fmt.Errorf("load pipeline run %s: %w", id, err)
+		return model.PipelineRun{}, fmt.Errorf("load pipeline run %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return run, nil
 }
@@ -553,7 +554,7 @@ func (r Repository) PipelineSnapshot(ctx context.Context, id string) (model.Pipe
 	err := r.db.GetContext(ctx, &snapshot, `SELECT id, project_id, template_id, version, stages_snapshot,
 		variables_snapshot, created_at FROM pipeline_snapshot WHERE id = ?`, id)
 	if err != nil {
-		return model.PipelineSnapshot{}, fmt.Errorf("load pipeline snapshot %s: %w", id, err)
+		return model.PipelineSnapshot{}, fmt.Errorf("load pipeline snapshot %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return snapshot, nil
 }
@@ -562,7 +563,7 @@ func (r Repository) LatestPipelineSnapshot(ctx context.Context, templateId strin
 	var snapshot model.PipelineSnapshot
 	err := r.db.GetContext(ctx, &snapshot, `SELECT id, project_id, template_id, version, stages_snapshot, variables_snapshot, created_at FROM pipeline_snapshot WHERE template_id = ? ORDER BY version DESC LIMIT 1`, templateId)
 	if err != nil {
-		return model.PipelineSnapshot{}, fmt.Errorf("load latest pipeline snapshot %s: %w", templateId, err)
+		return model.PipelineSnapshot{}, fmt.Errorf("load latest pipeline snapshot %s: %w", templateId, sqlcommon.TranslateError(err))
 	}
 	return snapshot, nil
 }
@@ -589,7 +590,7 @@ func (r Repository) StageRun(ctx context.Context, id string) (model.StageRun, er
 	var item model.StageRun
 	err := r.db.GetContext(ctx, &item, `SELECT id, pipeline_run_id, stage_id, stage_name, status, started_at, finished_at, exit_code, error_message FROM stage_run WHERE id = ?`, id)
 	if err != nil {
-		return model.StageRun{}, fmt.Errorf("load stage run %s: %w", id, err)
+		return model.StageRun{}, fmt.Errorf("load stage run %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return item, nil
 }

@@ -2,7 +2,6 @@ package authz
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -105,7 +104,7 @@ func TestCurrentUserReturnsServiceUnavailableForUserLoadError(t *testing.T) {
 
 func TestCurrentUserReturnsUnauthorizedForMissingUser(t *testing.T) {
 	token := signedToken(t)
-	authenticator := testAuthenticator(fakeAuthStore{err: sql.ErrNoRows})
+	authenticator := testAuthenticator(fakeAuthStore{err: repository.ErrNotFound})
 
 	recorder := httptest.NewRecorder()
 	authenticator.CurrentUser(testContext(recorder, authedRequest(token)))

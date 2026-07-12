@@ -2,7 +2,6 @@ package cisvc
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -171,7 +170,7 @@ func (s Service) loadPipelineTemplateForUser(ctx context.Context, userId string,
 	templateId = strings.TrimSpace(templateId)
 	template, err := s.store.PipelineTemplate(ctx, templateId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.PipelineTemplate{}, apperror.New(apperror.KindNotFound, "Pipeline template "+templateId+" not found")
 		}
 		return model.PipelineTemplate{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline template", err)
@@ -246,7 +245,7 @@ func (s Service) ensurePipelineTemplateNameAvailable(ctx context.Context, projec
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check pipeline template name", err)
 	}
 	return nil
@@ -260,7 +259,7 @@ func (s Service) nextPipelineTemplateCopyName(ctx context.Context, projectId str
 			candidate = fmt.Sprintf("%s copy %d", baseName, i)
 		}
 		_, err := s.store.PipelineTemplateByName(ctx, projectId, candidate)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return candidate, nil
 		}
 		if err != nil {

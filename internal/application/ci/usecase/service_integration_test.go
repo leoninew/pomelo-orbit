@@ -20,6 +20,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
+	queuedispatch "gitee.com/leoninew/PomeloOrbit-go/internal/queue/dispatch"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/ci"
@@ -193,7 +194,7 @@ func newCIIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 		t.Fatal(err)
 	}
 	tasks := tasksvc.New(taskrepo.NewRepository(database, config.DatabaseDriverSQLite), 3)
-	service := New(cirepo.NewRepository(database, config.DatabaseDriverSQLite), tasks, t.TempDir(), ciTestSecretKey, slog.New(slog.NewTextHandler(io.Discard, nil)), executionlog.Store{})
+	service := New(cirepo.NewRepository(database, config.DatabaseDriverSQLite), queuedispatch.NewCIDispatcher(tasks), newTestWorkspace(t), ciTestSecretKey, slog.New(slog.NewTextHandler(io.Discard, nil)), fakeContainerRunner{}, executionlog.Store{})
 	return service, database
 }
 

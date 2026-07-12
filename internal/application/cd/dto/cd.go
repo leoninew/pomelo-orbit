@@ -25,6 +25,23 @@ type ApplicationDeployInput struct {
 	ForceRecreate bool
 }
 
+type ApplicationDeployDispatchInput struct {
+	ApplicationID string
+	DeploymentID  string
+	ForceRecreate bool
+}
+
+type ApplicationRestartDispatchInput struct {
+	ApplicationID string
+	DeploymentID  string
+}
+
+type ApplicationStopDispatchInput struct {
+	ApplicationID string
+	DeploymentID  string
+	RemoveVolumes bool
+}
+
 type DeploymentListInput struct {
 	ProjectId     string
 	ApplicationId string

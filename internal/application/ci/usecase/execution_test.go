@@ -3,6 +3,7 @@ package cisvc
 import (
 	"context"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	ciport "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
@@ -29,7 +29,7 @@ func TestExecutePipelineRunMarksRunFaultedWhenStageFails(t *testing.T) {
 			{"id":"stage-2","name":"deploy","image":"alpine","depends_on":["stage-1"],"script":"echo deploy"}
 		]`},
 	}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), failingContainerRunner{}, executionlog.Store{})
+	service := NewExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), failingContainerRunner{}, executionlog.Store{})
 
 	err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1"})
 	if err != nil {
@@ -66,7 +66,7 @@ func TestExecutePipelineRunExecutesPipelineRun(t *testing.T) {
 		repo:     model.Repository{Id: "repo-1", Code: "repo"},
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"echo ok"}]`},
 	}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), fakeContainerRunner{}, executionlog.Store{})
+	service := NewExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), fakeContainerRunner{}, executionlog.Store{})
 
 	err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1"})
 	if err != nil {
@@ -106,7 +106,7 @@ func TestExecutePipelineRunInjectsGiteeCredentialRewrite(t *testing.T) {
 		snapshot:   model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"git clone","image":"alpine/git","script":"git remote add origin {{ repository_url }}\ngit fetch --depth=1 origin {{ repository_ref }}"}]`, VariablesSnapshot: `[{"name":"repository_url","source":"template","editable":false},{"name":"repository_ref","source":"template","editable":false}]`},
 	}
 	runner := &recordingContainerRunner{}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
+	service := NewExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
 	if err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1"}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
@@ -145,7 +145,7 @@ func TestExecutePipelineRunResolvesVariablesFromDeclarations(t *testing.T) {
 		snapshot: model.PipelineSnapshot{Id: "snapshot-1", StagesSnapshot: `[{"id":"stage-1","name":"build","image":"alpine","script":"cd {{ working_dir }} && echo {{ repository_code }}"}]`, VariablesSnapshot: `[{"name":"working_dir","default":".","source":"template_stage","editable":true},{"name":"repository_code","source":"template","editable":false}]`},
 	}
 	runner := &recordingContainerRunner{}
-	service := NewExecutionService(store, t.TempDir(), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
+	service := NewExecutionService(store, newTestWorkspace(t), testExecutionFernetKey, slog.Default(), runner, executionlog.Store{})
 
 	if err := service.ExecutePipelineRun(context.Background(), cidto.ExecutePipelineRunInput{PipelineRunID: "run-1", Variables: map[string]any{"working_dir": "ignored"}}); err != nil {
 		t.Fatalf("ExecutePipelineRun returned error: %v", err)
@@ -251,7 +251,7 @@ func (failingContainerRunner) Run(ctx context.Context, opts ciport.RunOptions) (
 type recordingContainerRunner struct {
 	script      string
 	environment []string
-	volumes     []ciworkspace.VolumeMount
+	volumes     []ciport.VolumeMount
 }
 
 func (r *recordingContainerRunner) Run(ctx context.Context, opts ciport.RunOptions) (int, string, error) {
@@ -259,6 +259,54 @@ func (r *recordingContainerRunner) Run(ctx context.Context, opts ciport.RunOptio
 	r.environment = opts.Environment
 	r.volumes = opts.Volumes
 	return 0, "ok", nil
+}
+
+type testWorkspace struct {
+	root string
+}
+
+func newTestWorkspace(t *testing.T) testWorkspace {
+	t.Helper()
+	return testWorkspace{root: t.TempDir()}
+}
+
+func (w testWorkspace) CreateRunDirectories(projectCode string, runID string) error {
+	for _, path := range []string{w.workspacePath(projectCode), w.ArtifactsPath(runID)} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w testWorkspace) ArtifactsPath(runID string) string {
+	return filepath.Join(w.root, "ci", "runs", runID, "artifacts")
+}
+
+func (w testWorkspace) ArtifactExists(runID string, artifactPath string) (bool, error) {
+	_, err := os.Stat(filepath.Join(w.ArtifactsPath(runID), artifactPath))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func (w testWorkspace) StageLogPath(runID string, stageRunID string) string {
+	return filepath.Join(w.root, "ci", "runs", runID, "stages", stageRunID+".log")
+}
+
+func (w testWorkspace) DockerStageMounts(ctx context.Context, projectCode string, runID string) ([]ciport.VolumeMount, error) {
+	return []ciport.VolumeMount{
+		{HostPath: w.workspacePath(projectCode), ContainerPath: "/workspace", Mode: "rw"},
+		{HostPath: w.ArtifactsPath(runID), ContainerPath: "/artifacts", Mode: "rw"},
+	}, nil
+}
+
+func (w testWorkspace) workspacePath(projectCode string) string {
+	return filepath.Join(w.root, "ci", projectCode, "workspace")
 }
 
 func containsString(values []string, expected string) bool {

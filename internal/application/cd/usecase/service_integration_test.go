@@ -7,8 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 
 	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
@@ -23,6 +22,7 @@ import (
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	queuedispatch "gitee.com/leoninew/PomeloOrbit-go/internal/queue/dispatch"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/cd"
@@ -89,15 +89,12 @@ func TestApplicationServiceCRUDDeployStopAndFiles(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `UPDATE application SET status = ? WHERE id = ?`, status.ApplicationStatusUndeployed, created.Id); err != nil {
 		t.Fatal(err)
 	}
-	appDir := filepath.Join(service.cfg.DataRoot(), "cd", updated.Code)
-	if err := os.MkdirAll(appDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	workspace := service.workspace.(*workspaceFake)
 	if err := service.DeleteApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationDeleteInput{RemoveDir: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(appDir); !os.IsNotExist(err) {
-		t.Fatalf("expected application directory to be removed, stat error: %v", err)
+	if len(workspace.removedApps) != 1 || workspace.removedApps[0] != updated.Code {
+		t.Fatalf("expected workspace removal for application %q, got %+v", updated.Code, workspace.removedApps)
 	}
 }
 
@@ -281,8 +278,53 @@ func newCDIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 	cfg.Cert.LetsEncrypt.Enabled = true
 	cfg.Cert.LetsEncrypt.Email = "admin@example.test"
 	tasks := tasksvc.New(taskrepo.NewRepository(database, config.DatabaseDriverSQLite), 3)
-	service := New(cdrepo.NewRepository(database, config.DatabaseDriverSQLite), tasks, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), executionlog.Store{}, &recordingRoutePublisher{}, recordingCertificateGenerator{}, &recordingTraefikClient{})
+	service := New(cdrepo.NewRepository(database, config.DatabaseDriverSQLite), queuedispatch.NewCDDispatcher(tasks), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), testWorkspace(cfg.DataRoot()), &recordingQueryRunner{}, executionlog.Store{}, &recordingRoutePublisher{}, recordingCertificateGenerator{}, &recordingTraefikClient{})
 	return service, database
+}
+
+func TestApplicationStatusUsesQueryRunner(t *testing.T) {
+	service, database := newCDIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	queryRunner := service.queryRunner.(*recordingQueryRunner)
+	app := createQueryTestApplication(t, service)
+	queryRunner.output = "[{\"Name\":\"demo\"}]"
+
+	output, err := service.ApplicationStatus(context.Background(), cdTestUserId, app.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if output != queryRunner.output || queryRunner.cwd != service.workspace.AppDir(app.Code) || queryRunner.name != "docker" || strings.Join(queryRunner.args, " ") != "compose -f docker-compose.yml ps --format json" {
+		t.Fatalf("unexpected query invocation: %+v", queryRunner)
+	}
+}
+
+func TestDeploymentContainerLogFallsBackToTailQuery(t *testing.T) {
+	service, database := newCDIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	queryRunner := service.queryRunner.(*recordingQueryRunner)
+	app := createQueryTestApplication(t, service)
+	deployment := model.Deployment{Id: "01KDEPLOYMENTLOG00000000001", ProjectId: app.ProjectId, ApplicationId: &app.Id, ApplicationName: app.Name, OperationType: "deploy", TriggerType: "manual", Status: status.WorkStatusRunning}
+	if err := service.store.CreateDeployment(context.Background(), deployment); err != nil {
+		t.Fatal(err)
+	}
+	queryRunner.responses = []queryResponse{{output: "since unavailable", err: errors.New("compose unavailable")}, {output: "tail logs"}}
+
+	result, err := service.DeploymentContainerLog(context.Background(), cdTestUserId, deployment.Id, 25)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Logs != "tail logs" || result.Source != "tail" || len(queryRunner.calls) != 2 || strings.Join(queryRunner.calls[1].args, " ") != "compose -f docker-compose.yml logs --tail 25" {
+		t.Fatalf("unexpected fallback result or query calls: result=%+v calls=%+v", result, queryRunner.calls)
+	}
+}
+
+func createQueryTestApplication(t *testing.T, service Service) model.Application {
+	t.Helper()
+	app, err := service.CreateApplication(context.Background(), cdTestUserId, cdto.ApplicationCreateInput{ProjectId: cdTestProjectId, Name: "Query App", Code: "query-app", ImagePullPolicy: "missing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return app
 }
 
 func loadDeploymentForTest(t *testing.T, database *sqlx.DB, id string) model.Deployment {
@@ -310,6 +352,40 @@ func assertLatestTaskPayload(t *testing.T, database *sqlx.DB, taskType string, d
 	if payload["deployment_id"] != deploymentId || payload[key] != want {
 		t.Fatalf("unexpected task payload: %+v", payload)
 	}
+}
+
+type queryCall struct {
+	cwd  string
+	name string
+	args []string
+}
+
+type queryResponse struct {
+	output string
+	err    error
+}
+
+type recordingQueryRunner struct {
+	output    string
+	err       error
+	cwd       string
+	name      string
+	args      []string
+	responses []queryResponse
+	calls     []queryCall
+}
+
+func (r *recordingQueryRunner) Run(_ context.Context, cwd string, name string, args ...string) (string, error) {
+	r.cwd = cwd
+	r.name = name
+	r.args = append([]string{}, args...)
+	r.calls = append(r.calls, queryCall{cwd: cwd, name: name, args: append([]string{}, args...)})
+	if len(r.responses) > 0 {
+		response := r.responses[0]
+		r.responses = r.responses[1:]
+		return response.output, response.err
+	}
+	return r.output, r.err
 }
 
 type recordingRoutePublisher struct {

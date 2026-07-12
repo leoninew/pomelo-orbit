@@ -2,7 +2,6 @@ package projectsvc
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"regexp"
@@ -51,7 +50,7 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Sav
 func (s Service) LoadForUser(ctx context.Context, projectId string, userId string) (model.Project, error) {
 	project, err := s.repo.Project(ctx, projectId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.Project{}, apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return model.Project{}, err
@@ -121,7 +120,7 @@ func (s Service) AddMember(ctx context.Context, projectId string, userId string)
 		return nil, apperror.New(apperror.KindValidation, "user_id is required")
 	}
 	if _, err := s.users.UserById(ctx, userId); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return nil, apperror.New(apperror.KindNotFound, "User "+userId+" not found")
 		}
 		return nil, fmt.Errorf("load member user %s: %w", userId, err)
@@ -147,7 +146,7 @@ func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentPr
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, repository.ErrNotFound) {
 		return fmt.Errorf("check project code %s: %w", code, err)
 	}
 	return nil

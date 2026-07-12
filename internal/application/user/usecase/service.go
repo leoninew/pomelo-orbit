@@ -2,7 +2,6 @@ package usersvc
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"slices"
 	"strings"
@@ -79,13 +78,13 @@ func (s Service) Create(ctx context.Context, input userdto.CreateInput) (model.U
 	}
 	if _, err := s.repo.UserByUsername(ctx, username); err == nil {
 		return model.User{}, apperror.New(apperror.KindConflict, "Username "+username+" already exists")
-	} else if !errors.Is(err, sql.ErrNoRows) {
+	} else if !errors.Is(err, repository.ErrNotFound) {
 		return model.User{}, err
 	}
 	if email != nil {
 		if _, err := s.repo.UserByEmail(ctx, *email); err == nil {
 			return model.User{}, apperror.New(apperror.KindConflict, "Email "+*email+" already exists")
-		} else if !errors.Is(err, sql.ErrNoRows) {
+		} else if !errors.Is(err, repository.ErrNotFound) {
 			return model.User{}, err
 		}
 	}
@@ -165,7 +164,7 @@ func (s Service) SetRoles(ctx context.Context, actor userdto.Actor, userId strin
 	}
 	for _, roleId := range normalizedRoleIds {
 		if _, err := s.roles.RoleById(ctx, roleId); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, repository.ErrNotFound) {
 				return userdto.Detail{}, apperror.New(apperror.KindNotFound, "Role "+roleId+" not found")
 			}
 			return userdto.Detail{}, err
@@ -202,7 +201,7 @@ func (s Service) update(ctx context.Context, user model.User, input userdto.Upda
 			if err == nil && existing.Id != user.Id {
 				return model.User{}, apperror.New(apperror.KindConflict, "Username "+username+" already exists")
 			}
-			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			if err != nil && !errors.Is(err, repository.ErrNotFound) {
 				return model.User{}, err
 			}
 		}
@@ -232,7 +231,7 @@ func (s Service) update(ctx context.Context, user model.User, input userdto.Upda
 func (s Service) find(ctx context.Context, userId string) (model.User, error) {
 	user, err := s.repo.UserById(ctx, userId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, repository.ErrNotFound) {
 			return model.User{}, apperror.New(apperror.KindNotFound, "User "+userId+" not found")
 		}
 		return model.User{}, err

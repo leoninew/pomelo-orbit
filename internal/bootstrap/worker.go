@@ -18,7 +18,6 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker"
 	cdworker "gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker/handler/cd"
 	ciworker "gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker/handler/ci"
-	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 	cdrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/cd"
 	cirepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlx/ci"
 )
@@ -37,13 +36,4 @@ func NewTaskRouter(database *sqlx.DB, cfg config.Config, logger *slog.Logger) *w
 	router.Register(status.TaskTypeCDApplicationRestart, cdworker.NewRestartHandler(cdService))
 	router.Register(status.TaskTypeCDApplicationStop, cdworker.NewStopHandler(cdService))
 	return router
-}
-
-func NewWorker(cfg config.Config, logger *slog.Logger, taskRepo taskrepo.Repository, router worker.Handler) *worker.Worker {
-	return worker.New(taskRepo, router, logger, worker.Config{
-		WorkerId:      cfg.Worker.Id,
-		PollInterval:  cfg.Worker.PollInterval,
-		LeaseDuration: cfg.Worker.LeaseDuration,
-		Concurrency:   cfg.Worker.Concurrency,
-	})
 }

@@ -7,6 +7,8 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	database "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/queue/worker"
+	taskrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/task"
 )
 
 type App struct {
@@ -39,10 +41,15 @@ func (a App) RunWorker(ctx context.Context) error {
 		return err
 	}
 
-	taskRepo := NewTaskRepository(database, a.cfg.Database.Driver)
+	taskRepo := taskrepo.NewRepository(database, a.cfg.Database.Driver)
 	router := NewTaskRouter(database, a.cfg, a.logger)
-	worker := NewWorker(a.cfg, a.logger, taskRepo, router)
-	return worker.Run(ctx)
+	backgroundWorker := worker.New(taskRepo, router, a.logger, worker.Config{
+		WorkerId:      a.cfg.Worker.Id,
+		PollInterval:  a.cfg.Worker.PollInterval,
+		LeaseDuration: a.cfg.Worker.LeaseDuration,
+		Concurrency:   a.cfg.Worker.Concurrency,
+	})
+	return backgroundWorker.Run(ctx)
 }
 
 func (a App) MigrationVersion() (database.MigrationVersion, error) {
@@ -65,11 +72,16 @@ func (a App) Serve(ctx context.Context) error {
 		return err
 	}
 
-	taskRepo := NewTaskRepository(database, a.cfg.Database.Driver)
+	taskRepo := taskrepo.NewRepository(database, a.cfg.Database.Driver)
 	server := NewHTTPServer(a.cfg, a.logger, database, taskRepo)
 	httpServer := &http.Server{Addr: server.Addr(), Handler: server.Handler()}
 	router := NewTaskRouter(database, a.cfg, a.logger)
-	backgroundWorker := NewWorker(a.cfg, a.logger, taskRepo, router)
+	backgroundWorker := worker.New(taskRepo, router, a.logger, worker.Config{
+		WorkerId:      a.cfg.Worker.Id,
+		PollInterval:  a.cfg.Worker.PollInterval,
+		LeaseDuration: a.cfg.Worker.LeaseDuration,
+		Concurrency:   a.cfg.Worker.Concurrency,
+	})
 
 	return runHTTPServerAndWorker(ctx, a.logger, server.Addr(), httpServer, backgroundWorker)
 }

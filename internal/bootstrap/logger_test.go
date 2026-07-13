@@ -1,4 +1,4 @@
-package logging
+package bootstrap
 
 import (
 	"log/slog"
@@ -10,7 +10,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
-func TestNewReturnsLogger(t *testing.T) {
+func TestNewLoggerReturnsLogger(t *testing.T) {
 	restoreDefaultLogger(t)
 	cases := []struct {
 		level       string
@@ -25,9 +25,9 @@ func TestNewReturnsLogger(t *testing.T) {
 		{level: "unknown", enabledInfo: true},
 	}
 	for _, tc := range cases {
-		logger, closeLogger, err := New(testConfig(t, tc.level))
+		logger, closeLogger, err := NewLogger(testLoggerConfig(t, tc.level))
 		if err != nil {
-			t.Fatalf("New returned error for level %s: %v", tc.level, err)
+			t.Fatalf("NewLogger returned error for level %s: %v", tc.level, err)
 		}
 		closeLoggerFn := closeLogger
 		t.Cleanup(func() {
@@ -44,19 +44,19 @@ func TestNewReturnsLogger(t *testing.T) {
 	}
 }
 
-func TestNewWritesLogFile(t *testing.T) {
+func TestNewLoggerWritesLogFile(t *testing.T) {
 	restoreDefaultLogger(t)
-	cfg := testConfig(t, "INFO")
-	logger, closeLogger, err := New(cfg)
+	cfg := testLoggerConfig(t, "INFO")
+	logger, closeLogger, err := NewLogger(cfg)
 	if err != nil {
-		t.Fatalf("New returned error: %v", err)
+		t.Fatalf("NewLogger returned error: %v", err)
 	}
 	logger.Info("file log created", "component", "test")
 	if err := closeLogger(); err != nil {
 		t.Fatal(err)
 	}
 
-	content, err := os.ReadFile(cfg.File)
+	content, err := os.ReadFile(cfg.Logging.File)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,37 +66,37 @@ func TestNewWritesLogFile(t *testing.T) {
 	}
 }
 
-func TestNewCreatesLogDirectory(t *testing.T) {
+func TestNewLoggerCreatesLogDirectory(t *testing.T) {
 	restoreDefaultLogger(t)
-	cfg := config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "nested", "logs", "pomelo-orbit.log"), MaxSizeMB: 100, MaxBackups: 7}
-	_, closeLogger, err := New(cfg)
+	cfg := config.Config{Logging: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "nested", "logs", "pomelo-orbit.log"), MaxSizeMB: 100, MaxBackups: 7}}
+	_, closeLogger, err := NewLogger(cfg)
 	if err != nil {
-		t.Fatalf("New returned error: %v", err)
+		t.Fatalf("NewLogger returned error: %v", err)
 	}
 	if err := closeLogger(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Dir(cfg.File)); err != nil {
+	if _, err := os.Stat(filepath.Dir(cfg.Logging.File)); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestNewSetsDefaultLogger(t *testing.T) {
+func TestNewLoggerSetsDefaultLogger(t *testing.T) {
 	restoreDefaultLogger(t)
-	cfg := testConfig(t, "INFO")
-	logger, closeLogger, err := New(cfg)
+	cfg := testLoggerConfig(t, "INFO")
+	logger, closeLogger, err := NewLogger(cfg)
 	if err != nil {
-		t.Fatalf("New returned error: %v", err)
+		t.Fatalf("NewLogger returned error: %v", err)
 	}
 	slog.Info("default logger writes file", "component", "default")
 	if err := closeLogger(); err != nil {
 		t.Fatal(err)
 	}
 	if slog.Default() != logger {
-		t.Fatal("expected New to install default logger")
+		t.Fatal("expected NewLogger to install default logger")
 	}
 
-	content, err := os.ReadFile(cfg.File)
+	content, err := os.ReadFile(cfg.Logging.File)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,17 +106,17 @@ func TestNewSetsDefaultLogger(t *testing.T) {
 	}
 }
 
-func TestNewValidatesConfig(t *testing.T) {
+func TestNewLoggerValidatesConfig(t *testing.T) {
 	cases := []struct {
 		name string
-		cfg  config.LoggingConfig
+		cfg  config.Config
 	}{
-		{name: "missing file", cfg: config.LoggingConfig{Level: "INFO", MaxSizeMB: 100, MaxBackups: 7}},
-		{name: "missing max size", cfg: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxBackups: 7}},
-		{name: "missing max backups", cfg: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 100}},
+		{name: "missing file", cfg: config.Config{Logging: config.LoggingConfig{Level: "INFO", MaxSizeMB: 100, MaxBackups: 7}}},
+		{name: "missing max size", cfg: config.Config{Logging: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxBackups: 7}}},
+		{name: "missing max backups", cfg: config.Config{Logging: config.LoggingConfig{Level: "INFO", File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 100}}},
 	}
 	for _, tc := range cases {
-		if _, _, err := New(tc.cfg); err == nil {
+		if _, _, err := NewLogger(tc.cfg); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
 	}
@@ -130,7 +130,7 @@ func restoreDefaultLogger(t *testing.T) {
 	})
 }
 
-func testConfig(t *testing.T, level string) config.LoggingConfig {
+func testLoggerConfig(t *testing.T, level string) config.Config {
 	t.Helper()
-	return config.LoggingConfig{Level: level, File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 100, MaxBackups: 7}
+	return config.Config{Logging: config.LoggingConfig{Level: level, File: filepath.Join(t.TempDir(), "pomelo-orbit.log"), MaxSizeMB: 100, MaxBackups: 7}}
 }

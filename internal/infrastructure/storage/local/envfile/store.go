@@ -8,16 +8,14 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
 type Store struct {
 	path string
 }
 
-func NewStore(cfg config.Config) Store {
-	return Store{path: envPath(cfg)}
+func NewStore(path string) Store {
+	return Store{path: filepath.Clean(path)}
 }
 
 func (s Store) Load(context.Context) (map[string]string, error) {
@@ -83,11 +81,4 @@ func (s Store) write(envMap map[string]string) error {
 		content += "\n"
 	}
 	return os.WriteFile(s.path, []byte(content), 0o644)
-}
-
-func envPath(cfg config.Config) string {
-	if cfg.EnvFilePath != "" {
-		return filepath.Clean(cfg.EnvFilePath)
-	}
-	return filepath.Join(cfg.OrbitRoot(), ".env")
 }

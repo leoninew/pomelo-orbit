@@ -7,7 +7,6 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/bootstrap"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/logger/logging"
 )
 
 func main() {
@@ -20,7 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, closeLogger, err := logging.New(cfg.Logging)
+	logger, closeLogger, err := bootstrap.NewLogger(cfg)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "init logger failed: %v\n", err)
 		os.Exit(1)

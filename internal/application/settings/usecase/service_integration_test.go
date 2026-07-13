@@ -8,14 +8,14 @@ import (
 
 	settingsdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/dto"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/config/envfile"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/envfile"
 )
 
 func TestConfigUpdateAndResetPersistEnvOverrides(t *testing.T) {
 	envFilePath := filepath.Join(t.TempDir(), ".env")
 	cfg := config.Config{EnvFilePath: envFilePath}
 	cfg.Logging.Level = "info"
-	service := New(cfg, envfile.NewStore(cfg))
+	service := New(cfg, envfile.NewStore(envFilePath))
 	ctx := context.Background()
 
 	initial, err := service.Config(ctx)

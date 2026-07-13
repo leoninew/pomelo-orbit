@@ -1,4 +1,4 @@
-package logging
+package bootstrap
 
 import (
 	"fmt"
@@ -13,19 +13,20 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
-func New(cfg config.LoggingConfig) (*slog.Logger, func() error, error) {
-	if strings.TrimSpace(cfg.File) == "" {
+func NewLogger(cfg config.Config) (*slog.Logger, func() error, error) {
+	loggingCfg := cfg.Logging
+	if strings.TrimSpace(loggingCfg.File) == "" {
 		return nil, nil, fmt.Errorf("logging.file is required")
 	}
-	if cfg.MaxSizeMB <= 0 {
+	if loggingCfg.MaxSizeMB <= 0 {
 		return nil, nil, fmt.Errorf("logging.max_size_mb must be positive")
 	}
-	if cfg.MaxBackups <= 0 {
+	if loggingCfg.MaxBackups <= 0 {
 		return nil, nil, fmt.Errorf("logging.max_backups must be positive")
 	}
 
 	var slogLevel slog.Level
-	switch strings.ToUpper(strings.TrimSpace(cfg.Level)) {
+	switch strings.ToUpper(strings.TrimSpace(loggingCfg.Level)) {
 	case "DEBUG":
 		slogLevel = slog.LevelDebug
 	case "WARN", "WARNING":
@@ -36,14 +37,14 @@ func New(cfg config.LoggingConfig) (*slog.Logger, func() error, error) {
 		slogLevel = slog.LevelInfo
 	}
 
-	if err := os.MkdirAll(filepath.Dir(cfg.File), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(loggingCfg.File), 0o755); err != nil {
 		return nil, nil, fmt.Errorf("create log directory: %w", err)
 	}
 
 	rollingWriter := &lumberjack.Logger{
-		Filename:   cfg.File,
-		MaxSize:    cfg.MaxSizeMB,
-		MaxBackups: cfg.MaxBackups,
+		Filename:   loggingCfg.File,
+		MaxSize:    loggingCfg.MaxSizeMB,
+		MaxBackups: loggingCfg.MaxBackups,
 	}
 	writer := io.MultiWriter(os.Stdout, rollingWriter)
 	handler := slog.NewTextHandler(writer, &slog.HandlerOptions{Level: slogLevel})

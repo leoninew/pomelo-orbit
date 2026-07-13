@@ -17,7 +17,6 @@ import (
 	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase"
 	jwt "gitee.com/leoninew/PomeloOrbit-go/internal/auth/jwt"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/config/envfile"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/traefik"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/external/turnstile"
 	cdrunner "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/runner/cd"
@@ -25,6 +24,7 @@ import (
 	runtimepath "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/cdworkspace"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/ciworkspace"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/envfile"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	queuedispatch "gitee.com/leoninew/PomeloOrbit-go/internal/queue/dispatch"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
@@ -61,7 +61,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		RoleService:       rolesvc.New(roleRepository),
 		UserService:       usersvc.New(userRepository, roleRepository),
 		ProjectService:    projectsvc.New(projectRepository, userRepository),
-		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg)),
+		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg.EnvFilePath)),
 		CIService:         cisvc.New(ciRepository, ciDispatcher, ciWorkspace, cfg.JWT.SecretKey, logger, dockerci.DockerRunner{}, logStore),
 		CDService:         cdsvc.New(cdRepository, cdDispatcher, cfg, logger, cdWorkspace, cdrunner.CommandQueryRunner{}, logStore, routeManager, traefik.MkcertGenerator{}, routeManager),
 		TaskService:       taskService,

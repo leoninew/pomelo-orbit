@@ -48,14 +48,14 @@ jobs:
 
       - name: Verify Go formatting
         run: |
-          go fmt ./cmd/... ./internal/...
-          git diff --exit-code -- cmd internal
+          go fmt ./cmd/... ./internal/... ./sql
+          git diff --exit-code -- cmd internal sql
 
       - name: Run Go vet
-        run: go vet ./cmd/... ./internal/...
+        run: go vet ./cmd/... ./internal/... ./sql
 
       - name: Run Go tests
-        run: go test ./cmd/... ./internal/...
+        run: go test ./cmd/... ./internal/... ./sql
 
       - name: Extract metadata
         id: meta

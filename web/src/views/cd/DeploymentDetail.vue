@@ -158,10 +158,20 @@
     >
       <p class="text-sm text-foreground">确定要取消此部署吗？</p>
       <template #footer>
-        <button type="button" class="app-button" :disabled="isCancelling" @click="isCancelDialogOpen = false">
+        <button
+          type="button"
+          class="app-button"
+          :disabled="isCancelling"
+          @click="isCancelDialogOpen = false"
+        >
           取消
         </button>
-        <button type="button" class="app-button-destructive" :disabled="isCancelling" @click="handleCancel">
+        <button
+          type="button"
+          class="app-button-destructive"
+          :disabled="isCancelling"
+          @click="handleCancel"
+        >
           确认取消
         </button>
       </template>
@@ -258,13 +268,21 @@
       return;
     }
     try {
-      const data = await deploymentApi.getContainerLogs(deploymentId.value, { tail: 200 }, { signal });
+      const data = await deploymentApi.getContainerLogs(
+        deploymentId.value,
+        { tail: 200 },
+        { signal }
+      );
       if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
         return;
       }
       logText.value = data.logs;
       containerLogSource.value = data.source;
-      logStatus.value = isTerminalDeployment.value ? (logText.value ? 'done' : 'empty') : 'streaming';
+      logStatus.value = isTerminalDeployment.value
+        ? logText.value
+          ? 'done'
+          : 'empty'
+        : 'streaming';
       scrollToBottom();
     } catch {
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {

@@ -7,9 +7,9 @@ describe('delayAsync', () => {
     const delayed = delayAsync(1000);
 
     await vi.advanceTimersByTimeAsync(999);
-    await expect(Promise.race([delayed.then(() => 'resolved'), Promise.resolve('pending')])).resolves.toBe(
-      'pending'
-    );
+    await expect(
+      Promise.race([delayed.then(() => 'resolved'), Promise.resolve('pending')])
+    ).resolves.toBe('pending');
 
     await vi.advanceTimersByTimeAsync(1);
     await expect(delayed).resolves.toBeUndefined();

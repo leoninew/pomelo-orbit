@@ -31,17 +31,17 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="runs.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list table-fixed min-w-[900px]">
+        <table class="app-table-list table-fixed min-w-[1200px]">
           <colgroup>
             <col class="w-[14%]" />
-            <col class="w-[14%]" />
+            <col class="w-[16%]" />
             <col class="w-[8%]" />
-            <col class="w-[12%]" />
+            <col class="w-[11%]" />
             <col class="w-[10%]" />
-            <col class="w-[13%]" />
-            <col class="w-[13%]" />
+            <col class="w-[12%]" />
+            <col class="w-[15%]" />
             <col class="w-[7%]" />
-            <col class="w-[9%]" />
+            <col class="w-[7%]" />
           </colgroup>
           <thead>
             <tr>
@@ -94,10 +94,7 @@
               >
                 {{ run.error_message || '—' }}
               </td>
-              <td
-                class="overflow-hidden truncate text-foreground"
-                :title="formatTime(run.started_at)"
-              >
+              <td class="whitespace-nowrap text-foreground" :title="formatTime(run.started_at)">
                 {{ formatTime(run.started_at) }}
               </td>
               <td class="whitespace-nowrap text-foreground">

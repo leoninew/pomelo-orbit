@@ -77,10 +77,15 @@
                 >
                   {{ app.name }}
                 </h3>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono text-xs text-muted-foreground">{{ app.code }}</span>
-                  <span class="h-1 w-1 rounded-full bg-muted-foreground/40" />
-                  <span class="text-xs text-muted-foreground">
+                <div class="flex min-w-0 items-center gap-2">
+                  <span
+                    class="min-w-0 truncate font-mono text-xs text-muted-foreground"
+                    :title="app.code"
+                  >
+                    {{ app.code }}
+                  </span>
+                  <span class="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
+                  <span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
                     {{ formatTime(app.created_at) }}
                   </span>
                 </div>

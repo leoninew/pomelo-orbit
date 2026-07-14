@@ -22,7 +22,13 @@
     </div>
     <div v-else class="app-surface">
       <div class="overflow-x-auto">
-        <table class="app-table-list min-w-[960px]">
+        <table class="app-table-list table-fixed min-w-[960px]">
+          <colgroup>
+            <col class="w-[25%]" />
+            <col class="w-[30%]" />
+            <col :class="canWriteSettings ? 'w-[30%]' : 'w-[45%]'" />
+            <col v-if="canWriteSettings" class="w-[15%]" />
+          </colgroup>
           <thead>
             <tr>
               <th>{{ t('settings.configKey') }}</th>
@@ -33,8 +39,12 @@
           </thead>
           <tbody>
             <tr v-for="item in filteredConfig" :key="item.key">
-              <td class="text-foreground" :title="item.description || undefined">
+              <td
+                class="max-w-0 text-foreground"
+                :title="item.description ? `${item.key}: ${item.description}` : item.key"
+              >
                 <span
+                  class="block truncate"
                   :class="
                     item.description
                       ? 'cursor-help underline decoration-dotted underline-offset-4'
@@ -44,13 +54,12 @@
                   {{ item.key }}
                 </span>
               </td>
-              <td class="text-muted-foreground">
-                <span v-if="typeof item.default === 'boolean'">
-                  {{ item.default ? 'true' : 'false' }}
+              <td class="max-w-0 text-muted-foreground">
+                <span class="block truncate" :title="displayConfigValue(item.default)">
+                  {{ displayConfigValue(item.default) }}
                 </span>
-                <span v-else>{{ item.default || '-' }}</span>
               </td>
-              <td>
+              <td class="max-w-0">
                 <!-- Editing Mode -->
                 <div v-if="editingState.key === item.key">
                   <!-- Boolean -->
@@ -78,17 +87,17 @@
                 <!-- Display Mode -->
                 <div
                   v-else
+                  class="min-w-0"
                   :class="
                     item.is_overridden ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
                   "
                 >
-                  <span v-if="typeof item.value === 'boolean'">
-                    {{ item.value ? 'true' : 'false' }}
+                  <span class="block truncate" :title="displayConfigValue(item.value)">
+                    {{ displayConfigValue(item.value) }}
                   </span>
-                  <span v-else>{{ item.value || '-' }}</span>
                 </div>
               </td>
-              <td v-if="canWriteSettings">
+              <td v-if="canWriteSettings" class="whitespace-nowrap">
                 <div v-if="editingState.key === item.key" class="flex gap-2">
                   <button :disabled="operating" class="app-link" @click="handleSave(item)">
                     {{ t('common.save') }}
@@ -201,6 +210,16 @@
       value: option,
       label: option,
     }));
+  }
+
+  function displayConfigValue(value: unknown) {
+    if (typeof value === 'boolean') {
+      return value ? 'true' : 'false';
+    }
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+    return String(value);
   }
 
   async function fetchConfig() {

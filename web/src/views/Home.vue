@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 2xl:grid-cols-4">
       <button
         v-for="(card, index) in overviewCards"
         :key="card.label"
@@ -46,7 +46,7 @@
       </button>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <div class="grid grid-cols-1 gap-6 2xl:grid-cols-2">
       <section class="app-surface overflow-hidden">
         <div class="app-section-header flex items-center justify-between">
           <h2 class="text-sm font-semibold text-foreground">{{ t('home.recentBuilds') }}</h2>

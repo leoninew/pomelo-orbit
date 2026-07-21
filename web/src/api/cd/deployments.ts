@@ -33,9 +33,14 @@ export const deploymentApi = {
     return request.post(`/api/cd/deployment/${id}/cancel`, data);
   },
 
-  // 获取部署日志（增量读取，回退用）
-  getLogs(id: string, offset: number = 0): Promise<DeploymentLogsResp> {
+  // 获取部署日志（增量读取；失败详情主展示）
+  getLogs(
+    id: string,
+    offset: number = 0,
+    config?: AxiosRequestConfig
+  ): Promise<DeploymentLogsResp> {
     return request.get(`/api/cd/deployment/${id}/logs`, {
+      ...config,
       params: { offset },
     });
   },

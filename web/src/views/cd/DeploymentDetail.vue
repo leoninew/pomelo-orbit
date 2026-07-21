@@ -92,9 +92,9 @@
           <div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
             <dt class="w-32 shrink-0 text-muted-foreground">错误信息</dt>
             <dd class="min-w-0 text-destructive">
-              <span class="block truncate" :title="deployment.error_message">
-                {{ deployment.error_message }}
-              </span>
+              <pre class="whitespace-pre-wrap break-words font-mono text-xs">{{
+                deployment.error_message
+              }}</pre>
             </dd>
           </div>
         </dl>
@@ -104,8 +104,14 @@
       <div class="app-surface flex min-h-[360px] flex-1 flex-col">
         <div class="app-section-header flex shrink-0 items-center justify-between">
           <div>
-            <h2 class="font-semibold text-foreground">容器日志</h2>
-            <p v-if="containerLogSource === 'tail'" class="mt-1 text-xs text-muted-foreground">
+            <h2 class="font-semibold text-foreground">{{ logSectionTitle }}</h2>
+            <p v-if="logMode === 'operation'" class="mt-1 text-xs text-muted-foreground">
+              部署失败时展示 compose 操作日志，便于定位命令失败原因。
+            </p>
+            <p
+              v-else-if="logMode === 'container' && containerLogSource === 'tail'"
+              class="mt-1 text-xs text-muted-foreground"
+            >
               当前展示最近容器日志，可能包含本次操作前的历史输出。
             </p>
           </div>
@@ -129,12 +135,12 @@
               <p v-if="logStatus === 'not_applicable'" class="text-sm">
                 停止操作不展示实时容器日志。
               </p>
-              <p v-else-if="logStatus === 'loading'" class="mt-2 text-sm">加载容器日志中...</p>
+              <p v-else-if="logStatus === 'loading'" class="mt-2 text-sm">{{ logLoadingText }}</p>
               <p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">容器日志刷新中...</p>
-              <p v-else-if="logStatus === 'empty'" class="text-sm">暂无容器日志输出</p>
+              <p v-else-if="logStatus === 'empty'" class="text-sm">{{ logEmptyText }}</p>
               <div v-else-if="logStatus === 'error'">
-                <p class="text-sm text-destructive">容器日志加载失败</p>
-                <button class="app-link mt-2 text-sm" @click="retryContainerLogs">重试</button>
+                <p class="text-sm text-destructive">{{ logErrorText }}</p>
+                <button class="app-link mt-2 text-sm" @click="retryLogs">重试</button>
               </div>
             </div>
           </div>
@@ -206,6 +212,7 @@
 
   const deployment = ref<DeploymentResp>();
   const logText = ref('');
+  const logMode = ref<'container' | 'operation' | 'none'>('container');
   const containerLogSource = ref('since');
   const isCancelDialogOpen = ref(false);
   const isAutoRefreshing = ref(false);
@@ -252,21 +259,64 @@
     return te(key) ? t(key) : deployment.value.trigger_type;
   });
   const isTerminalDeployment = computed(() => isTerminalStatus(deployment.value?.status ?? ''));
+  const isFaultedDeployment = computed(() => deployment.value?.status === 'faulted');
   const isCancelable = computed(() =>
     deployment.value ? ['waiting_to_run', 'running'].includes(deployment.value.status) : false
   );
-  const showsContainerLogs = computed(() => deployment.value?.operation_type !== 'stop');
+  const showsContainerLogs = computed(
+    () =>
+      !!deployment.value &&
+      deployment.value.operation_type !== 'stop' &&
+      deployment.value.status !== 'faulted'
+  );
+  const logSectionTitle = computed(() => {
+    if (logMode.value === 'operation') {
+      return '操作日志';
+    }
+    if (logMode.value === 'none') {
+      return '日志';
+    }
+    return '容器日志';
+  });
+  const logLoadingText = computed(() =>
+    logMode.value === 'operation' ? '加载操作日志中...' : '加载容器日志中...'
+  );
+  const logEmptyText = computed(() =>
+    logMode.value === 'operation' ? '暂无操作日志输出' : '暂无容器日志输出'
+  );
+  const logErrorText = computed(() =>
+    logMode.value === 'operation' ? '操作日志加载失败' : '容器日志加载失败'
+  );
 
   function isCurrentRefresh(generation: number, signal: AbortSignal) {
     return !signal.aborted && generation === refreshGeneration;
   }
 
+  async function fetchOperationLogs(generation?: number, signal?: AbortSignal) {
+    logMode.value = 'operation';
+    try {
+      const data = await deploymentApi.getLogs(deploymentId.value, 0, { signal });
+      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
+        return;
+      }
+      logText.value = data.logs;
+      logStatus.value = logText.value ? 'done' : 'empty';
+      scrollToBottom();
+    } catch {
+      if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
+        logStatus.value = 'error';
+      }
+    }
+  }
+
   async function fetchContainerLogs(generation?: number, signal?: AbortSignal) {
-    if (!deployment.value || !showsContainerLogs.value) {
+    if (!deployment.value || deployment.value.operation_type === 'stop') {
+      logMode.value = 'none';
       logText.value = '';
       logStatus.value = 'not_applicable';
       return;
     }
+    logMode.value = 'container';
     try {
       const data = await deploymentApi.getContainerLogs(
         deploymentId.value,
@@ -291,8 +341,25 @@
     }
   }
 
-  function retryContainerLogs() {
-    void fetchContainerLogs();
+  async function fetchLogs(generation?: number, signal?: AbortSignal) {
+    if (!deployment.value) {
+      return;
+    }
+    if (deployment.value.operation_type === 'stop' && !isFaultedDeployment.value) {
+      logMode.value = 'none';
+      logText.value = '';
+      logStatus.value = 'not_applicable';
+      return;
+    }
+    if (isFaultedDeployment.value) {
+      await fetchOperationLogs(generation, signal);
+      return;
+    }
+    await fetchContainerLogs(generation, signal);
+  }
+
+  function retryLogs() {
+    void fetchLogs();
   }
 
   function stopAutoRefresh() {
@@ -323,11 +390,12 @@
             break;
           }
           deployment.value = data;
+          if (isTerminalStatus(data.status)) {
+            await fetchLogs(generation, signal);
+            break;
+          }
           if (showsContainerLogs.value) {
             await fetchContainerLogs(generation, signal);
-          }
-          if (isTerminalStatus(data.status)) {
-            break;
           }
         } catch {
           // Continue refreshing after a transient detail request failure.
@@ -352,6 +420,7 @@
     stopAutoRefresh();
     deployment.value = undefined;
     logText.value = '';
+    logMode.value = 'container';
     containerLogSource.value = 'since';
     logStatus.value = 'loading';
     isCancelDialogOpen.value = false;
@@ -367,11 +436,7 @@
       router.push('/cd/deployments');
       return;
     }
-    if (showsContainerLogs.value) {
-      await fetchContainerLogs();
-    } else {
-      logStatus.value = 'not_applicable';
-    }
+    await fetchLogs();
     if (!isTerminalDeployment.value) {
       startAutoRefresh();
     }

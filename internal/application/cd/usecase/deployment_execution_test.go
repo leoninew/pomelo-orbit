@@ -85,6 +85,9 @@ func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.
 	if store.deploymentStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
+	if store.errorMessage != "boom" {
+		t.Fatalf("unexpected error message: %q", store.errorMessage)
+	}
 }
 
 func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
@@ -222,6 +225,7 @@ type fakeDeploymentExecutionStore struct {
 	routes           []model.ApplicationRoute
 	appStatus        string
 	deploymentStatus string
+	errorMessage     string
 }
 
 func (s *fakeDeploymentExecutionStore) Application(_ context.Context, id string) (model.Application, error) {
@@ -256,6 +260,7 @@ func (s *fakeDeploymentExecutionStore) MarkDeploymentRunning(ctx context.Context
 
 func (s *fakeDeploymentExecutionStore) CompleteDeployment(ctx context.Context, id string, status string, message string) error {
 	s.deploymentStatus = status
+	s.errorMessage = message
 	return nil
 }
 

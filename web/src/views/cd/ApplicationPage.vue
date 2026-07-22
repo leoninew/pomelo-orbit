@@ -511,6 +511,7 @@
           environment_id: localEnv.id,
           instance_key: 'default',
           force_recreate: false,
+          runtime_config: {},
         });
         toast.success(t('application.toast.deployTriggered', { name: app.name }));
         router.push(`/cd/deployments/${deployment_id}`);

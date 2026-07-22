@@ -430,16 +430,29 @@
             :placeholder="t('application.detail.placeholders.note')"
           />
         </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('application.detail.fields.envJson') }}
-          </label>
-          <textarea
-            v-model="versionForm.env_json"
-            rows="3"
-            class="app-input font-mono text-xs"
-            :placeholder="t('application.detail.placeholders.envJson')"
-          />
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="app-field-label">{{ t('application.detail.fields.envVars') }}</label>
+            <button type="button" class="app-link text-sm" @click="versionForm.env.push({ key: '', value: '' })">
+              {{ t('application.detail.actions.addEnv') }}
+            </button>
+          </div>
+          <div
+            v-for="(envRow, envIndex) in versionForm.env"
+            :key="'venv-' + envIndex"
+            class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
+          >
+            <input v-model="envRow.key" type="text" class="app-input font-mono text-xs" placeholder="KEY" />
+            <input
+              v-model="envRow.value"
+              type="text"
+              class="app-input font-mono text-xs"
+              :placeholder="t('application.detail.placeholders.envValue')"
+            />
+            <button type="button" class="app-link-danger" @click="versionForm.env.splice(envIndex, 1)">
+              {{ t('common.delete') }}
+            </button>
+          </div>
         </div>
         <div class="space-y-2">
           <div class="flex items-center justify-between">
@@ -457,28 +470,161 @@
           <div
             v-for="(row, index) in versionForm.components"
             :key="index"
-            class="grid grid-cols-1 gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_1.4fr_auto]"
+            class="space-y-3 rounded-md border border-border p-3"
           >
-            <input
-              v-model="row.name"
-              type="text"
-              class="app-input"
-              :placeholder="t('application.detail.placeholders.componentName')"
-            />
-            <input
-              v-model="row.image"
-              type="text"
-              class="app-input"
-              :placeholder="t('application.detail.placeholders.componentImage')"
-            />
-            <button
-              type="button"
-              class="app-link-danger justify-self-start sm:justify-self-end"
-              :disabled="versionForm.components.length <= 1"
-              @click="removeComponentRow(index)"
-            >
-              {{ t('common.delete') }}
-            </button>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
+              <input
+                v-model="row.name"
+                type="text"
+                class="app-input"
+                :placeholder="t('application.detail.placeholders.componentName')"
+              />
+              <input
+                v-model="row.image"
+                type="text"
+                class="app-input"
+                :placeholder="t('application.detail.placeholders.componentImage')"
+              />
+              <button
+                type="button"
+                class="app-link-danger justify-self-start sm:justify-self-end"
+                :disabled="versionForm.components.length <= 1"
+                @click="removeComponentRow(index)"
+              >
+                {{ t('common.delete') }}
+              </button>
+            </div>
+            <div class="space-y-2 border-t border-border pt-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.ports') }}</span>
+                <button
+                  type="button"
+                  class="app-link text-xs"
+                  @click="row.ports.push({ host_port: 80, container_port: 80 })"
+                >
+                  {{ t('application.detail.actions.addPort') }}
+                </button>
+              </div>
+              <div
+                v-for="(portRow, portIndex) in row.ports"
+                :key="'port-' + index + '-' + portIndex"
+                class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]"
+              >
+                <input
+                  v-model.number="portRow.host_port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  class="app-input font-mono text-xs"
+                  :placeholder="t('application.detail.placeholders.hostPort')"
+                />
+                <input
+                  v-model.number="portRow.container_port"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  class="app-input font-mono text-xs"
+                  :placeholder="t('application.detail.placeholders.containerPort')"
+                />
+                <button type="button" class="app-link-danger" @click="row.ports.splice(portIndex, 1)">
+                  {{ t('common.delete') }}
+                </button>
+              </div>
+            </div>
+            <div class="space-y-2 border-t border-border pt-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.componentEnv') }}</span>
+                <button type="button" class="app-link text-xs" @click="row.env.push({ key: '', value: '' })">
+                  {{ t('application.detail.actions.addEnv') }}
+                </button>
+              </div>
+              <div
+                v-for="(envRow, envIndex) in row.env"
+                :key="'cenv-' + index + '-' + envIndex"
+                class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
+              >
+                <input v-model="envRow.key" type="text" class="app-input font-mono text-xs" placeholder="KEY" />
+                <input
+                  v-model="envRow.value"
+                  type="text"
+                  class="app-input font-mono text-xs"
+                  :placeholder="t('application.detail.placeholders.envValue')"
+                />
+                <button type="button" class="app-link-danger" @click="row.env.splice(envIndex, 1)">
+                  {{ t('common.delete') }}
+                </button>
+              </div>
+            </div>
+            <div class="space-y-2 border-t border-border pt-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.mounts') }}</span>
+                <button
+                  type="button"
+                  class="app-link text-xs"
+                  @click="
+                    row.mounts.push({
+                      source_type: 'logical',
+                      source: '',
+                      target: '',
+                      read_only: false,
+                      content: '',
+                      content_mode: 'seed',
+                    })
+                  "
+                >
+                  {{ t('application.detail.actions.addMount') }}
+                </button>
+              </div>
+              <div
+                v-for="(mountRow, mountIndex) in row.mounts"
+                :key="'mnt-' + index + '-' + mountIndex"
+                class="space-y-2 rounded border border-dashed border-border p-2"
+              >
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-[0.9fr_1fr_1fr_auto_auto]">
+                  <SelectControl
+                    v-model="mountRow.source_type"
+                    :options="mountSourceTypeOptions"
+                    :placeholder="t('application.detail.placeholders.mountSourceType')"
+                  />
+                  <input
+                    v-model="mountRow.source"
+                    type="text"
+                    class="app-input font-mono text-xs"
+                    :placeholder="t('application.detail.placeholders.mountSource')"
+                  />
+                  <input
+                    v-model="mountRow.target"
+                    type="text"
+                    class="app-input font-mono text-xs"
+                    :placeholder="t('application.detail.placeholders.mountTarget')"
+                  />
+                  <label class="flex items-center gap-1 text-xs text-muted-foreground">
+                    <input v-model="mountRow.read_only" type="checkbox" class="app-checkbox" />
+                    ro
+                  </label>
+                  <button type="button" class="app-link-danger" @click="row.mounts.splice(mountIndex, 1)">
+                    {{ t('common.delete') }}
+                  </button>
+                </div>
+                <div v-if="isFileMountRow(mountRow)" class="space-y-2 border-t border-border pt-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.mountContent') }}</span>
+                    <SelectControl
+                      v-model="mountRow.content_mode"
+                      :options="mountContentModeOptions"
+                      :placeholder="t('application.detail.placeholders.mountContentMode')"
+                      class="w-36"
+                    />
+                  </div>
+                  <textarea
+                    v-model="mountRow.content"
+                    rows="5"
+                    class="app-input min-h-[6rem] w-full font-mono text-xs"
+                    :placeholder="t('application.detail.placeholders.mountContent')"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="space-y-2">
@@ -598,6 +744,29 @@
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('application.detail.fields.forceRecreate') }}</span>
         </label>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="app-field-label">{{ t('application.detail.fields.runtimeConfig') }}</label>
+            <button
+              type="button"
+              class="app-link text-sm"
+              @click="deployForm.runtime_config.push({ key: '', value: '' })"
+            >
+              {{ t('application.detail.actions.addRuntimeConfig') }}
+            </button>
+          </div>
+          <div
+            v-for="(row, index) in deployForm.runtime_config"
+            :key="'rt-' + index"
+            class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
+          >
+            <input v-model="row.key" type="text" class="app-input font-mono text-xs" placeholder="NAME" />
+            <input v-model="row.value" type="text" class="app-input font-mono text-xs" placeholder="value" />
+            <button type="button" class="app-link-danger" @click="deployForm.runtime_config.splice(index, 1)">
+              {{ t('common.delete') }}
+            </button>
+          </div>
+        </div>
       </div>
       <template #footer>
         <button class="app-button" @click="isDeployDialogOpen = false">
@@ -794,19 +963,57 @@
     { value: 'never', label: t('application.imagePullPolicyOptions.never') },
   ]);
 
-  type ComponentFormRow = { name: string; image: string };
+  type EnvFormRow = { key: string; value: string };
+  type PortFormRow = { host_port: number; container_port: number };
+  type MountFormRow = {
+    source_type: string;
+    source: string;
+    target: string;
+    read_only: boolean;
+    content: string;
+    content_mode: string;
+  };
+  const fileMountSuffixes = [
+    '.json',
+    '.yml',
+    '.yaml',
+    '.toml',
+    '.pem',
+    '.key',
+    '.crt',
+    '.conf',
+    '.cfg',
+    '.txt',
+    '.env',
+  ];
+  type ComponentFormRow = {
+    name: string;
+    image: string;
+    ports: PortFormRow[];
+    env: EnvFormRow[];
+    mounts: MountFormRow[];
+  };
   type ExposeFormRow = { component_name: string; protocol: string; container_port: number };
   const versionForm = reactive({
     label: '',
     note: '',
-    env_json: '',
-    components: [{ name: '', image: '' }] as ComponentFormRow[],
+    env: [] as EnvFormRow[],
+    components: [emptyComponentRow()] as ComponentFormRow[],
     exposes: [] as ExposeFormRow[],
   });
   const versionFormErrors = reactive({ label: '', components: '', exposes: '' });
   const exposeProtocolOptions = [
     { value: 'http', label: 'http' },
     { value: 'tcp', label: 'tcp' },
+  ];
+  const mountSourceTypeOptions = [
+    { value: 'logical', label: 'logical' },
+    { value: 'volume', label: 'volume' },
+    { value: 'special', label: 'special' },
+  ];
+  const mountContentModeOptions = [
+    { value: 'seed', label: t('application.detail.contentMode.seed') },
+    { value: 'sync', label: t('application.detail.contentMode.sync') },
   ];
   const versionComponentNameOptions = computed(() => {
     const names = versionForm.components.map((row) => row.name.trim()).filter(Boolean);
@@ -817,6 +1024,7 @@
     environment_id: '',
     instance_key: 'default',
     force_recreate: false,
+    runtime_config: [] as EnvFormRow[],
   });
   const serviceTargetForm = reactive({
     service_id: '',
@@ -883,7 +1091,222 @@
   }
 
   function emptyComponentRow(): ComponentFormRow {
-    return { name: '', image: '' };
+    return { name: '', image: '', ports: [], env: [], mounts: [] };
+  }
+
+  function parsePortsJson(raw?: string): PortFormRow[] {
+    if (!raw?.trim()) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      const rows: PortFormRow[] = [];
+      for (const item of parsed) {
+        if (typeof item === 'number') {
+          const port = item;
+          if (port >= 1 && port <= 65535) {
+            rows.push({ host_port: port, container_port: port });
+          }
+          continue;
+        }
+        if (typeof item === 'string') {
+          const text = item.trim();
+          if (!text) {
+            continue;
+          }
+          const parts = text.split(':');
+          if (parts.length === 1) {
+            const port = Number(parts[0]);
+            if (port >= 1 && port <= 65535) {
+              rows.push({ host_port: port, container_port: port });
+            }
+            continue;
+          }
+          // host:container or ip:host:container — take last two numeric segments
+          const hostPort = Number(parts[parts.length - 2]);
+          const containerPort = Number(parts[parts.length - 1]);
+          if (
+            hostPort >= 1 &&
+            hostPort <= 65535 &&
+            containerPort >= 1 &&
+            containerPort <= 65535
+          ) {
+            rows.push({ host_port: hostPort, container_port: containerPort });
+          }
+          continue;
+        }
+        if (item && typeof item === 'object') {
+          const row = item as {
+            host_port?: number;
+            published?: number;
+            target?: number;
+            container_port?: number;
+          };
+          const hostPort = Number(row.host_port ?? row.published ?? 0);
+          const containerPort = Number(row.container_port ?? row.target ?? 0);
+          if (
+            hostPort >= 1 &&
+            hostPort <= 65535 &&
+            containerPort >= 1 &&
+            containerPort <= 65535
+          ) {
+            rows.push({ host_port: hostPort, container_port: containerPort });
+          }
+        }
+      }
+      return rows;
+    } catch {
+      return [];
+    }
+  }
+
+  function serializePortsRows(rows: PortFormRow[]): string | undefined {
+    const items: string[] = [];
+    for (const row of rows) {
+      const hostPort = Number(row.host_port);
+      const containerPort = Number(row.container_port);
+      if (
+        !Number.isInteger(hostPort) ||
+        !Number.isInteger(containerPort) ||
+        hostPort < 1 ||
+        hostPort > 65535 ||
+        containerPort < 1 ||
+        containerPort > 65535
+      ) {
+        continue;
+      }
+      items.push(`${hostPort}:${containerPort}`);
+    }
+    if (items.length === 0) {
+      return undefined;
+    }
+    return JSON.stringify(items);
+  }
+
+  function parseEnvJson(raw?: string): EnvFormRow[] {
+    if (!raw?.trim()) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed
+        .map((item) => {
+          const row = item as { key?: string; value?: string };
+          return { key: String(row.key || ''), value: String(row.value ?? '') };
+        })
+        .filter((row) => row.key || row.value);
+    } catch {
+      return [];
+    }
+  }
+
+  function isFileMountPath(source: string, target: string): boolean {
+    for (const path of [source, target]) {
+      const lower = path.toLowerCase();
+      if (fileMountSuffixes.some((suffix) => lower.endsWith(suffix))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function isFileMountRow(row: MountFormRow): boolean {
+    return row.source_type === 'logical' && isFileMountPath(row.source, row.target);
+  }
+
+  function parseMountsJson(raw?: string): MountFormRow[] {
+    if (!raw?.trim()) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed.map((item) => {
+        const row = item as {
+          source_type?: string;
+          source?: string;
+          target?: string;
+          read_only?: boolean;
+          content?: string;
+          content_mode?: string;
+        };
+        return {
+          source_type: String(row.source_type || 'logical'),
+          source: String(row.source || ''),
+          target: String(row.target || ''),
+          read_only: Boolean(row.read_only),
+          content: String(row.content ?? ''),
+          content_mode: String(row.content_mode || 'seed') === 'sync' ? 'sync' : 'seed',
+        };
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  function serializeEnvRows(rows: EnvFormRow[]): string | undefined {
+    const items = rows
+      .map((row) => ({ key: row.key.trim(), value: row.value }))
+      .filter((row) => row.key);
+    if (items.length === 0) {
+      return undefined;
+    }
+    return JSON.stringify(items);
+  }
+
+  function serializeMountRows(rows: MountFormRow[]): string | undefined {
+    const items = rows
+      .map((row) => {
+        const item: {
+          source_type: string;
+          source: string;
+          target: string;
+          read_only: boolean;
+          content?: string;
+          content_mode?: string;
+        } = {
+          source_type: row.source_type.trim(),
+          source: row.source.trim(),
+          target: row.target.trim(),
+          read_only: row.read_only,
+        };
+        if (
+          item.source_type === 'logical' &&
+          isFileMountPath(item.source, item.target) &&
+          (row.content.trim() || row.content_mode === 'sync')
+        ) {
+          if (row.content) {
+            item.content = row.content;
+          }
+          item.content_mode = row.content_mode === 'sync' ? 'sync' : 'seed';
+        }
+        return item;
+      })
+      .filter((row) => row.source_type && row.source && row.target);
+    if (items.length === 0) {
+      return undefined;
+    }
+    return JSON.stringify(items);
+  }
+
+  function runtimeConfigMap(): Record<string, string> | undefined {
+    const out: Record<string, string> = {};
+    for (const row of deployForm.runtime_config) {
+      const key = row.key.trim();
+      if (!key) {
+        continue;
+      }
+      out[key] = row.value;
+    }
+    return Object.keys(out).length > 0 ? out : undefined;
   }
 
   function defaultExposeComponentName() {
@@ -908,7 +1331,13 @@
   }
 
   function componentToReq(row: ComponentFormRow): VersionComponentReq {
-    return { name: row.name.trim(), image: row.image.trim() };
+    return {
+      name: row.name.trim(),
+      image: row.image.trim(),
+      ports_json: serializePortsRows(row.ports),
+      env_json: serializeEnvRows(row.env),
+      mounts_json: serializeMountRows(row.mounts),
+    };
   }
 
   function exposeToReq(row: ExposeFormRow): VersionExposeReq {
@@ -1048,6 +1477,9 @@
     deployForm.force_recreate = forceRecreate;
     deployForm.instance_key = deployForm.instance_key.trim() || 'default';
     deployForm.environment_id = deployForm.environment_id || defaultEnvironmentId();
+    if (deployForm.runtime_config.length === 0) {
+      deployForm.runtime_config = [];
+    }
     isDeployDialogOpen.value = true;
   }
 
@@ -1077,6 +1509,7 @@
           environment_id: deployForm.environment_id,
           instance_key: instanceKey,
           force_recreate: deployForm.force_recreate,
+          runtime_config: runtimeConfigMap() ?? {},
         });
         toast.success(t('application.toast.deployTriggeredDetail'));
         isDeployDialogOpen.value = false;
@@ -1239,7 +1672,7 @@
   function resetVersionForm() {
     versionForm.label = '';
     versionForm.note = '';
-    versionForm.env_json = '';
+    versionForm.env = [];
     versionForm.components = [emptyComponentRow()];
     versionForm.exposes = [];
     Object.assign(versionFormErrors, { label: '', components: '', exposes: '' });
@@ -1256,10 +1689,16 @@
     editingVersionId.value = version.id;
     versionForm.label = version.label;
     versionForm.note = version.note || '';
-    versionForm.env_json = version.env_json || '';
+    versionForm.env = parseEnvJson(version.env_json);
     versionForm.components =
       version.components?.length > 0
-        ? version.components.map((c) => ({ name: c.name, image: c.image }))
+        ? version.components.map((c) => ({
+            name: c.name,
+            image: c.image,
+            ports: parsePortsJson(c.ports_json),
+            env: parseEnvJson(c.env_json),
+            mounts: parseMountsJson(c.mounts_json),
+          }))
         : [emptyComponentRow()];
     versionForm.exposes =
       version.exposes?.map((item) => ({
@@ -1349,6 +1788,29 @@
       versionFormErrors.exposes = '';
     }
 
+    if (!versionFormErrors.components) {
+      for (const row of versionForm.components) {
+        for (const port of row.ports) {
+          const hostPort = Number(port.host_port);
+          const containerPort = Number(port.container_port);
+          if (
+            !Number.isInteger(hostPort) ||
+            !Number.isInteger(containerPort) ||
+            hostPort < 1 ||
+            hostPort > 65535 ||
+            containerPort < 1 ||
+            containerPort > 65535
+          ) {
+            versionFormErrors.components = t('application.validation.portRange');
+            break;
+          }
+        }
+        if (versionFormErrors.components) {
+          break;
+        }
+      }
+    }
+
     return (
       !versionFormErrors.label && !versionFormErrors.components && !versionFormErrors.exposes
     );
@@ -1362,7 +1824,7 @@
     const exposes = versionForm.exposes
       .map(exposeToReq)
       .filter((item) => item.component_name && item.container_port > 0);
-    const envJson = versionForm.env_json.trim() || undefined;
+    const envJson = serializeEnvRows(versionForm.env);
     const note = versionForm.note.trim() || undefined;
     try {
       await executeOp(async () => {

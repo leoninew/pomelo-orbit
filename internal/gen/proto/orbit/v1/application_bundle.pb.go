@@ -30,6 +30,7 @@ type ApplicationExportResp struct {
 	ImagePullPolicy string                 `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
 	Versions        []*VersionResp         `protobuf:"bytes,6,rep,name=versions,proto3" json:"versions,omitempty"`
 	Services        []*ServiceResp         `protobuf:"bytes,7,rep,name=services,proto3" json:"services,omitempty"`
+	Kind            string                 `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -113,6 +114,13 @@ func (x *ApplicationExportResp) GetServices() []*ServiceResp {
 	return nil
 }
 
+func (x *ApplicationExportResp) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
 type ApplicationImportReq struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -121,8 +129,9 @@ type ApplicationImportReq struct {
 	VersionLabel    string                 `protobuf:"bytes,4,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
 	VersionEnvJson  *string                `protobuf:"bytes,5,opt,name=version_env_json,json=versionEnvJson,proto3,oneof" json:"version_env_json,omitempty"`
 	VersionNote     *string                `protobuf:"bytes,6,opt,name=version_note,json=versionNote,proto3,oneof" json:"version_note,omitempty"`
-	Components      []*ComponentReq        `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
-	Exposes         []*ExposeReq           `protobuf:"bytes,8,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	Components      []*VersionComponentReq `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
+	Exposes         []*VersionExposeReq    `protobuf:"bytes,8,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	Kind            *string                `protobuf:"bytes,9,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -199,25 +208,32 @@ func (x *ApplicationImportReq) GetVersionNote() string {
 	return ""
 }
 
-func (x *ApplicationImportReq) GetComponents() []*ComponentReq {
+func (x *ApplicationImportReq) GetComponents() []*VersionComponentReq {
 	if x != nil {
 		return x.Components
 	}
 	return nil
 }
 
-func (x *ApplicationImportReq) GetExposes() []*ExposeReq {
+func (x *ApplicationImportReq) GetExposes() []*VersionExposeReq {
 	if x != nil {
 		return x.Exposes
 	}
 	return nil
 }
 
+func (x *ApplicationImportReq) GetKind() string {
+	if x != nil && x.Kind != nil {
+		return *x.Kind
+	}
+	return ""
+}
+
 var File_orbit_v1_application_bundle_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_bundle_proto_rawDesc = "" +
 	"\n" +
-	"!orbit/v1/application_bundle.proto\x12\borbit.v1\x1a\x16orbit/v1/version.proto\"\x94\x02\n" +
+	"!orbit/v1/application_bundle.proto\x12\borbit.v1\x1a\x16orbit/v1/version.proto\"\xa8\x02\n" +
 	"\x15ApplicationExportResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -226,21 +242,24 @@ const file_orbit_v1_application_bundle_proto_rawDesc = "" +
 	"\x04code\x18\x04 \x01(\tR\x04code\x12*\n" +
 	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x121\n" +
 	"\bversions\x18\x06 \x03(\v2\x15.orbit.v1.VersionRespR\bversions\x121\n" +
-	"\bservices\x18\a \x03(\v2\x15.orbit.v1.ServiceRespR\bservicesB\r\n" +
-	"\v_project_id\"\xf3\x02\n" +
+	"\bservices\x18\a \x03(\v2\x15.orbit.v1.ServiceRespR\bservices\x12\x12\n" +
+	"\x04kind\x18\b \x01(\tR\x04kindB\r\n" +
+	"\v_project_id\"\xa3\x03\n" +
 	"\x14ApplicationImportReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
 	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12#\n" +
 	"\rversion_label\x18\x04 \x01(\tR\fversionLabel\x12-\n" +
 	"\x10version_env_json\x18\x05 \x01(\tH\x00R\x0eversionEnvJson\x88\x01\x01\x12&\n" +
-	"\fversion_note\x18\x06 \x01(\tH\x01R\vversionNote\x88\x01\x01\x126\n" +
+	"\fversion_note\x18\x06 \x01(\tH\x01R\vversionNote\x88\x01\x01\x12=\n" +
 	"\n" +
-	"components\x18\a \x03(\v2\x16.orbit.v1.ComponentReqR\n" +
-	"components\x12-\n" +
-	"\aexposes\x18\b \x03(\v2\x13.orbit.v1.ExposeReqR\aexposesB\x13\n" +
+	"components\x18\a \x03(\v2\x1d.orbit.v1.VersionComponentReqR\n" +
+	"components\x124\n" +
+	"\aexposes\x18\b \x03(\v2\x1a.orbit.v1.VersionExposeReqR\aexposes\x12\x17\n" +
+	"\x04kind\x18\t \x01(\tH\x02R\x04kind\x88\x01\x01B\x13\n" +
 	"\x11_version_env_jsonB\x0f\n" +
-	"\r_version_noteB\xae\x01\n" +
+	"\r_version_noteB\a\n" +
+	"\x05_kindB\xae\x01\n" +
 	"\fcom.orbit.v1B\x16ApplicationBundleProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1;orbitv1\xa2\x02\x03OXX\xaa\x02\bOrbit.V1\xca\x02\bOrbit\\V1\xe2\x02\x14Orbit\\V1\\GPBMetadata\xea\x02\tOrbit::V1b\x06proto3"
 
 var (
@@ -261,14 +280,14 @@ var file_orbit_v1_application_bundle_proto_goTypes = []any{
 	(*ApplicationImportReq)(nil),  // 1: orbit.v1.ApplicationImportReq
 	(*VersionResp)(nil),           // 2: orbit.v1.VersionResp
 	(*ServiceResp)(nil),           // 3: orbit.v1.ServiceResp
-	(*ComponentReq)(nil),          // 4: orbit.v1.ComponentReq
-	(*ExposeReq)(nil),             // 5: orbit.v1.ExposeReq
+	(*VersionComponentReq)(nil),   // 4: orbit.v1.VersionComponentReq
+	(*VersionExposeReq)(nil),      // 5: orbit.v1.VersionExposeReq
 }
 var file_orbit_v1_application_bundle_proto_depIdxs = []int32{
 	2, // 0: orbit.v1.ApplicationExportResp.versions:type_name -> orbit.v1.VersionResp
 	3, // 1: orbit.v1.ApplicationExportResp.services:type_name -> orbit.v1.ServiceResp
-	4, // 2: orbit.v1.ApplicationImportReq.components:type_name -> orbit.v1.ComponentReq
-	5, // 3: orbit.v1.ApplicationImportReq.exposes:type_name -> orbit.v1.ExposeReq
+	4, // 2: orbit.v1.ApplicationImportReq.components:type_name -> orbit.v1.VersionComponentReq
+	5, // 3: orbit.v1.ApplicationImportReq.exposes:type_name -> orbit.v1.VersionExposeReq
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name

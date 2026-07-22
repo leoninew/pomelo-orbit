@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gopkg.in/yaml.v3"
 )
@@ -16,8 +17,8 @@ import (
 type RenderInput struct {
 	App        model.Application
 	Version    model.Version
-	Components []model.Component
-	Exposes    []model.Expose
+	Components []model.VersionComponent
+	Exposes    []model.VersionExpose
 	Env        model.Environment
 	Service    model.Service
 }
@@ -25,16 +26,42 @@ type RenderInput struct {
 var domainTemplateTokenPattern = regexp.MustCompile(`\{([a-z_]+)\}`)
 
 // RenderCompose builds docker-compose.yml from Version + Environment.
-// Preview and deploy share this function.
+// Preview and deploy share this function. Branch is driven by Application.kind only.
 func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, error) {
 	_ = ctx
+	kind := strings.TrimSpace(input.App.Kind)
+	if kind == "" {
+		kind = status.ApplicationKindStandard
+	}
+	switch kind {
+	case status.ApplicationKindStandard:
+		return renderStandardCompose(input)
+	case status.ApplicationKindGateway:
+		return renderGatewayCompose(input)
+	default:
+		return "", fmt.Errorf("unsupported application kind %q", kind)
+	}
+}
+
+// renderStandardCompose materializes components and injects Traefik labels when Exposes exist.
+func renderStandardCompose(input RenderInput) (string, error) {
+	return renderComposeServices(input)
+}
+
+// renderGatewayCompose keeps a kind-level branch hook for future gateway strategy (E1/E5).
+// R3 reuses the same component materialization path as standard.
+func renderGatewayCompose(input RenderInput) (string, error) {
+	return renderComposeServices(input)
+}
+
+func renderComposeServices(input RenderInput) (string, error) {
 	if len(input.Components) == 0 {
 		return "", fmt.Errorf("version %s has no components", input.Version.Id)
 	}
-	if err := validateComponents(input.Components); err != nil {
+	if err := validateVersionComponents(input.Components); err != nil {
 		return "", err
 	}
-	if err := validateExposes(input.Exposes, input.Components); err != nil {
+	if err := validateVersionExposes(input.Exposes, input.Components); err != nil {
 		return "", err
 	}
 
@@ -43,16 +70,18 @@ func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, 
 		return "", fmt.Errorf("version env_json: %w", err)
 	}
 
+	appCode := strings.TrimSpace(input.App.Code)
 	services := make(map[string]any, len(input.Components))
 	for _, component := range input.Components {
-		service, err := renderComponentService(component, versionEnv)
+		service, err := renderVersionComponentService(component, versionEnv, appCode)
 		if err != nil {
 			return "", fmt.Errorf("component %s: %w", component.Name, err)
 		}
 		services[component.Name] = service
 	}
 
-	if input.Service.IsIngress && len(input.Exposes) > 0 {
+	// Labels are driven by Expose presence, not Service.is_ingress / attach_ingress.
+	if len(input.Exposes) > 0 {
 		if err := injectExposeLabels(services, input); err != nil {
 			return "", err
 		}
@@ -92,7 +121,7 @@ func injectExposeLabels(services map[string]any, input RenderInput) error {
 	return nil
 }
 
-func validatePolicyForExposes(env model.Environment, exposes []model.Expose, app model.Application) error {
+func validatePolicyForExposes(env model.Environment, exposes []model.VersionExpose, app model.Application) error {
 	hasHTTP := false
 	hasTCP := false
 	for _, expose := range exposes {
@@ -135,7 +164,7 @@ func validatePolicyForExposes(env model.Environment, exposes []model.Expose, app
 	return nil
 }
 
-func validateHTTPPathConflicts(env model.Environment, appCode string, exposes []model.Expose) error {
+func validateHTTPPathConflicts(env model.Environment, appCode string, exposes []model.VersionExpose) error {
 	host, err := deriveHost(env, appCode)
 	if err != nil {
 		return err
@@ -203,7 +232,7 @@ func deriveHost(env model.Environment, appCode string) (string, error) {
 	return host, nil
 }
 
-func buildTraefikLabels(routerName string, expose model.Expose, input RenderInput, host string) ([]string, error) {
+func buildTraefikLabels(routerName string, expose model.VersionExpose, input RenderInput, host string) ([]string, error) {
 	labels := []string{"traefik.enable=true"}
 	entrypoint := strings.TrimSpace(input.Env.DefaultEntrypoint)
 	tlsMode := strings.ToLower(strings.TrimSpace(input.Env.TLSMode))
@@ -290,7 +319,7 @@ func ptrString(v *string) string {
 	return *v
 }
 
-func validateComponents(components []model.Component) error {
+func validateVersionComponents(components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
 	for _, component := range components {
 		name := strings.TrimSpace(component.Name)
@@ -319,7 +348,7 @@ func validateComponents(components []model.Component) error {
 	return nil
 }
 
-func validateExposes(exposes []model.Expose, components []model.Component) error {
+func validateVersionExposes(exposes []model.VersionExpose, components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
 	for _, c := range components {
 		names[strings.TrimSpace(c.Name)] = struct{}{}
@@ -349,9 +378,10 @@ func validateExposes(exposes []model.Expose, components []model.Component) error
 	return nil
 }
 
-func renderComponentService(component model.Component, versionEnv map[string]string) (map[string]any, error) {
+func renderVersionComponentService(component model.VersionComponent, versionEnv map[string]string, appCode string) (map[string]any, error) {
 	service := map[string]any{
-		"image": strings.TrimSpace(component.Image),
+		"image":          strings.TrimSpace(component.Image),
+		"container_name": appCode + "_" + strings.TrimSpace(component.Name),
 	}
 	if command, err := parseStringSliceJSON(component.CommandJSON); err != nil {
 		return nil, err

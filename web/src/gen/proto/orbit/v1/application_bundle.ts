@@ -5,7 +5,7 @@
 // source: orbit/v1/application_bundle.proto
 
 /* eslint-disable */
-import type { ComponentReq, ExposeReq, ServiceResp, VersionResp } from "./version";
+import type { ServiceResp, VersionComponentReq, VersionExposeReq, VersionResp } from "./version";
 
 export const protobufPackage = "orbit.v1";
 
@@ -17,6 +17,7 @@ export interface ApplicationExportResp {
   image_pull_policy: string;
   versions: VersionResp[];
   services: ServiceResp[];
+  kind: string;
 }
 
 export interface ApplicationImportReq {
@@ -26,6 +27,7 @@ export interface ApplicationImportReq {
   version_label: string;
   version_env_json?: string | undefined;
   version_note?: string | undefined;
-  components: ComponentReq[];
-  exposes: ExposeReq[];
+  components: VersionComponentReq[];
+  exposes: VersionExposeReq[];
+  kind?: string | undefined;
 }

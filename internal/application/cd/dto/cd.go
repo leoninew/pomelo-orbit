@@ -6,6 +6,7 @@ type ApplicationCreateInput struct {
 	ProjectId       string
 	Name            string
 	Code            string
+	Kind            string
 	ImagePullPolicy string
 }
 
@@ -23,7 +24,6 @@ type ApplicationDeployInput struct {
 	VersionId     string
 	EnvironmentId string
 	InstanceKey   string
-	AttachIngress *bool
 	ForceRecreate bool
 }
 
@@ -40,8 +40,8 @@ type VersionCreateInput struct {
 	Label         string
 	EnvJSON       *string
 	Note          *string
-	Components    []ComponentInput
-	Exposes       []ExposeInput
+	Components    []VersionComponentInput
+	Exposes       []VersionExposeInput
 }
 
 // VersionUpdateInput updates an unpublished version metadata and optionally components/exposes.
@@ -49,12 +49,12 @@ type VersionUpdateInput struct {
 	Label      *string
 	EnvJSON    *string
 	Note       *string
-	Components *[]ComponentInput
-	Exposes    *[]ExposeInput
+	Components *[]VersionComponentInput
+	Exposes    *[]VersionExposeInput
 }
 
-// ComponentInput is the write payload for a version component.
-type ComponentInput struct {
+// VersionComponentInput is the write payload for a version component.
+type VersionComponentInput struct {
 	Name            string
 	Image           string
 	CommandJSON     *string
@@ -69,8 +69,8 @@ type ComponentInput struct {
 	PullPolicy      *string
 }
 
-// ExposeInput is the write payload for a version expose.
-type ExposeInput struct {
+// VersionExposeInput is the write payload for a version expose.
+type VersionExposeInput struct {
 	ComponentName string
 	Protocol      string
 	ContainerPort int
@@ -80,8 +80,8 @@ type ExposeInput struct {
 // VersionView is version plus its components and exposes for API responses.
 type VersionView struct {
 	Version    model.Version
-	Components []model.Component
-	Exposes    []model.Expose
+	Components []model.VersionComponent
+	Exposes    []model.VersionExpose
 }
 
 // ServiceView is the runtime binding for an application instance.
@@ -161,12 +161,13 @@ type ApplicationImportInput struct {
 	ProjectId       string
 	Name            string
 	Code            string
+	Kind            string
 	ImagePullPolicy string
 	VersionLabel    string
 	VersionEnvJSON  *string
 	VersionNote     *string
-	Components      []ComponentInput
-	Exposes         []ExposeInput
+	Components      []VersionComponentInput
+	Exposes         []VersionExposeInput
 }
 
 // ApplicationExport bundles application data for handler response.
@@ -221,6 +222,5 @@ type TraefikRouteListResp struct {
 type DeployOptionsJSON struct {
 	ForceRecreate bool   `json:"force_recreate,omitempty"`
 	InstanceKey   string `json:"instance_key,omitempty"`
-	AttachIngress bool   `json:"attach_ingress,omitempty"`
 	RemoveVolumes bool   `json:"remove_volumes,omitempty"`
 }

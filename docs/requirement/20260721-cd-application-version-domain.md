@@ -68,6 +68,7 @@ P0 钉死对象、ER、生命周期与部署顺序。**非最终 DDL/proto**；�
 ### Application
 
 - 身份：id、project_id、name、code。
+- **`kind`（修订 R3）**：`standard`（默认）\| `gateway`；**应用级身份**，决定 Render 分支，**不是**运行状态；**创建后不可修改**。详见 `docs/requirement/20260722-cd-application-kind-gateway.md`（Requirement Accepted；Spec Draft）。
 - 不承载编排真相、不承载运行状态。
 - 可选：创建 Version 时的默认策略（如 image_pull_policy）；**非运行真相**。
 - 拥有 0..N Version；0..N Service（按 env + instance_key）。

@@ -30,12 +30,12 @@ func NewRepository(db *sqlx.DB, driver string) Repository {
 	return Repository{db: db, driver: driver}
 }
 
-const applicationColumns = `id, project_id, name, code, image_pull_policy, created_at, updated_at`
+const applicationColumns = `id, project_id, name, code, kind, image_pull_policy, created_at, updated_at`
 const versionColumns = `id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at`
-const componentColumns = `id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json, depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at`
-const exposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at`
+const versionComponentColumns = `id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json, depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at`
+const versionExposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at`
 const environmentColumns = `id, project_id, code, name, description, base_domain, domain_template, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at`
-const serviceColumns = `id, application_id, environment_id, instance_key, is_ingress, version_id, last_successful_version_id, status, created_at, updated_at`
+const serviceColumns = `id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at`
 const deploymentColumns = `id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id`
 
 func (r Repository) Project(ctx context.Context, id string) (model.Project, error) {
@@ -100,8 +100,8 @@ func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.A
 }
 
 func (r Repository) CreateApplication(ctx context.Context, app model.Application) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application (id, project_id, name, code, image_pull_policy, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), app.Id, app.ProjectId, app.Name, app.Code, app.ImagePullPolicy)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application (id, project_id, name, code, kind, image_pull_policy, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), app.Id, app.ProjectId, app.Name, app.Code, app.Kind, app.ImagePullPolicy)
 	if err != nil {
 		return fmt.Errorf("create application %s: %w", app.Code, err)
 	}
@@ -109,6 +109,7 @@ func (r Repository) CreateApplication(ctx context.Context, app model.Application
 }
 
 func (r Repository) UpdateApplication(ctx context.Context, app model.Application) error {
+	// kind is immutable after create; UPDATE never writes kind.
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application SET name = ?, code = ?, image_pull_policy = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
 		app.Name, app.Code, app.ImagePullPolicy, app.Id)
 	if err != nil {
@@ -175,35 +176,35 @@ func (r Repository) UpdateVersion(ctx context.Context, version model.Version) er
 	return nil
 }
 
-func (r Repository) ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error) {
-	var items []model.Component
-	err := r.db.SelectContext(ctx, &items, `SELECT `+componentColumns+` FROM component WHERE version_id = ? ORDER BY name`, versionId)
+func (r Repository) VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error) {
+	var items []model.VersionComponent
+	err := r.db.SelectContext(ctx, &items, `SELECT `+versionComponentColumns+` FROM version_component WHERE version_id = ? ORDER BY name`, versionId)
 	if err != nil {
 		return nil, fmt.Errorf("list components for version %s: %w", versionId, err)
 	}
 	return items, nil
 }
 
-func (r Repository) ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error) {
-	var items []model.Expose
-	err := r.db.SelectContext(ctx, &items, `SELECT `+exposeColumns+` FROM expose WHERE version_id = ? ORDER BY component_name, protocol, container_port`, versionId)
+func (r Repository) VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error) {
+	var items []model.VersionExpose
+	err := r.db.SelectContext(ctx, &items, `SELECT `+versionExposeColumns+` FROM version_expose WHERE version_id = ? ORDER BY component_name, protocol, container_port`, versionId)
 	if err != nil {
 		return nil, fmt.Errorf("list exposes for version %s: %w", versionId, err)
 	}
 	return items, nil
 }
 
-func (r Repository) ReplaceComponents(ctx context.Context, versionId string, components []model.Component) error {
+func (r Repository) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin replace components %s: %w", versionId, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM component WHERE version_id = ?`, versionId); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM version_component WHERE version_id = ?`, versionId); err != nil {
 		return fmt.Errorf("delete components for version %s: %w", versionId, err)
 	}
 	for _, component := range components {
-		if err := insertComponent(ctx, tx, r.driver, component); err != nil {
+		if err := insertVersionComponent(ctx, tx, r.driver, component); err != nil {
 			return err
 		}
 	}
@@ -213,17 +214,17 @@ func (r Repository) ReplaceComponents(ctx context.Context, versionId string, com
 	return nil
 }
 
-func (r Repository) ReplaceExposes(ctx context.Context, versionId string, exposes []model.Expose) error {
+func (r Repository) ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin replace exposes %s: %w", versionId, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM expose WHERE version_id = ?`, versionId); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM version_expose WHERE version_id = ?`, versionId); err != nil {
 		return fmt.Errorf("delete exposes for version %s: %w", versionId, err)
 	}
 	for _, expose := range exposes {
-		if err := insertExpose(ctx, tx, r.driver, expose); err != nil {
+		if err := insertVersionExpose(ctx, tx, r.driver, expose); err != nil {
 			return err
 		}
 	}
@@ -233,7 +234,7 @@ func (r Repository) ReplaceExposes(ctx context.Context, versionId string, expose
 	return nil
 }
 
-func (r Repository) CreateVersionWithComponentsAndExposes(ctx context.Context, version model.Version, components []model.Component, exposes []model.Expose) error {
+func (r Repository) CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin create version with components %s: %w", version.Label, err)
@@ -245,12 +246,12 @@ func (r Repository) CreateVersionWithComponentsAndExposes(ctx context.Context, v
 		return fmt.Errorf("create version %s: %w", version.Label, err)
 	}
 	for _, component := range components {
-		if err := insertComponent(ctx, tx, r.driver, component); err != nil {
+		if err := insertVersionComponent(ctx, tx, r.driver, component); err != nil {
 			return err
 		}
 	}
 	for _, expose := range exposes {
-		if err := insertExpose(ctx, tx, r.driver, expose); err != nil {
+		if err := insertVersionExpose(ctx, tx, r.driver, expose); err != nil {
 			return err
 		}
 	}
@@ -260,8 +261,8 @@ func (r Repository) CreateVersionWithComponentsAndExposes(ctx context.Context, v
 	return nil
 }
 
-func insertComponent(ctx context.Context, tx *sqlx.Tx, driver string, component model.Component) error {
-	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO component (
+func insertVersionComponent(ctx context.Context, tx *sqlx.Tx, driver string, component model.VersionComponent) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO version_component (
 		id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json,
 		depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(driver), db.NowExpr(driver)),
@@ -274,8 +275,8 @@ func insertComponent(ctx context.Context, tx *sqlx.Tx, driver string, component 
 	return nil
 }
 
-func insertExpose(ctx context.Context, tx *sqlx.Tx, driver string, expose model.Expose) error {
-	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO expose (
+func insertVersionExpose(ctx context.Context, tx *sqlx.Tx, driver string, expose model.VersionExpose) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO version_expose (
 		id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at
 	) VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(driver), db.NowExpr(driver)),
 		expose.Id, expose.VersionId, expose.ComponentName, expose.Protocol, expose.ContainerPort, expose.PathPrefix)
@@ -402,14 +403,10 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 		if !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("lookup service for application %s: %w", svc.ApplicationId, err)
 		}
-		isIngress := 0
-		if svc.IsIngress {
-			isIngress = 1
-		}
 		_, err = r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO service (
-			id, application_id, environment_id, instance_key, is_ingress, version_id, last_successful_version_id, status, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
-			svc.Id, svc.ApplicationId, svc.EnvironmentId, svc.InstanceKey, isIngress, svc.VersionId, svc.LastSuccessfulVersionId, svc.Status)
+			id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+			svc.Id, svc.ApplicationId, svc.EnvironmentId, svc.InstanceKey, svc.VersionId, svc.LastSuccessfulVersionId, svc.Status)
 		if err != nil {
 			return fmt.Errorf("create service for application %s: %w", svc.ApplicationId, err)
 		}
@@ -419,23 +416,10 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 	if strings.TrimSpace(svc.Id) != "" {
 		id = svc.Id
 	}
-	isIngress := 0
-	if svc.IsIngress {
-		isIngress = 1
-	}
-	_, err = r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET version_id = ?, last_successful_version_id = ?, status = ?, is_ingress = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
-		svc.VersionId, svc.LastSuccessfulVersionId, svc.Status, isIngress, id)
+	_, err = r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET version_id = ?, last_successful_version_id = ?, status = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
+		svc.VersionId, svc.LastSuccessfulVersionId, svc.Status, id)
 	if err != nil {
 		return fmt.Errorf("update service %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) ClearIngressForAppEnv(ctx context.Context, applicationId string, environmentId string, exceptServiceId string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET is_ingress = 0, updated_at = %s WHERE application_id = ? AND environment_id = ? AND id <> ? AND is_ingress = 1`, db.NowExpr(r.driver)),
-		applicationId, environmentId, exceptServiceId)
-	if err != nil {
-		return fmt.Errorf("clear ingress for app/env %s/%s: %w", applicationId, environmentId, err)
 	}
 	return nil
 }

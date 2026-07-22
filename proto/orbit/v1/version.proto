@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package orbit.v1;
 
-message ComponentReq {
+message VersionComponentReq {
   string name = 1;
   string image = 2;
   optional string command_json = 3;
@@ -17,7 +17,7 @@ message ComponentReq {
   optional string pull_policy = 12;
 }
 
-message ComponentResp {
+message VersionComponentResp {
   string id = 1;
   string version_id = 2;
   string name = 3;
@@ -36,14 +36,14 @@ message ComponentResp {
   string updated_at = 16;
 }
 
-message ExposeReq {
+message VersionExposeReq {
   string component_name = 1;
   string protocol = 2;
   int32 container_port = 3;
   optional string path_prefix = 4;
 }
 
-message ExposeResp {
+message VersionExposeResp {
   string id = 1;
   string version_id = 2;
   string component_name = 3;
@@ -59,16 +59,16 @@ message VersionCreateReq {
   string label = 2;
   optional string env_json = 3;
   optional string note = 4;
-  repeated ComponentReq components = 5;
-  repeated ExposeReq exposes = 6;
+  repeated VersionComponentReq components = 5;
+  repeated VersionExposeReq exposes = 6;
 }
 
 message VersionUpdateReq {
   optional string label = 1;
   optional string env_json = 2;
   optional string note = 3;
-  repeated ComponentReq components = 4;
-  repeated ExposeReq exposes = 5;
+  repeated VersionComponentReq components = 4;
+  repeated VersionExposeReq exposes = 5;
 }
 
 message VersionForkReq {
@@ -85,8 +85,8 @@ message VersionResp {
   optional string note = 7;
   string created_at = 8;
   string updated_at = 9;
-  repeated ComponentResp components = 10;
-  repeated ExposeResp exposes = 11;
+  repeated VersionComponentResp components = 10;
+  repeated VersionExposeResp exposes = 11;
 }
 
 message VersionListResp {
@@ -96,7 +96,6 @@ message VersionListResp {
 message VersionPreviewReq {
   string environment_id = 1;
   optional string instance_key = 2;
-  optional bool attach_ingress = 3;
 }
 
 message VersionPreviewResp {
@@ -108,12 +107,11 @@ message ServiceResp {
   string application_id = 2;
   string environment_id = 3;
   string instance_key = 4;
-  bool is_ingress = 5;
-  string version_id = 6;
-  optional string last_successful_version_id = 7;
-  string status = 8;
-  string created_at = 9;
-  string updated_at = 10;
+  string version_id = 5;
+  optional string last_successful_version_id = 6;
+  string status = 7;
+  string created_at = 8;
+  string updated_at = 9;
 }
 
 message ServiceListResp {

@@ -15,12 +15,16 @@ message ApplicationResp {
   optional string service_id = 9;
   optional string version_id = 10;
   int32 service_count = 11;
+  // kind is standard|gateway; immutable after create.
+  string kind = 12;
 }
 
 message ApplicationCreateReq {
   string name = 1;
   string code = 2;
   string image_pull_policy = 3;
+  // optional; empty defaults to standard.
+  optional string kind = 4;
 }
 
 message ApplicationUpdateReq {
@@ -33,8 +37,7 @@ message ApplicationDeployReq {
   string version_id = 1;
   string environment_id = 2;
   string instance_key = 3;
-  optional bool attach_ingress = 4;
-  bool force_recreate = 5;
+  bool force_recreate = 4;
 }
 
 message ApplicationStopReq {

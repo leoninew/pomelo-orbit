@@ -8,7 +8,7 @@
 
 export const protobufPackage = "orbit.v1";
 
-export interface ComponentReq {
+export interface VersionComponentReq {
   name: string;
   image: string;
   command_json?: string | undefined;
@@ -23,7 +23,7 @@ export interface ComponentReq {
   pull_policy?: string | undefined;
 }
 
-export interface ComponentResp {
+export interface VersionComponentResp {
   id: string;
   version_id: string;
   name: string;
@@ -42,14 +42,14 @@ export interface ComponentResp {
   updated_at: string;
 }
 
-export interface ExposeReq {
+export interface VersionExposeReq {
   component_name: string;
   protocol: string;
   container_port: number;
   path_prefix?: string | undefined;
 }
 
-export interface ExposeResp {
+export interface VersionExposeResp {
   id: string;
   version_id: string;
   component_name: string;
@@ -65,16 +65,16 @@ export interface VersionCreateReq {
   label: string;
   env_json?: string | undefined;
   note?: string | undefined;
-  components: ComponentReq[];
-  exposes: ExposeReq[];
+  components: VersionComponentReq[];
+  exposes: VersionExposeReq[];
 }
 
 export interface VersionUpdateReq {
   label?: string | undefined;
   env_json?: string | undefined;
   note?: string | undefined;
-  components: ComponentReq[];
-  exposes: ExposeReq[];
+  components: VersionComponentReq[];
+  exposes: VersionExposeReq[];
 }
 
 export interface VersionForkReq {
@@ -91,8 +91,8 @@ export interface VersionResp {
   note?: string | undefined;
   created_at: string;
   updated_at: string;
-  components: ComponentResp[];
-  exposes: ExposeResp[];
+  components: VersionComponentResp[];
+  exposes: VersionExposeResp[];
 }
 
 export interface VersionListResp {
@@ -102,7 +102,6 @@ export interface VersionListResp {
 export interface VersionPreviewReq {
   environment_id: string;
   instance_key?: string | undefined;
-  attach_ingress?: boolean | undefined;
 }
 
 export interface VersionPreviewResp {
@@ -114,7 +113,6 @@ export interface ServiceResp {
   application_id: string;
   environment_id: string;
   instance_key: string;
-  is_ingress: boolean;
   version_id: string;
   last_successful_version_id?: string | undefined;
   status: string;

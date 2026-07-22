@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS application (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     code TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'standard',
     image_pull_policy TEXT NOT NULL,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),

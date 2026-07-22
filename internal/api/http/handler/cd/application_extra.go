@@ -236,7 +236,7 @@ func (h Handler) PreviewVersion(c *gin.Context) {
 	if req.InstanceKey != nil {
 		instanceKey = *req.InstanceKey
 	}
-	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"), req.EnvironmentId, instanceKey, req.AttachIngress)
+	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"), req.EnvironmentId, instanceKey)
 	if err != nil {
 		h.writeError(c, err)
 		return

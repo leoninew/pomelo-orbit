@@ -8,18 +8,23 @@ import (
 )
 
 func applicationImportInput(projectID string, req *pomeloorbit.ApplicationImportReq) cddto.ApplicationImportInput {
-	components := make([]cddto.ComponentInput, 0, len(req.Components))
+	components := make([]cddto.VersionComponentInput, 0, len(req.Components))
 	for _, item := range req.Components {
-		components = append(components, componentInput(item))
+		components = append(components, versionComponentInput(item))
 	}
-	exposes := make([]cddto.ExposeInput, 0, len(req.Exposes))
+	exposes := make([]cddto.VersionExposeInput, 0, len(req.Exposes))
 	for _, item := range req.Exposes {
-		exposes = append(exposes, exposeInput(item))
+		exposes = append(exposes, versionExposeInput(item))
+	}
+	kind := ""
+	if req.Kind != nil {
+		kind = *req.Kind
 	}
 	return cddto.ApplicationImportInput{
 		ProjectId:       projectID,
 		Name:            req.Name,
 		Code:            req.Code,
+		Kind:            kind,
 		ImagePullPolicy: req.ImagePullPolicy,
 		VersionLabel:    req.VersionLabel,
 		VersionEnvJSON:  req.VersionEnvJson,
@@ -35,6 +40,7 @@ func applicationExportResponse(exported cddto.ApplicationExport) *pomeloorbit.Ap
 		ProjectId:       exported.Application.ProjectId,
 		Name:            exported.Application.Name,
 		Code:            exported.Application.Code,
+		Kind:            exported.Application.Kind,
 		ImagePullPolicy: exported.Application.ImagePullPolicy,
 		Versions:        make([]*pomeloorbit.VersionResp, 0, len(exported.Versions)),
 		Services:        make([]*pomeloorbit.ServiceResp, 0, len(exported.Services)),
@@ -50,8 +56,8 @@ func applicationExportResponse(exported cddto.ApplicationExport) *pomeloorbit.Ap
 	return resp
 }
 
-func componentInput(req *pomeloorbit.ComponentReq) cddto.ComponentInput {
-	return cddto.ComponentInput{
+func versionComponentInput(req *pomeloorbit.VersionComponentReq) cddto.VersionComponentInput {
+	return cddto.VersionComponentInput{
 		Name:            req.Name,
 		Image:           req.Image,
 		CommandJSON:     req.CommandJson,
@@ -67,8 +73,8 @@ func componentInput(req *pomeloorbit.ComponentReq) cddto.ComponentInput {
 	}
 }
 
-func exposeInput(req *pomeloorbit.ExposeReq) cddto.ExposeInput {
-	return cddto.ExposeInput{
+func versionExposeInput(req *pomeloorbit.VersionExposeReq) cddto.VersionExposeInput {
+	return cddto.VersionExposeInput{
 		ComponentName: req.ComponentName,
 		Protocol:      req.Protocol,
 		ContainerPort: int(req.ContainerPort),
@@ -77,13 +83,13 @@ func exposeInput(req *pomeloorbit.ExposeReq) cddto.ExposeInput {
 }
 
 func versionCreateInput(req *pomeloorbit.VersionCreateReq) cddto.VersionCreateInput {
-	components := make([]cddto.ComponentInput, 0, len(req.Components))
+	components := make([]cddto.VersionComponentInput, 0, len(req.Components))
 	for _, item := range req.Components {
-		components = append(components, componentInput(item))
+		components = append(components, versionComponentInput(item))
 	}
-	exposes := make([]cddto.ExposeInput, 0, len(req.Exposes))
+	exposes := make([]cddto.VersionExposeInput, 0, len(req.Exposes))
 	for _, item := range req.Exposes {
-		exposes = append(exposes, exposeInput(item))
+		exposes = append(exposes, versionExposeInput(item))
 	}
 	return cddto.VersionCreateInput{
 		ApplicationId: req.ApplicationId,
@@ -102,16 +108,16 @@ func versionUpdateInput(req *pomeloorbit.VersionUpdateReq) cddto.VersionUpdateIn
 		Note:    req.Note,
 	}
 	if req.Components != nil {
-		components := make([]cddto.ComponentInput, 0, len(req.Components))
+		components := make([]cddto.VersionComponentInput, 0, len(req.Components))
 		for _, item := range req.Components {
-			components = append(components, componentInput(item))
+			components = append(components, versionComponentInput(item))
 		}
 		input.Components = &components
 	}
 	if req.Exposes != nil {
-		exposes := make([]cddto.ExposeInput, 0, len(req.Exposes))
+		exposes := make([]cddto.VersionExposeInput, 0, len(req.Exposes))
 		for _, item := range req.Exposes {
-			exposes = append(exposes, exposeInput(item))
+			exposes = append(exposes, versionExposeInput(item))
 		}
 		input.Exposes = &exposes
 	}
@@ -127,14 +133,14 @@ func versionResponses(views []cddto.VersionView) []pomeloorbit.VersionResp {
 }
 
 func versionResponse(view cddto.VersionView) pomeloorbit.VersionResp {
-	components := make([]*pomeloorbit.ComponentResp, 0, len(view.Components))
+	components := make([]*pomeloorbit.VersionComponentResp, 0, len(view.Components))
 	for _, component := range view.Components {
-		item := componentResponse(component)
+		item := versionComponentResponse(component)
 		components = append(components, &item)
 	}
-	exposes := make([]*pomeloorbit.ExposeResp, 0, len(view.Exposes))
+	exposes := make([]*pomeloorbit.VersionExposeResp, 0, len(view.Exposes))
 	for _, expose := range view.Exposes {
-		item := exposeResponse(expose)
+		item := versionExposeResponse(expose)
 		exposes = append(exposes, &item)
 	}
 	return pomeloorbit.VersionResp{
@@ -152,8 +158,8 @@ func versionResponse(view cddto.VersionView) pomeloorbit.VersionResp {
 	}
 }
 
-func componentResponse(component model.Component) pomeloorbit.ComponentResp {
-	return pomeloorbit.ComponentResp{
+func versionComponentResponse(component model.VersionComponent) pomeloorbit.VersionComponentResp {
+	return pomeloorbit.VersionComponentResp{
 		Id:              component.Id,
 		VersionId:       component.VersionId,
 		Name:            component.Name,
@@ -173,8 +179,8 @@ func componentResponse(component model.Component) pomeloorbit.ComponentResp {
 	}
 }
 
-func exposeResponse(expose model.Expose) pomeloorbit.ExposeResp {
-	return pomeloorbit.ExposeResp{
+func versionExposeResponse(expose model.VersionExpose) pomeloorbit.VersionExposeResp {
+	return pomeloorbit.VersionExposeResp{
 		Id:            expose.Id,
 		VersionId:     expose.VersionId,
 		ComponentName: expose.ComponentName,

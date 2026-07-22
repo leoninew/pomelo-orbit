@@ -34,6 +34,17 @@
     </div>
 
     <div class="space-y-1.5">
+      <label class="app-field-label block">{{ t('application.kind') }}</label>
+      <SelectControl
+        :model-value="form.kind || 'standard'"
+        :options="kindOptions"
+        :placeholder="t('application.kindPlaceholder')"
+        @update:model-value="updateField('kind', String($event))"
+      />
+      <p class="app-field-hint">{{ t('application.kindHint') }}</p>
+    </div>
+
+    <div class="space-y-1.5">
       <label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
       <SelectControl
         :model-value="form.image_pull_policy"
@@ -68,6 +79,11 @@
   ) {
     emit('update:form', { ...props.form, [field]: value });
   }
+
+  const kindOptions = computed(() => [
+    { value: 'standard', label: t('application.kindOptions.standard') },
+    { value: 'gateway', label: t('application.kindOptions.gateway') },
+  ]);
 
   const imagePullPolicyOptions = computed(() => [
     { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },

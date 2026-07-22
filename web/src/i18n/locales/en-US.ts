@@ -174,6 +174,17 @@ export default {
     code: 'Application Code',
     imagePull: 'Image Pull',
     imagePullPolicy: 'Image Pull Policy',
+    kind: 'Application Kind',
+    kindPlaceholder: 'Select application kind',
+    kindHint: 'Immutable after create; gateway uses a dedicated render strategy',
+    kindOptions: {
+      standard: 'Standard (standard)',
+      gateway: 'Gateway (gateway)',
+    },
+    kindLabels: {
+      standard: 'Standard',
+      gateway: 'Gateway',
+    },
     serviceCount: 'Services',
     namePlaceholder: 'Enter application name',
     codePlaceholder:
@@ -274,17 +285,11 @@ export default {
         exposes: 'Expose Specs',
         environment: 'Environment',
         instanceKey: 'Instance Key',
-        ingress: 'Ingress',
-        attachIngress: 'Attach ingress',
         forceRecreate: 'Force recreate',
         serviceInstance: 'Service instance',
         removeVolumes: 'Also remove volumes',
         domain: 'Domain',
         port: 'Port',
-      },
-      labels: {
-        ingressYes: 'Yes',
-        ingressNo: 'No',
       },
       empty: {
         versions: 'No versions yet. Create a version before deploying.',

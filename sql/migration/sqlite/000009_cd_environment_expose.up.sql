@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS environment (
 
 CREATE INDEX IF NOT EXISTS idx_environment_project ON environment(project_id);
 
-CREATE TABLE IF NOT EXISTS expose (
+CREATE TABLE IF NOT EXISTS version_expose (
     id TEXT PRIMARY KEY,
     version_id TEXT NOT NULL,
     component_name TEXT NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS expose (
     UNIQUE(version_id, component_name, protocol, container_port)
 );
 
-CREATE INDEX IF NOT EXISTS idx_expose_version ON expose(version_id);
+CREATE INDEX IF NOT EXISTS idx_version_expose_version ON version_expose(version_id);
 
 CREATE TABLE IF NOT EXISTS environment_binding (
     id TEXT PRIMARY KEY,
@@ -69,7 +69,6 @@ CREATE TABLE service_new (
     application_id TEXT NOT NULL,
     environment_id TEXT NOT NULL,
     instance_key TEXT NOT NULL DEFAULT 'default',
-    is_ingress INTEGER NOT NULL DEFAULT 0,
     version_id TEXT NOT NULL,
     last_successful_version_id TEXT,
     status TEXT NOT NULL,
@@ -83,7 +82,7 @@ CREATE TABLE service_new (
 );
 
 INSERT INTO service_new (
-    id, application_id, environment_id, instance_key, is_ingress,
+    id, application_id, environment_id, instance_key,
     version_id, last_successful_version_id, status, created_at, updated_at
 )
 SELECT
@@ -91,7 +90,6 @@ SELECT
     s.application_id,
     e.id,
     'default',
-    1,
     s.version_id,
     s.last_successful_version_id,
     s.status,

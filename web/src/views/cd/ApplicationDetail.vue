@@ -112,6 +112,14 @@
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+              {{ t('application.kind') }}
+            </dt>
+            <dd class="text-foreground">
+              {{ t('application.kindLabels.' + (application.kind || 'standard')) }}
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
               {{ t('common.status') }}
             </dt>
             <dd>
@@ -288,32 +296,24 @@
               <tr>
                 <th>{{ t('application.detail.fields.environment') }}</th>
                 <th>{{ t('application.detail.fields.instanceKey') }}</th>
-                <th>{{ t('application.detail.fields.ingress') }}</th>
                 <th>{{ t('common.status') }}</th>
                 <th>{{ t('application.detail.fields.versionLabel') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="serviceListLoading">
-                <td colspan="5" class="text-center text-muted-foreground">
+                <td colspan="4" class="text-center text-muted-foreground">
                   <AppSpinner />
                 </td>
               </tr>
               <tr v-else-if="services.length === 0">
-                <td colspan="5" class="text-center text-muted-foreground">
+                <td colspan="4" class="text-center text-muted-foreground">
                   {{ t('application.detail.empty.services') }}
                 </td>
               </tr>
               <tr v-for="svc in services" :key="svc.id">
                 <td class="text-foreground">{{ environmentLabel(svc.environment_id) }}</td>
                 <td class="text-muted-foreground">{{ svc.instance_key }}</td>
-                <td class="text-muted-foreground">
-                  {{
-                    svc.is_ingress
-                      ? t('application.detail.labels.ingressYes')
-                      : t('application.detail.labels.ingressNo')
-                  }}
-                </td>
                 <td>
                   <AppBadge variant="pill" :tone="appStatusTone(normalizeServiceStatus(svc.status))">
                     {{ t('status.' + normalizeServiceStatus(svc.status)) }}
@@ -595,10 +595,6 @@
           <input v-model="deployForm.instance_key" type="text" class="app-input" />
         </div>
         <label class="flex items-center gap-2">
-          <input v-model="deployForm.attach_ingress" type="checkbox" class="app-checkbox" />
-          <span class="text-sm text-foreground">{{ t('application.detail.fields.attachIngress') }}</span>
-        </label>
-        <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('application.detail.fields.forceRecreate') }}</span>
         </label>
@@ -715,7 +711,7 @@
     Square,
     Trash2,
   } from 'lucide-vue-next';
-  import { computed, onMounted, reactive, ref, watch } from 'vue';
+  import { computed, onMounted, reactive, ref } from 'vue';
   import {
     DropdownMenuContent,
     DropdownMenuItem,
@@ -739,9 +735,9 @@
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application';
   import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment';
   import type {
-    ComponentReq,
-    ExposeReq,
     ServiceResp,
+    VersionComponentReq,
+    VersionExposeReq,
     VersionResp,
   } from '@/gen/proto/orbit/v1/version';
   import {
@@ -820,7 +816,6 @@
   const deployForm = reactive({
     environment_id: '',
     instance_key: 'default',
-    attach_ingress: true,
     force_recreate: false,
   });
   const serviceTargetForm = reactive({
@@ -880,15 +875,6 @@
     return found?.label || boundId;
   });
 
-  watch(
-    () => deployForm.instance_key,
-    (key) => {
-      if (key.trim() === '' || key.trim() === 'default') {
-        deployForm.attach_ingress = true;
-      }
-    }
-  );
-
   function componentSummary(version: VersionResp) {
     if (!version.components?.length) {
       return '—';
@@ -921,11 +907,11 @@
     return options;
   }
 
-  function componentToReq(row: ComponentFormRow): ComponentReq {
+  function componentToReq(row: ComponentFormRow): VersionComponentReq {
     return { name: row.name.trim(), image: row.image.trim() };
   }
 
-  function exposeToReq(row: ExposeFormRow): ExposeReq {
+  function exposeToReq(row: ExposeFormRow): VersionExposeReq {
     return {
       component_name: String(row.component_name || '').trim(),
       protocol: String(row.protocol || 'http').trim() || 'http',
@@ -1062,8 +1048,6 @@
     deployForm.force_recreate = forceRecreate;
     deployForm.instance_key = deployForm.instance_key.trim() || 'default';
     deployForm.environment_id = deployForm.environment_id || defaultEnvironmentId();
-    deployForm.attach_ingress =
-      !deployForm.instance_key || deployForm.instance_key === 'default';
     isDeployDialogOpen.value = true;
   }
 
@@ -1092,7 +1076,6 @@
           version_id: versionId,
           environment_id: deployForm.environment_id,
           instance_key: instanceKey,
-          attach_ingress: deployForm.attach_ingress,
           force_recreate: deployForm.force_recreate,
         });
         toast.success(t('application.toast.deployTriggeredDetail'));
@@ -1113,8 +1096,7 @@
       return;
     }
     serviceTargetAction.value = action;
-    const preferred =
-      actionableServices.value.find((svc) => svc.is_ingress) || actionableServices.value[0];
+    const preferred = actionableServices.value[0];
     serviceTargetForm.service_id = preferred.id;
     serviceTargetForm.remove_volumes = false;
     if (actionableServices.value.length === 1) {
@@ -1468,7 +1450,6 @@
         const { compose_yaml } = await applicationApi.previewVersion(versionId, {
           environment_id: environmentId,
           instance_key: 'default',
-          attach_ingress: true,
         });
         composePreviewYaml.value = compose_yaml;
       });

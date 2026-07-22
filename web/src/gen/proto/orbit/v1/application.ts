@@ -21,12 +21,16 @@ export interface ApplicationResp {
   service_id?: string | undefined;
   version_id?: string | undefined;
   service_count: number;
+  /** kind is standard|gateway; immutable after create. */
+  kind: string;
 }
 
 export interface ApplicationCreateReq {
   name: string;
   code: string;
   image_pull_policy: string;
+  /** optional; empty defaults to standard. */
+  kind?: string | undefined;
 }
 
 export interface ApplicationUpdateReq {
@@ -39,7 +43,6 @@ export interface ApplicationDeployReq {
   version_id: string;
   environment_id: string;
   instance_key: string;
-  attach_ingress?: boolean | undefined;
   force_recreate: boolean;
 }
 

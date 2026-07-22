@@ -33,7 +33,7 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 			ServiceId:     stringPtr("svc-1"),
 		},
 		version: model.Version{Id: versionID, ApplicationId: "app-1", Label: "v1", Status: status.VersionStatusUnpublished},
-		components: []model.Component{
+		components: []model.VersionComponent{
 			{Id: "c1", VersionId: versionID, Name: "web", Image: "nginx"},
 		},
 		env: model.Environment{
@@ -50,7 +50,6 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 			ApplicationId: "app-1",
 			EnvironmentId: envID,
 			InstanceKey:   "default",
-			IsIngress:     true,
 			VersionId:     versionID,
 			Status:        status.ServiceStatusRunning,
 		},
@@ -180,7 +179,7 @@ func TestExecuteApplicationDeployRequiresVersionID(t *testing.T) {
 func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	store := deployStore(t)
-	store.exposes = []model.Expose{
+	store.exposes = []model.VersionExpose{
 		{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 	}
 	store.env.BaseDomain = "example.com"
@@ -220,8 +219,8 @@ type fakeDeploymentExecutionStore struct {
 	app              model.Application
 	deployment       model.Deployment
 	version          model.Version
-	components       []model.Component
-	exposes          []model.Expose
+	components       []model.VersionComponent
+	exposes          []model.VersionExpose
 	env              model.Environment
 	service          model.Service
 	serviceStatus    string
@@ -245,11 +244,11 @@ func (s *fakeDeploymentExecutionStore) Version(_ context.Context, id string) (mo
 	return s.version, nil
 }
 
-func (s *fakeDeploymentExecutionStore) ComponentsByVersion(_ context.Context, versionId string) ([]model.Component, error) {
+func (s *fakeDeploymentExecutionStore) VersionComponentsByVersion(_ context.Context, versionId string) ([]model.VersionComponent, error) {
 	return s.components, nil
 }
 
-func (s *fakeDeploymentExecutionStore) ExposesByVersion(_ context.Context, versionId string) ([]model.Expose, error) {
+func (s *fakeDeploymentExecutionStore) VersionExposesByVersion(_ context.Context, versionId string) ([]model.VersionExpose, error) {
 	return s.exposes, nil
 }
 
@@ -280,7 +279,6 @@ func (s *fakeDeploymentExecutionStore) UpsertService(_ context.Context, svc mode
 	} else {
 		s.service.VersionId = svc.VersionId
 		s.service.Status = svc.Status
-		s.service.IsIngress = svc.IsIngress
 		s.service.EnvironmentId = svc.EnvironmentId
 		s.service.InstanceKey = svc.InstanceKey
 		if svc.LastSuccessfulVersionId != nil {
@@ -289,10 +287,6 @@ func (s *fakeDeploymentExecutionStore) UpsertService(_ context.Context, svc mode
 	}
 	s.hasService = true
 	s.serviceStatus = s.service.Status
-	return nil
-}
-
-func (s *fakeDeploymentExecutionStore) ClearIngressForAppEnv(_ context.Context, applicationId string, environmentId string, exceptServiceId string) error {
 	return nil
 }
 

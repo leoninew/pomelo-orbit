@@ -8,10 +8,15 @@ import (
 )
 
 func applicationCreateInput(projectID string, req *pomeloorbit.ApplicationCreateReq) cddto.ApplicationCreateInput {
+	kind := ""
+	if req.Kind != nil {
+		kind = *req.Kind
+	}
 	return cddto.ApplicationCreateInput{
 		ProjectId:       projectID,
 		Name:            req.Name,
 		Code:            req.Code,
+		Kind:            kind,
 		ImagePullPolicy: req.ImagePullPolicy,
 	}
 }
@@ -33,7 +38,6 @@ func applicationDeployInput(req *pomeloorbit.ApplicationDeployReq) cddto.Applica
 		VersionId:     req.VersionId,
 		EnvironmentId: req.EnvironmentId,
 		InstanceKey:   req.InstanceKey,
-		AttachIngress: req.AttachIngress,
 		ForceRecreate: req.ForceRecreate,
 	}
 }
@@ -61,12 +65,6 @@ func applicationResponse(item model.Application, services []model.Service) pomel
 	var versionId *string
 	if len(services) > 0 {
 		primary := services[0]
-		for i := range services {
-			if services[i].IsIngress {
-				primary = services[i]
-				break
-			}
-		}
 		serviceStatus = primary.Status
 		serviceId = &primary.Id
 		versionId = &primary.VersionId
@@ -76,6 +74,7 @@ func applicationResponse(item model.Application, services []model.Service) pomel
 		ProjectId:       item.ProjectId,
 		Name:            item.Name,
 		Code:            item.Code,
+		Kind:            item.Kind,
 		ImagePullPolicy: item.ImagePullPolicy,
 		ServiceStatus:   serviceStatus,
 		CreatedAt:       transportresponse.FormatTime(item.CreatedAt),
@@ -92,7 +91,6 @@ func serviceResponse(item model.Service) pomeloorbit.ServiceResp {
 		ApplicationId:           item.ApplicationId,
 		EnvironmentId:           item.EnvironmentId,
 		InstanceKey:             item.InstanceKey,
-		IsIngress:               item.IsIngress,
 		VersionId:               item.VersionId,
 		LastSuccessfulVersionId: item.LastSuccessfulVersionId,
 		Status:                  item.Status,

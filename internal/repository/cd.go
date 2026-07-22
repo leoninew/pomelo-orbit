@@ -24,11 +24,11 @@ type CDStore interface {
 	Version(ctx context.Context, id string) (model.Version, error)
 	CreateVersion(ctx context.Context, version model.Version) error
 	UpdateVersion(ctx context.Context, version model.Version) error
-	ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error)
-	ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error)
-	ReplaceComponents(ctx context.Context, versionId string, components []model.Component) error
-	ReplaceExposes(ctx context.Context, versionId string, exposes []model.Expose) error
-	CreateVersionWithComponentsAndExposes(ctx context.Context, version model.Version, components []model.Component, exposes []model.Expose) error
+	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
+	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
+	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
+	ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error
+	CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error
 
 	// Environment
 	ListEnvironments(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.Environment], error)
@@ -44,7 +44,6 @@ type CDStore interface {
 	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpsertService(ctx context.Context, svc model.Service) error
-	ClearIngressForAppEnv(ctx context.Context, applicationId string, environmentId string, exceptServiceId string) error
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error
 
@@ -67,13 +66,12 @@ type DeploymentExecutionStore interface {
 	Application(ctx context.Context, id string) (model.Application, error)
 	Deployment(ctx context.Context, id string) (model.Deployment, error)
 	Version(ctx context.Context, id string) (model.Version, error)
-	ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error)
-	ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error)
+	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
+	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
 	Environment(ctx context.Context, id string) (model.Environment, error)
 	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpsertService(ctx context.Context, svc model.Service) error
-	ClearIngressForAppEnv(ctx context.Context, applicationId string, environmentId string, exceptServiceId string) error
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error

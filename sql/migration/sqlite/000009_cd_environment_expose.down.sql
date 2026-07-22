@@ -33,5 +33,5 @@ CREATE INDEX IF NOT EXISTS idx_service_version ON service(version_id);
 -- Keep environment_id column if present (harmless); drop environment tables.
 
 DROP TABLE IF EXISTS environment_binding;
-DROP TABLE IF EXISTS expose;
+DROP TABLE IF EXISTS version_expose;
 DROP TABLE IF EXISTS environment;

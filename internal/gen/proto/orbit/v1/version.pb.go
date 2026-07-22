@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ComponentReq struct {
+type VersionComponentReq struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Image           string                 `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
@@ -39,20 +39,20 @@ type ComponentReq struct {
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *ComponentReq) Reset() {
-	*x = ComponentReq{}
+func (x *VersionComponentReq) Reset() {
+	*x = VersionComponentReq{}
 	mi := &file_orbit_v1_version_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ComponentReq) String() string {
+func (x *VersionComponentReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ComponentReq) ProtoMessage() {}
+func (*VersionComponentReq) ProtoMessage() {}
 
-func (x *ComponentReq) ProtoReflect() protoreflect.Message {
+func (x *VersionComponentReq) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_version_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -64,96 +64,96 @@ func (x *ComponentReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ComponentReq.ProtoReflect.Descriptor instead.
-func (*ComponentReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionComponentReq.ProtoReflect.Descriptor instead.
+func (*VersionComponentReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_version_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ComponentReq) GetName() string {
+func (x *VersionComponentReq) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetImage() string {
+func (x *VersionComponentReq) GetImage() string {
 	if x != nil {
 		return x.Image
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetCommandJson() string {
+func (x *VersionComponentReq) GetCommandJson() string {
 	if x != nil && x.CommandJson != nil {
 		return *x.CommandJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetArgsJson() string {
+func (x *VersionComponentReq) GetArgsJson() string {
 	if x != nil && x.ArgsJson != nil {
 		return *x.ArgsJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetEnvJson() string {
+func (x *VersionComponentReq) GetEnvJson() string {
 	if x != nil && x.EnvJson != nil {
 		return *x.EnvJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetPortsJson() string {
+func (x *VersionComponentReq) GetPortsJson() string {
 	if x != nil && x.PortsJson != nil {
 		return *x.PortsJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetMountsJson() string {
+func (x *VersionComponentReq) GetMountsJson() string {
 	if x != nil && x.MountsJson != nil {
 		return *x.MountsJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetNetworksJson() string {
+func (x *VersionComponentReq) GetNetworksJson() string {
 	if x != nil && x.NetworksJson != nil {
 		return *x.NetworksJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetDependsOnJson() string {
+func (x *VersionComponentReq) GetDependsOnJson() string {
 	if x != nil && x.DependsOnJson != nil {
 		return *x.DependsOnJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetHealthcheckJson() string {
+func (x *VersionComponentReq) GetHealthcheckJson() string {
 	if x != nil && x.HealthcheckJson != nil {
 		return *x.HealthcheckJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetResourcesJson() string {
+func (x *VersionComponentReq) GetResourcesJson() string {
 	if x != nil && x.ResourcesJson != nil {
 		return *x.ResourcesJson
 	}
 	return ""
 }
 
-func (x *ComponentReq) GetPullPolicy() string {
+func (x *VersionComponentReq) GetPullPolicy() string {
 	if x != nil && x.PullPolicy != nil {
 		return *x.PullPolicy
 	}
 	return ""
 }
 
-type ComponentResp struct {
+type VersionComponentResp struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	VersionId       string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
@@ -175,20 +175,20 @@ type ComponentResp struct {
 	sizeCache       protoimpl.SizeCache
 }
 
-func (x *ComponentResp) Reset() {
-	*x = ComponentResp{}
+func (x *VersionComponentResp) Reset() {
+	*x = VersionComponentResp{}
 	mi := &file_orbit_v1_version_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ComponentResp) String() string {
+func (x *VersionComponentResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ComponentResp) ProtoMessage() {}
+func (*VersionComponentResp) ProtoMessage() {}
 
-func (x *ComponentResp) ProtoReflect() protoreflect.Message {
+func (x *VersionComponentResp) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_version_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -200,124 +200,124 @@ func (x *ComponentResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ComponentResp.ProtoReflect.Descriptor instead.
-func (*ComponentResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionComponentResp.ProtoReflect.Descriptor instead.
+func (*VersionComponentResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_version_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ComponentResp) GetId() string {
+func (x *VersionComponentResp) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetVersionId() string {
+func (x *VersionComponentResp) GetVersionId() string {
 	if x != nil {
 		return x.VersionId
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetName() string {
+func (x *VersionComponentResp) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetImage() string {
+func (x *VersionComponentResp) GetImage() string {
 	if x != nil {
 		return x.Image
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetCommandJson() string {
+func (x *VersionComponentResp) GetCommandJson() string {
 	if x != nil && x.CommandJson != nil {
 		return *x.CommandJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetArgsJson() string {
+func (x *VersionComponentResp) GetArgsJson() string {
 	if x != nil && x.ArgsJson != nil {
 		return *x.ArgsJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetEnvJson() string {
+func (x *VersionComponentResp) GetEnvJson() string {
 	if x != nil && x.EnvJson != nil {
 		return *x.EnvJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetPortsJson() string {
+func (x *VersionComponentResp) GetPortsJson() string {
 	if x != nil && x.PortsJson != nil {
 		return *x.PortsJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetMountsJson() string {
+func (x *VersionComponentResp) GetMountsJson() string {
 	if x != nil && x.MountsJson != nil {
 		return *x.MountsJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetNetworksJson() string {
+func (x *VersionComponentResp) GetNetworksJson() string {
 	if x != nil && x.NetworksJson != nil {
 		return *x.NetworksJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetDependsOnJson() string {
+func (x *VersionComponentResp) GetDependsOnJson() string {
 	if x != nil && x.DependsOnJson != nil {
 		return *x.DependsOnJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetHealthcheckJson() string {
+func (x *VersionComponentResp) GetHealthcheckJson() string {
 	if x != nil && x.HealthcheckJson != nil {
 		return *x.HealthcheckJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetResourcesJson() string {
+func (x *VersionComponentResp) GetResourcesJson() string {
 	if x != nil && x.ResourcesJson != nil {
 		return *x.ResourcesJson
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetPullPolicy() string {
+func (x *VersionComponentResp) GetPullPolicy() string {
 	if x != nil && x.PullPolicy != nil {
 		return *x.PullPolicy
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetCreatedAt() string {
+func (x *VersionComponentResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
 	}
 	return ""
 }
 
-func (x *ComponentResp) GetUpdatedAt() string {
+func (x *VersionComponentResp) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
 	}
 	return ""
 }
 
-type ExposeReq struct {
+type VersionExposeReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ComponentName string                 `protobuf:"bytes,1,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
 	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
@@ -327,20 +327,20 @@ type ExposeReq struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ExposeReq) Reset() {
-	*x = ExposeReq{}
+func (x *VersionExposeReq) Reset() {
+	*x = VersionExposeReq{}
 	mi := &file_orbit_v1_version_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExposeReq) String() string {
+func (x *VersionExposeReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExposeReq) ProtoMessage() {}
+func (*VersionExposeReq) ProtoMessage() {}
 
-func (x *ExposeReq) ProtoReflect() protoreflect.Message {
+func (x *VersionExposeReq) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_version_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -352,40 +352,40 @@ func (x *ExposeReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExposeReq.ProtoReflect.Descriptor instead.
-func (*ExposeReq) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionExposeReq.ProtoReflect.Descriptor instead.
+func (*VersionExposeReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_version_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ExposeReq) GetComponentName() string {
+func (x *VersionExposeReq) GetComponentName() string {
 	if x != nil {
 		return x.ComponentName
 	}
 	return ""
 }
 
-func (x *ExposeReq) GetProtocol() string {
+func (x *VersionExposeReq) GetProtocol() string {
 	if x != nil {
 		return x.Protocol
 	}
 	return ""
 }
 
-func (x *ExposeReq) GetContainerPort() int32 {
+func (x *VersionExposeReq) GetContainerPort() int32 {
 	if x != nil {
 		return x.ContainerPort
 	}
 	return 0
 }
 
-func (x *ExposeReq) GetPathPrefix() string {
+func (x *VersionExposeReq) GetPathPrefix() string {
 	if x != nil && x.PathPrefix != nil {
 		return *x.PathPrefix
 	}
 	return ""
 }
 
-type ExposeResp struct {
+type VersionExposeResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	VersionId     string                 `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
@@ -399,20 +399,20 @@ type ExposeResp struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ExposeResp) Reset() {
-	*x = ExposeResp{}
+func (x *VersionExposeResp) Reset() {
+	*x = VersionExposeResp{}
 	mi := &file_orbit_v1_version_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ExposeResp) String() string {
+func (x *VersionExposeResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ExposeResp) ProtoMessage() {}
+func (*VersionExposeResp) ProtoMessage() {}
 
-func (x *ExposeResp) ProtoReflect() protoreflect.Message {
+func (x *VersionExposeResp) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_version_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -424,61 +424,61 @@ func (x *ExposeResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ExposeResp.ProtoReflect.Descriptor instead.
-func (*ExposeResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionExposeResp.ProtoReflect.Descriptor instead.
+func (*VersionExposeResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_version_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *ExposeResp) GetId() string {
+func (x *VersionExposeResp) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *ExposeResp) GetVersionId() string {
+func (x *VersionExposeResp) GetVersionId() string {
 	if x != nil {
 		return x.VersionId
 	}
 	return ""
 }
 
-func (x *ExposeResp) GetComponentName() string {
+func (x *VersionExposeResp) GetComponentName() string {
 	if x != nil {
 		return x.ComponentName
 	}
 	return ""
 }
 
-func (x *ExposeResp) GetProtocol() string {
+func (x *VersionExposeResp) GetProtocol() string {
 	if x != nil {
 		return x.Protocol
 	}
 	return ""
 }
 
-func (x *ExposeResp) GetContainerPort() int32 {
+func (x *VersionExposeResp) GetContainerPort() int32 {
 	if x != nil {
 		return x.ContainerPort
 	}
 	return 0
 }
 
-func (x *ExposeResp) GetPathPrefix() string {
+func (x *VersionExposeResp) GetPathPrefix() string {
 	if x != nil && x.PathPrefix != nil {
 		return *x.PathPrefix
 	}
 	return ""
 }
 
-func (x *ExposeResp) GetCreatedAt() string {
+func (x *VersionExposeResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
 	}
 	return ""
 }
 
-func (x *ExposeResp) GetUpdatedAt() string {
+func (x *VersionExposeResp) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
 	}
@@ -491,8 +491,8 @@ type VersionCreateReq struct {
 	Label         string                 `protobuf:"bytes,2,opt,name=label,proto3" json:"label,omitempty"`
 	EnvJson       *string                `protobuf:"bytes,3,opt,name=env_json,json=envJson,proto3,oneof" json:"env_json,omitempty"`
 	Note          *string                `protobuf:"bytes,4,opt,name=note,proto3,oneof" json:"note,omitempty"`
-	Components    []*ComponentReq        `protobuf:"bytes,5,rep,name=components,proto3" json:"components,omitempty"`
-	Exposes       []*ExposeReq           `protobuf:"bytes,6,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	Components    []*VersionComponentReq `protobuf:"bytes,5,rep,name=components,proto3" json:"components,omitempty"`
+	Exposes       []*VersionExposeReq    `protobuf:"bytes,6,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -555,14 +555,14 @@ func (x *VersionCreateReq) GetNote() string {
 	return ""
 }
 
-func (x *VersionCreateReq) GetComponents() []*ComponentReq {
+func (x *VersionCreateReq) GetComponents() []*VersionComponentReq {
 	if x != nil {
 		return x.Components
 	}
 	return nil
 }
 
-func (x *VersionCreateReq) GetExposes() []*ExposeReq {
+func (x *VersionCreateReq) GetExposes() []*VersionExposeReq {
 	if x != nil {
 		return x.Exposes
 	}
@@ -574,8 +574,8 @@ type VersionUpdateReq struct {
 	Label         *string                `protobuf:"bytes,1,opt,name=label,proto3,oneof" json:"label,omitempty"`
 	EnvJson       *string                `protobuf:"bytes,2,opt,name=env_json,json=envJson,proto3,oneof" json:"env_json,omitempty"`
 	Note          *string                `protobuf:"bytes,3,opt,name=note,proto3,oneof" json:"note,omitempty"`
-	Components    []*ComponentReq        `protobuf:"bytes,4,rep,name=components,proto3" json:"components,omitempty"`
-	Exposes       []*ExposeReq           `protobuf:"bytes,5,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	Components    []*VersionComponentReq `protobuf:"bytes,4,rep,name=components,proto3" json:"components,omitempty"`
+	Exposes       []*VersionExposeReq    `protobuf:"bytes,5,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -631,14 +631,14 @@ func (x *VersionUpdateReq) GetNote() string {
 	return ""
 }
 
-func (x *VersionUpdateReq) GetComponents() []*ComponentReq {
+func (x *VersionUpdateReq) GetComponents() []*VersionComponentReq {
 	if x != nil {
 		return x.Components
 	}
 	return nil
 }
 
-func (x *VersionUpdateReq) GetExposes() []*ExposeReq {
+func (x *VersionUpdateReq) GetExposes() []*VersionExposeReq {
 	if x != nil {
 		return x.Exposes
 	}
@@ -690,18 +690,18 @@ func (x *VersionForkReq) GetLabel() string {
 }
 
 type VersionResp struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ApplicationId        string                 `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
-	Label                string                 `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`
-	Status               string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	EnvJson              *string                `protobuf:"bytes,5,opt,name=env_json,json=envJson,proto3,oneof" json:"env_json,omitempty"`
-	CreatedFromVersionId *string                `protobuf:"bytes,6,opt,name=created_from_version_id,json=createdFromVersionId,proto3,oneof" json:"created_from_version_id,omitempty"`
-	Note                 *string                `protobuf:"bytes,7,opt,name=note,proto3,oneof" json:"note,omitempty"`
-	CreatedAt            string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt            string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Components           []*ComponentResp       `protobuf:"bytes,10,rep,name=components,proto3" json:"components,omitempty"`
-	Exposes              []*ExposeResp          `protobuf:"bytes,11,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	state                protoimpl.MessageState  `protogen:"open.v1"`
+	Id                   string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ApplicationId        string                  `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	Label                string                  `protobuf:"bytes,3,opt,name=label,proto3" json:"label,omitempty"`
+	Status               string                  `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	EnvJson              *string                 `protobuf:"bytes,5,opt,name=env_json,json=envJson,proto3,oneof" json:"env_json,omitempty"`
+	CreatedFromVersionId *string                 `protobuf:"bytes,6,opt,name=created_from_version_id,json=createdFromVersionId,proto3,oneof" json:"created_from_version_id,omitempty"`
+	Note                 *string                 `protobuf:"bytes,7,opt,name=note,proto3,oneof" json:"note,omitempty"`
+	CreatedAt            string                  `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt            string                  `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Components           []*VersionComponentResp `protobuf:"bytes,10,rep,name=components,proto3" json:"components,omitempty"`
+	Exposes              []*VersionExposeResp    `protobuf:"bytes,11,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -799,14 +799,14 @@ func (x *VersionResp) GetUpdatedAt() string {
 	return ""
 }
 
-func (x *VersionResp) GetComponents() []*ComponentResp {
+func (x *VersionResp) GetComponents() []*VersionComponentResp {
 	if x != nil {
 		return x.Components
 	}
 	return nil
 }
 
-func (x *VersionResp) GetExposes() []*ExposeResp {
+func (x *VersionResp) GetExposes() []*VersionExposeResp {
 	if x != nil {
 		return x.Exposes
 	}
@@ -861,7 +861,6 @@ type VersionPreviewReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	EnvironmentId string                 `protobuf:"bytes,1,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
 	InstanceKey   *string                `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
-	AttachIngress *bool                  `protobuf:"varint,3,opt,name=attach_ingress,json=attachIngress,proto3,oneof" json:"attach_ingress,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -908,13 +907,6 @@ func (x *VersionPreviewReq) GetInstanceKey() string {
 		return *x.InstanceKey
 	}
 	return ""
-}
-
-func (x *VersionPreviewReq) GetAttachIngress() bool {
-	if x != nil && x.AttachIngress != nil {
-		return *x.AttachIngress
-	}
-	return false
 }
 
 type VersionPreviewResp struct {
@@ -967,12 +959,11 @@ type ServiceResp struct {
 	ApplicationId           string                 `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
 	EnvironmentId           string                 `protobuf:"bytes,3,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
 	InstanceKey             string                 `protobuf:"bytes,4,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
-	IsIngress               bool                   `protobuf:"varint,5,opt,name=is_ingress,json=isIngress,proto3" json:"is_ingress,omitempty"`
-	VersionId               string                 `protobuf:"bytes,6,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	LastSuccessfulVersionId *string                `protobuf:"bytes,7,opt,name=last_successful_version_id,json=lastSuccessfulVersionId,proto3,oneof" json:"last_successful_version_id,omitempty"`
-	Status                  string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt               string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt               string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	VersionId               string                 `protobuf:"bytes,5,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	LastSuccessfulVersionId *string                `protobuf:"bytes,6,opt,name=last_successful_version_id,json=lastSuccessfulVersionId,proto3,oneof" json:"last_successful_version_id,omitempty"`
+	Status                  string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt               string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt               string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -1033,13 +1024,6 @@ func (x *ServiceResp) GetInstanceKey() string {
 		return x.InstanceKey
 	}
 	return ""
-}
-
-func (x *ServiceResp) GetIsIngress() bool {
-	if x != nil {
-		return x.IsIngress
-	}
-	return false
 }
 
 func (x *ServiceResp) GetVersionId() string {
@@ -1125,8 +1109,8 @@ var File_orbit_v1_version_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_version_proto_rawDesc = "" +
 	"\n" +
-	"\x16orbit/v1/version.proto\x12\borbit.v1\"\xee\x04\n" +
-	"\fComponentReq\x12\x12\n" +
+	"\x16orbit/v1/version.proto\x12\borbit.v1\"\xf5\x04\n" +
+	"\x13VersionComponentReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12&\n" +
 	"\fcommand_json\x18\x03 \x01(\tH\x00R\vcommandJson\x88\x01\x01\x12 \n" +
@@ -1153,8 +1137,8 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\x10_depends_on_jsonB\x13\n" +
 	"\x11_healthcheck_jsonB\x11\n" +
 	"\x0f_resources_jsonB\x0e\n" +
-	"\f_pull_policy\"\xdc\x05\n" +
-	"\rComponentResp\x12\x0e\n" +
+	"\f_pull_policy\"\xe3\x05\n" +
+	"\x14VersionComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x02 \x01(\tR\tversionId\x12\x12\n" +
@@ -1188,16 +1172,15 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\x10_depends_on_jsonB\x13\n" +
 	"\x11_healthcheck_jsonB\x11\n" +
 	"\x0f_resources_jsonB\x0e\n" +
-	"\f_pull_policy\"\xab\x01\n" +
-	"\tExposeReq\x12%\n" +
+	"\f_pull_policy\"\xb2\x01\n" +
+	"\x10VersionExposeReq\x12%\n" +
 	"\x0ecomponent_name\x18\x01 \x01(\tR\rcomponentName\x12\x1a\n" +
 	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
 	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12$\n" +
 	"\vpath_prefix\x18\x04 \x01(\tH\x00R\n" +
 	"pathPrefix\x88\x01\x01B\x0e\n" +
-	"\f_path_prefix\"\x99\x02\n" +
-	"\n" +
-	"ExposeResp\x12\x0e\n" +
+	"\f_path_prefix\"\xa0\x02\n" +
+	"\x11VersionExposeResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x02 \x01(\tR\tversionId\x12%\n" +
@@ -1210,31 +1193,31 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\b \x01(\tR\tupdatedAtB\x0e\n" +
-	"\f_path_prefix\"\x85\x02\n" +
+	"\f_path_prefix\"\x93\x02\n" +
 	"\x10VersionCreateReq\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1e\n" +
 	"\benv_json\x18\x03 \x01(\tH\x00R\aenvJson\x88\x01\x01\x12\x17\n" +
-	"\x04note\x18\x04 \x01(\tH\x01R\x04note\x88\x01\x01\x126\n" +
+	"\x04note\x18\x04 \x01(\tH\x01R\x04note\x88\x01\x01\x12=\n" +
 	"\n" +
-	"components\x18\x05 \x03(\v2\x16.orbit.v1.ComponentReqR\n" +
-	"components\x12-\n" +
-	"\aexposes\x18\x06 \x03(\v2\x13.orbit.v1.ExposeReqR\aexposesB\v\n" +
+	"components\x18\x05 \x03(\v2\x1d.orbit.v1.VersionComponentReqR\n" +
+	"components\x124\n" +
+	"\aexposes\x18\x06 \x03(\v2\x1a.orbit.v1.VersionExposeReqR\aexposesB\v\n" +
 	"\t_env_jsonB\a\n" +
-	"\x05_note\"\xed\x01\n" +
+	"\x05_note\"\xfb\x01\n" +
 	"\x10VersionUpdateReq\x12\x19\n" +
 	"\x05label\x18\x01 \x01(\tH\x00R\x05label\x88\x01\x01\x12\x1e\n" +
 	"\benv_json\x18\x02 \x01(\tH\x01R\aenvJson\x88\x01\x01\x12\x17\n" +
-	"\x04note\x18\x03 \x01(\tH\x02R\x04note\x88\x01\x01\x126\n" +
+	"\x04note\x18\x03 \x01(\tH\x02R\x04note\x88\x01\x01\x12=\n" +
 	"\n" +
-	"components\x18\x04 \x03(\v2\x16.orbit.v1.ComponentReqR\n" +
-	"components\x12-\n" +
-	"\aexposes\x18\x05 \x03(\v2\x13.orbit.v1.ExposeReqR\aexposesB\b\n" +
+	"components\x18\x04 \x03(\v2\x1d.orbit.v1.VersionComponentReqR\n" +
+	"components\x124\n" +
+	"\aexposes\x18\x05 \x03(\v2\x1a.orbit.v1.VersionExposeReqR\aexposesB\b\n" +
 	"\x06_labelB\v\n" +
 	"\t_env_jsonB\a\n" +
 	"\x05_note\"&\n" +
 	"\x0eVersionForkReq\x12\x14\n" +
-	"\x05label\x18\x01 \x01(\tR\x05label\"\xc0\x03\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\"\xce\x03\n" +
 	"\vVersionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x14\n" +
@@ -1246,41 +1229,36 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\tR\tupdatedAt\x127\n" +
+	"updated_at\x18\t \x01(\tR\tupdatedAt\x12>\n" +
 	"\n" +
 	"components\x18\n" +
-	" \x03(\v2\x17.orbit.v1.ComponentRespR\n" +
-	"components\x12.\n" +
-	"\aexposes\x18\v \x03(\v2\x14.orbit.v1.ExposeRespR\aexposesB\v\n" +
+	" \x03(\v2\x1e.orbit.v1.VersionComponentRespR\n" +
+	"components\x125\n" +
+	"\aexposes\x18\v \x03(\v2\x1b.orbit.v1.VersionExposeRespR\aexposesB\v\n" +
 	"\t_env_jsonB\x1a\n" +
 	"\x18_created_from_version_idB\a\n" +
 	"\x05_note\">\n" +
 	"\x0fVersionListResp\x12+\n" +
-	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.VersionRespR\x05items\"\xb2\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.VersionRespR\x05items\"s\n" +
 	"\x11VersionPreviewReq\x12%\n" +
 	"\x0eenvironment_id\x18\x01 \x01(\tR\renvironmentId\x12&\n" +
-	"\finstance_key\x18\x02 \x01(\tH\x00R\vinstanceKey\x88\x01\x01\x12*\n" +
-	"\x0eattach_ingress\x18\x03 \x01(\bH\x01R\rattachIngress\x88\x01\x01B\x0f\n" +
-	"\r_instance_keyB\x11\n" +
-	"\x0f_attach_ingress\"7\n" +
+	"\finstance_key\x18\x02 \x01(\tH\x00R\vinstanceKey\x88\x01\x01B\x0f\n" +
+	"\r_instance_key\"7\n" +
 	"\x12VersionPreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\x83\x03\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xe4\x02\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12%\n" +
 	"\x0eenvironment_id\x18\x03 \x01(\tR\renvironmentId\x12!\n" +
 	"\finstance_key\x18\x04 \x01(\tR\vinstanceKey\x12\x1d\n" +
 	"\n" +
-	"is_ingress\x18\x05 \x01(\bR\tisIngress\x12\x1d\n" +
+	"version_id\x18\x05 \x01(\tR\tversionId\x12@\n" +
+	"\x1alast_successful_version_id\x18\x06 \x01(\tH\x00R\x17lastSuccessfulVersionId\x88\x01\x01\x12\x16\n" +
+	"\x06status\x18\a \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x06 \x01(\tR\tversionId\x12@\n" +
-	"\x1alast_successful_version_id\x18\a \x01(\tH\x00R\x17lastSuccessfulVersionId\x88\x01\x01\x12\x16\n" +
-	"\x06status\x18\b \x01(\tR\x06status\x12\x1d\n" +
+	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x1d\n" +
-	"\n" +
-	"updated_at\x18\n" +
-	" \x01(\tR\tupdatedAtB\x1d\n" +
+	"updated_at\x18\t \x01(\tR\tupdatedAtB\x1d\n" +
 	"\x1b_last_successful_version_id\">\n" +
 	"\x0fServiceListResp\x12+\n" +
 	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.ServiceRespR\x05itemsB\xa4\x01\n" +
@@ -1300,27 +1278,27 @@ func file_orbit_v1_version_proto_rawDescGZIP() []byte {
 
 var file_orbit_v1_version_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_orbit_v1_version_proto_goTypes = []any{
-	(*ComponentReq)(nil),       // 0: orbit.v1.ComponentReq
-	(*ComponentResp)(nil),      // 1: orbit.v1.ComponentResp
-	(*ExposeReq)(nil),          // 2: orbit.v1.ExposeReq
-	(*ExposeResp)(nil),         // 3: orbit.v1.ExposeResp
-	(*VersionCreateReq)(nil),   // 4: orbit.v1.VersionCreateReq
-	(*VersionUpdateReq)(nil),   // 5: orbit.v1.VersionUpdateReq
-	(*VersionForkReq)(nil),     // 6: orbit.v1.VersionForkReq
-	(*VersionResp)(nil),        // 7: orbit.v1.VersionResp
-	(*VersionListResp)(nil),    // 8: orbit.v1.VersionListResp
-	(*VersionPreviewReq)(nil),  // 9: orbit.v1.VersionPreviewReq
-	(*VersionPreviewResp)(nil), // 10: orbit.v1.VersionPreviewResp
-	(*ServiceResp)(nil),        // 11: orbit.v1.ServiceResp
-	(*ServiceListResp)(nil),    // 12: orbit.v1.ServiceListResp
+	(*VersionComponentReq)(nil),  // 0: orbit.v1.VersionComponentReq
+	(*VersionComponentResp)(nil), // 1: orbit.v1.VersionComponentResp
+	(*VersionExposeReq)(nil),     // 2: orbit.v1.VersionExposeReq
+	(*VersionExposeResp)(nil),    // 3: orbit.v1.VersionExposeResp
+	(*VersionCreateReq)(nil),     // 4: orbit.v1.VersionCreateReq
+	(*VersionUpdateReq)(nil),     // 5: orbit.v1.VersionUpdateReq
+	(*VersionForkReq)(nil),       // 6: orbit.v1.VersionForkReq
+	(*VersionResp)(nil),          // 7: orbit.v1.VersionResp
+	(*VersionListResp)(nil),      // 8: orbit.v1.VersionListResp
+	(*VersionPreviewReq)(nil),    // 9: orbit.v1.VersionPreviewReq
+	(*VersionPreviewResp)(nil),   // 10: orbit.v1.VersionPreviewResp
+	(*ServiceResp)(nil),          // 11: orbit.v1.ServiceResp
+	(*ServiceListResp)(nil),      // 12: orbit.v1.ServiceListResp
 }
 var file_orbit_v1_version_proto_depIdxs = []int32{
-	0,  // 0: orbit.v1.VersionCreateReq.components:type_name -> orbit.v1.ComponentReq
-	2,  // 1: orbit.v1.VersionCreateReq.exposes:type_name -> orbit.v1.ExposeReq
-	0,  // 2: orbit.v1.VersionUpdateReq.components:type_name -> orbit.v1.ComponentReq
-	2,  // 3: orbit.v1.VersionUpdateReq.exposes:type_name -> orbit.v1.ExposeReq
-	1,  // 4: orbit.v1.VersionResp.components:type_name -> orbit.v1.ComponentResp
-	3,  // 5: orbit.v1.VersionResp.exposes:type_name -> orbit.v1.ExposeResp
+	0,  // 0: orbit.v1.VersionCreateReq.components:type_name -> orbit.v1.VersionComponentReq
+	2,  // 1: orbit.v1.VersionCreateReq.exposes:type_name -> orbit.v1.VersionExposeReq
+	0,  // 2: orbit.v1.VersionUpdateReq.components:type_name -> orbit.v1.VersionComponentReq
+	2,  // 3: orbit.v1.VersionUpdateReq.exposes:type_name -> orbit.v1.VersionExposeReq
+	1,  // 4: orbit.v1.VersionResp.components:type_name -> orbit.v1.VersionComponentResp
+	3,  // 5: orbit.v1.VersionResp.exposes:type_name -> orbit.v1.VersionExposeResp
 	7,  // 6: orbit.v1.VersionListResp.items:type_name -> orbit.v1.VersionResp
 	11, // 7: orbit.v1.ServiceListResp.items:type_name -> orbit.v1.ServiceResp
 	8,  // [8:8] is the sub-list for method output_type

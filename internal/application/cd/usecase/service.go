@@ -73,14 +73,14 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input cdt
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	name, code, imagePullPolicy, err := normalizeApplicationCreateInput(input)
+	name, code, kind, imagePullPolicy, err := normalizeApplicationCreateInput(input)
 	if err != nil {
 		return model.Application{}, err
 	}
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}
@@ -192,20 +192,16 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
 		return "", apperror.New(apperror.KindValidation, "application and environment must belong to the same project")
 	}
-	components, err := s.store.ComponentsByVersion(ctx, version.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	if err := validateComponents(components); err != nil {
+	if err := validateVersionComponents(components); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	instanceKey := strings.TrimSpace(input.InstanceKey)
 	if instanceKey == "" {
 		instanceKey = "default"
-	}
-	attachIngress := instanceKey == "default"
-	if input.AttachIngress != nil {
-		attachIngress = *input.AttachIngress
 	}
 	deployment := newApplicationDeployment(app, "deploy")
 	deployment.VersionId = &version.Id
@@ -213,7 +209,6 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	opts := cdto.DeployOptionsJSON{
 		ForceRecreate: input.ForceRecreate,
 		InstanceKey:   instanceKey,
-		AttachIngress: attachIngress,
 	}
 	raw, _ := json.Marshal(opts)
 	text := string(raw)
@@ -400,14 +395,31 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 	return string(content), newOffset, nil
 }
 
-func normalizeApplicationCreateInput(input cdto.ApplicationCreateInput) (string, string, string, error) {
+func normalizeApplicationCreateInput(input cdto.ApplicationCreateInput) (string, string, string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
+	kind, err := normalizeApplicationKind(input.Kind)
+	if err != nil {
+		return "", "", "", "", err
+	}
 	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) || !validImagePullPolicy(imagePullPolicy) {
-		return "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
+		return "", "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
 	}
-	return name, code, imagePullPolicy, nil
+	return name, code, kind, imagePullPolicy, nil
+}
+
+func normalizeApplicationKind(kind string) (string, error) {
+	kind = strings.TrimSpace(kind)
+	if kind == "" {
+		return status.ApplicationKindStandard, nil
+	}
+	switch kind {
+	case status.ApplicationKindStandard, status.ApplicationKindGateway:
+		return kind, nil
+	default:
+		return "", apperror.New(apperror.KindValidation, "kind must be standard or gateway")
+	}
 }
 
 func validImagePullPolicy(value string) bool {

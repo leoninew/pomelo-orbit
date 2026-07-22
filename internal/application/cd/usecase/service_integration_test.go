@@ -58,7 +58,7 @@ func TestApplicationServiceCRUDDeployStopAndVersions(t *testing.T) {
 	version, err := service.CreateVersion(ctx, cdTestUserId, cdto.VersionCreateInput{
 		ApplicationId: created.Id,
 		Label:         "v1",
-		Components:    []cdto.ComponentInput{{Name: "web", Image: "nginx"}},
+		Components:    []cdto.VersionComponentInput{{Name: "web", Image: "nginx"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -95,9 +95,9 @@ func TestApplicationServiceCRUDDeployStopAndVersions(t *testing.T) {
 		ApplicationId: created.Id,
 		EnvironmentId: localEnv.Id,
 		InstanceKey:   "default",
-		IsIngress:     true,
-		VersionId:     version.Version.Id,
-		Status:        status.ServiceStatusRunning,
+
+		VersionId: version.Version.Id,
+		Status:    status.ServiceStatusRunning,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestWaitingDeploymentContainerLogDoesNotRequireWorkspace(t *testing.T) {
 	version, err := service.CreateVersion(ctx, cdTestUserId, cdto.VersionCreateInput{
 		ApplicationId: created.Id,
 		Label:         "v1",
-		Components:    []cdto.ComponentInput{{Name: "web", Image: "nginx"}},
+		Components:    []cdto.VersionComponentInput{{Name: "web", Image: "nginx"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -171,8 +171,8 @@ func TestApplicationImportExportAndVersion(t *testing.T) {
 		Code:            "imported-app",
 		ImagePullPolicy: "missing",
 		VersionLabel:    "import-v1",
-		Components:      []cdto.ComponentInput{{Name: "web", Image: "nginx:1.27", PortsJSON: &ports}},
-		Exposes:         []cdto.ExposeInput{{ComponentName: "web", Protocol: "http", ContainerPort: 80}},
+		Components:      []cdto.VersionComponentInput{{Name: "web", Image: "nginx:1.27", PortsJSON: &ports}},
+		Exposes:         []cdto.VersionExposeInput{{ComponentName: "web", Protocol: "http", ContainerPort: 80}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -189,7 +189,7 @@ func TestApplicationImportExportAndVersion(t *testing.T) {
 	}
 
 	localEnv := loadLocalEnvironment(t, service)
-	preview, err := service.PreviewVersion(ctx, cdTestUserId, exported.Versions[0].Version.Id, localEnv.Id, "default", boolPtr(false))
+	preview, err := service.PreviewVersion(ctx, cdTestUserId, exported.Versions[0].Version.Id, localEnv.Id, "default")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +377,7 @@ func createQueryTestApplicationWithService(t *testing.T, service Service) (model
 	version, err := service.CreateVersion(context.Background(), cdTestUserId, cdto.VersionCreateInput{
 		ApplicationId: app.Id,
 		Label:         "v1",
-		Components:    []cdto.ComponentInput{{Name: "web", Image: "nginx"}},
+		Components:    []cdto.VersionComponentInput{{Name: "web", Image: "nginx"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -388,9 +388,9 @@ func createQueryTestApplicationWithService(t *testing.T, service Service) (model
 		ApplicationId: app.Id,
 		EnvironmentId: env.Id,
 		InstanceKey:   "default",
-		IsIngress:     true,
-		VersionId:     version.Version.Id,
-		Status:        status.ServiceStatusRunning,
+
+		VersionId: version.Version.Id,
+		Status:    status.ServiceStatusRunning,
 	}
 	if err := service.store.UpsertService(context.Background(), svc); err != nil {
 		t.Fatal(err)
@@ -512,9 +512,5 @@ func (c *recordingTraefikClient) IsConnectionError(err error) bool {
 }
 
 func stringPtr(value string) *string {
-	return &value
-}
-
-func boolPtr(value bool) *bool {
 	return &value
 }

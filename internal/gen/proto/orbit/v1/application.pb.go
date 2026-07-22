@@ -35,6 +35,8 @@ type ApplicationResp struct {
 	ServiceId     *string `protobuf:"bytes,9,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
 	VersionId     *string `protobuf:"bytes,10,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
 	ServiceCount  int32   `protobuf:"varint,11,opt,name=service_count,json=serviceCount,proto3" json:"service_count,omitempty"`
+	// kind is standard|gateway; immutable after create.
+	Kind          string `protobuf:"bytes,12,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -146,13 +148,22 @@ func (x *ApplicationResp) GetServiceCount() int32 {
 	return 0
 }
 
+func (x *ApplicationResp) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
 type ApplicationCreateReq struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	ImagePullPolicy string                 `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// optional; empty defaults to standard.
+	Kind          *string `protobuf:"bytes,4,opt,name=kind,proto3,oneof" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationCreateReq) Reset() {
@@ -202,6 +213,13 @@ func (x *ApplicationCreateReq) GetCode() string {
 func (x *ApplicationCreateReq) GetImagePullPolicy() string {
 	if x != nil {
 		return x.ImagePullPolicy
+	}
+	return ""
+}
+
+func (x *ApplicationCreateReq) GetKind() string {
+	if x != nil && x.Kind != nil {
+		return *x.Kind
 	}
 	return ""
 }
@@ -271,8 +289,7 @@ type ApplicationDeployReq struct {
 	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
 	EnvironmentId string                 `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
 	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
-	AttachIngress *bool                  `protobuf:"varint,4,opt,name=attach_ingress,json=attachIngress,proto3,oneof" json:"attach_ingress,omitempty"`
-	ForceRecreate bool                   `protobuf:"varint,5,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	ForceRecreate bool                   `protobuf:"varint,4,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -326,13 +343,6 @@ func (x *ApplicationDeployReq) GetInstanceKey() string {
 		return x.InstanceKey
 	}
 	return ""
-}
-
-func (x *ApplicationDeployReq) GetAttachIngress() bool {
-	if x != nil && x.AttachIngress != nil {
-		return *x.AttachIngress
-	}
-	return false
 }
 
 func (x *ApplicationDeployReq) GetForceRecreate() bool {
@@ -682,7 +692,7 @@ var File_orbit_v1_application_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/application.proto\x12\borbit.v1\"\x98\x03\n" +
+	"\x1aorbit/v1/application.proto\x12\borbit.v1\"\xac\x03\n" +
 	"\x0fApplicationResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -700,29 +710,30 @@ const file_orbit_v1_application_proto_rawDesc = "" +
 	"\n" +
 	"version_id\x18\n" +
 	" \x01(\tH\x02R\tversionId\x88\x01\x01\x12#\n" +
-	"\rservice_count\x18\v \x01(\x05R\fserviceCountB\r\n" +
+	"\rservice_count\x18\v \x01(\x05R\fserviceCount\x12\x12\n" +
+	"\x04kind\x18\f \x01(\tR\x04kindB\r\n" +
 	"\v_project_idB\r\n" +
 	"\v_service_idB\r\n" +
-	"\v_version_id\"j\n" +
+	"\v_version_id\"\x8c\x01\n" +
 	"\x14ApplicationCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\"\xa1\x01\n" +
+	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12\x17\n" +
+	"\x04kind\x18\x04 \x01(\tH\x00R\x04kind\x88\x01\x01B\a\n" +
+	"\x05_kind\"\xa1\x01\n" +
 	"\x14ApplicationUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x17\n" +
 	"\x04code\x18\x02 \x01(\tH\x01R\x04code\x88\x01\x01\x12/\n" +
 	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
 	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policy\"\xe5\x01\n" +
+	"\x12_image_pull_policy\"\xa6\x01\n" +
 	"\x14ApplicationDeployReq\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x01 \x01(\tR\tversionId\x12%\n" +
 	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\x12!\n" +
-	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12*\n" +
-	"\x0eattach_ingress\x18\x04 \x01(\bH\x00R\rattachIngress\x88\x01\x01\x12%\n" +
-	"\x0eforce_recreate\x18\x05 \x01(\bR\rforceRecreateB\x11\n" +
-	"\x0f_attach_ingress\"\xe6\x01\n" +
+	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12%\n" +
+	"\x0eforce_recreate\x18\x04 \x01(\bR\rforceRecreate\"\xe6\x01\n" +
 	"\x12ApplicationStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12*\n" +
 	"\x0eenvironment_id\x18\x02 \x01(\tH\x00R\renvironmentId\x88\x01\x01\x12&\n" +
@@ -794,8 +805,8 @@ func file_orbit_v1_application_proto_init() {
 		return
 	}
 	file_orbit_v1_application_proto_msgTypes[0].OneofWrappers = []any{}
+	file_orbit_v1_application_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_application_proto_msgTypes[2].OneofWrappers = []any{}
-	file_orbit_v1_application_proto_msgTypes[3].OneofWrappers = []any{}
 	file_orbit_v1_application_proto_msgTypes[4].OneofWrappers = []any{}
 	file_orbit_v1_application_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}

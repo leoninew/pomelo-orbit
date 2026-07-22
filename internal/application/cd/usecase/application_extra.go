@@ -24,7 +24,7 @@ func (s Service) ImportApplication(ctx context.Context, userId string, input cdt
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	name, code, imagePullPolicy, err := normalizeApplicationImportInput(input)
+	name, code, kind, imagePullPolicy, err := normalizeApplicationImportInput(input)
 	if err != nil {
 		return model.Application{}, err
 	}
@@ -34,7 +34,7 @@ func (s Service) ImportApplication(ctx context.Context, userId string, input cdt
 	if err := s.ensureApplicationCodeAvailable(ctx, code); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to import application", err)
 	}
@@ -126,11 +126,11 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
 	}
-	components, err := s.store.ComponentsByVersion(ctx, version.Id)
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	if err := validateComponents(components); err != nil {
+	if err := validateVersionComponents(components); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	env, err := s.store.Environment(ctx, svc.EnvironmentId)
@@ -141,7 +141,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	deployment.ServiceId = &svc.Id
 	deployment.VersionId = &version.Id
 	deployment.EnvironmentId = &svc.EnvironmentId
-	opts := cdto.DeployOptionsJSON{InstanceKey: svc.InstanceKey, AttachIngress: svc.IsIngress}
+	opts := cdto.DeployOptionsJSON{InstanceKey: svc.InstanceKey}
 	raw, _ := json.Marshal(opts)
 	text := string(raw)
 	deployment.OptionsJSON = &text
@@ -291,17 +291,21 @@ func (s Service) resolveServiceTarget(ctx context.Context, applicationId string,
 	return svc, nil
 }
 
-func normalizeApplicationImportInput(input cdto.ApplicationImportInput) (string, string, string, error) {
+func normalizeApplicationImportInput(input cdto.ApplicationImportInput) (string, string, string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
+	kind, err := normalizeApplicationKind(input.Kind)
+	if err != nil {
+		return "", "", "", "", err
+	}
 	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
 	if imagePullPolicy == "" {
 		imagePullPolicy = "missing"
 	}
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) || !validImagePullPolicy(imagePullPolicy) {
-		return "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
+		return "", "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
 	}
-	return name, code, imagePullPolicy, nil
+	return name, code, kind, imagePullPolicy, nil
 }
 
 func (s Service) ensureApplicationCodeAvailable(ctx context.Context, code string) error {

@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS version (
 CREATE INDEX idx_version_application ON version(application_id);
 CREATE INDEX idx_version_status ON version(status);
 
-CREATE TABLE IF NOT EXISTS component (
+CREATE TABLE IF NOT EXISTS version_component (
     id VARCHAR(26) PRIMARY KEY,
     version_id VARCHAR(26) NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS component (
     UNIQUE(version_id, name)
 );
 
-CREATE INDEX idx_component_version ON component(version_id);
+CREATE INDEX idx_version_component_version ON version_component(version_id);
 
 CREATE TABLE IF NOT EXISTS service (
     id VARCHAR(26) PRIMARY KEY,

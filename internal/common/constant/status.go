@@ -31,6 +31,12 @@ const (
 	ServiceStatusFaulted   = "faulted"
 )
 
+// ApplicationKind is the render strategy for an application.
+const (
+	ApplicationKindStandard = "standard"
+	ApplicationKindGateway  = "gateway"
+)
+
 // VersionStatus is the lifecycle of model.Version.
 const (
 	VersionStatusUnpublished = "unpublished"

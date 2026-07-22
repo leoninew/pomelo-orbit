@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS environment (
     CONSTRAINT fk_environment_project FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS expose (
+CREATE TABLE IF NOT EXISTS version_expose (
     id VARCHAR(26) PRIMARY KEY,
     version_id VARCHAR(26) NOT NULL,
     component_name VARCHAR(255) NOT NULL,
@@ -22,9 +22,9 @@ CREATE TABLE IF NOT EXISTS expose (
     path_prefix VARCHAR(512) NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    UNIQUE KEY uq_expose_version_component_protocol_port (version_id, component_name, protocol, container_port),
-    KEY idx_expose_version (version_id),
-    CONSTRAINT fk_expose_version FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
+    UNIQUE KEY uq_version_expose_key (version_id, component_name, protocol, container_port),
+    KEY idx_version_expose_version (version_id),
+    CONSTRAINT fk_version_expose_version FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS environment_binding (
@@ -62,12 +62,11 @@ WHERE NOT EXISTS (
 ALTER TABLE service DROP INDEX application_id;
 ALTER TABLE service ADD COLUMN environment_id VARCHAR(26) NULL;
 ALTER TABLE service ADD COLUMN instance_key VARCHAR(100) NOT NULL DEFAULT 'default';
-ALTER TABLE service ADD COLUMN is_ingress TINYINT(1) NOT NULL DEFAULT 0;
 
 UPDATE service s
 INNER JOIN application a ON a.id = s.application_id
 INNER JOIN environment e ON e.project_id = a.project_id AND e.code = 'local'
-SET s.environment_id = e.id, s.instance_key = 'default', s.is_ingress = 1;
+SET s.environment_id = e.id, s.instance_key = 'default';
 
 ALTER TABLE service MODIFY environment_id VARCHAR(26) NOT NULL;
 ALTER TABLE service ADD CONSTRAINT fk_service_environment FOREIGN KEY (environment_id) REFERENCES environment(id);

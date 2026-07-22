@@ -42,10 +42,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	if instanceKey == "" {
 		instanceKey = "default"
 	}
-	attachIngress := opts.AttachIngress
-	if deployment.OptionsJSON == nil || !strings.Contains(*deployment.OptionsJSON, "attach_ingress") {
-		attachIngress = instanceKey == "default"
-	}
 
 	version, err := s.executionStore.Version(ctx, versionId)
 	if err != nil {
@@ -62,18 +58,18 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	components, err := s.executionStore.ComponentsByVersion(ctx, version.Id)
+	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	exposes, err := s.executionStore.ExposesByVersion(ctx, version.Id)
+	exposes, err := s.executionStore.VersionExposesByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 
-	svc, err := s.upsertServiceDeploying(ctx, app.Id, env.Id, instanceKey, version.Id, attachIngress)
+	svc, err := s.upsertServiceDeploying(ctx, app.Id, env.Id, instanceKey, version.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -114,12 +110,12 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	components, err := s.executionStore.ComponentsByVersion(ctx, version.Id)
+	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	exposes, err := s.executionStore.ExposesByVersion(ctx, version.Id)
+	exposes, err := s.executionStore.VersionExposesByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -214,7 +210,7 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId
 	return s.executionStore.ServiceByKey(ctx, applicationId, *deployment.EnvironmentId, instanceKey)
 }
 
-func (s Service) upsertServiceDeploying(ctx context.Context, applicationId string, environmentId string, instanceKey string, versionId string, attachIngress bool) (model.Service, error) {
+func (s Service) upsertServiceDeploying(ctx context.Context, applicationId string, environmentId string, instanceKey string, versionId string) (model.Service, error) {
 	existing, err := s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
 	if err != nil {
 		if !errors.Is(err, repository.ErrNotFound) {
@@ -225,30 +221,18 @@ func (s Service) upsertServiceDeploying(ctx context.Context, applicationId strin
 			ApplicationId: applicationId,
 			EnvironmentId: environmentId,
 			InstanceKey:   instanceKey,
-			IsIngress:     attachIngress,
 			VersionId:     versionId,
 			Status:        status.ServiceStatusDeploying,
 		}
 		if err := s.executionStore.UpsertService(ctx, svc); err != nil {
 			return model.Service{}, err
 		}
-		if attachIngress {
-			if err := s.executionStore.ClearIngressForAppEnv(ctx, applicationId, environmentId, svc.Id); err != nil {
-				return model.Service{}, err
-			}
-		}
 		return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
 	}
 	existing.VersionId = versionId
 	existing.Status = status.ServiceStatusDeploying
-	existing.IsIngress = attachIngress
 	if err := s.executionStore.UpsertService(ctx, existing); err != nil {
 		return model.Service{}, err
-	}
-	if attachIngress {
-		if err := s.executionStore.ClearIngressForAppEnv(ctx, applicationId, environmentId, existing.Id); err != nil {
-			return model.Service{}, err
-		}
 	}
 	return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
 }
@@ -257,8 +241,8 @@ func (s Service) renderAndDeploy(
 	ctx context.Context,
 	app model.Application,
 	version model.Version,
-	components []model.Component,
-	exposes []model.Expose,
+	components []model.VersionComponent,
+	exposes []model.VersionExpose,
 	env model.Environment,
 	svc model.Service,
 	deploymentId string,

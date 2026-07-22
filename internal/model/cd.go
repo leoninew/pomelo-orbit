@@ -7,6 +7,7 @@ type Application struct {
 	ProjectId       *string   `db:"project_id"`
 	Name            string    `db:"name"`
 	Code            string    `db:"code"`
+	Kind            string    `db:"kind"`
 	ImagePullPolicy string    `db:"image_pull_policy"`
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
@@ -25,8 +26,8 @@ type Version struct {
 	UpdatedAt            time.Time `db:"updated_at"`
 }
 
-// Component is a version-scoped specification unit (own table).
-type Component struct {
+// VersionComponent is a version-scoped specification unit (own table).
+type VersionComponent struct {
 	Id              string    `db:"id"`
 	VersionId       string    `db:"version_id"`
 	Name            string    `db:"name"`
@@ -45,8 +46,8 @@ type Component struct {
 	UpdatedAt       time.Time `db:"updated_at"`
 }
 
-// Expose is version-scoped protocol/port exposure (no domain).
-type Expose struct {
+// VersionExpose is version-scoped protocol/port exposure (no domain).
+type VersionExpose struct {
 	Id            string    `db:"id"`
 	VersionId     string    `db:"version_id"`
 	ComponentName string    `db:"component_name"`
@@ -79,7 +80,6 @@ type Service struct {
 	ApplicationId           string    `db:"application_id"`
 	EnvironmentId           string    `db:"environment_id"`
 	InstanceKey             string    `db:"instance_key"`
-	IsIngress               bool      `db:"is_ingress"`
 	VersionId               string    `db:"version_id"`
 	LastSuccessfulVersionId *string   `db:"last_successful_version_id"`
 	Status                  string    `db:"status"`

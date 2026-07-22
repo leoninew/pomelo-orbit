@@ -13,6 +13,7 @@ type Application struct {
 	ID              string         `db:"id"`
 	Name            string         `db:"name"`
 	Code            string         `db:"code"`
+	Kind            string         `db:"kind"`
 	ImagePullPolicy string         `db:"image_pull_policy"`
 	CreatedAt       time.Time      `db:"created_at"`
 	UpdatedAt       time.Time      `db:"updated_at"`
@@ -63,7 +64,7 @@ type BuildStage struct {
 	ProjectID   sql.NullString `db:"project_id"`
 }
 
-type Component struct {
+type VersionComponent struct {
 	ID              string         `db:"id"`
 	VersionID       string         `db:"version_id"`
 	Name            string         `db:"name"`
@@ -129,7 +130,7 @@ type Environment struct {
 	TlsMode           string         `db:"tls_mode"`
 }
 
-type Expose struct {
+type VersionExpose struct {
 	ID            string         `db:"id"`
 	VersionID     string         `db:"version_id"`
 	ComponentName string         `db:"component_name"`
@@ -295,7 +296,6 @@ type Service struct {
 	ApplicationID           string         `db:"application_id"`
 	EnvironmentID           string         `db:"environment_id"`
 	InstanceKey             string         `db:"instance_key"`
-	IsIngress               int64          `db:"is_ingress"`
 	VersionID               string         `db:"version_id"`
 	LastSuccessfulVersionID sql.NullString `db:"last_successful_version_id"`
 	Status                  string         `db:"status"`

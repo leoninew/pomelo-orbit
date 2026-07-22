@@ -1,5 +1,5 @@
 # CD 应用版本化：从 Version 渲染运行时产物
-最后修改时间: 2026-07-22 08:35:55
+最后修改时间: 2026-07-22 12:02:43
 
 Review status: Accepted
 
@@ -9,12 +9,13 @@ Parent cadence: `docs/requirement/20260721-cd-application-version-cadence.md`（
 
 Depends on: P0、P1；与 P2 部署闭环配合
 
-**后续路线（labels / 环境接入，超出本 P3 原文「本期不做域名」）**：
+**后续路线（labels / 环境接入 / 应用类型，超出本 P3 原文「本期不做域名」）**：
 
 | 修订 | 文档 | 与本 P3 关系 |
 |------|------|----------------|
 | R1 | `20260721-cd-environment-expose-service.md` | Render 增加 Expose × EnvironmentBinding → Traefik labels |
-| R2 | `20260722-cd-environment-ingress-policy.md`（Draft） | labels 合路改为 Version.Expose × Environment.IngressPolicy |
+| R2 | `20260722-cd-environment-ingress-policy.md` | labels 合路改为 Version.Expose × Environment.IngressPolicy（**standard**） |
+| R3 | `20260722-cd-application-kind-gateway.md` | **Application.kind** 分支：`gateway` 与 `standard` 不同 Render 策略（实现完成，待 Verification） |
 
 ## Terminology / 规范用词
 

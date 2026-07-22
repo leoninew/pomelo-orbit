@@ -312,12 +312,14 @@
   const createForm = reactive<ApplicationCreateReq>({
     name: '',
     code: '',
+    kind: 'standard',
     image_pull_policy: 'missing',
   });
   const createErrors = reactive({ name: '', code: '' });
   const importForm = reactive<ApplicationImportReq>({
     name: '',
     code: '',
+    kind: 'standard',
     image_pull_policy: 'missing',
     version_label: 'v1',
     version_env_json: undefined,
@@ -400,6 +402,7 @@
     Object.assign(createForm, {
       name: '',
       code: '',
+      kind: 'standard',
       image_pull_policy: 'missing',
     });
     Object.assign(createErrors, { name: '', code: '' });
@@ -421,6 +424,7 @@
           {
             name: createForm.name,
             code: createForm.code,
+            kind: createForm.kind || 'standard',
             image_pull_policy: createForm.image_pull_policy,
           },
           { project_id: projectId }

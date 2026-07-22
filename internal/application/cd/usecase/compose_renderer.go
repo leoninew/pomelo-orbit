@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -13,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// RenderInput is the dual-input render context: Version×Environment.
+// RenderInput is the dual-input render context: Version×Environment×Gateway.
 type RenderInput struct {
 	App            model.Application
 	Version        model.Version
@@ -21,8 +20,9 @@ type RenderInput struct {
 	Exposes        []model.VersionExpose
 	Env            model.Environment
 	Service        model.Service
-	RuntimeConfig  map[string]string // resolved placeholders for this deploy/preview
-	PhysicalSvcDir string            // host path for logical mounts; required when mounts present
+	Gateway        *model.GatewayConfig // required for HTTP host / gateway dashboard when domains needed
+	RuntimeConfig  map[string]string    // resolved placeholders for this deploy/preview
+	PhysicalSvcDir string               // host path for logical mounts; required when mounts present
 }
 
 // RenderResult is compose YAML plus resolved logical mounts for deploy materialize.
@@ -30,8 +30,6 @@ type RenderResult struct {
 	Compose        string
 	ResolvedMounts []ResolvedMount
 }
-
-var domainTemplateTokenPattern = regexp.MustCompile(`\{([a-z_]+)\}`)
 
 const defaultGatewayNetworkName = "traefik"
 
@@ -235,10 +233,10 @@ func mergeStringSet(existing []string, required ...string) []string {
 }
 
 func injectExposeLabels(services map[string]any, input RenderInput) error {
-	if err := validatePolicyForExposes(input.Env, input.Exposes, input.App); err != nil {
+	if err := validatePolicyForExposes(input.Env, input.Gateway, input.Exposes, input.App); err != nil {
 		return err
 	}
-	host, err := deriveHost(input.Env, input.App.Code)
+	host, err := deriveHost(input.Gateway, input.App.Code)
 	if err != nil {
 		// host may be optional when only tcp with tls_mode=none and no base_domain needed
 		host = ""
@@ -260,7 +258,7 @@ func injectExposeLabels(services map[string]any, input RenderInput) error {
 	return nil
 }
 
-func validatePolicyForExposes(env model.Environment, exposes []model.VersionExpose, app model.Application) error {
+func validatePolicyForExposes(env model.Environment, gateway *model.GatewayConfig, exposes []model.VersionExpose, app model.Application) error {
 	hasHTTP := false
 	hasTCP := false
 	for _, expose := range exposes {
@@ -278,13 +276,10 @@ func validatePolicyForExposes(env model.Environment, exposes []model.VersionExpo
 		}
 	}
 	if hasHTTP {
-		if strings.TrimSpace(env.BaseDomain) == "" && strings.TrimSpace(ptrString(env.DomainTemplate)) == "" {
-			return fmt.Errorf("environment ingress policy incomplete: base_domain required for HTTP expose")
-		}
-		if _, err := deriveHost(env, app.Code); err != nil {
+		if _, err := deriveHost(gateway, app.Code); err != nil {
 			return err
 		}
-		if err := validateHTTPPathConflicts(env, app.Code, exposes); err != nil {
+		if err := validateHTTPPathConflicts(gateway, app.Code, exposes); err != nil {
 			return err
 		}
 	}
@@ -295,16 +290,16 @@ func validatePolicyForExposes(env model.Environment, exposes []model.VersionExpo
 		}
 		tlsMode := strings.ToLower(strings.TrimSpace(env.TLSMode))
 		if tlsMode == "letsencrypt" || tlsMode == "tls" {
-			if _, err := deriveHost(env, app.Code); err != nil {
-				return fmt.Errorf("environment ingress policy incomplete: base_domain required for TCP TLS: %w", err)
+			if _, err := deriveHost(gateway, app.Code); err != nil {
+				return fmt.Errorf("gateway base_domain required for TCP TLS: %w", err)
 			}
 		}
 	}
 	return nil
 }
 
-func validateHTTPPathConflicts(env model.Environment, appCode string, exposes []model.VersionExpose) error {
-	host, err := deriveHost(env, appCode)
+func validateHTTPPathConflicts(gateway *model.GatewayConfig, appCode string, exposes []model.VersionExpose) error {
+	host, err := deriveHost(gateway, appCode)
 	if err != nil {
 		return err
 	}
@@ -334,37 +329,20 @@ func normalizeHTTPPath(path string) string {
 	return path
 }
 
-func deriveHost(env model.Environment, appCode string) (string, error) {
-	template := strings.TrimSpace(ptrString(env.DomainTemplate))
-	if template == "" {
-		template = "{app_code}.{base_domain}"
+// deriveHost builds {app_code}.{gateway.base_domain}. Domain templates are not supported (E6).
+func deriveHost(gateway *model.GatewayConfig, appCode string) (string, error) {
+	if gateway == nil {
+		return "", fmt.Errorf("gateway config required for host derivation")
 	}
-	baseDomain := strings.TrimSpace(env.BaseDomain)
-	replacements := map[string]string{
-		"app_code":    strings.TrimSpace(appCode),
-		"env_code":    strings.TrimSpace(env.Code),
-		"base_domain": baseDomain,
+	baseDomain := strings.TrimSpace(gateway.BaseDomain)
+	if baseDomain == "" {
+		return "", fmt.Errorf("gateway base_domain is required for host derivation")
 	}
-	var unknown []string
-	expanded := domainTemplateTokenPattern.ReplaceAllStringFunc(template, func(token string) string {
-		name := strings.TrimSuffix(strings.TrimPrefix(token, "{"), "}")
-		value, ok := replacements[name]
-		if !ok {
-			unknown = append(unknown, name)
-			return token
-		}
-		return value
-	})
-	if len(unknown) > 0 {
-		return "", fmt.Errorf("domain_template contains unknown token: %s", unknown[0])
+	appCode = strings.TrimSpace(appCode)
+	if appCode == "" {
+		return "", fmt.Errorf("app code is required for host derivation")
 	}
-	if strings.Contains(expanded, "{") {
-		return "", fmt.Errorf("domain_template incomplete after expansion")
-	}
-	host := strings.ToLower(strings.TrimSpace(expanded))
-	if baseDomain == "" && strings.Contains(template, "{base_domain}") {
-		return "", fmt.Errorf("environment ingress policy incomplete: base_domain required for host derivation")
-	}
+	host := strings.ToLower(appCode + "." + baseDomain)
 	if !validDeploymentRouteDomain(host) {
 		return "", fmt.Errorf("invalid derived host %q", host)
 	}
@@ -380,7 +358,7 @@ func injectGatewayDashboardLabels(services map[string]any, input RenderInput) er
 	if entrypoint == "" {
 		return nil
 	}
-	host, err := deriveHost(input.Env, input.App.Code)
+	host, err := deriveHost(input.Gateway, input.App.Code)
 	if err != nil {
 		return nil
 	}
@@ -428,7 +406,7 @@ func buildTraefikLabels(routerName string, expose model.VersionExpose, input Ren
 			return nil, fmt.Errorf("environment default_entrypoint is required for %s", expose.ComponentName)
 		}
 		if host == "" {
-			derived, err := deriveHost(input.Env, input.App.Code)
+			derived, err := deriveHost(input.Gateway, input.App.Code)
 			if err != nil {
 				return nil, err
 			}
@@ -467,7 +445,7 @@ func buildTraefikLabels(routerName string, expose model.VersionExpose, input Ren
 		sni := "*"
 		if tlsMode == "letsencrypt" || tlsMode == "tls" {
 			if host == "" {
-				derived, err := deriveHost(input.Env, input.App.Code)
+				derived, err := deriveHost(input.Gateway, input.App.Code)
 				if err != nil {
 					return nil, err
 				}

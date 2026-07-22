@@ -41,7 +41,6 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 			ProjectId:         projectID,
 			Code:              "local",
 			Name:              "Local",
-			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
@@ -182,7 +181,11 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	store.exposes = []model.VersionExpose{
 		{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 	}
-	store.env.BaseDomain = "example.com"
+	store.gateway = model.GatewayConfig{
+		ApplicationId: "gw-1",
+		RestAPIURL:    "http://traefik:8080",
+		BaseDomain:    "example.com",
+	}
 	store.env.DefaultEntrypoint = "websecure"
 	store.env.TLSMode = "letsencrypt"
 	workspace := testWorkspace(cfg.DataRoot())
@@ -195,6 +198,7 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 		Exposes:    store.exposes,
 		Env:        store.env,
 		Service:    store.service,
+		Gateway:    &store.gateway,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -222,6 +226,7 @@ type fakeDeploymentExecutionStore struct {
 	components       []model.VersionComponent
 	exposes          []model.VersionExpose
 	env              model.Environment
+	gateway          model.GatewayConfig
 	service          model.Service
 	serviceStatus    string
 	deploymentStatus string
@@ -313,6 +318,23 @@ func (s *fakeDeploymentExecutionStore) CompleteDeployment(_ context.Context, id 
 	s.deploymentStatus = status
 	s.errorMessage = message
 	return nil
+}
+
+func (s *fakeDeploymentExecutionStore) GatewayConfig(_ context.Context, applicationId string) (model.GatewayConfig, error) {
+	if s.gateway.ApplicationId != "" && (applicationId == s.gateway.ApplicationId || applicationId == s.app.Id) {
+		return s.gateway, nil
+	}
+	if s.gateway.BaseDomain != "" {
+		return s.gateway, nil
+	}
+	return model.GatewayConfig{}, repository.ErrNotFound
+}
+
+func (s *fakeDeploymentExecutionStore) ResolveActiveGatewayConfig(_ context.Context) (model.GatewayConfig, error) {
+	if s.gateway.BaseDomain != "" || s.gateway.RestAPIURL != "" {
+		return s.gateway, nil
+	}
+	return model.GatewayConfig{}, repository.ErrNotFound
 }
 
 type fakeCommandRunner struct{}

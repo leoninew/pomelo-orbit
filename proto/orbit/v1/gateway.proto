@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package orbit.v1;
+
+message GatewayCreateReq {
+  string project_id = 1;
+  string code = 2;
+  string name = 3;
+  string rest_api_url = 4;
+  string base_domain = 5;
+  optional string image = 6;
+}
+
+message GatewayUpdateReq {
+  optional string name = 1;
+  optional string rest_api_url = 2;
+  optional string base_domain = 3;
+  optional string image = 4;
+}
+
+message GatewayResp {
+  string id = 1;
+  string project_id = 2;
+  string code = 3;
+  string name = 4;
+  string kind = 5;
+  string rest_api_url = 6;
+  string base_domain = 7;
+  optional string image = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  string config_updated_at = 11;
+}
+
+message GatewayPaginatedResp {
+  repeated GatewayResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

@@ -357,6 +357,7 @@
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
           project_id: projectId,
+          kind: 'standard',
         });
         applications.value = res.items;
         pagination.total = res.total;

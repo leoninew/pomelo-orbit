@@ -103,10 +103,10 @@ func TestRenderComposeInjectsHTTPExposeLabels(t *testing.T) {
 		},
 		Env: model.Environment{
 			Code:              "local",
-			BaseDomain:        "example.com",
 			DefaultEntrypoint: "websecure",
 			TLSMode:           "letsencrypt",
 		},
+		Gateway: &model.GatewayConfig{BaseDomain: "example.com"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
@@ -145,7 +145,8 @@ func TestRenderComposeStandardWithoutExposeDoesNotJoinPlatformNetwork(t *testing
 		Components: []model.VersionComponent{
 			{Name: "web", Image: "nginx"},
 		},
-		Env:     model.Environment{Code: "local", BaseDomain: "example.com", DefaultEntrypoint: "web"},
+		Env:     model.Environment{Code: "local", DefaultEntrypoint: "web"},
+		Gateway: &model.GatewayConfig{BaseDomain: "example.com"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
@@ -170,10 +171,10 @@ func TestRenderComposeStandardExposeOnlyJoinsExposedComponents(t *testing.T) {
 		},
 		Env: model.Environment{
 			Code:              "local",
-			BaseDomain:        "example.com",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
+		Gateway: &model.GatewayConfig{BaseDomain: "example.com"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
@@ -244,10 +245,10 @@ func TestRenderComposeRejectsDuplicateHTTPPath(t *testing.T) {
 		},
 		Env: model.Environment{
 			Code:              "local",
-			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
+		Gateway: &model.GatewayConfig{BaseDomain: "local.test"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err == nil {
@@ -295,10 +296,10 @@ func TestRenderComposeGatewayInjectsDashboardLabelsFromEnv(t *testing.T) {
 		// No Expose: dashboard labels must still appear for gateway.
 		Env: model.Environment{
 			Code:              "local",
-			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
+		Gateway: &model.GatewayConfig{BaseDomain: "local.test"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
@@ -331,9 +332,9 @@ func TestRenderComposeStandardDoesNotInjectGatewayDashboard(t *testing.T) {
 		},
 		Env: model.Environment{
 			Code:              "local",
-			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
 		},
+		Gateway: &model.GatewayConfig{BaseDomain: "local.test"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {

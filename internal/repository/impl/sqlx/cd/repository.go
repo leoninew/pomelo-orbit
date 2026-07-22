@@ -34,7 +34,8 @@ const applicationColumns = `id, project_id, name, code, kind, image_pull_policy,
 const versionColumns = `id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at`
 const versionComponentColumns = `id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json, depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at`
 const versionExposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at`
-const environmentColumns = `id, project_id, code, name, description, base_domain, domain_template, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at`
+const environmentColumns = `id, project_id, code, name, description, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at`
+const gatewayConfigColumns = `application_id, rest_api_url, base_domain, image, created_at, updated_at`
 const serviceColumns = `id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at`
 const deploymentColumns = `id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id`
 
@@ -55,9 +56,19 @@ func (r Repository) IsProjectMember(ctx context.Context, projectId string, userI
 	return count > 0, nil
 }
 
-func (r Repository) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {
+func (r Repository) ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	where, args := projectSearchWhere(projectId, search, []string{"name", "code"})
+	kind = strings.TrimSpace(kind)
+	if kind != "" {
+		if where == "" {
+			where = " WHERE kind = ?"
+			args = []any{kind}
+		} else {
+			where += " AND kind = ?"
+			args = append(args, kind)
+		}
+	}
 	var total int
 	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM application`+where, args...); err != nil {
 		return repository.Page[model.Application]{}, fmt.Errorf("count applications: %w", err)
@@ -331,10 +342,10 @@ func (r Repository) EnvironmentByProjectCode(ctx context.Context, projectId stri
 
 func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment) error {
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (
-		id, project_id, code, name, description, base_domain, domain_template, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		id, project_id, code, name, description, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
 		env.Id, env.ProjectId, env.Code, env.Name, env.Description,
-		env.BaseDomain, env.DomainTemplate, env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode)
+		env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode)
 	if err != nil {
 		return fmt.Errorf("create environment %s: %w", env.Code, err)
 	}
@@ -343,9 +354,9 @@ func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment
 
 func (r Repository) UpdateEnvironment(ctx context.Context, env model.Environment) error {
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE environment SET
-		name = ?, description = ?, base_domain = ?, domain_template = ?, default_entrypoint = ?, tcp_entrypoint = ?, tls_mode = ?, updated_at = %s
+		name = ?, description = ?, default_entrypoint = ?, tcp_entrypoint = ?, tls_mode = ?, updated_at = %s
 		WHERE id = ?`, db.NowExpr(r.driver)),
-		env.Name, env.Description, env.BaseDomain, env.DomainTemplate, env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode, env.Id)
+		env.Name, env.Description, env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode, env.Id)
 	if err != nil {
 		return fmt.Errorf("update environment %s: %w", env.Id, err)
 	}
@@ -501,6 +512,110 @@ func (r Repository) HasActiveGatewayService(ctx context.Context, excludeApplicat
 		return false, fmt.Errorf("count active gateway services: %w", err)
 	}
 	return count > 0, nil
+}
+
+func (r Repository) GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error) {
+	var cfg model.GatewayConfig
+	err := r.db.GetContext(ctx, &cfg, `SELECT `+gatewayConfigColumns+` FROM gateway_config WHERE application_id = ?`, applicationId)
+	if err != nil {
+		return model.GatewayConfig{}, fmt.Errorf("load gateway_config %s: %w", applicationId, sqlcommon.TranslateError(err))
+	}
+	return cfg, nil
+}
+
+func (r Repository) ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error) {
+	var items []model.Application
+	err := r.db.SelectContext(ctx, &items, `SELECT `+applicationColumns+`
+		FROM application WHERE project_id = ? AND kind = ? ORDER BY created_at DESC, id`, projectId, status.ApplicationKindGateway)
+	if err != nil {
+		return nil, fmt.Errorf("list gateway applications: %w", err)
+	}
+	return items, nil
+}
+
+func (r Repository) ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error) {
+	var cfg model.GatewayConfig
+	err := r.db.GetContext(ctx, &cfg, `SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.image, gc.created_at, gc.updated_at
+		FROM gateway_config gc
+		INNER JOIN service s ON s.application_id = gc.application_id
+		INNER JOIN application a ON a.id = gc.application_id
+		WHERE a.kind = ? AND s.status IN (?, ?)
+		ORDER BY s.updated_at DESC, gc.application_id
+		LIMIT 1`, status.ApplicationKindGateway, status.ServiceStatusRunning, status.ServiceStatusDeploying)
+	if err == nil {
+		return cfg, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		translated := sqlcommon.TranslateError(err)
+		if !errors.Is(translated, repository.ErrNotFound) {
+			return model.GatewayConfig{}, fmt.Errorf("resolve active gateway config: %w", err)
+		}
+	}
+
+	var apps []model.Application
+	err = r.db.SelectContext(ctx, &apps, `SELECT `+applicationColumns+` FROM application WHERE kind = ? ORDER BY created_at, id`, status.ApplicationKindGateway)
+	if err != nil {
+		return model.GatewayConfig{}, fmt.Errorf("list gateways for resolve: %w", err)
+	}
+	if len(apps) == 0 {
+		return model.GatewayConfig{}, fmt.Errorf("no gateway configured: %w", repository.ErrNotFound)
+	}
+	if len(apps) > 1 {
+		return model.GatewayConfig{}, fmt.Errorf("multiple gateways exist and none is active; deploy one or remove extras: %w", repository.ErrNotFound)
+	}
+	return r.GatewayConfig(ctx, apps[0].Id)
+}
+
+func (r Repository) CreateApplicationWithGatewayConfig(ctx context.Context, app model.Application, cfg model.GatewayConfig) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin create gateway application: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application (id, project_id, name, code, kind, image_pull_policy, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		app.Id, app.ProjectId, app.Name, app.Code, app.Kind, app.ImagePullPolicy); err != nil {
+		return fmt.Errorf("create gateway application %s: %w", app.Code, err)
+	}
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, created_at, updated_at)
+		VALUES (?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		cfg.ApplicationId, cfg.RestAPIURL, cfg.BaseDomain, cfg.Image); err != nil {
+		return fmt.Errorf("create gateway_config %s: %w", cfg.ApplicationId, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit create gateway application: %w", err)
+	}
+	return nil
+}
+
+func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error {
+	now := db.NowExpr(r.driver)
+	var err error
+	if r.driver == "mysql" {
+		_, err = r.db.ExecContext(ctx, fmt.Sprintf(`
+			INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, created_at, updated_at)
+			VALUES (?, ?, ?, ?, %s, %s)
+			ON DUPLICATE KEY UPDATE
+				rest_api_url = VALUES(rest_api_url),
+				base_domain = VALUES(base_domain),
+				image = VALUES(image),
+				updated_at = %s
+		`, now, now, now), cfg.ApplicationId, cfg.RestAPIURL, cfg.BaseDomain, cfg.Image)
+	} else {
+		_, err = r.db.ExecContext(ctx, fmt.Sprintf(`
+			INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, created_at, updated_at)
+			VALUES (?, ?, ?, ?, %s, %s)
+			ON CONFLICT(application_id) DO UPDATE SET
+				rest_api_url = excluded.rest_api_url,
+				base_domain = excluded.base_domain,
+				image = excluded.image,
+				updated_at = %s
+		`, now, now, now), cfg.ApplicationId, cfg.RestAPIURL, cfg.BaseDomain, cfg.Image)
+	}
+	if err != nil {
+		return fmt.Errorf("upsert gateway_config %s: %w", cfg.ApplicationId, err)
+	}
+	return nil
 }
 
 func (r Repository) Route(ctx context.Context, id string) (model.Route, error) {

@@ -16,7 +16,6 @@ import (
 var environmentCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 const (
-	defaultBaseDomain         = "local.test"
 	defaultHTTPEntrypoint     = "web"
 	defaultEnvironmentTLSMode = "none"
 )
@@ -57,7 +56,7 @@ func (s Service) CreateEnvironment(ctx context.Context, userId string, input cdt
 	if code == "" || len(code) > 100 || !environmentCodePattern.MatchString(code) || name == "" || len(name) > 255 {
 		return cdto.EnvironmentView{}, apperror.New(apperror.KindValidation, "Invalid environment fields")
 	}
-	policy, err := normalizeIngressPolicy(input.BaseDomain, input.DomainTemplate, input.DefaultEntrypoint, input.TCPEntrypoint, input.TLSMode, true)
+	policy, err := normalizeIngressPolicy(input.DefaultEntrypoint, input.TCPEntrypoint, input.TLSMode, true)
 	if err != nil {
 		return cdto.EnvironmentView{}, err
 	}
@@ -67,8 +66,6 @@ func (s Service) CreateEnvironment(ctx context.Context, userId string, input cdt
 		Code:              code,
 		Name:              name,
 		Description:       normalizeOptionalText(input.Description),
-		BaseDomain:        policy.BaseDomain,
-		DomainTemplate:    policy.DomainTemplate,
 		DefaultEntrypoint: policy.DefaultEntrypoint,
 		TCPEntrypoint:     policy.TCPEntrypoint,
 		TLSMode:           policy.TLSMode,
@@ -94,14 +91,6 @@ func (s Service) UpdateEnvironment(ctx context.Context, userId string, environme
 	if input.Description != nil {
 		env.Description = normalizeOptionalText(input.Description)
 	}
-	baseDomain := &env.BaseDomain
-	if input.BaseDomain != nil {
-		baseDomain = input.BaseDomain
-	}
-	domainTemplate := env.DomainTemplate
-	if input.DomainTemplate != nil {
-		domainTemplate = input.DomainTemplate
-	}
 	defaultEntrypoint := &env.DefaultEntrypoint
 	if input.DefaultEntrypoint != nil {
 		defaultEntrypoint = input.DefaultEntrypoint
@@ -114,12 +103,10 @@ func (s Service) UpdateEnvironment(ctx context.Context, userId string, environme
 	if input.TLSMode != nil {
 		tlsMode = input.TLSMode
 	}
-	policy, err := normalizeIngressPolicy(baseDomain, domainTemplate, defaultEntrypoint, tcpEntrypoint, tlsMode, false)
+	policy, err := normalizeIngressPolicy(defaultEntrypoint, tcpEntrypoint, tlsMode, false)
 	if err != nil {
 		return cdto.EnvironmentView{}, err
 	}
-	env.BaseDomain = policy.BaseDomain
-	env.DomainTemplate = policy.DomainTemplate
 	env.DefaultEntrypoint = policy.DefaultEntrypoint
 	env.TCPEntrypoint = policy.TCPEntrypoint
 	env.TLSMode = policy.TLSMode
@@ -163,41 +150,18 @@ func (s Service) loadEnvironmentForUser(ctx context.Context, userId string, envi
 }
 
 type ingressPolicyValues struct {
-	BaseDomain        string
-	DomainTemplate    *string
 	DefaultEntrypoint string
 	TCPEntrypoint     *string
 	TLSMode           string
 }
 
 func normalizeIngressPolicy(
-	baseDomain *string,
-	domainTemplate *string,
 	defaultEntrypoint *string,
 	tcpEntrypoint *string,
 	tlsMode *string,
 	applyCreateDefaults bool,
 ) (ingressPolicyValues, error) {
 	out := ingressPolicyValues{}
-	if baseDomain != nil {
-		out.BaseDomain = strings.ToLower(strings.TrimSpace(*baseDomain))
-	}
-	if applyCreateDefaults && out.BaseDomain == "" {
-		out.BaseDomain = defaultBaseDomain
-	}
-	if out.BaseDomain != "" && !validDeploymentRouteDomain(out.BaseDomain) {
-		return ingressPolicyValues{}, apperror.New(apperror.KindValidation, "Invalid base_domain")
-	}
-
-	out.DomainTemplate = normalizeOptionalText(domainTemplate)
-	if out.DomainTemplate != nil {
-		template := strings.TrimSpace(*out.DomainTemplate)
-		if template != "" {
-			if err := validateDomainTemplateTokens(template); err != nil {
-				return ingressPolicyValues{}, apperror.New(apperror.KindValidation, err.Error())
-			}
-		}
-	}
 
 	if defaultEntrypoint != nil {
 		out.DefaultEntrypoint = strings.TrimSpace(*defaultEntrypoint)
@@ -227,22 +191,4 @@ func normalizeIngressPolicy(
 		return ingressPolicyValues{}, apperror.New(apperror.KindValidation, "Invalid tls_mode")
 	}
 	return out, nil
-}
-
-func validateDomainTemplateTokens(template string) error {
-	matches := domainTemplateTokenPattern.FindAllStringSubmatch(template, -1)
-	allowed := map[string]struct{}{
-		"app_code":    {},
-		"env_code":    {},
-		"base_domain": {},
-	}
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
-		}
-		if _, ok := allowed[match[1]]; !ok {
-			return errors.New("domain_template contains unknown token: " + match[1])
-		}
-	}
-	return nil
 }

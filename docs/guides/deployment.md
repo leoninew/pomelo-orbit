@@ -69,10 +69,11 @@ docker compose up -d
 
 系统初始化时会创建三个预置应用：
 
-### Traefik（反向代理）
-- HTTP/HTTPS 路由网关
-- 自动加载动态路由配置
-- 支持证书管理
+### Traefik / Gateway（反向代理）
+- 产品面：`Application(kind=gateway)` + `gateway_config`（`rest_api_url`、`base_domain`、可选 `image`）
+- 保存 Gateway 时 compile 未发布 Version（组件 `traefik`：端口、docker.sock、静态 `traefik.yml`）
+- 平台动态路由：`providers.rest` PUT；应用 Host：`{app_code}.{gateway.base_domain}`
+- 部署与 standard 应用同一 Version / Deploy 管线
 
 ### nginx（示例应用）
 - 演示应用部署流程

@@ -313,7 +313,11 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return cdto.TraefikConfigResp{}, err
 	}
-	dashboardDomain := fmt.Sprintf("traefik.%s", s.cfg.Traefik.DomainSuffix)
+	gw, err := s.resolveGatewayForRender(ctx)
+	if err != nil {
+		return cdto.TraefikConfigResp{}, err
+	}
+	dashboardDomain := fmt.Sprintf("traefik.%s", gw.BaseDomain)
 	route, err := s.store.RouteByDomain(ctx, dashboardDomain)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -333,7 +337,11 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return cdto.TraefikRouteListResp{}, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx)
+	gw, err := s.resolveGatewayForRender(ctx)
+	if err != nil {
+		return cdto.TraefikRouteListResp{}, err
+	}
+	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestAPIURL)
 	if err != nil {
 		if s.traefikRouterClient.IsConnectionError(err) {
 			return cdto.TraefikRouteListResp{}, apperror.New(apperror.KindValidation, fmt.Sprintf("无法连接到 Traefik: %v", err))
@@ -367,11 +375,18 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 
 // publishRouteSnapshot rebuilds the full platform rest config from all enabled routes.
 func (s Service) publishRouteSnapshot(ctx context.Context) error {
+	gw, err := s.resolveGatewayForRender(ctx)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(gw.RestAPIURL) == "" {
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
+	}
 	routes, err := s.store.ListEnabledRoutes(ctx)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
-	if err := s.routePublisher.ApplySnapshot(ctx, routes); err != nil {
+	if err := s.routePublisher.ApplySnapshot(ctx, gw.RestAPIURL, routes); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
 	}
 	return nil

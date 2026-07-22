@@ -45,8 +45,9 @@ type CommandQueryRunner interface {
 
 // RouteConfigPublisher publishes the platform route snapshot to Traefik providers.rest.
 // ApplySnapshot is a full replace of the @rest namespace (not a per-route merge).
+// restAPIURL is the Gateway config control-plane base (no trailing path).
 type RouteConfigPublisher interface {
-	ApplySnapshot(ctx context.Context, routes []model.Route) error
+	ApplySnapshot(ctx context.Context, restAPIURL string, routes []model.Route) error
 	WriteCertificate(ctx context.Context, routeName string, certPEM string, certKey string) error
 	RevokeCertificate(ctx context.Context, routeName string) error
 }
@@ -67,6 +68,6 @@ type TraefikRouter struct {
 }
 
 type TraefikRouterClient interface {
-	ListRouters(ctx context.Context) ([]TraefikRouter, error)
+	ListRouters(ctx context.Context, restAPIURL string) ([]TraefikRouter, error)
 	IsConnectionError(err error) bool
 }

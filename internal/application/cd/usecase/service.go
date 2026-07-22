@@ -52,13 +52,13 @@ func NewExecutionService(store repository.DeploymentExecutionStore, cfg config.C
 	return Service{executionStore: store, cfg: cfg, workspace: workspace, logStore: logStore, executionLogStore: logStore, logger: logger, runner: runner}
 }
 
-func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string) (repository.Page[model.Application], error) {
+func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
 	if projectId != nil {
 		if err := s.ensureProjectMembership(ctx, *projectId, userId); err != nil {
 			return repository.Page[model.Application]{}, err
 		}
 	}
-	items, err := s.store.ListApplications(ctx, projectId, page, perPage, search)
+	items, err := s.store.ListApplications(ctx, projectId, page, perPage, search, strings.TrimSpace(kind))
 	if err != nil {
 		return repository.Page[model.Application]{}, apperror.Wrap(apperror.KindInternal, "Failed to list applications", err)
 	}

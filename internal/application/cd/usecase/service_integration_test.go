@@ -315,12 +315,92 @@ func newCDIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}, Traefik: config.TraefikConfig{DomainSuffix: "lvh.me"}}
+	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	cfg.Cert.LetsEncrypt.Enabled = true
 	cfg.Cert.LetsEncrypt.Email = "admin@example.test"
+	store := cdrepo.NewRepository(database, config.DatabaseDriverSQLite)
 	tasks := tasksvc.New(taskrepo.NewRepository(database, config.DatabaseDriverSQLite), 3)
-	service := New(cdrepo.NewRepository(database, config.DatabaseDriverSQLite), queuedispatch.NewCDDispatcher(tasks), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), testWorkspace(cfg.DataRoot()), &recordingQueryRunner{}, executionlog.Store{}, &recordingRoutePublisher{}, recordingCertificateGenerator{}, &recordingTraefikClient{})
+	service := New(store, queuedispatch.NewCDDispatcher(tasks), cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), testWorkspace(cfg.DataRoot()), &recordingQueryRunner{}, executionlog.Store{}, &recordingRoutePublisher{}, recordingCertificateGenerator{}, &recordingTraefikClient{})
+	seedTestGateway(t, service)
 	return service, database
+}
+
+func seedTestGateway(t *testing.T, service Service) {
+	t.Helper()
+	ctx := context.Background()
+	_, err := service.CreateGateway(ctx, cdTestUserId, cdto.GatewayCreateInput{
+		ProjectId:  cdTestProjectId,
+		Code:       "test-gateway",
+		Name:       "Test Gateway",
+		RestAPIURL: "http://traefik:8080",
+		BaseDomain: "lvh.me",
+	})
+	if err != nil {
+		t.Fatalf("seed gateway: %v", err)
+	}
+}
+
+func TestCreateGatewayCompilesManagedVersion(t *testing.T) {
+	service, database := newCDIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	// seedTestGateway already created one gateway; create another to assert compile output.
+	img := "traefik:v3.9-test"
+	view, err := service.CreateGateway(ctx, cdTestUserId, cdto.GatewayCreateInput{
+		ProjectId:  cdTestProjectId,
+		Code:       "edge-gw",
+		Name:       "Edge GW",
+		RestAPIURL: "http://127.0.0.1:8080",
+		BaseDomain: "example.test",
+		Image:      &img,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	versions, err := service.ListVersions(ctx, cdTestUserId, view.Application.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versions) != 1 {
+		t.Fatalf("expected one compiled version, got %d", len(versions))
+	}
+	v := versions[0]
+	if v.Version.Status != status.VersionStatusUnpublished || v.Version.Label != gatewayCompileVersionLabel {
+		t.Fatalf("unexpected version meta: %+v", v.Version)
+	}
+	if len(v.Components) != 1 || v.Components[0].Name != gatewayManagedComponentName {
+		t.Fatalf("unexpected components: %+v", v.Components)
+	}
+	if v.Components[0].Image != img {
+		t.Fatalf("expected image %s, got %s", img, v.Components[0].Image)
+	}
+	if v.Components[0].MountsJSON == nil || !strings.Contains(*v.Components[0].MountsJSON, "providers") {
+		t.Fatalf("expected traefik.yml content in mounts, got %v", v.Components[0].MountsJSON)
+	}
+	if v.Components[0].PortsJSON == nil || !strings.Contains(*v.Components[0].PortsJSON, "8080:8080") {
+		t.Fatalf("expected ports, got %v", v.Components[0].PortsJSON)
+	}
+
+	// Update image recompiles same unpublished version.
+	img2 := "traefik:v3.9-updated"
+	updated, err := service.UpdateGateway(ctx, cdTestUserId, view.Application.Id, cdto.GatewayUpdateInput{Image: &img2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Config.Image == nil || *updated.Config.Image != img2 {
+		t.Fatalf("config image not updated: %+v", updated.Config)
+	}
+	versions2, err := service.ListVersions(ctx, cdTestUserId, view.Application.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versions2) != 1 {
+		t.Fatalf("update must not create extra version, got %d", len(versions2))
+	}
+	if versions2[0].Components[0].Image != img2 {
+		t.Fatalf("compile did not refresh image, got %s", versions2[0].Components[0].Image)
+	}
 }
 
 func TestApplicationStatusUsesQueryRunner(t *testing.T) {
@@ -478,7 +558,7 @@ type recordingRoutePublisher struct {
 	revokedCerts []string
 }
 
-func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, routes []model.Route) error {
+func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, _ string, routes []model.Route) error {
 	p.snapshots = append(p.snapshots, append([]model.Route(nil), routes...))
 	return nil
 }
@@ -503,7 +583,7 @@ type recordingTraefikClient struct {
 	err     error
 }
 
-func (c *recordingTraefikClient) ListRouters(context.Context) ([]cdport.TraefikRouter, error) {
+func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string) ([]cdport.TraefikRouter, error) {
 	if c.err != nil {
 		return nil, c.err
 	}

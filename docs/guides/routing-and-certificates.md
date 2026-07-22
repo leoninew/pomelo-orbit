@@ -2,18 +2,22 @@
 
 ## 概述
 
-Pomelo Orbit 使用 Traefik 作为反向代理网关，实现动态路由和 HTTPS 证书管理。路由配置和证书数据存储在数据库中，通过文件同步机制应用到 Traefik。
+Pomelo Orbit 使用 Traefik 作为反向代理网关，实现动态路由和 HTTPS 证书管理。
+
+- **平台路由**（CD Route 表）：经 Traefik **`providers.rest`** 全量 PUT，控制面 URL 来自 **Gateway config `rest_api_url`**（不再使用全局 `traefik.api_url`）。
+- **应用暴露**（Version Expose）：部署时写入 Docker labels；Host 推导为 `{app_code}.{gateway.base_domain}`。
+- **证书文件**：平台写入证书目录供 TLS 路由引用（见下文）。
 
 ## 路由系统架构
 
 ```
-用户配置路由（Web UI）
+用户配置平台路由（Web UI）
   ↓
 保存到数据库（route 表）
   ↓
-同步到文件系统（dynamic/{route-name}.yml）
+ResolveActiveGatewayConfig → rest_api_url
   ↓
-Traefik 自动加载（watch: true）
+PUT {rest_api_url}/api/providers/rest  （全量快照）
   ↓
 路由生效
 ```
@@ -46,9 +50,11 @@ Traefik 自动加载（watch: true）
 
 ## Traefik 配置格式
 
-每个路由独立生成一个 yml 文件，存放在 `data/traefik/data/dynamic/{route-name}.yml`。
+平台路由不再写 `dynamic/*.yml` 文件。`RouteManager` 组装与 providers.rest 契约一致的 JSON 全量配置后 PUT 到 Gateway 的管理面。网关静态配置（entryPoints / providers.rest / docker）由 **Gateway 保存时 compile** 写入 Version 挂载 `traefik.yml`（content_mode=sync）。
 
-### HTTP 路由
+以下为概念形态（历史 file provider 文档示例；实现已 rest 化）：
+
+### HTTP 路由（概念）
 
 ```yaml
 http:

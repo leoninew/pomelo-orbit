@@ -100,9 +100,8 @@ type JWTConfig struct {
 }
 
 type TraefikConfig struct {
-	APIURL       string `mapstructure:"api_url" yaml:"api_url"`
-	DomainSuffix string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
 	// CertDir is still used for optional custom PEM materialization (F1 completes alignment).
+	// API URL and domain suffix come from Gateway config (E6), not process config.
 	CertDir string `mapstructure:"cert_dir" yaml:"cert_dir"`
 }
 

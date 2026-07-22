@@ -1,55 +1,56 @@
 <template>
   <div class="space-y-6">
-    <ToolbarRoot class="app-toolbar-simple" :aria-label="t('environment.toolbar')">
+    <ToolbarRoot class="app-toolbar-simple" :aria-label="t('gateway.toolbar')">
       <SearchControl
         v-model="searchText"
         class="shrink-0"
-        :placeholder="t('environment.searchPlaceholder')"
+        :placeholder="t('gateway.searchPlaceholder')"
         :loading="status === 'loading'"
         @search="handleSearch"
       />
       <div class="flex items-center gap-3">
         <button class="app-button-primary px-5" @click="openCreateModal">
           <Plus class="size-4" />
-          {{ t('environment.create') }}
+          {{ t('gateway.create') }}
         </button>
       </div>
     </ToolbarRoot>
 
     <div class="app-surface">
       <AppSpinner v-if="status === 'loading'" class="py-16" />
-      <AppEmptyState v-else-if="environments.length === 0" />
+      <AppEmptyState v-else-if="gateways.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-table-list min-w-[960px]">
           <thead>
             <tr>
-              <th>{{ t('environment.fields.name') }}</th>
-              <th>{{ t('environment.fields.code') }}</th>
-              <th>{{ t('environment.fields.defaultEntrypoint') }}</th>
-              <th>{{ t('environment.fields.tlsMode') }}</th>
+              <th>{{ t('gateway.fields.name') }}</th>
+              <th>{{ t('gateway.fields.code') }}</th>
+              <th>{{ t('gateway.fields.restApiUrl') }}</th>
+              <th>{{ t('gateway.fields.baseDomain') }}</th>
               <th>{{ t('common.createdAt') }}</th>
               <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="env in environments" :key="env.id">
-              <td class="text-foreground">{{ env.name }}</td>
-              <td class="text-foreground">{{ env.code }}</td>
-              <td class="text-foreground">{{ env.default_entrypoint || '—' }}</td>
-              <td class="text-foreground">{{ env.tls_mode || 'none' }}</td>
+            <tr
+              v-for="item in gateways"
+              :key="item.id"
+              class="cursor-pointer"
+              @click="router.push(`/cd/gateways/${item.id}`)"
+            >
+              <td class="text-foreground">{{ item.name }}</td>
+              <td class="font-mono text-foreground">{{ item.code }}</td>
+              <td class="font-mono text-sm text-foreground">{{ item.rest_api_url }}</td>
+              <td class="text-foreground">{{ item.base_domain }}</td>
               <td class="whitespace-nowrap text-foreground">
-                {{ formatTime(env.created_at) }}
+                {{ formatTime(item.created_at) }}
               </td>
-              <td class="whitespace-nowrap">
+              <td class="whitespace-nowrap" @click.stop>
                 <div class="flex items-center gap-3">
-                  <button class="app-link" @click="openEditModal(env)">
+                  <button class="app-link" @click="openEditModal(item)">
                     {{ t('common.edit') }}
                   </button>
-                  <button
-                    class="app-link-danger"
-                    :disabled="operating || env.code === 'local'"
-                    @click="openDeleteModal(env)"
-                  >
+                  <button class="app-link-danger" :disabled="operating" @click="openDeleteModal(item)">
                     {{ t('common.delete') }}
                   </button>
                 </div>
@@ -71,13 +72,13 @@
 
     <AppDialog
       v-model:open="isFormDialogOpen"
-      :title="editingId ? t('environment.dialog.edit') : t('environment.dialog.create')"
+      :title="editingId ? t('gateway.dialog.edit') : t('gateway.dialog.create')"
       width-class="w-[min(560px,calc(100vw-32px))]"
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">
-            {{ t('environment.fields.code') }}
+            {{ t('gateway.fields.code') }}
             <span class="text-destructive">*</span>
           </label>
           <input
@@ -86,14 +87,14 @@
             class="app-input"
             :class="errors.code ? 'app-input-error' : ''"
             :disabled="!!editingId"
-            :placeholder="t('environment.placeholders.code')"
+            :placeholder="t('gateway.placeholders.code')"
           />
           <p v-if="errors.code" class="app-field-error">{{ errors.code }}</p>
-          <p v-else class="app-field-hint">{{ t('environment.hints.code') }}</p>
+          <p v-else class="app-field-hint">{{ t('gateway.hints.code') }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
-            {{ t('environment.fields.name') }}
+            {{ t('gateway.fields.name') }}
             <span class="text-destructive">*</span>
           </label>
           <input
@@ -101,48 +102,48 @@
             type="text"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
-            :placeholder="t('environment.placeholders.name')"
+            :placeholder="t('gateway.placeholders.name')"
           />
           <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('common.description') }}</label>
+          <label class="app-field-label block">
+            {{ t('gateway.fields.restApiUrl') }}
+            <span class="text-destructive">*</span>
+          </label>
           <input
-            v-model="form.description"
+            v-model="form.rest_api_url"
             type="text"
             class="app-input"
-            :placeholder="t('environment.placeholders.description')"
+            :class="errors.rest_api_url ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.restApiUrl')"
           />
-        </div>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="app-field-label block">
-              {{ t('environment.fields.defaultEntrypoint') }}
-            </label>
-            <input
-              v-model="form.default_entrypoint"
-              type="text"
-              class="app-input"
-              :placeholder="t('environment.placeholders.defaultEntrypoint')"
-            />
-          </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label block">{{ t('environment.fields.tcpEntrypoint') }}</label>
-            <input
-              v-model="form.tcp_entrypoint"
-              type="text"
-              class="app-input"
-              :placeholder="t('environment.placeholders.tcpEntrypoint')"
-            />
-          </div>
+          <p v-if="errors.rest_api_url" class="app-field-error">{{ errors.rest_api_url }}</p>
+          <p v-else class="app-field-hint">{{ t('gateway.hints.restApiUrl') }}</p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('environment.fields.tlsMode') }}</label>
-          <select v-model="form.tls_mode" class="app-input">
-            <option value="none">none</option>
-            <option value="letsencrypt">letsencrypt</option>
-            <option value="tls">tls</option>
-          </select>
+          <label class="app-field-label block">
+            {{ t('gateway.fields.baseDomain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="form.base_domain"
+            type="text"
+            class="app-input"
+            :class="errors.base_domain ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.baseDomain')"
+          />
+          <p v-if="errors.base_domain" class="app-field-error">{{ errors.base_domain }}</p>
+          <p v-else class="app-field-hint">{{ t('gateway.hints.baseDomain') }}</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('gateway.fields.image') }}</label>
+          <input
+            v-model="form.image"
+            type="text"
+            class="app-input"
+            :placeholder="t('gateway.placeholders.image')"
+          />
         </div>
       </div>
       <template #footer>
@@ -157,11 +158,11 @@
 
     <AppDialog
       v-model:open="isDeleteDialogOpen"
-      :title="t('environment.dialog.delete')"
+      :title="t('gateway.dialog.delete')"
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">
-        {{ t('environment.dialog.deleteConfirm', { name: pendingDelete?.name || '' }) }}
+        {{ t('gateway.dialog.deleteConfirm', { name: pendingDelete?.name || '' }) }}
       </p>
       <template #footer>
         <button class="app-button" @click="isDeleteDialogOpen = false">
@@ -179,8 +180,9 @@
   import { Plus } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useRouter } from 'vue-router';
   import { ToolbarRoot } from 'reka-ui';
-  import { environmentApi } from '@/api/cd/environment';
+  import { gatewayApi } from '@/api/cd/gateway';
   import AppDialog from '@/components/AppDialog.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
@@ -188,17 +190,18 @@
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment';
+  import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway';
   import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
 
   const toast = useToast();
   const { t } = useI18n();
+  const router = useRouter();
   const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
-  const environments = ref<EnvironmentResp[]>([]);
+  const gateways = ref<GatewayResp[]>([]);
   const searchText = ref('');
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize) || 1);
@@ -206,17 +209,16 @@
   const isFormDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const editingId = ref('');
-  const pendingDelete = ref<EnvironmentResp | null>(null);
+  const pendingDelete = ref<GatewayResp | null>(null);
 
   const form = reactive({
     code: '',
     name: '',
-    description: '',
-    default_entrypoint: 'web',
-    tcp_entrypoint: '',
-    tls_mode: 'none',
+    rest_api_url: 'http://traefik:8080',
+    base_domain: 'local.test',
+    image: '',
   });
-  const errors = reactive({ code: '', name: '' });
+  const errors = reactive({ code: '', name: '', rest_api_url: '', base_domain: '' });
 
   const codePattern = /^[a-z][a-z0-9-]*$/;
 
@@ -234,33 +236,39 @@
     } else {
       errors.code = codePattern.test(form.code.trim())
         ? ''
-        : t('environment.validation.codeInvalid');
+        : t('gateway.validation.codeInvalid');
     }
-    errors.name = form.name.trim() ? '' : t('environment.validation.nameRequired');
-    return !errors.code && !errors.name;
+    errors.name = form.name.trim() ? '' : t('gateway.validation.nameRequired');
+    errors.rest_api_url = form.rest_api_url.trim()
+      ? ''
+      : t('gateway.validation.restApiUrlRequired');
+    errors.base_domain = form.base_domain.trim()
+      ? ''
+      : t('gateway.validation.baseDomainRequired');
+    return !errors.code && !errors.name && !errors.rest_api_url && !errors.base_domain;
   }
 
   async function fetchData() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      environments.value = [];
+      gateways.value = [];
       pagination.total = 0;
-      toast.error(t('environment.toast.selectProjectRequired'));
+      toast.error(t('gateway.toast.selectProjectRequired'));
       return;
     }
     try {
       await execute(async () => {
-        const res = await environmentApi.list({
+        const res = await gatewayApi.list({
           project_id: projectId,
           page: pagination.current,
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
         });
-        environments.value = res.items ?? [];
+        gateways.value = res.items ?? [];
         pagination.total = res.total ?? 0;
       });
     } catch {
-      toast.error(t('environment.toast.loadFailed'));
+      toast.error(t('gateway.toast.loadFailed'));
     }
   }
 
@@ -284,12 +292,11 @@
     Object.assign(form, {
       code: '',
       name: '',
-      description: '',
-      default_entrypoint: 'web',
-      tcp_entrypoint: '',
-      tls_mode: 'none',
+      rest_api_url: 'http://traefik:8080',
+      base_domain: 'local.test',
+      image: '',
     });
-    Object.assign(errors, { code: '', name: '' });
+    Object.assign(errors, { code: '', name: '', rest_api_url: '', base_domain: '' });
   }
 
   function openCreateModal() {
@@ -298,17 +305,16 @@
     isFormDialogOpen.value = true;
   }
 
-  function openEditModal(env: EnvironmentResp) {
-    editingId.value = env.id;
+  function openEditModal(item: GatewayResp) {
+    editingId.value = item.id;
     Object.assign(form, {
-      code: env.code,
-      name: env.name,
-      description: env.description || '',
-      default_entrypoint: env.default_entrypoint || 'web',
-      tcp_entrypoint: env.tcp_entrypoint || '',
-      tls_mode: env.tls_mode || 'none',
+      code: item.code,
+      name: item.name,
+      rest_api_url: item.rest_api_url || '',
+      base_domain: item.base_domain || '',
+      image: item.image || '',
     });
-    Object.assign(errors, { code: '', name: '' });
+    Object.assign(errors, { code: '', name: '', rest_api_url: '', base_domain: '' });
     isFormDialogOpen.value = true;
   }
 
@@ -318,44 +324,42 @@
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      toast.error(t('environment.toast.selectProjectRequired'));
+      toast.error(t('gateway.toast.selectProjectRequired'));
       return;
     }
     try {
       await executeOp(async () => {
         if (editingId.value) {
-          await environmentApi.update(editingId.value, {
+          await gatewayApi.update(editingId.value, {
             name: form.name.trim(),
-            description: form.description.trim() || undefined,
-            default_entrypoint: form.default_entrypoint.trim(),
-            tcp_entrypoint: form.tcp_entrypoint.trim(),
-            tls_mode: form.tls_mode || 'none',
+            rest_api_url: form.rest_api_url.trim(),
+            base_domain: form.base_domain.trim(),
+            image: form.image.trim() || undefined,
           });
         } else {
-          await environmentApi.create(
+          await gatewayApi.create(
             {
               project_id: projectId,
               code: form.code.trim(),
               name: form.name.trim(),
-              description: form.description.trim() || undefined,
-              default_entrypoint: form.default_entrypoint.trim() || undefined,
-              tcp_entrypoint: form.tcp_entrypoint.trim() || undefined,
-              tls_mode: form.tls_mode || undefined,
+              rest_api_url: form.rest_api_url.trim(),
+              base_domain: form.base_domain.trim(),
+              image: form.image.trim() || undefined,
             },
             { project_id: projectId }
           );
         }
-        toast.success(t('environment.toast.saveSuccess'));
+        toast.success(t('gateway.toast.saveSuccess'));
         isFormDialogOpen.value = false;
         await fetchData();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('environment.toast.saveFailed'));
+      toast.error(error instanceof Error ? error.message : t('gateway.toast.saveFailed'));
     }
   }
 
-  function openDeleteModal(env: EnvironmentResp) {
-    pendingDelete.value = env;
+  function openDeleteModal(item: GatewayResp) {
+    pendingDelete.value = item;
     isDeleteDialogOpen.value = true;
   }
 
@@ -366,14 +370,14 @@
     }
     try {
       await executeOp(async () => {
-        await environmentApi.delete(target.id);
-        toast.success(t('environment.toast.deleteSuccess'));
+        await gatewayApi.delete(target.id);
+        toast.success(t('gateway.toast.deleteSuccess'));
         isDeleteDialogOpen.value = false;
         pendingDelete.value = null;
         await fetchData();
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('environment.toast.deleteFailed'));
+      toast.error(error instanceof Error ? error.message : t('gateway.toast.deleteFailed'));
     }
   }
 

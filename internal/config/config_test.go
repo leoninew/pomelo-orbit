@@ -63,8 +63,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.JWT.SecretKey != testJWTSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
 	}
-	if cfg.Traefik.APIURL != "http://traefik:8080" {
-		t.Fatalf("unexpected traefik api url: %s", cfg.Traefik.APIURL)
+	if cfg.Traefik.CertDir != "data/cd/traefik/data/certs" {
+		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
 	}
 	if !cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile enabled")
@@ -183,7 +183,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__VERIFY_URL", "https://turnstile.example.test")
-	t.Setenv("POMELO_ORBIT_TRAEFIK__API_URL", "http://traefik.example.test:8080")
+	t.Setenv("POMELO_ORBIT_TRAEFIK__CERT_DIR", "data/custom/certs")
 	t.Setenv("POMELO_ORBIT_ORBIT__ROOT", "/srv/pomelo-orbit")
 	t.Setenv("POMELO_ORBIT_WORKER__CONCURRENCY", "4")
 	t.Setenv("POMELO_ORBIT_WORKER__POLL_INTERVAL", "2s")
@@ -237,8 +237,8 @@ worker:
 	if cfg.Turnstile.VerifyURL != "https://turnstile.example.test" {
 		t.Fatalf("unexpected turnstile verify url: %s", cfg.Turnstile.VerifyURL)
 	}
-	if cfg.Traefik.APIURL != "http://traefik.example.test:8080" {
-		t.Fatalf("unexpected traefik api url: %s", cfg.Traefik.APIURL)
+	if cfg.Traefik.CertDir != "data/custom/certs" {
+		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
 	}
 	if cfg.Orbit.Root != "/srv/pomelo-orbit" {
 		t.Fatalf("unexpected orbit root: %s", cfg.Orbit.Root)

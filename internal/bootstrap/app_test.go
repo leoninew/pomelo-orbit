@@ -22,7 +22,7 @@ func TestMigrateAndMigrationVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 10 || version.Dirty {
+	if version.Version != 11 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 }

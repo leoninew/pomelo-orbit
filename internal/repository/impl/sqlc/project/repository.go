@@ -96,8 +96,8 @@ func (r Repository) CreateProject(ctx context.Context, project model.Project, us
 	// Seed default Environment for the project (code=local) with IngressPolicy defaults.
 	envID := idutil.NewId()
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (
-		id, project_id, code, name, description, base_domain, domain_template, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
-	) VALUES (?, ?, 'local', 'Local', NULL, 'local.test', NULL, 'web', NULL, 'none', %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), envID, project.Id); err != nil {
+		id, project_id, code, name, description, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
+	) VALUES (?, ?, 'local', 'Local', NULL, 'web', NULL, 'none', %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), envID, project.Id); err != nil {
 		return fmt.Errorf("seed local environment for project %s: %w", project.Code, err)
 	}
 	if err := tx.Commit(); err != nil {

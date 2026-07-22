@@ -58,20 +58,28 @@ type VersionExpose struct {
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
-// Environment is a project-scoped deploy target with embedded IngressPolicy.
+// Environment is a project-scoped deploy target with entrypoint/TLS policy (no domain).
 type Environment struct {
 	Id                string    `db:"id"`
 	ProjectId         string    `db:"project_id"`
 	Code              string    `db:"code"`
 	Name              string    `db:"name"`
 	Description       *string   `db:"description"`
-	BaseDomain        string    `db:"base_domain"`
-	DomainTemplate    *string   `db:"domain_template"`
 	DefaultEntrypoint string    `db:"default_entrypoint"`
 	TCPEntrypoint     *string   `db:"tcp_entrypoint"`
 	TLSMode           string    `db:"tls_mode"`
 	CreatedAt         time.Time `db:"created_at"`
 	UpdatedAt         time.Time `db:"updated_at"`
+}
+
+// GatewayConfig is 1:1 with Application(kind=gateway); platform rest URL and base_domain SoT.
+type GatewayConfig struct {
+	ApplicationId string    `db:"application_id"`
+	RestAPIURL    string    `db:"rest_api_url"`
+	BaseDomain    string    `db:"base_domain"`
+	Image         *string   `db:"image"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 // Service is the runtime binding of an application instance (business data).

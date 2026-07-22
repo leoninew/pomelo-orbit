@@ -264,16 +264,45 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
 	}
+	gateway, err := s.optionalGatewayForRender(ctx, components, exposes, app)
+	if err != nil {
+		return "", err
+	}
 	content, err := s.RenderCompose(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
 		Env:            env,
 		Service:        model.Service{InstanceKey: instanceKey},
+		Gateway:        gateway,
 		PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
 	return content, nil
+}
+
+// optionalGatewayForRender loads gateway config when Host/dashboard domains are needed.
+func (s Service) optionalGatewayForRender(ctx context.Context, components []model.VersionComponent, exposes []model.VersionExpose, app model.Application) (*model.GatewayConfig, error) {
+	kind := strings.TrimSpace(app.Kind)
+	needsGateway := kind == status.ApplicationKindGateway || len(exposes) > 0
+	if !needsGateway {
+		return nil, nil
+	}
+	reader := s.gatewayConfigReader()
+	if reader == nil {
+		return nil, apperror.New(apperror.KindInternal, "gateway config store is not available")
+	}
+	// Prefer the gateway app's own config when rendering kind=gateway.
+	if kind == status.ApplicationKindGateway {
+		cfg, err := reader.GatewayConfig(ctx, app.Id)
+		if err == nil {
+			return &cfg, nil
+		}
+		if !errors.Is(err, repository.ErrNotFound) {
+			return nil, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
+		}
+	}
+	return s.resolveGatewayForRender(ctx)
 }
 
 func (s Service) ListServicesByApplication(ctx context.Context, userId string, applicationId string) ([]model.Service, error) {

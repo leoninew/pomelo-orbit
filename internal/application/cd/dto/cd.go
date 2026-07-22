@@ -96,8 +96,6 @@ type EnvironmentCreateInput struct {
 	Code              string
 	Name              string
 	Description       *string
-	BaseDomain        *string
-	DomainTemplate    *string
 	DefaultEntrypoint *string
 	TCPEntrypoint     *string
 	TLSMode           *string
@@ -106,8 +104,6 @@ type EnvironmentCreateInput struct {
 type EnvironmentUpdateInput struct {
 	Name              *string
 	Description       *string
-	BaseDomain        *string
-	DomainTemplate    *string
 	DefaultEntrypoint *string
 	TCPEntrypoint     *string
 	TLSMode           *string
@@ -115,6 +111,27 @@ type EnvironmentUpdateInput struct {
 
 type EnvironmentView struct {
 	Environment model.Environment
+}
+
+type GatewayCreateInput struct {
+	ProjectId  string
+	Code       string
+	Name       string
+	RestAPIURL string
+	BaseDomain string
+	Image      *string
+}
+
+type GatewayUpdateInput struct {
+	Name       *string
+	RestAPIURL *string
+	BaseDomain *string
+	Image      *string
+}
+
+type GatewayView struct {
+	Application model.Application
+	Config      model.GatewayConfig
 }
 
 type ApplicationDeployDispatchInput struct {

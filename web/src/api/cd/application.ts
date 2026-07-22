@@ -33,6 +33,7 @@ export const applicationApi = {
     per_page?: number;
     search?: string;
     project_id?: string;
+    kind?: string;
   }): Promise<ApplicationPaginatedResp> {
     return request.get('/api/cd/application', { params });
   },

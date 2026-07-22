@@ -268,9 +268,13 @@ func (s Service) renderAndDeployWithOptions(
 	if err != nil {
 		return err
 	}
+	gateway, err := s.optionalGatewayForRender(ctx, components, exposes, app)
+	if err != nil {
+		return err
+	}
 	result, err := s.RenderComposeDetailed(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env: env, Service: svc, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
+		Env: env, Service: svc, Gateway: gateway, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return err

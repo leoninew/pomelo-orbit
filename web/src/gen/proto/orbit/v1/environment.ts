@@ -13,8 +13,6 @@ export interface EnvironmentCreateReq {
   code: string;
   name: string;
   description?: string | undefined;
-  base_domain?: string | undefined;
-  domain_template?: string | undefined;
   default_entrypoint?: string | undefined;
   tcp_entrypoint?: string | undefined;
   tls_mode?: string | undefined;
@@ -23,8 +21,6 @@ export interface EnvironmentCreateReq {
 export interface EnvironmentUpdateReq {
   name?: string | undefined;
   description?: string | undefined;
-  base_domain?: string | undefined;
-  domain_template?: string | undefined;
   default_entrypoint?: string | undefined;
   tcp_entrypoint?: string | undefined;
   tls_mode?: string | undefined;
@@ -38,8 +34,6 @@ export interface EnvironmentResp {
   description?: string | undefined;
   created_at: string;
   updated_at: string;
-  base_domain: string;
-  domain_template?: string | undefined;
   default_entrypoint: string;
   tcp_entrypoint?: string | undefined;
   tls_mode: string;

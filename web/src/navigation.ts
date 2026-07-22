@@ -89,6 +89,13 @@ export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
       icon: LayoutGrid,
     },
     {
+      key: 'gateways',
+      label: '网关',
+      labelKey: 'nav.gateways',
+      path: '/cd/gateways',
+      icon: Network,
+    },
+    {
       key: 'deployments',
       label: '部署记录',
       labelKey: 'nav.deployments',

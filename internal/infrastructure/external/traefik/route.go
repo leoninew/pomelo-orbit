@@ -41,7 +41,8 @@ func NewRouteManager(cfg config.Config) *RouteManager {
 }
 
 // ApplySnapshot replaces the entire @rest HTTP configuration with the given enabled routes.
-func (m *RouteManager) ApplySnapshot(ctx context.Context, routes []model.Route) error {
+// restAPIURL is the Gateway config control-plane base URL (required).
+func (m *RouteManager) ApplySnapshot(ctx context.Context, restAPIURL string, routes []model.Route) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -57,7 +58,7 @@ func (m *RouteManager) ApplySnapshot(ctx context.Context, routes []model.Route) 
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
 	}
-	return m.putRestConfig(ctx, body)
+	return m.putRestConfig(ctx, restAPIURL, body)
 }
 
 func (m *RouteManager) WriteCertificate(_ context.Context, routeName string, certPEM string, certKey string) error {
@@ -78,8 +79,12 @@ func (m *RouteManager) RevokeCertificate(_ context.Context, routeName string) er
 	return nil
 }
 
-func (m *RouteManager) ListRouters(ctx context.Context) ([]cdport.TraefikRouter, error) {
-	url := strings.TrimRight(strings.TrimSpace(m.cfg.Traefik.APIURL), "/") + "/api/http/routers"
+func (m *RouteManager) ListRouters(ctx context.Context, restAPIURL string) ([]cdport.TraefikRouter, error) {
+	base := strings.TrimRight(strings.TrimSpace(restAPIURL), "/")
+	if base == "" {
+		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
+	}
+	url := base + "/api/http/routers"
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create traefik request: %w", err)
@@ -128,10 +133,10 @@ func (m *RouteManager) IsConnectionError(err error) bool {
 	return errors.As(err, &opErr)
 }
 
-func (m *RouteManager) putRestConfig(ctx context.Context, body []byte) error {
-	base := strings.TrimRight(strings.TrimSpace(m.cfg.Traefik.APIURL), "/")
+func (m *RouteManager) putRestConfig(ctx context.Context, restAPIURL string, body []byte) error {
+	base := strings.TrimRight(strings.TrimSpace(restAPIURL), "/")
 	if base == "" {
-		return apperror.New(apperror.KindValidation, "traefik.api_url is required for rest route publish")
+		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for rest route publish")
 	}
 	url := base + "/api/providers/rest"
 	request, err := http.NewRequestWithContext(ctx, http.MethodPut, url, bytes.NewReader(body))

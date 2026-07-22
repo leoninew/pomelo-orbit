@@ -22,8 +22,8 @@ func TestRouteManagerListRoutersMapsTraefikResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	manager := NewRouteManager(config.Config{Traefik: config.TraefikConfig{APIURL: server.URL}})
-	routers, err := manager.ListRouters(context.Background())
+	manager := NewRouteManager(config.Config{})
+	routers, err := manager.ListRouters(context.Background(), server.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,8 +44,8 @@ func TestRouteManagerListRoutersReturnsErrorForInvalidResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	manager := NewRouteManager(config.Config{Traefik: config.TraefikConfig{APIURL: server.URL}})
-	if _, err := manager.ListRouters(context.Background()); err == nil {
+	manager := NewRouteManager(config.Config{})
+	if _, err := manager.ListRouters(context.Background(), server.URL); err == nil {
 		t.Fatal("expected error for non-success Traefik response")
 	}
 }
@@ -64,8 +64,8 @@ func TestRouteManagerApplySnapshotPutsFullRestConfig(t *testing.T) {
 	}))
 	defer server.Close()
 
-	manager := NewRouteManager(config.Config{Traefik: config.TraefikConfig{APIURL: server.URL}})
-	err := manager.ApplySnapshot(context.Background(), []model.Route{
+	manager := NewRouteManager(config.Config{})
+	err := manager.ApplySnapshot(context.Background(), server.URL, []model.Route{
 		{Name: "api", Domain: "api.example.test", PathPrefix: "/v1", TargetURL: "http://app:8080", Enabled: true},
 		{Name: "off", Domain: "off.example.test", PathPrefix: "/", TargetURL: "http://app:8081", Enabled: false},
 		{Name: "secure", Domain: "secure.example.test", PathPrefix: "/", TargetURL: "http://app:8082", Enabled: true, HTTPSEnabled: true, CertType: "letsencrypt"},
@@ -106,8 +106,8 @@ func TestRouteManagerApplySnapshotClearsWithEmptyMaps(t *testing.T) {
 	}))
 	defer server.Close()
 
-	manager := NewRouteManager(config.Config{Traefik: config.TraefikConfig{APIURL: server.URL}})
-	if err := manager.ApplySnapshot(context.Background(), nil); err != nil {
+	manager := NewRouteManager(config.Config{})
+	if err := manager.ApplySnapshot(context.Background(), server.URL, nil); err != nil {
 		t.Fatal(err)
 	}
 	var payload map[string]any

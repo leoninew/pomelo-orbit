@@ -32,7 +32,7 @@ func (h Handler) ListApplications(c *gin.Context) {
 	}
 	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
 	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
-	items, err := h.service.ListApplications(c.Request.Context(), current.Id, binding.QueryProjectId(c.Request.URL.Query().Get("project_id")), page, perPage, c.Request.URL.Query().Get("search"))
+	items, err := h.service.ListApplications(c.Request.Context(), current.Id, binding.QueryProjectId(c.Request.URL.Query().Get("project_id")), page, perPage, c.Request.URL.Query().Get("search"), c.Request.URL.Query().Get("kind"))
 	if err != nil {
 		h.writeError(c, err)
 		return

@@ -86,6 +86,18 @@ const router = createRouter({
       meta: { title: '应用详情', menuKey: 'applications' },
     },
     {
+      path: '/cd/gateways',
+      name: 'Gateways',
+      component: () => import('@/views/cd/GatewayPage.vue'),
+      meta: { title: '网关', menuKey: 'gateways' },
+    },
+    {
+      path: '/cd/gateways/:id',
+      name: 'GatewayDetail',
+      component: () => import('@/views/cd/GatewayDetail.vue'),
+      meta: { title: '网关详情', menuKey: 'gateways' },
+    },
+    {
       path: '/cd/deployments',
       name: 'Deployments',
       component: () => import('@/views/cd/DeploymentPage.vue'),

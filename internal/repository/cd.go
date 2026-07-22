@@ -11,7 +11,7 @@ import (
 type CDStore interface {
 	Project(ctx context.Context, id string) (model.Project, error)
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
-	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string) (Page[model.Application], error)
+	ListApplications(ctx context.Context, projectId *string, page int, perPage int, search string, kind string) (Page[model.Application], error)
 	Application(ctx context.Context, id string) (model.Application, error)
 	ApplicationByName(ctx context.Context, name string) (model.Application, error)
 	ApplicationByCode(ctx context.Context, code string) (model.Application, error)
@@ -59,6 +59,14 @@ type CDStore interface {
 	// HasActiveGatewayService reports whether any gateway Service is deploying/running,
 	// optionally excluding one application id (for redeploy of the same gateway).
 	HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error)
+	// Gateway config (kind=gateway only)
+	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
+	// ResolveActiveGatewayConfig returns config for the active gateway Service, or the sole gateway app.
+	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
+	// ListGatewayApplications lists applications with kind=gateway for a project.
+	ListGatewayApplications(ctx context.Context, projectId string) ([]model.Application, error)
+	CreateApplicationWithGatewayConfig(ctx context.Context, app model.Application, cfg model.GatewayConfig) error
+	UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig) error
 	Route(ctx context.Context, id string) (model.Route, error)
 	RouteByDomain(ctx context.Context, domain string) (model.Route, error)
 	CreateRoute(ctx context.Context, route model.Route) error
@@ -81,4 +89,7 @@ type DeploymentExecutionStore interface {
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
+	// Gateway config resolution for compose Host / rest publish during deploy execution.
+	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
+	ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error)
 }

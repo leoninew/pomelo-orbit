@@ -15,19 +15,44 @@ import (
 
 // RenderInput is the dual-input render context: Version×Environment.
 type RenderInput struct {
-	App        model.Application
-	Version    model.Version
-	Components []model.VersionComponent
-	Exposes    []model.VersionExpose
-	Env        model.Environment
-	Service    model.Service
+	App            model.Application
+	Version        model.Version
+	Components     []model.VersionComponent
+	Exposes        []model.VersionExpose
+	Env            model.Environment
+	Service        model.Service
+	RuntimeConfig  map[string]string // resolved placeholders for this deploy/preview
+	PhysicalSvcDir string            // host path for logical mounts; required when mounts present
+}
+
+// RenderResult is compose YAML plus resolved logical mounts for deploy materialize.
+type RenderResult struct {
+	Compose        string
+	ResolvedMounts []ResolvedMount
 }
 
 var domainTemplateTokenPattern = regexp.MustCompile(`\{([a-z_]+)\}`)
 
+const defaultGatewayNetworkName = "traefik"
+
+// gatewayNetworkKey is the compose network key for kind=gateway (provider creates the network).
+const gatewayNetworkKey = "default"
+
+// consumerPlatformNetworkKey is the compose network key standard apps use to join the gateway network (E1).
+const consumerPlatformNetworkKey = "traefik"
+
 // RenderCompose builds docker-compose.yml from Version + Environment.
 // Preview and deploy share this function. Branch is driven by Application.kind only.
 func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, error) {
+	result, err := s.RenderComposeDetailed(ctx, input)
+	if err != nil {
+		return "", err
+	}
+	return result.Compose, nil
+}
+
+// RenderComposeDetailed returns compose YAML and resolved mounts for materialize.
+func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (RenderResult, error) {
 	_ = ctx
 	kind := strings.TrimSpace(input.App.Kind)
 	if kind == "" {
@@ -39,60 +64,174 @@ func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, 
 	case status.ApplicationKindGateway:
 		return renderGatewayCompose(input)
 	default:
-		return "", fmt.Errorf("unsupported application kind %q", kind)
+		return RenderResult{}, fmt.Errorf("unsupported application kind %q", kind)
 	}
 }
 
 // renderStandardCompose materializes components and injects Traefik labels when Exposes exist.
-func renderStandardCompose(input RenderInput) (string, error) {
-	return renderComposeServices(input)
+// E1: with Exposes, inject platform network (external) and join exposed components.
+func renderStandardCompose(input RenderInput) (RenderResult, error) {
+	return renderComposeServices(input, false)
 }
 
-// renderGatewayCompose keeps a kind-level branch hook for future gateway strategy (E1/E5).
-// R3 reuses the same component materialization path as standard.
-func renderGatewayCompose(input RenderInput) (string, error) {
-	return renderComposeServices(input)
+// renderGatewayCompose adds top-level network (D4) and uses the same mount/env path.
+func renderGatewayCompose(input RenderInput) (RenderResult, error) {
+	return renderComposeServices(input, true)
 }
 
-func renderComposeServices(input RenderInput) (string, error) {
+func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (RenderResult, error) {
 	if len(input.Components) == 0 {
-		return "", fmt.Errorf("version %s has no components", input.Version.Id)
+		return RenderResult{}, fmt.Errorf("version %s has no components", input.Version.Id)
 	}
 	if err := validateVersionComponents(input.Components); err != nil {
-		return "", err
+		return RenderResult{}, err
 	}
 	if err := validateVersionExposes(input.Exposes, input.Components); err != nil {
-		return "", err
+		return RenderResult{}, err
 	}
 
-	versionEnv, err := parseStringMapJSON(input.Version.EnvJSON)
+	versionEnvVars, err := parseEnvVars(input.Version.EnvJSON)
 	if err != nil {
-		return "", fmt.Errorf("version env_json: %w", err)
+		return RenderResult{}, fmt.Errorf("version env_json: %w", err)
 	}
+	versionEnv := applyEnvPlaceholders(versionEnvVars, input.RuntimeConfig)
 
 	appCode := strings.TrimSpace(input.App.Code)
 	services := make(map[string]any, len(input.Components))
+	var allResolved []ResolvedMount
 	for _, component := range input.Components {
-		service, err := renderVersionComponentService(component, versionEnv, appCode)
+		service, resolved, err := renderVersionComponentService(component, versionEnv, appCode, input.PhysicalSvcDir, input.RuntimeConfig)
 		if err != nil {
-			return "", fmt.Errorf("component %s: %w", component.Name, err)
+			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
+		}
+		if injectGatewayNetwork {
+			service["networks"] = []string{gatewayNetworkKey}
 		}
 		services[component.Name] = service
+		allResolved = append(allResolved, resolved...)
 	}
 
-	// Labels are driven by Expose presence, not Service.is_ingress / attach_ingress.
+	// Business app ingress: Version.Expose → docker provider labels (loadbalancer → container port).
 	if len(input.Exposes) > 0 {
 		if err := injectExposeLabels(services, input); err != nil {
-			return "", err
+			return RenderResult{}, err
 		}
+	}
+	// Gateway control-plane dashboard: kind=gateway × Environment.IngressPolicy → api@internal.
+	// Independent of Expose; does not use loadbalancer.server.port.
+	if injectGatewayNetwork {
+		if err := injectGatewayDashboardLabels(services, input); err != nil {
+			return RenderResult{}, err
+		}
+	}
+
+	// E1: standard + Expose → join gateway network as external consumer.
+	joinConsumerNetwork := !injectGatewayNetwork && len(input.Exposes) > 0
+	if joinConsumerNetwork {
+		injectConsumerPlatformNetwork(services, input.Exposes)
 	}
 
 	data := map[string]any{"services": services}
+	if injectGatewayNetwork {
+		data["networks"] = map[string]any{
+			gatewayNetworkKey: map[string]any{
+				"name":   defaultGatewayNetworkName,
+				"driver": "bridge",
+			},
+		}
+	} else if joinConsumerNetwork {
+		data["networks"] = map[string]any{
+			consumerPlatformNetworkKey: map[string]any{
+				"name":     defaultGatewayNetworkName,
+				"external": true,
+			},
+		}
+	}
 	out, err := yaml.Marshal(data)
 	if err != nil {
-		return "", fmt.Errorf("marshal compose: %w", err)
+		return RenderResult{}, fmt.Errorf("marshal compose: %w", err)
 	}
-	return string(out), nil
+	return RenderResult{Compose: string(out), ResolvedMounts: allResolved}, nil
+}
+
+// injectConsumerPlatformNetwork attaches the platform gateway network to every component that has an Expose.
+// Keeps project "default" so depends_on / sibling services still share a project network.
+func injectConsumerPlatformNetwork(services map[string]any, exposes []model.VersionExpose) {
+	exposed := make(map[string]struct{}, len(exposes))
+	for _, expose := range exposes {
+		name := strings.TrimSpace(expose.ComponentName)
+		if name != "" {
+			exposed[name] = struct{}{}
+		}
+	}
+	for name, raw := range services {
+		if _, ok := exposed[name]; !ok {
+			continue
+		}
+		service, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		ensureServiceJoinsNetworks(service, "default", consumerPlatformNetworkKey)
+	}
+}
+
+// ensureServiceJoinsNetworks merges required network attachments into a service definition.
+func ensureServiceJoinsNetworks(service map[string]any, required ...string) {
+	raw, has := service["networks"]
+	if !has || raw == nil {
+		service["networks"] = append([]string(nil), required...)
+		return
+	}
+	switch nets := raw.(type) {
+	case []string:
+		service["networks"] = mergeStringSet(nets, required...)
+	case []any:
+		existing := make([]string, 0, len(nets))
+		for _, item := range nets {
+			if s, ok := item.(string); ok && strings.TrimSpace(s) != "" {
+				existing = append(existing, strings.TrimSpace(s))
+			}
+		}
+		service["networks"] = mergeStringSet(existing, required...)
+	case map[string]any:
+		for _, name := range required {
+			if _, ok := nets[name]; !ok {
+				nets[name] = map[string]any{}
+			}
+		}
+		service["networks"] = nets
+	default:
+		service["networks"] = append([]string(nil), required...)
+	}
+}
+
+func mergeStringSet(existing []string, required ...string) []string {
+	seen := make(map[string]struct{}, len(existing)+len(required))
+	out := make([]string, 0, len(existing)+len(required))
+	for _, name := range existing {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	for _, name := range required {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	return out
 }
 
 func injectExposeLabels(services map[string]any, input RenderInput) error {
@@ -177,7 +316,7 @@ func validateHTTPPathConflicts(env model.Environment, appCode string, exposes []
 		path := normalizeHTTPPath(ptrString(expose.PathPrefix))
 		key := host + "|" + path
 		if _, ok := seen[key]; ok {
-			return fmt.Errorf("duplicate http route host+path for version: %s%s", host, path)
+			return fmt.Errorf("duplicate http route host+path for version: %s%s (use distinct path_prefix, or publish host ports via component ports instead of multiple HTTP exposes)", host, path)
 		}
 		seen[key] = struct{}{}
 	}
@@ -230,6 +369,49 @@ func deriveHost(env model.Environment, appCode string) (string, error) {
 		return "", fmt.Errorf("invalid derived host %q", host)
 	}
 	return host, nil
+}
+
+// injectGatewayDashboardLabels writes Traefik self-route labels for the dashboard/API.
+// Pattern matches the bak probe: enable + Host(policy) + entrypoint + service=api@internal.
+// Attaches to the first component only (one Host rule per gateway instance).
+// Incomplete IngressPolicy → skip (ports-only deploy still works).
+func injectGatewayDashboardLabels(services map[string]any, input RenderInput) error {
+	entrypoint := strings.TrimSpace(input.Env.DefaultEntrypoint)
+	if entrypoint == "" {
+		return nil
+	}
+	host, err := deriveHost(input.Env, input.App.Code)
+	if err != nil {
+		return nil
+	}
+	if len(input.Components) == 0 {
+		return nil
+	}
+	componentName := strings.TrimSpace(input.Components[0].Name)
+	service, ok := services[componentName].(map[string]any)
+	if !ok {
+		return fmt.Errorf("gateway component %s not found in compose services", componentName)
+	}
+	routerName := sanitizeComposeName(fmt.Sprintf("%s-%s-%s-dashboard",
+		input.App.Code, input.Env.Code, input.Service.InstanceKey))
+	labels := []string{
+		"traefik.enable=true",
+		"traefik.http.routers." + routerName + ".rule=Host(`" + host + "`)",
+		"traefik.http.routers." + routerName + ".entrypoints=" + entrypoint,
+		"traefik.http.routers." + routerName + ".service=api@internal",
+	}
+	tlsMode := strings.ToLower(strings.TrimSpace(input.Env.TLSMode))
+	if tlsMode == "letsencrypt" {
+		labels = append(labels,
+			"traefik.http.routers."+routerName+".tls=true",
+			"traefik.http.routers."+routerName+".tls.certresolver=letsencrypt",
+		)
+	} else if tlsMode == "tls" {
+		labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
+	}
+	existing, _ := service["labels"].([]string)
+	service["labels"] = append(existing, labels...)
+	return nil
 }
 
 func buildTraefikLabels(routerName string, expose model.VersionExpose, input RenderInput, host string) ([]string, error) {
@@ -333,6 +515,12 @@ func validateVersionComponents(components []model.VersionComponent) error {
 			return fmt.Errorf("duplicate component name %s", name)
 		}
 		names[name] = struct{}{}
+		if _, err := parseMountSpecs(component.MountsJSON); err != nil {
+			return fmt.Errorf("component %s mounts_json: %w", name, err)
+		}
+		if _, err := parseEnvVars(component.EnvJSON); err != nil {
+			return fmt.Errorf("component %s env_json: %w", name, err)
+		}
 	}
 	for _, component := range components {
 		depends, err := parseStringSliceJSON(component.DependsOnJSON)
@@ -378,18 +566,24 @@ func validateVersionExposes(exposes []model.VersionExpose, components []model.Ve
 	return nil
 }
 
-func renderVersionComponentService(component model.VersionComponent, versionEnv map[string]string, appCode string) (map[string]any, error) {
+func renderVersionComponentService(
+	component model.VersionComponent,
+	versionEnv map[string]string,
+	appCode string,
+	physicalServiceDir string,
+	runtime map[string]string,
+) (map[string]any, []ResolvedMount, error) {
 	service := map[string]any{
 		"image":          strings.TrimSpace(component.Image),
 		"container_name": appCode + "_" + strings.TrimSpace(component.Name),
 	}
 	if command, err := parseStringSliceJSON(component.CommandJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if len(command) > 0 {
 		service["command"] = command
 	}
 	if args, err := parseStringSliceJSON(component.ArgsJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if len(args) > 0 {
 		if existing, ok := service["command"].([]string); ok {
 			service["command"] = append(existing, args...)
@@ -397,48 +591,59 @@ func renderVersionComponentService(component model.VersionComponent, versionEnv 
 			service["command"] = args
 		}
 	}
-	componentEnv, err := parseStringMapJSON(component.EnvJSON)
+	componentEnvVars, err := parseEnvVars(component.EnvJSON)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	componentEnv := applyEnvPlaceholders(componentEnvVars, runtime)
 	env := mergeEnv(versionEnv, componentEnv)
 	if len(env) > 0 {
 		service["environment"] = env
 	}
 	if ports, err := parseAnyJSON(component.PortsJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if ports != nil {
 		service["ports"] = ports
 	}
-	if mounts, err := parseAnyJSON(component.MountsJSON); err != nil {
-		return nil, err
-	} else if mounts != nil {
-		service["volumes"] = mounts
+	mounts, err := parseMountSpecs(component.MountsJSON)
+	if err != nil {
+		return nil, nil, err
+	}
+	resolved, err := resolveMountSpecs(mounts, physicalServiceDir)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(resolved) > 0 {
+		volumes := make([]string, 0, len(resolved))
+		for _, item := range resolved {
+			volumes = append(volumes, item.Compose)
+		}
+		service["volumes"] = volumes
 	}
 	if networks, err := parseAnyJSON(component.NetworksJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if networks != nil {
 		service["networks"] = networks
 	}
 	if depends, err := parseStringSliceJSON(component.DependsOnJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if len(depends) > 0 {
 		service["depends_on"] = depends
 	}
 	if healthcheck, err := parseAnyJSON(component.HealthcheckJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if healthcheck != nil {
 		service["healthcheck"] = healthcheck
 	}
 	if resources, err := parseAnyJSON(component.ResourcesJSON); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else if resources != nil {
 		service["deploy"] = map[string]any{"resources": resources}
 	}
 	if component.PullPolicy != nil && strings.TrimSpace(*component.PullPolicy) != "" {
 		service["pull_policy"] = strings.TrimSpace(*component.PullPolicy)
 	}
-	return service, nil
+	return service, resolved, nil
 }
 
 func mergeEnv(base map[string]string, override map[string]string) map[string]string {

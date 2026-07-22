@@ -78,7 +78,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		return err
 	}
 
-	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, svc, deployment.Id, opts.ForceRecreate); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -128,7 +128,8 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, svc, deployment.Id, false); err != nil {
+	restartOpts := parseDeployOptions(deployment.OptionsJSON)
+	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -248,9 +249,28 @@ func (s Service) renderAndDeploy(
 	deploymentId string,
 	forceRecreate bool,
 ) error {
-	compose, err := s.RenderCompose(ctx, RenderInput{
+	return s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, deploymentId, forceRecreate, nil)
+}
+
+func (s Service) renderAndDeployWithOptions(
+	ctx context.Context,
+	app model.Application,
+	version model.Version,
+	components []model.VersionComponent,
+	exposes []model.VersionExpose,
+	env model.Environment,
+	svc model.Service,
+	deploymentId string,
+	forceRecreate bool,
+	runtimeConfig map[string]string,
+) error {
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, env.Code, svc.InstanceKey)
+	if err != nil {
+		return err
+	}
+	result, err := s.RenderComposeDetailed(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env: env, Service: svc,
+		Env: env, Service: svc, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return err
@@ -271,12 +291,30 @@ func (s Service) renderAndDeploy(
 		version.Label, version.Id, len(components), env.Code, svc.InstanceKey); err != nil {
 		return err
 	}
-	if err := s.workspace.WriteConfig(app.Code, env.Code, svc.InstanceKey, "docker-compose.yml", compose); err != nil {
+	if len(result.ResolvedMounts) > 0 {
+		if _, err := fmt.Fprintf(logWriter, "Materializing %d logical mount source(s)\n", countLogicalMounts(result.ResolvedMounts)); err != nil {
+			return err
+		}
+		if err := MaterializeLogicalMountSources(result.ResolvedMounts); err != nil {
+			return err
+		}
+	}
+	if err := s.workspace.WriteConfig(app.Code, env.Code, svc.InstanceKey, "docker-compose.yml", result.Compose); err != nil {
 		return err
 	}
 	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
 	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
 	return s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...)
+}
+
+func countLogicalMounts(items []ResolvedMount) int {
+	n := 0
+	for _, item := range items {
+		if item.SourceType == mountSourceLogical {
+			n++
+		}
+	}
+	return n
 }
 
 func parseDeployOptions(raw *string) cdto.DeployOptionsJSON {

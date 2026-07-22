@@ -1,5 +1,5 @@
 # CD 应用版本化领域模型兑现节奏
-最后修改时间: 2026-07-22 17:43:11
+最后修改时间: 2026-07-22 18:21:44
 
 Review status: Accepted
 
@@ -47,7 +47,7 @@ CD 应用管理职责过载。目标：Application 身份 + Version 规格 + Ser
 | **修订 R1** | [environment-expose-service](./20260721-cd-environment-expose-service.md) | Env 实体、Expose、多 Service、Traefik MVP | **Accepted**；已实现 + Verification Accepted |
 | **修订 R2** | [environment-ingress-policy](./20260722-cd-environment-ingress-policy.md) | 环境**接入策略**取代 per-component Binding | Requirement/Spec/Plan/Verification **Accepted** |
 | **修订 R3** | [application-kind-gateway](./20260722-cd-application-kind-gateway.md) | Application.**kind**=`standard`\|`gateway`，决定 Render 分支 | Requirement/Spec/Plan/Verification **Accepted** |
-| 后续 | consumer 网 / K8s / **网关领域配置** 等 | 见 **E1–E6**；**E5** 实现中；**E6** Draft：`docs/requirement/20260722-cd-gateway-domain-config-e6.md` | — |
+| 后续 | consumer 网 / K8s / **网关领域配置** 等 | 见 **E1–E6**；**E5** 已实现（Verification Draft）；**E6** Draft：`docs/requirement/20260722-cd-gateway-domain-config-e6.md` | — |
 
 ```text
 P0 领域
@@ -57,8 +57,8 @@ P0 领域
   -> R1 Environment / Expose / Service（已交付）
   -> R2 Environment IngressPolicy（standard 如何被入口暴露）
   -> R3 Application.kind gateway|standard（已交付 + Verification Accepted）
-  -> E5 通用挂载 / Component 全规格 / rest 动态路由 / mount content（Requirement/Spec/Plan Accepted；实现中）
-  -> E6 网关领域（双形态）★ Requirement Draft
+  -> E5 通用挂载 / Component 全规格 / rest 动态路由 / mount content（Req/Spec/Plan Accepted；实现已提交；Verification Draft：`docs/verification/20260722-cd-gateway-component-mount-e5.md`）
+  -> E6 网关领域（双形态）★ Requirement Draft（闭合 Q 中）
        · managed：容器 Traefik — 配置面向用户（非 Version UX），部署借 Version 能力
        · external：宿主机/自部署 Traefik — 用户只登记 rest 管理面
   -> E5-F1..F7 后续（证书 / 鉴权 / 多 gateway / dashboard / …）
@@ -148,7 +148,7 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 | Spec R3 | `docs/spec/20260722-cd-application-kind-gateway.md` | **Accepted** |
 | Plan R3 | `docs/plan/20260722-cd-application-kind-gateway.md` | **Accepted**；已实现 |
 | Verification R3 | `docs/verification/20260722-cd-application-kind-gateway.md` | **Accepted** |
-| 扩展 E5 | `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | Requirement **Accepted**；Spec **Accepted** `docs/spec/20260722-cd-gateway-component-mount-e5.md`；Plan 实现中 |
+| 扩展 E5 | `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | Requirement **Accepted**；Spec/Plan **Accepted**；实现已提交；Verification **Draft** `docs/verification/20260722-cd-gateway-component-mount-e5.md` |
 | 扩展 **E6** | `docs/requirement/20260722-cd-gateway-domain-config-e6.md` | Requirement **Draft** — 网关领域；**managed / external** 双形态；配置对人、部署借 Version（managed） |
 | E5 后续 F1–F7 | Spec「后续任务」 | 自定义 PEM、rest 鉴权、**多 gateway**、provider 演进、dashboard、healthcheck、预期外缺口 |
 | Plan | `docs/plan/20260721-cd-application-version.md` | Implemented（Version 闭环） |
@@ -188,3 +188,4 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 - 2026-07-22：用户决策——承认网关特殊性；**定义网关领域配置**，避免业务规则沦为 Version 文本 → 开 **E6** Draft `20260722-cd-gateway-domain-config-e6.md`；挂入本节奏与 E5 后续任务表。
 - 2026-07-22：E6 领域设计钉双形态 — **容器托管**（配置面向用户、部署借 Version）与 **宿主机外置**（自部署 + rest 管理面）。
 - 2026-07-22：E1 实现 + 运行时 nginx 冒烟 200；Verification **Accepted** `20260722-cd-consumer-platform-network-e1.md`。
+- 2026-07-22：E5 分批提交 `6a784f9`…`b991106`；Verification **Draft** `20260722-cd-gateway-component-mount-e5.md`；进入 E6 Requirement 闭合。

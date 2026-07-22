@@ -1,22 +1,22 @@
 # CD E6：网关领域（Gateway domain）
-最后修改时间: 2026-07-22 17:43:11
+最后修改时间: 2026-07-22 18:21:44
 
 Review status: Draft
 
 Flow mode: strict
 
 Parent cadence: `docs/requirement/20260721-cd-application-version-cadence.md`  
-前序：R3（`kind=gateway`）**Accepted**；E5（通用挂载 / rest 路由 / Component 全规格）Requirement/Spec/Plan **Accepted**（实现中）
+前序：R3 **Accepted**；E5 Req/Spec/Plan **Accepted**、实现已提交、Verification **Draft**（`docs/verification/20260722-cd-gateway-component-mount-e5.md`）；E1 Verification **Accepted**。
 
 **路线位置**：
 
 ```text
 R3 Application.kind（已交付）
-  -> E5 通用能力 + rest 动态路由（实现中）
+  -> E5 通用能力 + rest 动态路由（已实现；Verification Draft）
   -> E6 本文件：网关领域 — 双运行形态 + 面向用户的领域配置
        · managed：容器 Traefik（平台配置 + 借 Version 部署）
        · external：宿主机 Traefik（用户自部署，只登记 rest 管理面）
-  -> E5-F1..F7 / E1–E4 等
+  -> E5-F1..F7 / E2–E4 等
 ```
 
 Related：
@@ -25,6 +25,7 @@ Related：
 |------|------|
 | `docs/requirement/20260722-cd-application-kind-gateway.md` | kind 身份（R3） |
 | `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | 通用 mounts / rest PUT / 部署管线 |
+| `docs/verification/20260722-cd-gateway-component-mount-e5.md` | E5 验证（Draft） |
 | `docs/spec/20260722-cd-gateway-component-mount-e5.md` | E5 后续任务表（挂 **E6**） |
 | 形态参考（非 SoT） | `data/cd.bak/traefik` |
 
@@ -174,36 +175,58 @@ Related：
 
 | 概念 | E6 定位 |
 |------|---------|
-| `Application.kind=gateway` | 可保留为「此应用是网关工作负载身份」；**或** Gateway 实体与 Application 1:1 映射 — Spec 二选一钉死 |
+| `Application.kind=gateway` | **managed** 的工作负载身份：与 Gateway config **1:1 绑定** 的 gateway Application（见 Q1 提案） |
 | Version | **Managed 部署载体**：内部版本化部署规格；**不是**用户网关配置表 |
 | Component mounts/env | E5 **机制**；由 Gateway config **编译**写入载体，用户不直接维护 rest/yml |
-| rest PUT / 单 gateway | E5 **保留**；两种 run mode **共用**写路径 |
-| 部署工作区平等 | Managed 仍无统一 deploy 物化；External **无** gateway 工作区要求 |
+| rest PUT / 单 gateway | E5 **保留**；两种 run mode **共用**写路径；`api_url` 来源按 run_mode 解析 |
+| 部署工作区平等 | Managed 仍走统一 deploy 物化；External **无** gateway 工作区要求 |
+| 平台配置 `traefik.api_url` | E6 后应由 **Gateway config 解析出的生效 rest URL** 驱动写路由（global 配置可作 bootstrap 默认，Spec 钉优先级） |
+
+## MVP 边界（本需求拟交付）
+
+| 纳入 E6 MVP | 不纳入（后续） |
+|-------------|----------------|
+| Project 级「当前网关」配置面（managed / external） | F1 自定义 PEM 产品化 |
+| Managed：领域字段 → 编译载体 → Deploy/Stop | F2 rest 鉴权（除 URL 外） |
+| External：登记 rest URL + 连通探测 + 成为 PUT 目标 | F3 多 gateway |
+| 形态切换显式流程（见 Q5） | F5 dashboard 产品化 |
+| 与 E5 单入口约束一致 | F4 provider 演进；E2–E4 |
 
 ## Functional requirements（Draft）
 
 ### FR1 — 领域与形态
 
 1. 系统支持 `run_mode ∈ {managed, external}`。  
-2. 用户主配置面为 **Gateway config**，**不是** Version 编辑页。  
-3. 同一时刻生效的入口控制面地址唯一（接 E5 单 gateway；多实例 F3）。
+2. 用户主配置面为 **Gateway config**，**不是** ordinary Application 的 Version 编辑页。  
+3. 同一 Project（或全局入口策略，与 E5 D9 对齐）同一时刻生效的入口控制面地址唯一；多实例 F3。  
+4. 保存 Gateway config **不**等于部署成功；managed 须显式 Deploy。
 
 ### FR2 — Managed
 
-1. 用户仅维护领域字段；系统保证 rest 控制面契约被编译进部署规格。  
+1. 用户仅维护领域字段；系统保证 rest 控制面契约被编译进部署规格（content/env/command 等 E5 机制）。  
 2. 部署/升级/停止 **复用** Version + Service + Deployment 能力。  
-3. Preview 可展示「将部署的」合成结果（调试）；默认 UX 不要求编辑 yml。
+3. 每次成功编译+部署可对应可回放的 Version 载体（见 Q3）。  
+4. Preview 可展示「将部署的」合成结果（调试）；默认 UX 不要求编辑 yml。  
+5. 用户默认路径 **不**进入 Version 表单改挂载正文（见 Q2）。
 
 ### FR3 — External
 
-1. 用户登记 rest URL 后即可成为路由写目标。  
-2. **不**创建/启动/停止用户 Traefik 进程。  
-3. rest 不可达时路由同步失败须明确错误（不静默成功）。
+1. 用户登记 rest URL 后即可成为路由写目标（启用后）。  
+2. **不**创建/启动/停止用户 Traefik 进程；**不**要求存在 `kind=gateway` Application（见 Q4）。  
+3. rest 不可达时：保存可警告或拒绝（Spec 钉）；路由同步失败须明确错误（不静默成功）。  
+4. 切换/停用 external 入口后，平台不得继续向旧 URL PUT（除非用户显式保留）。
 
 ### FR4 — 路由
 
-1. 两种形态下动态路由均为平台 snapshot → rest PUT。  
-2. 不回流 File 写路由。
+1. 两种形态下动态路由均为平台 snapshot → rest PUT（E5）。  
+2. 不回流 File 写路由。  
+3. 生效 `api_url`：external = 用户登记；managed = 部署后可推导或配置中的管理面地址（Spec 钉推导规则）。
+
+### FR5 — 形态切换
+
+1. managed ↔ external **允许**，但须显式产品动作（非静默改字段）。  
+2. 切换时禁止双写 rest；先停用旧写目标再启用新目标。  
+3. managed→external：对已部署容器的处理见 Q5。
 
 ## Acceptance / 验收（节奏级 · Draft）
 
@@ -211,18 +234,21 @@ Related：
 2. 产品能区分并完成 **managed** 与 **external** 两条路径。  
 3. Managed：**配置 UX ≠ Version 表单**；部署可观测到 Version/Service 机制被使用。  
 4. External：仅 rest 登记即可接收平台路由；无容器 deploy 依赖。  
-5. 两种形态均不要求用户粘贴 `providers.rest` yml 作为主路径（external 静态侧用户自运维除外）。
+5. 两种形态均不要求用户粘贴 `providers.rest` yml 作为主路径（external 静态侧用户自运维除外）。  
+6. 与 E5 单 gateway / rest 唯一写者约束不冲突。
 
-## Open questions（待闭合）
+## Open questions（待用户闭合）
 
-| ID | 问题 | 倾向 |
-|----|------|------|
-| Q1 | Gateway config 实体挂在哪？（独立 Gateway / Application 扩展 / Project 单例） | Project 下至多一个当前入口 + 配置实体；与 Application 映射 Spec 定 |
-| Q2 | Managed 的 Version 是否对用户隐藏、只读可见、还是「高级」可进 | 默认隐藏；高级只读 |
-| Q3 | Managed 编译产物是否仍物化为真实 Version 行（可回放） | 是，便于 Deployment 审计 |
-| Q4 | External 是否允许不建 `kind=gateway` Application | 倾向：external 可不建网关 App，只登记控制面；或轻量占位 — 待钉 |
-| Q5 | managed→external 切换时已部署容器是否自动 stop | 倾向：显式确认后 stop |
-| Q6 | rest 鉴权字段是否进 E6 最小集还是纯 F2 | 最小：URL；鉴权 F2 |
+下列 **提案** 写入本表；用户确认或改口后移入 Decisions 并清空 Open questions。
+
+| ID | 问题 | **提案（推荐）** | 备选 |
+|----|------|------------------|------|
+| **Q1** | Gateway config 实体挂在哪？ | **Project 下 Gateway 配置实体**（至多一个「当前入口」）；managed 时 **1:1 绑定** 一个 `kind=gateway` Application 作为部署载体。配置 SoT 在 Gateway 实体，不在 Application 详情表单。 | 仅 Application 扩展字段；或全局单例 |
+| **Q2** | Managed 的 Version 对用户可见性？ | **默认隐藏**；「高级 / 调试」**只读**可见编译结果与 Deployment 关联 | 完全不可见；或高级可写（否决：双 SoT） |
+| **Q3** | 编译产物是否真实 Version 行？ | **是** — 物化 Version（published 或内部标记），Deployment 可回放 | 仅临时 workspace、不落 Version（否决：审计弱） |
+| **Q4** | External 是否必须建 gateway App？ | **否** — external **只登记控制面**，不创建 `kind=gateway` Application / 不 Deploy 容器 | 轻量占位 App（无容器） |
+| **Q5** | managed→external 时容器？ | **不自动 stop**；向导要求用户 **确认后 stop**（或「保留容器但停用平台写目标」二选一，默认 stop） | 强制自动 stop；禁止切换除非已 stop |
+| **Q6** | rest 鉴权是否进 E6？ | **不进** — E6 最小只要 **rest URL**；鉴权 **F2** | E6 预留空字段但不实现 |
 
 ## Decisions（已钉 · 路线 / 本文件）
 
@@ -231,16 +257,28 @@ Related：
 3. **Managed：配置面向用户，不是面向 Version；部署借助 Version 能力。**  
 4. **External：用户自部署；平台只消费 rest 管理面。**  
 5. 动态路由仍 rest PUT；E5 机制保留；E6 不静默并入 E5 实现。  
-6. 任务号 **E6**；F1–F7 不吞并。
+6. 任务号 **E6**；F1–F7 不吞并。  
+7. E6 **不**做兼容层；切换与建模按新语义落地。
+
+*Q1–Q6 确认后追加为正式 Decision 条目。*
 
 ## Risk / 风险
 
 1. Version 既是载体又曾是配置面 → UX 必须严格分流，否则双 SoT。  
 2. External rest 无鉴权 → 安全（F2）；须网络约束。  
 3. 形态切换双写/残留容器 → 需显式状态机。  
-4. Managed 编译规则膨胀 → Spec 控制字段面，高级逃生口默认关。
+4. Managed 编译规则膨胀 → Spec 控制字段面，高级逃生口默认关。  
+5. 与现有全局 `traefik.api_url` 并存时优先级不清 → Spec 必须钉「生效 URL」解析顺序。  
+6. E5 单 gateway 校验基于 active gateway Service；external 无 Service 时约束须改写（Spec）。
 
 ## User review notes
 
 - 2026-07-22：承认网关特殊性；开 E6。  
 - 2026-07-22：**领域设计钉双形态** — 容器托管（配置对人、部署借 Version）与宿主机外置（自部署 + rest 地址）。  
+- 2026-07-22：E5 Verification Draft 完成后进入本文件；补 MVP 边界、FR5、Q1–Q6 **提案表** 供闭合。  
+
+---
+
+**当前：严格模式 / strict，需求 / Requirement — Review status: Draft**
+
+请审阅并确认 **Q1–Q6 提案**（可整批采纳或逐条改口）。确认后将 Requirement 标为 **Accepted** 并进入 Spec。

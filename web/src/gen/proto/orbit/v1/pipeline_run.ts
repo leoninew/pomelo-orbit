@@ -5,10 +5,10 @@
 // source: orbit/v1/pipeline_run.proto
 
 /* eslint-disable */
-import type { ArtifactResp } from "./artifact";
-import type { VariableDeclarationResp } from "./common";
+import type { ArtifactResp } from './artifact';
+import type { VariableDeclarationResp } from './common';
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface PipelineRunTriggerReq {
   template_id: string;
@@ -21,11 +21,9 @@ export interface PipelineRunTriggerReq_VariablesEntry {
   value: string;
 }
 
-export interface PipelineRunRetryReq {
-}
+export interface PipelineRunRetryReq {}
 
-export interface PipelineRunCancelReq {
-}
+export interface PipelineRunCancelReq {}
 
 export interface PipelineRunResp {
   id: string;

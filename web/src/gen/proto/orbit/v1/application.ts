@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface ApplicationResp {
   id: string;

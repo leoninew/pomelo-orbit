@@ -502,8 +502,7 @@
       await executeOp(async () => {
         const envResp = await environmentApi.list({ project_id: projectId, per_page: 100 });
         const environments = envResp.items ?? [];
-        const localEnv =
-          environments.find((item) => item.code === 'local') || environments[0];
+        const localEnv = environments.find((item) => item.code === 'local') || environments[0];
         if (!localEnv) {
           throw new Error(t('application.toast.environmentRequired'));
         }

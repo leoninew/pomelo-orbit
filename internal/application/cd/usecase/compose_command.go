@@ -50,10 +50,6 @@ func deployComposeCommand(projectName string, imagePullPolicy string, forceRecre
 	return composeCommand{Name: "docker", Args: args}
 }
 
-func restartComposeCommand(projectName string) composeCommand {
-	return composeCommand{Name: "docker", Args: []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "restart"}}
-}
-
 func stopComposeCommand(projectName string, removeVolumes bool) composeCommand {
 	args := []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "down"}
 	if removeVolumes {

@@ -464,6 +464,7 @@ export default {
       code: 'Code',
       restApiUrl: 'Rest API URL',
       baseDomain: 'Base domain',
+      imagePullPolicy: 'Image pull policy',
       image: 'Image (optional)',
     },
     dialog: {

@@ -114,19 +114,21 @@ type EnvironmentView struct {
 }
 
 type GatewayCreateInput struct {
-	ProjectId  string
-	Code       string
-	Name       string
-	RestAPIURL string
-	BaseDomain string
-	Image      *string
+	ProjectId       string
+	Code            string
+	Name            string
+	RestAPIURL      string
+	BaseDomain      string
+	Image           *string
+	ImagePullPolicy string
 }
 
 type GatewayUpdateInput struct {
-	Name       *string
-	RestAPIURL *string
-	BaseDomain *string
-	Image      *string
+	Name            *string
+	RestAPIURL      *string
+	BaseDomain      *string
+	Image           *string
+	ImagePullPolicy *string
 }
 
 type GatewayView struct {

@@ -379,12 +379,13 @@ func injectGatewayDashboardLabels(services map[string]any, input RenderInput) er
 		"traefik.http.routers." + routerName + ".service=api@internal",
 	}
 	tlsMode := strings.ToLower(strings.TrimSpace(input.Env.TLSMode))
-	if tlsMode == "letsencrypt" {
+	switch tlsMode {
+	case "letsencrypt":
 		labels = append(labels,
 			"traefik.http.routers."+routerName+".tls=true",
 			"traefik.http.routers."+routerName+".tls.certresolver=letsencrypt",
 		)
-	} else if tlsMode == "tls" {
+	case "tls":
 		labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
 	}
 	existing, _ := service["labels"].([]string)
@@ -426,12 +427,13 @@ func buildTraefikLabels(routerName string, expose model.VersionExpose, input Ren
 			"traefik.http.services."+routerName+".loadbalancer.server.port="+strconv.Itoa(expose.ContainerPort),
 			"traefik.http.routers."+routerName+".service="+routerName,
 		)
-		if tlsMode == "letsencrypt" {
+		switch tlsMode {
+		case "letsencrypt":
 			labels = append(labels,
 				"traefik.http.routers."+routerName+".tls=true",
 				"traefik.http.routers."+routerName+".tls.certresolver=letsencrypt",
 			)
-		} else if tlsMode == "tls" {
+		case "tls":
 			labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
 		}
 	case "tcp":
@@ -636,17 +638,6 @@ func mergeEnv(base map[string]string, override map[string]string) map[string]str
 		out[k] = v
 	}
 	return out
-}
-
-func parseStringMapJSON(raw *string) (map[string]string, error) {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
-		return nil, nil
-	}
-	var out map[string]string
-	if err := json.Unmarshal([]byte(*raw), &out); err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func parseStringSliceJSON(raw *string) ([]string, error) {

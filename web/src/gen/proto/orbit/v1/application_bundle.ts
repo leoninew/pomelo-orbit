@@ -5,9 +5,9 @@
 // source: orbit/v1/application_bundle.proto
 
 /* eslint-disable */
-import type { ServiceResp, VersionComponentReq, VersionExposeReq, VersionResp } from "./version";
+import type { ServiceResp, VersionComponentReq, VersionExposeReq, VersionResp } from './version';
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface ApplicationExportResp {
   id: string;

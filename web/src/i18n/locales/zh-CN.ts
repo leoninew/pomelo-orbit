@@ -454,6 +454,7 @@ export default {
       code: '代码',
       restApiUrl: 'Rest API URL',
       baseDomain: '基础域名',
+      imagePullPolicy: '镜像拉取策略',
       image: '镜像（可选）',
     },
     dialog: {

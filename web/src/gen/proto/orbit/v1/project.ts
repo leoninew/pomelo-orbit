@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface ProjectResp {
   id: string;
@@ -43,5 +43,4 @@ export interface ProjectMemberReq {
   user_id: string;
 }
 
-export interface ProjectDeprecateReq {
-}
+export interface ProjectDeprecateReq {}

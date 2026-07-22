@@ -22,15 +22,17 @@ const (
 )
 
 type GatewayCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	RestApiUrl    string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain    string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	Image         *string                `protobuf:"bytes,6,opt,name=image,proto3,oneof" json:"image,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId  string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code       string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Name       string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	RestApiUrl string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	Image      *string                `protobuf:"bytes,6,opt,name=image,proto3,oneof" json:"image,omitempty"`
+	// docker compose --pull: always|missing|never
+	ImagePullPolicy string `protobuf:"bytes,7,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GatewayCreateReq) Reset() {
@@ -105,14 +107,22 @@ func (x *GatewayCreateReq) GetImage() string {
 	return ""
 }
 
+func (x *GatewayCreateReq) GetImagePullPolicy() string {
+	if x != nil {
+		return x.ImagePullPolicy
+	}
+	return ""
+}
+
 type GatewayUpdateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	RestApiUrl    *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
-	BaseDomain    *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
-	Image         *string                `protobuf:"bytes,4,opt,name=image,proto3,oneof" json:"image,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	RestApiUrl      *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
+	BaseDomain      *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
+	Image           *string                `protobuf:"bytes,4,opt,name=image,proto3,oneof" json:"image,omitempty"`
+	ImagePullPolicy *string                `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3,oneof" json:"image_pull_policy,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GatewayUpdateReq) Reset() {
@@ -173,6 +183,13 @@ func (x *GatewayUpdateReq) GetImage() string {
 	return ""
 }
 
+func (x *GatewayUpdateReq) GetImagePullPolicy() string {
+	if x != nil && x.ImagePullPolicy != nil {
+		return *x.ImagePullPolicy
+	}
+	return ""
+}
+
 type GatewayResp struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -186,6 +203,7 @@ type GatewayResp struct {
 	CreatedAt       string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt       string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	ConfigUpdatedAt string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
+	ImagePullPolicy string                 `protobuf:"bytes,12,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -297,6 +315,13 @@ func (x *GatewayResp) GetConfigUpdatedAt() string {
 	return ""
 }
 
+func (x *GatewayResp) GetImagePullPolicy() string {
+	if x != nil {
+		return x.ImagePullPolicy
+	}
+	return ""
+}
+
 type GatewayPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*GatewayResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -377,7 +402,7 @@ var File_orbit_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x16orbit/v1/gateway.proto\x12\borbit.v1\"\xc1\x01\n" +
+	"\x16orbit/v1/gateway.proto\x12\borbit.v1\"\xed\x01\n" +
 	"\x10GatewayCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
@@ -387,19 +412,22 @@ const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"restApiUrl\x12\x1f\n" +
 	"\vbase_domain\x18\x05 \x01(\tR\n" +
 	"baseDomain\x12\x19\n" +
-	"\x05image\x18\x06 \x01(\tH\x00R\x05image\x88\x01\x01B\b\n" +
-	"\x06_image\"\xc7\x01\n" +
+	"\x05image\x18\x06 \x01(\tH\x00R\x05image\x88\x01\x01\x12*\n" +
+	"\x11image_pull_policy\x18\a \x01(\tR\x0fimagePullPolicyB\b\n" +
+	"\x06_image\"\x8e\x02\n" +
 	"\x10GatewayUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\frest_api_url\x18\x02 \x01(\tH\x01R\n" +
 	"restApiUrl\x88\x01\x01\x12$\n" +
 	"\vbase_domain\x18\x03 \x01(\tH\x02R\n" +
 	"baseDomain\x88\x01\x01\x12\x19\n" +
-	"\x05image\x18\x04 \x01(\tH\x03R\x05image\x88\x01\x01B\a\n" +
+	"\x05image\x18\x04 \x01(\tH\x03R\x05image\x88\x01\x01\x12/\n" +
+	"\x11image_pull_policy\x18\x05 \x01(\tH\x04R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0f\n" +
 	"\r_rest_api_urlB\x0e\n" +
 	"\f_base_domainB\b\n" +
-	"\x06_image\"\xca\x02\n" +
+	"\x06_imageB\x14\n" +
+	"\x12_image_pull_policy\"\xf6\x02\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -417,7 +445,8 @@ const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\n" +
 	" \x01(\tR\tupdatedAt\x12*\n" +
-	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAtB\b\n" +
+	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAt\x12*\n" +
+	"\x11image_pull_policy\x18\f \x01(\tR\x0fimagePullPolicyB\b\n" +
 	"\x06_image\"\x9e\x01\n" +
 	"\x14GatewayPaginatedResp\x12+\n" +
 	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.GatewayRespR\x05items\x12\x14\n" +

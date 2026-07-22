@@ -111,7 +111,7 @@ func validateMountSpec(m MountSpec) error {
 		// filepath.IsAbs is OS-dependent: on Windows, "/var/run/..." is not absolute.
 		// Logical sources must stay relative on every host GOOS, so also reject Unix roots.
 		if isAbsoluteMountSource(m.Source) || strings.Contains(m.Source, "..") {
-			return fmt.Errorf("logical source must be a relative path without ..")
+			return fmt.Errorf("logical source must be a relative path without parent directory segments")
 		}
 	case mountSourceVolume:
 		if strings.ContainsAny(m.Source, `/\`) {

@@ -50,7 +50,11 @@
                   <button class="app-link" @click="openEditModal(item)">
                     {{ t('common.edit') }}
                   </button>
-                  <button class="app-link-danger" :disabled="operating" @click="openDeleteModal(item)">
+                  <button
+                    class="app-link-danger"
+                    :disabled="operating"
+                    @click="openDeleteModal(item)"
+                  >
                     {{ t('common.delete') }}
                   </button>
                 </div>
@@ -137,6 +141,14 @@
           <p v-else class="app-field-hint">{{ t('gateway.hints.baseDomain') }}</p>
         </div>
         <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('gateway.fields.imagePullPolicy') }}</label>
+          <SelectControl
+            v-model="form.image_pull_policy"
+            :options="imagePullPolicyOptions"
+            :placeholder="t('application.imagePullPolicyPlaceholder')"
+          />
+        </div>
+        <div class="space-y-1.5">
           <label class="app-field-label block">{{ t('gateway.fields.image') }}</label>
           <input
             v-model="form.image"
@@ -188,6 +200,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway';
@@ -217,8 +230,15 @@
     rest_api_url: 'http://traefik:8080',
     base_domain: 'local.test',
     image: '',
+    image_pull_policy: 'missing',
   });
   const errors = reactive({ code: '', name: '', rest_api_url: '', base_domain: '' });
+
+  const imagePullPolicyOptions = computed(() => [
+    { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
+    { value: 'always', label: t('application.imagePullPolicyOptions.always') },
+    { value: 'never', label: t('application.imagePullPolicyOptions.never') },
+  ]);
 
   const codePattern = /^[a-z][a-z0-9-]*$/;
 
@@ -234,17 +254,13 @@
     if (editingId.value) {
       errors.code = '';
     } else {
-      errors.code = codePattern.test(form.code.trim())
-        ? ''
-        : t('gateway.validation.codeInvalid');
+      errors.code = codePattern.test(form.code.trim()) ? '' : t('gateway.validation.codeInvalid');
     }
     errors.name = form.name.trim() ? '' : t('gateway.validation.nameRequired');
     errors.rest_api_url = form.rest_api_url.trim()
       ? ''
       : t('gateway.validation.restApiUrlRequired');
-    errors.base_domain = form.base_domain.trim()
-      ? ''
-      : t('gateway.validation.baseDomainRequired');
+    errors.base_domain = form.base_domain.trim() ? '' : t('gateway.validation.baseDomainRequired');
     return !errors.code && !errors.name && !errors.rest_api_url && !errors.base_domain;
   }
 
@@ -295,6 +311,7 @@
       rest_api_url: 'http://traefik:8080',
       base_domain: 'local.test',
       image: '',
+      image_pull_policy: 'missing',
     });
     Object.assign(errors, { code: '', name: '', rest_api_url: '', base_domain: '' });
   }
@@ -313,6 +330,7 @@
       rest_api_url: item.rest_api_url || '',
       base_domain: item.base_domain || '',
       image: item.image || '',
+      image_pull_policy: item.image_pull_policy || 'missing',
     });
     Object.assign(errors, { code: '', name: '', rest_api_url: '', base_domain: '' });
     isFormDialogOpen.value = true;
@@ -335,6 +353,7 @@
             rest_api_url: form.rest_api_url.trim(),
             base_domain: form.base_domain.trim(),
             image: form.image.trim() || undefined,
+            image_pull_policy: form.image_pull_policy,
           });
         } else {
           await gatewayApi.create(
@@ -345,6 +364,7 @@
               rest_api_url: form.rest_api_url.trim(),
               base_domain: form.base_domain.trim(),
               image: form.image.trim() || undefined,
+              image_pull_policy: form.image_pull_policy,
             },
             { project_id: projectId }
           );

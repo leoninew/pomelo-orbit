@@ -329,11 +329,12 @@ func seedTestGateway(t *testing.T, service Service) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := service.CreateGateway(ctx, cdTestUserId, cdto.GatewayCreateInput{
-		ProjectId:  cdTestProjectId,
-		Code:       "test-gateway",
-		Name:       "Test Gateway",
-		RestAPIURL: "http://traefik:8080",
-		BaseDomain: "lvh.me",
+		ProjectId:       cdTestProjectId,
+		Code:            "test-gateway",
+		Name:            "Test Gateway",
+		RestAPIURL:      "http://traefik:8080",
+		BaseDomain:      "lvh.me",
+		ImagePullPolicy: "missing",
 	})
 	if err != nil {
 		t.Fatalf("seed gateway: %v", err)
@@ -348,15 +349,29 @@ func TestCreateGatewayCompilesManagedVersion(t *testing.T) {
 	// seedTestGateway already created one gateway; create another to assert compile output.
 	img := "traefik:v3.9-test"
 	view, err := service.CreateGateway(ctx, cdTestUserId, cdto.GatewayCreateInput{
-		ProjectId:  cdTestProjectId,
-		Code:       "edge-gw",
-		Name:       "Edge GW",
-		RestAPIURL: "http://127.0.0.1:8080",
-		BaseDomain: "example.test",
-		Image:      &img,
+		ProjectId:       cdTestProjectId,
+		Code:            "edge-gw",
+		Name:            "Edge GW",
+		RestAPIURL:      "http://127.0.0.1:8080",
+		BaseDomain:      "example.test",
+		Image:           &img,
+		ImagePullPolicy: "always",
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if view.Application.ImagePullPolicy != "always" {
+		t.Fatalf("gateway ImagePullPolicy = %q, want always from create input", view.Application.ImagePullPolicy)
+	}
+	policy := "never"
+	updated, err := service.UpdateGateway(ctx, cdTestUserId, view.Application.Id, cdto.GatewayUpdateInput{
+		ImagePullPolicy: &policy,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Application.ImagePullPolicy != "never" {
+		t.Fatalf("after update ImagePullPolicy = %q, want never", updated.Application.ImagePullPolicy)
 	}
 	versions, err := service.ListVersions(ctx, cdTestUserId, view.Application.Id)
 	if err != nil {
@@ -384,7 +399,7 @@ func TestCreateGatewayCompilesManagedVersion(t *testing.T) {
 
 	// Update image recompiles same unpublished version.
 	img2 := "traefik:v3.9-updated"
-	updated, err := service.UpdateGateway(ctx, cdTestUserId, view.Application.Id, cdto.GatewayUpdateInput{Image: &img2})
+	updated, err = service.UpdateGateway(ctx, cdTestUserId, view.Application.Id, cdto.GatewayUpdateInput{Image: &img2})
 	if err != nil {
 		t.Fatal(err)
 	}

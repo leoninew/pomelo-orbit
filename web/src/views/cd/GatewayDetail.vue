@@ -2,7 +2,10 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between gap-4">
       <div class="min-w-0">
-        <button class="app-link mb-2 inline-flex items-center gap-1 text-sm" @click="router.push('/cd/gateways')">
+        <button
+          class="app-link mb-2 inline-flex items-center gap-1 text-sm"
+          @click="router.push('/cd/gateways')"
+        >
           <ArrowLeft class="size-4" />
           {{ t('gateway.backToList') }}
         </button>
@@ -42,7 +45,15 @@
             <input v-model="form.base_domain" type="text" class="app-input" />
             <p class="app-field-hint">{{ t('gateway.hints.baseDomain') }}</p>
           </div>
-          <div class="space-y-1.5 md:col-span-2">
+          <div class="space-y-1.5">
+            <label class="app-field-label block">{{ t('gateway.fields.imagePullPolicy') }}</label>
+            <SelectControl
+              v-model="form.image_pull_policy"
+              :options="imagePullPolicyOptions"
+              :placeholder="t('application.imagePullPolicyPlaceholder')"
+            />
+          </div>
+          <div class="space-y-1.5">
             <label class="app-field-label block">{{ t('gateway.fields.image') }}</label>
             <input
               v-model="form.image"
@@ -69,11 +80,12 @@
 
 <script setup lang="ts">
   import { ArrowLeft } from 'lucide-vue-next';
-  import { onMounted, reactive, ref, watch } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { gatewayApi } from '@/api/cd/gateway';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway';
@@ -91,7 +103,14 @@
     rest_api_url: '',
     base_domain: '',
     image: '',
+    image_pull_policy: 'missing',
   });
+
+  const imagePullPolicyOptions = computed(() => [
+    { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
+    { value: 'always', label: t('application.imagePullPolicyOptions.always') },
+    { value: 'never', label: t('application.imagePullPolicyOptions.never') },
+  ]);
 
   const gatewayId = () => String(route.params.id || '');
 
@@ -109,6 +128,7 @@
           rest_api_url: data.rest_api_url || '',
           base_domain: data.base_domain || '',
           image: data.image || '',
+          image_pull_policy: data.image_pull_policy || 'missing',
         });
       });
     } catch {
@@ -139,6 +159,7 @@
           rest_api_url: form.rest_api_url.trim(),
           base_domain: form.base_domain.trim(),
           image: form.image.trim() || undefined,
+          image_pull_policy: form.image_pull_policy,
         });
         gateway.value = data;
         toast.success(t('gateway.toast.saveCompiled'));

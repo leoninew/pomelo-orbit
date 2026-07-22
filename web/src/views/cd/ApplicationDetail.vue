@@ -238,7 +238,10 @@
                     {{ t('status.' + version.status) }}
                   </AppBadge>
                 </td>
-                <td class="max-w-xs truncate text-muted-foreground" :title="componentSummary(version)">
+                <td
+                  class="max-w-xs truncate text-muted-foreground"
+                  :title="componentSummary(version)"
+                >
                   {{ componentSummary(version) }}
                 </td>
                 <td class="max-w-xs truncate text-muted-foreground" :title="version.note || ''">
@@ -315,7 +318,10 @@
                 <td class="text-foreground">{{ environmentLabel(svc.environment_id) }}</td>
                 <td class="text-muted-foreground">{{ svc.instance_key }}</td>
                 <td>
-                  <AppBadge variant="pill" :tone="appStatusTone(normalizeServiceStatus(svc.status))">
+                  <AppBadge
+                    variant="pill"
+                    :tone="appStatusTone(normalizeServiceStatus(svc.status))"
+                  >
                     {{ t('status.' + normalizeServiceStatus(svc.status)) }}
                   </AppBadge>
                 </td>
@@ -433,7 +439,11 @@
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <label class="app-field-label">{{ t('application.detail.fields.envVars') }}</label>
-            <button type="button" class="app-link text-sm" @click="versionForm.env.push({ key: '', value: '' })">
+            <button
+              type="button"
+              class="app-link text-sm"
+              @click="versionForm.env.push({ key: '', value: '' })"
+            >
               {{ t('application.detail.actions.addEnv') }}
             </button>
           </div>
@@ -442,14 +452,23 @@
             :key="'venv-' + envIndex"
             class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
           >
-            <input v-model="envRow.key" type="text" class="app-input font-mono text-xs" placeholder="KEY" />
+            <input
+              v-model="envRow.key"
+              type="text"
+              class="app-input font-mono text-xs"
+              placeholder="KEY"
+            />
             <input
               v-model="envRow.value"
               type="text"
               class="app-input font-mono text-xs"
               :placeholder="t('application.detail.placeholders.envValue')"
             />
-            <button type="button" class="app-link-danger" @click="versionForm.env.splice(envIndex, 1)">
+            <button
+              type="button"
+              class="app-link-danger"
+              @click="versionForm.env.splice(envIndex, 1)"
+            >
               {{ t('common.delete') }}
             </button>
           </div>
@@ -496,7 +515,9 @@
             </div>
             <div class="space-y-2 border-t border-border pt-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.ports') }}</span>
+                <span class="text-xs text-muted-foreground">
+                  {{ t('application.detail.fields.ports') }}
+                </span>
                 <button
                   type="button"
                   class="app-link text-xs"
@@ -526,15 +547,25 @@
                   class="app-input font-mono text-xs"
                   :placeholder="t('application.detail.placeholders.containerPort')"
                 />
-                <button type="button" class="app-link-danger" @click="row.ports.splice(portIndex, 1)">
+                <button
+                  type="button"
+                  class="app-link-danger"
+                  @click="row.ports.splice(portIndex, 1)"
+                >
                   {{ t('common.delete') }}
                 </button>
               </div>
             </div>
             <div class="space-y-2 border-t border-border pt-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.componentEnv') }}</span>
-                <button type="button" class="app-link text-xs" @click="row.env.push({ key: '', value: '' })">
+                <span class="text-xs text-muted-foreground">
+                  {{ t('application.detail.fields.componentEnv') }}
+                </span>
+                <button
+                  type="button"
+                  class="app-link text-xs"
+                  @click="row.env.push({ key: '', value: '' })"
+                >
                   {{ t('application.detail.actions.addEnv') }}
                 </button>
               </div>
@@ -543,7 +574,12 @@
                 :key="'cenv-' + index + '-' + envIndex"
                 class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
               >
-                <input v-model="envRow.key" type="text" class="app-input font-mono text-xs" placeholder="KEY" />
+                <input
+                  v-model="envRow.key"
+                  type="text"
+                  class="app-input font-mono text-xs"
+                  placeholder="KEY"
+                />
                 <input
                   v-model="envRow.value"
                   type="text"
@@ -557,7 +593,9 @@
             </div>
             <div class="space-y-2 border-t border-border pt-2">
               <div class="flex items-center justify-between">
-                <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.mounts') }}</span>
+                <span class="text-xs text-muted-foreground">
+                  {{ t('application.detail.fields.mounts') }}
+                </span>
                 <button
                   type="button"
                   class="app-link text-xs"
@@ -602,13 +640,19 @@
                     <input v-model="mountRow.read_only" type="checkbox" class="app-checkbox" />
                     ro
                   </label>
-                  <button type="button" class="app-link-danger" @click="row.mounts.splice(mountIndex, 1)">
+                  <button
+                    type="button"
+                    class="app-link-danger"
+                    @click="row.mounts.splice(mountIndex, 1)"
+                  >
                     {{ t('common.delete') }}
                   </button>
                 </div>
                 <div v-if="isFileMountRow(mountRow)" class="space-y-2 border-t border-border pt-2">
                   <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-xs text-muted-foreground">{{ t('application.detail.fields.mountContent') }}</span>
+                    <span class="text-xs text-muted-foreground">
+                      {{ t('application.detail.fields.mountContent') }}
+                    </span>
                     <SelectControl
                       v-model="mountRow.content_mode"
                       :options="mountContentModeOptions"
@@ -742,11 +786,15 @@
         </div>
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
-          <span class="text-sm text-foreground">{{ t('application.detail.fields.forceRecreate') }}</span>
+          <span class="text-sm text-foreground">
+            {{ t('application.detail.fields.forceRecreate') }}
+          </span>
         </label>
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <label class="app-field-label">{{ t('application.detail.fields.runtimeConfig') }}</label>
+            <label class="app-field-label">
+              {{ t('application.detail.fields.runtimeConfig') }}
+            </label>
             <button
               type="button"
               class="app-link text-sm"
@@ -760,9 +808,23 @@
             :key="'rt-' + index"
             class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
           >
-            <input v-model="row.key" type="text" class="app-input font-mono text-xs" placeholder="NAME" />
-            <input v-model="row.value" type="text" class="app-input font-mono text-xs" placeholder="value" />
-            <button type="button" class="app-link-danger" @click="deployForm.runtime_config.splice(index, 1)">
+            <input
+              v-model="row.key"
+              type="text"
+              class="app-input font-mono text-xs"
+              placeholder="NAME"
+            />
+            <input
+              v-model="row.value"
+              type="text"
+              class="app-input font-mono text-xs"
+              placeholder="value"
+            />
+            <button
+              type="button"
+              class="app-link-danger"
+              @click="deployForm.runtime_config.splice(index, 1)"
+            >
               {{ t('common.delete') }}
             </button>
           </div>
@@ -803,12 +865,11 @@
             :placeholder="t('application.detail.placeholders.serviceInstance')"
           />
         </div>
-        <label
-          v-if="serviceTargetAction === 'stop'"
-          class="flex items-center gap-2"
-        >
+        <label v-if="serviceTargetAction === 'stop'" class="flex items-center gap-2">
           <input v-model="serviceTargetForm.remove_volumes" type="checkbox" class="app-checkbox" />
-          <span class="text-sm text-foreground">{{ t('application.detail.fields.removeVolumes') }}</span>
+          <span class="text-sm text-foreground">
+            {{ t('application.detail.fields.removeVolumes') }}
+          </span>
         </label>
       </div>
       <template #footer>
@@ -909,11 +970,7 @@
     VersionExposeReq,
     VersionResp,
   } from '@/gen/proto/orbit/v1/version';
-  import {
-    appStatusTone,
-    normalizeServiceStatus,
-    versionStatusTone,
-  } from '@/utils/status';
+  import { appStatusTone, normalizeServiceStatus, versionStatusTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
   const route = useRoute();
@@ -1054,9 +1111,7 @@
     }))
   );
 
-  const serviceStatus = computed(() =>
-    normalizeServiceStatus(application.value?.service_status)
-  );
+  const serviceStatus = computed(() => normalizeServiceStatus(application.value?.service_status));
   const statusTone = computed(() => appStatusTone(serviceStatus.value));
   const statusText = computed(() => t('status.' + serviceStatus.value));
   const canStop = computed(() =>
@@ -1128,12 +1183,7 @@
           // host:container or ip:host:container — take last two numeric segments
           const hostPort = Number(parts[parts.length - 2]);
           const containerPort = Number(parts[parts.length - 1]);
-          if (
-            hostPort >= 1 &&
-            hostPort <= 65535 &&
-            containerPort >= 1 &&
-            containerPort <= 65535
-          ) {
+          if (hostPort >= 1 && hostPort <= 65535 && containerPort >= 1 && containerPort <= 65535) {
             rows.push({ host_port: hostPort, container_port: containerPort });
           }
           continue;
@@ -1147,12 +1197,7 @@
           };
           const hostPort = Number(row.host_port ?? row.published ?? 0);
           const containerPort = Number(row.container_port ?? row.target ?? 0);
-          if (
-            hostPort >= 1 &&
-            hostPort <= 65535 &&
-            containerPort >= 1 &&
-            containerPort <= 65535
-          ) {
+          if (hostPort >= 1 && hostPort <= 65535 && containerPort >= 1 && containerPort <= 65535) {
             rows.push({ host_port: hostPort, container_port: containerPort });
           }
         }
@@ -1761,9 +1806,7 @@
     versionFormErrors.label = versionForm.label.trim()
       ? ''
       : t('application.validation.versionLabelRequired');
-    const rows = versionForm.components
-      .map(componentToReq)
-      .filter((c) => c.name || c.image);
+    const rows = versionForm.components.map(componentToReq).filter((c) => c.name || c.image);
     if (rows.length === 0) {
       versionFormErrors.components = t('application.validation.componentRequired');
     } else if (rows.some((c) => !c.name || !c.image)) {
@@ -1778,11 +1821,7 @@
       versionFormErrors.exposes = t('application.validation.exposeComponentRequired');
     } else if (exposeRows.some((item) => !componentNames.has(item.component_name))) {
       versionFormErrors.exposes = t('application.validation.exposeComponentNotFound');
-    } else if (
-      exposeRows.some(
-        (item) => item.container_port < 1 || item.container_port > 65535
-      )
-    ) {
+    } else if (exposeRows.some((item) => item.container_port < 1 || item.container_port > 65535)) {
       versionFormErrors.exposes = t('application.validation.portRange');
     } else {
       versionFormErrors.exposes = '';
@@ -1811,9 +1850,7 @@
       }
     }
 
-    return (
-      !versionFormErrors.label && !versionFormErrors.components && !versionFormErrors.exposes
-    );
+    return !versionFormErrors.label && !versionFormErrors.components && !versionFormErrors.exposes;
   }
 
   async function handleVersionSave() {

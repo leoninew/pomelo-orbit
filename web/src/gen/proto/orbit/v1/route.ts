@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface RouteResp {
   id: string;
@@ -37,20 +37,15 @@ export interface RouteUpdateReq {
   enabled?: boolean | undefined;
 }
 
-export interface RouteEnableReq {
-}
+export interface RouteEnableReq {}
 
-export interface RouteDisableReq {
-}
+export interface RouteDisableReq {}
 
-export interface RouteSyncReq {
-}
+export interface RouteSyncReq {}
 
-export interface RouteLetsEncryptEnableReq {
-}
+export interface RouteLetsEncryptEnableReq {}
 
-export interface RouteMkcertEnableReq {
-}
+export interface RouteMkcertEnableReq {}
 
 export interface RouteEnableResp {
   message: string;

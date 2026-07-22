@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface GatewayCreateReq {
   project_id: string;
@@ -15,6 +15,8 @@ export interface GatewayCreateReq {
   rest_api_url: string;
   base_domain: string;
   image?: string | undefined;
+  /** docker compose --pull: always|missing|never */
+  image_pull_policy: string;
 }
 
 export interface GatewayUpdateReq {
@@ -22,6 +24,7 @@ export interface GatewayUpdateReq {
   rest_api_url?: string | undefined;
   base_domain?: string | undefined;
   image?: string | undefined;
+  image_pull_policy?: string | undefined;
 }
 
 export interface GatewayResp {
@@ -36,6 +39,7 @@ export interface GatewayResp {
   created_at: string;
   updated_at: string;
   config_updated_at: string;
+  image_pull_policy: string;
 }
 
 export interface GatewayPaginatedResp {

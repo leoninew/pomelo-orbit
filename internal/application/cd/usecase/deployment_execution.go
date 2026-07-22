@@ -238,20 +238,6 @@ func (s Service) upsertServiceDeploying(ctx context.Context, applicationId strin
 	return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
 }
 
-func (s Service) renderAndDeploy(
-	ctx context.Context,
-	app model.Application,
-	version model.Version,
-	components []model.VersionComponent,
-	exposes []model.VersionExpose,
-	env model.Environment,
-	svc model.Service,
-	deploymentId string,
-	forceRecreate bool,
-) error {
-	return s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, deploymentId, forceRecreate, nil)
-}
-
 func (s Service) renderAndDeployWithOptions(
 	ctx context.Context,
 	app model.Application,

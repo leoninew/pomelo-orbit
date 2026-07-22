@@ -8,21 +8,23 @@ import (
 
 func gatewayCreateInput(req *pomeloorbit.GatewayCreateReq) cddto.GatewayCreateInput {
 	return cddto.GatewayCreateInput{
-		ProjectId:  req.ProjectId,
-		Code:       req.Code,
-		Name:       req.Name,
-		RestAPIURL: req.RestApiUrl,
-		BaseDomain: req.BaseDomain,
-		Image:      req.Image,
+		ProjectId:       req.ProjectId,
+		Code:            req.Code,
+		Name:            req.Name,
+		RestAPIURL:      req.RestApiUrl,
+		BaseDomain:      req.BaseDomain,
+		Image:           req.Image,
+		ImagePullPolicy: req.ImagePullPolicy,
 	}
 }
 
 func gatewayUpdateInput(req *pomeloorbit.GatewayUpdateReq) cddto.GatewayUpdateInput {
 	return cddto.GatewayUpdateInput{
-		Name:       req.Name,
-		RestAPIURL: req.RestApiUrl,
-		BaseDomain: req.BaseDomain,
-		Image:      req.Image,
+		Name:            req.Name,
+		RestAPIURL:      req.RestApiUrl,
+		BaseDomain:      req.BaseDomain,
+		Image:           req.Image,
+		ImagePullPolicy: req.ImagePullPolicy,
 	}
 }
 
@@ -53,5 +55,6 @@ func gatewayResponse(view cddto.GatewayView) pomeloorbit.GatewayResp {
 		CreatedAt:       transportresponse.FormatTime(app.CreatedAt),
 		UpdatedAt:       transportresponse.FormatTime(app.UpdatedAt),
 		ConfigUpdatedAt: transportresponse.FormatTime(cfg.UpdatedAt),
+		ImagePullPolicy: app.ImagePullPolicy,
 	}
 }

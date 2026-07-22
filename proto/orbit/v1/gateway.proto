@@ -9,6 +9,8 @@ message GatewayCreateReq {
   string rest_api_url = 4;
   string base_domain = 5;
   optional string image = 6;
+  // docker compose --pull: always|missing|never
+  string image_pull_policy = 7;
 }
 
 message GatewayUpdateReq {
@@ -16,6 +18,7 @@ message GatewayUpdateReq {
   optional string rest_api_url = 2;
   optional string base_domain = 3;
   optional string image = 4;
+  optional string image_pull_policy = 5;
 }
 
 message GatewayResp {
@@ -30,6 +33,7 @@ message GatewayResp {
   string created_at = 9;
   string updated_at = 10;
   string config_updated_at = 11;
+  string image_pull_policy = 12;
 }
 
 message GatewayPaginatedResp {

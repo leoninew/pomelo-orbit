@@ -50,8 +50,12 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input cdto.Ga
 	}
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
+	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
 	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) {
 		return cdto.GatewayView{}, apperror.New(apperror.KindValidation, "Invalid gateway fields")
+	}
+	if !validImagePullPolicy(imagePullPolicy) {
+		return cdto.GatewayView{}, apperror.New(apperror.KindValidation, "image_pull_policy must be always, missing, or never")
 	}
 	restURL, err := normalizeRestAPIURL(input.RestAPIURL)
 	if err != nil {
@@ -75,7 +79,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, input cdto.Ga
 		Name:            name,
 		Code:            code,
 		Kind:            status.ApplicationKindGateway,
-		ImagePullPolicy: "IfNotPresent",
+		ImagePullPolicy: imagePullPolicy,
 	}
 	cfg := model.GatewayConfig{
 		ApplicationId: app.Id,
@@ -118,6 +122,7 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 	}
 	app := view.Application
 	cfg := view.Config
+	appDirty := false
 	if input.Name != nil {
 		name := strings.TrimSpace(*input.Name)
 		if name == "" || len(name) > 100 {
@@ -128,9 +133,22 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, applicationId
 				return cdto.GatewayView{}, err
 			}
 			app.Name = name
-			if err := s.store.UpdateApplication(ctx, app); err != nil {
-				return cdto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway application", err)
-			}
+			appDirty = true
+		}
+	}
+	if input.ImagePullPolicy != nil {
+		policy := strings.TrimSpace(*input.ImagePullPolicy)
+		if !validImagePullPolicy(policy) {
+			return cdto.GatewayView{}, apperror.New(apperror.KindValidation, "image_pull_policy must be always, missing, or never")
+		}
+		if policy != app.ImagePullPolicy {
+			app.ImagePullPolicy = policy
+			appDirty = true
+		}
+	}
+	if appDirty {
+		if err := s.store.UpdateApplication(ctx, app); err != nil {
+			return cdto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to update gateway application", err)
 		}
 	}
 	if input.RestAPIURL != nil {

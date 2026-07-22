@@ -39,6 +39,7 @@ func applicationDeployInput(req *pomeloorbit.ApplicationDeployReq) cddto.Applica
 		EnvironmentId: req.EnvironmentId,
 		InstanceKey:   req.InstanceKey,
 		ForceRecreate: req.ForceRecreate,
+		RuntimeConfig: req.RuntimeConfig,
 	}
 }
 

@@ -38,6 +38,7 @@ message ApplicationDeployReq {
   string environment_id = 2;
   string instance_key = 3;
   bool force_recreate = 4;
+  map<string, string> runtime_config = 5;
 }
 
 message ApplicationStopReq {

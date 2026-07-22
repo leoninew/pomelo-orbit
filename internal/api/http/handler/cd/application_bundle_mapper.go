@@ -1,6 +1,9 @@
 package cdhandler
 
 import (
+	"encoding/json"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
@@ -101,27 +104,44 @@ func versionCreateInput(req *pomeloorbit.VersionCreateReq) cddto.VersionCreateIn
 	}
 }
 
-func versionUpdateInput(req *pomeloorbit.VersionUpdateReq) cddto.VersionUpdateInput {
+// versionUpdateInputFromJSON maps VersionUpdateReq and preserves empty repeated fields.
+// protojson unmarshals "exposes":[] / "components":[] as nil, which would otherwise mean
+// "leave unchanged"; raw JSON key presence is required to clear collections.
+func versionUpdateInputFromJSON(data []byte) (cddto.VersionUpdateInput, error) {
+	var req pomeloorbit.VersionUpdateReq
+	if err := codec.UnmarshalProtoJSON(data, &req); err != nil {
+		return cddto.VersionUpdateInput{}, err
+	}
+	var present map[string]json.RawMessage
+	if err := json.Unmarshal(data, &present); err != nil {
+		return cddto.VersionUpdateInput{}, err
+	}
 	input := cddto.VersionUpdateInput{
 		Label:   req.Label,
 		EnvJSON: req.EnvJson,
 		Note:    req.Note,
 	}
-	if req.Components != nil {
+	if _, ok := present["components"]; ok {
 		components := make([]cddto.VersionComponentInput, 0, len(req.Components))
 		for _, item := range req.Components {
+			if item == nil {
+				continue
+			}
 			components = append(components, versionComponentInput(item))
 		}
 		input.Components = &components
 	}
-	if req.Exposes != nil {
+	if _, ok := present["exposes"]; ok {
 		exposes := make([]cddto.VersionExposeInput, 0, len(req.Exposes))
 		for _, item := range req.Exposes {
+			if item == nil {
+				continue
+			}
 			exposes = append(exposes, versionExposeInput(item))
 		}
 		input.Exposes = &exposes
 	}
-	return input
+	return input, nil
 }
 
 func versionResponses(views []cddto.VersionView) []pomeloorbit.VersionResp {

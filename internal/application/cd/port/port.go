@@ -43,9 +43,11 @@ type CommandQueryRunner interface {
 	Run(ctx context.Context, cwd string, name string, args ...string) (string, error)
 }
 
+// RouteConfigPublisher publishes the platform route snapshot to Traefik providers.rest.
+// ApplySnapshot is a full replace of the @rest namespace (not a per-route merge).
 type RouteConfigPublisher interface {
-	Sync(ctx context.Context, route model.Route) error
-	Revoke(ctx context.Context, routeName string) error
+	ApplySnapshot(ctx context.Context, routes []model.Route) error
+	WriteCertificate(ctx context.Context, routeName string, certPEM string, certKey string) error
 	RevokeCertificate(ctx context.Context, routeName string) error
 }
 

@@ -54,6 +54,11 @@ type CDStore interface {
 	CancelDeployment(ctx context.Context, id string) error
 	ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.Route], error)
 	ListAllRoutes(ctx context.Context, projectId string) ([]model.Route, error)
+	// ListEnabledRoutes returns every enabled route across projects (platform rest snapshot).
+	ListEnabledRoutes(ctx context.Context) ([]model.Route, error)
+	// HasActiveGatewayService reports whether any gateway Service is deploying/running,
+	// optionally excluding one application id (for redeploy of the same gateway).
+	HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error)
 	Route(ctx context.Context, id string) (model.Route, error)
 	RouteByDomain(ctx context.Context, domain string) (model.Route, error)
 	CreateRoute(ctx context.Context, route model.Route) error

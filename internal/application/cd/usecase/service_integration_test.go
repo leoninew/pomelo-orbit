@@ -231,8 +231,12 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(publisher.synced) == 0 || publisher.synced[len(publisher.synced)-1].Id != enabled.Id {
-		t.Fatalf("expected enabled route to be synced, got %+v", publisher.synced)
+	if len(publisher.snapshots) == 0 {
+		t.Fatal("expected rest snapshot after enabling route")
+	}
+	lastSnap := publisher.snapshots[len(publisher.snapshots)-1]
+	if len(lastSnap) != 1 || lastSnap[0].Id != enabled.Id {
+		t.Fatalf("expected enabled route in snapshot, got %+v", lastSnap)
 	}
 	if err := service.DeleteRoute(ctx, cdTestUserId, enabled.Id); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected enabled route delete validation error, got %v", err)
@@ -244,8 +248,9 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if disabled.Enabled {
 		t.Fatalf("expected disabled route, got %+v", disabled)
 	}
-	if len(publisher.revoked) == 0 || publisher.revoked[len(publisher.revoked)-1] != "enabled-route" {
-		t.Fatalf("expected route config revoke, got %+v", publisher.revoked)
+	lastSnap = publisher.snapshots[len(publisher.snapshots)-1]
+	if len(lastSnap) != 0 {
+		t.Fatalf("expected empty snapshot after disable, got %+v", lastSnap)
 	}
 
 	certRoute, err := service.UploadRouteCert(ctx, cdTestUserId, disabled.Id, "CERT", "KEY")
@@ -469,18 +474,16 @@ func (r *recordingQueryRunner) Run(_ context.Context, cwd string, name string, a
 }
 
 type recordingRoutePublisher struct {
-	synced       []model.Route
-	revoked      []string
+	snapshots    [][]model.Route
 	revokedCerts []string
 }
 
-func (p *recordingRoutePublisher) Sync(_ context.Context, route model.Route) error {
-	p.synced = append(p.synced, route)
+func (p *recordingRoutePublisher) ApplySnapshot(_ context.Context, routes []model.Route) error {
+	p.snapshots = append(p.snapshots, append([]model.Route(nil), routes...))
 	return nil
 }
 
-func (p *recordingRoutePublisher) Revoke(_ context.Context, routeName string) error {
-	p.revoked = append(p.revoked, routeName)
+func (p *recordingRoutePublisher) WriteCertificate(_ context.Context, _ string, _ string, _ string) error {
 	return nil
 }
 

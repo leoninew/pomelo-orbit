@@ -260,10 +260,15 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
 	}
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, env.Code, instanceKey)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
+	}
 	content, err := s.RenderCompose(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env:     env,
-		Service: model.Service{InstanceKey: instanceKey},
+		Env:            env,
+		Service:        model.Service{InstanceKey: instanceKey},
+		PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())

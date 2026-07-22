@@ -290,6 +290,7 @@ type ApplicationDeployReq struct {
 	EnvironmentId string                 `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
 	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	ForceRecreate bool                   `protobuf:"varint,4,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	RuntimeConfig map[string]string      `protobuf:"bytes,5,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -350,6 +351,13 @@ func (x *ApplicationDeployReq) GetForceRecreate() bool {
 		return x.ForceRecreate
 	}
 	return false
+}
+
+func (x *ApplicationDeployReq) GetRuntimeConfig() map[string]string {
+	if x != nil {
+		return x.RuntimeConfig
+	}
+	return nil
 }
 
 type ApplicationStopReq struct {
@@ -727,13 +735,17 @@ const file_orbit_v1_application_proto_rawDesc = "" +
 	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
 	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policy\"\xa6\x01\n" +
+	"\x12_image_pull_policy\"\xc2\x02\n" +
 	"\x14ApplicationDeployReq\x12\x1d\n" +
 	"\n" +
 	"version_id\x18\x01 \x01(\tR\tversionId\x12%\n" +
 	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\x12!\n" +
 	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12%\n" +
-	"\x0eforce_recreate\x18\x04 \x01(\bR\rforceRecreate\"\xe6\x01\n" +
+	"\x0eforce_recreate\x18\x04 \x01(\bR\rforceRecreate\x12X\n" +
+	"\x0eruntime_config\x18\x05 \x03(\v21.orbit.v1.ApplicationDeployReq.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
+	"\x12RuntimeConfigEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe6\x01\n" +
 	"\x12ApplicationStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12*\n" +
 	"\x0eenvironment_id\x18\x02 \x01(\tH\x00R\renvironmentId\x88\x01\x01\x12&\n" +
@@ -777,7 +789,7 @@ func file_orbit_v1_application_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_application_proto_rawDescData
 }
 
-var file_orbit_v1_application_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_orbit_v1_application_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_orbit_v1_application_proto_goTypes = []any{
 	(*ApplicationResp)(nil),          // 0: orbit.v1.ApplicationResp
 	(*ApplicationCreateReq)(nil),     // 1: orbit.v1.ApplicationCreateReq
@@ -789,14 +801,16 @@ var file_orbit_v1_application_proto_goTypes = []any{
 	(*ApplicationStatusResp)(nil),    // 7: orbit.v1.ApplicationStatusResp
 	(*ApplicationLogsResp)(nil),      // 8: orbit.v1.ApplicationLogsResp
 	(*ApplicationPaginatedResp)(nil), // 9: orbit.v1.ApplicationPaginatedResp
+	nil,                              // 10: orbit.v1.ApplicationDeployReq.RuntimeConfigEntry
 }
 var file_orbit_v1_application_proto_depIdxs = []int32{
-	0, // 0: orbit.v1.ApplicationPaginatedResp.items:type_name -> orbit.v1.ApplicationResp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	10, // 0: orbit.v1.ApplicationDeployReq.runtime_config:type_name -> orbit.v1.ApplicationDeployReq.RuntimeConfigEntry
+	0,  // 1: orbit.v1.ApplicationPaginatedResp.items:type_name -> orbit.v1.ApplicationResp
+	2,  // [2:2] is the sub-list for method output_type
+	2,  // [2:2] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_application_proto_init() }
@@ -815,7 +829,7 @@ func file_orbit_v1_application_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_application_proto_rawDesc), len(file_orbit_v1_application_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

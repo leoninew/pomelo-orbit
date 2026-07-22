@@ -1,6 +1,7 @@
 package cdhandler
 
 import (
+	"io"
 	"net/http"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
@@ -175,12 +176,17 @@ func (h Handler) UpdateVersion(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.VersionUpdateReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
+	data, err := io.ReadAll(c.Request.Body)
+	if err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	view, err := h.service.UpdateVersion(c.Request.Context(), current.Id, c.Param("version_id"), versionUpdateInput(&req))
+	input, err := versionUpdateInputFromJSON(data)
+	if err != nil {
+		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	view, err := h.service.UpdateVersion(c.Request.Context(), current.Id, c.Param("version_id"), input)
 	if err != nil {
 		h.writeError(c, err)
 		return

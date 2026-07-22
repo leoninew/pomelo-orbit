@@ -25,6 +25,8 @@ type ApplicationDeployInput struct {
 	EnvironmentId string
 	InstanceKey   string
 	ForceRecreate bool
+	// RuntimeConfig fills Version/Component env placeholders for this deploy only.
+	RuntimeConfig map[string]string
 }
 
 type ApplicationServiceTargetInput struct {
@@ -220,7 +222,8 @@ type TraefikRouteListResp struct {
 
 // DeployOptionsJSON is stored on Deployment.options_json.
 type DeployOptionsJSON struct {
-	ForceRecreate bool   `json:"force_recreate,omitempty"`
-	InstanceKey   string `json:"instance_key,omitempty"`
-	RemoveVolumes bool   `json:"remove_volumes,omitempty"`
+	ForceRecreate bool              `json:"force_recreate,omitempty"`
+	InstanceKey   string            `json:"instance_key,omitempty"`
+	RemoveVolumes bool              `json:"remove_volumes,omitempty"`
+	RuntimeConfig map[string]string `json:"runtime_config,omitempty"`
 }

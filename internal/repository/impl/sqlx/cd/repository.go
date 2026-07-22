@@ -476,6 +476,33 @@ func (r Repository) ListAllRoutes(ctx context.Context, projectId string) ([]mode
 	return items, nil
 }
 
+func (r Repository) ListEnabledRoutes(ctx context.Context) ([]model.Route, error) {
+	var items []model.Route
+	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at
+		FROM route WHERE enabled = ? ORDER BY name ASC, id ASC`, true)
+	if err != nil {
+		return nil, fmt.Errorf("list enabled routes: %w", err)
+	}
+	return items, nil
+}
+
+func (r Repository) HasActiveGatewayService(ctx context.Context, excludeApplicationId string) (bool, error) {
+	query := `SELECT COUNT(*) FROM service s
+		INNER JOIN application a ON a.id = s.application_id
+		WHERE a.kind = ? AND s.status IN (?, ?)`
+	args := []any{status.ApplicationKindGateway, status.ServiceStatusRunning, status.ServiceStatusDeploying}
+	excludeApplicationId = strings.TrimSpace(excludeApplicationId)
+	if excludeApplicationId != "" {
+		query += ` AND s.application_id <> ?`
+		args = append(args, excludeApplicationId)
+	}
+	var count int
+	if err := r.db.GetContext(ctx, &count, query, args...); err != nil {
+		return false, fmt.Errorf("count active gateway services: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (r Repository) Route(ctx context.Context, id string) (model.Route, error) {
 	var route model.Route
 	err := r.db.GetContext(ctx, &route, `SELECT id, project_id, name, domain, path_prefix, target_url, enabled, https_enabled, cert_pem, cert_key, cert_type, created_at, updated_at FROM route WHERE id = ?`, id)

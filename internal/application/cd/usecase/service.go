@@ -199,6 +199,19 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err := validateVersionComponents(components); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
+	if strings.TrimSpace(app.Kind) == status.ApplicationKindGateway {
+		active, err := s.store.HasActiveGatewayService(ctx, app.Id)
+		if err != nil {
+			return "", apperror.Wrap(apperror.KindInternal, "Failed to check active gateway", err)
+		}
+		if active {
+			return "", apperror.New(apperror.KindValidation, "another gateway is already deploying or running; multiple gateways are not supported")
+		}
+	}
+	runtimeConfig, err := resolveDeployRuntimeConfig(version, components, input.RuntimeConfig)
+	if err != nil {
+		return "", err
+	}
 	instanceKey := strings.TrimSpace(input.InstanceKey)
 	if instanceKey == "" {
 		instanceKey = "default"
@@ -209,6 +222,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	opts := cdto.DeployOptionsJSON{
 		ForceRecreate: input.ForceRecreate,
 		InstanceKey:   instanceKey,
+		RuntimeConfig: runtimeConfig,
 	}
 	raw, _ := json.Marshal(opts)
 	text := string(raw)

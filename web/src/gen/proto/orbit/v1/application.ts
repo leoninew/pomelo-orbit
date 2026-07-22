@@ -44,6 +44,12 @@ export interface ApplicationDeployReq {
   environment_id: string;
   instance_key: string;
   force_recreate: boolean;
+  runtime_config: { [key: string]: string };
+}
+
+export interface ApplicationDeployReq_RuntimeConfigEntry {
+  key: string;
+  value: string;
 }
 
 export interface ApplicationStopReq {

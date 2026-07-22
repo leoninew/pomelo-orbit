@@ -76,7 +76,7 @@ func TestMySQLE2E(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 7 || version.Dirty {
+	if version.Version != 9 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 

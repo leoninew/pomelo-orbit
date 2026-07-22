@@ -34,59 +34,85 @@ const (
 	cdTestApplicationId = "01KN8CG4A5S4VVH6NKNJF4F9NJ"
 )
 
-func TestApplicationServiceCRUDDeployStopAndFiles(t *testing.T) {
+func TestApplicationServiceCRUDDeployStopAndVersions(t *testing.T) {
 	service, database := newCDIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	created, err := service.CreateApplication(ctx, cdTestUserId, cdto.ApplicationCreateInput{ProjectId: cdTestProjectId, Name: "Route App", Code: "route-app", ImagePullPolicy: "missing", RouteManaged: true})
+	created, err := service.CreateApplication(ctx, cdTestUserId, cdto.ApplicationCreateInput{ProjectId: cdTestProjectId, Name: "Route App", Code: "route-app", ImagePullPolicy: "missing"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != cdTestProjectId || created.Name != "Route App" || created.Code != "route-app" || created.Status != status.ApplicationStatusUndeployed || !created.RouteManaged {
+	if created.Id == "" || created.ProjectId == nil || *created.ProjectId != cdTestProjectId || created.Name != "Route App" || created.Code != "route-app" {
 		t.Fatalf("unexpected created application: %+v", created)
 	}
 
-	updated, err := service.UpdateApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationUpdateInput{Name: stringPtr("Route App 2"), Code: stringPtr("route-app-2"), ImagePullPolicy: stringPtr("always"), RouteManaged: boolPtr(true)})
+	updated, err := service.UpdateApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationUpdateInput{Name: stringPtr("Route App 2"), Code: stringPtr("route-app-2"), ImagePullPolicy: stringPtr("always")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Name != "Route App 2" || updated.Code != "route-app-2" || updated.ImagePullPolicy != "always" || !updated.RouteManaged {
+	if updated.Name != "Route App 2" || updated.Code != "route-app-2" || updated.ImagePullPolicy != "always" {
 		t.Fatalf("unexpected updated application: %+v", updated)
 	}
 
-	file, err := service.CreateApplicationFile(ctx, cdTestUserId, created.Id, cdto.ConfigFileInput{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"})
+	version, err := service.CreateVersion(ctx, cdTestUserId, cdto.VersionCreateInput{
+		ApplicationId: created.Id,
+		Label:         "v1",
+		Components:    []cdto.ComponentInput{{Name: "web", Image: "nginx"}},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if file.Path != "docker-compose.yml" {
-		t.Fatalf("unexpected config file: %+v", file)
+	if version.Version.Label != "v1" || len(version.Components) != 1 || version.Components[0].Name != "web" {
+		t.Fatalf("unexpected version: %+v", version)
 	}
 
-	deploymentId, err := service.DeployApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationDeployInput{ForceRecreate: true})
+	localEnv := loadLocalEnvironment(t, service)
+	deploymentId, err := service.DeployApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationDeployInput{
+		VersionId:     version.Version.Id,
+		EnvironmentId: localEnv.Id,
+		ForceRecreate: true,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	deployment := loadDeploymentForTest(t, database, deploymentId)
-	if deployment.Status != status.WorkStatusWaitingToRun || deployment.CommandText != "docker compose -f docker-compose.yml up -d --remove-orphans --pull always --force-recreate" {
+	wantCommand := "docker compose -p route-app-2-local-default -f docker-compose.yml up -d --remove-orphans --pull always --force-recreate"
+	if deployment.Status != status.WorkStatusWaitingToRun || deployment.CommandText != wantCommand {
 		t.Fatalf("unexpected deployment: %+v", deployment)
+	}
+	if deployment.VersionId == nil || *deployment.VersionId != version.Version.Id {
+		t.Fatalf("unexpected deployment version: %+v", deployment)
+	}
+	if deployment.EnvironmentId == nil || *deployment.EnvironmentId != localEnv.Id {
+		t.Fatalf("unexpected deployment environment: %+v", deployment)
 	}
 	assertLatestTaskPayload(t, database, status.TaskTypeCDApplicationDeploy, deploymentId, "force_recreate", true)
 
-	if _, err := database.ExecContext(ctx, `UPDATE application SET status = ? WHERE id = ?`, status.ApplicationStatusDeployed, created.Id); err != nil {
+	// Simulate successful runtime binding so stop is allowed.
+	if err := service.store.UpsertService(ctx, model.Service{
+		Id:            "01KSERVICE00000000000000001",
+		ApplicationId: created.Id,
+		EnvironmentId: localEnv.Id,
+		InstanceKey:   "default",
+		IsIngress:     true,
+		VersionId:     version.Version.Id,
+		Status:        status.ServiceStatusRunning,
+	}); err != nil {
 		t.Fatal(err)
 	}
-	stopId, err := service.StopApplication(ctx, cdTestUserId, created.Id, true)
+	stopId, err := service.StopApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationServiceTargetInput{RemoveVolumes: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stopDeployment := loadDeploymentForTest(t, database, stopId)
-	if stopDeployment.Status != status.WorkStatusWaitingToRun || stopDeployment.CommandText != "docker compose -f docker-compose.yml down -v" {
+	wantStop := "docker compose -p route-app-2-local-default -f docker-compose.yml down -v"
+	if stopDeployment.Status != status.WorkStatusWaitingToRun || stopDeployment.CommandText != wantStop {
 		t.Fatalf("unexpected stop deployment: %+v", stopDeployment)
 	}
 	assertLatestTaskPayload(t, database, status.TaskTypeCDApplicationStop, stopId, "remove_volumes", true)
 
-	if _, err := database.ExecContext(ctx, `UPDATE application SET status = ? WHERE id = ?`, status.ApplicationStatusUndeployed, created.Id); err != nil {
+	if err := service.store.UpdateServiceStatus(ctx, "01KSERVICE00000000000000001", status.ServiceStatusStopped); err != nil {
 		t.Fatal(err)
 	}
 	workspace := service.workspace.(*workspaceFake)
@@ -103,14 +129,23 @@ func TestWaitingDeploymentContainerLogDoesNotRequireWorkspace(t *testing.T) {
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
-	created, err := service.CreateApplication(ctx, cdTestUserId, cdto.ApplicationCreateInput{ProjectId: cdTestProjectId, Name: "Pending Logs App", Code: "pending-logs-app", ImagePullPolicy: "missing", RouteManaged: false})
+	created, err := service.CreateApplication(ctx, cdTestUserId, cdto.ApplicationCreateInput{ProjectId: cdTestProjectId, Name: "Pending Logs App", Code: "pending-logs-app", ImagePullPolicy: "missing"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.CreateApplicationFile(ctx, cdTestUserId, created.Id, cdto.ConfigFileInput{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}); err != nil {
+	version, err := service.CreateVersion(ctx, cdTestUserId, cdto.VersionCreateInput{
+		ApplicationId: created.Id,
+		Label:         "v1",
+		Components:    []cdto.ComponentInput{{Name: "web", Image: "nginx"}},
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
-	deploymentId, err := service.DeployApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationDeployInput{})
+	localEnv := loadLocalEnvironment(t, service)
+	deploymentId, err := service.DeployApplication(ctx, cdTestUserId, created.Id, cdto.ApplicationDeployInput{
+		VersionId:     version.Version.Id,
+		EnvironmentId: localEnv.Id,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,20 +159,20 @@ func TestWaitingDeploymentContainerLogDoesNotRequireWorkspace(t *testing.T) {
 	}
 }
 
-func TestApplicationImportExportAndServiceConfig(t *testing.T) {
+func TestApplicationImportExportAndVersion(t *testing.T) {
 	service, database := newCDIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
+	ports := `["8080:80"]`
 
 	imported, err := service.ImportApplication(ctx, cdTestUserId, cdto.ApplicationImportInput{
-		ProjectId:         cdTestProjectId,
-		Name:              "Imported App",
-		Code:              "imported-app",
-		ImagePullPolicy:   "missing",
-		RouteManaged:      true,
-		ConfigFiles:       []cdto.ConfigFileInput{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n    ports:\n      - '8080:80'\n"}},
-		ServiceConfigs:    []cdto.ApplicationServiceConfigImportInput{{ServiceName: "web", Image: stringPtr("nginx:1.27")}},
-		ApplicationRoutes: []cdto.ApplicationRouteInput{{ServiceName: "web", Domain: "imported.example.test", Port: 80}},
+		ProjectId:       cdTestProjectId,
+		Name:            "Imported App",
+		Code:            "imported-app",
+		ImagePullPolicy: "missing",
+		VersionLabel:    "import-v1",
+		Components:      []cdto.ComponentInput{{Name: "web", Image: "nginx:1.27", PortsJSON: &ports}},
+		Exposes:         []cdto.ExposeInput{{ComponentName: "web", Protocol: "http", ContainerPort: 80}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -146,30 +181,31 @@ func TestApplicationImportExportAndServiceConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.Application.Name != "Imported App" || len(exported.ConfigFiles) != 1 || len(exported.ServiceConfigs) != 1 || len(exported.Routes) != 1 {
+	if exported.Application.Name != "Imported App" || len(exported.Versions) != 1 || len(exported.Versions[0].Components) != 1 || len(exported.Versions[0].Exposes) != 1 {
 		t.Fatalf("unexpected exported application: %+v", exported)
 	}
+	if exported.Versions[0].Version.Label != "import-v1" || exported.Versions[0].Components[0].Image != "nginx:1.27" {
+		t.Fatalf("unexpected exported version: %+v", exported.Versions[0])
+	}
 
-	services, err := service.ApplicationComposeServices(ctx, cdTestUserId, imported.Id)
+	localEnv := loadLocalEnvironment(t, service)
+	preview, err := service.PreviewVersion(ctx, cdTestUserId, exported.Versions[0].Version.Id, localEnv.Id, "default", boolPtr(false))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(services) != 1 || services[0].ServiceName != "web" || services[0].DefaultPort != 80 {
-		t.Fatalf("unexpected compose services: %+v", services)
+	if !strings.Contains(preview, "image: nginx:1.27") {
+		t.Fatalf("unexpected preview:\n%s", preview)
 	}
-	configView, err := service.UpdateApplicationServiceConfig(ctx, cdTestUserId, imported.Id, "web", stringPtr("nginx:1.28"))
+
+	published, err := service.PublishVersion(ctx, cdTestUserId, exported.Versions[0].Version.Id)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if configView.Image == nil || *configView.Image != "nginx:1.28" {
-		t.Fatalf("unexpected service config: %+v", configView)
+	if published.Version.Status != status.VersionStatusPublished {
+		t.Fatalf("unexpected published status: %s", published.Version.Status)
 	}
-	resetView, err := service.UpdateApplicationServiceConfig(ctx, cdTestUserId, imported.Id, "web", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if resetView.Image != nil || resetView.BaseImage == nil || *resetView.BaseImage != "nginx" {
-		t.Fatalf("unexpected reset service config: %+v", resetView)
+	if _, err := service.UpdateVersion(ctx, cdTestUserId, published.Version.Id, cdto.VersionUpdateInput{Label: stringPtr("blocked")}); err == nil {
+		t.Fatal("expected published version to be immutable")
 	}
 }
 
@@ -286,14 +322,16 @@ func TestApplicationStatusUsesQueryRunner(t *testing.T) {
 	service, database := newCDIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	queryRunner := service.queryRunner.(*recordingQueryRunner)
-	app := createQueryTestApplication(t, service)
+	app, env, _ := createQueryTestApplicationWithService(t, service)
 	queryRunner.output = "[{\"Name\":\"demo\"}]"
 
-	output, err := service.ApplicationStatus(context.Background(), cdTestUserId, app.Id)
+	output, err := service.ApplicationStatus(context.Background(), cdTestUserId, app.Id, cdto.ApplicationServiceTargetInput{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if output != queryRunner.output || queryRunner.cwd != service.workspace.AppDir(app.Code) || queryRunner.name != "docker" || strings.Join(queryRunner.args, " ") != "compose -f docker-compose.yml ps --format json" {
+	wantCwd := service.workspace.ServiceDir(app.Code, env.Code, "default")
+	wantArgs := "compose -p query-app-local-default -f docker-compose.yml ps --format json"
+	if output != queryRunner.output || queryRunner.cwd != wantCwd || queryRunner.name != "docker" || strings.Join(queryRunner.args, " ") != wantArgs {
 		t.Fatalf("unexpected query invocation: %+v", queryRunner)
 	}
 }
@@ -302,8 +340,19 @@ func TestDeploymentContainerLogFallsBackToTailQuery(t *testing.T) {
 	service, database := newCDIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	queryRunner := service.queryRunner.(*recordingQueryRunner)
-	app := createQueryTestApplication(t, service)
-	deployment := model.Deployment{Id: "01KDEPLOYMENTLOG00000000001", ProjectId: app.ProjectId, ApplicationId: &app.Id, ApplicationName: app.Name, OperationType: "deploy", TriggerType: "manual", Status: status.WorkStatusRunning}
+	app, env, svc := createQueryTestApplicationWithService(t, service)
+	deployment := model.Deployment{
+		Id:              "01KDEPLOYMENTLOG00000000001",
+		ProjectId:       app.ProjectId,
+		ApplicationId:   &app.Id,
+		ApplicationName: app.Name,
+		ServiceId:       &svc.Id,
+		EnvironmentId:   &env.Id,
+		VersionId:       &svc.VersionId,
+		OperationType:   "deploy",
+		TriggerType:     "manual",
+		Status:          status.WorkStatusRunning,
+	}
 	if err := service.store.CreateDeployment(context.Background(), deployment); err != nil {
 		t.Fatal(err)
 	}
@@ -313,24 +362,55 @@ func TestDeploymentContainerLogFallsBackToTailQuery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Logs != "tail logs" || result.Source != "tail" || len(queryRunner.calls) != 2 || strings.Join(queryRunner.calls[1].args, " ") != "compose -f docker-compose.yml logs --tail 25" {
+	wantTailArgs := "compose -p query-app-local-default -f docker-compose.yml logs --tail 25"
+	if result.Logs != "tail logs" || result.Source != "tail" || len(queryRunner.calls) != 2 || strings.Join(queryRunner.calls[1].args, " ") != wantTailArgs {
 		t.Fatalf("unexpected fallback result or query calls: result=%+v calls=%+v", result, queryRunner.calls)
 	}
 }
 
-func createQueryTestApplication(t *testing.T, service Service) model.Application {
+func createQueryTestApplicationWithService(t *testing.T, service Service) (model.Application, model.Environment, model.Service) {
 	t.Helper()
 	app, err := service.CreateApplication(context.Background(), cdTestUserId, cdto.ApplicationCreateInput{ProjectId: cdTestProjectId, Name: "Query App", Code: "query-app", ImagePullPolicy: "missing"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return app
+	version, err := service.CreateVersion(context.Background(), cdTestUserId, cdto.VersionCreateInput{
+		ApplicationId: app.Id,
+		Label:         "v1",
+		Components:    []cdto.ComponentInput{{Name: "web", Image: "nginx"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := loadLocalEnvironment(t, service)
+	svc := model.Service{
+		Id:            "01KSERVICEQUERY000000000001",
+		ApplicationId: app.Id,
+		EnvironmentId: env.Id,
+		InstanceKey:   "default",
+		IsIngress:     true,
+		VersionId:     version.Version.Id,
+		Status:        status.ServiceStatusRunning,
+	}
+	if err := service.store.UpsertService(context.Background(), svc); err != nil {
+		t.Fatal(err)
+	}
+	return app, env, svc
+}
+
+func loadLocalEnvironment(t *testing.T, service Service) model.Environment {
+	t.Helper()
+	env, err := service.store.EnvironmentByProjectCode(context.Background(), cdTestProjectId, "local")
+	if err != nil {
+		t.Fatalf("expected seeded local environment: %v", err)
+	}
+	return env
 }
 
 func loadDeploymentForTest(t *testing.T, database *sqlx.DB, id string) model.Deployment {
 	t.Helper()
 	var deployment model.Deployment
-	if err := database.Get(&deployment, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id FROM deployment WHERE id = ?`, id); err != nil {
+	if err := database.Get(&deployment, `SELECT id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id FROM deployment WHERE id = ?`, id); err != nil {
 		t.Fatal(err)
 	}
 	return deployment

@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface UserRoleResp {
   id: string;
@@ -57,9 +57,11 @@ export interface UserRoleUpdateReq {
   role_ids: string[];
 }
 
-export interface UserDisableReq {}
+export interface UserDisableReq {
+}
 
-export interface UserEnableReq {}
+export interface UserEnableReq {
+}
 
 export interface UserPaginatedResp {
   items: UserListResp[];

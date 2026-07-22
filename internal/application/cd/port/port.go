@@ -24,11 +24,14 @@ type ExecutionLogStore interface {
 }
 
 type Workspace interface {
+	// AppDir is the application root under data/cd/{appCode}.
 	AppDir(appCode string) string
-	DeploymentLogPath(appCode string, deploymentID string) string
+	// ServiceDir is data/cd/{appCode}/{envCode}/{instanceKey}.
+	ServiceDir(appCode string, envCode string, instanceKey string) string
+	DeploymentLogPath(appCode string, envCode string, instanceKey string, deploymentID string) string
 	PhysicalDir(ctx context.Context) (string, error)
-	PhysicalAppDir(ctx context.Context, appCode string) (string, error)
-	WriteConfig(appCode string, path string, content string) error
+	PhysicalServiceDir(ctx context.Context, appCode string, envCode string, instanceKey string) (string, error)
+	WriteConfig(appCode string, envCode string, instanceKey string, path string, content string) error
 	RemoveAppDir(appCode string) error
 }
 

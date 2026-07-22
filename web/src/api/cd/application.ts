@@ -1,6 +1,4 @@
 import type {
-  ApplicationComposePreviewResp,
-  ApplicationComposePreviewReq,
   ApplicationCreateReq,
   ApplicationDeployReq,
   ApplicationLogsResp,
@@ -17,27 +15,19 @@ import type {
   ApplicationImportReq,
 } from '@/gen/proto/orbit/v1/application_bundle';
 import type {
-  ApplicationRouteListResp,
-  ApplicationRouteReq,
-  ApplicationRouteResp,
-} from '@/gen/proto/orbit/v1/application_route';
-import type {
-  ApplicationFileContentResp,
-  ConfigFileListResp,
-  ConfigFileReq,
-  ConfigFileResp,
-} from '@/gen/proto/orbit/v1/config_file';
-import type {
-  ApplicationServiceConfigListResp,
-  ApplicationServiceConfigResp,
-  ApplicationServiceConfigUpdateReq,
-  ComposeServiceListResp,
-} from '@/gen/proto/orbit/v1/service_config';
+  ServiceListResp,
+  ServiceResp,
+  VersionCreateReq,
+  VersionForkReq,
+  VersionListResp,
+  VersionPreviewReq,
+  VersionPreviewResp,
+  VersionResp,
+  VersionUpdateReq,
+} from '@/gen/proto/orbit/v1/version';
 import request from '@/utils/request';
 
-// 应用相关 API
 export const applicationApi = {
-  // 获取应用列表
   list(params?: {
     page?: number;
     per_page?: number;
@@ -47,92 +37,59 @@ export const applicationApi = {
     return request.get('/api/cd/application', { params });
   },
 
-  // 获取应用详情
   get(id: string): Promise<ApplicationResp> {
     return request.get(`/api/cd/application/${id}`);
   },
 
-  // 创建应用
   create(data: ApplicationCreateReq, params: { project_id: string }): Promise<ApplicationResp> {
     return request.post('/api/cd/application', data, { params });
   },
 
-  // 更新应用
   update(id: string, data: ApplicationUpdateReq): Promise<ApplicationResp> {
     return request.put(`/api/cd/application/${id}`, data);
   },
 
-  // 删除应用
   delete(id: string, removeDir: boolean = false): Promise<void> {
     return request.delete(`/api/cd/application/${id}`, {
       params: { remove_dir: removeDir },
     });
   },
 
-  // 手动触发部署
   deploy(id: string, data: ApplicationDeployReq): Promise<DeploymentActionResp> {
     return request.post(`/api/cd/application/${id}/deploy`, data);
   },
 
-  // 停止应用
   stop(id: string, data: ApplicationStopReq): Promise<DeploymentActionResp> {
     return request.post(`/api/cd/application/${id}/stop`, data);
   },
 
-  // 重启应用
   restart(id: string, data: ApplicationRestartReq): Promise<DeploymentActionResp> {
     return request.post(`/api/cd/application/${id}/restart`, data);
   },
 
-  // 获取应用状态
-  getStatus(id: string): Promise<ApplicationStatusResp> {
-    return request.get(`/api/cd/application/${id}/status`);
-  },
-
-  // 获取应用日志
-  getLogs(id: string, tail?: number): Promise<ApplicationLogsResp> {
-    return request.get(`/api/cd/application/${id}/logs`, { params: { tail } });
-  },
-
-  // 读取应用文件
-  readFile(id: string, fileId: string): Promise<ApplicationFileContentResp> {
-    return request.get(`/api/cd/application/${id}/file/${fileId}`);
-  },
-
-  // 写入应用文件
-  writeFile(id: string, fileId: string, data: ConfigFileReq): Promise<ConfigFileResp> {
-    return request.put(`/api/cd/application/${id}/file/${fileId}`, data);
-  },
-
-  // 创建应用文件
-  createFile(id: string, data: ConfigFileReq): Promise<ConfigFileResp> {
-    return request.post(`/api/cd/application/${id}/file`, data);
-  },
-
-  // 获取应用文件列表
-  listFiles(id: string): Promise<ConfigFileListResp> {
-    return request.get(`/api/cd/application/${id}/files`);
-  },
-
-  /** 预览部署时生成的 docker-compose.yml（模板渲染、镜像覆盖、路由 labels） */
-  previewCompose(
+  getStatus(
     id: string,
-    data: ApplicationComposePreviewReq
-  ): Promise<ApplicationComposePreviewResp> {
-    return request.post(`/api/cd/application/${id}/compose-preview`, data);
+    params?: { environment_id?: string; instance_key?: string; service_id?: string }
+  ): Promise<ApplicationStatusResp> {
+    return request.get(`/api/cd/application/${id}/status`, { params });
   },
 
-  // 删除应用文件
-  deleteFile(id: string, fileId: string): Promise<void> {
-    return request.delete(`/api/cd/application/${id}/file/${fileId}`);
+  getLogs(
+    id: string,
+    params?: {
+      tail?: number;
+      environment_id?: string;
+      instance_key?: string;
+      service_id?: string;
+    }
+  ): Promise<ApplicationLogsResp> {
+    return request.get(`/api/cd/application/${id}/logs`, { params });
   },
 
-  // 导出应用
   exportApplication(id: string): Promise<ApplicationExportResp> {
     return request.get(`/api/cd/application/${id}/export`);
   },
 
-  // 导入应用
   importApplication(
     data: ApplicationImportReq,
     params: { project_id: string }
@@ -140,46 +97,42 @@ export const applicationApi = {
     return request.post('/api/cd/application/import', data, { params });
   },
 
-  // 获取路由托管列表
-  listRoutes(id: string): Promise<ApplicationRouteListResp> {
-    return request.get(`/api/cd/application/${id}/route`);
+  listServices(id: string): Promise<ServiceListResp> {
+    return request.get(`/api/cd/application/${id}/service`);
   },
 
-  // 创建路由托管
-  createRoute(id: string, data: ApplicationRouteReq): Promise<ApplicationRouteResp> {
-    return request.post(`/api/cd/application/${id}/route`, data);
+  getService(id: string): Promise<ServiceResp | null> {
+    return applicationApi.listServices(id).then((resp) => {
+      const items = resp.items ?? [];
+      return items[0] ?? null;
+    });
   },
 
-  // 更新路由托管
-  updateRoute(
-    id: string,
-    routeId: string,
-    data: ApplicationRouteReq
-  ): Promise<ApplicationRouteResp> {
-    return request.put(`/api/cd/application/${id}/route/${routeId}`, data);
+  listVersions(id: string): Promise<VersionListResp> {
+    return request.get(`/api/cd/application/${id}/version`);
   },
 
-  // 删除路由托管
-  deleteRoute(id: string, routeId: string): Promise<void> {
-    return request.delete(`/api/cd/application/${id}/route/${routeId}`);
+  createVersion(id: string, data: VersionCreateReq): Promise<VersionResp> {
+    return request.post(`/api/cd/application/${id}/version`, data);
   },
 
-  // 解析 docker-compose service 列表
-  listComposeServices(id: string): Promise<ComposeServiceListResp> {
-    return request.get(`/api/cd/application/${id}/compose-service`);
+  getVersion(versionId: string): Promise<VersionResp> {
+    return request.get(`/api/cd/version/${versionId}`);
   },
 
-  // 获取 service 级配置
-  listServiceConfigs(id: string): Promise<ApplicationServiceConfigListResp> {
-    return request.get(`/api/cd/application/${id}/service-config`);
+  updateVersion(versionId: string, data: VersionUpdateReq): Promise<VersionResp> {
+    return request.put(`/api/cd/version/${versionId}`, data);
   },
 
-  // 更新 service 级配置
-  updateServiceConfig(
-    id: string,
-    serviceName: string,
-    data: ApplicationServiceConfigUpdateReq
-  ): Promise<ApplicationServiceConfigResp> {
-    return request.put(`/api/cd/application/${id}/service-config/${serviceName}`, data);
+  publishVersion(versionId: string): Promise<VersionResp> {
+    return request.post(`/api/cd/version/${versionId}/publish`);
+  },
+
+  forkVersion(versionId: string, data: VersionForkReq): Promise<VersionResp> {
+    return request.post(`/api/cd/version/${versionId}/fork`, data);
+  },
+
+  previewVersion(versionId: string, data: VersionPreviewReq): Promise<VersionPreviewResp> {
+    return request.post(`/api/cd/version/${versionId}/preview`, data);
   },
 };

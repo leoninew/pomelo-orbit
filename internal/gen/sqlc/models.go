@@ -14,41 +14,9 @@ type Application struct {
 	Name            string         `db:"name"`
 	Code            string         `db:"code"`
 	ImagePullPolicy string         `db:"image_pull_policy"`
-	Status          string         `db:"status"`
 	CreatedAt       time.Time      `db:"created_at"`
 	UpdatedAt       time.Time      `db:"updated_at"`
-	RouteManaged    int64          `db:"route_managed"`
 	ProjectID       sql.NullString `db:"project_id"`
-}
-
-type ApplicationConfigFile struct {
-	ID            string    `db:"id"`
-	ApplicationID string    `db:"application_id"`
-	Path          string    `db:"path"`
-	Content       string    `db:"content"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-}
-
-type ApplicationRoute struct {
-	ID            string    `db:"id"`
-	ApplicationID string    `db:"application_id"`
-	ServiceName   string    `db:"service_name"`
-	Domain        string    `db:"domain"`
-	Port          int64     `db:"port"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-}
-
-type ApplicationService struct {
-	ID            string         `db:"id"`
-	ApplicationID string         `db:"application_id"`
-	ServiceName   string         `db:"service_name"`
-	Image         sql.NullString `db:"image"`
-	Environment   sql.NullString `db:"environment"`
-	Volumes       sql.NullString `db:"volumes"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
 }
 
 type Artifact struct {
@@ -95,6 +63,25 @@ type BuildStage struct {
 	ProjectID   sql.NullString `db:"project_id"`
 }
 
+type Component struct {
+	ID              string         `db:"id"`
+	VersionID       string         `db:"version_id"`
+	Name            string         `db:"name"`
+	Image           string         `db:"image"`
+	CommandJson     sql.NullString `db:"command_json"`
+	ArgsJson        sql.NullString `db:"args_json"`
+	EnvJson         sql.NullString `db:"env_json"`
+	PortsJson       sql.NullString `db:"ports_json"`
+	MountsJson      sql.NullString `db:"mounts_json"`
+	NetworksJson    sql.NullString `db:"networks_json"`
+	DependsOnJson   sql.NullString `db:"depends_on_json"`
+	HealthcheckJson sql.NullString `db:"healthcheck_json"`
+	ResourcesJson   sql.NullString `db:"resources_json"`
+	PullPolicy      sql.NullString `db:"pull_policy"`
+	CreatedAt       time.Time      `db:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"`
+}
+
 type Credential struct {
 	ID            string         `db:"id"`
 	Name          string         `db:"name"`
@@ -121,6 +108,46 @@ type Deployment struct {
 	RollbackFromDeploymentID sql.NullString `db:"rollback_from_deployment_id"`
 	ProjectID                sql.NullString `db:"project_id"`
 	CommandText              string         `db:"command_text"`
+	VersionID                sql.NullString `db:"version_id"`
+	ServiceID                sql.NullString `db:"service_id"`
+	OptionsJson              sql.NullString `db:"options_json"`
+	EnvironmentID            sql.NullString `db:"environment_id"`
+}
+
+type Environment struct {
+	ID          string         `db:"id"`
+	ProjectID   string         `db:"project_id"`
+	Code        string         `db:"code"`
+	Name        string         `db:"name"`
+	Description sql.NullString `db:"description"`
+	CreatedAt   time.Time      `db:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at"`
+}
+
+type EnvironmentBinding struct {
+	ID            string         `db:"id"`
+	EnvironmentID string         `db:"environment_id"`
+	ComponentName string         `db:"component_name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	DomainsJson   string         `db:"domains_json"`
+	Entrypoint    string         `db:"entrypoint"`
+	TlsMode       string         `db:"tls_mode"`
+	SniHost       sql.NullString `db:"sni_host"`
+	Note          sql.NullString `db:"note"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+}
+
+type Expose struct {
+	ID            string         `db:"id"`
+	VersionID     string         `db:"version_id"`
+	ComponentName string         `db:"component_name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	PathPrefix    sql.NullString `db:"path_prefix"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
 }
 
 type LoginAttempt struct {
@@ -273,6 +300,19 @@ type Route struct {
 	ProjectID    sql.NullString `db:"project_id"`
 }
 
+type Service struct {
+	ID                      string         `db:"id"`
+	ApplicationID           string         `db:"application_id"`
+	EnvironmentID           string         `db:"environment_id"`
+	InstanceKey             string         `db:"instance_key"`
+	IsIngress               int64          `db:"is_ingress"`
+	VersionID               string         `db:"version_id"`
+	LastSuccessfulVersionID sql.NullString `db:"last_successful_version_id"`
+	Status                  string         `db:"status"`
+	CreatedAt               time.Time      `db:"created_at"`
+	UpdatedAt               time.Time      `db:"updated_at"`
+}
+
 type StageRun struct {
 	ID            string         `db:"id"`
 	PipelineRunID string         `db:"pipeline_run_id"`
@@ -303,4 +343,16 @@ type UserRole struct {
 	UserID    string    `db:"user_id"`
 	RoleID    string    `db:"role_id"`
 	CreatedAt time.Time `db:"created_at"`
+}
+
+type Version struct {
+	ID                   string         `db:"id"`
+	ApplicationID        string         `db:"application_id"`
+	Label                string         `db:"label"`
+	Status               string         `db:"status"`
+	EnvJson              sql.NullString `db:"env_json"`
+	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
+	Note                 sql.NullString `db:"note"`
+	CreatedAt            time.Time      `db:"created_at"`
+	UpdatedAt            time.Time      `db:"updated_at"`
 }

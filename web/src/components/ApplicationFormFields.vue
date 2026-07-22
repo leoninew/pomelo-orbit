@@ -42,20 +42,6 @@
         @update:model-value="updateField('image_pull_policy', String($event))"
       />
     </div>
-
-    <div class="flex items-center gap-2">
-      <input
-        id="route_managed"
-        :checked="form.route_managed"
-        type="checkbox"
-        class="app-checkbox"
-        @change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
-      />
-      <label for="route_managed" class="text-sm font-medium text-foreground">
-        {{ t('application.enableRouteManaged') }}
-      </label>
-    </div>
-    <p class="app-field-hint">{{ t('application.routeManagedHint') }}</p>
   </div>
 </template>
 

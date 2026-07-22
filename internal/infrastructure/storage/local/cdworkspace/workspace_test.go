@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestWorkspaceUsesLogicalDataRootForApplicationFiles(t *testing.T) {
+func TestWorkspaceUsesLogicalDataRootForServiceFiles(t *testing.T) {
 	workspace := NewWithResolver("data", func(ctx context.Context, logicalDataRoot string) (string, error) {
 		return t.TempDir(), nil
 	})
@@ -17,7 +17,10 @@ func TestWorkspaceUsesLogicalDataRootForApplicationFiles(t *testing.T) {
 	if got := workspace.AppDir("demo"); got != filepath.Join("data", "cd", "demo") {
 		t.Fatalf("unexpected app dir: %q", got)
 	}
-	if got := workspace.DeploymentLogPath("demo", "deploy-1"); got != filepath.Join("data", "cd", "demo", "deployments", "deploy-1.log") {
+	if got := workspace.ServiceDir("demo", "local", "default"); got != filepath.Join("data", "cd", "demo", "local", "default") {
+		t.Fatalf("unexpected service dir: %q", got)
+	}
+	if got := workspace.DeploymentLogPath("demo", "local", "default", "deploy-1"); got != filepath.Join("data", "cd", "demo", "local", "default", "deployments", "deploy-1.log") {
 		t.Fatalf("unexpected deployment log path: %q", got)
 	}
 }
@@ -26,10 +29,10 @@ func TestWorkspaceWritesConfigAndNormalizesInitScriptLineEndings(t *testing.T) {
 	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
 	content := "#!/bin/bash\r\nset -e\r\necho ok\r"
 
-	if err := workspace.WriteConfig("demo", "init.sh", content); err != nil {
+	if err := workspace.WriteConfig("demo", "local", "default", "init.sh", content); err != nil {
 		t.Fatal(err)
 	}
-	written, err := os.ReadFile(filepath.Join(workspace.AppDir("demo"), "init.sh"))
+	written, err := os.ReadFile(filepath.Join(workspace.ServiceDir("demo", "local", "default"), "init.sh"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,10 +45,10 @@ func TestWorkspaceWritesNonInitConfigWithoutChangingContent(t *testing.T) {
 	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
 	content := "services:\r\n  app:\r\n    image: nginx\r\n"
 
-	if err := workspace.WriteConfig("demo", "docker-compose.yml", content); err != nil {
+	if err := workspace.WriteConfig("demo", "local", "default", "docker-compose.yml", content); err != nil {
 		t.Fatal(err)
 	}
-	written, err := os.ReadFile(filepath.Join(workspace.AppDir("demo"), "docker-compose.yml"))
+	written, err := os.ReadFile(filepath.Join(workspace.ServiceDir("demo", "local", "default"), "docker-compose.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +59,7 @@ func TestWorkspaceWritesNonInitConfigWithoutChangingContent(t *testing.T) {
 
 func TestWorkspaceRemovesApplicationDirectory(t *testing.T) {
 	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
-	if err := workspace.WriteConfig("demo", "docker-compose.yml", "services: {}\n"); err != nil {
+	if err := workspace.WriteConfig("demo", "local", "default", "docker-compose.yml", "services: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -84,13 +87,13 @@ func TestWorkspaceUsesPhysicalDataRootForComposePaths(t *testing.T) {
 	if physicalDir != filepath.ToSlash(physicalRoot) {
 		t.Fatalf("unexpected physical dir: %q", physicalDir)
 	}
-	physicalAppDir, err := workspace.PhysicalAppDir(context.Background(), "demo")
+	physicalServiceDir, err := workspace.PhysicalServiceDir(context.Background(), "demo", "local", "default")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.ToSlash(filepath.Join(physicalRoot, "cd", "demo"))
-	if physicalAppDir != want {
-		t.Fatalf("unexpected physical app dir: %q", physicalAppDir)
+	want := filepath.ToSlash(filepath.Join(physicalRoot, "cd", "demo", "local", "default"))
+	if physicalServiceDir != want {
+		t.Fatalf("unexpected physical service dir: %q", physicalServiceDir)
 	}
 }
 
@@ -104,7 +107,7 @@ func TestWorkspaceCachesPhysicalDataRootResolver(t *testing.T) {
 	if _, err := workspace.PhysicalDir(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := workspace.PhysicalAppDir(context.Background(), "demo"); err != nil {
+	if _, err := workspace.PhysicalServiceDir(context.Background(), "demo", "local", "default"); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 1 {
@@ -121,7 +124,7 @@ func TestWorkspaceReturnsPhysicalDataRootError(t *testing.T) {
 	if _, err := workspace.PhysicalDir(context.Background()); !errors.Is(err, wantErr) {
 		t.Fatalf("expected physical dir error %v, got %v", wantErr, err)
 	}
-	if _, err := workspace.PhysicalAppDir(context.Background(), "demo"); !errors.Is(err, wantErr) {
-		t.Fatalf("expected physical app dir error %v, got %v", wantErr, err)
+	if _, err := workspace.PhysicalServiceDir(context.Background(), "demo", "local", "default"); !errors.Is(err, wantErr) {
+		t.Fatalf("expected physical service dir error %v, got %v", wantErr, err)
 	}
 }

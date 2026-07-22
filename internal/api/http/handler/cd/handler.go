@@ -6,6 +6,7 @@ import (
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"github.com/gin-gonic/gin"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
@@ -36,7 +37,14 @@ func (h Handler) ListApplications(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	resp := applicationResponses(items.Items)
+	services := map[string][]model.Service{}
+	for _, app := range items.Items {
+		list, err := h.service.ListServicesByApplication(c.Request.Context(), current.Id, app.Id)
+		if err == nil {
+			services[app.Id] = list
+		}
+	}
+	resp := applicationResponses(items.Items, services)
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ApplicationPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(items.Total), Page: int32(items.Page), PerPage: int32(items.PerPage), Pages: int32(transportresponse.PageCount(items.Total, items.PerPage))})
 }
 
@@ -55,7 +63,7 @@ func (h Handler) CreateApplication(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	resp := applicationResponse(app)
+	resp := applicationResponse(app, nil)
 	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
@@ -69,7 +77,8 @@ func (h Handler) GetApplication(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	resp := applicationResponse(app)
+	services, _ := h.service.ListServicesByApplication(c.Request.Context(), current.Id, app.Id)
+	resp := applicationResponse(app, services)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
@@ -88,7 +97,8 @@ func (h Handler) UpdateApplication(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	resp := applicationResponse(app)
+	services, _ := h.service.ListServicesByApplication(c.Request.Context(), current.Id, app.Id)
+	resp := applicationResponse(app, services)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 

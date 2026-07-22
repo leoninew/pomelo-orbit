@@ -2,44 +2,53 @@ syntax = "proto3";
 
 package orbit.v1;
 
-
 message ApplicationResp {
   string id = 1;
   optional string project_id = 2;
   string name = 3;
   string code = 4;
   string image_pull_policy = 5;
-  string status = 6;
-  bool route_managed = 7;
-  string created_at = 8;
-  string updated_at = 9;
+  // service_status is runtime binding status when a Service exists; empty if never deployed.
+  string service_status = 6;
+  string created_at = 7;
+  string updated_at = 8;
+  optional string service_id = 9;
+  optional string version_id = 10;
+  int32 service_count = 11;
 }
 
 message ApplicationCreateReq {
   string name = 1;
   string code = 2;
   string image_pull_policy = 3;
-  bool route_managed = 4;
 }
 
 message ApplicationUpdateReq {
   optional string name = 1;
   optional string code = 2;
   optional string image_pull_policy = 3;
-  optional bool route_managed = 4;
 }
 
 message ApplicationDeployReq {
-  bool force_recreate = 1;
+  string version_id = 1;
+  string environment_id = 2;
+  string instance_key = 3;
+  optional bool attach_ingress = 4;
+  bool force_recreate = 5;
 }
 
 message ApplicationStopReq {
   bool remove_volumes = 1;
+  optional string environment_id = 2;
+  optional string instance_key = 3;
+  optional string service_id = 4;
 }
 
-message ApplicationRestartReq {}
-
-message ApplicationComposePreviewReq {}
+message ApplicationRestartReq {
+  optional string environment_id = 1;
+  optional string instance_key = 2;
+  optional string service_id = 3;
+}
 
 message DeploymentActionResp {
   string deployment_id = 1;
@@ -51,10 +60,6 @@ message ApplicationStatusResp {
 
 message ApplicationLogsResp {
   string logs = 1;
-}
-
-message ApplicationComposePreviewResp {
-  string compose_yaml = 1;
 }
 
 message ApplicationPaginatedResp {

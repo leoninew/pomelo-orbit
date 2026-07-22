@@ -10,22 +10,12 @@ import (
 )
 
 type Querier interface {
-	ApplicationByCode(ctx context.Context, code string) (ApplicationByCodeRow, error)
-	ApplicationByID(ctx context.Context, id string) (ApplicationByIDRow, error)
-	ApplicationByName(ctx context.Context, name string) (ApplicationByNameRow, error)
-	ApplicationRouteByID(ctx context.Context, id string) (ApplicationRoute, error)
-	ApplicationServiceConfigByName(ctx context.Context, arg ApplicationServiceConfigByNameParams) (ApplicationService, error)
-	ApplicationServiceConfigExists(ctx context.Context, id string) (int64, error)
-	ConfigFileByID(ctx context.Context, id string) (ApplicationConfigFile, error)
-	ConfigFilesByApplication(ctx context.Context, applicationID string) ([]ApplicationConfigFile, error)
 	CountProjectApplications(ctx context.Context, projectID sql.NullString) (int64, error)
 	CountProjectRepositories(ctx context.Context, projectID sql.NullString) (int64, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	CredentialByID(ctx context.Context, id string) (CredentialByIDRow, error)
 	CredentialExists(ctx context.Context, id string) (int64, error)
 	CredentialName(ctx context.Context, id string) (string, error)
-	DeleteApplicationRoute(ctx context.Context, id string) error
-	DeleteConfigFile(ctx context.Context, id string) error
 	DeleteCredential(ctx context.Context, id string) error
 	DeletePipelineTemplate(ctx context.Context, id string) error
 	DeleteRepositoryWebhook(ctx context.Context, id string) error
@@ -52,9 +42,7 @@ type Querier interface {
 	RoleByCode(ctx context.Context, code string) (Role, error)
 	RoleByID(ctx context.Context, id string) (Role, error)
 	RoleByName(ctx context.Context, name string) (Role, error)
-	RoutesByApplication(ctx context.Context, applicationID string) ([]ApplicationRoute, error)
 	SaveLoginHistory(ctx context.Context, arg SaveLoginHistoryParams) error
-	ServiceConfigsByApplication(ctx context.Context, applicationID string) ([]ApplicationService, error)
 	TaskToClaim(ctx context.Context, arg TaskToClaimParams) (BackgroundTask, error)
 	UserByEmail(ctx context.Context, email sql.NullString) (UserByEmailRow, error)
 	UserByID(ctx context.Context, id string) (UserByIDRow, error)

@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package orbit.v1;
+
+message ComponentReq {
+  string name = 1;
+  string image = 2;
+  optional string command_json = 3;
+  optional string args_json = 4;
+  optional string env_json = 5;
+  optional string ports_json = 6;
+  optional string mounts_json = 7;
+  optional string networks_json = 8;
+  optional string depends_on_json = 9;
+  optional string healthcheck_json = 10;
+  optional string resources_json = 11;
+  optional string pull_policy = 12;
+}
+
+message ComponentResp {
+  string id = 1;
+  string version_id = 2;
+  string name = 3;
+  string image = 4;
+  optional string command_json = 5;
+  optional string args_json = 6;
+  optional string env_json = 7;
+  optional string ports_json = 8;
+  optional string mounts_json = 9;
+  optional string networks_json = 10;
+  optional string depends_on_json = 11;
+  optional string healthcheck_json = 12;
+  optional string resources_json = 13;
+  optional string pull_policy = 14;
+  string created_at = 15;
+  string updated_at = 16;
+}
+
+message ExposeReq {
+  string component_name = 1;
+  string protocol = 2;
+  int32 container_port = 3;
+  optional string path_prefix = 4;
+}
+
+message ExposeResp {
+  string id = 1;
+  string version_id = 2;
+  string component_name = 3;
+  string protocol = 4;
+  int32 container_port = 5;
+  optional string path_prefix = 6;
+  string created_at = 7;
+  string updated_at = 8;
+}
+
+message VersionCreateReq {
+  string application_id = 1;
+  string label = 2;
+  optional string env_json = 3;
+  optional string note = 4;
+  repeated ComponentReq components = 5;
+  repeated ExposeReq exposes = 6;
+}
+
+message VersionUpdateReq {
+  optional string label = 1;
+  optional string env_json = 2;
+  optional string note = 3;
+  repeated ComponentReq components = 4;
+  repeated ExposeReq exposes = 5;
+}
+
+message VersionForkReq {
+  string label = 1;
+}
+
+message VersionResp {
+  string id = 1;
+  string application_id = 2;
+  string label = 3;
+  string status = 4;
+  optional string env_json = 5;
+  optional string created_from_version_id = 6;
+  optional string note = 7;
+  string created_at = 8;
+  string updated_at = 9;
+  repeated ComponentResp components = 10;
+  repeated ExposeResp exposes = 11;
+}
+
+message VersionListResp {
+  repeated VersionResp items = 1;
+}
+
+message VersionPreviewReq {
+  string environment_id = 1;
+  optional string instance_key = 2;
+  optional bool attach_ingress = 3;
+}
+
+message VersionPreviewResp {
+  string compose_yaml = 1;
+}
+
+message ServiceResp {
+  string id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string instance_key = 4;
+  bool is_ingress = 5;
+  string version_id = 6;
+  optional string last_successful_version_id = 7;
+  string status = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message ServiceListResp {
+  repeated ServiceResp items = 1;
+}

@@ -2,29 +2,25 @@ syntax = "proto3";
 
 package orbit.v1;
 
-
-import "orbit/v1/application_route.proto";
-import "orbit/v1/config_file.proto";
-import "orbit/v1/service_config.proto";
+import "orbit/v1/version.proto";
 
 message ApplicationExportResp {
-  string version = 1;
-  string name = 2;
-  string code = 3;
-  string image_pull_policy = 4;
-  bool route_managed = 5;
-  repeated ApplicationExportConfigFileResp config_files = 6;
-  repeated ApplicationServiceConfigExportResp service_configs = 7;
-  repeated ApplicationExportRouteResp routes = 8;
+  string id = 1;
+  optional string project_id = 2;
+  string name = 3;
+  string code = 4;
+  string image_pull_policy = 5;
+  repeated VersionResp versions = 6;
+  repeated ServiceResp services = 7;
 }
 
 message ApplicationImportReq {
-  string version = 1;
-  string name = 2;
-  string code = 3;
-  string image_pull_policy = 4;
-  bool route_managed = 5;
-  repeated ConfigFileReq config_files = 6;
-  repeated ApplicationServiceConfigImportReq service_configs = 7;
-  repeated ApplicationRouteReq routes = 8;
+  string name = 1;
+  string code = 2;
+  string image_pull_policy = 3;
+  string version_label = 4;
+  optional string version_env_json = 5;
+  optional string version_note = 6;
+  repeated ComponentReq components = 7;
+  repeated ExposeReq exposes = 8;
 }

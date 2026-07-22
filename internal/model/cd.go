@@ -8,10 +8,94 @@ type Application struct {
 	Name            string    `db:"name"`
 	Code            string    `db:"code"`
 	ImagePullPolicy string    `db:"image_pull_policy"`
-	Status          string    `db:"status"`
-	RouteManaged    bool      `db:"route_managed"`
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
+}
+
+// Version is application static specification metadata (business data).
+type Version struct {
+	Id                   string    `db:"id"`
+	ApplicationId        string    `db:"application_id"`
+	Label                string    `db:"label"`
+	Status               string    `db:"status"`
+	EnvJSON              *string   `db:"env_json"`
+	CreatedFromVersionId *string   `db:"created_from_version_id"`
+	Note                 *string   `db:"note"`
+	CreatedAt            time.Time `db:"created_at"`
+	UpdatedAt            time.Time `db:"updated_at"`
+}
+
+// Component is a version-scoped specification unit (own table).
+type Component struct {
+	Id              string    `db:"id"`
+	VersionId       string    `db:"version_id"`
+	Name            string    `db:"name"`
+	Image           string    `db:"image"`
+	CommandJSON     *string   `db:"command_json"`
+	ArgsJSON        *string   `db:"args_json"`
+	EnvJSON         *string   `db:"env_json"`
+	PortsJSON       *string   `db:"ports_json"`
+	MountsJSON      *string   `db:"mounts_json"`
+	NetworksJSON    *string   `db:"networks_json"`
+	DependsOnJSON   *string   `db:"depends_on_json"`
+	HealthcheckJSON *string   `db:"healthcheck_json"`
+	ResourcesJSON   *string   `db:"resources_json"`
+	PullPolicy      *string   `db:"pull_policy"`
+	CreatedAt       time.Time `db:"created_at"`
+	UpdatedAt       time.Time `db:"updated_at"`
+}
+
+// Expose is version-scoped protocol/port exposure (no domain).
+type Expose struct {
+	Id            string    `db:"id"`
+	VersionId     string    `db:"version_id"`
+	ComponentName string    `db:"component_name"`
+	Protocol      string    `db:"protocol"`
+	ContainerPort int       `db:"container_port"`
+	PathPrefix    *string   `db:"path_prefix"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+}
+
+// Environment is a project-scoped deploy target.
+type Environment struct {
+	Id          string    `db:"id"`
+	ProjectId   string    `db:"project_id"`
+	Code        string    `db:"code"`
+	Name        string    `db:"name"`
+	Description *string   `db:"description"`
+	CreatedAt   time.Time `db:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at"`
+}
+
+// EnvironmentBinding maps expose keys to domain/entrypoint/TLS on an environment.
+type EnvironmentBinding struct {
+	Id            string    `db:"id"`
+	EnvironmentId string    `db:"environment_id"`
+	ComponentName string    `db:"component_name"`
+	Protocol      string    `db:"protocol"`
+	ContainerPort int       `db:"container_port"`
+	DomainsJSON   string    `db:"domains_json"`
+	Entrypoint    string    `db:"entrypoint"`
+	TLSMode       string    `db:"tls_mode"`
+	SNIHost       *string   `db:"sni_host"`
+	Note          *string   `db:"note"`
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+}
+
+// Service is the runtime binding of an application instance (business data).
+type Service struct {
+	Id                      string    `db:"id"`
+	ApplicationId           string    `db:"application_id"`
+	EnvironmentId           string    `db:"environment_id"`
+	InstanceKey             string    `db:"instance_key"`
+	IsIngress               bool      `db:"is_ingress"`
+	VersionId               string    `db:"version_id"`
+	LastSuccessfulVersionId *string   `db:"last_successful_version_id"`
+	Status                  string    `db:"status"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
 }
 
 type Deployment struct {
@@ -19,6 +103,10 @@ type Deployment struct {
 	ProjectId                *string    `db:"project_id"`
 	ApplicationId            *string    `db:"application_id"`
 	ApplicationName          string     `db:"application_name"`
+	VersionId                *string    `db:"version_id"`
+	ServiceId                *string    `db:"service_id"`
+	EnvironmentId            *string    `db:"environment_id"`
+	OptionsJSON              *string    `db:"options_json"`
 	OperationType            string     `db:"operation_type"`
 	TriggerType              string     `db:"trigger_type"`
 	CommandText              string     `db:"command_text"`
@@ -30,36 +118,6 @@ type Deployment struct {
 	ErrorMessage             *string    `db:"error_message"`
 	IsRollback               bool       `db:"is_rollback"`
 	RollbackFromDeploymentId *string    `db:"rollback_from_deployment_id"`
-}
-
-type ApplicationConfigFile struct {
-	Id            string    `db:"id"`
-	ApplicationId string    `db:"application_id"`
-	Path          string    `db:"path"`
-	Content       string    `db:"content"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-}
-
-type ApplicationServiceConfig struct {
-	Id            string    `db:"id"`
-	ApplicationId string    `db:"application_id"`
-	ServiceName   string    `db:"service_name"`
-	Image         *string   `db:"image"`
-	Environment   *string   `db:"environment"`
-	Volumes       *string   `db:"volumes"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
-}
-
-type ApplicationRoute struct {
-	Id            string    `db:"id"`
-	ApplicationId string    `db:"application_id"`
-	ServiceName   string    `db:"service_name"`
-	Domain        string    `db:"domain"`
-	Port          int       `db:"port"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 type Route struct {

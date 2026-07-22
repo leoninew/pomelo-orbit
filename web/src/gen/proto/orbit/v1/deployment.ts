@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface DeploymentLogsResp {
   logs: string;
@@ -38,9 +38,14 @@ export interface DeploymentResp {
   is_rollback: boolean;
   rollback_from_deployment_id?: string | undefined;
   created_at: string;
+  version_id?: string | undefined;
+  service_id?: string | undefined;
+  options_json?: string | undefined;
+  environment_id?: string | undefined;
 }
 
-export interface DeploymentCancelReq {}
+export interface DeploymentCancelReq {
+}
 
 export interface DeploymentPaginatedResp {
   items: DeploymentResp[];

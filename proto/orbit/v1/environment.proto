@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package orbit.v1;
+
+message EnvironmentCreateReq {
+  string project_id = 1;
+  string code = 2;
+  string name = 3;
+  optional string description = 4;
+}
+
+message EnvironmentUpdateReq {
+  optional string name = 1;
+  optional string description = 2;
+}
+
+message EnvironmentBindingReq {
+  string component_name = 1;
+  string protocol = 2;
+  int32 container_port = 3;
+  repeated string domains = 4;
+  string entrypoint = 5;
+  string tls_mode = 6;
+  optional string sni_host = 7;
+  optional string note = 8;
+}
+
+message EnvironmentBindingReplaceReq {
+  repeated EnvironmentBindingReq bindings = 1;
+}
+
+message EnvironmentBindingResp {
+  string id = 1;
+  string environment_id = 2;
+  string component_name = 3;
+  string protocol = 4;
+  int32 container_port = 5;
+  repeated string domains = 6;
+  string entrypoint = 7;
+  string tls_mode = 8;
+  optional string sni_host = 9;
+  optional string note = 10;
+  string created_at = 11;
+  string updated_at = 12;
+}
+
+message EnvironmentResp {
+  string id = 1;
+  string project_id = 2;
+  string code = 3;
+  string name = 4;
+  optional string description = 5;
+  string created_at = 6;
+  string updated_at = 7;
+  repeated EnvironmentBindingResp bindings = 8;
+}
+
+message EnvironmentPaginatedResp {
+  repeated EnvironmentResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

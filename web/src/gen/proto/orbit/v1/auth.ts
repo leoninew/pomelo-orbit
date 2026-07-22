@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface LoginHistoryResp {
   id: string;
@@ -53,7 +53,8 @@ export interface LoginReq {
   turnstile_token: string;
 }
 
-export interface LogoutReq {}
+export interface LogoutReq {
+}
 
 export interface PasswordChangeReq {
   old_password: string;

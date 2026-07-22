@@ -4,7 +4,9 @@
 //   protoc               unknown
 // source: orbit/v1/artifact.proto
 
-export const protobufPackage = 'orbit.v1';
+/* eslint-disable */
+
+export const protobufPackage = "orbit.v1";
 
 export interface ArtifactResp {
   id: string;

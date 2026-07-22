@@ -1,0 +1,382 @@
+package cdsvc
+
+import (
+	"context"
+	"errors"
+	"strings"
+
+	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+)
+
+func (s Service) ListVersions(ctx context.Context, userId string, applicationId string) ([]cdto.VersionView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+	if err != nil {
+		return nil, err
+	}
+	versions, err := s.store.ListVersions(ctx, app.Id)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list versions", err)
+	}
+	views := make([]cdto.VersionView, 0, len(versions))
+	for _, version := range versions {
+		view, err := s.versionView(ctx, version)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, view)
+	}
+	return views, nil
+}
+
+func (s Service) VersionForUser(ctx context.Context, userId string, versionId string) (cdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	return s.versionView(ctx, version)
+}
+
+func (s Service) CreateVersion(ctx context.Context, userId string, input cdto.VersionCreateInput) (cdto.VersionView, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, input.ApplicationId)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	label := strings.TrimSpace(input.Label)
+	if label == "" || len(label) > 128 {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
+	}
+	components, err := normalizeComponents(input.Components)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	if err := validateComponents(components); err != nil {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	exposes, err := normalizeExposes(input.Exposes)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	if err := validateExposes(exposes, components); err != nil {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	version := model.Version{
+		Id:            idutil.NewId(),
+		ApplicationId: app.Id,
+		Label:         label,
+		Status:        status.VersionStatusUnpublished,
+		EnvJSON:       normalizeOptionalText(input.EnvJSON),
+		Note:          normalizeOptionalText(input.Note),
+	}
+	for i := range components {
+		components[i].Id = idutil.NewId()
+		components[i].VersionId = version.Id
+	}
+	for i := range exposes {
+		exposes[i].Id = idutil.NewId()
+		exposes[i].VersionId = version.Id
+	}
+	if err := s.store.CreateVersionWithComponentsAndExposes(ctx, version, components, exposes); err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to create version", err)
+	}
+	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) UpdateVersion(ctx context.Context, userId string, versionId string, input cdto.VersionUpdateInput) (cdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	if version.Status == status.VersionStatusPublished {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, "Published version is immutable")
+	}
+	if input.Label != nil {
+		label := strings.TrimSpace(*input.Label)
+		if label == "" || len(label) > 128 {
+			return cdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
+		}
+		version.Label = label
+	}
+	if input.EnvJSON != nil {
+		version.EnvJSON = normalizeOptionalText(input.EnvJSON)
+	}
+	if input.Note != nil {
+		version.Note = normalizeOptionalText(input.Note)
+	}
+	if err := s.store.UpdateVersion(ctx, version); err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to update version", err)
+	}
+	var components []model.Component
+	if input.Components != nil {
+		components, err = normalizeComponents(*input.Components)
+		if err != nil {
+			return cdto.VersionView{}, err
+		}
+		if err := validateComponents(components); err != nil {
+			return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+		}
+		for i := range components {
+			components[i].Id = idutil.NewId()
+			components[i].VersionId = version.Id
+		}
+		if err := s.store.ReplaceComponents(ctx, version.Id, components); err != nil {
+			return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to replace components", err)
+		}
+	} else {
+		components, err = s.store.ComponentsByVersion(ctx, version.Id)
+		if err != nil {
+			return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+		}
+	}
+	if input.Exposes != nil {
+		exposes, err := normalizeExposes(*input.Exposes)
+		if err != nil {
+			return cdto.VersionView{}, err
+		}
+		if err := validateExposes(exposes, components); err != nil {
+			return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+		}
+		for i := range exposes {
+			exposes[i].Id = idutil.NewId()
+			exposes[i].VersionId = version.Id
+		}
+		if err := s.store.ReplaceExposes(ctx, version.Id, exposes); err != nil {
+			return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to replace exposes", err)
+		}
+	}
+	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) PublishVersion(ctx context.Context, userId string, versionId string) (cdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	if version.Status == status.VersionStatusPublished {
+		return s.VersionForUser(ctx, userId, version.Id)
+	}
+	components, err := s.store.ComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	if err := validateComponents(components); err != nil {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	exposes, err := s.store.ExposesByVersion(ctx, version.Id)
+	if err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+	}
+	if err := validateExposes(exposes, components); err != nil {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	version.Status = status.VersionStatusPublished
+	if err := s.store.UpdateVersion(ctx, version); err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to publish version", err)
+	}
+	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) ForkVersion(ctx context.Context, userId string, versionId string, label string) (cdto.VersionView, error) {
+	source, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return cdto.VersionView{}, err
+	}
+	label = strings.TrimSpace(label)
+	if label == "" || len(label) > 128 {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
+	}
+	components, err := s.store.ComponentsByVersion(ctx, source.Id)
+	if err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	exposes, err := s.store.ExposesByVersion(ctx, source.Id)
+	if err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+	}
+	fromId := source.Id
+	version := model.Version{
+		Id:                   idutil.NewId(),
+		ApplicationId:        source.ApplicationId,
+		Label:                label,
+		Status:               status.VersionStatusUnpublished,
+		EnvJSON:              source.EnvJSON,
+		CreatedFromVersionId: &fromId,
+		Note:                 source.Note,
+	}
+	forkedComponents := make([]model.Component, 0, len(components))
+	for _, component := range components {
+		component.Id = idutil.NewId()
+		component.VersionId = version.Id
+		forkedComponents = append(forkedComponents, component)
+	}
+	forkedExposes := make([]model.Expose, 0, len(exposes))
+	for _, expose := range exposes {
+		expose.Id = idutil.NewId()
+		expose.VersionId = version.Id
+		forkedExposes = append(forkedExposes, expose)
+	}
+	if err := s.store.CreateVersionWithComponentsAndExposes(ctx, version, forkedComponents, forkedExposes); err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to fork version", err)
+	}
+	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) PreviewVersion(ctx context.Context, userId string, versionId string, environmentId string, instanceKey string, attachIngress *bool) (string, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return "", err
+	}
+	app, err := s.store.Application(ctx, version.ApplicationId)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+	}
+	environmentId = strings.TrimSpace(environmentId)
+	if environmentId == "" {
+		return "", apperror.New(apperror.KindValidation, "environment_id is required")
+	}
+	env, err := s.store.Environment(ctx, environmentId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", apperror.New(apperror.KindNotFound, "Environment not found")
+		}
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
+	}
+	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
+		return "", apperror.New(apperror.KindValidation, "application and environment must belong to the same project")
+	}
+	instanceKey = strings.TrimSpace(instanceKey)
+	if instanceKey == "" {
+		instanceKey = "default"
+	}
+	isIngress := instanceKey == "default"
+	if attachIngress != nil {
+		isIngress = *attachIngress
+	}
+	components, err := s.store.ComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	exposes, err := s.store.ExposesByVersion(ctx, version.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+	}
+	bindings, err := s.store.BindingsByEnvironment(ctx, env.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to list bindings", err)
+	}
+	content, err := s.RenderCompose(ctx, RenderInput{
+		App: app, Version: version, Components: components, Exposes: exposes,
+		Env: env, Bindings: bindings,
+		Service: model.Service{InstanceKey: instanceKey, IsIngress: isIngress},
+	})
+	if err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
+	}
+	return content, nil
+}
+
+func (s Service) ListServicesByApplication(ctx context.Context, userId string, applicationId string) ([]model.Service, error) {
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+	if err != nil {
+		return nil, err
+	}
+	services, err := s.store.ListServicesByApplication(ctx, app.Id)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
+	}
+	return services, nil
+}
+
+func (s Service) PrimaryServiceByApplication(ctx context.Context, userId string, applicationId string) (*model.Service, error) {
+	services, err := s.ListServicesByApplication(ctx, userId, applicationId)
+	if err != nil {
+		return nil, err
+	}
+	if len(services) == 0 {
+		return nil, nil
+	}
+	for i := range services {
+		if services[i].IsIngress {
+			return &services[i], nil
+		}
+	}
+	return &services[0], nil
+}
+
+func (s Service) versionView(ctx context.Context, version model.Version) (cdto.VersionView, error) {
+	components, err := s.store.ComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	exposes, err := s.store.ExposesByVersion(ctx, version.Id)
+	if err != nil {
+		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+	}
+	return cdto.VersionView{Version: version, Components: components, Exposes: exposes}, nil
+}
+
+func (s Service) loadVersionForUser(ctx context.Context, userId string, versionId string) (model.Version, error) {
+	versionId = strings.TrimSpace(versionId)
+	version, err := s.store.Version(ctx, versionId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Version{}, apperror.New(apperror.KindNotFound, "Version "+versionId+" not found")
+		}
+		return model.Version{}, apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
+	}
+	if _, err := s.loadApplicationForUser(ctx, userId, version.ApplicationId); err != nil {
+		return model.Version{}, err
+	}
+	return version, nil
+}
+
+func normalizeComponents(inputs []cdto.ComponentInput) ([]model.Component, error) {
+	if len(inputs) == 0 {
+		return nil, apperror.New(apperror.KindValidation, "At least one component is required")
+	}
+	components := make([]model.Component, 0, len(inputs))
+	for _, input := range inputs {
+		name := strings.TrimSpace(input.Name)
+		image := strings.TrimSpace(input.Image)
+		if name == "" || image == "" {
+			return nil, apperror.New(apperror.KindValidation, "Component name and image are required")
+		}
+		components = append(components, model.Component{
+			Name:            name,
+			Image:           image,
+			CommandJSON:     normalizeOptionalText(input.CommandJSON),
+			ArgsJSON:        normalizeOptionalText(input.ArgsJSON),
+			EnvJSON:         normalizeOptionalText(input.EnvJSON),
+			PortsJSON:       normalizeOptionalText(input.PortsJSON),
+			MountsJSON:      normalizeOptionalText(input.MountsJSON),
+			NetworksJSON:    normalizeOptionalText(input.NetworksJSON),
+			DependsOnJSON:   normalizeOptionalText(input.DependsOnJSON),
+			HealthcheckJSON: normalizeOptionalText(input.HealthcheckJSON),
+			ResourcesJSON:   normalizeOptionalText(input.ResourcesJSON),
+			PullPolicy:      normalizeOptionalText(input.PullPolicy),
+		})
+	}
+	return components, nil
+}
+
+func normalizeExposes(inputs []cdto.ExposeInput) ([]model.Expose, error) {
+	exposes := make([]model.Expose, 0, len(inputs))
+	for _, input := range inputs {
+		protocol := strings.ToLower(strings.TrimSpace(input.Protocol))
+		componentName := strings.TrimSpace(input.ComponentName)
+		if componentName == "" || (protocol != "http" && protocol != "tcp") || input.ContainerPort < 1 || input.ContainerPort > 65535 {
+			return nil, apperror.New(apperror.KindValidation, "Invalid expose fields")
+		}
+		exposes = append(exposes, model.Expose{
+			ComponentName: componentName,
+			Protocol:      protocol,
+			ContainerPort: input.ContainerPort,
+			PathPrefix:    normalizeOptionalText(input.PathPrefix),
+		})
+	}
+	return exposes, nil
+}

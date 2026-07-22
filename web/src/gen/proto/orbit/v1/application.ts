@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface ApplicationResp {
   id: string;
@@ -14,37 +14,47 @@ export interface ApplicationResp {
   name: string;
   code: string;
   image_pull_policy: string;
-  status: string;
-  route_managed: boolean;
+  /** service_status is runtime binding status when a Service exists; empty if never deployed. */
+  service_status: string;
   created_at: string;
   updated_at: string;
+  service_id?: string | undefined;
+  version_id?: string | undefined;
+  service_count: number;
 }
 
 export interface ApplicationCreateReq {
   name: string;
   code: string;
   image_pull_policy: string;
-  route_managed: boolean;
 }
 
 export interface ApplicationUpdateReq {
   name?: string | undefined;
   code?: string | undefined;
   image_pull_policy?: string | undefined;
-  route_managed?: boolean | undefined;
 }
 
 export interface ApplicationDeployReq {
+  version_id: string;
+  environment_id: string;
+  instance_key: string;
+  attach_ingress?: boolean | undefined;
   force_recreate: boolean;
 }
 
 export interface ApplicationStopReq {
   remove_volumes: boolean;
+  environment_id?: string | undefined;
+  instance_key?: string | undefined;
+  service_id?: string | undefined;
 }
 
-export interface ApplicationRestartReq {}
-
-export interface ApplicationComposePreviewReq {}
+export interface ApplicationRestartReq {
+  environment_id?: string | undefined;
+  instance_key?: string | undefined;
+  service_id?: string | undefined;
+}
 
 export interface DeploymentActionResp {
   deployment_id: string;
@@ -56,10 +66,6 @@ export interface ApplicationStatusResp {
 
 export interface ApplicationLogsResp {
   logs: string;
-}
-
-export interface ApplicationComposePreviewResp {
-  compose_yaml: string;
 }
 
 export interface ApplicationPaginatedResp {

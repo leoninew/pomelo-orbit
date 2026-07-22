@@ -95,6 +95,13 @@ export const secondaryNavigation: Record<NavigationScope, NavigationEntry[]> = {
       path: '/cd/deployments',
       icon: Rocket,
     },
+    {
+      key: 'environments',
+      label: '环境管理',
+      labelKey: 'nav.environments',
+      path: '/cd/environments',
+      icon: Layers,
+    },
     { key: 'route', label: '路由配置', labelKey: 'nav.routes', path: '/cd/routes', icon: Globe },
     {
       key: 'traefik-http-routers',

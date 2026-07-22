@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface CreateTaskReq {
   id: string;
@@ -16,13 +16,17 @@ export interface CreateTaskReq {
   max_attempts: number;
 }
 
-export interface PipelineRunExecuteTaskReq {}
+export interface PipelineRunExecuteTaskReq {
+}
 
-export interface ApplicationDeployTaskReq {}
+export interface ApplicationDeployTaskReq {
+}
 
-export interface ApplicationRestartTaskReq {}
+export interface ApplicationRestartTaskReq {
+}
 
-export interface ApplicationStopTaskReq {}
+export interface ApplicationStopTaskReq {
+}
 
 export interface TaskResp {
   id: string;

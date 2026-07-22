@@ -15,25 +15,42 @@ type CDStore interface {
 	Application(ctx context.Context, id string) (model.Application, error)
 	ApplicationByName(ctx context.Context, name string) (model.Application, error)
 	ApplicationByCode(ctx context.Context, code string) (model.Application, error)
-	ConfigFiles(ctx context.Context, applicationId string) ([]model.ApplicationConfigFile, error)
-	ConfigFile(ctx context.Context, id string) (model.ApplicationConfigFile, error)
-	CreateConfigFile(ctx context.Context, file model.ApplicationConfigFile) error
-	UpdateConfigFile(ctx context.Context, file model.ApplicationConfigFile) error
-	DeleteConfigFile(ctx context.Context, id string) error
-	Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error)
-	ApplicationRoute(ctx context.Context, id string) (model.ApplicationRoute, error)
-	CreateApplicationRoute(ctx context.Context, route model.ApplicationRoute) error
-	UpdateApplicationRoute(ctx context.Context, route model.ApplicationRoute) error
-	DeleteApplicationRoute(ctx context.Context, id string) error
-	ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error)
-	ApplicationServiceConfig(ctx context.Context, applicationId string, serviceName string) (model.ApplicationServiceConfig, error)
-	UpsertApplicationServiceConfig(ctx context.Context, config model.ApplicationServiceConfig) error
 	CreateApplication(ctx context.Context, app model.Application) error
-	CreateApplicationBundle(ctx context.Context, app model.Application, files []model.ApplicationConfigFile, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) error
 	UpdateApplication(ctx context.Context, app model.Application) error
 	DeleteApplication(ctx context.Context, id string) error
+
+	// Version / Component / Expose
+	ListVersions(ctx context.Context, applicationId string) ([]model.Version, error)
+	Version(ctx context.Context, id string) (model.Version, error)
+	CreateVersion(ctx context.Context, version model.Version) error
+	UpdateVersion(ctx context.Context, version model.Version) error
+	ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error)
+	ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error)
+	ReplaceComponents(ctx context.Context, versionId string, components []model.Component) error
+	ReplaceExposes(ctx context.Context, versionId string, exposes []model.Expose) error
+	CreateVersionWithComponentsAndExposes(ctx context.Context, version model.Version, components []model.Component, exposes []model.Expose) error
+
+	// Environment
+	ListEnvironments(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.Environment], error)
+	Environment(ctx context.Context, id string) (model.Environment, error)
+	EnvironmentByProjectCode(ctx context.Context, projectId string, code string) (model.Environment, error)
+	CreateEnvironment(ctx context.Context, env model.Environment) error
+	UpdateEnvironment(ctx context.Context, env model.Environment) error
+	DeleteEnvironment(ctx context.Context, id string) error
+	BindingsByEnvironment(ctx context.Context, environmentId string) ([]model.EnvironmentBinding, error)
+	ReplaceBindings(ctx context.Context, environmentId string, bindings []model.EnvironmentBinding) error
+	CountServicesByEnvironment(ctx context.Context, environmentId string) (int, error)
+
+	// Runtime Service binding
+	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
+	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
+	Service(ctx context.Context, id string) (model.Service, error)
+	UpsertService(ctx context.Context, svc model.Service) error
+	ClearIngressForAppEnv(ctx context.Context, applicationId string, environmentId string, exceptServiceId string) error
+	UpdateServiceStatus(ctx context.Context, id string, status string) error
+	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error
+
 	CreateDeployment(ctx context.Context, deployment model.Deployment) error
-	MarkApplicationStatus(ctx context.Context, id string, status string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
 	ListDeployments(ctx context.Context, projectId string, applicationId string, status string, search string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (Page[model.Deployment], error)
 	Deployment(ctx context.Context, id string) (model.Deployment, error)
@@ -51,10 +68,17 @@ type CDStore interface {
 type DeploymentExecutionStore interface {
 	Application(ctx context.Context, id string) (model.Application, error)
 	Deployment(ctx context.Context, id string) (model.Deployment, error)
-	ConfigFiles(ctx context.Context, applicationId string) ([]model.ApplicationConfigFile, error)
-	ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error)
-	Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error)
-	MarkApplicationStatus(ctx context.Context, id string, status string) error
+	Version(ctx context.Context, id string) (model.Version, error)
+	ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error)
+	ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error)
+	Environment(ctx context.Context, id string) (model.Environment, error)
+	BindingsByEnvironment(ctx context.Context, environmentId string) ([]model.EnvironmentBinding, error)
+	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
+	Service(ctx context.Context, id string) (model.Service, error)
+	UpsertService(ctx context.Context, svc model.Service) error
+	ClearIngressForAppEnv(ctx context.Context, applicationId string, environmentId string, exceptServiceId string) error
+	UpdateServiceStatus(ctx context.Context, id string, status string) error
+	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -13,18 +12,54 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/storage/local/executionlog"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
+func testVersionID() string { return "ver-1" }
+func testEnvID() string     { return "env-1" }
+func testProjectID() string { return "proj-1" }
+
+func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
+	t.Helper()
+	versionID := testVersionID()
+	envID := testEnvID()
+	projectID := testProjectID()
+	return &fakeDeploymentExecutionStore{
+		app: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", ImagePullPolicy: "missing"},
+		deployment: model.Deployment{
+			Id:            "deploy-1",
+			VersionId:     &versionID,
+			EnvironmentId: &envID,
+			ServiceId:     stringPtr("svc-1"),
+		},
+		version: model.Version{Id: versionID, ApplicationId: "app-1", Label: "v1", Status: status.VersionStatusUnpublished},
+		components: []model.Component{
+			{Id: "c1", VersionId: versionID, Name: "web", Image: "nginx"},
+		},
+		env: model.Environment{Id: envID, ProjectId: projectID, Code: "local", Name: "Local"},
+		service: model.Service{
+			Id:            "svc-1",
+			ApplicationId: "app-1",
+			EnvironmentId: envID,
+			InstanceKey:   "default",
+			IsIngress:     true,
+			VersionId:     versionID,
+			Status:        status.ServiceStatusRunning,
+		},
+		hasService: true,
+	}
+}
+
 func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
-	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
+	store := deployStore(t)
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), fakeCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationRestart(context.Background(), "app-1", "deploy-1")
 	if err != nil {
 		t.Fatalf("ExecuteApplicationRestart returned error: %v", err)
 	}
-	if store.appStatus != status.ApplicationStatusDeployed {
-		t.Fatalf("unexpected app status: %s", store.appStatus)
+	if store.serviceStatus != status.ServiceStatusRunning {
+		t.Fatalf("unexpected service status: %s", store.serviceStatus)
 	}
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
@@ -32,7 +67,7 @@ func TestExecuteApplicationRestartRestartsApplication(t *testing.T) {
 }
 
 func TestExecuteApplicationStopStopsApplication(t *testing.T) {
-	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
+	store := deployStore(t)
 	runner := &recordingCommandRunner{}
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), runner, executionlog.Store{})
 
@@ -40,27 +75,27 @@ func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecuteApplicationStop returned error: %v", err)
 	}
-	if store.appStatus != status.ApplicationStatusUndeployed {
-		t.Fatalf("unexpected app status: %s", store.appStatus)
+	if store.serviceStatus != status.ServiceStatusStopped {
+		t.Fatalf("unexpected service status: %s", store.serviceStatus)
 	}
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
-	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -f docker-compose.yml down -v" {
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml down -v" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
 
 func TestExecuteApplicationStopMarksDeploymentFaultedOnRunnerError(t *testing.T) {
-	store := &fakeDeploymentExecutionStore{app: model.Application{Id: "app-1", Code: "demo"}, deployment: model.Deployment{Id: "deploy-1"}}
+	store := deployStore(t)
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), failingCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationStop(context.Background(), "app-1", "deploy-1", false)
 	if err == nil {
 		t.Fatal("expected runner error")
 	}
-	if store.appStatus != "" {
-		t.Fatalf("expected app status to remain unchanged, got %s", store.appStatus)
+	if store.serviceStatus != status.ServiceStatusFaulted {
+		t.Fatalf("expected service faulted, got %s", store.serviceStatus)
 	}
 	if store.deploymentStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
@@ -68,19 +103,15 @@ func TestExecuteApplicationStopMarksDeploymentFaultedOnRunnerError(t *testing.T)
 }
 
 func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.T) {
-	store := &fakeDeploymentExecutionStore{
-		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: model.Deployment{Id: "deploy-1"},
-		files:      []model.ApplicationConfigFile{{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}},
-	}
+	store := deployStore(t)
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), failingCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
 	if err == nil {
 		t.Fatal("expected runner error")
 	}
-	if store.appStatus != status.ApplicationStatusDeployFailed {
-		t.Fatalf("unexpected app status: %s", store.appStatus)
+	if store.serviceStatus != status.ServiceStatusFaulted {
+		t.Fatalf("unexpected service status: %s", store.serviceStatus)
 	}
 	if store.deploymentStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
@@ -91,13 +122,7 @@ func TestExecuteApplicationDeployMarksDeploymentFaultedOnRunnerError(t *testing.
 }
 
 func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
-	store := &fakeDeploymentExecutionStore{
-		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: model.Deployment{Id: "deploy-1"},
-		files: []model.ApplicationConfigFile{
-			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
-		},
-	}
+	store := deployStore(t)
 	runner := &recordingCommandRunner{}
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), runner, executionlog.Store{})
 
@@ -105,25 +130,19 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}
-	if store.appStatus != status.ApplicationStatusDeployed {
-		t.Fatalf("unexpected app status: %s", store.appStatus)
+	if store.serviceStatus != status.ServiceStatusRunning {
+		t.Fatalf("unexpected service status: %s", store.serviceStatus)
 	}
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
-	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -f docker-compose.yml up -d --remove-orphans --pull missing" {
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml up -d --remove-orphans --pull missing" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
 
 func TestExecuteApplicationDeployForceRecreatesApplication(t *testing.T) {
-	store := &fakeDeploymentExecutionStore{
-		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: model.Deployment{Id: "deploy-1"},
-		files: []model.ApplicationConfigFile{
-			{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"},
-		},
-	}
+	store := deployStore(t)
 	runner := &recordingCommandRunner{}
 	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), runner, executionlog.Store{})
 
@@ -131,88 +150,68 @@ func TestExecuteApplicationDeployForceRecreatesApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}
-	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -f docker-compose.yml up -d --remove-orphans --pull missing --force-recreate" {
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml up -d --remove-orphans --pull missing --force-recreate" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
 
-func TestExecuteApplicationDeployFailsWhenPhysicalDataRootCannotBeResolved(t *testing.T) {
-	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
-	store := &fakeDeploymentExecutionStore{
-		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: model.Deployment{Id: "deploy-1"},
-		files: []model.ApplicationConfigFile{
-			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
-		},
-	}
-	service := NewExecutionService(store, cfg, slog.Default(), testWorkspaceWithPhysicalRoot(cfg.DataRoot(), "", errors.New("missing host mount")), fakeCommandRunner{}, executionlog.Store{})
+func TestExecuteApplicationDeployRequiresVersionID(t *testing.T) {
+	store := deployStore(t)
+	store.deployment.VersionId = nil
+	service := NewExecutionService(store, config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}, slog.Default(), testWorkspace(t.TempDir()), fakeCommandRunner{}, executionlog.Store{})
 
 	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
-	if err == nil || !strings.Contains(err.Error(), "missing host mount") {
-		t.Fatalf("expected physical data root error, got %v", err)
-	}
-	if store.appStatus != status.ApplicationStatusDeployFailed {
-		t.Fatalf("unexpected app status: %s", store.appStatus)
+	if err == nil {
+		t.Fatal("expected missing version_id error")
 	}
 	if store.deploymentStatus != status.WorkStatusFaulted {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
-func TestExecuteApplicationDeployRendersLiquidFiles(t *testing.T) {
+func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
-	store := &fakeDeploymentExecutionStore{
-		app:        model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing"},
-		deployment: model.Deployment{Id: "deploy-1"},
-		files: []model.ApplicationConfigFile{
-			{Path: "docker-compose.yml.liquid", Content: "services:\n  web:\n    image: nginx\n    volumes:\n      - {{ app.physical_app_dir }}/data:/data\n"},
+	store := deployStore(t)
+	domains := `["web.example.com","alt.example.com"]`
+	store.exposes = []model.Expose{
+		{ComponentName: "web", Protocol: "http", ContainerPort: 80},
+	}
+	store.bindings = []model.EnvironmentBinding{
+		{
+			ComponentName: "web",
+			Protocol:      "http",
+			ContainerPort: 80,
+			DomainsJSON:   domains,
+			Entrypoint:    "websecure",
+			TLSMode:       "letsencrypt",
 		},
 	}
-	physicalRoot := filepath.Join(t.TempDir(), "host-data")
-	workspace := testWorkspaceWithPhysicalRoot(cfg.DataRoot(), physicalRoot, nil)
-	service := NewExecutionService(store, cfg, slog.Default(), workspace, fakeCommandRunner{}, executionlog.Store{})
-
-	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
-	if err != nil {
-		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
-	}
-	content, ok := workspace.Config("demo", "docker-compose.yml")
-	if !ok {
-		t.Fatal("expected rendered compose to be written through workspace port")
-	}
-	want := filepath.ToSlash(filepath.Join(physicalRoot, "cd", "demo", "data"))
-	if !strings.Contains(filepath.ToSlash(content), want) {
-		t.Fatalf("expected rendered compose to contain %q, got:\n%s", want, content)
-	}
-}
-
-func TestApplicationComposePreviewMatchesDeployRouteLabels(t *testing.T) {
-	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
-	app := model.Application{Id: "app-1", Code: "demo", ImagePullPolicy: "missing", RouteManaged: true}
-	compose := model.ApplicationConfigFile{Path: "docker-compose.yml", Content: "services:\n  web:\n    image: nginx\n"}
-	routes := []model.ApplicationRoute{
-		{ServiceName: "web", Domain: "web.example.com", Port: 80},
-		{ServiceName: "web", Domain: "alt.example.com", Port: 80},
-	}
-	store := &fakeDeploymentExecutionStore{app: app, deployment: model.Deployment{Id: "deploy-1"}, files: []model.ApplicationConfigFile{compose}, routes: routes}
 	workspace := testWorkspace(cfg.DataRoot())
 	service := NewExecutionService(store, cfg, slog.Default(), workspace, fakeCommandRunner{}, executionlog.Store{})
 
-	preview, err := service.renderDeploymentCompose(context.Background(), app, compose)
+	preview, err := service.RenderCompose(context.Background(), RenderInput{
+		App:        store.app,
+		Version:    store.version,
+		Components: store.components,
+		Exposes:    store.exposes,
+		Env:        store.env,
+		Bindings:   store.bindings,
+		Service:    store.service,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false); err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}
-	content, ok := workspace.Config("demo", "docker-compose.yml")
+	content, ok := workspace.Config("demo", "local", "default", "docker-compose.yml")
 	if !ok {
 		t.Fatal("expected rendered compose to be written through workspace port")
 	}
 	if preview != content {
 		t.Fatalf("expected preview to match deployed compose\npreview:\n%s\ndeployed:\n%s", preview, content)
 	}
-	wantRule := "traefik.http.routers.web.rule=Host(`web.example.com`) || Host(`alt.example.com`)"
+	wantRule := "traefik.http.routers.demo-local-default-web-http.rule=Host(`web.example.com`) || Host(`alt.example.com`)"
 	if !strings.Contains(preview, wantRule) {
 		t.Fatalf("expected merged route rule %q, got:\n%s", wantRule, preview)
 	}
@@ -221,11 +220,16 @@ func TestApplicationComposePreviewMatchesDeployRouteLabels(t *testing.T) {
 type fakeDeploymentExecutionStore struct {
 	app              model.Application
 	deployment       model.Deployment
-	files            []model.ApplicationConfigFile
-	routes           []model.ApplicationRoute
-	appStatus        string
+	version          model.Version
+	components       []model.Component
+	exposes          []model.Expose
+	env              model.Environment
+	bindings         []model.EnvironmentBinding
+	service          model.Service
+	serviceStatus    string
 	deploymentStatus string
 	errorMessage     string
+	hasService       bool
 }
 
 func (s *fakeDeploymentExecutionStore) Application(_ context.Context, id string) (model.Application, error) {
@@ -236,29 +240,88 @@ func (s *fakeDeploymentExecutionStore) Deployment(_ context.Context, id string) 
 	return s.deployment, nil
 }
 
-func (s *fakeDeploymentExecutionStore) ConfigFiles(_ context.Context, applicationId string) ([]model.ApplicationConfigFile, error) {
-	return s.files, nil
+func (s *fakeDeploymentExecutionStore) Version(_ context.Context, id string) (model.Version, error) {
+	if s.version.Id != id {
+		return model.Version{}, repository.ErrNotFound
+	}
+	return s.version, nil
 }
 
-func (s *fakeDeploymentExecutionStore) ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error) {
-	return nil, nil
+func (s *fakeDeploymentExecutionStore) ComponentsByVersion(_ context.Context, versionId string) ([]model.Component, error) {
+	return s.components, nil
 }
 
-func (s *fakeDeploymentExecutionStore) Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error) {
-	return s.routes, nil
+func (s *fakeDeploymentExecutionStore) ExposesByVersion(_ context.Context, versionId string) ([]model.Expose, error) {
+	return s.exposes, nil
 }
 
-func (s *fakeDeploymentExecutionStore) MarkApplicationStatus(ctx context.Context, id string, status string) error {
-	s.appStatus = status
+func (s *fakeDeploymentExecutionStore) Environment(_ context.Context, id string) (model.Environment, error) {
+	if s.env.Id != id {
+		return model.Environment{}, repository.ErrNotFound
+	}
+	return s.env, nil
+}
+
+func (s *fakeDeploymentExecutionStore) BindingsByEnvironment(_ context.Context, environmentId string) ([]model.EnvironmentBinding, error) {
+	return s.bindings, nil
+}
+
+func (s *fakeDeploymentExecutionStore) ServiceByKey(_ context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {
+	if s.hasService || s.service.Id != "" {
+		return s.service, nil
+	}
+	return model.Service{}, repository.ErrNotFound
+}
+
+func (s *fakeDeploymentExecutionStore) Service(_ context.Context, id string) (model.Service, error) {
+	if s.service.Id == id {
+		return s.service, nil
+	}
+	return model.Service{}, repository.ErrNotFound
+}
+
+func (s *fakeDeploymentExecutionStore) UpsertService(_ context.Context, svc model.Service) error {
+	if s.service.Id == "" {
+		s.service = svc
+	} else {
+		s.service.VersionId = svc.VersionId
+		s.service.Status = svc.Status
+		s.service.IsIngress = svc.IsIngress
+		s.service.EnvironmentId = svc.EnvironmentId
+		s.service.InstanceKey = svc.InstanceKey
+		if svc.LastSuccessfulVersionId != nil {
+			s.service.LastSuccessfulVersionId = svc.LastSuccessfulVersionId
+		}
+	}
+	s.hasService = true
+	s.serviceStatus = s.service.Status
 	return nil
 }
 
-func (s *fakeDeploymentExecutionStore) MarkDeploymentRunning(ctx context.Context, id string) error {
+func (s *fakeDeploymentExecutionStore) ClearIngressForAppEnv(_ context.Context, applicationId string, environmentId string, exceptServiceId string) error {
+	return nil
+}
+
+func (s *fakeDeploymentExecutionStore) UpdateServiceStatus(_ context.Context, id string, status string) error {
+	s.service.Status = status
+	s.serviceStatus = status
+	return nil
+}
+
+func (s *fakeDeploymentExecutionStore) UpdateServiceAfterDeploy(_ context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error {
+	s.service.Status = status
+	s.service.VersionId = versionId
+	s.service.LastSuccessfulVersionId = lastSuccessfulVersionId
+	s.serviceStatus = status
+	return nil
+}
+
+func (s *fakeDeploymentExecutionStore) MarkDeploymentRunning(_ context.Context, id string) error {
 	s.deploymentStatus = status.WorkStatusRunning
 	return nil
 }
 
-func (s *fakeDeploymentExecutionStore) CompleteDeployment(ctx context.Context, id string, status string, message string) error {
+func (s *fakeDeploymentExecutionStore) CompleteDeployment(_ context.Context, id string, status string, message string) error {
 	s.deploymentStatus = status
 	s.errorMessage = message
 	return nil

@@ -7,14 +7,12 @@ type ApplicationCreateInput struct {
 	Name            string
 	Code            string
 	ImagePullPolicy string
-	RouteManaged    bool
 }
 
 type ApplicationUpdateInput struct {
 	Name            *string
 	Code            *string
 	ImagePullPolicy *string
-	RouteManaged    *bool
 }
 
 type ApplicationDeleteInput struct {
@@ -22,7 +20,101 @@ type ApplicationDeleteInput struct {
 }
 
 type ApplicationDeployInput struct {
+	VersionId     string
+	EnvironmentId string
+	InstanceKey   string
+	AttachIngress *bool
 	ForceRecreate bool
+}
+
+type ApplicationServiceTargetInput struct {
+	EnvironmentId string
+	InstanceKey   string
+	ServiceId     string
+	RemoveVolumes bool
+}
+
+// VersionCreateInput creates an unpublished version with components and exposes.
+type VersionCreateInput struct {
+	ApplicationId string
+	Label         string
+	EnvJSON       *string
+	Note          *string
+	Components    []ComponentInput
+	Exposes       []ExposeInput
+}
+
+// VersionUpdateInput updates an unpublished version metadata and optionally components/exposes.
+type VersionUpdateInput struct {
+	Label      *string
+	EnvJSON    *string
+	Note       *string
+	Components *[]ComponentInput
+	Exposes    *[]ExposeInput
+}
+
+// ComponentInput is the write payload for a version component.
+type ComponentInput struct {
+	Name            string
+	Image           string
+	CommandJSON     *string
+	ArgsJSON        *string
+	EnvJSON         *string
+	PortsJSON       *string
+	MountsJSON      *string
+	NetworksJSON    *string
+	DependsOnJSON   *string
+	HealthcheckJSON *string
+	ResourcesJSON   *string
+	PullPolicy      *string
+}
+
+// ExposeInput is the write payload for a version expose.
+type ExposeInput struct {
+	ComponentName string
+	Protocol      string
+	ContainerPort int
+	PathPrefix    *string
+}
+
+// VersionView is version plus its components and exposes for API responses.
+type VersionView struct {
+	Version    model.Version
+	Components []model.Component
+	Exposes    []model.Expose
+}
+
+// ServiceView is the runtime binding for an application instance.
+type ServiceView struct {
+	Service model.Service
+}
+
+type EnvironmentCreateInput struct {
+	ProjectId   string
+	Code        string
+	Name        string
+	Description *string
+}
+
+type EnvironmentUpdateInput struct {
+	Name        *string
+	Description *string
+}
+
+type EnvironmentBindingInput struct {
+	ComponentName string
+	Protocol      string
+	ContainerPort int
+	Domains       []string
+	Entrypoint    string
+	TLSMode       string
+	SNIHost       *string
+	Note          *string
+}
+
+type EnvironmentView struct {
+	Environment model.Environment
+	Bindings    []model.EnvironmentBinding
 }
 
 type ApplicationDeployDispatchInput struct {
@@ -66,58 +158,24 @@ type DeploymentContainerLog struct {
 	IsRealtimeSupported bool
 }
 
-// ConfigFileInput stores an application config file payload.
-type ConfigFileInput struct {
-	Path    string
-	Content string
-}
-
-// ApplicationRouteInput stores an application route payload.
-type ApplicationRouteInput struct {
-	ServiceName string
-	Domain      string
-	Port        int
-}
-
-// ApplicationServiceConfigImportInput stores import payload for service config.
-type ApplicationServiceConfigImportInput struct {
-	ServiceName string
-	Image       *string
-	Environment *string
-	Volumes     *string
-}
-
-// ApplicationImportInput imports an application bundle.
+// ApplicationImportInput imports an application with an initial version.
 type ApplicationImportInput struct {
-	ProjectId         string
-	Version           string
-	Name              string
-	Code              string
-	ImagePullPolicy   string
-	RouteManaged      bool
-	ConfigFiles       []ConfigFileInput
-	ServiceConfigs    []ApplicationServiceConfigImportInput
-	ApplicationRoutes []ApplicationRouteInput
+	ProjectId       string
+	Name            string
+	Code            string
+	ImagePullPolicy string
+	VersionLabel    string
+	VersionEnvJSON  *string
+	VersionNote     *string
+	Components      []ComponentInput
+	Exposes         []ExposeInput
 }
 
 // ApplicationExport bundles application data for handler response.
 type ApplicationExport struct {
-	Application    model.Application
-	ConfigFiles    []model.ApplicationConfigFile
-	ServiceConfigs []model.ApplicationServiceConfig
-	Routes         []model.ApplicationRoute
-}
-
-// ApplicationServiceConfigView is the service-config view used by HTTP responses.
-type ApplicationServiceConfigView struct {
-	ServiceName   string  `json:"service_name"`
-	DefaultDomain string  `json:"default_domain"`
-	DefaultPort   int     `json:"default_port"`
-	BaseImage     *string `json:"base_image"`
-	Image         *string `json:"image"`
-	ConfigId      *string `json:"config_id"`
-	CreatedAt     *string `json:"created_at"`
-	UpdatedAt     *string `json:"updated_at"`
+	Application model.Application
+	Versions    []VersionView
+	Services    []model.Service
 }
 
 // RouteCreateInput creates a project route.
@@ -159,4 +217,12 @@ type TraefikConfigResp struct {
 type TraefikRouteListResp struct {
 	Items []TraefikRouterResp `json:"items"`
 	Total int                 `json:"total"`
+}
+
+// DeployOptionsJSON is stored on Deployment.options_json.
+type DeployOptionsJSON struct {
+	ForceRecreate bool   `json:"force_recreate,omitempty"`
+	InstanceKey   string `json:"instance_key,omitempty"`
+	AttachIngress bool   `json:"attach_ingress,omitempty"`
+	RemoveVolumes bool   `json:"remove_volumes,omitempty"`
 }

@@ -13,7 +13,6 @@ func applicationCreateInput(projectID string, req *pomeloorbit.ApplicationCreate
 		Name:            req.Name,
 		Code:            req.Code,
 		ImagePullPolicy: req.ImagePullPolicy,
-		RouteManaged:    req.RouteManaged,
 	}
 }
 
@@ -22,7 +21,6 @@ func applicationUpdateInput(req *pomeloorbit.ApplicationUpdateReq) cddto.Applica
 		Name:            req.Name,
 		Code:            req.Code,
 		ImagePullPolicy: req.ImagePullPolicy,
-		RouteManaged:    req.RouteManaged,
 	}
 }
 
@@ -31,27 +29,82 @@ func applicationDeleteInput(removeDir bool) cddto.ApplicationDeleteInput {
 }
 
 func applicationDeployInput(req *pomeloorbit.ApplicationDeployReq) cddto.ApplicationDeployInput {
-	return cddto.ApplicationDeployInput{ForceRecreate: req.ForceRecreate}
+	return cddto.ApplicationDeployInput{
+		VersionId:     req.VersionId,
+		EnvironmentId: req.EnvironmentId,
+		InstanceKey:   req.InstanceKey,
+		AttachIngress: req.AttachIngress,
+		ForceRecreate: req.ForceRecreate,
+	}
 }
 
-func applicationResponses(items []model.Application) []pomeloorbit.ApplicationResp {
+func applicationServiceTargetInput(environmentId string, instanceKey string, serviceId string, removeVolumes bool) cddto.ApplicationServiceTargetInput {
+	return cddto.ApplicationServiceTargetInput{
+		EnvironmentId: environmentId,
+		InstanceKey:   instanceKey,
+		ServiceId:     serviceId,
+		RemoveVolumes: removeVolumes,
+	}
+}
+
+func applicationResponses(items []model.Application, services map[string][]model.Service) []pomeloorbit.ApplicationResp {
 	resp := make([]pomeloorbit.ApplicationResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, applicationResponse(item))
+		resp = append(resp, applicationResponse(item, services[item.Id]))
 	}
 	return resp
 }
 
-func applicationResponse(item model.Application) pomeloorbit.ApplicationResp {
+func applicationResponse(item model.Application, services []model.Service) pomeloorbit.ApplicationResp {
+	serviceStatus := ""
+	var serviceId *string
+	var versionId *string
+	if len(services) > 0 {
+		primary := services[0]
+		for i := range services {
+			if services[i].IsIngress {
+				primary = services[i]
+				break
+			}
+		}
+		serviceStatus = primary.Status
+		serviceId = &primary.Id
+		versionId = &primary.VersionId
+	}
 	return pomeloorbit.ApplicationResp{
 		Id:              item.Id,
 		ProjectId:       item.ProjectId,
 		Name:            item.Name,
 		Code:            item.Code,
 		ImagePullPolicy: item.ImagePullPolicy,
-		Status:          item.Status,
-		RouteManaged:    item.RouteManaged,
+		ServiceStatus:   serviceStatus,
 		CreatedAt:       transportresponse.FormatTime(item.CreatedAt),
 		UpdatedAt:       transportresponse.FormatTime(item.UpdatedAt),
+		ServiceId:       serviceId,
+		VersionId:       versionId,
+		ServiceCount:    int32(len(services)),
 	}
+}
+
+func serviceResponse(item model.Service) pomeloorbit.ServiceResp {
+	return pomeloorbit.ServiceResp{
+		Id:                      item.Id,
+		ApplicationId:           item.ApplicationId,
+		EnvironmentId:           item.EnvironmentId,
+		InstanceKey:             item.InstanceKey,
+		IsIngress:               item.IsIngress,
+		VersionId:               item.VersionId,
+		LastSuccessfulVersionId: item.LastSuccessfulVersionId,
+		Status:                  item.Status,
+		CreatedAt:               transportresponse.FormatTime(item.CreatedAt),
+		UpdatedAt:               transportresponse.FormatTime(item.UpdatedAt),
+	}
+}
+
+func serviceResponses(items []model.Service) []pomeloorbit.ServiceResp {
+	resp := make([]pomeloorbit.ServiceResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, serviceResponse(item))
+	}
+	return resp
 }

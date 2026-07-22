@@ -2,6 +2,7 @@ package cdsvc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -79,7 +80,7 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input cdt
 	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
 		return model.Application{}, err
 	}
-	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy, RouteManaged: input.RouteManaged, Status: status.ApplicationStatusUndeployed}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, ImagePullPolicy: imagePullPolicy}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
 	}
@@ -120,9 +121,6 @@ func (s Service) UpdateApplication(ctx context.Context, userId string, applicati
 		}
 		app.ImagePullPolicy = policy
 	}
-	if input.RouteManaged != nil {
-		app.RouteManaged = *input.RouteManaged
-	}
 	if err := s.store.UpdateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to update application", err)
 	}
@@ -138,11 +136,17 @@ func (s Service) DeleteApplication(ctx context.Context, userId string, applicati
 	if err != nil {
 		return err
 	}
-	if app.Status == status.ApplicationStatusDeploying {
-		return apperror.New(apperror.KindValidation, "应用正在部署中, 请稍后再试")
+	services, err := s.store.ListServicesByApplication(ctx, app.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to load services", err)
 	}
-	if app.Status == status.ApplicationStatusDeployed {
-		return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
+	for _, svc := range services {
+		if svc.Status == status.ServiceStatusDeploying {
+			return apperror.New(apperror.KindValidation, "应用正在部署中, 请稍后再试")
+		}
+		if svc.Status == status.ServiceStatusRunning {
+			return apperror.New(apperror.KindValidation, "应用正在运行中, 请先停止后再删除")
+		}
 	}
 	if input.RemoveDir {
 		if err := s.workspace.RemoveAppDir(app.Code); err != nil {
@@ -160,11 +164,66 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err != nil {
 		return "", err
 	}
-	if err := s.ensureApplicationComposeFile(ctx, app.Id); err != nil {
-		return "", err
+	versionId := strings.TrimSpace(input.VersionId)
+	if versionId == "" {
+		return "", apperror.New(apperror.KindValidation, "version_id is required")
+	}
+	environmentId := strings.TrimSpace(input.EnvironmentId)
+	if environmentId == "" {
+		return "", apperror.New(apperror.KindValidation, "environment_id is required")
+	}
+	version, err := s.store.Version(ctx, versionId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", apperror.New(apperror.KindNotFound, "Version "+versionId+" not found")
+		}
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
+	}
+	if version.ApplicationId != app.Id {
+		return "", apperror.New(apperror.KindValidation, "Version does not belong to this application")
+	}
+	env, err := s.store.Environment(ctx, environmentId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", apperror.New(apperror.KindNotFound, "Environment not found")
+		}
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
+	}
+	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
+		return "", apperror.New(apperror.KindValidation, "application and environment must belong to the same project")
+	}
+	components, err := s.store.ComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	if err := validateComponents(components); err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
+	}
+	instanceKey := strings.TrimSpace(input.InstanceKey)
+	if instanceKey == "" {
+		instanceKey = "default"
+	}
+	attachIngress := instanceKey == "default"
+	if input.AttachIngress != nil {
+		attachIngress = *input.AttachIngress
 	}
 	deployment := newApplicationDeployment(app, "deploy")
-	deployment.CommandText = deployComposeCommand(app.ImagePullPolicy, input.ForceRecreate).String()
+	deployment.VersionId = &version.Id
+	deployment.EnvironmentId = &env.Id
+	opts := cdto.DeployOptionsJSON{
+		ForceRecreate: input.ForceRecreate,
+		InstanceKey:   instanceKey,
+		AttachIngress: attachIngress,
+	}
+	raw, _ := json.Marshal(opts)
+	text := string(raw)
+	deployment.OptionsJSON = &text
+	if svc, err := s.store.ServiceByKey(ctx, app.Id, env.Id, instanceKey); err == nil {
+		deployment.ServiceId = &svc.Id
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, env.Code, instanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
 	if err := s.store.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -311,19 +370,6 @@ func (s Service) ensureApplicationNameAvailable(ctx context.Context, name string
 	return nil
 }
 
-func (s Service) ensureApplicationComposeFile(ctx context.Context, applicationId string) error {
-	files, err := s.store.ConfigFiles(ctx, applicationId)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to load application config files", err)
-	}
-	for _, file := range files {
-		if file.Path == "docker-compose.yml" || file.Path == "docker-compose.yml.liquid" {
-			return nil
-		}
-	}
-	return apperror.New(apperror.KindValidation, "No docker-compose file found for application "+applicationId)
-}
-
 func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deployment, offset int) (string, int, error) {
 	if deployment.ApplicationId == nil || strings.TrimSpace(*deployment.ApplicationId) == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
@@ -335,7 +381,18 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
+	envCode := "local"
+	instanceKey := "default"
+	if deployment.EnvironmentId != nil && strings.TrimSpace(*deployment.EnvironmentId) != "" {
+		if env, err := s.store.Environment(ctx, *deployment.EnvironmentId); err == nil {
+			envCode = env.Code
+		}
+	}
+	opts := parseDeployOptions(deployment.OptionsJSON)
+	if strings.TrimSpace(opts.InstanceKey) != "" {
+		instanceKey = opts.InstanceKey
+	}
+	logPath := s.workspace.DeploymentLogPath(app.Code, envCode, instanceKey, deployment.Id)
 	content, newOffset, err := s.logStore.Read(logPath, offset)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)

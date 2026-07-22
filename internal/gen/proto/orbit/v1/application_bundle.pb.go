@@ -22,15 +22,14 @@ const (
 )
 
 type ApplicationExportResp struct {
-	state           protoimpl.MessageState                `protogen:"open.v1"`
-	Version         string                                `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	Name            string                                `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Code            string                                `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	ImagePullPolicy string                                `protobuf:"bytes,4,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	RouteManaged    bool                                  `protobuf:"varint,5,opt,name=route_managed,json=routeManaged,proto3" json:"route_managed,omitempty"`
-	ConfigFiles     []*ApplicationExportConfigFileResp    `protobuf:"bytes,6,rep,name=config_files,json=configFiles,proto3" json:"config_files,omitempty"`
-	ServiceConfigs  []*ApplicationServiceConfigExportResp `protobuf:"bytes,7,rep,name=service_configs,json=serviceConfigs,proto3" json:"service_configs,omitempty"`
-	Routes          []*ApplicationExportRouteResp         `protobuf:"bytes,8,rep,name=routes,proto3" json:"routes,omitempty"`
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId       *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
+	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Code            string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
+	ImagePullPolicy string                 `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	Versions        []*VersionResp         `protobuf:"bytes,6,rep,name=versions,proto3" json:"versions,omitempty"`
+	Services        []*ServiceResp         `protobuf:"bytes,7,rep,name=services,proto3" json:"services,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -65,9 +64,16 @@ func (*ApplicationExportResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_bundle_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ApplicationExportResp) GetVersion() string {
+func (x *ApplicationExportResp) GetId() string {
 	if x != nil {
-		return x.Version
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ApplicationExportResp) GetProjectId() string {
+	if x != nil && x.ProjectId != nil {
+		return *x.ProjectId
 	}
 	return ""
 }
@@ -93,44 +99,30 @@ func (x *ApplicationExportResp) GetImagePullPolicy() string {
 	return ""
 }
 
-func (x *ApplicationExportResp) GetRouteManaged() bool {
+func (x *ApplicationExportResp) GetVersions() []*VersionResp {
 	if x != nil {
-		return x.RouteManaged
-	}
-	return false
-}
-
-func (x *ApplicationExportResp) GetConfigFiles() []*ApplicationExportConfigFileResp {
-	if x != nil {
-		return x.ConfigFiles
+		return x.Versions
 	}
 	return nil
 }
 
-func (x *ApplicationExportResp) GetServiceConfigs() []*ApplicationServiceConfigExportResp {
+func (x *ApplicationExportResp) GetServices() []*ServiceResp {
 	if x != nil {
-		return x.ServiceConfigs
-	}
-	return nil
-}
-
-func (x *ApplicationExportResp) GetRoutes() []*ApplicationExportRouteResp {
-	if x != nil {
-		return x.Routes
+		return x.Services
 	}
 	return nil
 }
 
 type ApplicationImportReq struct {
-	state           protoimpl.MessageState               `protogen:"open.v1"`
-	Version         string                               `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	Name            string                               `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Code            string                               `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	ImagePullPolicy string                               `protobuf:"bytes,4,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	RouteManaged    bool                                 `protobuf:"varint,5,opt,name=route_managed,json=routeManaged,proto3" json:"route_managed,omitempty"`
-	ConfigFiles     []*ConfigFileReq                     `protobuf:"bytes,6,rep,name=config_files,json=configFiles,proto3" json:"config_files,omitempty"`
-	ServiceConfigs  []*ApplicationServiceConfigImportReq `protobuf:"bytes,7,rep,name=service_configs,json=serviceConfigs,proto3" json:"service_configs,omitempty"`
-	Routes          []*ApplicationRouteReq               `protobuf:"bytes,8,rep,name=routes,proto3" json:"routes,omitempty"`
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	ImagePullPolicy string                 `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	VersionLabel    string                 `protobuf:"bytes,4,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	VersionEnvJson  *string                `protobuf:"bytes,5,opt,name=version_env_json,json=versionEnvJson,proto3,oneof" json:"version_env_json,omitempty"`
+	VersionNote     *string                `protobuf:"bytes,6,opt,name=version_note,json=versionNote,proto3,oneof" json:"version_note,omitempty"`
+	Components      []*ComponentReq        `protobuf:"bytes,7,rep,name=components,proto3" json:"components,omitempty"`
+	Exposes         []*ExposeReq           `protobuf:"bytes,8,rep,name=exposes,proto3" json:"exposes,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -165,13 +157,6 @@ func (*ApplicationImportReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_bundle_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ApplicationImportReq) GetVersion() string {
-	if x != nil {
-		return x.Version
-	}
-	return ""
-}
-
 func (x *ApplicationImportReq) GetName() string {
 	if x != nil {
 		return x.Name
@@ -193,30 +178,37 @@ func (x *ApplicationImportReq) GetImagePullPolicy() string {
 	return ""
 }
 
-func (x *ApplicationImportReq) GetRouteManaged() bool {
+func (x *ApplicationImportReq) GetVersionLabel() string {
 	if x != nil {
-		return x.RouteManaged
+		return x.VersionLabel
 	}
-	return false
+	return ""
 }
 
-func (x *ApplicationImportReq) GetConfigFiles() []*ConfigFileReq {
+func (x *ApplicationImportReq) GetVersionEnvJson() string {
+	if x != nil && x.VersionEnvJson != nil {
+		return *x.VersionEnvJson
+	}
+	return ""
+}
+
+func (x *ApplicationImportReq) GetVersionNote() string {
+	if x != nil && x.VersionNote != nil {
+		return *x.VersionNote
+	}
+	return ""
+}
+
+func (x *ApplicationImportReq) GetComponents() []*ComponentReq {
 	if x != nil {
-		return x.ConfigFiles
+		return x.Components
 	}
 	return nil
 }
 
-func (x *ApplicationImportReq) GetServiceConfigs() []*ApplicationServiceConfigImportReq {
+func (x *ApplicationImportReq) GetExposes() []*ExposeReq {
 	if x != nil {
-		return x.ServiceConfigs
-	}
-	return nil
-}
-
-func (x *ApplicationImportReq) GetRoutes() []*ApplicationRouteReq {
-	if x != nil {
-		return x.Routes
+		return x.Exposes
 	}
 	return nil
 }
@@ -225,25 +217,30 @@ var File_orbit_v1_application_bundle_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_bundle_proto_rawDesc = "" +
 	"\n" +
-	"!orbit/v1/application_bundle.proto\x12\borbit.v1\x1a orbit/v1/application_route.proto\x1a\x1aorbit/v1/config_file.proto\x1a\x1dorbit/v1/service_config.proto\"\x8d\x03\n" +
-	"\x15ApplicationExportResp\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x03 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x04 \x01(\tR\x0fimagePullPolicy\x12#\n" +
-	"\rroute_managed\x18\x05 \x01(\bR\frouteManaged\x12L\n" +
-	"\fconfig_files\x18\x06 \x03(\v2).orbit.v1.ApplicationExportConfigFileRespR\vconfigFiles\x12U\n" +
-	"\x0fservice_configs\x18\a \x03(\v2,.orbit.v1.ApplicationServiceConfigExportRespR\x0eserviceConfigs\x12<\n" +
-	"\x06routes\x18\b \x03(\v2$.orbit.v1.ApplicationExportRouteRespR\x06routes\"\xf2\x02\n" +
-	"\x14ApplicationImportReq\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\tR\aversion\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
-	"\x04code\x18\x03 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x04 \x01(\tR\x0fimagePullPolicy\x12#\n" +
-	"\rroute_managed\x18\x05 \x01(\bR\frouteManaged\x12:\n" +
-	"\fconfig_files\x18\x06 \x03(\v2\x17.orbit.v1.ConfigFileReqR\vconfigFiles\x12T\n" +
-	"\x0fservice_configs\x18\a \x03(\v2+.orbit.v1.ApplicationServiceConfigImportReqR\x0eserviceConfigs\x125\n" +
-	"\x06routes\x18\b \x03(\v2\x1d.orbit.v1.ApplicationRouteReqR\x06routesB\xae\x01\n" +
+	"!orbit/v1/application_bundle.proto\x12\borbit.v1\x1a\x16orbit/v1/version.proto\"\x94\x02\n" +
+	"\x15ApplicationExportResp\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
+	"\n" +
+	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\x12*\n" +
+	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x121\n" +
+	"\bversions\x18\x06 \x03(\v2\x15.orbit.v1.VersionRespR\bversions\x121\n" +
+	"\bservices\x18\a \x03(\v2\x15.orbit.v1.ServiceRespR\bservicesB\r\n" +
+	"\v_project_id\"\xf3\x02\n" +
+	"\x14ApplicationImportReq\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
+	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12#\n" +
+	"\rversion_label\x18\x04 \x01(\tR\fversionLabel\x12-\n" +
+	"\x10version_env_json\x18\x05 \x01(\tH\x00R\x0eversionEnvJson\x88\x01\x01\x12&\n" +
+	"\fversion_note\x18\x06 \x01(\tH\x01R\vversionNote\x88\x01\x01\x126\n" +
+	"\n" +
+	"components\x18\a \x03(\v2\x16.orbit.v1.ComponentReqR\n" +
+	"components\x12-\n" +
+	"\aexposes\x18\b \x03(\v2\x13.orbit.v1.ExposeReqR\aexposesB\x13\n" +
+	"\x11_version_env_jsonB\x0f\n" +
+	"\r_version_noteB\xae\x01\n" +
 	"\fcom.orbit.v1B\x16ApplicationBundleProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1;orbitv1\xa2\x02\x03OXX\xaa\x02\bOrbit.V1\xca\x02\bOrbit\\V1\xe2\x02\x14Orbit\\V1\\GPBMetadata\xea\x02\tOrbit::V1b\x06proto3"
 
 var (
@@ -260,27 +257,23 @@ func file_orbit_v1_application_bundle_proto_rawDescGZIP() []byte {
 
 var file_orbit_v1_application_bundle_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_orbit_v1_application_bundle_proto_goTypes = []any{
-	(*ApplicationExportResp)(nil),              // 0: orbit.v1.ApplicationExportResp
-	(*ApplicationImportReq)(nil),               // 1: orbit.v1.ApplicationImportReq
-	(*ApplicationExportConfigFileResp)(nil),    // 2: orbit.v1.ApplicationExportConfigFileResp
-	(*ApplicationServiceConfigExportResp)(nil), // 3: orbit.v1.ApplicationServiceConfigExportResp
-	(*ApplicationExportRouteResp)(nil),         // 4: orbit.v1.ApplicationExportRouteResp
-	(*ConfigFileReq)(nil),                      // 5: orbit.v1.ConfigFileReq
-	(*ApplicationServiceConfigImportReq)(nil),  // 6: orbit.v1.ApplicationServiceConfigImportReq
-	(*ApplicationRouteReq)(nil),                // 7: orbit.v1.ApplicationRouteReq
+	(*ApplicationExportResp)(nil), // 0: orbit.v1.ApplicationExportResp
+	(*ApplicationImportReq)(nil),  // 1: orbit.v1.ApplicationImportReq
+	(*VersionResp)(nil),           // 2: orbit.v1.VersionResp
+	(*ServiceResp)(nil),           // 3: orbit.v1.ServiceResp
+	(*ComponentReq)(nil),          // 4: orbit.v1.ComponentReq
+	(*ExposeReq)(nil),             // 5: orbit.v1.ExposeReq
 }
 var file_orbit_v1_application_bundle_proto_depIdxs = []int32{
-	2, // 0: orbit.v1.ApplicationExportResp.config_files:type_name -> orbit.v1.ApplicationExportConfigFileResp
-	3, // 1: orbit.v1.ApplicationExportResp.service_configs:type_name -> orbit.v1.ApplicationServiceConfigExportResp
-	4, // 2: orbit.v1.ApplicationExportResp.routes:type_name -> orbit.v1.ApplicationExportRouteResp
-	5, // 3: orbit.v1.ApplicationImportReq.config_files:type_name -> orbit.v1.ConfigFileReq
-	6, // 4: orbit.v1.ApplicationImportReq.service_configs:type_name -> orbit.v1.ApplicationServiceConfigImportReq
-	7, // 5: orbit.v1.ApplicationImportReq.routes:type_name -> orbit.v1.ApplicationRouteReq
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	2, // 0: orbit.v1.ApplicationExportResp.versions:type_name -> orbit.v1.VersionResp
+	3, // 1: orbit.v1.ApplicationExportResp.services:type_name -> orbit.v1.ServiceResp
+	4, // 2: orbit.v1.ApplicationImportReq.components:type_name -> orbit.v1.ComponentReq
+	5, // 3: orbit.v1.ApplicationImportReq.exposes:type_name -> orbit.v1.ExposeReq
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_application_bundle_proto_init() }
@@ -288,9 +281,9 @@ func file_orbit_v1_application_bundle_proto_init() {
 	if File_orbit_v1_application_bundle_proto != nil {
 		return
 	}
-	file_orbit_v1_application_route_proto_init()
-	file_orbit_v1_config_file_proto_init()
-	file_orbit_v1_service_config_proto_init()
+	file_orbit_v1_version_proto_init()
+	file_orbit_v1_application_bundle_proto_msgTypes[0].OneofWrappers = []any{}
+	file_orbit_v1_application_bundle_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

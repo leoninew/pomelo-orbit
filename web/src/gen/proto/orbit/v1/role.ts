@@ -4,7 +4,9 @@
 //   protoc               unknown
 // source: orbit/v1/role.proto
 
-export const protobufPackage = 'orbit.v1';
+/* eslint-disable */
+
+export const protobufPackage = "orbit.v1";
 
 export interface PermissionResp {
   id: string;

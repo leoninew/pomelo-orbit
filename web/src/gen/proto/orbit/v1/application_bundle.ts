@@ -4,33 +4,28 @@
 //   protoc               unknown
 // source: orbit/v1/application_bundle.proto
 
-import type { ApplicationExportRouteResp, ApplicationRouteReq } from './application_route';
-import type { ApplicationExportConfigFileResp, ConfigFileReq } from './config_file';
-import type {
-  ApplicationServiceConfigExportResp,
-  ApplicationServiceConfigImportReq,
-} from './service_config';
+/* eslint-disable */
+import type { ComponentReq, ExposeReq, ServiceResp, VersionResp } from "./version";
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface ApplicationExportResp {
-  version: string;
+  id: string;
+  project_id?: string | undefined;
   name: string;
   code: string;
   image_pull_policy: string;
-  route_managed: boolean;
-  config_files: ApplicationExportConfigFileResp[];
-  service_configs: ApplicationServiceConfigExportResp[];
-  routes: ApplicationExportRouteResp[];
+  versions: VersionResp[];
+  services: ServiceResp[];
 }
 
 export interface ApplicationImportReq {
-  version: string;
   name: string;
   code: string;
   image_pull_policy: string;
-  route_managed: boolean;
-  config_files: ConfigFileReq[];
-  service_configs: ApplicationServiceConfigImportReq[];
-  routes: ApplicationRouteReq[];
+  version_label: string;
+  version_env_json?: string | undefined;
+  version_note?: string | undefined;
+  components: ComponentReq[];
+  exposes: ExposeReq[];
 }

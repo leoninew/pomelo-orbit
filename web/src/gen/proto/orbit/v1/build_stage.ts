@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface ArtifactConfigResp {
   type: string;
@@ -52,7 +52,8 @@ export interface BuildStageUpdateReq {
   description?: string | undefined;
 }
 
-export interface BuildStageDuplicateReq {}
+export interface BuildStageDuplicateReq {
+}
 
 export interface BuildStagePaginatedResp {
   items: BuildStageResp[];

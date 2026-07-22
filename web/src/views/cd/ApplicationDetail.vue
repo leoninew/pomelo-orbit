@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground flex items-center gap-2">
+      <h1 class="flex items-center gap-2 text-xl font-semibold text-foreground">
         {{ application?.name || t('application.detail.title') }}
         <AppBadge v-if="application" variant="pill" :tone="statusTone">
           {{ statusText }}
@@ -15,7 +15,7 @@
         <DropdownMenuRoot v-if="application">
           <div class="inline-flex h-9 overflow-hidden rounded-md">
             <button
-              :disabled="operating"
+              :disabled="operating || !deployVersionId"
               class="app-button-primary h-9 rounded-r-none px-3"
               @click="handleDeploy()"
             >
@@ -25,7 +25,7 @@
             <DropdownMenuTrigger as-child>
               <button
                 type="button"
-                :disabled="operating"
+                :disabled="operating || !deployVersionId"
                 class="app-button-primary h-9 rounded-l-none border-l border-primary-foreground/20 px-2"
                 :aria-label="t('application.detail.actions.deployOptions')"
               >
@@ -51,7 +51,7 @@
         </DropdownMenuRoot>
         <button
           v-if="application"
-          :disabled="operating"
+          :disabled="operating || !canStop"
           class="app-button h-9 px-3"
           @click="handleStop"
         >
@@ -60,7 +60,7 @@
         </button>
         <button
           v-if="application"
-          :disabled="operating"
+          :disabled="operating || !canRestart"
           class="app-button h-9 px-3"
           @click="handleRestart"
         >
@@ -73,9 +73,7 @@
         </button>
         <button
           v-if="application"
-          :disabled="
-            operating || application.status === 'deployed' || application.status === 'deploying'
-          "
+          :disabled="operating || !canDelete"
           class="app-button-danger h-9 px-3"
           @click="openDeleteModal"
         >
@@ -89,12 +87,10 @@
       </div>
     </div>
 
-    <!-- 加载状态 -->
     <AppSpinner v-if="basicInfoLoading" class="py-12" />
 
-    <!-- 内容 -->
     <div v-else-if="application" class="flex flex-col gap-4">
-      <!-- 基本信息卡片 -->
+      <!-- 基本信息 -->
       <div class="app-surface">
         <div class="app-section-header">
           <h2 class="font-semibold text-foreground">
@@ -134,14 +130,16 @@
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
-              {{ t('application.routeManaged') }}
+              {{ t('application.serviceCount') }}
+            </dt>
+            <dd class="text-foreground">{{ application.service_count ?? 0 }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
+              {{ t('application.detail.fields.currentVersion') }}
             </dt>
             <dd class="text-foreground">
-              {{
-                application.route_managed
-                  ? t('application.routeManagedLabels.enabled')
-                  : t('application.routeManagedLabels.disabled')
-              }}
+              {{ currentVersionLabel }}
             </dd>
           </div>
           <div class="flex gap-2">
@@ -172,142 +170,103 @@
         </dl>
       </div>
 
-      <!-- 配置文件 -->
+      <!-- 版本 -->
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between">
           <h2 class="font-semibold text-foreground">
-            {{ t('application.detail.sections.configFiles') }}
+            {{ t('application.detail.sections.versions') }}
           </h2>
-          <div class="flex items-center gap-2">
-            <button class="app-button-primary h-8 px-3" @click="openAddFileDrawer">
-              <Plus class="size-4" />
-              {{ t('application.detail.actions.addFile') }}
-            </button>
-            <button class="app-button h-8 px-3" @click="openComposePreview">
-              <Eye class="size-4" />
-              {{ t('application.detail.actions.preview') }}
-            </button>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="app-table-detail min-w-[760px]">
-            <thead>
-              <tr>
-                <th>{{ t('application.detail.fields.filePath') }}</th>
-                <th>{{ t('common.createdAt') }}</th>
-                <th>{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="fileListLoading">
-                <td colspan="3" class="text-center text-muted-foreground">
-                  <AppSpinner />
-                </td>
-              </tr>
-              <tr v-else-if="files.length === 0">
-                <td colspan="3" class="text-center text-muted-foreground">
-                  {{ t('application.detail.empty.configFiles') }}
-                </td>
-              </tr>
-              <tr v-for="file in files" :key="file.id">
-                <td class="max-w-md truncate text-foreground" :title="file.path">
-                  {{ file.path }}
-                </td>
-                <td class="text-muted-foreground">{{ formatTime(file.created_at) }}</td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    <button class="app-link" @click="openFileDrawer(file.id, false)">
-                      {{ t('application.view') }}
-                    </button>
-                    <button class="app-link" @click="openFileDrawer(file.id, true)">
-                      {{ t('common.edit') }}
-                    </button>
-                    <button class="app-link-danger" @click="confirmDeleteFile(file.id)">
-                      {{ t('common.delete') }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- 镜像配置 -->
-      <div class="app-surface">
-        <div class="app-section-header">
-          <h2 class="font-semibold text-foreground">
-            {{ t('application.detail.sections.imageConfig') }}
-          </h2>
+          <button class="app-button-primary h-8 px-3" @click="openCreateVersionModal">
+            <Plus class="size-4" />
+            {{ t('application.detail.actions.createVersion') }}
+          </button>
         </div>
         <div class="overflow-x-auto">
           <table class="app-table-detail min-w-[960px]">
             <thead>
               <tr>
-                <th>{{ t('application.detail.fields.service') }}</th>
-                <th>{{ t('application.detail.fields.defaultDomain') }}</th>
-                <th>{{ t('application.detail.fields.defaultPort') }}</th>
-                <th>{{ t('application.detail.fields.baseImage') }}</th>
-                <th>{{ t('application.detail.fields.currentImage') }}</th>
-                <th>{{ t('application.detail.fields.overridden') }}</th>
-                <th>{{ t('common.updatedAt') }}</th>
+                <th class="w-10" />
+                <th>{{ t('application.detail.fields.versionLabel') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('application.detail.fields.components') }}</th>
+                <th>{{ t('application.detail.fields.note') }}</th>
+                <th>{{ t('common.createdAt') }}</th>
                 <th>{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-if="serviceConfigListLoading">
-                <td colspan="8" class="text-center text-muted-foreground">
+              <tr v-if="versionListLoading">
+                <td colspan="7" class="text-center text-muted-foreground">
                   <AppSpinner />
                 </td>
               </tr>
-              <tr v-else-if="serviceConfigError">
-                <td colspan="8" class="text-center text-destructive">
-                  {{ serviceConfigError }}
+              <tr v-else-if="versions.length === 0">
+                <td colspan="7" class="text-center text-muted-foreground">
+                  {{ t('application.detail.empty.versions') }}
                 </td>
               </tr>
-              <tr v-else-if="serviceConfigs.length === 0">
-                <td colspan="8" class="text-center text-muted-foreground">
-                  {{ t('application.detail.empty.imageConfig') }}
+              <tr v-for="version in versions" :key="version.id">
+                <td>
+                  <input
+                    type="radio"
+                    class="size-4 accent-primary"
+                    name="selected-version"
+                    :checked="selectedVersionId === version.id"
+                    :aria-label="version.label"
+                    @change="selectedVersionId = version.id"
+                  />
                 </td>
-              </tr>
-              <tr v-for="config in serviceConfigs" :key="config.service_name">
-                <td class="text-foreground">{{ config.service_name }}</td>
-                <td class="text-muted-foreground">{{ config.default_domain }}</td>
-                <td class="text-muted-foreground">{{ config.default_port }}</td>
-                <td
-                  class="max-w-xs truncate text-muted-foreground"
-                  :title="config.base_image ?? ''"
-                >
-                  {{ config.base_image || '—' }}
-                </td>
-                <td
-                  class="max-w-xs truncate text-foreground"
-                  :title="getServiceDisplayImage(config)"
-                >
-                  {{ getServiceDisplayImage(config) || '—' }}
+                <td class="text-foreground">
+                  <span class="font-medium">{{ version.label }}</span>
+                  <span
+                    v-if="application.version_id === version.id"
+                    class="ml-2 text-xs text-muted-foreground"
+                  >
+                    {{ t('application.detail.fields.boundVersion') }}
+                  </span>
                 </td>
                 <td>
-                  <AppBadge v-if="isServiceOverridden(config)" variant="pill" tone="primary">
-                    {{ t('application.detail.fields.overridden') }}
+                  <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
+                    {{ t('status.' + version.status) }}
                   </AppBadge>
-                  <span v-else class="text-muted-foreground">—</span>
                 </td>
-                <td class="text-muted-foreground">
-                  {{ config.updated_at ? formatTime(config.updated_at) : '—' }}
+                <td class="max-w-xs truncate text-muted-foreground" :title="componentSummary(version)">
+                  {{ componentSummary(version) }}
                 </td>
+                <td class="max-w-xs truncate text-muted-foreground" :title="version.note || ''">
+                  {{ version.note || '—' }}
+                </td>
+                <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
-                  <div class="flex items-center gap-3">
-                    <button class="app-link" @click="openEditServiceConfigModal(config)">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button class="app-link" @click="openPreview(version.id)">
+                      {{ t('application.detail.actions.preview') }}
+                    </button>
+                    <button
+                      class="app-link"
+                      :disabled="operating"
+                      @click="handleDeployVersion(version.id)"
+                    >
+                      {{ t('application.deploy') }}
+                    </button>
+                    <button
+                      v-if="version.status === 'unpublished'"
+                      class="app-link"
+                      @click="openEditVersionModal(version)"
+                    >
                       {{ t('common.edit') }}
                     </button>
                     <button
-                      v-if="canResetServiceConfig(config)"
-                      class="app-link-danger"
-                      @click="confirmResetServiceConfig(config)"
+                      v-if="version.status === 'unpublished'"
+                      class="app-link"
+                      :disabled="operating"
+                      @click="handlePublish(version.id)"
                     >
-                      {{ t('common.reset') }}
+                      {{ t('application.detail.actions.publish') }}
                     </button>
-                    <span v-else class="text-muted-foreground">—</span>
+                    <button class="app-link" @click="openForkModal(version)">
+                      {{ t('application.detail.actions.fork') }}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -316,70 +275,51 @@
         </div>
       </div>
 
-      <!-- 路由配置 -->
+      <!-- Services -->
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between">
           <h2 class="font-semibold text-foreground">
-            {{ t('application.detail.sections.routeConfig') }}
+            {{ t('application.detail.sections.services') }}
           </h2>
-          <button
-            class="app-button-primary h-8 px-3"
-            :disabled="!application.route_managed"
-            :title="
-              !application.route_managed
-                ? t('application.detail.hints.routeDisabledTitle')
-                : undefined
-            "
-            @click="openAddRouteModal"
-          >
-            <Plus class="size-4" />
-            {{ t('application.detail.actions.addRoute') }}
-          </button>
-        </div>
-        <div v-if="!application.route_managed" class="px-5 pt-4">
-          <div class="app-tip">{{ t('application.detail.hints.routeDisabledTip') }}</div>
         </div>
         <div class="overflow-x-auto">
           <table class="app-table-detail min-w-[760px]">
             <thead>
               <tr>
-                <th>{{ t('application.detail.fields.domain') }}</th>
-                <th>{{ t('application.detail.fields.service') }}</th>
-                <th>{{ t('application.detail.fields.port') }}</th>
-                <th>{{ t('common.createdAt') }}</th>
-                <th>{{ t('common.operation') }}</th>
+                <th>{{ t('application.detail.fields.environment') }}</th>
+                <th>{{ t('application.detail.fields.instanceKey') }}</th>
+                <th>{{ t('application.detail.fields.ingress') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('application.detail.fields.versionLabel') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-if="routeListLoading">
+              <tr v-if="serviceListLoading">
                 <td colspan="5" class="text-center text-muted-foreground">
                   <AppSpinner />
                 </td>
               </tr>
-              <tr v-else-if="appRoutes.length === 0">
+              <tr v-else-if="services.length === 0">
                 <td colspan="5" class="text-center text-muted-foreground">
-                  {{ t('application.detail.empty.routeConfig') }}
+                  {{ t('application.detail.empty.services') }}
                 </td>
               </tr>
-              <tr v-for="r in appRoutes" :key="r.id">
-                <td class="text-foreground">{{ r.domain }}</td>
-                <td class="text-muted-foreground">{{ r.service_name }}</td>
-                <td class="text-muted-foreground">{{ r.port }}</td>
-                <td class="text-muted-foreground">{{ formatTime(r.created_at) }}</td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    <button
-                      class="app-link"
-                      :disabled="!application.route_managed"
-                      @click="openEditRouteModal(r)"
-                    >
-                      {{ t('common.edit') }}
-                    </button>
-                    <button class="app-link-danger" @click="confirmDeleteRoute(r.id)">
-                      {{ t('common.delete') }}
-                    </button>
-                  </div>
+              <tr v-for="svc in services" :key="svc.id">
+                <td class="text-foreground">{{ environmentLabel(svc.environment_id) }}</td>
+                <td class="text-muted-foreground">{{ svc.instance_key }}</td>
+                <td class="text-muted-foreground">
+                  {{
+                    svc.is_ingress
+                      ? t('application.detail.labels.ingressYes')
+                      : t('application.detail.labels.ingressNo')
+                  }}
                 </td>
+                <td>
+                  <AppBadge variant="pill" :tone="appStatusTone(normalizeServiceStatus(svc.status))">
+                    {{ t('status.' + normalizeServiceStatus(svc.status)) }}
+                  </AppBadge>
+                </td>
+                <td class="text-muted-foreground">{{ versionLabelById(svc.version_id) }}</td>
               </tr>
             </tbody>
           </table>
@@ -387,66 +327,7 @@
       </div>
     </div>
 
-    <AppDrawer
-      :open="fileDrawerVisible"
-      :title="fileDrawerTitle"
-      width-class="w-[min(960px,100vw)]"
-      body-class="min-h-0 flex-1 overflow-hidden p-0"
-      @update:open="handleFileDrawerOpenChange"
-    >
-      <div class="flex h-full flex-col gap-4 p-6">
-        <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('application.detail.fields.filePath') }}</label>
-          <input
-            v-model="currentFilePath"
-            type="text"
-            :disabled="!isEditingInDrawer"
-            :placeholder="t('application.detail.placeholders.filePath')"
-            class="app-input"
-          />
-        </div>
-        <div class="min-h-0 flex-1">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('application.detail.fields.fileContent') }}
-          </label>
-          <div v-if="fileContentLoading" class="flex h-full items-center justify-center">
-            <AppSpinner />
-          </div>
-          <MonacoEditor
-            v-else
-            v-model="currentFileContent"
-            language="yaml"
-            height="100%"
-            :readonly="!isEditingInDrawer"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <template v-if="!isEditingInDrawer && currentFileId">
-          <button class="app-button" @click="handleDrawerClose">
-            {{ t('application.detail.actions.close') }}
-          </button>
-          <button
-            class="app-button-primary"
-            :disabled="fileContentLoading"
-            @click="isEditingInDrawer = true"
-          >
-            {{ t('common.edit') }}
-          </button>
-        </template>
-        <template v-else>
-          <button class="app-button" @click="handleDrawerClose">{{ t('common.cancel') }}</button>
-          <button
-            :disabled="fileContentLoading"
-            class="app-button-primary"
-            @click="saveCurrentFile"
-          >
-            {{ t('common.save') }}
-          </button>
-        </template>
-      </template>
-    </AppDrawer>
-
+    <!-- 编辑应用 -->
     <AppDialog
       v-model:open="isEditDialogOpen"
       :title="t('application.detail.dialog.editApplication')"
@@ -472,15 +353,6 @@
         <label class="app-field-label mb-1.5 block">{{ t('application.imagePullPolicy') }}</label>
         <SelectControl v-model="editForm.image_pull_policy" :options="imagePullPolicyOptions" />
       </div>
-      <div class="space-y-1.5">
-        <label class="flex items-center gap-2">
-          <input v-model="editForm.route_managed" type="checkbox" class="app-checkbox" />
-          <span class="text-sm font-medium text-foreground">
-            {{ t('application.enableRouteManaged') }}
-          </span>
-        </label>
-        <p class="app-field-hint ml-6">{{ t('application.detail.hints.editRouteManaged') }}</p>
-      </div>
       <template #footer>
         <button class="app-button" @click="isEditDialogOpen = false">
           {{ t('common.cancel') }}
@@ -491,6 +363,7 @@
       </template>
     </AppDialog>
 
+    <!-- 删除应用 -->
     <AppDialog
       v-model:open="isDeleteDialogOpen"
       :title="t('application.detail.dialog.confirmDelete')"
@@ -519,178 +392,279 @@
       </template>
     </AppDialog>
 
+    <!-- 创建 / 编辑版本 -->
     <AppDialog
-      v-model:open="isDeleteFileDialogOpen"
-      :title="t('application.detail.dialog.confirmDelete')"
-      width-class="w-[min(420px,calc(100vw-32px))]"
+      v-model:open="isVersionDialogOpen"
+      :title="
+        editingVersionId
+          ? t('application.detail.dialog.editVersion')
+          : t('application.detail.dialog.createVersion')
+      "
+      width-class="w-[min(720px,calc(100vw-32px))]"
     >
-      <p class="text-sm text-muted-foreground">
-        {{ t('application.detail.dialog.deleteConfigFileRespConfirm') }}
-      </p>
+      <div class="space-y-4">
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.versionLabel') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="versionForm.label"
+            type="text"
+            class="app-input"
+            :class="versionFormErrors.label ? 'app-input-error' : ''"
+            :placeholder="t('application.detail.placeholders.versionLabel')"
+          />
+          <p v-if="versionFormErrors.label" class="app-field-error mt-1 text-xs">
+            {{ versionFormErrors.label }}
+          </p>
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.note') }}
+          </label>
+          <input
+            v-model="versionForm.note"
+            type="text"
+            class="app-input"
+            :placeholder="t('application.detail.placeholders.note')"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.envJson') }}
+          </label>
+          <textarea
+            v-model="versionForm.env_json"
+            rows="3"
+            class="app-input font-mono text-xs"
+            :placeholder="t('application.detail.placeholders.envJson')"
+          />
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="app-field-label">
+              {{ t('application.detail.fields.components') }}
+              <span class="text-destructive">*</span>
+            </label>
+            <button type="button" class="app-link text-sm" @click="addComponentRow">
+              {{ t('application.detail.actions.addComponent') }}
+            </button>
+          </div>
+          <p v-if="versionFormErrors.components" class="app-field-error text-xs">
+            {{ versionFormErrors.components }}
+          </p>
+          <div
+            v-for="(row, index) in versionForm.components"
+            :key="index"
+            class="grid grid-cols-1 gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_1.4fr_auto]"
+          >
+            <input
+              v-model="row.name"
+              type="text"
+              class="app-input"
+              :placeholder="t('application.detail.placeholders.componentName')"
+            />
+            <input
+              v-model="row.image"
+              type="text"
+              class="app-input"
+              :placeholder="t('application.detail.placeholders.componentImage')"
+            />
+            <button
+              type="button"
+              class="app-link-danger justify-self-start sm:justify-self-end"
+              :disabled="versionForm.components.length <= 1"
+              @click="removeComponentRow(index)"
+            >
+              {{ t('common.delete') }}
+            </button>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="app-field-label">{{ t('application.detail.fields.exposes') }}</label>
+            <button
+              type="button"
+              class="app-link text-sm"
+              :disabled="versionComponentNameOptions.length === 0"
+              @click="addExposeRow"
+            >
+              {{ t('application.detail.actions.addExpose') }}
+            </button>
+          </div>
+          <p v-if="versionFormErrors.exposes" class="app-field-error text-xs">
+            {{ versionFormErrors.exposes }}
+          </p>
+          <div
+            v-for="(row, index) in versionForm.exposes"
+            :key="'expose-' + index"
+            class="grid grid-cols-1 gap-2 rounded-md border border-border p-3 sm:grid-cols-[1fr_0.8fr_0.7fr_auto]"
+          >
+            <SelectControl
+              v-model="row.component_name"
+              :options="exposeComponentOptions(row.component_name)"
+              :placeholder="t('application.detail.placeholders.exposeComponent')"
+              :disabled="versionComponentNameOptions.length === 0"
+            />
+            <SelectControl
+              v-model="row.protocol"
+              :options="exposeProtocolOptions"
+              :placeholder="t('application.detail.placeholders.exposeProtocol')"
+            />
+            <input
+              v-model.number="row.container_port"
+              type="number"
+              min="1"
+              max="65535"
+              class="app-input"
+              :placeholder="t('application.detail.placeholders.port')"
+            />
+            <button
+              type="button"
+              class="app-link-danger justify-self-start sm:justify-self-end"
+              @click="removeExposeRow(index)"
+            >
+              {{ t('common.delete') }}
+            </button>
+          </div>
+        </div>
+      </div>
       <template #footer>
-        <button class="app-button" @click="isDeleteFileDialogOpen = false">
+        <button class="app-button" @click="isVersionDialogOpen = false">
           {{ t('common.cancel') }}
         </button>
-        <button
-          :disabled="fileListLoading"
-          class="app-button-destructive"
-          @click="executeDeleteFile"
-        >
-          {{ t('common.delete') }}
-        </button>
-      </template>
-    </AppDialog>
-
-    <AppDialog
-      v-model:open="isServiceConfigDialogOpen"
-      :title="t('application.detail.dialog.editServiceImage')"
-    >
-      <div>
-        <label class="app-field-label mb-1.5 block">
-          {{ t('application.detail.fields.service') }}
-        </label>
-        <input :value="selectedServiceName" type="text" disabled class="app-input" />
-      </div>
-      <div>
-        <label class="app-field-label mb-1.5 block">
-          {{ t('application.detail.fields.image') }}
-        </label>
-        <input
-          v-model="serviceConfigForm.image"
-          type="text"
-          class="app-input"
-          :placeholder="t('application.detail.placeholders.image')"
-        />
-        <p class="app-field-hint mt-1.5">{{ t('application.detail.hints.serviceImageEmpty') }}</p>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="isServiceConfigDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button
-          :disabled="!serviceConfigDirty || serviceConfigSaving"
-          class="app-button-primary"
-          @click="saveServiceConfig"
-        >
+        <button :disabled="operating" class="app-button-primary" @click="handleVersionSave">
           {{ t('common.save') }}
         </button>
       </template>
     </AppDialog>
 
+    <!-- Fork 版本 -->
     <AppDialog
-      v-model:open="isDeleteServiceConfigDialogOpen"
-      :title="t('application.detail.dialog.confirmReset')"
+      v-model:open="isForkDialogOpen"
+      :title="t('application.detail.dialog.forkVersion')"
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
-      <p class="text-sm text-muted-foreground">
-        {{
-          t('application.detail.dialog.resetServiceImageConfirm', {
-            name: pendingDeleteServiceName || '-',
-          })
-        }}
-      </p>
+      <div>
+        <label class="app-field-label mb-1.5 block">
+          {{ t('application.detail.fields.versionLabel') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          v-model="forkLabel"
+          type="text"
+          class="app-input"
+          :class="forkLabelError ? 'app-input-error' : ''"
+          :placeholder="t('application.detail.placeholders.versionLabel')"
+        />
+        <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
+      </div>
       <template #footer>
-        <button class="app-button" @click="cancelResetServiceConfig">
+        <button class="app-button" @click="isForkDialogOpen = false">
+          {{ t('common.cancel') }}
+        </button>
+        <button :disabled="operating" class="app-button-primary" @click="handleForkOk">
+          {{ t('application.detail.actions.fork') }}
+        </button>
+      </template>
+    </AppDialog>
+
+    <!-- Deploy -->
+    <AppDialog
+      v-model:open="isDeployDialogOpen"
+      :title="t('application.detail.dialog.deploy')"
+      width-class="w-[min(480px,calc(100vw-32px))]"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.environment') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <SelectControl
+            v-model="deployForm.environment_id"
+            :options="environmentOptions"
+            :placeholder="t('application.detail.placeholders.environment')"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.instanceKey') }}
+          </label>
+          <input v-model="deployForm.instance_key" type="text" class="app-input" />
+        </div>
+        <label class="flex items-center gap-2">
+          <input v-model="deployForm.attach_ingress" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('application.detail.fields.attachIngress') }}</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('application.detail.fields.forceRecreate') }}</span>
+        </label>
+      </div>
+      <template #footer>
+        <button class="app-button" @click="isDeployDialogOpen = false">
+          {{ t('common.cancel') }}
+        </button>
+        <button :disabled="operating" class="app-button-primary" @click="confirmDeploy">
+          {{ t('application.deploy') }}
+        </button>
+      </template>
+    </AppDialog>
+
+    <!-- Stop / Restart target -->
+    <AppDialog
+      v-model:open="isServiceTargetDialogOpen"
+      :title="
+        serviceTargetAction === 'restart'
+          ? t('application.detail.dialog.restartTarget')
+          : t('application.detail.dialog.stopTarget')
+      "
+      width-class="w-[min(480px,calc(100vw-32px))]"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-muted-foreground">
+          {{ t('application.detail.hints.selectServiceTarget') }}
+        </p>
+        <div>
+          <label class="app-field-label mb-1.5 block">
+            {{ t('application.detail.fields.serviceInstance') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <SelectControl
+            v-model="serviceTargetForm.service_id"
+            :options="serviceTargetOptions"
+            :placeholder="t('application.detail.placeholders.serviceInstance')"
+          />
+        </div>
+        <label
+          v-if="serviceTargetAction === 'stop'"
+          class="flex items-center gap-2"
+        >
+          <input v-model="serviceTargetForm.remove_volumes" type="checkbox" class="app-checkbox" />
+          <span class="text-sm text-foreground">{{ t('application.detail.fields.removeVolumes') }}</span>
+        </label>
+      </div>
+      <template #footer>
+        <button class="app-button" @click="isServiceTargetDialogOpen = false">
           {{ t('common.cancel') }}
         </button>
         <button
-          :disabled="serviceConfigSaving"
-          class="app-button-destructive"
-          @click="executeResetServiceConfig"
+          :disabled="operating"
+          class="app-button-primary"
+          @click="() => confirmServiceTarget()"
         >
-          {{ t('common.reset') }}
+          {{
+            serviceTargetAction === 'restart'
+              ? t('application.detail.actions.restart')
+              : t('application.stop')
+          }}
         </button>
       </template>
     </AppDialog>
 
-    <AppDialog
-      v-model:open="isRouteDialogOpen"
-      :title="
-        editingRouteId
-          ? t('application.detail.dialog.editRoute')
-          : t('application.detail.dialog.addRoute')
-      "
-    >
-      <div>
-        <label class="app-field-label mb-1.5 block">
-          {{ t('application.detail.fields.service') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <ComboboxSelect
-          :model-value="routeForm.service_name"
-          :options="composeServiceOptions"
-          :invalid="Boolean(routeFormErrors.service_name)"
-          :portal="false"
-          :placeholder="t('application.detail.placeholders.serviceSearch')"
-          :empty-text="t('application.detail.placeholders.noService')"
-          @update:model-value="handleRouteServiceChange"
-        />
-        <p v-if="routeFormErrors.service_name" class="app-field-error mt-1 text-xs">
-          {{ routeFormErrors.service_name }}
-        </p>
-      </div>
-      <div>
-        <label class="app-field-label mb-1.5 block">
-          {{ t('application.detail.fields.domain') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          v-model="routeForm.domain"
-          type="text"
-          placeholder="example.com"
-          class="app-input"
-          :class="routeFormErrors.domain ? 'app-input-error' : ''"
-        />
-        <p v-if="routeFormErrors.domain" class="app-field-error mt-1 text-xs">
-          {{ routeFormErrors.domain }}
-        </p>
-      </div>
-      <div>
-        <label class="app-field-label mb-1.5 block">
-          {{ t('application.detail.fields.containerPort') }}
-          <span class="text-destructive">*</span>
-        </label>
-        <input
-          v-model.number="routeForm.port"
-          type="number"
-          min="1"
-          max="65535"
-          :placeholder="t('application.detail.placeholders.port')"
-          class="app-input"
-          :class="routeFormErrors.port ? 'app-input-error' : ''"
-        />
-        <p v-if="routeFormErrors.port" class="app-field-error mt-1 text-xs">
-          {{ routeFormErrors.port }}
-        </p>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="isRouteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="routeLoading" class="app-button-primary" @click="handleRouteOk">
-          {{ editingRouteId ? t('common.save') : t('common.add') }}
-        </button>
-      </template>
-    </AppDialog>
-
-    <AppDialog
-      v-model:open="isDeleteRouteDialogOpen"
-      :title="t('application.detail.dialog.confirmDelete')"
-      width-class="w-[min(420px,calc(100vw-32px))]"
-    >
-      <p class="text-sm text-muted-foreground">
-        {{ t('application.detail.dialog.deleteRouteConfirm') }}
-      </p>
-      <template #footer>
-        <button class="app-button" @click="isDeleteRouteDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button :disabled="routeLoading" class="app-button-destructive" @click="executeDeleteRoute">
-          {{ t('common.delete') }}
-        </button>
-      </template>
-    </AppDialog>
-
+    <!-- Compose 预览 -->
     <AppDrawer
       :open="composePreviewDrawerOpen"
       :title="t('application.detail.drawer.composePreview')"
@@ -734,7 +708,6 @@
     ArrowLeft,
     ChevronDown,
     Download,
-    Eye,
     Pencil,
     Play,
     Plus,
@@ -742,7 +715,7 @@
     Square,
     Trash2,
   } from 'lucide-vue-next';
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
   import {
     DropdownMenuContent,
     DropdownMenuItem,
@@ -754,23 +727,28 @@
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/cd/application';
   import { deploymentApi } from '@/api/cd/deployments';
+  import { environmentApi } from '@/api/cd/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
+  import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
-  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application';
-  import type { ApplicationRouteResp } from '@/gen/proto/orbit/v1/application_route';
-  import type { ConfigFileResp } from '@/gen/proto/orbit/v1/config_file';
+  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment';
   import type {
-    ApplicationServiceConfigResp,
-    ComposeServiceResp,
-  } from '@/gen/proto/orbit/v1/service_config';
-  import { appStatusTone } from '@/utils/status';
+    ComponentReq,
+    ExposeReq,
+    ServiceResp,
+    VersionResp,
+  } from '@/gen/proto/orbit/v1/version';
+  import {
+    appStatusTone,
+    normalizeServiceStatus,
+    versionStatusTone,
+  } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
   const route = useRoute();
@@ -781,55 +759,37 @@
 
   const { loading: basicInfoLoading, execute: executeBasicInfo } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
-  const { loading: fileListLoading, execute: executeFileList } = useStatusAsync();
-  const { loading: fileContentLoading, execute: executeFileContent } = useStatusAsync();
-  const { loading: routeListLoading, execute: executeRouteList } = useStatusAsync();
-  const { loading: routeLoading, execute: executeRoute } = useStatusAsync();
-  const { loading: serviceConfigListLoading, execute: executeServiceConfigList } = useStatusAsync();
-  const { loading: serviceConfigSaving, execute: executeServiceConfigSave } = useStatusAsync();
+  const { loading: versionListLoading, execute: executeVersionList } = useStatusAsync();
+  const { loading: serviceListLoading, execute: executeServiceList } = useStatusAsync();
   const { loading: composePreviewLoading, execute: executeComposePreview } = useStatusAsync();
 
   const application = ref<ApplicationResp>();
-  const files = ref<ConfigFileResp[]>([]);
-  const appRoutes = ref<ApplicationRouteResp[]>([]);
-  const composeServices = ref<ComposeServiceResp[]>([]);
-  const serviceConfigs = ref<ApplicationServiceConfigResp[]>([]);
-  const selectedServiceName = ref('');
-  const serviceConfigError = ref('');
+  const versions = ref<VersionResp[]>([]);
+  const services = ref<ServiceResp[]>([]);
+  const environments = ref<EnvironmentResp[]>([]);
+  const selectedVersionId = ref('');
+  const pendingDeployVersionId = ref('');
 
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
-  const isDeleteFileDialogOpen = ref(false);
-  const isServiceConfigDialogOpen = ref(false);
-  const isDeleteServiceConfigDialogOpen = ref(false);
-  const isRouteDialogOpen = ref(false);
-  const isDeleteRouteDialogOpen = ref(false);
+  const isVersionDialogOpen = ref(false);
+  const isForkDialogOpen = ref(false);
+  const isDeployDialogOpen = ref(false);
+  const isServiceTargetDialogOpen = ref(false);
+  const serviceTargetAction = ref<'stop' | 'restart'>('stop');
   const composePreviewDrawerOpen = ref(false);
-  const pendingDeleteFileId = ref('');
-  const pendingDeleteServiceName = ref('');
-  const pendingDeleteRouteId = ref('');
-  const editingRouteId = ref('');
+  const editingVersionId = ref('');
+  const forkingVersionId = ref('');
+  const forkLabel = ref('');
+  const forkLabelError = ref('');
   const deleteDir = ref(false);
   const composePreviewYaml = ref('');
   const composePreviewError = ref('');
-
-  const routeForm = reactive({ service_name: '', domain: '', port: 80 });
-  const routeFormErrors = reactive({ service_name: '', domain: '', port: '' });
-  const routeDomainPattern =
-    /^(localhost|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
-  const serviceConfigForm = reactive({ image: '' });
-
-  const fileDrawerVisible = ref(false);
-  const currentFileId = ref('');
-  const currentFilePath = ref('');
-  const currentFileContent = ref('');
-  const isEditingInDrawer = ref(false);
 
   const editForm = reactive({
     name: '',
     code: '',
     image_pull_policy: 'missing',
-    route_managed: false,
   });
   const editErrors = reactive({ name: '' });
   const imagePullPolicyOptions = computed(() => [
@@ -838,39 +798,161 @@
     { value: 'never', label: t('application.imagePullPolicyOptions.never') },
   ]);
 
-  const activeServiceConfig = computed(() =>
-    serviceConfigs.value.find((item) => item.service_name === selectedServiceName.value)
-  );
-  const currentServiceImage = computed(() =>
-    activeServiceConfig.value ? getServiceDisplayImage(activeServiceConfig.value) : ''
-  );
+  type ComponentFormRow = { name: string; image: string };
+  type ExposeFormRow = { component_name: string; protocol: string; container_port: number };
+  const versionForm = reactive({
+    label: '',
+    note: '',
+    env_json: '',
+    components: [{ name: '', image: '' }] as ComponentFormRow[],
+    exposes: [] as ExposeFormRow[],
+  });
+  const versionFormErrors = reactive({ label: '', components: '', exposes: '' });
+  const exposeProtocolOptions = [
+    { value: 'http', label: 'http' },
+    { value: 'tcp', label: 'tcp' },
+  ];
+  const versionComponentNameOptions = computed(() => {
+    const names = versionForm.components.map((row) => row.name.trim()).filter(Boolean);
+    return [...new Set(names)].map((name) => ({ value: name, label: name }));
+  });
 
-  const composeServiceOptions = computed(() =>
-    composeServices.value.map((service) => ({
-      value: service.service_name,
-      label: service.service_name,
-      description: `${service.default_domain}:${service.default_port}`,
+  const deployForm = reactive({
+    environment_id: '',
+    instance_key: 'default',
+    attach_ingress: true,
+    force_recreate: false,
+  });
+  const serviceTargetForm = reactive({
+    service_id: '',
+    remove_volumes: false,
+  });
+
+  const environmentOptions = computed(() =>
+    environments.value.map((item) => ({
+      value: item.id,
+      label: `${item.name} (${item.code})`,
     }))
   );
-  const fileDrawerTitle = computed(() => {
-    if (!currentFileId.value) {
-      return t('application.detail.drawer.addFile');
-    }
-    const action = isEditingInDrawer.value
-      ? t('application.detail.drawer.editFile')
-      : t('application.detail.drawer.viewFile');
-    return currentFilePath.value ? `${action}: ${currentFilePath.value}` : action;
-  });
-  const serviceConfigDirty = computed(
-    () => serviceConfigForm.image.trim() !== currentServiceImage.value.trim()
+
+  const actionableServices = computed(() =>
+    services.value.filter((svc) => {
+      const status = normalizeServiceStatus(svc.status);
+      return status === 'running' || status === 'faulted';
+    })
   );
 
-  const statusTone = computed(() =>
-    application.value ? appStatusTone(application.value.status) : 'default'
+  const serviceTargetOptions = computed(() =>
+    actionableServices.value.map((svc) => ({
+      value: svc.id,
+      label: `${environmentLabel(svc.environment_id)} / ${svc.instance_key} (${t(
+        'status.' + normalizeServiceStatus(svc.status)
+      )})`,
+    }))
   );
-  const statusText = computed(() =>
-    application.value ? t('status.' + application.value.status) : ''
+
+  const serviceStatus = computed(() =>
+    normalizeServiceStatus(application.value?.service_status)
   );
+  const statusTone = computed(() => appStatusTone(serviceStatus.value));
+  const statusText = computed(() => t('status.' + serviceStatus.value));
+  const canStop = computed(() =>
+    actionableServices.value.some((svc) => normalizeServiceStatus(svc.status) === 'running')
+  );
+  const canRestart = computed(() => actionableServices.value.length > 0);
+  const canDelete = computed(
+    () =>
+      services.value.length === 0 ||
+      services.value.every((svc) => {
+        const status = normalizeServiceStatus(svc.status);
+        return status === 'undeployed' || status === 'stopped' || status === 'faulted';
+      })
+  );
+  const deployVersionId = computed(
+    () => selectedVersionId.value || application.value?.version_id || ''
+  );
+  const currentVersionLabel = computed(() => {
+    const boundId = application.value?.version_id;
+    if (!boundId) {
+      return '—';
+    }
+    const found = versions.value.find((item) => item.id === boundId);
+    return found?.label || boundId;
+  });
+
+  watch(
+    () => deployForm.instance_key,
+    (key) => {
+      if (key.trim() === '' || key.trim() === 'default') {
+        deployForm.attach_ingress = true;
+      }
+    }
+  );
+
+  function componentSummary(version: VersionResp) {
+    if (!version.components?.length) {
+      return '—';
+    }
+    return version.components.map((c) => `${c.name}:${c.image}`).join(', ');
+  }
+
+  function emptyComponentRow(): ComponentFormRow {
+    return { name: '', image: '' };
+  }
+
+  function defaultExposeComponentName() {
+    return versionComponentNameOptions.value[0]?.value || '';
+  }
+
+  function emptyExposeRow(): ExposeFormRow {
+    return {
+      component_name: defaultExposeComponentName(),
+      protocol: 'http',
+      container_port: 80,
+    };
+  }
+
+  function exposeComponentOptions(currentName: string) {
+    const options = [...versionComponentNameOptions.value];
+    const current = currentName.trim();
+    if (current && !options.some((item) => item.value === current)) {
+      options.unshift({ value: current, label: current });
+    }
+    return options;
+  }
+
+  function componentToReq(row: ComponentFormRow): ComponentReq {
+    return { name: row.name.trim(), image: row.image.trim() };
+  }
+
+  function exposeToReq(row: ExposeFormRow): ExposeReq {
+    return {
+      component_name: String(row.component_name || '').trim(),
+      protocol: String(row.protocol || 'http').trim() || 'http',
+      container_port: Number(row.container_port) || 0,
+    };
+  }
+
+  function defaultEnvironmentId() {
+    const local = environments.value.find((item) => item.code === 'local');
+    return local?.id || environments.value[0]?.id || '';
+  }
+
+  function environmentLabel(environmentId: string) {
+    const found = environments.value.find((item) => item.id === environmentId);
+    if (!found) {
+      return environmentId || '—';
+    }
+    return `${found.name} (${found.code})`;
+  }
+
+  function versionLabelById(versionId: string) {
+    if (!versionId) {
+      return '—';
+    }
+    const found = versions.value.find((item) => item.id === versionId);
+    return found?.label || versionId;
+  }
 
   async function fetchApplication() {
     try {
@@ -881,15 +963,61 @@
           name: data.name,
           code: data.code,
           image_pull_policy: data.image_pull_policy,
-          route_managed: data.route_managed,
         });
+        if (data.version_id && !selectedVersionId.value) {
+          selectedVersionId.value = data.version_id;
+        }
       });
-      if (application.value?.status === 'deploying') {
+      if (serviceStatus.value === 'deploying') {
         pollActiveDeployment();
       }
     } catch {
       toast.error(t('application.toast.loadDetailFailed'));
       router.push('/cd/applications');
+    }
+  }
+
+  async function loadVersions() {
+    try {
+      await executeVersionList(async () => {
+        const resp = await applicationApi.listVersions(applicationId);
+        versions.value = resp.items ?? [];
+        if (!selectedVersionId.value && versions.value.length > 0) {
+          const bound = application.value?.version_id;
+          selectedVersionId.value =
+            (bound && versions.value.find((v) => v.id === bound)?.id) || versions.value[0].id;
+        }
+      });
+    } catch {
+      toast.error(t('application.toast.loadVersionsFailed'));
+    }
+  }
+
+  async function loadServices() {
+    try {
+      await executeServiceList(async () => {
+        const resp = await applicationApi.listServices(applicationId);
+        services.value = resp.items ?? [];
+      });
+    } catch {
+      toast.error(t('application.toast.loadServicesFailed'));
+    }
+  }
+
+  async function loadEnvironments() {
+    const projectId = application.value?.project_id;
+    if (!projectId) {
+      environments.value = [];
+      return;
+    }
+    try {
+      const resp = await environmentApi.list({ project_id: projectId, per_page: 100 });
+      environments.value = resp.items ?? [];
+      if (!deployForm.environment_id) {
+        deployForm.environment_id = defaultEnvironmentId();
+      }
+    } catch {
+      toast.error(t('application.toast.loadEnvironmentsFailed'));
     }
   }
 
@@ -908,10 +1036,8 @@
         try {
           const detail = await deploymentApi.get(latest.id);
           if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-            if (application.value) {
-              application.value.status =
-                detail.status === 'ran_to_completion' ? 'deployed' : 'deploy_failed';
-            }
+            await fetchApplication();
+            await loadServices();
             break;
           }
         } catch {
@@ -923,11 +1049,54 @@
     }
   }
 
-  async function handleDeploy(forceRecreate = false) {
+  function openDeployDialog(versionId: string, forceRecreate = false) {
+    if (!versionId) {
+      toast.error(t('application.toast.deployVersionRequired'));
+      return;
+    }
+    if (!environments.value.length) {
+      toast.error(t('application.toast.environmentRequired'));
+      return;
+    }
+    pendingDeployVersionId.value = versionId;
+    deployForm.force_recreate = forceRecreate;
+    deployForm.instance_key = deployForm.instance_key.trim() || 'default';
+    deployForm.environment_id = deployForm.environment_id || defaultEnvironmentId();
+    deployForm.attach_ingress =
+      !deployForm.instance_key || deployForm.instance_key === 'default';
+    isDeployDialogOpen.value = true;
+  }
+
+  function handleDeploy(forceRecreate = false) {
+    openDeployDialog(deployVersionId.value, forceRecreate);
+  }
+
+  function handleDeployVersion(versionId: string, forceRecreate = false) {
+    openDeployDialog(versionId, forceRecreate);
+  }
+
+  async function confirmDeploy() {
+    const versionId = pendingDeployVersionId.value || deployVersionId.value;
+    if (!versionId) {
+      toast.error(t('application.toast.deployVersionRequired'));
+      return;
+    }
+    if (!deployForm.environment_id) {
+      toast.error(t('application.toast.environmentRequired'));
+      return;
+    }
+    const instanceKey = deployForm.instance_key.trim() || 'default';
     try {
       await executeOp(async () => {
-        const res = await applicationApi.deploy(applicationId, { force_recreate: forceRecreate });
+        const res = await applicationApi.deploy(applicationId, {
+          version_id: versionId,
+          environment_id: deployForm.environment_id,
+          instance_key: instanceKey,
+          attach_ingress: deployForm.attach_ingress,
+          force_recreate: deployForm.force_recreate,
+        });
         toast.success(t('application.toast.deployTriggeredDetail'));
+        isDeployDialogOpen.value = false;
         router.push({
           path: `/cd/deployments/${res.deployment_id}`,
           query: { from: 'application' },
@@ -938,44 +1107,83 @@
     }
   }
 
-  async function handleStop() {
-    try {
-      await executeOp(async () => {
-        const res = await applicationApi.stop(applicationId, { remove_volumes: false });
-        toast.success(t('application.toast.stopSubmitted'));
-        const maxAttempts = 20; // 最多轮询 20 次（60 秒）
-        let attempts = 0;
-        while (attempts < maxAttempts) {
-          await delayAsync(3000);
-          attempts++;
-          try {
-            const detail = await deploymentApi.get(res.deployment_id);
-            if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
-              await fetchApplication(); // 重新加载应用状态
-              break;
-            }
-          } catch {
-            break;
-          }
-        }
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.stopFailed'));
+  function openServiceTargetDialog(action: 'stop' | 'restart') {
+    if (actionableServices.value.length === 0) {
+      toast.error(t('application.toast.serviceTargetRequired'));
+      return;
     }
+    serviceTargetAction.value = action;
+    const preferred =
+      actionableServices.value.find((svc) => svc.is_ingress) || actionableServices.value[0];
+    serviceTargetForm.service_id = preferred.id;
+    serviceTargetForm.remove_volumes = false;
+    if (actionableServices.value.length === 1) {
+      void confirmServiceTarget(action, preferred.id, false);
+      return;
+    }
+    isServiceTargetDialogOpen.value = true;
   }
 
-  async function handleRestart() {
+  function handleStop() {
+    openServiceTargetDialog('stop');
+  }
+
+  function handleRestart() {
+    openServiceTargetDialog('restart');
+  }
+
+  async function confirmServiceTarget(
+    action = serviceTargetAction.value,
+    serviceId = serviceTargetForm.service_id,
+    removeVolumes = serviceTargetForm.remove_volumes
+  ) {
+    if (!serviceId) {
+      toast.error(t('application.toast.serviceTargetRequired'));
+      return;
+    }
     try {
       await executeOp(async () => {
-        const res = await applicationApi.restart(applicationId, {});
+        if (action === 'stop') {
+          const res = await applicationApi.stop(applicationId, {
+            remove_volumes: removeVolumes,
+            service_id: serviceId,
+          });
+          toast.success(t('application.toast.stopSubmitted'));
+          isServiceTargetDialogOpen.value = false;
+          const maxAttempts = 20;
+          let attempts = 0;
+          while (attempts < maxAttempts) {
+            await delayAsync(3000);
+            attempts++;
+            try {
+              const detail = await deploymentApi.get(res.deployment_id);
+              if (['ran_to_completion', 'faulted', 'canceled'].includes(detail.status)) {
+                await fetchApplication();
+                await loadServices();
+                break;
+              }
+            } catch {
+              break;
+            }
+          }
+          return;
+        }
+        const res = await applicationApi.restart(applicationId, { service_id: serviceId });
         toast.success(t('application.toast.restartSubmitted'));
+        isServiceTargetDialogOpen.value = false;
         router.push({
           path: `/cd/deployments/${res.deployment_id}`,
           query: { from: 'application' },
         });
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.restartFailed'));
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : action === 'stop'
+            ? t('application.toast.stopFailed')
+            : t('application.toast.restartFailed')
+      );
     }
   }
 
@@ -1004,7 +1212,6 @@
         name: application.value.name,
         code: application.value.code,
         image_pull_policy: application.value.image_pull_policy,
-        route_managed: application.value.route_managed,
       });
     }
     isEditDialogOpen.value = true;
@@ -1020,16 +1227,10 @@
         await applicationApi.update(applicationId, {
           name: editForm.name,
           image_pull_policy: editForm.image_pull_policy,
-          route_managed: editForm.route_managed,
         });
         toast.success(t('application.toast.updateSuccess'));
         isEditDialogOpen.value = false;
         await fetchApplication();
-        if (application.value?.route_managed) {
-          await loadRoutes();
-        } else {
-          appRoutes.value = [];
-        }
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
@@ -1053,227 +1254,222 @@
     }
   }
 
-  async function loadFiles() {
-    try {
-      await executeFileList(async () => {
-        const resp = await applicationApi.listFiles(applicationId);
-        files.value = resp.items;
-      });
-    } catch {
-      toast.error(t('application.toast.loadConfigFileRespsFailed'));
+  function resetVersionForm() {
+    versionForm.label = '';
+    versionForm.note = '';
+    versionForm.env_json = '';
+    versionForm.components = [emptyComponentRow()];
+    versionForm.exposes = [];
+    Object.assign(versionFormErrors, { label: '', components: '', exposes: '' });
+  }
+
+  function openCreateVersionModal() {
+    editingVersionId.value = '';
+    resetVersionForm();
+    versionForm.label = suggestNextLabel();
+    isVersionDialogOpen.value = true;
+  }
+
+  function openEditVersionModal(version: VersionResp) {
+    editingVersionId.value = version.id;
+    versionForm.label = version.label;
+    versionForm.note = version.note || '';
+    versionForm.env_json = version.env_json || '';
+    versionForm.components =
+      version.components?.length > 0
+        ? version.components.map((c) => ({ name: c.name, image: c.image }))
+        : [emptyComponentRow()];
+    versionForm.exposes =
+      version.exposes?.map((item) => ({
+        component_name: item.component_name,
+        protocol: item.protocol || 'http',
+        container_port: item.container_port,
+      })) ?? [];
+    Object.assign(versionFormErrors, { label: '', components: '', exposes: '' });
+    isVersionDialogOpen.value = true;
+  }
+
+  function suggestNextLabel() {
+    const labels = versions.value.map((v) => v.label);
+    let n = versions.value.length + 1;
+    while (labels.includes(`v${n}`)) {
+      n += 1;
     }
+    return `v${n}`;
   }
 
-  async function loadServiceConfigs() {
-    serviceConfigError.value = '';
-    try {
-      await executeServiceConfigList(async () => {
-        const resp = await applicationApi.listServiceConfigs(applicationId);
-        serviceConfigs.value = resp.items;
-      });
-    } catch (error) {
-      serviceConfigs.value = [];
-      serviceConfigError.value =
-        error instanceof Error ? error.message : t('application.toast.loadServiceConfigFailed');
-    }
+  function addComponentRow() {
+    versionForm.components.push(emptyComponentRow());
   }
 
-  function getServiceDisplayImage(serviceConfig: ApplicationServiceConfigResp) {
-    return serviceConfig.image?.trim() || serviceConfig.base_image || '';
-  }
-
-  function isServiceOverridden(serviceConfig: ApplicationServiceConfigResp) {
-    const overrideImage = serviceConfig.image?.trim() || '';
-    const baseImage = serviceConfig.base_image?.trim() || '';
-    return Boolean(overrideImage) && overrideImage !== baseImage;
-  }
-
-  function canResetServiceConfig(serviceConfig: ApplicationServiceConfigResp) {
-    return Boolean(serviceConfig.image?.trim());
-  }
-
-  function openEditServiceConfigModal(serviceConfig: ApplicationServiceConfigResp) {
-    selectedServiceName.value = serviceConfig.service_name;
-    serviceConfigForm.image = getServiceDisplayImage(serviceConfig);
-    isServiceConfigDialogOpen.value = true;
-  }
-
-  function confirmResetServiceConfig(serviceConfig: ApplicationServiceConfigResp) {
-    if (!canResetServiceConfig(serviceConfig)) {
+  function removeComponentRow(index: number) {
+    if (versionForm.components.length <= 1) {
       return;
     }
-    pendingDeleteServiceName.value = serviceConfig.service_name;
-    isDeleteServiceConfigDialogOpen.value = true;
+    versionForm.components.splice(index, 1);
+    syncExposeComponentNames();
   }
 
-  function cancelResetServiceConfig() {
-    pendingDeleteServiceName.value = '';
-    isDeleteServiceConfigDialogOpen.value = false;
-  }
-
-  async function executeResetServiceConfig() {
-    if (!pendingDeleteServiceName.value) {
+  function addExposeRow() {
+    if (versionComponentNameOptions.value.length === 0) {
+      versionFormErrors.exposes = t('application.validation.exposeNeedsComponent');
       return;
     }
-    try {
-      await executeServiceConfigSave(async () => {
-        const saved = await applicationApi.updateServiceConfig(
-          applicationId,
-          pendingDeleteServiceName.value,
-          {}
-        );
-        const idx = serviceConfigs.value.findIndex(
-          (item) => item.service_name === saved.service_name
-        );
-        if (idx >= 0) {
-          serviceConfigs.value[idx] = saved;
-        } else {
-          serviceConfigs.value.push(saved);
-        }
-        if (selectedServiceName.value === saved.service_name) {
-          serviceConfigForm.image = getServiceDisplayImage(saved);
-          isServiceConfigDialogOpen.value = false;
-        }
-        isDeleteServiceConfigDialogOpen.value = false;
-        pendingDeleteServiceName.value = '';
-        toast.success(t('application.toast.resetServiceImageSuccess'));
-      });
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('application.toast.resetServiceImageFailed')
-      );
+    versionForm.exposes.push(emptyExposeRow());
+    versionFormErrors.exposes = '';
+  }
+
+  function removeExposeRow(index: number) {
+    versionForm.exposes.splice(index, 1);
+    if (versionForm.exposes.length === 0) {
+      versionFormErrors.exposes = '';
     }
   }
 
-  async function saveServiceConfig() {
-    const active = activeServiceConfig.value;
-    if (!active || !serviceConfigDirty.value) {
+  function syncExposeComponentNames() {
+    const names = new Set(versionComponentNameOptions.value.map((item) => item.value));
+    const fallback = defaultExposeComponentName();
+    for (const row of versionForm.exposes) {
+      if (!names.has(String(row.component_name || '').trim())) {
+        row.component_name = fallback;
+      }
+    }
+  }
+
+  function validateVersionForm() {
+    versionFormErrors.label = versionForm.label.trim()
+      ? ''
+      : t('application.validation.versionLabelRequired');
+    const rows = versionForm.components
+      .map(componentToReq)
+      .filter((c) => c.name || c.image);
+    if (rows.length === 0) {
+      versionFormErrors.components = t('application.validation.componentRequired');
+    } else if (rows.some((c) => !c.name || !c.image)) {
+      versionFormErrors.components = t('application.validation.componentNameImageRequired');
+    } else {
+      versionFormErrors.components = '';
+    }
+
+    const componentNames = new Set(rows.filter((c) => c.name && c.image).map((c) => c.name));
+    const exposeRows = versionForm.exposes.map(exposeToReq);
+    if (exposeRows.some((item) => !item.component_name)) {
+      versionFormErrors.exposes = t('application.validation.exposeComponentRequired');
+    } else if (exposeRows.some((item) => !componentNames.has(item.component_name))) {
+      versionFormErrors.exposes = t('application.validation.exposeComponentNotFound');
+    } else if (
+      exposeRows.some(
+        (item) => item.container_port < 1 || item.container_port > 65535
+      )
+    ) {
+      versionFormErrors.exposes = t('application.validation.portRange');
+    } else {
+      versionFormErrors.exposes = '';
+    }
+
+    return (
+      !versionFormErrors.label && !versionFormErrors.components && !versionFormErrors.exposes
+    );
+  }
+
+  async function handleVersionSave() {
+    if (!validateVersionForm()) {
       return;
     }
+    const components = versionForm.components.map(componentToReq).filter((c) => c.name && c.image);
+    const exposes = versionForm.exposes
+      .map(exposeToReq)
+      .filter((item) => item.component_name && item.container_port > 0);
+    const envJson = versionForm.env_json.trim() || undefined;
+    const note = versionForm.note.trim() || undefined;
     try {
-      await executeServiceConfigSave(async () => {
-        const saved = await applicationApi.updateServiceConfig(applicationId, active.service_name, {
-          image: serviceConfigForm.image,
-        });
-        const idx = serviceConfigs.value.findIndex(
-          (item) => item.service_name === saved.service_name
-        );
-        if (idx >= 0) {
-          serviceConfigs.value[idx] = saved;
-        } else {
-          serviceConfigs.value.push(saved);
-        }
-        selectedServiceName.value = saved.service_name;
-        serviceConfigForm.image = getServiceDisplayImage(saved);
-        isServiceConfigDialogOpen.value = false;
-        toast.success(t('application.toast.saveServiceImageSuccess'));
-      });
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('application.toast.saveServiceImageFailed')
-      );
-    }
-  }
-
-  async function openFileDrawer(fileId: string, isEdit = false) {
-    currentFileId.value = fileId;
-    isEditingInDrawer.value = isEdit;
-    currentFileContent.value = '';
-    currentFilePath.value = '';
-    fileDrawerVisible.value = true;
-    try {
-      await executeFileContent(async () => {
-        const result = await applicationApi.readFile(applicationId, fileId);
-        currentFileContent.value = result.content ?? '';
-        currentFilePath.value = result.path || '';
-      });
-    } catch {
-      toast.error(t('application.toast.loadFileContentFailed'));
-    }
-  }
-
-  function openAddFileDrawer() {
-    currentFileId.value = '';
-    currentFilePath.value = '';
-    currentFileContent.value = '';
-    isEditingInDrawer.value = true;
-    fileDrawerVisible.value = true;
-  }
-
-  function handleDrawerClose() {
-    fileDrawerVisible.value = false;
-    isEditingInDrawer.value = false;
-  }
-
-  function handleFileDrawerOpenChange(open: boolean) {
-    fileDrawerVisible.value = open;
-    if (!open) {
-      isEditingInDrawer.value = false;
-    }
-  }
-
-  async function saveCurrentFile() {
-    if (!currentFilePath.value.trim()) {
-      toast.error(t('application.validation.filePathRequired'));
-      return;
-    }
-    const lowerPath = currentFilePath.value.toLowerCase();
-    const content =
-      lowerPath.endsWith('.sh') || lowerPath.endsWith('.bash')
-        ? currentFileContent.value.replace(/\r\n/g, '\n')
-        : currentFileContent.value;
-    try {
-      await executeFileContent(async () => {
-        if (currentFileId.value) {
-          const updated = await applicationApi.writeFile(applicationId, currentFileId.value, {
-            path: currentFilePath.value,
-            content,
+      await executeOp(async () => {
+        if (editingVersionId.value) {
+          await applicationApi.updateVersion(editingVersionId.value, {
+            label: versionForm.label.trim(),
+            env_json: envJson,
+            note,
+            components,
+            exposes,
           });
-          const idx = files.value.findIndex((f) => f.id === currentFileId.value);
-          if (idx >= 0) {
-            files.value[idx] = updated;
-          }
-          toast.success(t('application.toast.saveSuccess'));
+          toast.success(t('application.toast.updateSuccess'));
         } else {
-          await applicationApi.createFile(applicationId, { path: currentFilePath.value, content });
-          toast.success(t('application.toast.addSuccess'));
+          const created = await applicationApi.createVersion(applicationId, {
+            application_id: applicationId,
+            label: versionForm.label.trim(),
+            env_json: envJson,
+            note,
+            components,
+            exposes,
+          });
+          selectedVersionId.value = created.id;
+          toast.success(t('application.toast.createVersionSuccess'));
         }
-        fileDrawerVisible.value = false;
-        isEditingInDrawer.value = false;
-        await loadFiles();
-        await loadServiceConfigs();
+        isVersionDialogOpen.value = false;
+        await loadVersions();
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.saveFailed'));
     }
   }
 
-  function confirmDeleteFile(fileId: string) {
-    pendingDeleteFileId.value = fileId;
-    isDeleteFileDialogOpen.value = true;
-  }
-
-  async function executeDeleteFile() {
+  async function handlePublish(versionId: string) {
     try {
-      await executeFileList(async () => {
-        await applicationApi.deleteFile(applicationId, pendingDeleteFileId.value);
-        toast.success(t('application.toast.deleteSuccess'));
-        isDeleteFileDialogOpen.value = false;
-        await loadFiles();
-        await loadServiceConfigs();
+      await executeOp(async () => {
+        await applicationApi.publishVersion(versionId);
+        toast.success(t('application.toast.publishSuccess'));
+        await loadVersions();
       });
-    } catch {
-      toast.error(t('application.toast.deleteFailed'));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.publishFailed'));
     }
   }
 
-  async function openComposePreview() {
+  function openForkModal(version: VersionResp) {
+    forkingVersionId.value = version.id;
+    forkLabel.value = `${version.label}-fork`;
+    forkLabelError.value = '';
+    isForkDialogOpen.value = true;
+  }
+
+  async function handleForkOk() {
+    forkLabelError.value = forkLabel.value.trim()
+      ? ''
+      : t('application.validation.versionLabelRequired');
+    if (forkLabelError.value || !forkingVersionId.value) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const created = await applicationApi.forkVersion(forkingVersionId.value, {
+          label: forkLabel.value.trim(),
+        });
+        selectedVersionId.value = created.id;
+        toast.success(t('application.toast.forkSuccess'));
+        isForkDialogOpen.value = false;
+        await loadVersions();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.forkFailed'));
+    }
+  }
+
+  async function openPreview(versionId: string) {
+    const environmentId = deployForm.environment_id || defaultEnvironmentId();
+    if (!environmentId) {
+      toast.error(t('application.toast.environmentRequired'));
+      return;
+    }
     composePreviewYaml.value = '';
     composePreviewError.value = '';
     composePreviewDrawerOpen.value = true;
     try {
       await executeComposePreview(async () => {
-        const { compose_yaml } = await applicationApi.previewCompose(applicationId, {});
+        const { compose_yaml } = await applicationApi.previewVersion(versionId, {
+          environment_id: environmentId,
+          instance_key: 'default',
+          attach_ingress: true,
+        });
         composePreviewYaml.value = compose_yaml;
       });
     } catch (error) {
@@ -1290,143 +1486,8 @@
     }
   }
 
-  // ── Route management ──
-
-  async function loadRoutes() {
-    try {
-      await executeRouteList(async () => {
-        const resp = await applicationApi.listRoutes(applicationId);
-        appRoutes.value = resp.items;
-      });
-    } catch {
-      toast.error(t('application.toast.loadRouteConfigFailed'));
-    }
-  }
-
-  async function loadComposeServices() {
-    composeServices.value = [];
-    try {
-      const resp = await applicationApi.listComposeServices(applicationId);
-      composeServices.value = resp.items;
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t('application.toast.parseComposeFailed')
-      );
-    }
-  }
-
-  function handleRouteServiceChange(value: ComboboxOptionValue) {
-    const serviceName = String(value || '');
-    const service = composeServices.value.find((item) => item.service_name === serviceName);
-    if (service) {
-      routeForm.service_name = service.service_name;
-      routeForm.domain = service.default_domain;
-      routeForm.port = service.default_port;
-      routeFormErrors.service_name = '';
-    } else {
-      routeForm.service_name = '';
-    }
-  }
-
-  async function openAddRouteModal() {
-    if (!application.value?.route_managed) {
-      return;
-    }
-    editingRouteId.value = '';
-    Object.assign(routeForm, { service_name: '', domain: '', port: 80 });
-    Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
-    await loadComposeServices();
-    if (composeServices.value.length === 0) {
-      return;
-    }
-    isRouteDialogOpen.value = true;
-  }
-
-  async function openEditRouteModal(r: ApplicationRouteResp) {
-    if (!application.value?.route_managed) {
-      return;
-    }
-    editingRouteId.value = r.id;
-    Object.assign(routeForm, { service_name: r.service_name, domain: r.domain, port: r.port });
-    Object.assign(routeFormErrors, { service_name: '', domain: '', port: '' });
-    await loadComposeServices();
-    if (composeServices.value.length === 0) {
-      return;
-    }
-    isRouteDialogOpen.value = true;
-  }
-
-  function validateRouteForm() {
-    const domain = routeForm.domain.trim();
-    routeFormErrors.service_name = routeForm.service_name
-      ? ''
-      : t('application.validation.serviceRequired');
-    routeFormErrors.domain = isValidRouteDomain(domain)
-      ? ''
-      : t('application.validation.domainInvalid');
-    routeFormErrors.port =
-      routeForm.port >= 1 && routeForm.port <= 65535 ? '' : t('application.validation.portRange');
-    return !routeFormErrors.service_name && !routeFormErrors.domain && !routeFormErrors.port;
-  }
-
-  function isValidRouteDomain(domain: string) {
-    return (
-      domain.length > 0 &&
-      domain.length <= 253 &&
-      !/[\s`]/.test(domain) &&
-      routeDomainPattern.test(domain)
-    );
-  }
-
-  async function handleRouteOk() {
-    if (!validateRouteForm()) {
-      return;
-    }
-    try {
-      await executeRoute(async () => {
-        const data = {
-          service_name: routeForm.service_name,
-          domain: routeForm.domain.trim().toLowerCase(),
-          port: routeForm.port,
-        };
-        if (editingRouteId.value) {
-          await applicationApi.updateRoute(applicationId, editingRouteId.value, data);
-        } else {
-          await applicationApi.createRoute(applicationId, data);
-        }
-        toast.success(t('application.toast.saveSuccess'));
-        isRouteDialogOpen.value = false;
-        await loadRoutes();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.saveFailed'));
-    }
-  }
-
-  function confirmDeleteRoute(routeId: string) {
-    pendingDeleteRouteId.value = routeId;
-    isDeleteRouteDialogOpen.value = true;
-  }
-
-  async function executeDeleteRoute() {
-    try {
-      await executeRoute(async () => {
-        await applicationApi.deleteRoute(applicationId, pendingDeleteRouteId.value);
-        toast.success(t('application.toast.deleteSuccess'));
-        isDeleteRouteDialogOpen.value = false;
-        await loadRoutes();
-      });
-    } catch {
-      toast.error(t('application.toast.deleteFailed'));
-    }
-  }
-
   onMounted(async () => {
     await fetchApplication();
-    await loadFiles();
-    await loadServiceConfigs();
-    if (application.value?.route_managed) {
-      await loadRoutes();
-    }
+    await Promise.all([loadVersions(), loadServices(), loadEnvironments()]);
   });
 </script>

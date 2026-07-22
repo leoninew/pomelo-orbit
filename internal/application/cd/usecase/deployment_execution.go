@@ -2,11 +2,17 @@ package cdsvc
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 
+	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {
@@ -14,19 +20,80 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	if err != nil {
 		return err
 	}
-	if err := s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeploying); err != nil {
+	versionId := ""
+	if deployment.VersionId != nil {
+		versionId = strings.TrimSpace(*deployment.VersionId)
+	}
+	if versionId == "" {
+		err := fmt.Errorf("deployment %s missing version_id", deployment.Id)
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	if deployment.EnvironmentId == nil || strings.TrimSpace(*deployment.EnvironmentId) == "" {
+		err := fmt.Errorf("deployment %s missing environment_id", deployment.Id)
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	opts := parseDeployOptions(deployment.OptionsJSON)
+	if forceRecreate {
+		opts.ForceRecreate = true
+	}
+	instanceKey := strings.TrimSpace(opts.InstanceKey)
+	if instanceKey == "" {
+		instanceKey = "default"
+	}
+	attachIngress := opts.AttachIngress
+	if deployment.OptionsJSON == nil || !strings.Contains(*deployment.OptionsJSON, "attach_ingress") {
+		attachIngress = instanceKey == "default"
+	}
+
+	version, err := s.executionStore.Version(ctx, versionId)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	env, err := s.executionStore.Environment(ctx, *deployment.EnvironmentId)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
+		err := fmt.Errorf("application and environment must belong to the same project")
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	components, err := s.executionStore.ComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	exposes, err := s.executionStore.ExposesByVersion(ctx, version.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	bindings, err := s.executionStore.BindingsByEnvironment(ctx, env.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+
+	svc, err := s.upsertServiceDeploying(ctx, app.Id, env.Id, instanceKey, version.Id, attachIngress)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
 		return err
 	}
 
-	if err := s.writeAndDeploy(ctx, app, deployment.Id, forceRecreate); err != nil {
-		_ = s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
+	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, bindings, svc, deployment.Id, opts.ForceRecreate); err != nil {
+		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployed); err != nil {
+	last := version.Id
+	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id, &last); err != nil {
 		return err
 	}
 	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
@@ -37,31 +104,51 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	if err != nil {
 		return err
 	}
-	if err := s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeploying); err != nil {
+	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	version, err := s.executionStore.Version(ctx, svc.VersionId)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	env, err := s.executionStore.Environment(ctx, svc.EnvironmentId)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	components, err := s.executionStore.ComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	exposes, err := s.executionStore.ExposesByVersion(ctx, version.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	bindings, err := s.executionStore.BindingsByEnvironment(ctx, env.Id)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+
+	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusDeploying); err != nil {
 		return err
 	}
 	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
 		return err
 	}
 
-	appDir := s.workspace.AppDir(app.Code)
-	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
-	logWriter, err := s.executionLogStore.Writer(logPath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = logWriter.Close() }()
-
-	if err := writeWorkingDirectory(logWriter, appDir); err != nil {
-		return err
-	}
-	command := restartComposeCommand()
-	if err := s.runner.Run(ctx, appDir, logWriter, command.Name, command.Args...); err != nil {
-		_ = s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployFailed)
+	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, bindings, svc, deployment.Id, false); err != nil {
+		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusDeployed); err != nil {
+	last := version.Id
+	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id, &last); err != nil {
 		return err
 	}
 	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
@@ -72,27 +159,39 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	if err != nil {
 		return err
 	}
+	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	env, err := s.executionStore.Environment(ctx, svc.EnvironmentId)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
 	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
 		return err
 	}
 
-	appDir := s.workspace.AppDir(app.Code)
-	logPath := s.workspace.DeploymentLogPath(app.Code, deployment.Id)
+	serviceDir := s.workspace.ServiceDir(app.Code, env.Code, svc.InstanceKey)
+	logPath := s.workspace.DeploymentLogPath(app.Code, env.Code, svc.InstanceKey, deployment.Id)
 	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = logWriter.Close() }()
 
-	if err := writeWorkingDirectory(logWriter, appDir); err != nil {
+	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
 		return err
 	}
-	command := stopComposeCommand(removeVolumes)
-	if err := s.runner.Run(ctx, appDir, logWriter, command.Name, command.Args...); err != nil {
+	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
+	command := stopComposeCommand(projectName, removeVolumes)
+	if err := s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
+		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.executionStore.MarkApplicationStatus(ctx, app.Id, status.ApplicationStatusUndeployed); err != nil {
+	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusStopped); err != nil {
 		return err
 	}
 	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
@@ -110,58 +209,115 @@ func (s Service) loadDeploymentExecution(ctx context.Context, applicationId stri
 	return app, deployment, nil
 }
 
-func (s Service) writeAndDeploy(ctx context.Context, app model.Application, deploymentId string, forceRecreate bool) error {
-	files, err := s.executionStore.ConfigFiles(ctx, app.Id)
-	if err != nil {
-		return err
+func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId string, deployment model.Deployment) (model.Service, error) {
+	if deployment.ServiceId != nil && strings.TrimSpace(*deployment.ServiceId) != "" {
+		return s.executionStore.Service(ctx, *deployment.ServiceId)
 	}
-	services, err := s.executionStore.ServiceConfigs(ctx, app.Id)
-	if err != nil {
-		return err
+	opts := parseDeployOptions(deployment.OptionsJSON)
+	instanceKey := strings.TrimSpace(opts.InstanceKey)
+	if instanceKey == "" {
+		instanceKey = "default"
 	}
-	var routes []model.ApplicationRoute
-	if app.RouteManaged {
-		routes, err = s.executionStore.Routes(ctx, app.Id)
-		if err != nil {
-			return err
+	if deployment.EnvironmentId == nil || strings.TrimSpace(*deployment.EnvironmentId) == "" {
+		return model.Service{}, fmt.Errorf("deployment %s missing environment_id", deployment.Id)
+	}
+	return s.executionStore.ServiceByKey(ctx, applicationId, *deployment.EnvironmentId, instanceKey)
+}
+
+func (s Service) upsertServiceDeploying(ctx context.Context, applicationId string, environmentId string, instanceKey string, versionId string, attachIngress bool) (model.Service, error) {
+	existing, err := s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+	if err != nil {
+		if !errors.Is(err, repository.ErrNotFound) {
+			return model.Service{}, err
+		}
+		svc := model.Service{
+			Id:            idutil.NewId(),
+			ApplicationId: applicationId,
+			EnvironmentId: environmentId,
+			InstanceKey:   instanceKey,
+			IsIngress:     attachIngress,
+			VersionId:     versionId,
+			Status:        status.ServiceStatusDeploying,
+		}
+		if err := s.executionStore.UpsertService(ctx, svc); err != nil {
+			return model.Service{}, err
+		}
+		if attachIngress {
+			if err := s.executionStore.ClearIngressForAppEnv(ctx, applicationId, environmentId, svc.Id); err != nil {
+				return model.Service{}, err
+			}
+		}
+		return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+	}
+	existing.VersionId = versionId
+	existing.Status = status.ServiceStatusDeploying
+	existing.IsIngress = attachIngress
+	if err := s.executionStore.UpsertService(ctx, existing); err != nil {
+		return model.Service{}, err
+	}
+	if attachIngress {
+		if err := s.executionStore.ClearIngressForAppEnv(ctx, applicationId, environmentId, existing.Id); err != nil {
+			return model.Service{}, err
 		}
 	}
+	return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+}
 
-	appDir := s.workspace.AppDir(app.Code)
-	logPath := s.workspace.DeploymentLogPath(app.Code, deploymentId)
+func (s Service) renderAndDeploy(
+	ctx context.Context,
+	app model.Application,
+	version model.Version,
+	components []model.Component,
+	exposes []model.Expose,
+	env model.Environment,
+	bindings []model.EnvironmentBinding,
+	svc model.Service,
+	deploymentId string,
+	forceRecreate bool,
+) error {
+	compose, err := s.RenderCompose(ctx, RenderInput{
+		App: app, Version: version, Components: components, Exposes: exposes,
+		Env: env, Bindings: bindings, Service: svc,
+	})
+	if err != nil {
+		return err
+	}
+
+	serviceDir := s.workspace.ServiceDir(app.Code, env.Code, svc.InstanceKey)
+	logPath := s.workspace.DeploymentLogPath(app.Code, env.Code, svc.InstanceKey, deploymentId)
 	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = logWriter.Close() }()
 
-	if err := writeWorkingDirectory(logWriter, appDir); err != nil {
+	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
 		return err
 	}
-
-	hasInit := false
-	for _, file := range files {
-		path, content, err := s.renderDeploymentConfigFile(ctx, app, file.Path, file.Content, services, routes)
-		if err != nil {
-			return err
-		}
-		if err := s.workspace.WriteConfig(app.Code, path, content); err != nil {
-			return err
-		}
-		if path == "init.sh" {
-			hasInit = true
-		}
+	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into env %s instance %s\n",
+		version.Label, version.Id, len(components), env.Code, svc.InstanceKey); err != nil {
+		return err
 	}
-	if hasInit {
-		if err := s.runner.Run(ctx, appDir, logWriter, "bash", "-x", "init.sh"); err != nil {
-			return err
-		}
+	if err := s.workspace.WriteConfig(app.Code, env.Code, svc.InstanceKey, "docker-compose.yml", compose); err != nil {
+		return err
 	}
-	command := deployComposeCommand(app.ImagePullPolicy, forceRecreate)
-	return s.runner.Run(ctx, appDir, logWriter, command.Name, command.Args...)
+	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
+	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
+	return s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...)
 }
 
-func writeWorkingDirectory(writer io.Writer, appDir string) error {
-	_, err := fmt.Fprintf(writer, "Working directory: %s\n", appDir)
+func parseDeployOptions(raw *string) cdto.DeployOptionsJSON {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return cdto.DeployOptionsJSON{}
+	}
+	var opts cdto.DeployOptionsJSON
+	if err := json.Unmarshal([]byte(*raw), &opts); err != nil {
+		return cdto.DeployOptionsJSON{}
+	}
+	return opts
+}
+
+func writeWorkingDirectory(w io.Writer, dir string) error {
+	_, err := fmt.Fprintf(w, "Working directory: %s\n", dir)
 	return err
 }

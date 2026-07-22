@@ -90,8 +90,11 @@
                   </span>
                 </div>
               </div>
-              <AppBadge variant="status" :tone="appStatusTone(app.status)">
-                {{ t('status.' + app.status) }}
+              <AppBadge
+                variant="status"
+                :tone="appStatusTone(normalizeServiceStatus(app.service_status))"
+              >
+                {{ t('status.' + normalizeServiceStatus(app.service_status)) }}
               </AppBadge>
             </div>
 
@@ -103,10 +106,8 @@
                 </span>
               </div>
               <div class="flex items-center justify-between gap-3">
-                <span class="text-muted-foreground">{{ t('application.routeManaged') }}</span>
-                <span class="text-foreground">
-                  {{ routeManagedLabel(app.route_managed) }}
-                </span>
+                <span class="text-muted-foreground">{{ t('application.serviceCount') }}</span>
+                <span class="text-foreground">{{ app.service_count ?? 0 }}</span>
               </div>
             </div>
 
@@ -118,7 +119,7 @@
                 {{ t('application.view') }}
               </button>
               <button
-                v-if="app.status === 'deployed'"
+                v-if="normalizeServiceStatus(app.service_status) === 'running'"
                 class="app-link-danger"
                 :disabled="isAppOperating(app)"
                 @click="handleStop(app)"
@@ -128,7 +129,11 @@
               <button
                 v-else
                 class="app-link"
-                :disabled="app.status === 'deploying' || isAppOperating(app)"
+                :disabled="
+                  normalizeServiceStatus(app.service_status) === 'deploying' ||
+                  !app.version_id ||
+                  isAppOperating(app)
+                "
                 @click="handleDeploy(app)"
               >
                 {{ t('application.deploy') }}
@@ -160,7 +165,7 @@
                 <th>{{ t('application.code') }}</th>
                 <th>{{ t('application.imagePullPolicy') }}</th>
                 <th>{{ t('common.status') }}</th>
-                <th>{{ t('application.routeManaged') }}</th>
+                <th>{{ t('application.serviceCount') }}</th>
                 <th>{{ t('common.createdAt') }}</th>
                 <th>{{ t('common.operation') }}</th>
               </tr>
@@ -175,11 +180,15 @@
                 <td class="text-foreground">{{ app.code }}</td>
                 <td class="text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</td>
                 <td>
-                  <AppBadge variant="status" :tone="appStatusTone(app.status)" class="font-normal">
-                    {{ t('status.' + app.status) }}
+                  <AppBadge
+                    variant="status"
+                    :tone="appStatusTone(normalizeServiceStatus(app.service_status))"
+                    class="font-normal"
+                  >
+                    {{ t('status.' + normalizeServiceStatus(app.service_status)) }}
                   </AppBadge>
                 </td>
-                <td class="text-foreground">{{ routeManagedLabel(app.route_managed) }}</td>
+                <td class="text-foreground">{{ app.service_count ?? 0 }}</td>
                 <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
                 <td>
                   <div class="flex items-center gap-3">
@@ -187,7 +196,7 @@
                       {{ t('application.view') }}
                     </button>
                     <button
-                      v-if="app.status === 'deployed'"
+                      v-if="normalizeServiceStatus(app.service_status) === 'running'"
                       class="app-link-danger"
                       :disabled="operating"
                       @click="handleStop(app)"
@@ -197,7 +206,11 @@
                     <button
                       v-else
                       class="app-link"
-                      :disabled="app.status === 'deploying' || operating"
+                      :disabled="
+                        normalizeServiceStatus(app.service_status) === 'deploying' ||
+                        !app.version_id ||
+                        operating
+                      "
                       @click="handleDeploy(app)"
                     >
                       {{ t('application.deploy') }}
@@ -263,6 +276,7 @@
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/cd/application';
+  import { environmentApi } from '@/api/cd/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -275,7 +289,7 @@
   import { useProjectStore } from '@/stores/project';
   import type { ApplicationCreateReq, ApplicationResp } from '@/gen/proto/orbit/v1/application';
   import type { ApplicationImportReq } from '@/gen/proto/orbit/v1/application_bundle';
-  import { appStatusTone } from '@/utils/status';
+  import { appStatusTone, normalizeServiceStatus } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
@@ -299,36 +313,29 @@
     name: '',
     code: '',
     image_pull_policy: 'missing',
-    route_managed: false,
   });
   const createErrors = reactive({ name: '', code: '' });
   const importForm = reactive<ApplicationImportReq>({
-    version: '',
     name: '',
     code: '',
     image_pull_policy: 'missing',
-    route_managed: false,
-    config_files: [],
-    service_configs: [],
-    routes: [],
+    version_label: 'v1',
+    version_env_json: undefined,
+    version_note: undefined,
+    components: [],
+    exposes: [],
   });
   const importErrors = reactive({ name: '', code: '' });
   const importSummary = computed(() =>
     t('application.importSummary', {
-      configFiles: importForm.config_files.length,
-      serviceConfigs: importForm.service_configs.length,
-      routes: importForm.routes.length,
+      versionLabel: importForm.version_label || '-',
+      components: importForm.components.length,
+      exposes: importForm.exposes?.length ?? 0,
     })
   );
 
   function pullPolicyLabel(policy: string) {
     return t(`application.imagePullPolicyLabels.${policy}`);
-  }
-
-  function routeManagedLabel(enabled: boolean) {
-    return t(
-      enabled ? 'application.routeManagedLabels.enabled' : 'application.routeManagedLabels.disabled'
-    );
   }
 
   function isAppOperating(app: ApplicationResp) {
@@ -394,7 +401,6 @@
       name: '',
       code: '',
       image_pull_policy: 'missing',
-      route_managed: false,
     });
     Object.assign(createErrors, { name: '', code: '' });
     isCreateDialogOpen.value = true;
@@ -416,7 +422,6 @@
             name: createForm.name,
             code: createForm.code,
             image_pull_policy: createForm.image_pull_policy,
-            route_managed: createForm.route_managed,
           },
           { project_id: projectId }
         );
@@ -477,10 +482,32 @@
   }
 
   async function handleDeploy(app: ApplicationResp) {
+    const versionId = app.version_id;
+    if (!versionId) {
+      toast.error(t('application.toast.deployVersionRequired'));
+      return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      toast.error(t('application.toast.selectProjectRequired'));
+      return;
+    }
     operatingAppId.value = app.id;
     try {
       await executeOp(async () => {
-        const { deployment_id } = await applicationApi.deploy(app.id, { force_recreate: false });
+        const envResp = await environmentApi.list({ project_id: projectId, per_page: 100 });
+        const environments = envResp.items ?? [];
+        const localEnv =
+          environments.find((item) => item.code === 'local') || environments[0];
+        if (!localEnv) {
+          throw new Error(t('application.toast.environmentRequired'));
+        }
+        const { deployment_id } = await applicationApi.deploy(app.id, {
+          version_id: versionId,
+          environment_id: localEnv.id,
+          instance_key: 'default',
+          force_recreate: false,
+        });
         toast.success(t('application.toast.deployTriggered', { name: app.name }));
         router.push(`/cd/deployments/${deployment_id}`);
       });

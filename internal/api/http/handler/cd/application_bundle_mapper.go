@@ -1,6 +1,8 @@
 package cdhandler
 
 import (
+	"encoding/json"
+
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
@@ -8,128 +10,191 @@ import (
 )
 
 func applicationImportInput(projectID string, req *pomeloorbit.ApplicationImportReq) cddto.ApplicationImportInput {
-	files := make([]cddto.ConfigFileInput, 0, len(req.ConfigFiles))
-	for _, file := range req.ConfigFiles {
-		files = append(files, configFileInput(file))
+	components := make([]cddto.ComponentInput, 0, len(req.Components))
+	for _, item := range req.Components {
+		components = append(components, componentInput(item))
 	}
-	serviceConfigs := make([]cddto.ApplicationServiceConfigImportInput, 0, len(req.ServiceConfigs))
-	for _, item := range req.ServiceConfigs {
-		serviceConfigs = append(serviceConfigs, cddto.ApplicationServiceConfigImportInput{
-			ServiceName: item.ServiceName,
-			Image:       item.Image,
-			Environment: item.Environment,
-			Volumes:     item.Volumes,
-		})
-	}
-	routes := make([]cddto.ApplicationRouteInput, 0, len(req.Routes))
-	for _, item := range req.Routes {
-		routes = append(routes, applicationRouteInput(item))
+	exposes := make([]cddto.ExposeInput, 0, len(req.Exposes))
+	for _, item := range req.Exposes {
+		exposes = append(exposes, exposeInput(item))
 	}
 	return cddto.ApplicationImportInput{
-		ProjectId:         projectID,
-		Version:           req.Version,
-		Name:              req.Name,
-		Code:              req.Code,
-		ImagePullPolicy:   req.ImagePullPolicy,
-		RouteManaged:      req.RouteManaged,
-		ConfigFiles:       files,
-		ServiceConfigs:    serviceConfigs,
-		ApplicationRoutes: routes,
+		ProjectId:       projectID,
+		Name:            req.Name,
+		Code:            req.Code,
+		ImagePullPolicy: req.ImagePullPolicy,
+		VersionLabel:    req.VersionLabel,
+		VersionEnvJSON:  req.VersionEnvJson,
+		VersionNote:     req.VersionNote,
+		Components:      components,
+		Exposes:         exposes,
 	}
 }
 
 func applicationExportResponse(exported cddto.ApplicationExport) *pomeloorbit.ApplicationExportResp {
 	resp := &pomeloorbit.ApplicationExportResp{
-		Version:         "1.0",
+		Id:              exported.Application.Id,
+		ProjectId:       exported.Application.ProjectId,
 		Name:            exported.Application.Name,
 		Code:            exported.Application.Code,
 		ImagePullPolicy: exported.Application.ImagePullPolicy,
-		RouteManaged:    exported.Application.RouteManaged,
-		ConfigFiles:     make([]*pomeloorbit.ApplicationExportConfigFileResp, 0, len(exported.ConfigFiles)),
-		ServiceConfigs:  make([]*pomeloorbit.ApplicationServiceConfigExportResp, 0, len(exported.ServiceConfigs)),
-		Routes:          make([]*pomeloorbit.ApplicationExportRouteResp, 0, len(exported.Routes)),
+		Versions:        make([]*pomeloorbit.VersionResp, 0, len(exported.Versions)),
+		Services:        make([]*pomeloorbit.ServiceResp, 0, len(exported.Services)),
 	}
-	for _, file := range exported.ConfigFiles {
-		resp.ConfigFiles = append(resp.ConfigFiles, &pomeloorbit.ApplicationExportConfigFileResp{Path: file.Path, Content: file.Content})
+	for _, view := range exported.Versions {
+		item := versionResponse(view)
+		resp.Versions = append(resp.Versions, &item)
 	}
-	for _, config := range exported.ServiceConfigs {
-		resp.ServiceConfigs = append(resp.ServiceConfigs, &pomeloorbit.ApplicationServiceConfigExportResp{
-			ServiceName: config.ServiceName,
-			Image:       config.Image,
-			Environment: config.Environment,
-			Volumes:     config.Volumes,
-		})
-	}
-	for _, route := range exported.Routes {
-		resp.Routes = append(resp.Routes, &pomeloorbit.ApplicationExportRouteResp{ServiceName: route.ServiceName, Domain: route.Domain, Port: int32(route.Port)})
+	for _, svc := range exported.Services {
+		item := serviceResponse(svc)
+		resp.Services = append(resp.Services, &item)
 	}
 	return resp
 }
 
-func configFileInput(req *pomeloorbit.ConfigFileReq) cddto.ConfigFileInput {
-	return cddto.ConfigFileInput{Path: req.Path, Content: req.Content}
-}
-
-func configFileResponses(files []model.ApplicationConfigFile) []pomeloorbit.ConfigFileResp {
-	resp := make([]pomeloorbit.ConfigFileResp, 0, len(files))
-	for _, file := range files {
-		resp = append(resp, configFileResponse(file))
-	}
-	return resp
-}
-
-func configFileResponse(file model.ApplicationConfigFile) pomeloorbit.ConfigFileResp {
-	return pomeloorbit.ConfigFileResp{Id: file.Id, Path: file.Path, CreatedAt: transportresponse.FormatTime(file.CreatedAt)}
-}
-
-func applicationRouteInput(req *pomeloorbit.ApplicationRouteReq) cddto.ApplicationRouteInput {
-	return cddto.ApplicationRouteInput{ServiceName: req.ServiceName, Domain: req.Domain, Port: int(req.Port)}
-}
-
-func applicationRouteResponses(routes []model.ApplicationRoute) []pomeloorbit.ApplicationRouteResp {
-	resp := make([]pomeloorbit.ApplicationRouteResp, 0, len(routes))
-	for _, route := range routes {
-		resp = append(resp, applicationRouteResponse(route))
-	}
-	return resp
-}
-
-func applicationRouteResponse(route model.ApplicationRoute) pomeloorbit.ApplicationRouteResp {
-	return pomeloorbit.ApplicationRouteResp{
-		Id:          route.Id,
-		ServiceName: route.ServiceName,
-		Domain:      route.Domain,
-		Port:        int32(route.Port),
-		CreatedAt:   transportresponse.FormatTime(route.CreatedAt),
-		UpdatedAt:   transportresponse.FormatTime(route.UpdatedAt),
+func componentInput(req *pomeloorbit.ComponentReq) cddto.ComponentInput {
+	return cddto.ComponentInput{
+		Name:            req.Name,
+		Image:           req.Image,
+		CommandJSON:     req.CommandJson,
+		ArgsJSON:        req.ArgsJson,
+		EnvJSON:         req.EnvJson,
+		PortsJSON:       req.PortsJson,
+		MountsJSON:      req.MountsJson,
+		NetworksJSON:    req.NetworksJson,
+		DependsOnJSON:   req.DependsOnJson,
+		HealthcheckJSON: req.HealthcheckJson,
+		ResourcesJSON:   req.ResourcesJson,
+		PullPolicy:      req.PullPolicy,
 	}
 }
 
-func composeServiceResponses(views []cddto.ApplicationServiceConfigView) []pomeloorbit.ComposeServiceResp {
-	resp := make([]pomeloorbit.ComposeServiceResp, 0, len(views))
+func exposeInput(req *pomeloorbit.ExposeReq) cddto.ExposeInput {
+	return cddto.ExposeInput{
+		ComponentName: req.ComponentName,
+		Protocol:      req.Protocol,
+		ContainerPort: int(req.ContainerPort),
+		PathPrefix:    req.PathPrefix,
+	}
+}
+
+func versionCreateInput(req *pomeloorbit.VersionCreateReq) cddto.VersionCreateInput {
+	components := make([]cddto.ComponentInput, 0, len(req.Components))
+	for _, item := range req.Components {
+		components = append(components, componentInput(item))
+	}
+	exposes := make([]cddto.ExposeInput, 0, len(req.Exposes))
+	for _, item := range req.Exposes {
+		exposes = append(exposes, exposeInput(item))
+	}
+	return cddto.VersionCreateInput{
+		ApplicationId: req.ApplicationId,
+		Label:         req.Label,
+		EnvJSON:       req.EnvJson,
+		Note:          req.Note,
+		Components:    components,
+		Exposes:       exposes,
+	}
+}
+
+func versionUpdateInput(req *pomeloorbit.VersionUpdateReq) cddto.VersionUpdateInput {
+	input := cddto.VersionUpdateInput{
+		Label:   req.Label,
+		EnvJSON: req.EnvJson,
+		Note:    req.Note,
+	}
+	if req.Components != nil {
+		components := make([]cddto.ComponentInput, 0, len(req.Components))
+		for _, item := range req.Components {
+			components = append(components, componentInput(item))
+		}
+		input.Components = &components
+	}
+	if req.Exposes != nil {
+		exposes := make([]cddto.ExposeInput, 0, len(req.Exposes))
+		for _, item := range req.Exposes {
+			exposes = append(exposes, exposeInput(item))
+		}
+		input.Exposes = &exposes
+	}
+	return input
+}
+
+func versionResponses(views []cddto.VersionView) []pomeloorbit.VersionResp {
+	resp := make([]pomeloorbit.VersionResp, 0, len(views))
 	for _, view := range views {
-		resp = append(resp, pomeloorbit.ComposeServiceResp{ServiceName: view.ServiceName, DefaultDomain: view.DefaultDomain, DefaultPort: int32(view.DefaultPort)})
+		resp = append(resp, versionResponse(view))
 	}
 	return resp
 }
 
-func applicationServiceConfigResponses(views []cddto.ApplicationServiceConfigView) []pomeloorbit.ApplicationServiceConfigResp {
-	resp := make([]pomeloorbit.ApplicationServiceConfigResp, 0, len(views))
-	for _, view := range views {
-		resp = append(resp, applicationServiceConfigResponse(view))
+func versionResponse(view cddto.VersionView) pomeloorbit.VersionResp {
+	components := make([]*pomeloorbit.ComponentResp, 0, len(view.Components))
+	for _, component := range view.Components {
+		item := componentResponse(component)
+		components = append(components, &item)
 	}
-	return resp
+	exposes := make([]*pomeloorbit.ExposeResp, 0, len(view.Exposes))
+	for _, expose := range view.Exposes {
+		item := exposeResponse(expose)
+		exposes = append(exposes, &item)
+	}
+	return pomeloorbit.VersionResp{
+		Id:                   view.Version.Id,
+		ApplicationId:        view.Version.ApplicationId,
+		Label:                view.Version.Label,
+		Status:               view.Version.Status,
+		EnvJson:              view.Version.EnvJSON,
+		CreatedFromVersionId: view.Version.CreatedFromVersionId,
+		Note:                 view.Version.Note,
+		CreatedAt:            transportresponse.FormatTime(view.Version.CreatedAt),
+		UpdatedAt:            transportresponse.FormatTime(view.Version.UpdatedAt),
+		Components:           components,
+		Exposes:              exposes,
+	}
 }
 
-func applicationServiceConfigResponse(view cddto.ApplicationServiceConfigView) pomeloorbit.ApplicationServiceConfigResp {
-	return pomeloorbit.ApplicationServiceConfigResp{
-		ServiceName:   view.ServiceName,
-		DefaultDomain: view.DefaultDomain,
-		DefaultPort:   int32(view.DefaultPort),
-		BaseImage:     view.BaseImage,
-		Image:         view.Image,
-		ConfigId:      view.ConfigId,
-		CreatedAt:     view.CreatedAt,
-		UpdatedAt:     view.UpdatedAt,
+func componentResponse(component model.Component) pomeloorbit.ComponentResp {
+	return pomeloorbit.ComponentResp{
+		Id:              component.Id,
+		VersionId:       component.VersionId,
+		Name:            component.Name,
+		Image:           component.Image,
+		CommandJson:     component.CommandJSON,
+		ArgsJson:        component.ArgsJSON,
+		EnvJson:         component.EnvJSON,
+		PortsJson:       component.PortsJSON,
+		MountsJson:      component.MountsJSON,
+		NetworksJson:    component.NetworksJSON,
+		DependsOnJson:   component.DependsOnJSON,
+		HealthcheckJson: component.HealthcheckJSON,
+		ResourcesJson:   component.ResourcesJSON,
+		PullPolicy:      component.PullPolicy,
+		CreatedAt:       transportresponse.FormatTime(component.CreatedAt),
+		UpdatedAt:       transportresponse.FormatTime(component.UpdatedAt),
 	}
+}
+
+func exposeResponse(expose model.Expose) pomeloorbit.ExposeResp {
+	return pomeloorbit.ExposeResp{
+		Id:            expose.Id,
+		VersionId:     expose.VersionId,
+		ComponentName: expose.ComponentName,
+		Protocol:      expose.Protocol,
+		ContainerPort: int32(expose.ContainerPort),
+		PathPrefix:    expose.PathPrefix,
+		CreatedAt:     transportresponse.FormatTime(expose.CreatedAt),
+		UpdatedAt:     transportresponse.FormatTime(expose.UpdatedAt),
+	}
+}
+
+func decodeDomainsJSON(raw string) []string {
+	if raw == "" {
+		return []string{}
+	}
+	var domains []string
+	if err := json.Unmarshal([]byte(raw), &domains); err != nil {
+		return []string{}
+	}
+	return domains
 }

@@ -167,6 +167,10 @@ type DeploymentResp struct {
 	IsRollback               bool                   `protobuf:"varint,14,opt,name=is_rollback,json=isRollback,proto3" json:"is_rollback,omitempty"`
 	RollbackFromDeploymentId *string                `protobuf:"bytes,15,opt,name=rollback_from_deployment_id,json=rollbackFromDeploymentId,proto3,oneof" json:"rollback_from_deployment_id,omitempty"`
 	CreatedAt                string                 `protobuf:"bytes,16,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	VersionId                *string                `protobuf:"bytes,17,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
+	ServiceId                *string                `protobuf:"bytes,18,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	OptionsJson              *string                `protobuf:"bytes,19,opt,name=options_json,json=optionsJson,proto3,oneof" json:"options_json,omitempty"`
+	EnvironmentId            *string                `protobuf:"bytes,20,opt,name=environment_id,json=environmentId,proto3,oneof" json:"environment_id,omitempty"`
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -313,6 +317,34 @@ func (x *DeploymentResp) GetCreatedAt() string {
 	return ""
 }
 
+func (x *DeploymentResp) GetVersionId() string {
+	if x != nil && x.VersionId != nil {
+		return *x.VersionId
+	}
+	return ""
+}
+
+func (x *DeploymentResp) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
+}
+
+func (x *DeploymentResp) GetOptionsJson() string {
+	if x != nil && x.OptionsJson != nil {
+		return *x.OptionsJson
+	}
+	return ""
+}
+
+func (x *DeploymentResp) GetEnvironmentId() string {
+	if x != nil && x.EnvironmentId != nil {
+		return *x.EnvironmentId
+	}
+	return ""
+}
+
 type DeploymentCancelReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -439,7 +471,7 @@ const file_orbit_v1_deployment_proto_rawDesc = "" +
 	"\x1bDeploymentContainerLogsResp\x12\x12\n" +
 	"\x04logs\x18\x01 \x01(\tR\x04logs\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x122\n" +
-	"\x15is_realtime_supported\x18\x03 \x01(\bR\x13isRealtimeSupported\"\xda\x05\n" +
+	"\x15is_realtime_supported\x18\x03 \x01(\bR\x13isRealtimeSupported\"\xb8\a\n" +
 	"\x0eDeploymentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -463,14 +495,25 @@ const file_orbit_v1_deployment_proto_rawDesc = "" +
 	"isRollback\x12B\n" +
 	"\x1brollback_from_deployment_id\x18\x0f \x01(\tH\x06R\x18rollbackFromDeploymentId\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x10 \x01(\tR\tcreatedAtB\r\n" +
+	"created_at\x18\x10 \x01(\tR\tcreatedAt\x12\"\n" +
+	"\n" +
+	"version_id\x18\x11 \x01(\tH\aR\tversionId\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"service_id\x18\x12 \x01(\tH\bR\tserviceId\x88\x01\x01\x12&\n" +
+	"\foptions_json\x18\x13 \x01(\tH\tR\voptionsJson\x88\x01\x01\x12*\n" +
+	"\x0eenvironment_id\x18\x14 \x01(\tH\n" +
+	"R\renvironmentId\x88\x01\x01B\r\n" +
 	"\v_project_idB\x11\n" +
 	"\x0f_application_idB\x0e\n" +
 	"\f_finished_atB\x0e\n" +
 	"\f_duration_msB\v\n" +
 	"\t_log_textB\x10\n" +
 	"\x0e_error_messageB\x1e\n" +
-	"\x1c_rollback_from_deployment_id\"\x15\n" +
+	"\x1c_rollback_from_deployment_idB\r\n" +
+	"\v_version_idB\r\n" +
+	"\v_service_idB\x0f\n" +
+	"\r_options_jsonB\x11\n" +
+	"\x0f_environment_id\"\x15\n" +
 	"\x13DeploymentCancelReq\"\xa4\x01\n" +
 	"\x17DeploymentPaginatedResp\x12.\n" +
 	"\x05items\x18\x01 \x03(\v2\x18.orbit.v1.DeploymentRespR\x05items\x12\x14\n" +

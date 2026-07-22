@@ -28,12 +28,15 @@ type ApplicationResp struct {
 	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Code            string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	ImagePullPolicy string                 `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	Status          string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
-	RouteManaged    bool                   `protobuf:"varint,7,opt,name=route_managed,json=routeManaged,proto3" json:"route_managed,omitempty"`
-	CreatedAt       string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt       string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// service_status is runtime binding status when a Service exists; empty if never deployed.
+	ServiceStatus string  `protobuf:"bytes,6,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
+	CreatedAt     string  `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string  `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ServiceId     *string `protobuf:"bytes,9,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	VersionId     *string `protobuf:"bytes,10,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
+	ServiceCount  int32   `protobuf:"varint,11,opt,name=service_count,json=serviceCount,proto3" json:"service_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationResp) Reset() {
@@ -101,18 +104,11 @@ func (x *ApplicationResp) GetImagePullPolicy() string {
 	return ""
 }
 
-func (x *ApplicationResp) GetStatus() string {
+func (x *ApplicationResp) GetServiceStatus() string {
 	if x != nil {
-		return x.Status
+		return x.ServiceStatus
 	}
 	return ""
-}
-
-func (x *ApplicationResp) GetRouteManaged() bool {
-	if x != nil {
-		return x.RouteManaged
-	}
-	return false
 }
 
 func (x *ApplicationResp) GetCreatedAt() string {
@@ -129,12 +125,32 @@ func (x *ApplicationResp) GetUpdatedAt() string {
 	return ""
 }
 
+func (x *ApplicationResp) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
+}
+
+func (x *ApplicationResp) GetVersionId() string {
+	if x != nil && x.VersionId != nil {
+		return *x.VersionId
+	}
+	return ""
+}
+
+func (x *ApplicationResp) GetServiceCount() int32 {
+	if x != nil {
+		return x.ServiceCount
+	}
+	return 0
+}
+
 type ApplicationCreateReq struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Code            string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	ImagePullPolicy string                 `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	RouteManaged    bool                   `protobuf:"varint,4,opt,name=route_managed,json=routeManaged,proto3" json:"route_managed,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -190,19 +206,11 @@ func (x *ApplicationCreateReq) GetImagePullPolicy() string {
 	return ""
 }
 
-func (x *ApplicationCreateReq) GetRouteManaged() bool {
-	if x != nil {
-		return x.RouteManaged
-	}
-	return false
-}
-
 type ApplicationUpdateReq struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Name            *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Code            *string                `protobuf:"bytes,2,opt,name=code,proto3,oneof" json:"code,omitempty"`
 	ImagePullPolicy *string                `protobuf:"bytes,3,opt,name=image_pull_policy,json=imagePullPolicy,proto3,oneof" json:"image_pull_policy,omitempty"`
-	RouteManaged    *bool                  `protobuf:"varint,4,opt,name=route_managed,json=routeManaged,proto3,oneof" json:"route_managed,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -258,16 +266,13 @@ func (x *ApplicationUpdateReq) GetImagePullPolicy() string {
 	return ""
 }
 
-func (x *ApplicationUpdateReq) GetRouteManaged() bool {
-	if x != nil && x.RouteManaged != nil {
-		return *x.RouteManaged
-	}
-	return false
-}
-
 type ApplicationDeployReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ForceRecreate bool                   `protobuf:"varint,1,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	EnvironmentId string                 `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
+	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
+	AttachIngress *bool                  `protobuf:"varint,4,opt,name=attach_ingress,json=attachIngress,proto3,oneof" json:"attach_ingress,omitempty"`
+	ForceRecreate bool                   `protobuf:"varint,5,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -302,6 +307,34 @@ func (*ApplicationDeployReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_proto_rawDescGZIP(), []int{3}
 }
 
+func (x *ApplicationDeployReq) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
+func (x *ApplicationDeployReq) GetEnvironmentId() string {
+	if x != nil {
+		return x.EnvironmentId
+	}
+	return ""
+}
+
+func (x *ApplicationDeployReq) GetInstanceKey() string {
+	if x != nil {
+		return x.InstanceKey
+	}
+	return ""
+}
+
+func (x *ApplicationDeployReq) GetAttachIngress() bool {
+	if x != nil && x.AttachIngress != nil {
+		return *x.AttachIngress
+	}
+	return false
+}
+
 func (x *ApplicationDeployReq) GetForceRecreate() bool {
 	if x != nil {
 		return x.ForceRecreate
@@ -312,6 +345,9 @@ func (x *ApplicationDeployReq) GetForceRecreate() bool {
 type ApplicationStopReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RemoveVolumes bool                   `protobuf:"varint,1,opt,name=remove_volumes,json=removeVolumes,proto3" json:"remove_volumes,omitempty"`
+	EnvironmentId *string                `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3,oneof" json:"environment_id,omitempty"`
+	InstanceKey   *string                `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
+	ServiceId     *string                `protobuf:"bytes,4,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -353,8 +389,32 @@ func (x *ApplicationStopReq) GetRemoveVolumes() bool {
 	return false
 }
 
+func (x *ApplicationStopReq) GetEnvironmentId() string {
+	if x != nil && x.EnvironmentId != nil {
+		return *x.EnvironmentId
+	}
+	return ""
+}
+
+func (x *ApplicationStopReq) GetInstanceKey() string {
+	if x != nil && x.InstanceKey != nil {
+		return *x.InstanceKey
+	}
+	return ""
+}
+
+func (x *ApplicationStopReq) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
+}
+
 type ApplicationRestartReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	EnvironmentId *string                `protobuf:"bytes,1,opt,name=environment_id,json=environmentId,proto3,oneof" json:"environment_id,omitempty"`
+	InstanceKey   *string                `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
+	ServiceId     *string                `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -389,40 +449,25 @@ func (*ApplicationRestartReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_proto_rawDescGZIP(), []int{5}
 }
 
-type ApplicationComposePreviewReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApplicationComposePreviewReq) Reset() {
-	*x = ApplicationComposePreviewReq{}
-	mi := &file_orbit_v1_application_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApplicationComposePreviewReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApplicationComposePreviewReq) ProtoMessage() {}
-
-func (x *ApplicationComposePreviewReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+func (x *ApplicationRestartReq) GetEnvironmentId() string {
+	if x != nil && x.EnvironmentId != nil {
+		return *x.EnvironmentId
 	}
-	return mi.MessageOf(x)
+	return ""
 }
 
-// Deprecated: Use ApplicationComposePreviewReq.ProtoReflect.Descriptor instead.
-func (*ApplicationComposePreviewReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_proto_rawDescGZIP(), []int{6}
+func (x *ApplicationRestartReq) GetInstanceKey() string {
+	if x != nil && x.InstanceKey != nil {
+		return *x.InstanceKey
+	}
+	return ""
+}
+
+func (x *ApplicationRestartReq) GetServiceId() string {
+	if x != nil && x.ServiceId != nil {
+		return *x.ServiceId
+	}
+	return ""
 }
 
 type DeploymentActionResp struct {
@@ -434,7 +479,7 @@ type DeploymentActionResp struct {
 
 func (x *DeploymentActionResp) Reset() {
 	*x = DeploymentActionResp{}
-	mi := &file_orbit_v1_application_proto_msgTypes[7]
+	mi := &file_orbit_v1_application_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -446,7 +491,7 @@ func (x *DeploymentActionResp) String() string {
 func (*DeploymentActionResp) ProtoMessage() {}
 
 func (x *DeploymentActionResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_proto_msgTypes[7]
+	mi := &file_orbit_v1_application_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -459,7 +504,7 @@ func (x *DeploymentActionResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentActionResp.ProtoReflect.Descriptor instead.
 func (*DeploymentActionResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_proto_rawDescGZIP(), []int{7}
+	return file_orbit_v1_application_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DeploymentActionResp) GetDeploymentId() string {
@@ -478,7 +523,7 @@ type ApplicationStatusResp struct {
 
 func (x *ApplicationStatusResp) Reset() {
 	*x = ApplicationStatusResp{}
-	mi := &file_orbit_v1_application_proto_msgTypes[8]
+	mi := &file_orbit_v1_application_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -490,7 +535,7 @@ func (x *ApplicationStatusResp) String() string {
 func (*ApplicationStatusResp) ProtoMessage() {}
 
 func (x *ApplicationStatusResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_proto_msgTypes[8]
+	mi := &file_orbit_v1_application_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -503,7 +548,7 @@ func (x *ApplicationStatusResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationStatusResp.ProtoReflect.Descriptor instead.
 func (*ApplicationStatusResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_proto_rawDescGZIP(), []int{8}
+	return file_orbit_v1_application_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ApplicationStatusResp) GetStatus() string {
@@ -522,7 +567,7 @@ type ApplicationLogsResp struct {
 
 func (x *ApplicationLogsResp) Reset() {
 	*x = ApplicationLogsResp{}
-	mi := &file_orbit_v1_application_proto_msgTypes[9]
+	mi := &file_orbit_v1_application_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -534,7 +579,7 @@ func (x *ApplicationLogsResp) String() string {
 func (*ApplicationLogsResp) ProtoMessage() {}
 
 func (x *ApplicationLogsResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_proto_msgTypes[9]
+	mi := &file_orbit_v1_application_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -547,56 +592,12 @@ func (x *ApplicationLogsResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationLogsResp.ProtoReflect.Descriptor instead.
 func (*ApplicationLogsResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_proto_rawDescGZIP(), []int{9}
+	return file_orbit_v1_application_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ApplicationLogsResp) GetLogs() string {
 	if x != nil {
 		return x.Logs
-	}
-	return ""
-}
-
-type ApplicationComposePreviewResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ComposeYaml   string                 `protobuf:"bytes,1,opt,name=compose_yaml,json=composeYaml,proto3" json:"compose_yaml,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ApplicationComposePreviewResp) Reset() {
-	*x = ApplicationComposePreviewResp{}
-	mi := &file_orbit_v1_application_proto_msgTypes[10]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ApplicationComposePreviewResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ApplicationComposePreviewResp) ProtoMessage() {}
-
-func (x *ApplicationComposePreviewResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_proto_msgTypes[10]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ApplicationComposePreviewResp.ProtoReflect.Descriptor instead.
-func (*ApplicationComposePreviewResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_proto_rawDescGZIP(), []int{10}
-}
-
-func (x *ApplicationComposePreviewResp) GetComposeYaml() string {
-	if x != nil {
-		return x.ComposeYaml
 	}
 	return ""
 }
@@ -614,7 +615,7 @@ type ApplicationPaginatedResp struct {
 
 func (x *ApplicationPaginatedResp) Reset() {
 	*x = ApplicationPaginatedResp{}
-	mi := &file_orbit_v1_application_proto_msgTypes[11]
+	mi := &file_orbit_v1_application_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -626,7 +627,7 @@ func (x *ApplicationPaginatedResp) String() string {
 func (*ApplicationPaginatedResp) ProtoMessage() {}
 
 func (x *ApplicationPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_proto_msgTypes[11]
+	mi := &file_orbit_v1_application_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -639,7 +640,7 @@ func (x *ApplicationPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationPaginatedResp.ProtoReflect.Descriptor instead.
 func (*ApplicationPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_proto_rawDescGZIP(), []int{11}
+	return file_orbit_v1_application_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ApplicationPaginatedResp) GetItems() []*ApplicationResp {
@@ -681,49 +682,70 @@ var File_orbit_v1_application_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/application.proto\x12\borbit.v1\"\xa3\x02\n" +
+	"\x1aorbit/v1/application.proto\x12\borbit.v1\"\x98\x03\n" +
 	"\x0fApplicationResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x04 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x12\x16\n" +
-	"\x06status\x18\x06 \x01(\tR\x06status\x12#\n" +
-	"\rroute_managed\x18\a \x01(\bR\frouteManaged\x12\x1d\n" +
+	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x12%\n" +
+	"\x0eservice_status\x18\x06 \x01(\tR\rserviceStatus\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\tR\tupdatedAtB\r\n" +
-	"\v_project_id\"\x8f\x01\n" +
+	"updated_at\x18\b \x01(\tR\tupdatedAt\x12\"\n" +
+	"\n" +
+	"service_id\x18\t \x01(\tH\x01R\tserviceId\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"version_id\x18\n" +
+	" \x01(\tH\x02R\tversionId\x88\x01\x01\x12#\n" +
+	"\rservice_count\x18\v \x01(\x05R\fserviceCountB\r\n" +
+	"\v_project_idB\r\n" +
+	"\v_service_idB\r\n" +
+	"\v_version_id\"j\n" +
 	"\x14ApplicationCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\x12#\n" +
-	"\rroute_managed\x18\x04 \x01(\bR\frouteManaged\"\xdd\x01\n" +
+	"\x11image_pull_policy\x18\x03 \x01(\tR\x0fimagePullPolicy\"\xa1\x01\n" +
 	"\x14ApplicationUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x17\n" +
 	"\x04code\x18\x02 \x01(\tH\x01R\x04code\x88\x01\x01\x12/\n" +
-	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01\x12(\n" +
-	"\rroute_managed\x18\x04 \x01(\bH\x03R\frouteManaged\x88\x01\x01B\a\n" +
+	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
 	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policyB\x10\n" +
-	"\x0e_route_managed\"=\n" +
-	"\x14ApplicationDeployReq\x12%\n" +
-	"\x0eforce_recreate\x18\x01 \x01(\bR\rforceRecreate\";\n" +
+	"\x12_image_pull_policy\"\xe5\x01\n" +
+	"\x14ApplicationDeployReq\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x01 \x01(\tR\tversionId\x12%\n" +
+	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\x12!\n" +
+	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12*\n" +
+	"\x0eattach_ingress\x18\x04 \x01(\bH\x00R\rattachIngress\x88\x01\x01\x12%\n" +
+	"\x0eforce_recreate\x18\x05 \x01(\bR\rforceRecreateB\x11\n" +
+	"\x0f_attach_ingress\"\xe6\x01\n" +
 	"\x12ApplicationStopReq\x12%\n" +
-	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\"\x17\n" +
-	"\x15ApplicationRestartReq\"\x1e\n" +
-	"\x1cApplicationComposePreviewReq\";\n" +
+	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12*\n" +
+	"\x0eenvironment_id\x18\x02 \x01(\tH\x00R\renvironmentId\x88\x01\x01\x12&\n" +
+	"\finstance_key\x18\x03 \x01(\tH\x01R\vinstanceKey\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"service_id\x18\x04 \x01(\tH\x02R\tserviceId\x88\x01\x01B\x11\n" +
+	"\x0f_environment_idB\x0f\n" +
+	"\r_instance_keyB\r\n" +
+	"\v_service_id\"\xc2\x01\n" +
+	"\x15ApplicationRestartReq\x12*\n" +
+	"\x0eenvironment_id\x18\x01 \x01(\tH\x00R\renvironmentId\x88\x01\x01\x12&\n" +
+	"\finstance_key\x18\x02 \x01(\tH\x01R\vinstanceKey\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"service_id\x18\x03 \x01(\tH\x02R\tserviceId\x88\x01\x01B\x11\n" +
+	"\x0f_environment_idB\x0f\n" +
+	"\r_instance_keyB\r\n" +
+	"\v_service_id\";\n" +
 	"\x14DeploymentActionResp\x12#\n" +
 	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\"/\n" +
 	"\x15ApplicationStatusResp\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\")\n" +
 	"\x13ApplicationLogsResp\x12\x12\n" +
-	"\x04logs\x18\x01 \x01(\tR\x04logs\"B\n" +
-	"\x1dApplicationComposePreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xa6\x01\n" +
+	"\x04logs\x18\x01 \x01(\tR\x04logs\"\xa6\x01\n" +
 	"\x18ApplicationPaginatedResp\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.orbit.v1.ApplicationRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -744,20 +766,18 @@ func file_orbit_v1_application_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_application_proto_rawDescData
 }
 
-var file_orbit_v1_application_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_orbit_v1_application_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_orbit_v1_application_proto_goTypes = []any{
-	(*ApplicationResp)(nil),               // 0: orbit.v1.ApplicationResp
-	(*ApplicationCreateReq)(nil),          // 1: orbit.v1.ApplicationCreateReq
-	(*ApplicationUpdateReq)(nil),          // 2: orbit.v1.ApplicationUpdateReq
-	(*ApplicationDeployReq)(nil),          // 3: orbit.v1.ApplicationDeployReq
-	(*ApplicationStopReq)(nil),            // 4: orbit.v1.ApplicationStopReq
-	(*ApplicationRestartReq)(nil),         // 5: orbit.v1.ApplicationRestartReq
-	(*ApplicationComposePreviewReq)(nil),  // 6: orbit.v1.ApplicationComposePreviewReq
-	(*DeploymentActionResp)(nil),          // 7: orbit.v1.DeploymentActionResp
-	(*ApplicationStatusResp)(nil),         // 8: orbit.v1.ApplicationStatusResp
-	(*ApplicationLogsResp)(nil),           // 9: orbit.v1.ApplicationLogsResp
-	(*ApplicationComposePreviewResp)(nil), // 10: orbit.v1.ApplicationComposePreviewResp
-	(*ApplicationPaginatedResp)(nil),      // 11: orbit.v1.ApplicationPaginatedResp
+	(*ApplicationResp)(nil),          // 0: orbit.v1.ApplicationResp
+	(*ApplicationCreateReq)(nil),     // 1: orbit.v1.ApplicationCreateReq
+	(*ApplicationUpdateReq)(nil),     // 2: orbit.v1.ApplicationUpdateReq
+	(*ApplicationDeployReq)(nil),     // 3: orbit.v1.ApplicationDeployReq
+	(*ApplicationStopReq)(nil),       // 4: orbit.v1.ApplicationStopReq
+	(*ApplicationRestartReq)(nil),    // 5: orbit.v1.ApplicationRestartReq
+	(*DeploymentActionResp)(nil),     // 6: orbit.v1.DeploymentActionResp
+	(*ApplicationStatusResp)(nil),    // 7: orbit.v1.ApplicationStatusResp
+	(*ApplicationLogsResp)(nil),      // 8: orbit.v1.ApplicationLogsResp
+	(*ApplicationPaginatedResp)(nil), // 9: orbit.v1.ApplicationPaginatedResp
 }
 var file_orbit_v1_application_proto_depIdxs = []int32{
 	0, // 0: orbit.v1.ApplicationPaginatedResp.items:type_name -> orbit.v1.ApplicationResp
@@ -775,13 +795,16 @@ func file_orbit_v1_application_proto_init() {
 	}
 	file_orbit_v1_application_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_application_proto_msgTypes[2].OneofWrappers = []any{}
+	file_orbit_v1_application_proto_msgTypes[3].OneofWrappers = []any{}
+	file_orbit_v1_application_proto_msgTypes[4].OneofWrappers = []any{}
+	file_orbit_v1_application_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_application_proto_rawDesc), len(file_orbit_v1_application_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

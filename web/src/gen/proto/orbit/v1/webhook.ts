@@ -4,7 +4,9 @@
 //   protoc               unknown
 // source: orbit/v1/webhook.proto
 
-export const protobufPackage = 'orbit.v1';
+/* eslint-disable */
+
+export const protobufPackage = "orbit.v1";
 
 export interface RepositoryWebhookResp {
   id: string;

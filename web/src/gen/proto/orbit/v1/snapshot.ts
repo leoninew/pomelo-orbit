@@ -4,10 +4,11 @@
 //   protoc               unknown
 // source: orbit/v1/snapshot.proto
 
-import type { ArtifactConfigResp } from './build_stage';
-import type { VariableDeclarationResp } from './common';
+/* eslint-disable */
+import type { ArtifactConfigResp } from "./build_stage";
+import type { VariableDeclarationResp } from "./common";
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface PipelineSnapshotResp {
   id: string;

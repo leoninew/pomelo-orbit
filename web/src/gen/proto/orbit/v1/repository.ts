@@ -4,13 +4,10 @@
 //   protoc               unknown
 // source: orbit/v1/repository.proto
 
-import type {
-  VariableDeclarationListReq,
-  VariableDeclarationReq,
-  VariableDeclarationResp,
-} from './common';
+/* eslint-disable */
+import type { VariableDeclarationListReq, VariableDeclarationReq, VariableDeclarationResp } from "./common";
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface RepositoryResp {
   id: string;

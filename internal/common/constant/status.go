@@ -23,9 +23,16 @@ const (
 	WorkStatusCanceled        = "canceled"
 )
 
+// ServiceStatus is the runtime binding status for model.Service (not Application).
 const (
-	ApplicationStatusDeployed     = "deployed"
-	ApplicationStatusDeploying    = "deploying"
-	ApplicationStatusUndeployed   = "undeployed"
-	ApplicationStatusDeployFailed = "deploy_failed"
+	ServiceStatusDeploying = "deploying"
+	ServiceStatusRunning   = "running"
+	ServiceStatusStopped   = "stopped"
+	ServiceStatusFaulted   = "faulted"
+)
+
+// VersionStatus is the lifecycle of model.Version.
+const (
+	VersionStatusUnpublished = "unpublished"
+	VersionStatusPublished   = "published"
 )

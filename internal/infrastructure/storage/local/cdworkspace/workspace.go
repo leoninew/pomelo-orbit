@@ -27,12 +27,16 @@ func (w *Workspace) AppDir(appCode string) string {
 	return filepath.Join(w.logicalDataRoot, "cd", appCode)
 }
 
-func (w *Workspace) DeploymentLogPath(appCode string, deploymentID string) string {
-	return filepath.Join(w.AppDir(appCode), "deployments", deploymentID+".log")
+func (w *Workspace) ServiceDir(appCode string, envCode string, instanceKey string) string {
+	return filepath.Join(w.AppDir(appCode), envCode, instanceKey)
 }
 
-func (w *Workspace) WriteConfig(appCode string, path string, content string) error {
-	path = filepath.Join(w.AppDir(appCode), path)
+func (w *Workspace) DeploymentLogPath(appCode string, envCode string, instanceKey string, deploymentID string) string {
+	return filepath.Join(w.ServiceDir(appCode, envCode, instanceKey), "deployments", deploymentID+".log")
+}
+
+func (w *Workspace) WriteConfig(appCode string, envCode string, instanceKey string, path string, content string) error {
+	path = filepath.Join(w.ServiceDir(appCode, envCode, instanceKey), path)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -67,12 +71,12 @@ func (w *Workspace) PhysicalDir(ctx context.Context) (string, error) {
 	return filepath.ToSlash(physicalDataRoot), nil
 }
 
-func (w *Workspace) PhysicalAppDir(ctx context.Context, appCode string) (string, error) {
+func (w *Workspace) PhysicalServiceDir(ctx context.Context, appCode string, envCode string, instanceKey string) (string, error) {
 	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(filepath.Join(physicalDataRoot, "cd", appCode)), nil
+	return filepath.ToSlash(filepath.Join(physicalDataRoot, "cd", appCode, envCode, instanceKey)), nil
 }
 
 func normalizeShellScriptLineEndings(content string) string {

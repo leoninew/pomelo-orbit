@@ -98,6 +98,12 @@ const router = createRouter({
       meta: { title: '部署详情', menuKey: 'deployments' },
     },
     {
+      path: '/cd/environments',
+      name: 'Environments',
+      component: () => import('@/views/cd/EnvironmentPage.vue'),
+      meta: { title: '环境管理', menuKey: 'environments' },
+    },
+    {
       path: '/cd/routes',
       name: 'Route',
       component: () => import('@/views/cd/RoutePage.vue'),

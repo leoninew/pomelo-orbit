@@ -45,6 +45,10 @@ func deploymentResponse(item model.Deployment) pomeloorbit.DeploymentResp {
 		ErrorMessage:             item.ErrorMessage,
 		IsRollback:               item.IsRollback,
 		RollbackFromDeploymentId: item.RollbackFromDeploymentId,
+		VersionId:                item.VersionId,
+		ServiceId:                item.ServiceId,
+		OptionsJson:              item.OptionsJSON,
+		EnvironmentId:            item.EnvironmentId,
 	}
 }
 

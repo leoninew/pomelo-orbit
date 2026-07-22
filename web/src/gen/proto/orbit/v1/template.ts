@@ -5,14 +5,10 @@
 // source: orbit/v1/template.proto
 
 /* eslint-disable */
-import type { BuildStageResp } from './build_stage';
-import type {
-  VariableDeclarationListReq,
-  VariableDeclarationReq,
-  VariableDeclarationResp,
-} from './common';
+import type { BuildStageResp } from "./build_stage";
+import type { VariableDeclarationListReq, VariableDeclarationReq, VariableDeclarationResp } from "./common";
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface PipelineTemplateResp {
   id: string;
@@ -68,7 +64,8 @@ export interface TemplateVariableResolveReq {
   variable_declarations: VariableDeclarationReq[];
 }
 
-export interface PipelineTemplateDuplicateReq {}
+export interface PipelineTemplateDuplicateReq {
+}
 
 export interface PipelineTemplatePaginatedResp {
   items: PipelineTemplateResp[];

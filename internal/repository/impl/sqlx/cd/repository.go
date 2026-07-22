@@ -2,6 +2,8 @@ package cd
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,6 +29,15 @@ type Repository struct {
 func NewRepository(db *sqlx.DB, driver string) Repository {
 	return Repository{db: db, driver: driver}
 }
+
+const applicationColumns = `id, project_id, name, code, image_pull_policy, created_at, updated_at`
+const versionColumns = `id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at`
+const componentColumns = `id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json, depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at`
+const exposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at`
+const environmentColumns = `id, project_id, code, name, description, created_at, updated_at`
+const bindingColumns = `id, environment_id, component_name, protocol, container_port, domains_json, entrypoint, tls_mode, sni_host, note, created_at, updated_at`
+const serviceColumns = `id, application_id, environment_id, instance_key, is_ingress, version_id, last_successful_version_id, status, created_at, updated_at`
+const deploymentColumns = `id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id`
 
 func (r Repository) Project(ctx context.Context, id string) (model.Project, error) {
 	var project model.Project
@@ -54,7 +65,7 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 	}
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.Application
-	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at
+	err := r.db.SelectContext(ctx, &items, `SELECT `+applicationColumns+`
 		FROM application`+where+` ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return repository.Page[model.Application]{}, fmt.Errorf("list applications: %w", err)
@@ -64,7 +75,7 @@ func (r Repository) ListApplications(ctx context.Context, projectId *string, pag
 
 func (r Repository) Application(ctx context.Context, id string) (model.Application, error) {
 	var app model.Application
-	err := r.db.GetContext(ctx, &app, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at FROM application WHERE id = ?`, id)
+	err := r.db.GetContext(ctx, &app, `SELECT `+applicationColumns+` FROM application WHERE id = ?`, id)
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application %s: %w", id, sqlcommon.TranslateError(err))
 	}
@@ -73,7 +84,7 @@ func (r Repository) Application(ctx context.Context, id string) (model.Applicati
 
 func (r Repository) ApplicationByName(ctx context.Context, name string) (model.Application, error) {
 	var app model.Application
-	err := r.db.GetContext(ctx, &app, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at FROM application WHERE name = ?`, name)
+	err := r.db.GetContext(ctx, &app, `SELECT `+applicationColumns+` FROM application WHERE name = ?`, name)
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
@@ -82,7 +93,7 @@ func (r Repository) ApplicationByName(ctx context.Context, name string) (model.A
 
 func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.Application, error) {
 	var app model.Application
-	err := r.db.GetContext(ctx, &app, `SELECT id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at FROM application WHERE code = ?`, code)
+	err := r.db.GetContext(ctx, &app, `SELECT `+applicationColumns+` FROM application WHERE code = ?`, code)
 	if err != nil {
 		return model.Application{}, fmt.Errorf("load application by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
@@ -90,51 +101,17 @@ func (r Repository) ApplicationByCode(ctx context.Context, code string) (model.A
 }
 
 func (r Repository) CreateApplication(ctx context.Context, app model.Application) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application (id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), app.Id, app.ProjectId, app.Name, app.Code, app.ImagePullPolicy, app.Status, app.RouteManaged)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application (id, project_id, name, code, image_pull_policy, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), app.Id, app.ProjectId, app.Name, app.Code, app.ImagePullPolicy)
 	if err != nil {
 		return fmt.Errorf("create application %s: %w", app.Code, err)
-	}
-	return nil
-}
-
-func (r Repository) CreateApplicationBundle(ctx context.Context, app model.Application, files []model.ApplicationConfigFile, serviceConfigs []model.ApplicationServiceConfig, routes []model.ApplicationRoute) error {
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin create application bundle %s: %w", app.Code, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application (id, project_id, name, code, image_pull_policy, status, route_managed, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), app.Id, app.ProjectId, app.Name, app.Code, app.ImagePullPolicy, app.Status, app.RouteManaged); err != nil {
-		return fmt.Errorf("create application %s: %w", app.Code, err)
-	}
-	for _, file := range files {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
-			VALUES (?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), file.Id, file.ApplicationId, file.Path, file.Content); err != nil {
-			return fmt.Errorf("create application config file %s: %w", file.Path, err)
-		}
-	}
-	for _, config := range serviceConfigs {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application_service (id, application_id, service_name, image, environment, volumes, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), config.Id, config.ApplicationId, config.ServiceName, config.Image, config.Environment, config.Volumes); err != nil {
-			return fmt.Errorf("create application service config %s: %w", config.ServiceName, err)
-		}
-	}
-	for _, route := range routes {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application_route (id, application_id, service_name, domain, port, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), route.Id, route.ApplicationId, route.ServiceName, route.Domain, route.Port); err != nil {
-			return fmt.Errorf("create application route %s: %w", route.Domain, err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit create application bundle %s: %w", app.Code, err)
 	}
 	return nil
 }
 
 func (r Repository) UpdateApplication(ctx context.Context, app model.Application) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application SET name = ?, code = ?, image_pull_policy = ?, route_managed = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
-		app.Name, app.Code, app.ImagePullPolicy, app.RouteManaged, app.Id)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application SET name = ?, code = ?, image_pull_policy = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
+		app.Name, app.Code, app.ImagePullPolicy, app.Id)
 	if err != nil {
 		return fmt.Errorf("update application %s: %w", app.Id, err)
 	}
@@ -147,14 +124,11 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 		return fmt.Errorf("begin delete application %s: %w", id, err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM application_config_file WHERE application_id = ?`, id); err != nil {
-		return fmt.Errorf("delete application config files %s: %w", id, err)
+	if _, err := tx.ExecContext(ctx, `DELETE FROM service WHERE application_id = ?`, id); err != nil {
+		return fmt.Errorf("delete application service %s: %w", id, err)
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM application_route WHERE application_id = ?`, id); err != nil {
-		return fmt.Errorf("delete application routes %s: %w", id, err)
-	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM application_service WHERE application_id = ?`, id); err != nil {
-		return fmt.Errorf("delete application service configs %s: %w", id, err)
+	if _, err := tx.ExecContext(ctx, `DELETE FROM version WHERE application_id = ?`, id); err != nil {
+		return fmt.Errorf("delete application versions %s: %w", id, err)
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM application WHERE id = ?`, id); err != nil {
 		return fmt.Errorf("delete application %s: %w", id, err)
@@ -165,126 +139,350 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r Repository) ConfigFiles(ctx context.Context, applicationId string) ([]model.ApplicationConfigFile, error) {
-	var files []model.ApplicationConfigFile
-	err := r.db.SelectContext(ctx, &files, `SELECT id, application_id, path, content, created_at, updated_at FROM application_config_file WHERE application_id = ? ORDER BY path`, applicationId)
+func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]model.Version, error) {
+	var items []model.Version
+	err := r.db.SelectContext(ctx, &items, `SELECT `+versionColumns+` FROM version WHERE application_id = ? ORDER BY created_at DESC, id`, applicationId)
 	if err != nil {
-		return nil, fmt.Errorf("load config files for application %s: %w", applicationId, err)
+		return nil, fmt.Errorf("list versions for application %s: %w", applicationId, err)
 	}
-	return files, nil
+	return items, nil
 }
 
-func (r Repository) ConfigFile(ctx context.Context, id string) (model.ApplicationConfigFile, error) {
-	var file model.ApplicationConfigFile
-	err := r.db.GetContext(ctx, &file, `SELECT id, application_id, path, content, created_at, updated_at FROM application_config_file WHERE id = ?`, id)
+func (r Repository) Version(ctx context.Context, id string) (model.Version, error) {
+	var version model.Version
+	err := r.db.GetContext(ctx, &version, `SELECT `+versionColumns+` FROM version WHERE id = ?`, id)
 	if err != nil {
-		return model.ApplicationConfigFile{}, fmt.Errorf("load config file %s: %w", id, sqlcommon.TranslateError(err))
+		return model.Version{}, fmt.Errorf("load version %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return file, nil
+	return version, nil
 }
 
-func (r Repository) CreateConfigFile(ctx context.Context, file model.ApplicationConfigFile) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application_config_file (id, application_id, path, content, created_at, updated_at)
-		VALUES (?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), file.Id, file.ApplicationId, file.Path, file.Content)
+func (r Repository) CreateVersion(ctx context.Context, version model.Version) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		version.Id, version.ApplicationId, version.Label, version.Status, version.EnvJSON, version.CreatedFromVersionId, version.Note)
 	if err != nil {
-		return fmt.Errorf("create config file %s: %w", file.Path, err)
-	}
-	return nil
-}
-
-func (r Repository) UpdateConfigFile(ctx context.Context, file model.ApplicationConfigFile) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application_config_file SET path = ?, content = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), file.Path, file.Content, file.Id)
-	if err != nil {
-		return fmt.Errorf("update config file %s: %w", file.Id, err)
+		return fmt.Errorf("create version %s: %w", version.Label, err)
 	}
 	return nil
 }
 
-func (r Repository) DeleteConfigFile(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM application_config_file WHERE id = ?`, id)
+func (r Repository) UpdateVersion(ctx context.Context, version model.Version) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE version SET label = ?, status = ?, env_json = ?, note = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
+		version.Label, version.Status, version.EnvJSON, version.Note, version.Id)
 	if err != nil {
-		return fmt.Errorf("delete config file %s: %w", id, err)
+		return fmt.Errorf("update version %s: %w", version.Id, err)
 	}
 	return nil
 }
 
-func (r Repository) ServiceConfigs(ctx context.Context, applicationId string) ([]model.ApplicationServiceConfig, error) {
-	var configs []model.ApplicationServiceConfig
-	err := r.db.SelectContext(ctx, &configs, `SELECT id, application_id, service_name, image, environment, volumes, created_at, updated_at FROM application_service WHERE application_id = ?`, applicationId)
+func (r Repository) ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error) {
+	var items []model.Component
+	err := r.db.SelectContext(ctx, &items, `SELECT `+componentColumns+` FROM component WHERE version_id = ? ORDER BY name`, versionId)
 	if err != nil {
-		return nil, fmt.Errorf("load service configs for application %s: %w", applicationId, err)
+		return nil, fmt.Errorf("list components for version %s: %w", versionId, err)
 	}
-	return configs, nil
+	return items, nil
 }
 
-func (r Repository) ApplicationServiceConfig(ctx context.Context, applicationId string, serviceName string) (model.ApplicationServiceConfig, error) {
-	var config model.ApplicationServiceConfig
-	err := r.db.GetContext(ctx, &config, `SELECT id, application_id, service_name, image, environment, volumes, created_at, updated_at FROM application_service WHERE application_id = ? AND service_name = ?`, applicationId, serviceName)
+func (r Repository) ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error) {
+	var items []model.Expose
+	err := r.db.SelectContext(ctx, &items, `SELECT `+exposeColumns+` FROM expose WHERE version_id = ? ORDER BY component_name, protocol, container_port`, versionId)
 	if err != nil {
-		return model.ApplicationServiceConfig{}, fmt.Errorf("load application service config %s/%s: %w", applicationId, serviceName, sqlcommon.TranslateError(err))
+		return nil, fmt.Errorf("list exposes for version %s: %w", versionId, err)
 	}
-	return config, nil
+	return items, nil
 }
 
-func (r Repository) UpsertApplicationServiceConfig(ctx context.Context, config model.ApplicationServiceConfig) error {
+func (r Repository) ReplaceComponents(ctx context.Context, versionId string, components []model.Component) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin replace components %s: %w", versionId, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM component WHERE version_id = ?`, versionId); err != nil {
+		return fmt.Errorf("delete components for version %s: %w", versionId, err)
+	}
+	for _, component := range components {
+		if err := insertComponent(ctx, tx, r.driver, component); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit replace components %s: %w", versionId, err)
+	}
+	return nil
+}
+
+func (r Repository) ReplaceExposes(ctx context.Context, versionId string, exposes []model.Expose) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin replace exposes %s: %w", versionId, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM expose WHERE version_id = ?`, versionId); err != nil {
+		return fmt.Errorf("delete exposes for version %s: %w", versionId, err)
+	}
+	for _, expose := range exposes {
+		if err := insertExpose(ctx, tx, r.driver, expose); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit replace exposes %s: %w", versionId, err)
+	}
+	return nil
+}
+
+func (r Repository) CreateVersionWithComponentsAndExposes(ctx context.Context, version model.Version, components []model.Component, exposes []model.Expose) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin create version with components %s: %w", version.Label, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		version.Id, version.ApplicationId, version.Label, version.Status, version.EnvJSON, version.CreatedFromVersionId, version.Note); err != nil {
+		return fmt.Errorf("create version %s: %w", version.Label, err)
+	}
+	for _, component := range components {
+		if err := insertComponent(ctx, tx, r.driver, component); err != nil {
+			return err
+		}
+	}
+	for _, expose := range exposes {
+		if err := insertExpose(ctx, tx, r.driver, expose); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit create version with components %s: %w", version.Label, err)
+	}
+	return nil
+}
+
+func insertComponent(ctx context.Context, tx *sqlx.Tx, driver string, component model.Component) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO component (
+		id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json,
+		depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(driver), db.NowExpr(driver)),
+		component.Id, component.VersionId, component.Name, component.Image, component.CommandJSON, component.ArgsJSON,
+		component.EnvJSON, component.PortsJSON, component.MountsJSON, component.NetworksJSON, component.DependsOnJSON,
+		component.HealthcheckJSON, component.ResourcesJSON, component.PullPolicy)
+	if err != nil {
+		return fmt.Errorf("create component %s: %w", component.Name, err)
+	}
+	return nil
+}
+
+func insertExpose(ctx context.Context, tx *sqlx.Tx, driver string, expose model.Expose) error {
+	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO expose (
+		id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(driver), db.NowExpr(driver)),
+		expose.Id, expose.VersionId, expose.ComponentName, expose.Protocol, expose.ContainerPort, expose.PathPrefix)
+	if err != nil {
+		return fmt.Errorf("create expose %s/%s/%d: %w", expose.ComponentName, expose.Protocol, expose.ContainerPort, err)
+	}
+	return nil
+}
+
+func (r Repository) ListEnvironments(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.Environment], error) {
+	page, perPage = repository.NormalizePage(page, perPage)
+	projectId = strings.TrimSpace(projectId)
+	clauses := []string{"project_id = ?"}
+	args := []any{projectId}
+	search = strings.TrimSpace(search)
+	if search != "" {
+		like := "%" + search + "%"
+		clauses = append(clauses, "(code LIKE ? OR name LIKE ?)")
+		args = append(args, like, like)
+	}
+	where := " WHERE " + strings.Join(clauses, " AND ")
+	var total int
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM environment`+where, args...); err != nil {
+		return repository.Page[model.Environment]{}, fmt.Errorf("count environments: %w", err)
+	}
+	args = append(args, perPage, (page-1)*perPage)
+	var items []model.Environment
+	err := r.db.SelectContext(ctx, &items, `SELECT `+environmentColumns+` FROM environment`+where+` ORDER BY code, id LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return repository.Page[model.Environment]{}, fmt.Errorf("list environments: %w", err)
+	}
+	return repository.Page[model.Environment]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
+func (r Repository) Environment(ctx context.Context, id string) (model.Environment, error) {
+	var env model.Environment
+	err := r.db.GetContext(ctx, &env, `SELECT `+environmentColumns+` FROM environment WHERE id = ?`, id)
+	if err != nil {
+		return model.Environment{}, fmt.Errorf("load environment %s: %w", id, sqlcommon.TranslateError(err))
+	}
+	return env, nil
+}
+
+func (r Repository) EnvironmentByProjectCode(ctx context.Context, projectId string, code string) (model.Environment, error) {
+	var env model.Environment
+	err := r.db.GetContext(ctx, &env, `SELECT `+environmentColumns+` FROM environment WHERE project_id = ? AND code = ?`, projectId, code)
+	if err != nil {
+		return model.Environment{}, fmt.Errorf("load environment %s/%s: %w", projectId, code, sqlcommon.TranslateError(err))
+	}
+	return env, nil
+}
+
+func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (id, project_id, code, name, description, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		env.Id, env.ProjectId, env.Code, env.Name, env.Description)
+	if err != nil {
+		return fmt.Errorf("create environment %s: %w", env.Code, err)
+	}
+	return nil
+}
+
+func (r Repository) UpdateEnvironment(ctx context.Context, env model.Environment) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE environment SET name = ?, description = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
+		env.Name, env.Description, env.Id)
+	if err != nil {
+		return fmt.Errorf("update environment %s: %w", env.Id, err)
+	}
+	return nil
+}
+
+func (r Repository) DeleteEnvironment(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM environment WHERE id = ?`, id)
+	if err != nil {
+		return fmt.Errorf("delete environment %s: %w", id, err)
+	}
+	return nil
+}
+
+func (r Repository) BindingsByEnvironment(ctx context.Context, environmentId string) ([]model.EnvironmentBinding, error) {
+	var items []model.EnvironmentBinding
+	err := r.db.SelectContext(ctx, &items, `SELECT `+bindingColumns+` FROM environment_binding WHERE environment_id = ? ORDER BY component_name, protocol, container_port`, environmentId)
+	if err != nil {
+		return nil, fmt.Errorf("list bindings for environment %s: %w", environmentId, err)
+	}
+	return items, nil
+}
+
+func (r Repository) ReplaceBindings(ctx context.Context, environmentId string, bindings []model.EnvironmentBinding) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin replace bindings %s: %w", environmentId, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM environment_binding WHERE environment_id = ?`, environmentId); err != nil {
+		return fmt.Errorf("delete bindings for environment %s: %w", environmentId, err)
+	}
+	for _, binding := range bindings {
+		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment_binding (
+			id, environment_id, component_name, protocol, container_port, domains_json, entrypoint, tls_mode, sni_host, note, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+			binding.Id, binding.EnvironmentId, binding.ComponentName, binding.Protocol, binding.ContainerPort,
+			binding.DomainsJSON, binding.Entrypoint, binding.TLSMode, binding.SNIHost, binding.Note); err != nil {
+			return fmt.Errorf("create binding %s: %w", binding.ComponentName, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit replace bindings %s: %w", environmentId, err)
+	}
+	return nil
+}
+
+func (r Repository) CountServicesByEnvironment(ctx context.Context, environmentId string) (int, error) {
 	var count int
-	if err := r.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM application_service WHERE id = ?`, config.Id); err != nil {
-		return fmt.Errorf("count application service config %s: %w", config.Id, err)
+	if err := r.db.GetContext(ctx, &count, `SELECT COUNT(*) FROM service WHERE environment_id = ?`, environmentId); err != nil {
+		return 0, fmt.Errorf("count services for environment %s: %w", environmentId, err)
 	}
-	if count == 0 {
-		_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application_service (id, application_id, service_name, image, environment, volumes, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), config.Id, config.ApplicationId, config.ServiceName, config.Image, config.Environment, config.Volumes)
+	return count, nil
+}
+
+func (r Repository) ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error) {
+	var items []model.Service
+	err := r.db.SelectContext(ctx, &items, `SELECT `+serviceColumns+` FROM service WHERE application_id = ? ORDER BY environment_id, instance_key`, applicationId)
+	if err != nil {
+		return nil, fmt.Errorf("list services for application %s: %w", applicationId, err)
+	}
+	return items, nil
+}
+
+func (r Repository) ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {
+	var svc model.Service
+	err := r.db.GetContext(ctx, &svc, `SELECT `+serviceColumns+` FROM service WHERE application_id = ? AND environment_id = ? AND instance_key = ?`, applicationId, environmentId, instanceKey)
+	if err != nil {
+		return model.Service{}, fmt.Errorf("load service %s/%s/%s: %w", applicationId, environmentId, instanceKey, sqlcommon.TranslateError(err))
+	}
+	return svc, nil
+}
+
+func (r Repository) Service(ctx context.Context, id string) (model.Service, error) {
+	var svc model.Service
+	err := r.db.GetContext(ctx, &svc, `SELECT `+serviceColumns+` FROM service WHERE id = ?`, id)
+	if err != nil {
+		return model.Service{}, fmt.Errorf("load service %s: %w", id, sqlcommon.TranslateError(err))
+	}
+	return svc, nil
+}
+
+func (r Repository) UpsertService(ctx context.Context, svc model.Service) error {
+	var existingID string
+	err := r.db.GetContext(ctx, &existingID, `SELECT id FROM service WHERE application_id = ? AND environment_id = ? AND instance_key = ?`,
+		svc.ApplicationId, svc.EnvironmentId, svc.InstanceKey)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("lookup service for application %s: %w", svc.ApplicationId, err)
+		}
+		isIngress := 0
+		if svc.IsIngress {
+			isIngress = 1
+		}
+		_, err = r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO service (
+			id, application_id, environment_id, instance_key, is_ingress, version_id, last_successful_version_id, status, created_at, updated_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+			svc.Id, svc.ApplicationId, svc.EnvironmentId, svc.InstanceKey, isIngress, svc.VersionId, svc.LastSuccessfulVersionId, svc.Status)
 		if err != nil {
-			return fmt.Errorf("create application service config %s: %w", config.ServiceName, err)
+			return fmt.Errorf("create service for application %s: %w", svc.ApplicationId, err)
 		}
 		return nil
 	}
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application_service SET image = ?, environment = ?, volumes = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), config.Image, config.Environment, config.Volumes, config.Id)
+	id := existingID
+	if strings.TrimSpace(svc.Id) != "" {
+		id = svc.Id
+	}
+	isIngress := 0
+	if svc.IsIngress {
+		isIngress = 1
+	}
+	_, err = r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET version_id = ?, last_successful_version_id = ?, status = ?, is_ingress = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
+		svc.VersionId, svc.LastSuccessfulVersionId, svc.Status, isIngress, id)
 	if err != nil {
-		return fmt.Errorf("update application service config %s: %w", config.Id, err)
+		return fmt.Errorf("update service %s: %w", id, err)
 	}
 	return nil
 }
 
-func (r Repository) Routes(ctx context.Context, applicationId string) ([]model.ApplicationRoute, error) {
-	var routes []model.ApplicationRoute
-	err := r.db.SelectContext(ctx, &routes, `SELECT id, application_id, service_name, domain, port, created_at, updated_at FROM application_route WHERE application_id = ?`, applicationId)
+func (r Repository) ClearIngressForAppEnv(ctx context.Context, applicationId string, environmentId string, exceptServiceId string) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET is_ingress = 0, updated_at = %s WHERE application_id = ? AND environment_id = ? AND id <> ? AND is_ingress = 1`, db.NowExpr(r.driver)),
+		applicationId, environmentId, exceptServiceId)
 	if err != nil {
-		return nil, fmt.Errorf("load routes for application %s: %w", applicationId, err)
-	}
-	return routes, nil
-}
-
-func (r Repository) ApplicationRoute(ctx context.Context, id string) (model.ApplicationRoute, error) {
-	var route model.ApplicationRoute
-	err := r.db.GetContext(ctx, &route, `SELECT id, application_id, service_name, domain, port, created_at, updated_at FROM application_route WHERE id = ?`, id)
-	if err != nil {
-		return model.ApplicationRoute{}, fmt.Errorf("load application route %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return route, nil
-}
-
-func (r Repository) CreateApplicationRoute(ctx context.Context, route model.ApplicationRoute) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO application_route (id, application_id, service_name, domain, port, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), route.Id, route.ApplicationId, route.ServiceName, route.Domain, route.Port)
-	if err != nil {
-		return fmt.Errorf("create application route %s: %w", route.Domain, err)
+		return fmt.Errorf("clear ingress for app/env %s/%s: %w", applicationId, environmentId, err)
 	}
 	return nil
 }
 
-func (r Repository) UpdateApplicationRoute(ctx context.Context, route model.ApplicationRoute) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application_route SET service_name = ?, domain = ?, port = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), route.ServiceName, route.Domain, route.Port, route.Id)
+func (r Repository) UpdateServiceStatus(ctx context.Context, id string, status string) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET status = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), status, id)
 	if err != nil {
-		return fmt.Errorf("update application route %s: %w", route.Id, err)
+		return fmt.Errorf("update service status %s: %w", id, err)
 	}
 	return nil
 }
 
-func (r Repository) DeleteApplicationRoute(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM application_route WHERE id = ?`, id)
+func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE service SET status = ?, version_id = ?, last_successful_version_id = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
+		status, versionId, lastSuccessfulVersionId, id)
 	if err != nil {
-		return fmt.Errorf("delete application route %s: %w", id, err)
+		return fmt.Errorf("update service after deploy %s: %w", id, err)
 	}
 	return nil
 }
@@ -368,8 +566,14 @@ func (r Repository) DeleteRoute(ctx context.Context, id string) error {
 }
 
 func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deployment) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO deployment (id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, ?, ?)`, db.NowExpr(r.driver)), deployment.Id, deployment.ProjectId, deployment.ApplicationId, deployment.ApplicationName, deployment.OperationType, deployment.TriggerType, deployment.CommandText, deployment.Status, deployment.IsRollback, deployment.RollbackFromDeploymentId)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO deployment (
+		id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+		operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, ?, ?)`, db.NowExpr(r.driver)),
+		deployment.Id, deployment.ProjectId, deployment.ApplicationId, deployment.ApplicationName,
+		deployment.VersionId, deployment.ServiceId, deployment.EnvironmentId, deployment.OptionsJSON,
+		deployment.OperationType, deployment.TriggerType, deployment.CommandText, deployment.Status,
+		deployment.IsRollback, deployment.RollbackFromDeploymentId)
 	if err != nil {
 		return fmt.Errorf("create deployment %s: %w", deployment.Id, err)
 	}
@@ -385,8 +589,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	}
 	args = append(args, perPage, (page-1)*perPage)
 	var items []model.Deployment
-	err := r.db.SelectContext(ctx, &items, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, command_text,
-		status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id
+	err := r.db.SelectContext(ctx, &items, `SELECT `+deploymentColumns+`
 		FROM deployment`+where+` ORDER BY started_at DESC, id LIMIT ? OFFSET ?`, args...)
 	if err != nil {
 		return repository.Page[model.Deployment]{}, fmt.Errorf("list deployments: %w", err)
@@ -396,8 +599,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 
 func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment, error) {
 	var deployment model.Deployment
-	err := r.db.GetContext(ctx, &deployment, `SELECT id, project_id, application_id, application_name, operation_type, trigger_type, command_text, status,
-		started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id FROM deployment WHERE id = ?`, id)
+	err := r.db.GetContext(ctx, &deployment, `SELECT `+deploymentColumns+` FROM deployment WHERE id = ?`, id)
 	if err != nil {
 		return model.Deployment{}, fmt.Errorf("load deployment %s: %w", id, sqlcommon.TranslateError(err))
 	}
@@ -408,14 +610,6 @@ func (r Repository) CancelDeployment(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE deployment SET status = ?, finished_at = %s, duration_ms = %s, error_message = ? WHERE id = ?`, db.NowExpr(r.driver), db.DurationMillisExpr(r.driver, "started_at")), status.WorkStatusCanceled, "Cancelled by user", id)
 	if err != nil {
 		return fmt.Errorf("cancel deployment %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) MarkApplicationStatus(ctx context.Context, id string, status string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE application SET status = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), status, id)
-	if err != nil {
-		return fmt.Errorf("mark application %s status: %w", id, err)
 	}
 	return nil
 }

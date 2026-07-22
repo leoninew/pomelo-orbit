@@ -34,8 +34,7 @@ const applicationColumns = `id, project_id, name, code, image_pull_policy, creat
 const versionColumns = `id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at`
 const componentColumns = `id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json, depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at`
 const exposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at`
-const environmentColumns = `id, project_id, code, name, description, created_at, updated_at`
-const bindingColumns = `id, environment_id, component_name, protocol, container_port, domains_json, entrypoint, tls_mode, sni_host, note, created_at, updated_at`
+const environmentColumns = `id, project_id, code, name, description, base_domain, domain_template, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at`
 const serviceColumns = `id, application_id, environment_id, instance_key, is_ingress, version_id, last_successful_version_id, status, created_at, updated_at`
 const deploymentColumns = `id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id`
 
@@ -330,9 +329,11 @@ func (r Repository) EnvironmentByProjectCode(ctx context.Context, projectId stri
 }
 
 func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (id, project_id, code, name, description, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
-		env.Id, env.ProjectId, env.Code, env.Name, env.Description)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (
+		id, project_id, code, name, description, base_domain, domain_template, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		env.Id, env.ProjectId, env.Code, env.Name, env.Description,
+		env.BaseDomain, env.DomainTemplate, env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode)
 	if err != nil {
 		return fmt.Errorf("create environment %s: %w", env.Code, err)
 	}
@@ -340,8 +341,10 @@ func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment
 }
 
 func (r Repository) UpdateEnvironment(ctx context.Context, env model.Environment) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE environment SET name = ?, description = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
-		env.Name, env.Description, env.Id)
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE environment SET
+		name = ?, description = ?, base_domain = ?, domain_template = ?, default_entrypoint = ?, tcp_entrypoint = ?, tls_mode = ?, updated_at = %s
+		WHERE id = ?`, db.NowExpr(r.driver)),
+		env.Name, env.Description, env.BaseDomain, env.DomainTemplate, env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode, env.Id)
 	if err != nil {
 		return fmt.Errorf("update environment %s: %w", env.Id, err)
 	}
@@ -352,39 +355,6 @@ func (r Repository) DeleteEnvironment(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM environment WHERE id = ?`, id)
 	if err != nil {
 		return fmt.Errorf("delete environment %s: %w", id, err)
-	}
-	return nil
-}
-
-func (r Repository) BindingsByEnvironment(ctx context.Context, environmentId string) ([]model.EnvironmentBinding, error) {
-	var items []model.EnvironmentBinding
-	err := r.db.SelectContext(ctx, &items, `SELECT `+bindingColumns+` FROM environment_binding WHERE environment_id = ? ORDER BY component_name, protocol, container_port`, environmentId)
-	if err != nil {
-		return nil, fmt.Errorf("list bindings for environment %s: %w", environmentId, err)
-	}
-	return items, nil
-}
-
-func (r Repository) ReplaceBindings(ctx context.Context, environmentId string, bindings []model.EnvironmentBinding) error {
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin replace bindings %s: %w", environmentId, err)
-	}
-	defer func() { _ = tx.Rollback() }()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM environment_binding WHERE environment_id = ?`, environmentId); err != nil {
-		return fmt.Errorf("delete bindings for environment %s: %w", environmentId, err)
-	}
-	for _, binding := range bindings {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment_binding (
-			id, environment_id, component_name, protocol, container_port, domains_json, entrypoint, tls_mode, sni_host, note, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
-			binding.Id, binding.EnvironmentId, binding.ComponentName, binding.Protocol, binding.ContainerPort,
-			binding.DomainsJSON, binding.Entrypoint, binding.TLSMode, binding.SNIHost, binding.Note); err != nil {
-			return fmt.Errorf("create binding %s: %w", binding.ComponentName, err)
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit replace bindings %s: %w", environmentId, err)
 	}
 	return nil
 }

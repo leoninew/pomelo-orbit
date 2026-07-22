@@ -14,5 +14,4 @@ func (r Router) registerEnvironment(engine *gin.Engine) {
 	engine.GET("/api/cd/environment/:env_id", handler.GetEnvironment)
 	engine.PUT("/api/cd/environment/:env_id", handler.UpdateEnvironment)
 	engine.DELETE("/api/cd/environment/:env_id", handler.DeleteEnvironment)
-	engine.PUT("/api/cd/environment/:env_id/binding", handler.ReplaceEnvironmentBindings)
 }

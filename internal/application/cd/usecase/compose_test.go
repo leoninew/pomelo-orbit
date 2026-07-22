@@ -81,7 +81,6 @@ func TestRenderComposeRejectsMissingDependsOn(t *testing.T) {
 
 func TestRenderComposeInjectsHTTPExposeLabels(t *testing.T) {
 	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
-	domains := `["web.example.com","alt.example.com"]`
 	got, err := service.RenderCompose(context.Background(), RenderInput{
 		App:     model.Application{Code: "demo"},
 		Version: model.Version{Id: "v1"},
@@ -91,25 +90,20 @@ func TestRenderComposeInjectsHTTPExposeLabels(t *testing.T) {
 		Exposes: []model.Expose{
 			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 		},
-		Env: model.Environment{Code: "local"},
-		Bindings: []model.EnvironmentBinding{
-			{
-				ComponentName: "web",
-				Protocol:      "http",
-				ContainerPort: 80,
-				DomainsJSON:   domains,
-				Entrypoint:    "websecure",
-				TLSMode:       "letsencrypt",
-			},
+		Env: model.Environment{
+			Code:              "local",
+			BaseDomain:        "example.com",
+			DefaultEntrypoint: "websecure",
+			TLSMode:           "letsencrypt",
 		},
 		Service: model.Service{InstanceKey: "default", IsIngress: true},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantRule := "traefik.http.routers.demo-local-default-web-http.rule=Host(`web.example.com`) || Host(`alt.example.com`)"
+	wantRule := "traefik.http.routers.demo-local-default-web-http.rule=Host(`demo.example.com`)"
 	if !strings.Contains(got, wantRule) {
-		t.Fatalf("expected merged router rule %q, got:\n%s", wantRule, got)
+		t.Fatalf("expected derived host rule %q, got:\n%s", wantRule, got)
 	}
 	if !strings.Contains(got, "traefik.http.services.demo-local-default-web-http.loadbalancer.server.port=80") {
 		t.Fatalf("expected service port label, got:\n%s", got)
@@ -119,7 +113,7 @@ func TestRenderComposeInjectsHTTPExposeLabels(t *testing.T) {
 	}
 }
 
-func TestRenderComposeRejectsMissingBinding(t *testing.T) {
+func TestRenderComposeRejectsIncompleteHTTPPolicy(t *testing.T) {
 	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
 	_, err := service.RenderCompose(context.Background(), RenderInput{
 		App:     model.Application{Code: "demo"},
@@ -130,11 +124,37 @@ func TestRenderComposeRejectsMissingBinding(t *testing.T) {
 		Exposes: []model.Expose{
 			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 		},
-		Env:     model.Environment{Code: "local"},
+		Env:     model.Environment{Code: "local", DefaultEntrypoint: "web"},
 		Service: model.Service{InstanceKey: "default", IsIngress: true},
 	})
 	if err == nil {
-		t.Fatal("expected missing binding error")
+		t.Fatal("expected incomplete policy error")
+	}
+}
+
+func TestRenderComposeRejectsDuplicateHTTPPath(t *testing.T) {
+	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
+	_, err := service.RenderCompose(context.Background(), RenderInput{
+		App:     model.Application{Code: "demo"},
+		Version: model.Version{Id: "v1"},
+		Components: []model.Component{
+			{Name: "web", Image: "nginx"},
+			{Name: "api", Image: "api"},
+		},
+		Exposes: []model.Expose{
+			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
+			{ComponentName: "api", Protocol: "http", ContainerPort: 8080},
+		},
+		Env: model.Environment{
+			Code:              "local",
+			BaseDomain:        "local.test",
+			DefaultEntrypoint: "web",
+			TLSMode:           "none",
+		},
+		Service: model.Service{InstanceKey: "default", IsIngress: true},
+	})
+	if err == nil {
+		t.Fatal("expected duplicate host+path error")
 	}
 }
 

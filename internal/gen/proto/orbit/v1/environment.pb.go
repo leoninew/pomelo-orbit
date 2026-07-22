@@ -22,13 +22,18 @@ const (
 )
 
 type EnvironmentCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Description   *string                `protobuf:"bytes,4,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId         string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code              string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Name              string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description       *string                `protobuf:"bytes,4,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	BaseDomain        *string                `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
+	DomainTemplate    *string                `protobuf:"bytes,6,opt,name=domain_template,json=domainTemplate,proto3,oneof" json:"domain_template,omitempty"`
+	DefaultEntrypoint *string                `protobuf:"bytes,7,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
+	TcpEntrypoint     *string                `protobuf:"bytes,8,opt,name=tcp_entrypoint,json=tcpEntrypoint,proto3,oneof" json:"tcp_entrypoint,omitempty"`
+	TlsMode           *string                `protobuf:"bytes,9,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EnvironmentCreateReq) Reset() {
@@ -89,12 +94,52 @@ func (x *EnvironmentCreateReq) GetDescription() string {
 	return ""
 }
 
+func (x *EnvironmentCreateReq) GetBaseDomain() string {
+	if x != nil && x.BaseDomain != nil {
+		return *x.BaseDomain
+	}
+	return ""
+}
+
+func (x *EnvironmentCreateReq) GetDomainTemplate() string {
+	if x != nil && x.DomainTemplate != nil {
+		return *x.DomainTemplate
+	}
+	return ""
+}
+
+func (x *EnvironmentCreateReq) GetDefaultEntrypoint() string {
+	if x != nil && x.DefaultEntrypoint != nil {
+		return *x.DefaultEntrypoint
+	}
+	return ""
+}
+
+func (x *EnvironmentCreateReq) GetTcpEntrypoint() string {
+	if x != nil && x.TcpEntrypoint != nil {
+		return *x.TcpEntrypoint
+	}
+	return ""
+}
+
+func (x *EnvironmentCreateReq) GetTlsMode() string {
+	if x != nil && x.TlsMode != nil {
+		return *x.TlsMode
+	}
+	return ""
+}
+
 type EnvironmentUpdateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Description   *string                `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Name              *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description       *string                `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	BaseDomain        *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
+	DomainTemplate    *string                `protobuf:"bytes,4,opt,name=domain_template,json=domainTemplate,proto3,oneof" json:"domain_template,omitempty"`
+	DefaultEntrypoint *string                `protobuf:"bytes,5,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
+	TcpEntrypoint     *string                `protobuf:"bytes,6,opt,name=tcp_entrypoint,json=tcpEntrypoint,proto3,oneof" json:"tcp_entrypoint,omitempty"`
+	TlsMode           *string                `protobuf:"bytes,7,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EnvironmentUpdateReq) Reset() {
@@ -141,299 +186,62 @@ func (x *EnvironmentUpdateReq) GetDescription() string {
 	return ""
 }
 
-type EnvironmentBindingReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ComponentName string                 `protobuf:"bytes,1,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
-	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	ContainerPort int32                  `protobuf:"varint,3,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	Domains       []string               `protobuf:"bytes,4,rep,name=domains,proto3" json:"domains,omitempty"`
-	Entrypoint    string                 `protobuf:"bytes,5,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
-	TlsMode       string                 `protobuf:"bytes,6,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
-	SniHost       *string                `protobuf:"bytes,7,opt,name=sni_host,json=sniHost,proto3,oneof" json:"sni_host,omitempty"`
-	Note          *string                `protobuf:"bytes,8,opt,name=note,proto3,oneof" json:"note,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EnvironmentBindingReq) Reset() {
-	*x = EnvironmentBindingReq{}
-	mi := &file_orbit_v1_environment_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EnvironmentBindingReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EnvironmentBindingReq) ProtoMessage() {}
-
-func (x *EnvironmentBindingReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EnvironmentBindingReq.ProtoReflect.Descriptor instead.
-func (*EnvironmentBindingReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *EnvironmentBindingReq) GetComponentName() string {
-	if x != nil {
-		return x.ComponentName
+func (x *EnvironmentUpdateReq) GetBaseDomain() string {
+	if x != nil && x.BaseDomain != nil {
+		return *x.BaseDomain
 	}
 	return ""
 }
 
-func (x *EnvironmentBindingReq) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
+func (x *EnvironmentUpdateReq) GetDomainTemplate() string {
+	if x != nil && x.DomainTemplate != nil {
+		return *x.DomainTemplate
 	}
 	return ""
 }
 
-func (x *EnvironmentBindingReq) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *EnvironmentBindingReq) GetDomains() []string {
-	if x != nil {
-		return x.Domains
-	}
-	return nil
-}
-
-func (x *EnvironmentBindingReq) GetEntrypoint() string {
-	if x != nil {
-		return x.Entrypoint
+func (x *EnvironmentUpdateReq) GetDefaultEntrypoint() string {
+	if x != nil && x.DefaultEntrypoint != nil {
+		return *x.DefaultEntrypoint
 	}
 	return ""
 }
 
-func (x *EnvironmentBindingReq) GetTlsMode() string {
-	if x != nil {
-		return x.TlsMode
+func (x *EnvironmentUpdateReq) GetTcpEntrypoint() string {
+	if x != nil && x.TcpEntrypoint != nil {
+		return *x.TcpEntrypoint
 	}
 	return ""
 }
 
-func (x *EnvironmentBindingReq) GetSniHost() string {
-	if x != nil && x.SniHost != nil {
-		return *x.SniHost
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingReq) GetNote() string {
-	if x != nil && x.Note != nil {
-		return *x.Note
-	}
-	return ""
-}
-
-type EnvironmentBindingReplaceReq struct {
-	state         protoimpl.MessageState   `protogen:"open.v1"`
-	Bindings      []*EnvironmentBindingReq `protobuf:"bytes,1,rep,name=bindings,proto3" json:"bindings,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EnvironmentBindingReplaceReq) Reset() {
-	*x = EnvironmentBindingReplaceReq{}
-	mi := &file_orbit_v1_environment_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EnvironmentBindingReplaceReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EnvironmentBindingReplaceReq) ProtoMessage() {}
-
-func (x *EnvironmentBindingReplaceReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EnvironmentBindingReplaceReq.ProtoReflect.Descriptor instead.
-func (*EnvironmentBindingReplaceReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *EnvironmentBindingReplaceReq) GetBindings() []*EnvironmentBindingReq {
-	if x != nil {
-		return x.Bindings
-	}
-	return nil
-}
-
-type EnvironmentBindingResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	EnvironmentId string                 `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
-	ComponentName string                 `protobuf:"bytes,3,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
-	Protocol      string                 `protobuf:"bytes,4,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	ContainerPort int32                  `protobuf:"varint,5,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	Domains       []string               `protobuf:"bytes,6,rep,name=domains,proto3" json:"domains,omitempty"`
-	Entrypoint    string                 `protobuf:"bytes,7,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
-	TlsMode       string                 `protobuf:"bytes,8,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
-	SniHost       *string                `protobuf:"bytes,9,opt,name=sni_host,json=sniHost,proto3,oneof" json:"sni_host,omitempty"`
-	Note          *string                `protobuf:"bytes,10,opt,name=note,proto3,oneof" json:"note,omitempty"`
-	CreatedAt     string                 `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string                 `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EnvironmentBindingResp) Reset() {
-	*x = EnvironmentBindingResp{}
-	mi := &file_orbit_v1_environment_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EnvironmentBindingResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EnvironmentBindingResp) ProtoMessage() {}
-
-func (x *EnvironmentBindingResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EnvironmentBindingResp.ProtoReflect.Descriptor instead.
-func (*EnvironmentBindingResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *EnvironmentBindingResp) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetEnvironmentId() string {
-	if x != nil {
-		return x.EnvironmentId
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetComponentName() string {
-	if x != nil {
-		return x.ComponentName
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetProtocol() string {
-	if x != nil {
-		return x.Protocol
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *EnvironmentBindingResp) GetDomains() []string {
-	if x != nil {
-		return x.Domains
-	}
-	return nil
-}
-
-func (x *EnvironmentBindingResp) GetEntrypoint() string {
-	if x != nil {
-		return x.Entrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetTlsMode() string {
-	if x != nil {
-		return x.TlsMode
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetSniHost() string {
-	if x != nil && x.SniHost != nil {
-		return *x.SniHost
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetNote() string {
-	if x != nil && x.Note != nil {
-		return *x.Note
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetCreatedAt() string {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return ""
-}
-
-func (x *EnvironmentBindingResp) GetUpdatedAt() string {
-	if x != nil {
-		return x.UpdatedAt
+func (x *EnvironmentUpdateReq) GetTlsMode() string {
+	if x != nil && x.TlsMode != nil {
+		return *x.TlsMode
 	}
 	return ""
 }
 
 type EnvironmentResp struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Id            string                    `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId     string                    `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code          string                    `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	Name          string                    `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description   *string                   `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	CreatedAt     string                    `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string                    `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Bindings      []*EnvironmentBindingResp `protobuf:"bytes,8,rep,name=bindings,proto3" json:"bindings,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId         string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code              string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	Name              string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Description       *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	CreatedAt         string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt         string                 `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	BaseDomain        string                 `protobuf:"bytes,8,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	DomainTemplate    *string                `protobuf:"bytes,9,opt,name=domain_template,json=domainTemplate,proto3,oneof" json:"domain_template,omitempty"`
+	DefaultEntrypoint string                 `protobuf:"bytes,10,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
+	TcpEntrypoint     *string                `protobuf:"bytes,11,opt,name=tcp_entrypoint,json=tcpEntrypoint,proto3,oneof" json:"tcp_entrypoint,omitempty"`
+	TlsMode           string                 `protobuf:"bytes,12,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *EnvironmentResp) Reset() {
 	*x = EnvironmentResp{}
-	mi := &file_orbit_v1_environment_proto_msgTypes[5]
+	mi := &file_orbit_v1_environment_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -445,7 +253,7 @@ func (x *EnvironmentResp) String() string {
 func (*EnvironmentResp) ProtoMessage() {}
 
 func (x *EnvironmentResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_proto_msgTypes[5]
+	mi := &file_orbit_v1_environment_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -458,7 +266,7 @@ func (x *EnvironmentResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvironmentResp.ProtoReflect.Descriptor instead.
 func (*EnvironmentResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{5}
+	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *EnvironmentResp) GetId() string {
@@ -510,11 +318,39 @@ func (x *EnvironmentResp) GetUpdatedAt() string {
 	return ""
 }
 
-func (x *EnvironmentResp) GetBindings() []*EnvironmentBindingResp {
+func (x *EnvironmentResp) GetBaseDomain() string {
 	if x != nil {
-		return x.Bindings
+		return x.BaseDomain
 	}
-	return nil
+	return ""
+}
+
+func (x *EnvironmentResp) GetDomainTemplate() string {
+	if x != nil && x.DomainTemplate != nil {
+		return *x.DomainTemplate
+	}
+	return ""
+}
+
+func (x *EnvironmentResp) GetDefaultEntrypoint() string {
+	if x != nil {
+		return x.DefaultEntrypoint
+	}
+	return ""
+}
+
+func (x *EnvironmentResp) GetTcpEntrypoint() string {
+	if x != nil && x.TcpEntrypoint != nil {
+		return *x.TcpEntrypoint
+	}
+	return ""
+}
+
+func (x *EnvironmentResp) GetTlsMode() string {
+	if x != nil {
+		return x.TlsMode
+	}
+	return ""
 }
 
 type EnvironmentPaginatedResp struct {
@@ -530,7 +366,7 @@ type EnvironmentPaginatedResp struct {
 
 func (x *EnvironmentPaginatedResp) Reset() {
 	*x = EnvironmentPaginatedResp{}
-	mi := &file_orbit_v1_environment_proto_msgTypes[6]
+	mi := &file_orbit_v1_environment_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -542,7 +378,7 @@ func (x *EnvironmentPaginatedResp) String() string {
 func (*EnvironmentPaginatedResp) ProtoMessage() {}
 
 func (x *EnvironmentPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_environment_proto_msgTypes[6]
+	mi := &file_orbit_v1_environment_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -555,7 +391,7 @@ func (x *EnvironmentPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvironmentPaginatedResp.ProtoReflect.Descriptor instead.
 func (*EnvironmentPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{6}
+	return file_orbit_v1_environment_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *EnvironmentPaginatedResp) GetItems() []*EnvironmentResp {
@@ -597,54 +433,41 @@ var File_orbit_v1_environment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_environment_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/environment.proto\x12\borbit.v1\"\x94\x01\n" +
+	"\x1aorbit/v1/environment.proto\x12\borbit.v1\"\xc3\x03\n" +
 	"\x14EnvironmentCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12%\n" +
-	"\vdescription\x18\x04 \x01(\tH\x00R\vdescription\x88\x01\x01B\x0e\n" +
-	"\f_description\"o\n" +
+	"\vdescription\x18\x04 \x01(\tH\x00R\vdescription\x88\x01\x01\x12$\n" +
+	"\vbase_domain\x18\x05 \x01(\tH\x01R\n" +
+	"baseDomain\x88\x01\x01\x12,\n" +
+	"\x0fdomain_template\x18\x06 \x01(\tH\x02R\x0edomainTemplate\x88\x01\x01\x122\n" +
+	"\x12default_entrypoint\x18\a \x01(\tH\x03R\x11defaultEntrypoint\x88\x01\x01\x12*\n" +
+	"\x0etcp_entrypoint\x18\b \x01(\tH\x04R\rtcpEntrypoint\x88\x01\x01\x12\x1e\n" +
+	"\btls_mode\x18\t \x01(\tH\x05R\atlsMode\x88\x01\x01B\x0e\n" +
+	"\f_descriptionB\x0e\n" +
+	"\f_base_domainB\x12\n" +
+	"\x10_domain_templateB\x15\n" +
+	"\x13_default_entrypointB\x11\n" +
+	"\x0f_tcp_entrypointB\v\n" +
+	"\t_tls_mode\"\x9e\x03\n" +
 	"\x14EnvironmentUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x02 \x01(\tH\x01R\vdescription\x88\x01\x01B\a\n" +
+	"\vdescription\x18\x02 \x01(\tH\x01R\vdescription\x88\x01\x01\x12$\n" +
+	"\vbase_domain\x18\x03 \x01(\tH\x02R\n" +
+	"baseDomain\x88\x01\x01\x12,\n" +
+	"\x0fdomain_template\x18\x04 \x01(\tH\x03R\x0edomainTemplate\x88\x01\x01\x122\n" +
+	"\x12default_entrypoint\x18\x05 \x01(\tH\x04R\x11defaultEntrypoint\x88\x01\x01\x12*\n" +
+	"\x0etcp_entrypoint\x18\x06 \x01(\tH\x05R\rtcpEntrypoint\x88\x01\x01\x12\x1e\n" +
+	"\btls_mode\x18\a \x01(\tH\x06R\atlsMode\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0e\n" +
-	"\f_description\"\xa5\x02\n" +
-	"\x15EnvironmentBindingReq\x12%\n" +
-	"\x0ecomponent_name\x18\x01 \x01(\tR\rcomponentName\x12\x1a\n" +
-	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
-	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12\x18\n" +
-	"\adomains\x18\x04 \x03(\tR\adomains\x12\x1e\n" +
-	"\n" +
-	"entrypoint\x18\x05 \x01(\tR\n" +
-	"entrypoint\x12\x19\n" +
-	"\btls_mode\x18\x06 \x01(\tR\atlsMode\x12\x1e\n" +
-	"\bsni_host\x18\a \x01(\tH\x00R\asniHost\x88\x01\x01\x12\x17\n" +
-	"\x04note\x18\b \x01(\tH\x01R\x04note\x88\x01\x01B\v\n" +
-	"\t_sni_hostB\a\n" +
-	"\x05_note\"[\n" +
-	"\x1cEnvironmentBindingReplaceReq\x12;\n" +
-	"\bbindings\x18\x01 \x03(\v2\x1f.orbit.v1.EnvironmentBindingReqR\bbindings\"\x9b\x03\n" +
-	"\x16EnvironmentBindingResp\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
-	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\x12%\n" +
-	"\x0ecomponent_name\x18\x03 \x01(\tR\rcomponentName\x12\x1a\n" +
-	"\bprotocol\x18\x04 \x01(\tR\bprotocol\x12%\n" +
-	"\x0econtainer_port\x18\x05 \x01(\x05R\rcontainerPort\x12\x18\n" +
-	"\adomains\x18\x06 \x03(\tR\adomains\x12\x1e\n" +
-	"\n" +
-	"entrypoint\x18\a \x01(\tR\n" +
-	"entrypoint\x12\x19\n" +
-	"\btls_mode\x18\b \x01(\tR\atlsMode\x12\x1e\n" +
-	"\bsni_host\x18\t \x01(\tH\x00R\asniHost\x88\x01\x01\x12\x17\n" +
-	"\x04note\x18\n" +
-	" \x01(\tH\x01R\x04note\x88\x01\x01\x12\x1d\n" +
-	"\n" +
-	"created_at\x18\v \x01(\tR\tcreatedAt\x12\x1d\n" +
-	"\n" +
-	"updated_at\x18\f \x01(\tR\tupdatedAtB\v\n" +
-	"\t_sni_hostB\a\n" +
-	"\x05_note\"\x9b\x02\n" +
+	"\f_descriptionB\x0e\n" +
+	"\f_base_domainB\x12\n" +
+	"\x10_domain_templateB\x15\n" +
+	"\x13_default_entrypointB\x11\n" +
+	"\x0f_tcp_entrypointB\v\n" +
+	"\t_tls_mode\"\xc9\x03\n" +
 	"\x0fEnvironmentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -655,9 +478,17 @@ const file_orbit_v1_environment_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\tR\tupdatedAt\x12<\n" +
-	"\bbindings\x18\b \x03(\v2 .orbit.v1.EnvironmentBindingRespR\bbindingsB\x0e\n" +
-	"\f_description\"\xa6\x01\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAt\x12\x1f\n" +
+	"\vbase_domain\x18\b \x01(\tR\n" +
+	"baseDomain\x12,\n" +
+	"\x0fdomain_template\x18\t \x01(\tH\x01R\x0edomainTemplate\x88\x01\x01\x12-\n" +
+	"\x12default_entrypoint\x18\n" +
+	" \x01(\tR\x11defaultEntrypoint\x12*\n" +
+	"\x0etcp_entrypoint\x18\v \x01(\tH\x02R\rtcpEntrypoint\x88\x01\x01\x12\x19\n" +
+	"\btls_mode\x18\f \x01(\tR\atlsModeB\x0e\n" +
+	"\f_descriptionB\x12\n" +
+	"\x10_domain_templateB\x11\n" +
+	"\x0f_tcp_entrypoint\"\xa6\x01\n" +
 	"\x18EnvironmentPaginatedResp\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.orbit.v1.EnvironmentRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -678,25 +509,20 @@ func file_orbit_v1_environment_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_environment_proto_rawDescData
 }
 
-var file_orbit_v1_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_orbit_v1_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_orbit_v1_environment_proto_goTypes = []any{
-	(*EnvironmentCreateReq)(nil),         // 0: orbit.v1.EnvironmentCreateReq
-	(*EnvironmentUpdateReq)(nil),         // 1: orbit.v1.EnvironmentUpdateReq
-	(*EnvironmentBindingReq)(nil),        // 2: orbit.v1.EnvironmentBindingReq
-	(*EnvironmentBindingReplaceReq)(nil), // 3: orbit.v1.EnvironmentBindingReplaceReq
-	(*EnvironmentBindingResp)(nil),       // 4: orbit.v1.EnvironmentBindingResp
-	(*EnvironmentResp)(nil),              // 5: orbit.v1.EnvironmentResp
-	(*EnvironmentPaginatedResp)(nil),     // 6: orbit.v1.EnvironmentPaginatedResp
+	(*EnvironmentCreateReq)(nil),     // 0: orbit.v1.EnvironmentCreateReq
+	(*EnvironmentUpdateReq)(nil),     // 1: orbit.v1.EnvironmentUpdateReq
+	(*EnvironmentResp)(nil),          // 2: orbit.v1.EnvironmentResp
+	(*EnvironmentPaginatedResp)(nil), // 3: orbit.v1.EnvironmentPaginatedResp
 }
 var file_orbit_v1_environment_proto_depIdxs = []int32{
-	2, // 0: orbit.v1.EnvironmentBindingReplaceReq.bindings:type_name -> orbit.v1.EnvironmentBindingReq
-	4, // 1: orbit.v1.EnvironmentResp.bindings:type_name -> orbit.v1.EnvironmentBindingResp
-	5, // 2: orbit.v1.EnvironmentPaginatedResp.items:type_name -> orbit.v1.EnvironmentResp
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	2, // 0: orbit.v1.EnvironmentPaginatedResp.items:type_name -> orbit.v1.EnvironmentResp
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_environment_proto_init() }
@@ -707,15 +533,13 @@ func file_orbit_v1_environment_proto_init() {
 	file_orbit_v1_environment_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_environment_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_environment_proto_msgTypes[2].OneofWrappers = []any{}
-	file_orbit_v1_environment_proto_msgTypes[4].OneofWrappers = []any{}
-	file_orbit_v1_environment_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_environment_proto_rawDesc), len(file_orbit_v1_environment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

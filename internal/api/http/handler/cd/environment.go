@@ -98,22 +98,3 @@ func (h Handler) DeleteEnvironment(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
-
-func (h Handler) ReplaceEnvironmentBindings(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	var req pomeloorbit.EnvironmentBindingReplaceReq
-	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
-		return
-	}
-	view, err := h.service.ReplaceEnvironmentBindings(c.Request.Context(), current.Id, c.Param("env_id"), environmentBindingInputs(req.Bindings))
-	if err != nil {
-		h.writeError(c, err)
-		return
-	}
-	resp := environmentResponse(view)
-	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
-}

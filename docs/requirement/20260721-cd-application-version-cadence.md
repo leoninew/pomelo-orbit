@@ -1,5 +1,5 @@
 # CD 应用版本化领域模型兑现节奏
-最后修改时间: 2026-07-22 08:35:55
+最后修改时间: 2026-07-22 10:42:53
 
 Review status: Accepted
 
@@ -10,6 +10,7 @@ Flow mode: standard
 | 中文 | 英文 | 说明 |
 |------|------|------|
 | 应用 | **Application** | 长期身份 |
+| 应用类型 | **Application.kind** | `standard`（默认）\| `gateway`；决定 Render 策略（见 **R3**） |
 | 版本 | **Version** | 业务数据：结构化静态规格；**不是** compose |
 | 环境 | **Environment** | **Project 下业务数据**；有 `project_id`（见修订文档） |
 | 部署 | **Deployment** | 唯一操作记录（deploy/stop/restart） |
@@ -44,8 +45,9 @@ CD 应用管理职责过载。目标：Application 身份 + Version 规格 + Ser
 | **P2** | [deploy](./20260721-cd-application-version-deploy.md) | 本机 deploy 闭环 | **Accepted** |
 | **P3** | [render](./20260721-cd-application-version-render.md) | Renderer / raw | **Accepted** |
 | **修订 R1** | [environment-expose-service](./20260721-cd-environment-expose-service.md) | Env 实体、Expose、多 Service、Traefik MVP | **Accepted**；已实现 + Verification Accepted |
-| **修订 R2** | [environment-ingress-policy](./20260722-cd-environment-ingress-policy.md) | 环境**接入策略**取代 per-component Binding | **Draft**（strict）；未实现 |
-| 后续 | K8s / 多机 / 蓝绿 LB 等 | 另开 | — |
+| **修订 R2** | [environment-ingress-policy](./20260722-cd-environment-ingress-policy.md) | 环境**接入策略**取代 per-component Binding | Requirement/Spec/Plan/Verification **Accepted** |
+| **修订 R3** | [application-kind-gateway](./20260722-cd-application-kind-gateway.md) | Application.**kind**=`standard`\|`gateway`，决定 Render 分支 | Requirement **Draft**（strict） |
+| 后续 | consumer 自动 join 平台网 / 宿主机网关 / K8s Gateway 等 | 见 R3 扩展 E1–E4；另开或并入 R3 Spec | — |
 
 ```text
 P0 领域
@@ -53,8 +55,9 @@ P0 领域
   -> P2 本机 deploy
   -> P3 Renderer
   -> R1 Environment / Expose / Service（已交付）
-  -> R2 Environment IngressPolicy（当前；废止用户侧 Binding 表）
-  -> K8s / 其它
+  -> R2 Environment IngressPolicy（standard 如何被入口暴露）
+  -> R3 Application.kind gateway|standard（入口应用如何渲染；当前 Draft）
+  -> 扩展 E1–E4 / K8s 等
 ```
 
 **注意**：不再采用「P2 先用 compose 全文当 Version 存储」；与 P0/P1 **Version=业务结构化规格** 冲突，已废止。
@@ -112,7 +115,8 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 14. ~~对外访问本期不进~~ → **修订 R1**：ExposeSpec 在 Version（http|tcp 同批）；环境侧接入在 Environment；Traefik MVP 每 (app,env) 至多一个 ingress target。
 15. **P0、P1 Requirement 已 Accepted**（2026-07-21）。
 16. **Environment/Expose/Service 基数修订 R1 Accepted**（2026-07-21）：`docs/requirement/20260721-cd-environment-expose-service.md`。
-17. **环境接入策略修订 R2（进行中）**（2026-07-22）：域名由 Environment **IngressPolicy** 推导，**不**手填 per-component Binding；Environment **禁止**以 component 为用户配置维度。详见 `docs/requirement/20260722-cd-environment-ingress-policy.md`（Draft / strict）。与 R1 的 D4 EnvironmentBinding 用户 SoT **冲突时以 R2 Accepted 后为准**。
+17. **环境接入策略修订 R2（已交付）**（2026-07-22）：域名由 Environment **IngressPolicy** 推导，**不**手填 per-component Binding；Environment **禁止**以 component 为用户配置维度。详见 `docs/requirement/20260722-cd-environment-ingress-policy.md`；Verification `docs/verification/20260722-cd-environment-ingress-policy.md`。与 R1 的 D4 EnvironmentBinding 用户 SoT **冲突时以 R2 为准**。
+18. **应用类型修订 R3（Draft）**（2026-07-22）：Application.**kind** = `standard`（默认）\| `gateway`，**决定 Render 方式**；网关应用与普通应用分支渲染。详见 `docs/requirement/20260722-cd-application-kind-gateway.md`。不把 `code==traefik` 当主路径；K8s/宿主机网关/consumer external 网为扩展。
 
 ## Risk / 风险
 
@@ -129,10 +133,14 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 | P2 | deploy | **Accepted** |
 | P3 | render | **Accepted** |
 | 修订 R1 | `20260721-cd-environment-expose-service.md` | **Accepted**；Plan Accepted；Verification Accepted |
-| 修订 R2 | `20260722-cd-environment-ingress-policy.md` | **Draft**（strict）；接在 R1 之后 |
+| 修订 R2 | `20260722-cd-environment-ingress-policy.md` | Requirement **Accepted**；接在 R1 之后 |
+| Spec R2 | `docs/spec/20260722-cd-environment-ingress-policy.md` | **Accepted**（含 ER） |
+| Plan R2 | `docs/plan/20260722-cd-environment-ingress-policy.md` | **Accepted**；已实现 |
+| Verification R2 | `docs/verification/20260722-cd-environment-ingress-policy.md` | **Accepted** |
+| 修订 R3 | `20260722-cd-application-kind-gateway.md` | Requirement **Draft**（strict）；Application.kind |
+| Spec R3 | — | **未建**（R3 Requirement Accepted 后） |
 | Plan | `docs/plan/20260721-cd-application-version.md` | Implemented（Version 闭环） |
 | Plan | `docs/plan/20260721-cd-environment-expose-service.md` | **Accepted**；已实现 |
-| Plan | `docs/plan/20260722-cd-environment-ingress-policy.md` | **未建**（R2 Requirement Accepted → Spec → Plan） |
 | Verification | `docs/verification/20260721-cd-environment-expose-service.md` | **Accepted**（有条件） |
 
 ## User review notes
@@ -145,3 +153,8 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 - 2026-07-21：用户 **接受 P0/P1**；**可放弃历史兼容**。
 - 2026-07-21：用户 **接受 P2/P3**，进入 **Plan**。
 - 2026-07-22：产品反馈 Binding 手填域名 / 环境选 component 不当 → 新开 **R2** `20260722-cd-environment-ingress-policy.md` 挂入本节奏索引（Draft / strict）。
+- 2026-07-22：R2 Requirement Accepted；Spec Draft：`docs/spec/20260722-cd-environment-ingress-policy.md`（含 ER）。
+- 2026-07-22：用户「推进实现」→ Spec/Plan Accepted；migration 000010 + 产品代码落地；待 Verification。
+- 2026-07-22：确认 Application.**kind**=gateway|standard 决定渲染；路线无覆盖 → 开 **R3** `20260722-cd-application-kind-gateway.md`（Draft）。
+- 2026-07-22：用户要求先验证当前任务 → **R2 Verification Accepted**；R3 仍 Draft，未开 Spec/实现。
+- 2026-07-22：用户要求展示提交建议后进入 R3 → 进入 **R3 Requirement** 评审（Draft 补场景/风险）；未 Accept、未写 Spec。

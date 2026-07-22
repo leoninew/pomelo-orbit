@@ -390,32 +390,32 @@ export default {
     fields: {
       name: 'Name',
       code: 'Code',
-      bindings: 'Bindings',
-    },
-    actions: {
-      bindings: 'Bindings',
-      addBinding: 'Add binding',
+      baseDomain: 'Base domain',
+      domainTemplate: 'Domain template',
+      defaultEntrypoint: 'HTTP entrypoint',
+      tcpEntrypoint: 'TCP entrypoint',
+      tlsMode: 'TLS mode',
     },
     dialog: {
       create: 'Create Environment',
       edit: 'Edit Environment',
-      bindings: 'Bindings — {name}',
       delete: 'Confirm Delete',
       deleteConfirm: 'Delete environment "{name}"? This action cannot be undone.',
     },
     hints: {
       code: 'Start with a lowercase letter; letters, digits, and hyphens only. Immutable after create.',
-      bindings: 'Binding keys match Version Expose triples: component / protocol / port',
+      baseDomain: 'Used to derive app host as {app_code}.{base_domain} when template is empty.',
+      domainTemplate:
+        'Optional. Allowed tokens: {app_code}, {env_code}, {base_domain}. Empty uses {app_code}.{base_domain}.',
     },
     placeholders: {
       code: 'e.g. local, staging',
       name: 'e.g. Local',
       description: 'Optional description',
-      componentName: 'Component name, e.g. web',
-      port: 'Container port',
-      entrypoint: 'entrypoint, e.g. websecure',
-      domains: 'Domains, comma-separated',
-      sniHost: 'Optional SNI host (TCP)',
+      baseDomain: 'e.g. local.test',
+      domainTemplate: 'e.g. {app_code}.{base_domain}',
+      defaultEntrypoint: 'e.g. web',
+      tcpEntrypoint: 'Optional; falls back to HTTP entrypoint',
     },
     validation: {
       codeInvalid:

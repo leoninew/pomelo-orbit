@@ -1,8 +1,6 @@
 package cdhandler
 
 import (
-	"encoding/json"
-
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	cddto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
 	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
@@ -186,15 +184,4 @@ func exposeResponse(expose model.Expose) pomeloorbit.ExposeResp {
 		CreatedAt:     transportresponse.FormatTime(expose.CreatedAt),
 		UpdatedAt:     transportresponse.FormatTime(expose.UpdatedAt),
 	}
-}
-
-func decodeDomainsJSON(raw string) []string {
-	if raw == "" {
-		return []string{}
-	}
-	var domains []string
-	if err := json.Unmarshal([]byte(raw), &domains); err != nil {
-		return []string{}
-	}
-	return domains
 }

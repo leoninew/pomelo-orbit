@@ -264,13 +264,9 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
 	}
-	bindings, err := s.store.BindingsByEnvironment(ctx, env.Id)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to list bindings", err)
-	}
 	content, err := s.RenderCompose(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env: env, Bindings: bindings,
+		Env:     env,
 		Service: model.Service{InstanceKey: instanceKey, IsIngress: isIngress},
 	})
 	if err != nil {

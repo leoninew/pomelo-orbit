@@ -13,41 +13,21 @@ export interface EnvironmentCreateReq {
   code: string;
   name: string;
   description?: string | undefined;
+  base_domain?: string | undefined;
+  domain_template?: string | undefined;
+  default_entrypoint?: string | undefined;
+  tcp_entrypoint?: string | undefined;
+  tls_mode?: string | undefined;
 }
 
 export interface EnvironmentUpdateReq {
   name?: string | undefined;
   description?: string | undefined;
-}
-
-export interface EnvironmentBindingReq {
-  component_name: string;
-  protocol: string;
-  container_port: number;
-  domains: string[];
-  entrypoint: string;
-  tls_mode: string;
-  sni_host?: string | undefined;
-  note?: string | undefined;
-}
-
-export interface EnvironmentBindingReplaceReq {
-  bindings: EnvironmentBindingReq[];
-}
-
-export interface EnvironmentBindingResp {
-  id: string;
-  environment_id: string;
-  component_name: string;
-  protocol: string;
-  container_port: number;
-  domains: string[];
-  entrypoint: string;
-  tls_mode: string;
-  sni_host?: string | undefined;
-  note?: string | undefined;
-  created_at: string;
-  updated_at: string;
+  base_domain?: string | undefined;
+  domain_template?: string | undefined;
+  default_entrypoint?: string | undefined;
+  tcp_entrypoint?: string | undefined;
+  tls_mode?: string | undefined;
 }
 
 export interface EnvironmentResp {
@@ -58,7 +38,11 @@ export interface EnvironmentResp {
   description?: string | undefined;
   created_at: string;
   updated_at: string;
-  bindings: EnvironmentBindingResp[];
+  base_domain: string;
+  domain_template?: string | undefined;
+  default_entrypoint: string;
+  tcp_entrypoint?: string | undefined;
+  tls_mode: string;
 }
 
 export interface EnvironmentPaginatedResp {

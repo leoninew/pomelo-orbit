@@ -115,28 +115,18 @@ type Deployment struct {
 }
 
 type Environment struct {
-	ID          string         `db:"id"`
-	ProjectID   string         `db:"project_id"`
-	Code        string         `db:"code"`
-	Name        string         `db:"name"`
-	Description sql.NullString `db:"description"`
-	CreatedAt   time.Time      `db:"created_at"`
-	UpdatedAt   time.Time      `db:"updated_at"`
-}
-
-type EnvironmentBinding struct {
-	ID            string         `db:"id"`
-	EnvironmentID string         `db:"environment_id"`
-	ComponentName string         `db:"component_name"`
-	Protocol      string         `db:"protocol"`
-	ContainerPort int64          `db:"container_port"`
-	DomainsJson   string         `db:"domains_json"`
-	Entrypoint    string         `db:"entrypoint"`
-	TlsMode       string         `db:"tls_mode"`
-	SniHost       sql.NullString `db:"sni_host"`
-	Note          sql.NullString `db:"note"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
+	ID                string         `db:"id"`
+	ProjectID         string         `db:"project_id"`
+	Code              string         `db:"code"`
+	Name              string         `db:"name"`
+	Description       sql.NullString `db:"description"`
+	CreatedAt         time.Time      `db:"created_at"`
+	UpdatedAt         time.Time      `db:"updated_at"`
+	BaseDomain        string         `db:"base_domain"`
+	DomainTemplate    sql.NullString `db:"domain_template"`
+	DefaultEntrypoint string         `db:"default_entrypoint"`
+	TcpEntrypoint     sql.NullString `db:"tcp_entrypoint"`
+	TlsMode           string         `db:"tls_mode"`
 }
 
 type Expose struct {

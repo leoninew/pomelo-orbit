@@ -7,41 +7,21 @@ message EnvironmentCreateReq {
   string code = 2;
   string name = 3;
   optional string description = 4;
+  optional string base_domain = 5;
+  optional string domain_template = 6;
+  optional string default_entrypoint = 7;
+  optional string tcp_entrypoint = 8;
+  optional string tls_mode = 9;
 }
 
 message EnvironmentUpdateReq {
   optional string name = 1;
   optional string description = 2;
-}
-
-message EnvironmentBindingReq {
-  string component_name = 1;
-  string protocol = 2;
-  int32 container_port = 3;
-  repeated string domains = 4;
-  string entrypoint = 5;
-  string tls_mode = 6;
-  optional string sni_host = 7;
-  optional string note = 8;
-}
-
-message EnvironmentBindingReplaceReq {
-  repeated EnvironmentBindingReq bindings = 1;
-}
-
-message EnvironmentBindingResp {
-  string id = 1;
-  string environment_id = 2;
-  string component_name = 3;
-  string protocol = 4;
-  int32 container_port = 5;
-  repeated string domains = 6;
-  string entrypoint = 7;
-  string tls_mode = 8;
-  optional string sni_host = 9;
-  optional string note = 10;
-  string created_at = 11;
-  string updated_at = 12;
+  optional string base_domain = 3;
+  optional string domain_template = 4;
+  optional string default_entrypoint = 5;
+  optional string tcp_entrypoint = 6;
+  optional string tls_mode = 7;
 }
 
 message EnvironmentResp {
@@ -52,7 +32,11 @@ message EnvironmentResp {
   optional string description = 5;
   string created_at = 6;
   string updated_at = 7;
-  repeated EnvironmentBindingResp bindings = 8;
+  string base_domain = 8;
+  optional string domain_template = 9;
+  string default_entrypoint = 10;
+  optional string tcp_entrypoint = 11;
+  string tls_mode = 12;
 }
 
 message EnvironmentPaginatedResp {

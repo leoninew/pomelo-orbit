@@ -36,7 +36,15 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 		components: []model.Component{
 			{Id: "c1", VersionId: versionID, Name: "web", Image: "nginx"},
 		},
-		env: model.Environment{Id: envID, ProjectId: projectID, Code: "local", Name: "Local"},
+		env: model.Environment{
+			Id:                envID,
+			ProjectId:         projectID,
+			Code:              "local",
+			Name:              "Local",
+			BaseDomain:        "local.test",
+			DefaultEntrypoint: "web",
+			TLSMode:           "none",
+		},
 		service: model.Service{
 			Id:            "svc-1",
 			ApplicationId: "app-1",
@@ -172,20 +180,12 @@ func TestExecuteApplicationDeployRequiresVersionID(t *testing.T) {
 func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	store := deployStore(t)
-	domains := `["web.example.com","alt.example.com"]`
 	store.exposes = []model.Expose{
 		{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 	}
-	store.bindings = []model.EnvironmentBinding{
-		{
-			ComponentName: "web",
-			Protocol:      "http",
-			ContainerPort: 80,
-			DomainsJSON:   domains,
-			Entrypoint:    "websecure",
-			TLSMode:       "letsencrypt",
-		},
-	}
+	store.env.BaseDomain = "example.com"
+	store.env.DefaultEntrypoint = "websecure"
+	store.env.TLSMode = "letsencrypt"
 	workspace := testWorkspace(cfg.DataRoot())
 	service := NewExecutionService(store, cfg, slog.Default(), workspace, fakeCommandRunner{}, executionlog.Store{})
 
@@ -195,7 +195,6 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 		Components: store.components,
 		Exposes:    store.exposes,
 		Env:        store.env,
-		Bindings:   store.bindings,
 		Service:    store.service,
 	})
 	if err != nil {
@@ -211,9 +210,9 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	if preview != content {
 		t.Fatalf("expected preview to match deployed compose\npreview:\n%s\ndeployed:\n%s", preview, content)
 	}
-	wantRule := "traefik.http.routers.demo-local-default-web-http.rule=Host(`web.example.com`) || Host(`alt.example.com`)"
+	wantRule := "traefik.http.routers.demo-local-default-web-http.rule=Host(`demo.example.com`)"
 	if !strings.Contains(preview, wantRule) {
-		t.Fatalf("expected merged route rule %q, got:\n%s", wantRule, preview)
+		t.Fatalf("expected derived host rule %q, got:\n%s", wantRule, preview)
 	}
 }
 
@@ -224,7 +223,6 @@ type fakeDeploymentExecutionStore struct {
 	components       []model.Component
 	exposes          []model.Expose
 	env              model.Environment
-	bindings         []model.EnvironmentBinding
 	service          model.Service
 	serviceStatus    string
 	deploymentStatus string
@@ -260,10 +258,6 @@ func (s *fakeDeploymentExecutionStore) Environment(_ context.Context, id string)
 		return model.Environment{}, repository.ErrNotFound
 	}
 	return s.env, nil
-}
-
-func (s *fakeDeploymentExecutionStore) BindingsByEnvironment(_ context.Context, environmentId string) ([]model.EnvironmentBinding, error) {
-	return s.bindings, nil
 }
 
 func (s *fakeDeploymentExecutionStore) ServiceByKey(_ context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {

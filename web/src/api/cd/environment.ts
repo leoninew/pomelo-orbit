@@ -1,5 +1,4 @@
 import type {
-  EnvironmentBindingReplaceReq,
   EnvironmentCreateReq,
   EnvironmentPaginatedResp,
   EnvironmentResp,
@@ -31,9 +30,5 @@ export const environmentApi = {
 
   delete(id: string): Promise<void> {
     return request.delete(`/api/cd/environment/${id}`);
-  },
-
-  replaceBindings(id: string, data: EnvironmentBindingReplaceReq): Promise<EnvironmentResp> {
-    return request.put(`/api/cd/environment/${id}/binding`, data);
   },
 };

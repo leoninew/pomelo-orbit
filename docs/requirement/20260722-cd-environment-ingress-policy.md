@@ -1,20 +1,25 @@
 # CD Environment 接入策略（取代 per-component Binding）
-最后修改时间: 2026-07-22 08:35:55
+最后修改时间: 2026-07-22 10:39:11
 
-Review status: Draft
+Review status: Accepted
 
 Flow mode: strict
 
 Parent cadence: `docs/requirement/20260721-cd-application-version-cadence.md`（**修订 R2**）
+
+Verification: `docs/verification/20260722-cd-environment-ingress-policy.md`（**Accepted**）
 
 **路线位置**（已挂入 cadence 与 R1 文档链，非孤立稿）：
 
 ```text
 P0–P3 Version
   -> R1 Environment/Expose/Service（20260721-cd-environment-expose-service；已交付）
-  -> R2 本文件 IngressPolicy（当前 Draft / strict）
-  -> K8s / 其它
+  -> R2 本文件 IngressPolicy（standard 如何被入口暴露）
+  -> R3 Application.kind gateway|standard（`20260722-cd-application-kind-gateway.md`；网关如何渲染）
+  -> 扩展 / K8s 等
 ```
+
+**边界**：本 R2 面向 **kind=standard** 的接入策略与 labels。**kind=gateway** 的 compose/网络提供者语义见 **R3**，不在本文件展开。
 
 Related（保留不废止的底座）:
 
@@ -233,4 +238,5 @@ Environment 必须能表达至少：
 
 - 2026-07-22：用户确认 labels 目标正确；指出（1）域名旧为环境配置勿手填 Binding；（2）Environment 选 component 因跨 Version 同名而不妥。  
 - 2026-07-22：用户要求 **strict / 严格模式** 先记录需求，不进入实现。  
-- 2026-07-22：用户要求检查并挂入 cadence / P0–P3 / R1 plan·requirement·verification 路线 → 已插入 **R2** 索引与双向指针。
+- 2026-07-22：用户要求检查并挂入 cadence / P0–P3 / R1 plan·requirement·verification 路线 → 已插入 **R2** 索引与双向指针。  
+- 2026-07-22：用户「开始 Spec」→ Requirement **Accepted**；Spec 见 `docs/spec/20260722-cd-environment-ingress-policy.md`。

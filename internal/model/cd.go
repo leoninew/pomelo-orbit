@@ -57,31 +57,20 @@ type Expose struct {
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
-// Environment is a project-scoped deploy target.
+// Environment is a project-scoped deploy target with embedded IngressPolicy.
 type Environment struct {
-	Id          string    `db:"id"`
-	ProjectId   string    `db:"project_id"`
-	Code        string    `db:"code"`
-	Name        string    `db:"name"`
-	Description *string   `db:"description"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
-}
-
-// EnvironmentBinding maps expose keys to domain/entrypoint/TLS on an environment.
-type EnvironmentBinding struct {
-	Id            string    `db:"id"`
-	EnvironmentId string    `db:"environment_id"`
-	ComponentName string    `db:"component_name"`
-	Protocol      string    `db:"protocol"`
-	ContainerPort int       `db:"container_port"`
-	DomainsJSON   string    `db:"domains_json"`
-	Entrypoint    string    `db:"entrypoint"`
-	TLSMode       string    `db:"tls_mode"`
-	SNIHost       *string   `db:"sni_host"`
-	Note          *string   `db:"note"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	Id                string    `db:"id"`
+	ProjectId         string    `db:"project_id"`
+	Code              string    `db:"code"`
+	Name              string    `db:"name"`
+	Description       *string   `db:"description"`
+	BaseDomain        string    `db:"base_domain"`
+	DomainTemplate    *string   `db:"domain_template"`
+	DefaultEntrypoint string    `db:"default_entrypoint"`
+	TCPEntrypoint     *string   `db:"tcp_entrypoint"`
+	TLSMode           string    `db:"tls_mode"`
+	CreatedAt         time.Time `db:"created_at"`
+	UpdatedAt         time.Time `db:"updated_at"`
 }
 
 // Service is the runtime binding of an application instance (business data).

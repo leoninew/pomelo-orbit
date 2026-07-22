@@ -37,8 +37,6 @@ type CDStore interface {
 	CreateEnvironment(ctx context.Context, env model.Environment) error
 	UpdateEnvironment(ctx context.Context, env model.Environment) error
 	DeleteEnvironment(ctx context.Context, id string) error
-	BindingsByEnvironment(ctx context.Context, environmentId string) ([]model.EnvironmentBinding, error)
-	ReplaceBindings(ctx context.Context, environmentId string, bindings []model.EnvironmentBinding) error
 	CountServicesByEnvironment(ctx context.Context, environmentId string) (int, error)
 
 	// Runtime Service binding
@@ -72,7 +70,6 @@ type DeploymentExecutionStore interface {
 	ComponentsByVersion(ctx context.Context, versionId string) ([]model.Component, error)
 	ExposesByVersion(ctx context.Context, versionId string) ([]model.Expose, error)
 	Environment(ctx context.Context, id string) (model.Environment, error)
-	BindingsByEnvironment(ctx context.Context, environmentId string) ([]model.EnvironmentBinding, error)
 	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpsertService(ctx context.Context, svc model.Service) error

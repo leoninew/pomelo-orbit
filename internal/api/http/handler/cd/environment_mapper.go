@@ -9,83 +9,55 @@ import (
 
 func environmentCreateInput(req *pomeloorbit.EnvironmentCreateReq) cddto.EnvironmentCreateInput {
 	return cddto.EnvironmentCreateInput{
-		ProjectId:   req.ProjectId,
-		Code:        req.Code,
-		Name:        req.Name,
-		Description: req.Description,
+		ProjectId:         req.ProjectId,
+		Code:              req.Code,
+		Name:              req.Name,
+		Description:       req.Description,
+		BaseDomain:        req.BaseDomain,
+		DomainTemplate:    req.DomainTemplate,
+		DefaultEntrypoint: req.DefaultEntrypoint,
+		TCPEntrypoint:     req.TcpEntrypoint,
+		TLSMode:           req.TlsMode,
 	}
 }
 
 func environmentUpdateInput(req *pomeloorbit.EnvironmentUpdateReq) cddto.EnvironmentUpdateInput {
 	return cddto.EnvironmentUpdateInput{
-		Name:        req.Name,
-		Description: req.Description,
+		Name:              req.Name,
+		Description:       req.Description,
+		BaseDomain:        req.BaseDomain,
+		DomainTemplate:    req.DomainTemplate,
+		DefaultEntrypoint: req.DefaultEntrypoint,
+		TCPEntrypoint:     req.TcpEntrypoint,
+		TLSMode:           req.TlsMode,
 	}
-}
-
-func environmentBindingInputs(items []*pomeloorbit.EnvironmentBindingReq) []cddto.EnvironmentBindingInput {
-	out := make([]cddto.EnvironmentBindingInput, 0, len(items))
-	for _, item := range items {
-		if item == nil {
-			continue
-		}
-		out = append(out, cddto.EnvironmentBindingInput{
-			ComponentName: item.ComponentName,
-			Protocol:      item.Protocol,
-			ContainerPort: int(item.ContainerPort),
-			Domains:       item.Domains,
-			Entrypoint:    item.Entrypoint,
-			TLSMode:       item.TlsMode,
-			SNIHost:       item.SniHost,
-			Note:          item.Note,
-		})
-	}
-	return out
 }
 
 func environmentListResponses(items []model.Environment) []pomeloorbit.EnvironmentResp {
 	resp := make([]pomeloorbit.EnvironmentResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, environmentMetaResponse(item, nil))
+		resp = append(resp, environmentMetaResponse(item))
 	}
 	return resp
 }
 
 func environmentResponse(view cddto.EnvironmentView) pomeloorbit.EnvironmentResp {
-	return environmentMetaResponse(view.Environment, view.Bindings)
+	return environmentMetaResponse(view.Environment)
 }
 
-func environmentMetaResponse(env model.Environment, bindings []model.EnvironmentBinding) pomeloorbit.EnvironmentResp {
-	items := make([]*pomeloorbit.EnvironmentBindingResp, 0, len(bindings))
-	for _, binding := range bindings {
-		item := environmentBindingResponse(binding)
-		items = append(items, &item)
-	}
+func environmentMetaResponse(env model.Environment) pomeloorbit.EnvironmentResp {
 	return pomeloorbit.EnvironmentResp{
-		Id:          env.Id,
-		ProjectId:   env.ProjectId,
-		Code:        env.Code,
-		Name:        env.Name,
-		Description: env.Description,
-		CreatedAt:   transportresponse.FormatTime(env.CreatedAt),
-		UpdatedAt:   transportresponse.FormatTime(env.UpdatedAt),
-		Bindings:    items,
-	}
-}
-
-func environmentBindingResponse(binding model.EnvironmentBinding) pomeloorbit.EnvironmentBindingResp {
-	return pomeloorbit.EnvironmentBindingResp{
-		Id:            binding.Id,
-		EnvironmentId: binding.EnvironmentId,
-		ComponentName: binding.ComponentName,
-		Protocol:      binding.Protocol,
-		ContainerPort: int32(binding.ContainerPort),
-		Domains:       decodeDomainsJSON(binding.DomainsJSON),
-		Entrypoint:    binding.Entrypoint,
-		TlsMode:       binding.TLSMode,
-		SniHost:       binding.SNIHost,
-		Note:          binding.Note,
-		CreatedAt:     transportresponse.FormatTime(binding.CreatedAt),
-		UpdatedAt:     transportresponse.FormatTime(binding.UpdatedAt),
+		Id:                env.Id,
+		ProjectId:         env.ProjectId,
+		Code:              env.Code,
+		Name:              env.Name,
+		Description:       env.Description,
+		CreatedAt:         transportresponse.FormatTime(env.CreatedAt),
+		UpdatedAt:         transportresponse.FormatTime(env.UpdatedAt),
+		BaseDomain:        env.BaseDomain,
+		DomainTemplate:    env.DomainTemplate,
+		DefaultEntrypoint: env.DefaultEntrypoint,
+		TcpEntrypoint:     env.TCPEntrypoint,
+		TlsMode:           env.TLSMode,
 	}
 }

@@ -90,31 +90,29 @@ type ServiceView struct {
 }
 
 type EnvironmentCreateInput struct {
-	ProjectId   string
-	Code        string
-	Name        string
-	Description *string
+	ProjectId         string
+	Code              string
+	Name              string
+	Description       *string
+	BaseDomain        *string
+	DomainTemplate    *string
+	DefaultEntrypoint *string
+	TCPEntrypoint     *string
+	TLSMode           *string
 }
 
 type EnvironmentUpdateInput struct {
-	Name        *string
-	Description *string
-}
-
-type EnvironmentBindingInput struct {
-	ComponentName string
-	Protocol      string
-	ContainerPort int
-	Domains       []string
-	Entrypoint    string
-	TLSMode       string
-	SNIHost       *string
-	Note          *string
+	Name              *string
+	Description       *string
+	BaseDomain        *string
+	DomainTemplate    *string
+	DefaultEntrypoint *string
+	TCPEntrypoint     *string
+	TLSMode           *string
 }
 
 type EnvironmentView struct {
 	Environment model.Environment
-	Bindings    []model.EnvironmentBinding
 }
 
 type ApplicationDeployDispatchInput struct {

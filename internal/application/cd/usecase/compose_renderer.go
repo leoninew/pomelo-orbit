@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -18,9 +19,10 @@ type RenderInput struct {
 	Components []model.Component
 	Exposes    []model.Expose
 	Env        model.Environment
-	Bindings   []model.EnvironmentBinding
 	Service    model.Service
 }
+
+var domainTemplateTokenPattern = regexp.MustCompile(`\{([a-z_]+)\}`)
 
 // RenderCompose builds docker-compose.yml from Version + Environment.
 // Preview and deploy share this function.
@@ -65,28 +67,22 @@ func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, 
 }
 
 func injectExposeLabels(services map[string]any, input RenderInput) error {
-	bindingIndex := make(map[string]model.EnvironmentBinding, len(input.Bindings))
-	for _, binding := range input.Bindings {
-		bindingIndex[exposeKey(binding.ComponentName, binding.Protocol, binding.ContainerPort)] = binding
+	if err := validatePolicyForExposes(input.Env, input.Exposes, input.App); err != nil {
+		return err
 	}
-	letsEncryptEnabled := false
-	if sCfg := input; sCfg.App.Id != "" {
-		// letsencrypt flag comes from service config at call site via labels builder
+	host, err := deriveHost(input.Env, input.App.Code)
+	if err != nil {
+		// host may be optional when only tcp with tls_mode=none and no base_domain needed
+		host = ""
 	}
-	_ = letsEncryptEnabled
-
 	for _, expose := range input.Exposes {
-		binding, ok := bindingIndex[exposeKey(expose.ComponentName, expose.Protocol, expose.ContainerPort)]
-		if !ok {
-			return fmt.Errorf("missing environment binding for expose %s %s:%d", expose.ComponentName, expose.Protocol, expose.ContainerPort)
-		}
 		service, ok := services[expose.ComponentName].(map[string]any)
 		if !ok {
 			return fmt.Errorf("component %s not found in compose services", expose.ComponentName)
 		}
 		routerName := sanitizeComposeName(fmt.Sprintf("%s-%s-%s-%s-%s",
 			input.App.Code, input.Env.Code, input.Service.InstanceKey, expose.ComponentName, expose.Protocol))
-		labels, err := buildTraefikLabels(routerName, expose, binding, input)
+		labels, err := buildTraefikLabels(routerName, expose, input, host)
 		if err != nil {
 			return err
 		}
@@ -96,32 +92,144 @@ func injectExposeLabels(services map[string]any, input RenderInput) error {
 	return nil
 }
 
-func buildTraefikLabels(routerName string, expose model.Expose, binding model.EnvironmentBinding, input RenderInput) ([]string, error) {
-	labels := []string{"traefik.enable=true"}
-	entrypoint := strings.TrimSpace(binding.Entrypoint)
-	if entrypoint == "" {
-		return nil, fmt.Errorf("binding entrypoint is required for %s", expose.ComponentName)
+func validatePolicyForExposes(env model.Environment, exposes []model.Expose, app model.Application) error {
+	hasHTTP := false
+	hasTCP := false
+	for _, expose := range exposes {
+		switch strings.ToLower(strings.TrimSpace(expose.Protocol)) {
+		case "http":
+			hasHTTP = true
+		case "tcp":
+			hasTCP = true
+		}
 	}
+	entrypoint := strings.TrimSpace(env.DefaultEntrypoint)
+	if hasHTTP || hasTCP {
+		if entrypoint == "" {
+			return fmt.Errorf("environment ingress policy incomplete: default_entrypoint is required")
+		}
+	}
+	if hasHTTP {
+		if strings.TrimSpace(env.BaseDomain) == "" && strings.TrimSpace(ptrString(env.DomainTemplate)) == "" {
+			return fmt.Errorf("environment ingress policy incomplete: base_domain required for HTTP expose")
+		}
+		if _, err := deriveHost(env, app.Code); err != nil {
+			return err
+		}
+		if err := validateHTTPPathConflicts(env, app.Code, exposes); err != nil {
+			return err
+		}
+	}
+	if hasTCP {
+		tcpEP := strings.TrimSpace(ptrString(env.TCPEntrypoint))
+		if tcpEP == "" && entrypoint == "" {
+			return fmt.Errorf("environment ingress policy incomplete: entrypoint required for TCP expose")
+		}
+		tlsMode := strings.ToLower(strings.TrimSpace(env.TLSMode))
+		if tlsMode == "letsencrypt" || tlsMode == "tls" {
+			if _, err := deriveHost(env, app.Code); err != nil {
+				return fmt.Errorf("environment ingress policy incomplete: base_domain required for TCP TLS: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+func validateHTTPPathConflicts(env model.Environment, appCode string, exposes []model.Expose) error {
+	host, err := deriveHost(env, appCode)
+	if err != nil {
+		return err
+	}
+	seen := map[string]struct{}{}
+	for _, expose := range exposes {
+		if strings.ToLower(strings.TrimSpace(expose.Protocol)) != "http" {
+			continue
+		}
+		path := normalizeHTTPPath(ptrString(expose.PathPrefix))
+		key := host + "|" + path
+		if _, ok := seen[key]; ok {
+			return fmt.Errorf("duplicate http route host+path for version: %s%s", host, path)
+		}
+		seen[key] = struct{}{}
+	}
+	return nil
+}
+
+func normalizeHTTPPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "" || path == "/" {
+		return "/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return path
+}
+
+func deriveHost(env model.Environment, appCode string) (string, error) {
+	template := strings.TrimSpace(ptrString(env.DomainTemplate))
+	if template == "" {
+		template = "{app_code}.{base_domain}"
+	}
+	baseDomain := strings.TrimSpace(env.BaseDomain)
+	replacements := map[string]string{
+		"app_code":    strings.TrimSpace(appCode),
+		"env_code":    strings.TrimSpace(env.Code),
+		"base_domain": baseDomain,
+	}
+	var unknown []string
+	expanded := domainTemplateTokenPattern.ReplaceAllStringFunc(template, func(token string) string {
+		name := strings.TrimSuffix(strings.TrimPrefix(token, "{"), "}")
+		value, ok := replacements[name]
+		if !ok {
+			unknown = append(unknown, name)
+			return token
+		}
+		return value
+	})
+	if len(unknown) > 0 {
+		return "", fmt.Errorf("domain_template contains unknown token: %s", unknown[0])
+	}
+	if strings.Contains(expanded, "{") {
+		return "", fmt.Errorf("domain_template incomplete after expansion")
+	}
+	host := strings.ToLower(strings.TrimSpace(expanded))
+	if baseDomain == "" && strings.Contains(template, "{base_domain}") {
+		return "", fmt.Errorf("environment ingress policy incomplete: base_domain required for host derivation")
+	}
+	if !validDeploymentRouteDomain(host) {
+		return "", fmt.Errorf("invalid derived host %q", host)
+	}
+	return host, nil
+}
+
+func buildTraefikLabels(routerName string, expose model.Expose, input RenderInput, host string) ([]string, error) {
+	labels := []string{"traefik.enable=true"}
+	entrypoint := strings.TrimSpace(input.Env.DefaultEntrypoint)
+	tlsMode := strings.ToLower(strings.TrimSpace(input.Env.TLSMode))
+	if tlsMode == "" {
+		tlsMode = "none"
+	}
+
 	switch strings.ToLower(strings.TrimSpace(expose.Protocol)) {
 	case "http":
-		domains, err := parseStringSliceJSON(&binding.DomainsJSON)
-		if err != nil {
-			return nil, fmt.Errorf("binding domains_json: %w", err)
+		if entrypoint == "" {
+			return nil, fmt.Errorf("environment default_entrypoint is required for %s", expose.ComponentName)
 		}
-		if len(domains) == 0 {
-			return nil, fmt.Errorf("http binding for %s requires at least one domain", expose.ComponentName)
-		}
-		hosts := make([]string, 0, len(domains))
-		for _, domain := range domains {
-			domain = strings.ToLower(strings.TrimSpace(domain))
-			if !validDeploymentRouteDomain(domain) {
-				return nil, fmt.Errorf("invalid domain %q", domain)
+		if host == "" {
+			derived, err := deriveHost(input.Env, input.App.Code)
+			if err != nil {
+				return nil, err
 			}
-			hosts = append(hosts, "Host(`"+domain+"`)")
+			host = derived
 		}
-		rule := strings.Join(hosts, " || ")
-		if prefix := strings.TrimSpace(ptrString(expose.PathPrefix)); prefix != "" && prefix != "/" {
-			rule = "(" + rule + ") && PathPrefix(`" + prefix + "`)"
+		rule := "Host(`" + host + "`)"
+		path := strings.TrimSpace(ptrString(expose.PathPrefix))
+		if path != "" && path != "/" {
+			if !strings.HasPrefix(path, "/") {
+				path = "/" + path
+			}
+			rule = rule + " && PathPrefix(`" + path + "`)"
 		}
 		labels = append(labels,
 			"traefik.http.routers."+routerName+".rule="+rule,
@@ -129,31 +237,45 @@ func buildTraefikLabels(routerName string, expose model.Expose, binding model.En
 			"traefik.http.services."+routerName+".loadbalancer.server.port="+strconv.Itoa(expose.ContainerPort),
 			"traefik.http.routers."+routerName+".service="+routerName,
 		)
-		tlsMode := strings.ToLower(strings.TrimSpace(binding.TLSMode))
 		if tlsMode == "letsencrypt" {
 			labels = append(labels,
 				"traefik.http.routers."+routerName+".tls=true",
 				"traefik.http.routers."+routerName+".tls.certresolver=letsencrypt",
 			)
+		} else if tlsMode == "tls" {
+			labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
 		}
 	case "tcp":
+		tcpEntrypoint := strings.TrimSpace(ptrString(input.Env.TCPEntrypoint))
+		if tcpEntrypoint == "" {
+			tcpEntrypoint = entrypoint
+		}
+		if tcpEntrypoint == "" {
+			return nil, fmt.Errorf("environment entrypoint is required for TCP %s", expose.ComponentName)
+		}
 		sni := "*"
-		if binding.SNIHost != nil && strings.TrimSpace(*binding.SNIHost) != "" {
-			sni = strings.TrimSpace(*binding.SNIHost)
+		if tlsMode == "letsencrypt" || tlsMode == "tls" {
+			if host == "" {
+				derived, err := deriveHost(input.Env, input.App.Code)
+				if err != nil {
+					return nil, err
+				}
+				host = derived
+			}
+			sni = host
 		}
 		labels = append(labels,
 			"traefik.tcp.routers."+routerName+".rule=HostSNI(`"+sni+"`)",
-			"traefik.tcp.routers."+routerName+".entrypoints="+entrypoint,
+			"traefik.tcp.routers."+routerName+".entrypoints="+tcpEntrypoint,
 			"traefik.tcp.services."+routerName+".loadbalancer.server.port="+strconv.Itoa(expose.ContainerPort),
 			"traefik.tcp.routers."+routerName+".service="+routerName,
 		)
-		if strings.ToLower(strings.TrimSpace(binding.TLSMode)) == "letsencrypt" || strings.ToLower(strings.TrimSpace(binding.TLSMode)) == "tls" {
+		if tlsMode == "letsencrypt" || tlsMode == "tls" {
 			labels = append(labels, "traefik.tcp.routers."+routerName+".tls=true")
 		}
 	default:
 		return nil, fmt.Errorf("unsupported expose protocol %s", expose.Protocol)
 	}
-	_ = input
 	return labels, nil
 }
 

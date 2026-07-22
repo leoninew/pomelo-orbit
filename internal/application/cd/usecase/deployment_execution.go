@@ -72,11 +72,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	bindings, err := s.executionStore.BindingsByEnvironment(ctx, env.Id)
-	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 
 	svc, err := s.upsertServiceDeploying(ctx, app.Id, env.Id, instanceKey, version.Id, attachIngress)
 	if err != nil {
@@ -87,7 +82,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		return err
 	}
 
-	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, bindings, svc, deployment.Id, opts.ForceRecreate); err != nil {
+	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, svc, deployment.Id, opts.ForceRecreate); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -129,11 +124,6 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	bindings, err := s.executionStore.BindingsByEnvironment(ctx, env.Id)
-	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 
 	if err := s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusDeploying); err != nil {
 		return err
@@ -142,7 +132,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, bindings, svc, deployment.Id, false); err != nil {
+	if err := s.renderAndDeploy(ctx, app, version, components, exposes, env, svc, deployment.Id, false); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -270,14 +260,13 @@ func (s Service) renderAndDeploy(
 	components []model.Component,
 	exposes []model.Expose,
 	env model.Environment,
-	bindings []model.EnvironmentBinding,
 	svc model.Service,
 	deploymentId string,
 	forceRecreate bool,
 ) error {
 	compose, err := s.RenderCompose(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env: env, Bindings: bindings, Service: svc,
+		Env: env, Service: svc,
 	})
 	if err != nil {
 		return err

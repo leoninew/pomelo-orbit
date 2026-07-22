@@ -25,30 +25,27 @@
             <tr>
               <th>{{ t('environment.fields.name') }}</th>
               <th>{{ t('environment.fields.code') }}</th>
-              <th>{{ t('environment.fields.bindings') }}</th>
-              <th>{{ t('common.description') }}</th>
+              <th>{{ t('environment.fields.baseDomain') }}</th>
+              <th>{{ t('environment.fields.defaultEntrypoint') }}</th>
+              <th>{{ t('environment.fields.tlsMode') }}</th>
               <th>{{ t('common.createdAt') }}</th>
               <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="env in environments" :key="env.id">
-              <td class="font-medium text-foreground">{{ env.name }}</td>
-              <td class="font-mono text-sm text-muted-foreground">{{ env.code }}</td>
-              <td class="text-foreground">{{ env.bindings?.length ?? 0 }}</td>
-              <td class="max-w-xs truncate text-muted-foreground" :title="env.description || ''">
-                {{ env.description || '—' }}
-              </td>
-              <td class="whitespace-nowrap text-muted-foreground">
+              <td class="text-foreground">{{ env.name }}</td>
+              <td class="text-foreground">{{ env.code }}</td>
+              <td class="text-foreground">{{ env.base_domain || '—' }}</td>
+              <td class="text-foreground">{{ env.default_entrypoint || '—' }}</td>
+              <td class="text-foreground">{{ env.tls_mode || 'none' }}</td>
+              <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(env.created_at) }}
               </td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button class="app-link" @click="openEditModal(env)">
                     {{ t('common.edit') }}
-                  </button>
-                  <button class="app-link" @click="openBindingsModal(env)">
-                    {{ t('environment.actions.bindings') }}
                   </button>
                   <button
                     class="app-link-danger"
@@ -77,6 +74,7 @@
     <AppDialog
       v-model:open="isFormDialogOpen"
       :title="editingId ? t('environment.dialog.edit') : t('environment.dialog.create')"
+      width-class="w-[min(560px,calc(100vw-32px))]"
     >
       <div class="space-y-4">
         <div class="space-y-1.5">
@@ -92,7 +90,7 @@
             :disabled="!!editingId"
             :placeholder="t('environment.placeholders.code')"
           />
-          <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
+          <p v-if="errors.code" class="app-field-error">{{ errors.code }}</p>
           <p v-else class="app-field-hint">{{ t('environment.hints.code') }}</p>
         </div>
         <div class="space-y-1.5">
@@ -107,7 +105,7 @@
             :class="errors.name ? 'app-input-error' : ''"
             :placeholder="t('environment.placeholders.name')"
           />
-          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+          <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">{{ t('common.description') }}</label>
@@ -118,86 +116,62 @@
             :placeholder="t('environment.placeholders.description')"
           />
         </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('environment.fields.baseDomain') }}</label>
+          <input
+            v-model="form.base_domain"
+            type="text"
+            class="app-input"
+            :placeholder="t('environment.placeholders.baseDomain')"
+          />
+          <p class="app-field-hint">{{ t('environment.hints.baseDomain') }}</p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('environment.fields.domainTemplate') }}</label>
+          <input
+            v-model="form.domain_template"
+            type="text"
+            class="app-input"
+            :placeholder="t('environment.placeholders.domainTemplate')"
+          />
+          <p class="app-field-hint">{{ t('environment.hints.domainTemplate') }}</p>
+        </div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="space-y-1.5">
+            <label class="app-field-label block">
+              {{ t('environment.fields.defaultEntrypoint') }}
+            </label>
+            <input
+              v-model="form.default_entrypoint"
+              type="text"
+              class="app-input"
+              :placeholder="t('environment.placeholders.defaultEntrypoint')"
+            />
+          </div>
+          <div class="space-y-1.5">
+            <label class="app-field-label block">{{ t('environment.fields.tcpEntrypoint') }}</label>
+            <input
+              v-model="form.tcp_entrypoint"
+              type="text"
+              class="app-input"
+              :placeholder="t('environment.placeholders.tcpEntrypoint')"
+            />
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('environment.fields.tlsMode') }}</label>
+          <select v-model="form.tls_mode" class="app-input">
+            <option value="none">none</option>
+            <option value="letsencrypt">letsencrypt</option>
+            <option value="tls">tls</option>
+          </select>
+        </div>
       </div>
       <template #footer>
         <button class="app-button" @click="isFormDialogOpen = false">
           {{ t('common.cancel') }}
         </button>
         <button class="app-button-primary" :disabled="operating" @click="handleSave">
-          {{ t('common.save') }}
-        </button>
-      </template>
-    </AppDialog>
-
-    <AppDialog
-      v-model:open="isBindingsDialogOpen"
-      :title="t('environment.dialog.bindings', { name: bindingsEnv?.name || '' })"
-      width-class="w-[min(840px,calc(100vw-32px))]"
-    >
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <p class="text-sm text-muted-foreground">{{ t('environment.hints.bindings') }}</p>
-          <button type="button" class="app-link text-sm" @click="addBindingRow">
-            {{ t('environment.actions.addBinding') }}
-          </button>
-        </div>
-        <div
-          v-for="(row, index) in bindingRows"
-          :key="index"
-          class="grid grid-cols-1 gap-2 rounded-md border border-border p-3 md:grid-cols-2"
-        >
-          <input
-            v-model="row.component_name"
-            type="text"
-            class="app-input"
-            :placeholder="t('environment.placeholders.componentName')"
-          />
-          <select v-model="row.protocol" class="app-input">
-            <option value="http">http</option>
-            <option value="tcp">tcp</option>
-          </select>
-          <input
-            v-model.number="row.container_port"
-            type="number"
-            min="1"
-            max="65535"
-            class="app-input"
-            :placeholder="t('environment.placeholders.port')"
-          />
-          <input
-            v-model="row.entrypoint"
-            type="text"
-            class="app-input"
-            :placeholder="t('environment.placeholders.entrypoint')"
-          />
-          <input
-            v-model="row.domains_text"
-            type="text"
-            class="app-input md:col-span-2"
-            :placeholder="t('environment.placeholders.domains')"
-          />
-          <select v-model="row.tls_mode" class="app-input">
-            <option value="none">none</option>
-            <option value="letsencrypt">letsencrypt</option>
-          </select>
-          <input
-            v-model="row.sni_host"
-            type="text"
-            class="app-input"
-            :placeholder="t('environment.placeholders.sniHost')"
-          />
-          <div class="md:col-span-2">
-            <button type="button" class="app-link-danger" @click="removeBindingRow(index)">
-              {{ t('common.delete') }}
-            </button>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <button class="app-button" @click="isBindingsDialogOpen = false">
-          {{ t('common.cancel') }}
-        </button>
-        <button class="app-button-primary" :disabled="operating" @click="handleBindingsSave">
           {{ t('common.save') }}
         </button>
       </template>
@@ -236,19 +210,9 @@
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { EnvironmentBindingReq, EnvironmentResp } from '@/gen/proto/orbit/v1/environment';
+  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment';
   import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
-
-  type BindingFormRow = {
-    component_name: string;
-    protocol: string;
-    container_port: number;
-    domains_text: string;
-    entrypoint: string;
-    tls_mode: string;
-    sni_host: string;
-  };
 
   const toast = useToast();
   const { t } = useI18n();
@@ -262,17 +226,19 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize) || 1);
 
   const isFormDialogOpen = ref(false);
-  const isBindingsDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const editingId = ref('');
-  const bindingsEnv = ref<EnvironmentResp | null>(null);
   const pendingDelete = ref<EnvironmentResp | null>(null);
-  const bindingRows = ref<BindingFormRow[]>([]);
 
   const form = reactive({
     code: '',
     name: '',
     description: '',
+    base_domain: 'local.test',
+    domain_template: '',
+    default_entrypoint: 'web',
+    tcp_entrypoint: '',
+    tls_mode: 'none',
   });
   const errors = reactive({ code: '', name: '' });
 
@@ -285,18 +251,6 @@
       fetchData();
     }
   );
-
-  function emptyBindingRow(): BindingFormRow {
-    return {
-      component_name: '',
-      protocol: 'http',
-      container_port: 80,
-      domains_text: '',
-      entrypoint: 'websecure',
-      tls_mode: 'none',
-      sni_host: '',
-    };
-  }
 
   function validateForm() {
     if (editingId.value) {
@@ -350,10 +304,23 @@
     fetchData();
   }
 
+  function resetForm() {
+    Object.assign(form, {
+      code: '',
+      name: '',
+      description: '',
+      base_domain: 'local.test',
+      domain_template: '',
+      default_entrypoint: 'web',
+      tcp_entrypoint: '',
+      tls_mode: 'none',
+    });
+    Object.assign(errors, { code: '', name: '' });
+  }
+
   function openCreateModal() {
     editingId.value = '';
-    Object.assign(form, { code: '', name: '', description: '' });
-    Object.assign(errors, { code: '', name: '' });
+    resetForm();
     isFormDialogOpen.value = true;
   }
 
@@ -363,6 +330,11 @@
       code: env.code,
       name: env.name,
       description: env.description || '',
+      base_domain: env.base_domain || '',
+      domain_template: env.domain_template || '',
+      default_entrypoint: env.default_entrypoint || 'web',
+      tcp_entrypoint: env.tcp_entrypoint || '',
+      tls_mode: env.tls_mode || 'none',
     });
     Object.assign(errors, { code: '', name: '' });
     isFormDialogOpen.value = true;
@@ -383,6 +355,11 @@
           await environmentApi.update(editingId.value, {
             name: form.name.trim(),
             description: form.description.trim() || undefined,
+            base_domain: form.base_domain.trim(),
+            domain_template: form.domain_template.trim(),
+            default_entrypoint: form.default_entrypoint.trim(),
+            tcp_entrypoint: form.tcp_entrypoint.trim(),
+            tls_mode: form.tls_mode || 'none',
           });
         } else {
           await environmentApi.create(
@@ -391,73 +368,17 @@
               code: form.code.trim(),
               name: form.name.trim(),
               description: form.description.trim() || undefined,
+              base_domain: form.base_domain.trim() || undefined,
+              domain_template: form.domain_template.trim() || undefined,
+              default_entrypoint: form.default_entrypoint.trim() || undefined,
+              tcp_entrypoint: form.tcp_entrypoint.trim() || undefined,
+              tls_mode: form.tls_mode || undefined,
             },
             { project_id: projectId }
           );
         }
         toast.success(t('environment.toast.saveSuccess'));
         isFormDialogOpen.value = false;
-        await fetchData();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('environment.toast.saveFailed'));
-    }
-  }
-
-  function openBindingsModal(env: EnvironmentResp) {
-    bindingsEnv.value = env;
-    bindingRows.value =
-      env.bindings?.length > 0
-        ? env.bindings.map((item) => ({
-            component_name: item.component_name,
-            protocol: item.protocol || 'http',
-            container_port: item.container_port,
-            domains_text: (item.domains ?? []).join(', '),
-            entrypoint: item.entrypoint || (item.protocol === 'tcp' ? '' : 'websecure'),
-            tls_mode: item.tls_mode || 'none',
-            sni_host: item.sni_host || '',
-          }))
-        : [];
-    isBindingsDialogOpen.value = true;
-  }
-
-  function addBindingRow() {
-    bindingRows.value.push(emptyBindingRow());
-  }
-
-  function removeBindingRow(index: number) {
-    bindingRows.value.splice(index, 1);
-  }
-
-  function toBindingReq(row: BindingFormRow): EnvironmentBindingReq {
-    const domains = row.domains_text
-      .split(/[,\s]+/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-    return {
-      component_name: row.component_name.trim(),
-      protocol: row.protocol,
-      container_port: Number(row.container_port) || 0,
-      domains,
-      entrypoint: row.entrypoint.trim() || (row.protocol === 'http' ? 'websecure' : ''),
-      tls_mode: row.tls_mode || 'none',
-      sni_host: row.sni_host.trim() || undefined,
-    };
-  }
-
-  async function handleBindingsSave() {
-    const env = bindingsEnv.value;
-    if (!env) {
-      return;
-    }
-    const bindings = bindingRows.value
-      .map(toBindingReq)
-      .filter((item) => item.component_name && item.container_port > 0);
-    try {
-      await executeOp(async () => {
-        await environmentApi.replaceBindings(env.id, { bindings });
-        toast.success(t('environment.toast.saveSuccess'));
-        isBindingsDialogOpen.value = false;
         await fetchData();
       });
     } catch (error) {

@@ -137,11 +137,12 @@ Related：
 
 | 扩展 | 说明 |
 |------|------|
-| E1 consumer 网络 | standard 有 Expose 时自动注入平台网 `external: true` 并 join |
+| E1 consumer 网络 | standard 有 Expose 时自动注入平台网 `external: true` 并 join。**已实现**（exposed 组件 join `traefik` external；无 Expose 不注入） |
 | E2 路径布局 | 网关工作区扁平 vs `{env}/{instance}` 统一 |
 | E3 宿主机/host 网络网关 | 另一部署模式 |
 | E4 K8s 网关 | 另开 |
 | **E5 gateway 挂载与 Component 规格** | **不另开任务**。在 E5 内交付：① 以现网 `data/cd.bak/traefik/docker-compose.yml`（或等价参考）为目标，**补齐** gateway Version 的 **Component 全规格**（已有字段：`ports` / `command` / `mounts` / `networks` / env 等），使 Preview/Deploy 产物在规格层可趋近参考 compose；② 平台侧挂载解析与契约（逻辑路径→宿主机路径、docker.sock、acme、配置目录等）。R3 **不**交付 E5。 |
+| **E6 网关领域** | **另开扩展**。**Gateway domain** 双形态：`managed`（容器 — 配置面向用户、部署借 Version）\| `external`（宿主机自部署 — 只登记 rest）。Requirement Draft：`docs/requirement/20260722-cd-gateway-domain-config-e6.md`。R3/E5 **不**交付 E6。 |
 
 ## Acceptance / 验收（需求级）
 

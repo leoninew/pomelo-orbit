@@ -50,7 +50,7 @@ Pomelo Orbit 容器
   ↓
 写入到 /app/data/applications/{app_name}/
   ↓
-执行 init.sh（如果存在）
+物化 logical 挂载源（mkdir / 文件 seed|sync content 或 touch 空文件如 acme.json；替代历史 init.sh）
   ↓
 docker compose up -d
   ↓
@@ -130,19 +130,14 @@ POMELO_ORBIT_DATA_DIR=/d/SourceCodes/.../backend/data
 
 ## 扩展性
 
-### 自定义初始化脚本
+### 挂载源物化（替代历史 init.sh）
 
-支持在部署前执行自定义脚本（init.sh）：
+平台部署前对 Version 声明的 **logical** 挂载自动准备宿主机源：
 
-```bash
-#!/bin/bash
-# 创建必要的目录
-mkdir -p data/uploads
-mkdir -p data/cache
+- 目录型：`mkdir -p`
+- 文件型（如 `acme.json`）：父目录创建 + 不存在则建空文件（0600，不覆盖已有）
 
-# 设置权限
-chmod 755 data/uploads
-```
+**不再**执行 `init.sh`。路由由 Traefik `providers.rest` 全量 PUT，不为路由强制 `data/dynamic` 目录。
 
 ### 支持完整的 Docker Compose 功能
 

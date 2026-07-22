@@ -1,5 +1,5 @@
 # CD 应用版本化领域模型兑现节奏
-最后修改时间: 2026-07-22 13:06:52
+最后修改时间: 2026-07-22 17:43:11
 
 Review status: Accepted
 
@@ -47,7 +47,7 @@ CD 应用管理职责过载。目标：Application 身份 + Version 规格 + Ser
 | **修订 R1** | [environment-expose-service](./20260721-cd-environment-expose-service.md) | Env 实体、Expose、多 Service、Traefik MVP | **Accepted**；已实现 + Verification Accepted |
 | **修订 R2** | [environment-ingress-policy](./20260722-cd-environment-ingress-policy.md) | 环境**接入策略**取代 per-component Binding | Requirement/Spec/Plan/Verification **Accepted** |
 | **修订 R3** | [application-kind-gateway](./20260722-cd-application-kind-gateway.md) | Application.**kind**=`standard`\|`gateway`，决定 Render 分支 | Requirement/Spec/Plan/Verification **Accepted** |
-| 后续 | consumer 自动 join 平台网 / 宿主机网关 / K8s Gateway / **gateway 挂载与 Component 规格** 等 | 见 R3 扩展 **E1–E5**（**E5**=挂载细节 + 补齐 gateway Component 全规格，与现网 traefik 参考对齐；**不另开任务**；R3 可不交付）；另开或并入后续 Spec | — |
+| 后续 | consumer 网 / K8s / **网关领域配置** 等 | 见 **E1–E6**；**E5** 实现中；**E6** Draft：`docs/requirement/20260722-cd-gateway-domain-config-e6.md` | — |
 
 ```text
 P0 领域
@@ -57,7 +57,13 @@ P0 领域
   -> R1 Environment / Expose / Service（已交付）
   -> R2 Environment IngressPolicy（standard 如何被入口暴露）
   -> R3 Application.kind gateway|standard（已交付 + Verification Accepted）
-  -> 扩展 E1–E5 / K8s 等
+  -> E5 通用挂载 / Component 全规格 / rest 动态路由 / mount content（Requirement/Spec/Plan Accepted；实现中）
+  -> E6 网关领域（双形态）★ Requirement Draft
+       · managed：容器 Traefik — 配置面向用户（非 Version UX），部署借 Version 能力
+       · external：宿主机/自部署 Traefik — 用户只登记 rest 管理面
+  -> E5-F1..F7 后续（证书 / 鉴权 / 多 gateway / dashboard / …）
+  -> E1 consumer 网络（standard+Expose join 网关网 external）— **已实现**；Verification **Accepted**：`docs/verification/20260722-cd-consumer-platform-network-e1.md`
+  -> 扩展 E2–E4 / K8s 等
 ```
 
 **注意**：不再采用「P2 先用 compose 全文当 Version 存储」；与 P0/P1 **Version=业务结构化规格** 冲突，已废止。
@@ -117,6 +123,7 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 16. **Environment/Expose/Service 基数修订 R1 Accepted**（2026-07-21）：`docs/requirement/20260721-cd-environment-expose-service.md`。
 17. **环境接入策略修订 R2（已交付）**（2026-07-22）：域名由 Environment **IngressPolicy** 推导，**不**手填 per-component Binding；Environment **禁止**以 component 为用户配置维度。详见 `docs/requirement/20260722-cd-environment-ingress-policy.md`；Verification `docs/verification/20260722-cd-environment-ingress-policy.md`。与 R1 的 D4 EnvironmentBinding 用户 SoT **冲突时以 R2 为准**。
 18. **应用类型修订 R3（已交付）**（2026-07-22）：Application.**kind** = `standard`（默认）\| `gateway`；kind 仅创建可写；废止 attach_ingress/is_ingress；labels 由 Expose 驱动；**E5**（挂载 + Component 全规格补齐）后续、不另开任务。Requirement/Spec/Plan/Verification **Accepted**（`docs/verification/20260722-cd-application-kind-gateway.md`）。
+19. **网关领域 E6（路线已挂）**（2026-07-22）：定义 **Gateway domain**；双运行形态 — **`managed`**（容器 Traefik：配置面向用户、**不**以 Version 为配置 UX，部署**借** Version 管线）与 **`external`**（宿主机/自部署 Traefik：用户只暴露 rest 地址给平台）。动态路由仍 rest PUT。Requirement Draft：`docs/requirement/20260722-cd-gateway-domain-config-e6.md`。**E5 不静默扩大**为 E6。
 
 ## Risk / 风险
 
@@ -141,6 +148,9 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 | Spec R3 | `docs/spec/20260722-cd-application-kind-gateway.md` | **Accepted** |
 | Plan R3 | `docs/plan/20260722-cd-application-kind-gateway.md` | **Accepted**；已实现 |
 | Verification R3 | `docs/verification/20260722-cd-application-kind-gateway.md` | **Accepted** |
+| 扩展 E5 | `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | Requirement **Accepted**；Spec **Accepted** `docs/spec/20260722-cd-gateway-component-mount-e5.md`；Plan 实现中 |
+| 扩展 **E6** | `docs/requirement/20260722-cd-gateway-domain-config-e6.md` | Requirement **Draft** — 网关领域；**managed / external** 双形态；配置对人、部署借 Version（managed） |
+| E5 后续 F1–F7 | Spec「后续任务」 | 自定义 PEM、rest 鉴权、**多 gateway**、provider 演进、dashboard、healthcheck、预期外缺口 |
 | Plan | `docs/plan/20260721-cd-application-version.md` | Implemented（Version 闭环） |
 | Plan | `docs/plan/20260721-cd-environment-expose-service.md` | **Accepted**；已实现 |
 | Verification | `docs/verification/20260721-cd-environment-expose-service.md` | **Accepted**（有条件） |
@@ -168,3 +178,13 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 - 2026-07-22：用户「开始 plan」→ Spec **Accepted**；Plan Draft `20260722-cd-application-kind-gateway.md`。
 - 2026-07-22：澄清 domain_suffix=**自动生成域名**后缀；compose **container_name** = `app_code_component`（service/depends_on 仍用组件名）；早期命名规则。
 - 2026-07-22：用户 `/specflow 验收当前任务` → **R3 Verification Accepted**。
+- 2026-07-22：用户采纳下一主任务 → 开 **E5** Requirement Draft `20260722-cd-gateway-component-mount-e5.md`。
+- 2026-07-22：E5 用户闭合 Q：表单挂载/环境变量；RuntimeConfig 归部署；network=gateway×Environment；访问延后；不兼容拟合；全 kind 共用。
+- 2026-07-22：E5 Traefik 调查细化——`api@internal` 只读；`providers.rest` 遗留可写但不推荐；主路径 File/HTTP/KV；建模禁止 Version 巨型 JSON。
+- 2026-07-22：E5 本地实测 Traefik 3.6.10 / 3.6.23 / **3.7.8** rest PUT 全量替换均可用（`data/cd.bak/traefik` 探针）。
+- 2026-07-22：E5 **定案**——平台动态路由改 **`providers.rest`**；**废除** File/目录挂载写路由；**废除** kind=gateway 特殊部署目录结构。
+- 2026-07-22：E5 Requirement **Accepted** → Spec；Obsidian 笔记 `traefix/Traefik v3 REST 动态路由管理.md`。
+- 2026-07-22：E5 Spec **Accepted**（参考体例；单 gateway；F1–F7 后续清单）。
+- 2026-07-22：用户决策——承认网关特殊性；**定义网关领域配置**，避免业务规则沦为 Version 文本 → 开 **E6** Draft `20260722-cd-gateway-domain-config-e6.md`；挂入本节奏与 E5 后续任务表。
+- 2026-07-22：E6 领域设计钉双形态 — **容器托管**（配置面向用户、部署借 Version）与 **宿主机外置**（自部署 + rest 管理面）。
+- 2026-07-22：E1 实现 + 运行时 nginx 冒烟 200；Verification **Accepted** `20260722-cd-consumer-platform-network-e1.md`。

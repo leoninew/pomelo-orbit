@@ -695,9 +695,7 @@ jwt:
 traefik:
   api_url: http://traefik:8080
   domain_suffix: lvh.me
-  dynamic_route_dir: data/cd/traefik/data/dynamic
   cert_dir: data/cd/traefik/data/certs
-  container_name: traefik
 turnstile:
   enabled: true
   site_key: "1x00000000000000000000AA"

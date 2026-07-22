@@ -64,10 +64,8 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if created.Enabled {
-		if err := s.syncRouteFiles(ctx, created); err != nil {
-			return model.Route{}, err
-		}
+	if err := s.publishRouteSnapshot(ctx); err != nil {
+		return model.Route{}, err
 	}
 	return created, nil
 }
@@ -110,14 +108,11 @@ func (s Service) UpdateRoute(ctx context.Context, userId string, routeId string,
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
 	if oldName != updated.Name {
-		if err := s.revokeRouteFiles(ctx, oldName); err != nil {
-			return model.Route{}, err
-		}
 		if err := s.revokeRouteCertFiles(ctx, oldName); err != nil {
 			return model.Route{}, err
 		}
 	}
-	if err := s.syncRouteFiles(ctx, updated); err != nil {
+	if err := s.publishRouteSnapshot(ctx); err != nil {
 		return model.Route{}, err
 	}
 	return updated, nil
@@ -135,10 +130,10 @@ func (s Service) DeleteRoute(ctx context.Context, userId string, routeId string)
 	if err := s.store.DeleteRoute(ctx, route.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete route", err)
 	}
-	if err := s.revokeRouteFiles(ctx, route.Name); err != nil {
+	if err := s.revokeRouteCertFiles(ctx, route.Name); err != nil {
 		return err
 	}
-	return nil
+	return s.publishRouteSnapshot(ctx)
 }
 
 // EnableRoute marks a route enabled and deploys its config.
@@ -155,7 +150,7 @@ func (s Service) EnableRoute(ctx context.Context, userId string, routeId string)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.syncRouteFiles(ctx, updated); err != nil {
+	if err := s.publishRouteSnapshot(ctx); err != nil {
 		return model.Route{}, err
 	}
 	return updated, nil
@@ -171,17 +166,17 @@ func (s Service) DisableRoute(ctx context.Context, userId string, routeId string
 	if err := s.store.UpdateRoute(ctx, route); err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to disable route", err)
 	}
-	if err := s.revokeRouteFiles(ctx, route.Name); err != nil {
-		return model.Route{}, err
-	}
 	updated, err := s.store.Route(ctx, route.Id)
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
+	if err := s.publishRouteSnapshot(ctx); err != nil {
+		return model.Route{}, err
+	}
 	return updated, nil
 }
 
-// SyncRoutes synchronizes every route in a project.
+// SyncRoutes republishes the platform rest snapshot (all enabled routes).
 func (s Service) SyncRoutes(ctx context.Context, userId string, projectId string) error {
 	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
@@ -190,16 +185,7 @@ func (s Service) SyncRoutes(ctx context.Context, userId string, projectId string
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return err
 	}
-	routes, err := s.store.ListAllRoutes(ctx, projectId)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to list routes", err)
-	}
-	for _, route := range routes {
-		if err := s.syncRouteFiles(ctx, route); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.publishRouteSnapshot(ctx)
 }
 
 // UploadRouteCert stores a manual certificate and updates the route.
@@ -219,7 +205,7 @@ func (s Service) UploadRouteCert(ctx context.Context, userId string, routeId str
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.syncRouteFiles(ctx, updated); err != nil {
+	if err := s.publishRouteSnapshot(ctx); err != nil {
 		return model.Route{}, err
 	}
 	return updated, nil
@@ -246,7 +232,7 @@ func (s Service) DisableRouteHTTPS(ctx context.Context, userId string, routeId s
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.syncRouteFiles(ctx, updated); err != nil {
+	if err := s.publishRouteSnapshot(ctx); err != nil {
 		return model.Route{}, err
 	}
 	return updated, nil
@@ -285,7 +271,7 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId string, rout
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.syncRouteFiles(ctx, updated); err != nil {
+	if err := s.publishRouteSnapshot(ctx); err != nil {
 		return model.Route{}, err
 	}
 	return updated, nil
@@ -312,7 +298,7 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId string, routeId s
 	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to load route", err)
 	}
-	if err := s.syncRouteFiles(ctx, updated); err != nil {
+	if err := s.publishRouteSnapshot(ctx); err != nil {
 		return model.Route{}, err
 	}
 	return updated, nil
@@ -379,12 +365,16 @@ func (s Service) loadRouteForUser(ctx context.Context, userId string, routeId st
 	return route, nil
 }
 
-func (s Service) syncRouteFiles(ctx context.Context, route model.Route) error {
-	return s.routePublisher.Sync(ctx, route)
-}
-
-func (s Service) revokeRouteFiles(ctx context.Context, routeName string) error {
-	return s.routePublisher.Revoke(ctx, routeName)
+// publishRouteSnapshot rebuilds the full platform rest config from all enabled routes.
+func (s Service) publishRouteSnapshot(ctx context.Context) error {
+	routes, err := s.store.ListEnabledRoutes(ctx)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
+	}
+	if err := s.routePublisher.ApplySnapshot(ctx, routes); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
+	}
+	return nil
 }
 
 func (s Service) revokeRouteCertFiles(ctx context.Context, routeName string) error {

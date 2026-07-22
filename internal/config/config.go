@@ -100,11 +100,10 @@ type JWTConfig struct {
 }
 
 type TraefikConfig struct {
-	APIURL          string `mapstructure:"api_url" yaml:"api_url"`
-	DomainSuffix    string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
-	DynamicRouteDir string `mapstructure:"dynamic_route_dir" yaml:"dynamic_route_dir"`
-	CertDir         string `mapstructure:"cert_dir" yaml:"cert_dir"`
-	ContainerName   string `mapstructure:"container_name" yaml:"container_name"`
+	APIURL       string `mapstructure:"api_url" yaml:"api_url"`
+	DomainSuffix string `mapstructure:"domain_suffix" yaml:"domain_suffix"`
+	// CertDir is still used for optional custom PEM materialization (F1 completes alignment).
+	CertDir string `mapstructure:"cert_dir" yaml:"cert_dir"`
 }
 
 type TurnstileConfig struct {
@@ -268,9 +267,7 @@ func bindEnv(loader *viper.Viper) {
 		"jwt.secret_key",
 		"traefik.api_url",
 		"traefik.domain_suffix",
-		"traefik.dynamic_route_dir",
 		"traefik.cert_dir",
-		"traefik.container_name",
 		"turnstile.enabled",
 		"turnstile.site_key",
 		"turnstile.secret_key",

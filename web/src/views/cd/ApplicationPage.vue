@@ -113,6 +113,12 @@
               <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                 {{ t('application.view') }}
               </button>
+              <button
+                class="app-link"
+                @click="router.push({ path: '/cd/versions', query: { application_id: app.id } })"
+              >
+                {{ t('nav.versions') }}
+              </button>
             </div>
           </div>
         </div>
@@ -163,6 +169,14 @@
                   <div class="flex items-center gap-3">
                     <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                       {{ t('application.view') }}
+                    </button>
+                    <button
+                      class="app-link"
+                      @click="
+                        router.push({ path: '/cd/versions', query: { application_id: app.id } })
+                      "
+                    >
+                      {{ t('nav.versions') }}
                     </button>
                   </div>
                 </td>

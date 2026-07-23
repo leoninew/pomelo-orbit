@@ -124,7 +124,7 @@
             <thead>
               <tr>
                 <th>{{ t('application.detail.fields.component') }}</th>
-                <th>{{ t('application.detail.placeholders.componentImage') }}</th>
+                <th>{{ t('application.detail.fields.image') }}</th>
                 <th>{{ t('application.detail.fields.ports') }}</th>
                 <th v-if="isEditable">{{ t('common.operation') }}</th>
               </tr>
@@ -331,7 +331,7 @@
           </div>
           <div>
             <label class="app-field-label mb-1.5 block">
-              {{ t('application.detail.placeholders.componentImage') }}
+              {{ t('application.detail.fields.image') }}
               <span class="text-destructive">*</span>
             </label>
             <input
@@ -810,7 +810,7 @@
     component_name: '',
     protocol: 'http',
     container_port: 80,
-    access: 'public',
+    access: 'local',
     listen_port: 0,
   });
 
@@ -832,8 +832,8 @@
     { value: 'tcp', label: 'tcp' },
   ];
   const exposeAccessOptions = [
-    { value: 'public', label: 'public' },
     { value: 'local', label: 'local' },
+    { value: 'public', label: 'public' },
   ];
   const mountSourceTypeOptions = [
     { value: 'logical', label: 'logical' },
@@ -1317,7 +1317,7 @@
       exposeForm.component_name = version.value?.components?.[0]?.name || '';
       exposeForm.protocol = 'http';
       exposeForm.container_port = 80;
-      exposeForm.access = 'public';
+      exposeForm.access = 'local';
       exposeForm.listen_port = 0;
     } else {
       const row = version.value.exposes[index];

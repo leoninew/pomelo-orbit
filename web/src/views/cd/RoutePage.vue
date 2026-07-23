@@ -50,7 +50,7 @@
           <tbody>
             <tr v-for="route in routes" :key="route.id">
               <td>
-                <router-link :to="`/cd/routes/${route.id}`" class="app-link whitespace-nowrap">
+                <router-link :to="`/cd/route/${route.id}`" class="app-link whitespace-nowrap">
                   {{ route.name }}
                 </router-link>
               </td>
@@ -81,7 +81,7 @@
               <td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
-                  <router-link :to="`/cd/routes/${route.id}`" class="app-link">
+                  <router-link :to="`/cd/route/${route.id}`" class="app-link">
                     {{ t('application.view') }}
                   </router-link>
                   <button

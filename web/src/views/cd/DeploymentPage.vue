@@ -42,7 +42,7 @@
               <td>
                 <button
                   class="app-link"
-                  @click="router.push(`/cd/applications/${deployment.application_id}`)"
+                  @click="router.push(`/cd/application/${deployment.application_id}`)"
                 >
                   {{ deployment.application_name || deployment.application_id }}
                 </button>
@@ -67,7 +67,7 @@
               </td>
               <td>
                 <div class="flex items-center gap-3">
-                  <button class="app-link" @click="router.push(`/cd/deployments/${deployment.id}`)">
+                  <button class="app-link" @click="router.push(`/cd/deployment/${deployment.id}`)">
                     {{ t('application.view') }}
                   </button>
                   <button

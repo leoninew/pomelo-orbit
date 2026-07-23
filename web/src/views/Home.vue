@@ -135,7 +135,7 @@
                   <button
                     class="app-link block truncate"
                     :title="deployment.application_name || deployment.application_id"
-                    @click="router.push(`/cd/applications/${deployment.application_id}`)"
+                    @click="router.push(`/cd/application/${deployment.application_id}`)"
                   >
                     {{ deployment.application_name || deployment.application_id }}
                   </button>

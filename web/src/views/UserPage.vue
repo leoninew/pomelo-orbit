@@ -46,7 +46,7 @@
           <tbody>
             <tr v-for="user in users" :key="user.id">
               <td class="max-w-0 truncate text-foreground" :title="user.username">
-                <router-link :to="`/users/${user.id}`" class="app-link">
+                <router-link :to="`/user/${user.id}`" class="app-link">
                   {{ user.username }}
                 </router-link>
               </td>

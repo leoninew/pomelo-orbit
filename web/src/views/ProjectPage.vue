@@ -45,7 +45,7 @@
           <tbody>
             <tr v-for="project in pagedProjects" :key="project.id">
               <td class="max-w-0 truncate text-foreground" :title="project.name">
-                <router-link :to="`/projects/${project.id}`" class="app-link">
+                <router-link :to="`/project/${project.id}`" class="app-link">
                   {{ project.name }}
                 </router-link>
               </td>

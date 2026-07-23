@@ -1559,7 +1559,7 @@
         toast.success(t('application.toast.deployTriggeredDetail'));
         isDeployDialogOpen.value = false;
         router.push({
-          path: `/cd/deployments/${res.deployment_id}`,
+          path: `/cd/deployment/${res.deployment_id}`,
           query: { from: 'application' },
         });
       });
@@ -1632,7 +1632,7 @@
         toast.success(t('application.toast.restartSubmitted'));
         isServiceTargetDialogOpen.value = false;
         router.push({
-          path: `/cd/deployments/${res.deployment_id}`,
+          path: `/cd/deployment/${res.deployment_id}`,
           query: { from: 'application' },
         });
       });

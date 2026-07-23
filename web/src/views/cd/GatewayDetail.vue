@@ -140,7 +140,7 @@
     if (!gateway.value) {
       return;
     }
-    router.push(`/cd/applications/${gateway.value.id}`);
+    router.push(`/cd/application/${gateway.value.id}`);
   }
 
   async function handleSave() {

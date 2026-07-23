@@ -36,7 +36,7 @@
               v-for="item in gateways"
               :key="item.id"
               class="cursor-pointer"
-              @click="router.push(`/cd/gateways/${item.id}`)"
+              @click="router.push(`/cd/gateway/${item.id}`)"
             >
               <td class="text-foreground">{{ item.name }}</td>
               <td class="font-mono text-foreground">{{ item.code }}</td>

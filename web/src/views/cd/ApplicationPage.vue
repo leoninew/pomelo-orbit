@@ -68,7 +68,7 @@
             v-for="app in applications"
             :key="app.id"
             class="app-surface group flex min-h-56 cursor-pointer flex-col p-5 transition-colors hover:border-primary"
-            @click="router.push(`/cd/applications/${app.id}`)"
+            @click="router.push(`/cd/application/${app.id}`)"
           >
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 space-y-1">
@@ -115,7 +115,7 @@
               class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm"
               @click.stop
             >
-              <button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
+              <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                 {{ t('application.view') }}
               </button>
               <button
@@ -173,7 +173,7 @@
             <tbody>
               <tr v-for="app in applications" :key="app.id">
                 <td>
-                  <button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
+                  <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                     {{ app.name }}
                   </button>
                 </td>
@@ -192,7 +192,7 @@
                 <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
                 <td>
                   <div class="flex items-center gap-3">
-                    <button class="app-link" @click="router.push(`/cd/applications/${app.id}`)">
+                    <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                       {{ t('application.view') }}
                     </button>
                     <button
@@ -514,7 +514,7 @@
           runtime_config: {},
         });
         toast.success(t('application.toast.deployTriggered', { name: app.name }));
-        router.push(`/cd/deployments/${deployment_id}`);
+        router.push(`/cd/deployment/${deployment_id}`);
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
@@ -529,7 +529,7 @@
       await executeOp(async () => {
         const { deployment_id } = await applicationApi.stop(app.id, { remove_volumes: false });
         toast.success(t('application.toast.stopTriggered', { name: app.name }));
-        router.push(`/cd/deployments/${deployment_id}`);
+        router.push(`/cd/deployment/${deployment_id}`);
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.stopFailed'));

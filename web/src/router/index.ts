@@ -40,7 +40,7 @@ const router = createRouter({
       meta: { title: '项目管理', menuKey: 'projects' },
     },
     {
-      path: '/projects/:id',
+      path: '/project/:id',
       name: 'ProjectDetail',
       component: () => import('@/views/ProjectDetail.vue'),
       props: true,
@@ -53,7 +53,7 @@ const router = createRouter({
       meta: { title: '用户管理', menuKey: 'users', permission: PERMISSIONS.USER_READ },
     },
     {
-      path: '/users/:id',
+      path: '/user/:id',
       name: 'UserDetail',
       component: () => import('@/views/UserDetail.vue'),
       props: true,
@@ -66,7 +66,7 @@ const router = createRouter({
       meta: { title: '角色管理', menuKey: 'roles', permission: PERMISSIONS.ROLE_READ },
     },
     {
-      path: '/roles/:id',
+      path: '/role/:id',
       name: 'RoleDetail',
       component: () => import('@/views/RoleDetail.vue'),
       props: true,
@@ -80,7 +80,7 @@ const router = createRouter({
       meta: { title: '应用管理', menuKey: 'applications' },
     },
     {
-      path: '/cd/applications/:id',
+      path: '/cd/application/:id',
       name: 'ApplicationDetail',
       component: () => import('@/views/cd/ApplicationDetail.vue'),
       meta: { title: '应用详情', menuKey: 'applications' },
@@ -92,7 +92,7 @@ const router = createRouter({
       meta: { title: '网关', menuKey: 'gateways' },
     },
     {
-      path: '/cd/gateways/:id',
+      path: '/cd/gateway/:id',
       name: 'GatewayDetail',
       component: () => import('@/views/cd/GatewayDetail.vue'),
       meta: { title: '网关详情', menuKey: 'gateways' },
@@ -104,7 +104,7 @@ const router = createRouter({
       meta: { title: '部署记录', menuKey: 'deployments' },
     },
     {
-      path: '/cd/deployments/:id',
+      path: '/cd/deployment/:id',
       name: 'DeploymentDetail',
       component: () => import('@/views/cd/DeploymentDetail.vue'),
       meta: { title: '部署详情', menuKey: 'deployments' },
@@ -122,7 +122,7 @@ const router = createRouter({
       meta: { title: '路由配置', menuKey: 'route' },
     },
     {
-      path: '/cd/routes/:id',
+      path: '/cd/route/:id',
       name: 'RouteDetail',
       component: () => import('@/views/cd/RouteDetail.vue'),
       meta: { title: '路由详情', menuKey: 'route' },

@@ -39,7 +39,7 @@
             <dd>
               <router-link
                 v-if="deployment.application_id"
-                :to="`/cd/applications/${deployment.application_id}`"
+                :to="`/cd/application/${deployment.application_id}`"
                 class="app-link"
               >
                 {{ deployment.application_name || deployment.application_id }}
@@ -227,7 +227,7 @@
 
   function goBack() {
     if (route.query.from === 'application' && deployment.value?.application_id) {
-      router.push(`/cd/applications/${deployment.value.application_id}`);
+      router.push(`/cd/application/${deployment.value.application_id}`);
       return;
     }
     router.push('/cd/deployments');

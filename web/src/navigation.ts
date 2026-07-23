@@ -173,9 +173,9 @@ export function getNavigationScope(path: string): NavigationScope | null {
   if (
     path === '/' ||
     path === '/home' ||
-    path.startsWith('/projects') ||
-    path.startsWith('/users') ||
-    path.startsWith('/roles') ||
+    (path === '/projects' || path.startsWith('/project/')) ||
+    (path === '/users' || path.startsWith('/user/')) ||
+    (path === '/roles' || path.startsWith('/role/')) ||
     path === '/login-history' ||
     path === '/settings'
   ) {

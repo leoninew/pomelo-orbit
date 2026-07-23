@@ -59,7 +59,7 @@ steps:
 
   # 应用详情 - Traefik
   - type: navigate
-    url: "${base_url}/cd/applications/01KKX2YNPF6VJ9N7QYCWG61KVM"
+    url: "${base_url}/cd/application/01KKX2YNPF6VJ9N7QYCWG61KVM"
 
   - type: wait
     delay: 1000
@@ -69,7 +69,7 @@ steps:
 
   # 应用详情 - FileBrowser
   - type: navigate
-    url: "${base_url}/cd/applications/01KN8CG4A5S4VVH6NKNJF4F9NJ"
+    url: "${base_url}/cd/application/01KN8CG4A5S4VVH6NKNJF4F9NJ"
 
   - type: wait
     delay: 1000
@@ -91,7 +91,7 @@ steps:
 
   # 部署详情
   - type: navigate
-    url: "${base_url}/cd/deployments/01KPFJ9RM9XMJSEKTPR58BYG07"
+    url: "${base_url}/cd/deployment/01KPFJ9RM9XMJSEKTPR58BYG07"
 
   - type: wait
     delay: 1000
@@ -113,7 +113,7 @@ steps:
 
   # 路由详情 - FileBrowser
   - type: navigate
-    url: "${base_url}/cd/routes/01KPFJ8AVWJMF56QVRC84GJAVS"
+    url: "${base_url}/cd/route/01KPFJ8AVWJMF56QVRC84GJAVS"
 
   - type: wait
     delay: 1000

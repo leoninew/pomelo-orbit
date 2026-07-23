@@ -40,7 +40,7 @@
           <tbody>
             <tr v-for="role in roles" :key="role.id">
               <td class="max-w-0 truncate text-foreground" :title="role.code">
-                <router-link :to="`/roles/${role.id}`" class="app-link">
+                <router-link :to="`/role/${role.id}`" class="app-link">
                   {{ role.code }}
                 </router-link>
               </td>

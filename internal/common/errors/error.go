@@ -31,13 +31,17 @@ func Wrap(kind Kind, message string, err error) Error {
 }
 
 func (e Error) Error() string {
-	if e.Message != "" {
+	switch {
+	case e.Message != "" && e.Err != nil:
+		// Surface root cause for API/log consumers; Message alone is rarely actionable.
+		return e.Message + ": " + e.Err.Error()
+	case e.Message != "":
 		return e.Message
-	}
-	if e.Err != nil {
+	case e.Err != nil:
 		return e.Err.Error()
+	default:
+		return string(e.Kind)
 	}
-	return string(e.Kind)
 }
 
 func (e Error) Unwrap() error {

@@ -33,9 +33,9 @@ func NewRepository(db *sqlx.DB, driver string) Repository {
 const applicationColumns = `id, project_id, name, code, kind, image_pull_policy, created_at, updated_at`
 const versionColumns = `id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at`
 const versionComponentColumns = `id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json, depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at`
-const versionExposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at`
-const environmentColumns = `id, project_id, code, name, description, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at`
-const gatewayConfigColumns = `application_id, rest_api_url, base_domain, image, created_at, updated_at`
+const versionExposeColumns = `id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at`
+const environmentColumns = `id, project_id, code, name, description, created_at, updated_at`
+const gatewayConfigColumns = `application_id, rest_api_url, base_domain, image, default_entrypoint, tls_mode, created_at, updated_at`
 const serviceColumns = `id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at`
 const deploymentColumns = `id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json, operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text, error_message, is_rollback, rollback_from_deployment_id`
 
@@ -288,9 +288,10 @@ func insertVersionComponent(ctx context.Context, tx *sqlx.Tx, driver string, com
 
 func insertVersionExpose(ctx context.Context, tx *sqlx.Tx, driver string, expose model.VersionExpose) error {
 	_, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO version_expose (
-		id, version_id, component_name, protocol, container_port, path_prefix, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(driver), db.NowExpr(driver)),
-		expose.Id, expose.VersionId, expose.ComponentName, expose.Protocol, expose.ContainerPort, expose.PathPrefix)
+		id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(driver), db.NowExpr(driver)),
+		expose.Id, expose.VersionId, expose.ComponentName, expose.Protocol, expose.ContainerPort, expose.PathPrefix,
+		expose.Access, expose.ListenPort)
 	if err != nil {
 		return fmt.Errorf("create expose %s/%s/%d: %w", expose.ComponentName, expose.Protocol, expose.ContainerPort, err)
 	}
@@ -342,10 +343,9 @@ func (r Repository) EnvironmentByProjectCode(ctx context.Context, projectId stri
 
 func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment) error {
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (
-		id, project_id, code, name, description, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
-		env.Id, env.ProjectId, env.Code, env.Name, env.Description,
-		env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode)
+		id, project_id, code, name, description, created_at, updated_at
+	) VALUES (?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		env.Id, env.ProjectId, env.Code, env.Name, env.Description)
 	if err != nil {
 		return fmt.Errorf("create environment %s: %w", env.Code, err)
 	}
@@ -354,9 +354,9 @@ func (r Repository) CreateEnvironment(ctx context.Context, env model.Environment
 
 func (r Repository) UpdateEnvironment(ctx context.Context, env model.Environment) error {
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE environment SET
-		name = ?, description = ?, default_entrypoint = ?, tcp_entrypoint = ?, tls_mode = ?, updated_at = %s
+		name = ?, description = ?, updated_at = %s
 		WHERE id = ?`, db.NowExpr(r.driver)),
-		env.Name, env.Description, env.DefaultEntrypoint, env.TCPEntrypoint, env.TLSMode, env.Id)
+		env.Name, env.Description, env.Id)
 	if err != nil {
 		return fmt.Errorf("update environment %s: %w", env.Id, err)
 	}
@@ -535,7 +535,7 @@ func (r Repository) ListGatewayApplications(ctx context.Context, projectId strin
 
 func (r Repository) ResolveActiveGatewayConfig(ctx context.Context) (model.GatewayConfig, error) {
 	var cfg model.GatewayConfig
-	err := r.db.GetContext(ctx, &cfg, `SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.image, gc.created_at, gc.updated_at
+	err := r.db.GetContext(ctx, &cfg, `SELECT gc.application_id, gc.rest_api_url, gc.base_domain, gc.image, gc.default_entrypoint, gc.tls_mode, gc.created_at, gc.updated_at
 		FROM gateway_config gc
 		INNER JOIN service s ON s.application_id = gc.application_id
 		INNER JOIN application a ON a.id = gc.application_id
@@ -577,9 +577,9 @@ func (r Repository) CreateApplicationWithGatewayConfig(ctx context.Context, app 
 		app.Id, app.ProjectId, app.Name, app.Code, app.Kind, app.ImagePullPolicy); err != nil {
 		return fmt.Errorf("create gateway application %s: %w", app.Code, err)
 	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, created_at, updated_at)
-		VALUES (?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
-		cfg.ApplicationId, cfg.RestAPIURL, cfg.BaseDomain, cfg.Image); err != nil {
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, default_entrypoint, tls_mode, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)),
+		cfg.ApplicationId, cfg.RestApiUrl, cfg.BaseDomain, cfg.Image, cfg.DefaultEntrypoint, cfg.TLSMode); err != nil {
 		return fmt.Errorf("create gateway_config %s: %w", cfg.ApplicationId, err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -593,24 +593,28 @@ func (r Repository) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayCo
 	var err error
 	if r.driver == "mysql" {
 		_, err = r.db.ExecContext(ctx, fmt.Sprintf(`
-			INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, created_at, updated_at)
-			VALUES (?, ?, ?, ?, %s, %s)
+			INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, default_entrypoint, tls_mode, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, %s, %s)
 			ON DUPLICATE KEY UPDATE
 				rest_api_url = VALUES(rest_api_url),
 				base_domain = VALUES(base_domain),
 				image = VALUES(image),
+				default_entrypoint = VALUES(default_entrypoint),
+				tls_mode = VALUES(tls_mode),
 				updated_at = %s
-		`, now, now, now), cfg.ApplicationId, cfg.RestAPIURL, cfg.BaseDomain, cfg.Image)
+		`, now, now, now), cfg.ApplicationId, cfg.RestApiUrl, cfg.BaseDomain, cfg.Image, cfg.DefaultEntrypoint, cfg.TLSMode)
 	} else {
 		_, err = r.db.ExecContext(ctx, fmt.Sprintf(`
-			INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, created_at, updated_at)
-			VALUES (?, ?, ?, ?, %s, %s)
+			INSERT INTO gateway_config (application_id, rest_api_url, base_domain, image, default_entrypoint, tls_mode, created_at, updated_at)
+			VALUES (?, ?, ?, ?, ?, ?, %s, %s)
 			ON CONFLICT(application_id) DO UPDATE SET
 				rest_api_url = excluded.rest_api_url,
 				base_domain = excluded.base_domain,
 				image = excluded.image,
+				default_entrypoint = excluded.default_entrypoint,
+				tls_mode = excluded.tls_mode,
 				updated_at = %s
-		`, now, now, now), cfg.ApplicationId, cfg.RestAPIURL, cfg.BaseDomain, cfg.Image)
+		`, now, now, now), cfg.ApplicationId, cfg.RestApiUrl, cfg.BaseDomain, cfg.Image, cfg.DefaultEntrypoint, cfg.TLSMode)
 	}
 	if err != nil {
 		return fmt.Errorf("upsert gateway_config %s: %w", cfg.ApplicationId, err)

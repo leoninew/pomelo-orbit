@@ -38,9 +38,10 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	if forceRecreate {
 		opts.ForceRecreate = true
 	}
-	instanceKey := strings.TrimSpace(opts.InstanceKey)
-	if instanceKey == "" {
-		instanceKey = "default"
+	instanceKey, err := normalizeInstanceKey(opts.InstanceKey)
+	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
 	}
 
 	version, err := s.executionStore.Version(ctx, versionId)
@@ -65,6 +66,14 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	}
 	exposes, err := s.executionStore.VersionExposesByVersion(ctx, version.Id)
 	if err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	if err := s.ensureSingleRuntime(ctx, app, env.Id, instanceKey); err != nil {
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	if err := s.validateAndReconcileGatewayForDeploy(ctx, app, exposes, deployment.Id); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -321,4 +330,198 @@ func parseDeployOptions(raw *string) cdto.DeployOptionsJSON {
 func writeWorkingDirectory(w io.Writer, dir string) error {
 	_, err := fmt.Fprintf(w, "Working directory: %s\n", dir)
 	return err
+}
+
+// ensureSingleRuntime rejects a second active service binding for the same standard app.
+func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application, environmentId, instanceKey string) error {
+	if strings.TrimSpace(app.Kind) == status.ApplicationKindGateway {
+		return nil
+	}
+	if s.store == nil {
+		return nil
+	}
+	services, err := s.store.ListServicesByApplication(ctx, app.Id)
+	if err != nil {
+		return err
+	}
+	for _, svc := range services {
+		if !isActiveServiceStatus(svc.Status) {
+			continue
+		}
+		if svc.EnvironmentId == environmentId && svc.InstanceKey == instanceKey {
+			continue // same binding — replace in place
+		}
+		return fmt.Errorf("application already has an active runtime (service %s status=%s); single runtime only", svc.Id, svc.Status)
+	}
+	return nil
+}
+
+// validateAndReconcileGatewayForDeploy checks expose conflicts and rolls gateway when public TCP port set changes.
+func (s Service) validateAndReconcileGatewayForDeploy(ctx context.Context, app model.Application, exposes []model.VersionExpose, deploymentId string) error {
+	kind := strings.TrimSpace(app.Kind)
+	if kind == "" {
+		kind = status.ApplicationKindStandard
+	}
+
+	var gateway *model.GatewayConfig
+	if kind == status.ApplicationKindGateway {
+		if reader := s.gatewayConfigReader(); reader != nil {
+			cfg, err := reader.GatewayConfig(ctx, app.Id)
+			if err == nil {
+				gateway = &cfg
+			}
+		}
+		// Gateway deploy: compile with full active public TCP set (including all apps).
+		tcpListens, err := s.collectActivePublicTCPListens(ctx, "")
+		if err != nil {
+			return err
+		}
+		if gateway != nil {
+			if _, err := s.CompileGatewayToVersion(ctx, app, *gateway, tcpListens...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Standard app
+	if needsPublicGateway(exposes) {
+		cfg, err := s.resolveGatewayForRender(ctx)
+		if err != nil {
+			return err
+		}
+		gateway = cfg
+	}
+	occ, err := s.buildExposeOccupancy(ctx, app.Id)
+	if err != nil {
+		return err
+	}
+	if err := validateDeployExposeConflicts(occ, app, exposes, gateway); err != nil {
+		return err
+	}
+
+	candidateTCP := publicTCPListens(exposes)
+	if len(candidateTCP) == 0 {
+		return nil
+	}
+	// Target S = occupancy (others) ∪ candidate
+	target := append([]int(nil), occ.PublicTCPListens()...)
+	target = append(target, candidateTCP...)
+	target = normalizeTCPListens(target)
+
+	if gateway == nil {
+		cfg, err := s.resolveGatewayForRender(ctx)
+		if err != nil {
+			return err
+		}
+		gateway = cfg
+	}
+	return s.reconcileGatewayTCPPorts(ctx, gateway, target, deploymentId)
+}
+
+func needsPublicGateway(exposes []model.VersionExpose) bool {
+	for _, e := range exposes {
+		if exposeAccessOf(e) == exposeAccessPublic {
+			return true
+		}
+	}
+	return false
+}
+
+func (s Service) reconcileGatewayTCPPorts(ctx context.Context, gateway *model.GatewayConfig, target []int, deploymentId string) error {
+	if gateway == nil || s.store == nil {
+		return nil
+	}
+	gwApp, err := s.store.Application(ctx, gateway.ApplicationId)
+	if err != nil {
+		return err
+	}
+	versions, err := s.store.ListVersions(ctx, gwApp.Id)
+	if err != nil {
+		return err
+	}
+	var current []int
+	for _, v := range versions {
+		if v.Status != status.VersionStatusUnpublished {
+			continue
+		}
+		components, err := s.store.VersionComponentsByVersion(ctx, v.Id)
+		if err != nil {
+			return err
+		}
+		current = extractCompiledTCPListens(components)
+		break
+	}
+	if tcpListensEqual(current, target) {
+		return nil
+	}
+	if _, err := s.CompileGatewayToVersion(ctx, gwApp, *gateway, target...); err != nil {
+		return err
+	}
+	// Deploy gateway immediately so new entryPoints exist before business app starts.
+	// Uses force recreate; failure aborts the business deploy.
+	return s.deployGatewayInPlace(ctx, gwApp, gateway, deploymentId)
+}
+
+func (s Service) deployGatewayInPlace(ctx context.Context, gwApp model.Application, gateway *model.GatewayConfig, parentDeploymentId string) error {
+	services, err := s.store.ListServicesByApplication(ctx, gwApp.Id)
+	if err != nil {
+		return err
+	}
+	var active *model.Service
+	for i := range services {
+		if isActiveServiceStatus(services[i].Status) || services[i].Status == status.ServiceStatusStopped || services[i].Status == status.ServiceStatusFaulted {
+			// Prefer running/deploying; else last service for env
+			if isActiveServiceStatus(services[i].Status) {
+				active = &services[i]
+				break
+			}
+			if active == nil {
+				active = &services[i]
+			}
+		}
+	}
+	if active == nil {
+		// Gateway not deployed yet: compile only is enough; first gateway deploy will pick ports.
+		return nil
+	}
+	version, err := s.store.Version(ctx, active.VersionId)
+	// After compile, unpublished managed version may be newer; use unpublished if present.
+	versions, listErr := s.store.ListVersions(ctx, gwApp.Id)
+	if listErr == nil {
+		for _, v := range versions {
+			if v.Status == status.VersionStatusUnpublished {
+				version = v
+				break
+			}
+		}
+	}
+	if err != nil && version.Id == "" {
+		return err
+	}
+	env, err := s.store.Environment(ctx, active.EnvironmentId)
+	if err != nil {
+		return err
+	}
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return err
+	}
+	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
+	if err != nil {
+		return err
+	}
+	// Mark deploying and roll gateway with force recreate.
+	active.VersionId = version.Id
+	active.Status = status.ServiceStatusDeploying
+	if err := s.store.UpsertService(ctx, *active); err != nil {
+		return err
+	}
+	logID := parentDeploymentId + "-gw"
+	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, env, *active, logID, true, nil); err != nil {
+		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id, active.LastSuccessfulVersionId)
+		return fmt.Errorf("gateway reconcile deploy failed (business deploy aborted): %w", err)
+	}
+	last := version.Id
+	return s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusRunning, version.Id, &last)
 }

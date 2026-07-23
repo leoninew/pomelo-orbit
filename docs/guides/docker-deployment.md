@@ -30,7 +30,7 @@ docker compose version
 首次运行时，系统会自动创建 SQLite 数据库并初始化默认应用（Traefik 和 Pomelo Orbit 自身），其他配置可以使用 .env 管理，参考 `backend/.env.example` 
 
 - POMELO_ORBIT_JWT__SECRET_KEY： JWT 密钥，用于 JWT 认证和凭据加密，必须使用 Fernet 格式
-- POMELO_ORBIT_TRAEFIK__DOMAIN_SUFFIX，域名后缀，默认使用 `lvh.me`（本地无需配置 DNS）
+- Traefik rest URL / 业务域名：在 CD **Gateway** 中配置（`rest_api_url`、`base_domain`）
 
 ### 2.2 docker-compose 启动 Pomelo Orbit
 

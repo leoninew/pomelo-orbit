@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
@@ -15,8 +17,6 @@ import (
 const (
 	// gatewayManagedComponentName is the Version component upserted by compile.
 	gatewayManagedComponentName = "traefik"
-	// defaultGatewayImage is used when gateway_config.image is empty.
-	defaultGatewayImage = "traefik:v3.6"
 	// gatewayCompileVersionLabel is the label for the first managed unpublished version.
 	gatewayCompileVersionLabel = "managed"
 	// managed mount targets overwritten on each compile (Spec D3 merge-by-target).
@@ -28,7 +28,8 @@ const (
 // CompileGatewayToVersion ensures an unpublished Version and upserts the managed
 // traefik component (image, ports, docker.sock + traefik.yml content). Non-managed
 // mounts (by target) and non-managed components are preserved.
-func (s Service) CompileGatewayToVersion(ctx context.Context, app model.Application, cfg model.GatewayConfig) (string, error) {
+// tcpListens are public TCP host ports to publish as Traefik entryPoints.
+func (s Service) CompileGatewayToVersion(ctx context.Context, app model.Application, cfg model.GatewayConfig, tcpListens ...int) (string, error) {
 	if strings.TrimSpace(app.Kind) != status.ApplicationKindGateway {
 		return "", apperror.New(apperror.KindValidation, "CompileGatewayToVersion requires kind=gateway")
 	}
@@ -40,7 +41,7 @@ func (s Service) CompileGatewayToVersion(ctx context.Context, app model.Applicat
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components for compile", err)
 	}
-	managed, err := buildManagedGatewayComponent(cfg, existing)
+	managed, err := buildManagedGatewayComponent(cfg, existing, normalizeTCPListens(tcpListens))
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
@@ -82,12 +83,41 @@ func (s Service) ensureUnpublishedGatewayVersion(ctx context.Context, applicatio
 	return version, nil
 }
 
-func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.VersionComponent) (model.VersionComponent, error) {
-	image := defaultGatewayImage
-	if cfg.Image != nil && strings.TrimSpace(*cfg.Image) != "" {
-		image = strings.TrimSpace(*cfg.Image)
+func normalizeTCPListens(listens []int) []int {
+	seen := map[int]struct{}{}
+	out := make([]int, 0, len(listens))
+	for _, p := range listens {
+		if p < 1 || p > 65535 {
+			continue
+		}
+		// reserve HTTP/dashboard ports from becoming tcpN duplicates of static ones
+		if p == 80 || p == 443 || p == 8080 {
+			continue
+		}
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+		out = append(out, p)
 	}
-	portsJSON := `["80:80","443:443","8080:8080"]`
+	sort.Ints(out)
+	return out
+}
+
+func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.VersionComponent, tcpListens []int) (model.VersionComponent, error) {
+	if cfg.Image == nil || strings.TrimSpace(*cfg.Image) == "" {
+		return model.VersionComponent{}, fmt.Errorf("gateway image is required")
+	}
+	image := strings.TrimSpace(*cfg.Image)
+	ports := []string{"80:80", "443:443", "8080:8080"}
+	for _, p := range tcpListens {
+		ports = append(ports, fmt.Sprintf("%d:%d", p, p))
+	}
+	portsRaw, err := json.Marshal(ports)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("marshal ports: %w", err)
+	}
+	portsStr := string(portsRaw)
 	var priorMounts []MountSpec
 	for _, c := range existing {
 		if c.Name == gatewayManagedComponentName {
@@ -99,13 +129,12 @@ func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.Vers
 			break
 		}
 	}
-	mounts := mergeManagedGatewayMounts(priorMounts, buildManagedGatewayMounts())
+	mounts := mergeManagedGatewayMounts(priorMounts, buildManagedGatewayMounts(cfg, tcpListens))
 	mountsRaw, err := json.Marshal(mounts)
 	if err != nil {
 		return model.VersionComponent{}, fmt.Errorf("marshal mounts: %w", err)
 	}
 	mountsStr := string(mountsRaw)
-	portsStr := portsJSON
 	return model.VersionComponent{
 		Name:       gatewayManagedComponentName,
 		Image:      image,
@@ -114,8 +143,8 @@ func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.Vers
 	}, nil
 }
 
-func buildManagedGatewayMounts() []MountSpec {
-	yml := buildTraefikStaticConfig()
+func buildManagedGatewayMounts(cfg model.GatewayConfig, tcpListens []int) []MountSpec {
+	yml := buildTraefikStaticConfig(cfg, tcpListens)
 	return []MountSpec{
 		{
 			SourceType: mountSourceSpecial,
@@ -167,7 +196,6 @@ func upsertComponentByName(existing []model.VersionComponent, managed model.Vers
 	replaced := false
 	for _, c := range existing {
 		if c.Name == managed.Name {
-			// Keep id if present for stability; ReplaceVersionComponents reassigns via caller.
 			managed.Id = c.Id
 			out = append(out, managed)
 			replaced = true
@@ -181,12 +209,10 @@ func upsertComponentByName(existing []model.VersionComponent, managed model.Vers
 	return out
 }
 
-// buildTraefikStaticConfig generates a minimal Traefik static file with rest + docker providers.
-func buildTraefikStaticConfig() string {
-	// entryPoints names align with Environment.default_entrypoint defaults (web / websecure).
-	// providers.rest + api.insecure enable platform PUT/GET on :8080.
-	// docker provider watches sock; network name matches defaultGatewayNetworkName.
-	return strings.TrimSpace(`
+// buildTraefikStaticConfig generates Traefik static file with rest + docker providers and TCP entryPoints.
+func buildTraefikStaticConfig(cfg model.GatewayConfig, tcpListens []int) string {
+	var b strings.Builder
+	b.WriteString(strings.TrimSpace(`
 api:
   dashboard: true
   insecure: true
@@ -196,7 +222,16 @@ entryPoints:
     address: ":80"
   websecure:
     address: ":443"
-
+`))
+	b.WriteByte('\n')
+	for _, p := range tcpListens {
+		b.WriteString("  ")
+		b.WriteString(tcpEntrypointName(p))
+		b.WriteString(":\n    address: \":")
+		b.WriteString(strconv.Itoa(p))
+		b.WriteString("\"\n")
+	}
+	b.WriteString(strings.TrimSpace(`
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"
@@ -207,5 +242,73 @@ providers:
 
 log:
   level: INFO
-`) + "\n"
+`))
+	b.WriteByte('\n')
+	tlsMode := strings.ToLower(strings.TrimSpace(cfg.TLSMode))
+	if tlsMode == "letsencrypt" {
+		b.WriteString(strings.TrimSpace(`
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@localhost
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+`))
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// extractCompiledTCPListens reads tcp{N} ports from the managed component ports JSON.
+func extractCompiledTCPListens(components []model.VersionComponent) []int {
+	for _, c := range components {
+		if c.Name != gatewayManagedComponentName {
+			continue
+		}
+		raw, err := parseAnyJSON(c.PortsJSON)
+		if err != nil || raw == nil {
+			return nil
+		}
+		items, ok := raw.([]any)
+		if !ok {
+			return nil
+		}
+		var listens []int
+		for _, item := range items {
+			s, ok := item.(string)
+			if !ok {
+				continue
+			}
+			// "6379:6379"
+			parts := strings.Split(s, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			hostPort, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+			if err != nil {
+				continue
+			}
+			if hostPort == 80 || hostPort == 443 || hostPort == 8080 {
+				continue
+			}
+			listens = append(listens, hostPort)
+		}
+		return normalizeTCPListens(listens)
+	}
+	return nil
+}
+
+func tcpListensEqual(a, b []int) bool {
+	a = normalizeTCPListens(a)
+	b = normalizeTCPListens(b)
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

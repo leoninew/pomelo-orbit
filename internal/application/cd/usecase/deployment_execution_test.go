@@ -37,12 +37,10 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 			{Id: "c1", VersionId: versionID, Name: "web", Image: "nginx"},
 		},
 		env: model.Environment{
-			Id:                envID,
-			ProjectId:         projectID,
-			Code:              "local",
-			Name:              "Local",
-			DefaultEntrypoint: "web",
-			TLSMode:           "none",
+			Id:        envID,
+			ProjectId: projectID,
+			Code:      "local",
+			Name:      "Local",
 		},
 		service: model.Service{
 			Id:            "svc-1",
@@ -182,12 +180,12 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 		{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 	}
 	store.gateway = model.GatewayConfig{
-		ApplicationId: "gw-1",
-		RestAPIURL:    "http://traefik:8080",
-		BaseDomain:    "example.com",
+		ApplicationId:     "gw-1",
+		RestApiUrl:        "http://traefik:8080",
+		BaseDomain:        "example.com",
+		DefaultEntrypoint: "websecure",
+		TLSMode:           "letsencrypt",
 	}
-	store.env.DefaultEntrypoint = "websecure"
-	store.env.TLSMode = "letsencrypt"
 	workspace := testWorkspace(cfg.DataRoot())
 	service := NewExecutionService(store, cfg, slog.Default(), workspace, fakeCommandRunner{}, executionlog.Store{})
 
@@ -331,7 +329,7 @@ func (s *fakeDeploymentExecutionStore) GatewayConfig(_ context.Context, applicat
 }
 
 func (s *fakeDeploymentExecutionStore) ResolveActiveGatewayConfig(_ context.Context) (model.GatewayConfig, error) {
-	if s.gateway.BaseDomain != "" || s.gateway.RestAPIURL != "" {
+	if s.gateway.BaseDomain != "" || s.gateway.RestApiUrl != "" {
 		return s.gateway, nil
 	}
 	return model.GatewayConfig{}, repository.ErrNotFound

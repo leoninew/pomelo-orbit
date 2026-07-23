@@ -1,5 +1,5 @@
 # CD E6：网关领域（Gateway domain）— 验证记录
-最后修改时间: 2026-07-22 21:18:00
+最后修改时间: 2026-07-23 10:35:22
 
 Review status: Draft
 
@@ -29,7 +29,7 @@ Flow mode: strict
 | 应用列表默认 standard | **符合** — `ApplicationPage` / create 默认 `kind=standard`；list API 带 kind |
 | rest PUT 仍 E5 全量；URL 从 Gateway | **符合** — `publishRouteSnapshot` → `gw.RestAPIURL` |
 | Env 剥离 base_domain；无 domain_template | **符合** — migration 11 去列；proto/UI 无字段 |
-| 全局 api_url / domain_suffix 产品路径移除 | **符合（主路径）** — `TraefikConfig` 仅 `CertDir`；config.yaml 已无；**残留** BindEnv 键名与测试样例 yaml（见 Incomplete） |
+| 全局 api_url / domain_suffix 产品路径移除 | **符合** — `TraefikConfig` 仅 `CertDir`；config.yaml / BindEnv / `.env.example` 已无死键（cleanup `20260723-cd-post-e6-cleanup`） |
 | 不迁移旧数据 / 无兼容层 | **符合** — 无 dual-read；无 data backfill |
 | 不吞并 F1–F7 | **符合** — PEM/鉴权/多 gateway/dashboard 产品化未做 |
 
@@ -44,7 +44,7 @@ Flow mode: strict
 | D2.1 C 组部署意图 compile | **符合（最小集）** — image + 默认 ports/mounts/static yml；**未**扩表 ports/log_level/acme 列（Plan：最小字段集 OK） |
 | D3 保存 compile；挂载按 target upsert | **符合** — `mergeManagedGatewayMounts` |
 | D4 Env 去 base_domain / domain_template | **符合** — SQL + API + UI |
-| D5 移除全局 api_url/domain_suffix | **符合（产品）** — 结构体与默认 yaml；见 Incomplete 残留绑定 |
+| D5 移除全局 api_url/domain_suffix | **符合** — 结构体、yaml、BindEnv、示例 env 对齐 |
 | D6 导航 / list kind 过滤 | **符合** |
 | D7 单 active gateway + rest 写路径 | **符合** — 既有 `HasActiveGatewayService`；rest 走 Gateway URL |
 | 无 external / F1–F7 | **符合** |
@@ -99,17 +99,17 @@ Flow mode: strict
 | V6 | 导航 Gateway；应用默认 standard | **通过（代码）** — navigation + ApplicationPage；**未**跑浏览器 E2E |
 | V7 | compile 后 mounts 校验通过 | **通过** — `gateway_compile_test` + `TestCreateGatewayCompilesManagedVersion` |
 | V8 | go test/vet；yarn typecheck；lint:fix | **通过** — 见 Test results |
-| V9 | 单 active gateway 仍拦截 | **通过（实现）** — deploy 校验；**弱** — 无专用 `*_test.go` 二次部署断言 |
+| V9 | 单 active gateway 仍拦截 | **通过** — deploy 校验 + `TestDeploySecondGatewayRejectedWhenAnotherGatewayActive`（cleanup） |
 
 ### Requirement 场景核对
 
 | 场景 | 结果 |
 |------|------|
 | 创建/编辑 Gateway 领域表单 | **通过** — CRUD + 校验 rest URL / base_domain |
-| 保存后 Version 可 Preview/Deploy 出 rest-capable 规格 | **通过（编译产物）** — mounts 含 providers.rest；**未**实机起 Traefik 容器验收 |
+| 保存后 Version 可 Preview/Deploy 出 rest-capable 规格 | **通过** — mounts 含 providers.rest；**用户实机**已启 managed Traefik 并部署其他应用（2026-07-23） |
 | 应用列表不混 gateway 主路径 | **通过** — 默认 kind=standard |
 | 无 gateway 时 Host 失败引导 | **通过（实现）** — `no gateway configured` 文案 |
-| 多 gateway 无 active 解析失败 | **通过（实现）** — Resolve 错误文案；弱自动化 |
+| 多 gateway 无 active 解析失败 | **通过（实现）** — Resolve 错误文案；二次部署拦截有专用单测 |
 
 ## Test results
 
@@ -133,11 +133,11 @@ Flow mode: strict
 | 项 | 说明 |
 |----|------|
 | C 组完整列（ports/log_level/acme_enabled 等） | **未扩表** — 以默认常量 compile；与 Plan「最小字段集」一致，**不算**范围膨胀 |
-| BindEnv 仍列 `traefik.api_url` / `domain_suffix` | 无 mapstructure 字段接收；**死绑定**残留，非产品 SoT |
-| config 单测 fixture yaml 仍写 api_url/domain_suffix | 验证忽略未知键/历史样例；**非**运行时 SoT |
+| BindEnv `api_url` / `domain_suffix` | **已删**（cleanup） |
+| config 单测 fixture | **已改为仅 cert_dir**（cleanup） |
 | cert_dir 保留 | Spec/Plan 允许 F1 前短期保留 |
-| liquid `config.domain_suffix` 示例 | 模板引擎历史示例；**非** CD Host 路径 |
-| 浏览器 E2E / 实机 Traefik | 本验证未做 |
+| liquid 测试变量 | cleanup 已改为 `config.base_domain` 示例变量名；**不**再以全局 domain_suffix 作配置语义 |
+| 浏览器 E2E | 未做；用户实机路径已验收 |
 
 ## Risks
 
@@ -145,17 +145,15 @@ Flow mode: strict
 2. 多 gateway 且无 active Service 时 Resolve 失败 — 需用户部署或删减。  
 3. compile 与手改 Version：托管 target 每次覆盖；自定义 mount 保留，但用户改 `traefik` 组件非托管字段可能被 image/ports 重写。  
 4. 默认 static yml 含 `api.insecure` / `rest.insecure` — 仅适合内网 managed；F2 鉴权后续。  
-5. BindEnv 死键可能误导运维仍设 `POMELO_ORBIT_TRAEFIK__API_URL`（**无效**）。  
-6. 单 gateway 拦截缺专用单测，回归依赖代码审查。
+5. ~~BindEnv 死键~~ — cleanup 已删。  
+6. ~~单 gateway 拦截缺专用单测~~ — cleanup 已补。
 
 ## Incomplete items
 
-1. **清理** `BindEnv` 中 `traefik.api_url` / `traefik.domain_suffix`（及测试样例 yaml 对齐）— 小残留。  
-2. **V9** 单 gateway 二次部署 **专用单测**仍弱（E5 起遗留）。  
-3. **实机** Gateway Deploy + rest PUT 端到端未在本机容器验证。  
-4. **V6** 无浏览器自动化。  
-5. 本 Verification **待用户 Accept**。  
-6. **F1–F7** / external 不在范围。
+1. **V6** 无浏览器自动化（非阻塞）。  
+2. 本 Verification **待用户显式 Accept** Review status。  
+3. **F1–F7** / external 不在范围；用户将 F1 与 external 排除出强制后续。  
+4. 可选 backlog：F2–F6 / E2–E4 / K8s（见 cadence）。
 
 ## Conclusion
 
@@ -167,11 +165,11 @@ Flow mode: strict
 - 保存即 compile 托管 Version（rest-capable 最小规格）  
 - 应用列表默认 standard；Version 高级路径保留  
 
-自动化 `go test ./cmd/... ./internal/...`、`go vet`、前端 typecheck/lint（0 error）通过。
+用户实机（2026-07-23）：可启动 managed Traefik 并部署其他应用。  
+cleanup（`20260723-cd-post-e6-cleanup`）：关闭死 BindEnv / fixture / V9 专用测。  
 
-残留为死 BindEnv 键、单 gateway 专用测弱、无实机/E2E，**不构成** E6 主路径未交付。  
-建议用户审查后将本 Verification 标为 **Accepted**；可选后续小清理 BindEnv 与补 V9 单测。
+建议用户将本 Verification 标为 **Accepted**；应用版本化主 cadence 无强制下一主需求。
 
 ---
 
-**当前：严格模式 / strict，验证 / Verification — Review status: Draft**
+**当前：严格模式 / strict，验证 / Verification — Review status: Draft（主路径完成；待用户 Accept）**

@@ -77,11 +77,18 @@ func versionComponentInput(req *pomeloorbit.VersionComponentReq) cddto.VersionCo
 }
 
 func versionExposeInput(req *pomeloorbit.VersionExposeReq) cddto.VersionExposeInput {
+	var listenPort *int
+	if req.ListenPort != nil {
+		v := int(*req.ListenPort)
+		listenPort = &v
+	}
 	return cddto.VersionExposeInput{
 		ComponentName: req.ComponentName,
 		Protocol:      req.Protocol,
 		ContainerPort: int(req.ContainerPort),
 		PathPrefix:    req.PathPrefix,
+		Access:        req.Access,
+		ListenPort:    listenPort,
 	}
 }
 
@@ -200,6 +207,11 @@ func versionComponentResponse(component model.VersionComponent) pomeloorbit.Vers
 }
 
 func versionExposeResponse(expose model.VersionExpose) pomeloorbit.VersionExposeResp {
+	var listenPort *int32
+	if expose.ListenPort != nil {
+		v := int32(*expose.ListenPort)
+		listenPort = &v
+	}
 	return pomeloorbit.VersionExposeResp{
 		Id:            expose.Id,
 		VersionId:     expose.VersionId,
@@ -209,5 +221,7 @@ func versionExposeResponse(expose model.VersionExpose) pomeloorbit.VersionExpose
 		PathPrefix:    expose.PathPrefix,
 		CreatedAt:     transportresponse.FormatTime(expose.CreatedAt),
 		UpdatedAt:     transportresponse.FormatTime(expose.UpdatedAt),
+		Access:        expose.Access,
+		ListenPort:    listenPort,
 	}
 }

@@ -9,23 +9,17 @@ import (
 
 func environmentCreateInput(req *pomeloorbit.EnvironmentCreateReq) cddto.EnvironmentCreateInput {
 	return cddto.EnvironmentCreateInput{
-		ProjectId:         req.ProjectId,
-		Code:              req.Code,
-		Name:              req.Name,
-		Description:       req.Description,
-		DefaultEntrypoint: req.DefaultEntrypoint,
-		TCPEntrypoint:     req.TcpEntrypoint,
-		TLSMode:           req.TlsMode,
+		ProjectId:   req.ProjectId,
+		Code:        req.Code,
+		Name:        req.Name,
+		Description: req.Description,
 	}
 }
 
 func environmentUpdateInput(req *pomeloorbit.EnvironmentUpdateReq) cddto.EnvironmentUpdateInput {
 	return cddto.EnvironmentUpdateInput{
-		Name:              req.Name,
-		Description:       req.Description,
-		DefaultEntrypoint: req.DefaultEntrypoint,
-		TCPEntrypoint:     req.TcpEntrypoint,
-		TLSMode:           req.TlsMode,
+		Name:        req.Name,
+		Description: req.Description,
 	}
 }
 
@@ -43,15 +37,12 @@ func environmentResponse(view cddto.EnvironmentView) pomeloorbit.EnvironmentResp
 
 func environmentMetaResponse(env model.Environment) pomeloorbit.EnvironmentResp {
 	return pomeloorbit.EnvironmentResp{
-		Id:                env.Id,
-		ProjectId:         env.ProjectId,
-		Code:              env.Code,
-		Name:              env.Name,
-		Description:       env.Description,
-		CreatedAt:         transportresponse.FormatTime(env.CreatedAt),
-		UpdatedAt:         transportresponse.FormatTime(env.UpdatedAt),
-		DefaultEntrypoint: env.DefaultEntrypoint,
-		TcpEntrypoint:     env.TCPEntrypoint,
-		TlsMode:           env.TLSMode,
+		Id:          env.Id,
+		ProjectId:   env.ProjectId,
+		Code:        env.Code,
+		Name:        env.Name,
+		Description: env.Description,
+		CreatedAt:   transportresponse.FormatTime(env.CreatedAt),
+		UpdatedAt:   transportresponse.FormatTime(env.UpdatedAt),
 	}
 }

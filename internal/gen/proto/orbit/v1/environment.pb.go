@@ -22,16 +22,13 @@ const (
 )
 
 type EnvironmentCreateReq struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	ProjectId         string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code              string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Name              string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Description       *string                `protobuf:"bytes,4,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	DefaultEntrypoint *string                `protobuf:"bytes,5,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
-	TcpEntrypoint     *string                `protobuf:"bytes,6,opt,name=tcp_entrypoint,json=tcpEntrypoint,proto3,oneof" json:"tcp_entrypoint,omitempty"`
-	TlsMode           *string                `protobuf:"bytes,7,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description   *string                `protobuf:"bytes,4,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EnvironmentCreateReq) Reset() {
@@ -92,36 +89,12 @@ func (x *EnvironmentCreateReq) GetDescription() string {
 	return ""
 }
 
-func (x *EnvironmentCreateReq) GetDefaultEntrypoint() string {
-	if x != nil && x.DefaultEntrypoint != nil {
-		return *x.DefaultEntrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentCreateReq) GetTcpEntrypoint() string {
-	if x != nil && x.TcpEntrypoint != nil {
-		return *x.TcpEntrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentCreateReq) GetTlsMode() string {
-	if x != nil && x.TlsMode != nil {
-		return *x.TlsMode
-	}
-	return ""
-}
-
 type EnvironmentUpdateReq struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Name              *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Description       *string                `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	DefaultEntrypoint *string                `protobuf:"bytes,3,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
-	TcpEntrypoint     *string                `protobuf:"bytes,4,opt,name=tcp_entrypoint,json=tcpEntrypoint,proto3,oneof" json:"tcp_entrypoint,omitempty"`
-	TlsMode           *string                `protobuf:"bytes,5,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description   *string                `protobuf:"bytes,2,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EnvironmentUpdateReq) Reset() {
@@ -168,41 +141,17 @@ func (x *EnvironmentUpdateReq) GetDescription() string {
 	return ""
 }
 
-func (x *EnvironmentUpdateReq) GetDefaultEntrypoint() string {
-	if x != nil && x.DefaultEntrypoint != nil {
-		return *x.DefaultEntrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentUpdateReq) GetTcpEntrypoint() string {
-	if x != nil && x.TcpEntrypoint != nil {
-		return *x.TcpEntrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentUpdateReq) GetTlsMode() string {
-	if x != nil && x.TlsMode != nil {
-		return *x.TlsMode
-	}
-	return ""
-}
-
 type EnvironmentResp struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId         string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code              string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	Name              string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Description       *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
-	CreatedAt         string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt         string                 `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	DefaultEntrypoint string                 `protobuf:"bytes,8,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
-	TcpEntrypoint     *string                `protobuf:"bytes,9,opt,name=tcp_entrypoint,json=tcpEntrypoint,proto3,oneof" json:"tcp_entrypoint,omitempty"`
-	TlsMode           string                 `protobuf:"bytes,10,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId     string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code          string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Description   *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EnvironmentResp) Reset() {
@@ -280,27 +229,6 @@ func (x *EnvironmentResp) GetCreatedAt() string {
 func (x *EnvironmentResp) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetDefaultEntrypoint() string {
-	if x != nil {
-		return x.DefaultEntrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetTcpEntrypoint() string {
-	if x != nil && x.TcpEntrypoint != nil {
-		return *x.TcpEntrypoint
-	}
-	return ""
-}
-
-func (x *EnvironmentResp) GetTlsMode() string {
-	if x != nil {
-		return x.TlsMode
 	}
 	return ""
 }
@@ -385,31 +313,19 @@ var File_orbit_v1_environment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_environment_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/environment.proto\x12\borbit.v1\"\xcb\x02\n" +
+	"\x1aorbit/v1/environment.proto\x12\borbit.v1\"\x94\x01\n" +
 	"\x14EnvironmentCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12%\n" +
-	"\vdescription\x18\x04 \x01(\tH\x00R\vdescription\x88\x01\x01\x122\n" +
-	"\x12default_entrypoint\x18\x05 \x01(\tH\x01R\x11defaultEntrypoint\x88\x01\x01\x12*\n" +
-	"\x0etcp_entrypoint\x18\x06 \x01(\tH\x02R\rtcpEntrypoint\x88\x01\x01\x12\x1e\n" +
-	"\btls_mode\x18\a \x01(\tH\x03R\atlsMode\x88\x01\x01B\x0e\n" +
-	"\f_descriptionB\x15\n" +
-	"\x13_default_entrypointB\x11\n" +
-	"\x0f_tcp_entrypointB\v\n" +
-	"\t_tls_mode\"\xa6\x02\n" +
+	"\vdescription\x18\x04 \x01(\tH\x00R\vdescription\x88\x01\x01B\x0e\n" +
+	"\f_description\"o\n" +
 	"\x14EnvironmentUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x02 \x01(\tH\x01R\vdescription\x88\x01\x01\x122\n" +
-	"\x12default_entrypoint\x18\x03 \x01(\tH\x02R\x11defaultEntrypoint\x88\x01\x01\x12*\n" +
-	"\x0etcp_entrypoint\x18\x04 \x01(\tH\x03R\rtcpEntrypoint\x88\x01\x01\x12\x1e\n" +
-	"\btls_mode\x18\x05 \x01(\tH\x04R\atlsMode\x88\x01\x01B\a\n" +
+	"\vdescription\x18\x02 \x01(\tH\x01R\vdescription\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0e\n" +
-	"\f_descriptionB\x15\n" +
-	"\x13_default_entrypointB\x11\n" +
-	"\x0f_tcp_entrypointB\v\n" +
-	"\t_tls_mode\"\xe6\x02\n" +
+	"\f_description\"\xdd\x01\n" +
 	"\x0fEnvironmentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -420,13 +336,8 @@ const file_orbit_v1_environment_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\tR\tupdatedAt\x12-\n" +
-	"\x12default_entrypoint\x18\b \x01(\tR\x11defaultEntrypoint\x12*\n" +
-	"\x0etcp_entrypoint\x18\t \x01(\tH\x01R\rtcpEntrypoint\x88\x01\x01\x12\x19\n" +
-	"\btls_mode\x18\n" +
-	" \x01(\tR\atlsModeB\x0e\n" +
-	"\f_descriptionB\x11\n" +
-	"\x0f_tcp_entrypoint\"\xa6\x01\n" +
+	"updated_at\x18\a \x01(\tR\tupdatedAtB\x0e\n" +
+	"\f_description\"\xa6\x01\n" +
 	"\x18EnvironmentPaginatedResp\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.orbit.v1.EnvironmentRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

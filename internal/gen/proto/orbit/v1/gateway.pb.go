@@ -31,8 +31,12 @@ type GatewayCreateReq struct {
 	Image      *string                `protobuf:"bytes,6,opt,name=image,proto3,oneof" json:"image,omitempty"`
 	// docker compose --pull: always|missing|never
 	ImagePullPolicy string `protobuf:"bytes,7,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Traefik entryPoints name: web|websecure (default web when empty on create)
+	DefaultEntrypoint *string `protobuf:"bytes,8,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
+	// none|letsencrypt|tls (default none when empty on create)
+	TlsMode       *string `protobuf:"bytes,10,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GatewayCreateReq) Reset() {
@@ -114,15 +118,31 @@ func (x *GatewayCreateReq) GetImagePullPolicy() string {
 	return ""
 }
 
+func (x *GatewayCreateReq) GetDefaultEntrypoint() string {
+	if x != nil && x.DefaultEntrypoint != nil {
+		return *x.DefaultEntrypoint
+	}
+	return ""
+}
+
+func (x *GatewayCreateReq) GetTlsMode() string {
+	if x != nil && x.TlsMode != nil {
+		return *x.TlsMode
+	}
+	return ""
+}
+
 type GatewayUpdateReq struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Name            *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	RestApiUrl      *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
-	BaseDomain      *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
-	Image           *string                `protobuf:"bytes,4,opt,name=image,proto3,oneof" json:"image,omitempty"`
-	ImagePullPolicy *string                `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3,oneof" json:"image_pull_policy,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Name              *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	RestApiUrl        *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
+	BaseDomain        *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
+	Image             *string                `protobuf:"bytes,4,opt,name=image,proto3,oneof" json:"image,omitempty"`
+	ImagePullPolicy   *string                `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3,oneof" json:"image_pull_policy,omitempty"`
+	DefaultEntrypoint *string                `protobuf:"bytes,6,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
+	TlsMode           *string                `protobuf:"bytes,8,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GatewayUpdateReq) Reset() {
@@ -190,27 +210,161 @@ func (x *GatewayUpdateReq) GetImagePullPolicy() string {
 	return ""
 }
 
-type GatewayResp struct {
+func (x *GatewayUpdateReq) GetDefaultEntrypoint() string {
+	if x != nil && x.DefaultEntrypoint != nil {
+		return *x.DefaultEntrypoint
+	}
+	return ""
+}
+
+func (x *GatewayUpdateReq) GetTlsMode() string {
+	if x != nil && x.TlsMode != nil {
+		return *x.TlsMode
+	}
+	return ""
+}
+
+// Read-only active exit / cluster DNS row (not a CRUD resource).
+type GatewayExposureItem struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId       string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	Code            string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
-	Name            string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Kind            string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
-	RestApiUrl      string                 `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain      string                 `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
-	Image           *string                `protobuf:"bytes,8,opt,name=image,proto3,oneof" json:"image,omitempty"`
-	CreatedAt       string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt       string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ConfigUpdatedAt string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
-	ImagePullPolicy string                 `protobuf:"bytes,12,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	ApplicationId   string                 `protobuf:"bytes,1,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	ApplicationCode string                 `protobuf:"bytes,2,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
+	ComponentName   string                 `protobuf:"bytes,3,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
+	Protocol        string                 `protobuf:"bytes,4,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	Access          string                 `protobuf:"bytes,5,opt,name=access,proto3" json:"access,omitempty"`
+	ContainerPort   int32                  `protobuf:"varint,6,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
+	ListenPort      int32                  `protobuf:"varint,7,opt,name=listen_port,json=listenPort,proto3" json:"listen_port,omitempty"`
+	PublicHost      string                 `protobuf:"bytes,8,opt,name=public_host,json=publicHost,proto3" json:"public_host,omitempty"`
+	InternalDns     string                 `protobuf:"bytes,9,opt,name=internal_dns,json=internalDns,proto3" json:"internal_dns,omitempty"`
+	ClientHint      string                 `protobuf:"bytes,10,opt,name=client_hint,json=clientHint,proto3" json:"client_hint,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
+func (x *GatewayExposureItem) Reset() {
+	*x = GatewayExposureItem{}
+	mi := &file_orbit_v1_gateway_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GatewayExposureItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GatewayExposureItem) ProtoMessage() {}
+
+func (x *GatewayExposureItem) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_gateway_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GatewayExposureItem.ProtoReflect.Descriptor instead.
+func (*GatewayExposureItem) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_gateway_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *GatewayExposureItem) GetApplicationId() string {
+	if x != nil {
+		return x.ApplicationId
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetApplicationCode() string {
+	if x != nil {
+		return x.ApplicationCode
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetComponentName() string {
+	if x != nil {
+		return x.ComponentName
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetAccess() string {
+	if x != nil {
+		return x.Access
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetContainerPort() int32 {
+	if x != nil {
+		return x.ContainerPort
+	}
+	return 0
+}
+
+func (x *GatewayExposureItem) GetListenPort() int32 {
+	if x != nil {
+		return x.ListenPort
+	}
+	return 0
+}
+
+func (x *GatewayExposureItem) GetPublicHost() string {
+	if x != nil {
+		return x.PublicHost
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetInternalDns() string {
+	if x != nil {
+		return x.InternalDns
+	}
+	return ""
+}
+
+func (x *GatewayExposureItem) GetClientHint() string {
+	if x != nil {
+		return x.ClientHint
+	}
+	return ""
+}
+
+type GatewayResp struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId         string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	Code              string                 `protobuf:"bytes,3,opt,name=code,proto3" json:"code,omitempty"`
+	Name              string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Kind              string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	RestApiUrl        string                 `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
+	BaseDomain        string                 `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	Image             *string                `protobuf:"bytes,8,opt,name=image,proto3,oneof" json:"image,omitempty"`
+	CreatedAt         string                 `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt         string                 `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	ConfigUpdatedAt   string                 `protobuf:"bytes,11,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
+	ImagePullPolicy   string                 `protobuf:"bytes,12,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	DefaultEntrypoint string                 `protobuf:"bytes,13,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
+	TlsMode           string                 `protobuf:"bytes,15,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
+	Exposures         []*GatewayExposureItem `protobuf:"bytes,16,rep,name=exposures,proto3" json:"exposures,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
 func (x *GatewayResp) Reset() {
 	*x = GatewayResp{}
-	mi := &file_orbit_v1_gateway_proto_msgTypes[2]
+	mi := &file_orbit_v1_gateway_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -222,7 +376,7 @@ func (x *GatewayResp) String() string {
 func (*GatewayResp) ProtoMessage() {}
 
 func (x *GatewayResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_proto_msgTypes[2]
+	mi := &file_orbit_v1_gateway_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -235,7 +389,7 @@ func (x *GatewayResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayResp.ProtoReflect.Descriptor instead.
 func (*GatewayResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_gateway_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GatewayResp) GetId() string {
@@ -322,6 +476,27 @@ func (x *GatewayResp) GetImagePullPolicy() string {
 	return ""
 }
 
+func (x *GatewayResp) GetDefaultEntrypoint() string {
+	if x != nil {
+		return x.DefaultEntrypoint
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetTlsMode() string {
+	if x != nil {
+		return x.TlsMode
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetExposures() []*GatewayExposureItem {
+	if x != nil {
+		return x.Exposures
+	}
+	return nil
+}
+
 type GatewayPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*GatewayResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -335,7 +510,7 @@ type GatewayPaginatedResp struct {
 
 func (x *GatewayPaginatedResp) Reset() {
 	*x = GatewayPaginatedResp{}
-	mi := &file_orbit_v1_gateway_proto_msgTypes[3]
+	mi := &file_orbit_v1_gateway_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -347,7 +522,7 @@ func (x *GatewayPaginatedResp) String() string {
 func (*GatewayPaginatedResp) ProtoMessage() {}
 
 func (x *GatewayPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_gateway_proto_msgTypes[3]
+	mi := &file_orbit_v1_gateway_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -360,7 +535,7 @@ func (x *GatewayPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GatewayPaginatedResp.ProtoReflect.Descriptor instead.
 func (*GatewayPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_gateway_proto_rawDescGZIP(), []int{3}
+	return file_orbit_v1_gateway_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GatewayPaginatedResp) GetItems() []*GatewayResp {
@@ -402,7 +577,7 @@ var File_orbit_v1_gateway_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"\n" +
-	"\x16orbit/v1/gateway.proto\x12\borbit.v1\"\xed\x01\n" +
+	"\x16orbit/v1/gateway.proto\x12\borbit.v1\"\xe5\x02\n" +
 	"\x10GatewayCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
@@ -413,8 +588,13 @@ const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"\vbase_domain\x18\x05 \x01(\tR\n" +
 	"baseDomain\x12\x19\n" +
 	"\x05image\x18\x06 \x01(\tH\x00R\x05image\x88\x01\x01\x12*\n" +
-	"\x11image_pull_policy\x18\a \x01(\tR\x0fimagePullPolicyB\b\n" +
-	"\x06_image\"\x8e\x02\n" +
+	"\x11image_pull_policy\x18\a \x01(\tR\x0fimagePullPolicy\x122\n" +
+	"\x12default_entrypoint\x18\b \x01(\tH\x01R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
+	"\btls_mode\x18\n" +
+	" \x01(\tH\x02R\atlsMode\x88\x01\x01B\b\n" +
+	"\x06_imageB\x15\n" +
+	"\x13_default_entrypointB\v\n" +
+	"\t_tls_mode\"\x86\x03\n" +
 	"\x10GatewayUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\frest_api_url\x18\x02 \x01(\tH\x01R\n" +
@@ -422,12 +602,31 @@ const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"\vbase_domain\x18\x03 \x01(\tH\x02R\n" +
 	"baseDomain\x88\x01\x01\x12\x19\n" +
 	"\x05image\x18\x04 \x01(\tH\x03R\x05image\x88\x01\x01\x12/\n" +
-	"\x11image_pull_policy\x18\x05 \x01(\tH\x04R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
+	"\x11image_pull_policy\x18\x05 \x01(\tH\x04R\x0fimagePullPolicy\x88\x01\x01\x122\n" +
+	"\x12default_entrypoint\x18\x06 \x01(\tH\x05R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
+	"\btls_mode\x18\b \x01(\tH\x06R\atlsMode\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0f\n" +
 	"\r_rest_api_urlB\x0e\n" +
 	"\f_base_domainB\b\n" +
 	"\x06_imageB\x14\n" +
-	"\x12_image_pull_policy\"\xf6\x02\n" +
+	"\x12_image_pull_policyB\x15\n" +
+	"\x13_default_entrypointB\v\n" +
+	"\t_tls_mode\"\xef\x02\n" +
+	"\x13GatewayExposureItem\x12%\n" +
+	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12)\n" +
+	"\x10application_code\x18\x02 \x01(\tR\x0fapplicationCode\x12%\n" +
+	"\x0ecomponent_name\x18\x03 \x01(\tR\rcomponentName\x12\x1a\n" +
+	"\bprotocol\x18\x04 \x01(\tR\bprotocol\x12\x16\n" +
+	"\x06access\x18\x05 \x01(\tR\x06access\x12%\n" +
+	"\x0econtainer_port\x18\x06 \x01(\x05R\rcontainerPort\x12\x1f\n" +
+	"\vlisten_port\x18\a \x01(\x05R\n" +
+	"listenPort\x12\x1f\n" +
+	"\vpublic_host\x18\b \x01(\tR\n" +
+	"publicHost\x12!\n" +
+	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
+	"\vclient_hint\x18\n" +
+	" \x01(\tR\n" +
+	"clientHint\"\xfd\x03\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -446,7 +645,10 @@ const file_orbit_v1_gateway_proto_rawDesc = "" +
 	"updated_at\x18\n" +
 	" \x01(\tR\tupdatedAt\x12*\n" +
 	"\x11config_updated_at\x18\v \x01(\tR\x0fconfigUpdatedAt\x12*\n" +
-	"\x11image_pull_policy\x18\f \x01(\tR\x0fimagePullPolicyB\b\n" +
+	"\x11image_pull_policy\x18\f \x01(\tR\x0fimagePullPolicy\x12-\n" +
+	"\x12default_entrypoint\x18\r \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
+	"\btls_mode\x18\x0f \x01(\tR\atlsMode\x12;\n" +
+	"\texposures\x18\x10 \x03(\v2\x1d.orbit.v1.GatewayExposureItemR\texposuresB\b\n" +
 	"\x06_image\"\x9e\x01\n" +
 	"\x14GatewayPaginatedResp\x12+\n" +
 	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.GatewayRespR\x05items\x12\x14\n" +
@@ -468,20 +670,22 @@ func file_orbit_v1_gateway_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_gateway_proto_rawDescData
 }
 
-var file_orbit_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_orbit_v1_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_orbit_v1_gateway_proto_goTypes = []any{
 	(*GatewayCreateReq)(nil),     // 0: orbit.v1.GatewayCreateReq
 	(*GatewayUpdateReq)(nil),     // 1: orbit.v1.GatewayUpdateReq
-	(*GatewayResp)(nil),          // 2: orbit.v1.GatewayResp
-	(*GatewayPaginatedResp)(nil), // 3: orbit.v1.GatewayPaginatedResp
+	(*GatewayExposureItem)(nil),  // 2: orbit.v1.GatewayExposureItem
+	(*GatewayResp)(nil),          // 3: orbit.v1.GatewayResp
+	(*GatewayPaginatedResp)(nil), // 4: orbit.v1.GatewayPaginatedResp
 }
 var file_orbit_v1_gateway_proto_depIdxs = []int32{
-	2, // 0: orbit.v1.GatewayPaginatedResp.items:type_name -> orbit.v1.GatewayResp
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	2, // 0: orbit.v1.GatewayResp.exposures:type_name -> orbit.v1.GatewayExposureItem
+	3, // 1: orbit.v1.GatewayPaginatedResp.items:type_name -> orbit.v1.GatewayResp
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_gateway_proto_init() }
@@ -491,14 +695,14 @@ func file_orbit_v1_gateway_proto_init() {
 	}
 	file_orbit_v1_gateway_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_gateway_proto_msgTypes[1].OneofWrappers = []any{}
-	file_orbit_v1_gateway_proto_msgTypes[2].OneofWrappers = []any{}
+	file_orbit_v1_gateway_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_gateway_proto_rawDesc), len(file_orbit_v1_gateway_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

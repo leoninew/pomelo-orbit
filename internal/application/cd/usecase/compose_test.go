@@ -36,11 +36,14 @@ func TestRenderComposeFromComponents(t *testing.T) {
 	if !strings.Contains(got, "image: nginx:1.27") {
 		t.Fatalf("expected web image, got:\n%s", got)
 	}
-	if !strings.Contains(got, "container_name: demo_web") {
-		t.Fatalf("expected container_name demo_web, got:\n%s", got)
+	if !strings.Contains(got, "container_name: demo-web") {
+		t.Fatalf("expected container_name demo-web, got:\n%s", got)
 	}
-	if !strings.Contains(got, "container_name: demo_db") {
-		t.Fatalf("expected container_name demo_db, got:\n%s", got)
+	if !strings.Contains(got, "container_name: demo-db") {
+		t.Fatalf("expected container_name demo-db, got:\n%s", got)
+	}
+	if !strings.Contains(got, "external: true") || !strings.Contains(got, "name: traefik") {
+		t.Fatalf("expected platform network even without expose, got:\n%s", got)
 	}
 	if !strings.Contains(got, "APP_ENV: stage") {
 		t.Fatalf("expected component env override, got:\n%s", got)
@@ -101,12 +104,12 @@ func TestRenderComposeInjectsHTTPExposeLabels(t *testing.T) {
 		Exposes: []model.VersionExpose{
 			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 		},
-		Env: model.Environment{
-			Code:              "local",
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "example.com",
 			DefaultEntrypoint: "websecure",
 			TLSMode:           "letsencrypt",
 		},
-		Gateway: &model.GatewayConfig{BaseDomain: "example.com"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
@@ -116,28 +119,30 @@ func TestRenderComposeInjectsHTTPExposeLabels(t *testing.T) {
 	if !strings.Contains(got, wantRule) {
 		t.Fatalf("expected derived host rule %q, got:\n%s", wantRule, got)
 	}
+	if !strings.Contains(got, "entrypoints=websecure") {
+		t.Fatalf("expected entrypoint from gateway, got:\n%s", got)
+	}
 	if !strings.Contains(got, "traefik.http.services.demo-local-default-web-http.loadbalancer.server.port=80") {
 		t.Fatalf("expected service port label, got:\n%s", got)
 	}
 	if !strings.Contains(got, "traefik.http.routers.demo-local-default-web-http.tls.certresolver=letsencrypt") {
 		t.Fatalf("expected letsencrypt label, got:\n%s", got)
 	}
-	if !strings.Contains(got, "container_name: demo_web") {
+	if !strings.Contains(got, "container_name: demo-web") {
 		t.Fatalf("expected container_name, got:\n%s", got)
 	}
-	// E1: standard + Expose joins gateway network as external consumer.
 	if !strings.Contains(got, "external: true") {
 		t.Fatalf("expected platform network external:true for consumer, got:\n%s", got)
 	}
 	if !strings.Contains(got, "name: traefik") {
 		t.Fatalf("expected platform network name traefik, got:\n%s", got)
 	}
-	if !strings.Contains(got, "- default") || !strings.Contains(got, "- traefik") {
-		t.Fatalf("expected service networks default + traefik, got:\n%s", got)
+	if !strings.Contains(got, "aliases:") || !strings.Contains(got, "demo-web") {
+		t.Fatalf("expected network alias demo-web, got:\n%s", got)
 	}
 }
 
-func TestRenderComposeStandardWithoutExposeDoesNotJoinPlatformNetwork(t *testing.T) {
+func TestRenderComposeStandardWithoutExposeStillJoinsPlatformNetwork(t *testing.T) {
 	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
 	got, err := service.RenderCompose(context.Background(), RenderInput{
 		App:     model.Application{Code: "demo", Kind: "standard"},
@@ -145,19 +150,26 @@ func TestRenderComposeStandardWithoutExposeDoesNotJoinPlatformNetwork(t *testing
 		Components: []model.VersionComponent{
 			{Name: "web", Image: "nginx"},
 		},
-		Env:     model.Environment{Code: "local", DefaultEntrypoint: "web"},
-		Gateway: &model.GatewayConfig{BaseDomain: "example.com"},
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "example.com",
+			DefaultEntrypoint: "web",
+			TLSMode:           "none",
+		},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(got, "external: true") {
-		t.Fatalf("standard without expose must not inject platform network, got:\n%s", got)
+	if !strings.Contains(got, "external: true") {
+		t.Fatalf("standard without expose must still join platform network, got:\n%s", got)
+	}
+	if !strings.Contains(got, "container_name: demo-web") {
+		t.Fatalf("expected runtime container_name, got:\n%s", got)
 	}
 }
 
-func TestRenderComposeStandardExposeOnlyJoinsExposedComponents(t *testing.T) {
+func TestRenderComposeAllComponentsJoinPlatformNetwork(t *testing.T) {
 	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
 	got, err := service.RenderCompose(context.Background(), RenderInput{
 		App:     model.Application{Code: "demo", Kind: "standard"},
@@ -167,34 +179,27 @@ func TestRenderComposeStandardExposeOnlyJoinsExposedComponents(t *testing.T) {
 			{Name: "db", Image: "postgres:16"},
 		},
 		Exposes: []model.VersionExpose{
-			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
+			{ComponentName: "web", Protocol: "http", ContainerPort: 80, Access: "public"},
 		},
-		Env: model.Environment{
-			Code:              "local",
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "example.com",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
-		Gateway: &model.GatewayConfig{BaseDomain: "example.com"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	// web service block should list both networks; db should not get platform network attachment lines
-	// in a multi-service yaml this is approximate: ensure top-level external network exists
-	// and web has network list. db with no networks key is correct (only project default).
 	if !strings.Contains(got, "external: true") {
 		t.Fatalf("expected external platform network, got:\n%s", got)
 	}
-	// crude: after "db:" section should not contain "- traefik" before next top-level-ish marker;
-	// assert web section includes traefik by checking full yaml has service networks on web only once is hard;
-	// check that "db:" appears and the networks list under services isn't forced on every service via counting.
 	webIdx := strings.Index(got, "web:")
 	dbIdx := strings.Index(got, "db:")
 	if webIdx < 0 || dbIdx < 0 {
 		t.Fatalf("expected web and db services, got:\n%s", got)
 	}
-	// Isolate web service body between web: and db: (or reverse order from yaml map)
 	var webBody, dbBody string
 	if webIdx < dbIdx {
 		webBody = got[webIdx:dbIdx]
@@ -203,11 +208,72 @@ func TestRenderComposeStandardExposeOnlyJoinsExposedComponents(t *testing.T) {
 		dbBody = got[dbIdx:webIdx]
 		webBody = got[webIdx:]
 	}
-	if !strings.Contains(webBody, "traefik") {
-		t.Fatalf("expected web to join traefik network, web body:\n%s", webBody)
+	if !strings.Contains(webBody, "traefik") || !strings.Contains(webBody, "demo-web") {
+		t.Fatalf("expected web to join traefik with alias, web body:\n%s", webBody)
 	}
-	if strings.Contains(dbBody, "traefik") {
-		t.Fatalf("db without expose must not join traefik network, db body:\n%s", dbBody)
+	if !strings.Contains(dbBody, "traefik") || !strings.Contains(dbBody, "demo-db") {
+		t.Fatalf("db must also join traefik for cluster DNS, db body:\n%s", dbBody)
+	}
+}
+
+func TestRenderComposeLocalTCPUsesLoopbackPorts(t *testing.T) {
+	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
+	got, err := service.RenderCompose(context.Background(), RenderInput{
+		App:     model.Application{Code: "demo", Kind: "standard"},
+		Version: model.Version{Id: "v1"},
+		Components: []model.VersionComponent{
+			{Name: "redis", Image: "redis:7"},
+		},
+		Exposes: []model.VersionExpose{
+			{ComponentName: "redis", Protocol: "tcp", ContainerPort: 6379, Access: "local"},
+		},
+		Env:     model.Environment{Code: "local"},
+		Service: model.Service{InstanceKey: "default"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "127.0.0.1:6379:6379") {
+		t.Fatalf("expected loopback ports, got:\n%s", got)
+	}
+	if strings.Contains(got, "traefik.tcp") {
+		t.Fatalf("local tcp must not inject traefik tcp labels, got:\n%s", got)
+	}
+}
+
+func TestRenderComposePublicTCPUsesDynamicEntrypoint(t *testing.T) {
+	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
+	got, err := service.RenderCompose(context.Background(), RenderInput{
+		App:     model.Application{Code: "demo", Kind: "standard"},
+		Version: model.Version{Id: "v1"},
+		Components: []model.VersionComponent{
+			{Name: "redis", Image: "redis:7"},
+		},
+		Exposes: []model.VersionExpose{
+			{ComponentName: "redis", Protocol: "tcp", ContainerPort: 6379, Access: "public"},
+		},
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "lvh.me",
+			DefaultEntrypoint: "web",
+			TLSMode:           "none",
+		},
+		Service: model.Service{InstanceKey: "default"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "entrypoints=tcp6379") {
+		t.Fatalf("expected tcp6379 entrypoint, got:\n%s", got)
+	}
+	if !strings.Contains(got, "HostSNI(`*`)") {
+		t.Fatalf("expected HostSNI * for plaintext TCP, got:\n%s", got)
+	}
+	if strings.Contains(got, "entrypoints=web") && strings.Contains(got, "traefik.tcp") {
+		// web may appear in other contexts; ensure tcp router does not use web
+		if strings.Contains(got, "traefik.tcp.routers.demo-local-default-redis-tcp.entrypoints=web") {
+			t.Fatalf("public TCP must not use web entrypoint, got:\n%s", got)
+		}
 	}
 }
 
@@ -222,7 +288,7 @@ func TestRenderComposeRejectsIncompleteHTTPPolicy(t *testing.T) {
 		Exposes: []model.VersionExpose{
 			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 		},
-		Env:     model.Environment{Code: "local", DefaultEntrypoint: "web"},
+		Env:     model.Environment{Code: "local"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err == nil {
@@ -243,12 +309,12 @@ func TestRenderComposeRejectsDuplicateHTTPPath(t *testing.T) {
 			{ComponentName: "web", Protocol: "http", ContainerPort: 80},
 			{ComponentName: "api", Protocol: "http", ContainerPort: 8080},
 		},
-		Env: model.Environment{
-			Code:              "local",
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
-		Gateway: &model.GatewayConfig{BaseDomain: "local.test"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err == nil {
@@ -270,13 +336,13 @@ func TestRenderComposeGatewayKindDoesNotUseCodeMagic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(got, "container_name: traefik_proxy") {
+	if !strings.Contains(got, "container_name: traefik-proxy") {
 		t.Fatalf("expected gateway container_name, got:\n%s", got)
 	}
 	if !strings.Contains(got, "image: traefik:v3") {
 		t.Fatalf("expected component image, got:\n%s", got)
 	}
-	// Incomplete IngressPolicy → no dashboard labels (ports-only still ok).
+	// Incomplete gateway ingress → no dashboard labels (ports-only still ok).
 	if strings.Contains(got, "traefik.enable") {
 		t.Fatalf("gateway without ingress policy should not inject labels, got:\n%s", got)
 	}
@@ -285,7 +351,7 @@ func TestRenderComposeGatewayKindDoesNotUseCodeMagic(t *testing.T) {
 	}
 }
 
-func TestRenderComposeGatewayInjectsDashboardLabelsFromEnv(t *testing.T) {
+func TestRenderComposeGatewayInjectsDashboardLabelsFromGateway(t *testing.T) {
 	service := Service{cfg: config.Config{}, executionStore: &fakeDeploymentExecutionStore{}}
 	got, err := service.RenderCompose(context.Background(), RenderInput{
 		App:     model.Application{Code: "traefik", Kind: "gateway"},
@@ -294,12 +360,12 @@ func TestRenderComposeGatewayInjectsDashboardLabelsFromEnv(t *testing.T) {
 			{Name: "proxy", Image: "traefik:v3"},
 		},
 		// No Expose: dashboard labels must still appear for gateway.
-		Env: model.Environment{
-			Code:              "local",
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
 			TLSMode:           "none",
 		},
-		Gateway: &model.GatewayConfig{BaseDomain: "local.test"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {
@@ -309,10 +375,10 @@ func TestRenderComposeGatewayInjectsDashboardLabelsFromEnv(t *testing.T) {
 		t.Fatalf("expected traefik.enable, got:\n%s", got)
 	}
 	if !strings.Contains(got, "Host(`traefik.local.test`)") {
-		t.Fatalf("expected Host from env policy, got:\n%s", got)
+		t.Fatalf("expected Host from gateway policy, got:\n%s", got)
 	}
 	if !strings.Contains(got, "entrypoints=web") {
-		t.Fatalf("expected entrypoint from env, got:\n%s", got)
+		t.Fatalf("expected entrypoint from gateway, got:\n%s", got)
 	}
 	if !strings.Contains(got, "service=api@internal") {
 		t.Fatalf("expected api@internal service, got:\n%s", got)
@@ -330,11 +396,12 @@ func TestRenderComposeStandardDoesNotInjectGatewayDashboard(t *testing.T) {
 		Components: []model.VersionComponent{
 			{Name: "web", Image: "nginx"},
 		},
-		Env: model.Environment{
-			Code:              "local",
+		Env: model.Environment{Code: "local"},
+		Gateway: &model.GatewayConfig{
+			BaseDomain:        "local.test",
 			DefaultEntrypoint: "web",
+			TLSMode:           "none",
 		},
-		Gateway: &model.GatewayConfig{BaseDomain: "local.test"},
 		Service: model.Service{InstanceKey: "default"},
 	})
 	if err != nil {

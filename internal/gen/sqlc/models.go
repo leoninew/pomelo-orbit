@@ -64,25 +64,6 @@ type BuildStage struct {
 	ProjectID   sql.NullString `db:"project_id"`
 }
 
-type VersionComponent struct {
-	ID              string         `db:"id"`
-	VersionID       string         `db:"version_id"`
-	Name            string         `db:"name"`
-	Image           string         `db:"image"`
-	CommandJson     sql.NullString `db:"command_json"`
-	ArgsJson        sql.NullString `db:"args_json"`
-	EnvJson         sql.NullString `db:"env_json"`
-	PortsJson       sql.NullString `db:"ports_json"`
-	MountsJson      sql.NullString `db:"mounts_json"`
-	NetworksJson    sql.NullString `db:"networks_json"`
-	DependsOnJson   sql.NullString `db:"depends_on_json"`
-	HealthcheckJson sql.NullString `db:"healthcheck_json"`
-	ResourcesJson   sql.NullString `db:"resources_json"`
-	PullPolicy      sql.NullString `db:"pull_policy"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
-}
-
 type Credential struct {
 	ID            string         `db:"id"`
 	Name          string         `db:"name"`
@@ -116,29 +97,24 @@ type Deployment struct {
 }
 
 type Environment struct {
-	ID                string         `db:"id"`
-	ProjectID         string         `db:"project_id"`
-	Code              string         `db:"code"`
-	Name              string         `db:"name"`
-	Description       sql.NullString `db:"description"`
-	CreatedAt         time.Time      `db:"created_at"`
-	UpdatedAt         time.Time      `db:"updated_at"`
-	BaseDomain        string         `db:"base_domain"`
-	DomainTemplate    sql.NullString `db:"domain_template"`
-	DefaultEntrypoint string         `db:"default_entrypoint"`
-	TcpEntrypoint     sql.NullString `db:"tcp_entrypoint"`
-	TlsMode           string         `db:"tls_mode"`
+	ID          string         `db:"id"`
+	ProjectID   string         `db:"project_id"`
+	Code        string         `db:"code"`
+	Name        string         `db:"name"`
+	Description sql.NullString `db:"description"`
+	CreatedAt   time.Time      `db:"created_at"`
+	UpdatedAt   time.Time      `db:"updated_at"`
 }
 
-type VersionExpose struct {
-	ID            string         `db:"id"`
-	VersionID     string         `db:"version_id"`
-	ComponentName string         `db:"component_name"`
-	Protocol      string         `db:"protocol"`
-	ContainerPort int64          `db:"container_port"`
-	PathPrefix    sql.NullString `db:"path_prefix"`
-	CreatedAt     time.Time      `db:"created_at"`
-	UpdatedAt     time.Time      `db:"updated_at"`
+type GatewayConfig struct {
+	ApplicationID     string         `db:"application_id"`
+	RestApiUrl        string         `db:"rest_api_url"`
+	BaseDomain        string         `db:"base_domain"`
+	Image             sql.NullString `db:"image"`
+	DefaultEntrypoint string         `db:"default_entrypoint"`
+	TlsMode           string         `db:"tls_mode"`
+	CreatedAt         time.Time      `db:"created_at"`
+	UpdatedAt         time.Time      `db:"updated_at"`
 }
 
 type LoginAttempt struct {
@@ -345,4 +321,36 @@ type Version struct {
 	Note                 sql.NullString `db:"note"`
 	CreatedAt            time.Time      `db:"created_at"`
 	UpdatedAt            time.Time      `db:"updated_at"`
+}
+
+type VersionComponent struct {
+	ID              string         `db:"id"`
+	VersionID       string         `db:"version_id"`
+	Name            string         `db:"name"`
+	Image           string         `db:"image"`
+	CommandJson     sql.NullString `db:"command_json"`
+	ArgsJson        sql.NullString `db:"args_json"`
+	EnvJson         sql.NullString `db:"env_json"`
+	PortsJson       sql.NullString `db:"ports_json"`
+	MountsJson      sql.NullString `db:"mounts_json"`
+	NetworksJson    sql.NullString `db:"networks_json"`
+	DependsOnJson   sql.NullString `db:"depends_on_json"`
+	HealthcheckJson sql.NullString `db:"healthcheck_json"`
+	ResourcesJson   sql.NullString `db:"resources_json"`
+	PullPolicy      sql.NullString `db:"pull_policy"`
+	CreatedAt       time.Time      `db:"created_at"`
+	UpdatedAt       time.Time      `db:"updated_at"`
+}
+
+type VersionExpose struct {
+	ID            string         `db:"id"`
+	VersionID     string         `db:"version_id"`
+	ComponentName string         `db:"component_name"`
+	Protocol      string         `db:"protocol"`
+	ContainerPort int64          `db:"container_port"`
+	PathPrefix    sql.NullString `db:"path_prefix"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+	Access        string         `db:"access"`
+	ListenPort    sql.NullInt64  `db:"listen_port"`
 }

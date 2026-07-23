@@ -1,5 +1,5 @@
 # CD E5：Component 全规格 / 部署运行时 / rest 路由 — 验证记录
-最后修改时间: 2026-07-22 18:21:44
+最后修改时间: 2026-07-23 10:35:22
 
 Review status: Draft
 
@@ -46,7 +46,7 @@ Flow mode: strict
 | D6 rest 全量 PUT / 清空语义 / 串行锁 | **符合** — `putRestConfig` + `mu`；`TestRouteManagerApplySnapshotPutsFullRestConfig` / Clears |
 | D6.3 废除 File 写路由 | **符合** — 产品路径无 `deployRouteFile`；配置项 `dynamic_route_dir` 已从 config 移除 |
 | D6.4 自定义 PEM 非本期 | **符合（边界）** — `WriteCertificate` 仍存在（历史/Route HTTPS 路径），**不**作为 E5 挂载/rest 主交付；完整对齐 F1 |
-| D9 单 gateway | **符合** — 代码拦截；**缺**专用单测（见 Incomplete） |
+| D9 单 gateway | **符合** — 代码拦截 + `TestDeploySecondGatewayRejectedWhenAnotherGatewayActive`（cleanup） |
 | F1–F7 / E6 不吞并 | **符合** |
 
 ## Plan alignment
@@ -141,25 +141,24 @@ Flow mode: strict
 
 1. rest 全量 PUT 依赖平台唯一写者；并发靠进程内 mutex，多实例部署未覆盖。  
 2. Traefik 须 ≥3.6 且静态启用 `providers.rest`；平台不改用户静态 yml（E6 managed 再封装）。  
-3. 单 gateway / RuntimeConfig 缺键路径缺单测，回归靠手工或后续补测。  
-4. PEM 写盘路径与「无强制 certs 树」叙事并存 — 需 F1 时收口产品语义。  
+3. ~~单 gateway 专用单测~~ — cleanup 已补；RuntimeConfig 缺键路径仍可按需加强。  
+4. PEM 写盘路径与「无强制 certs 树」叙事并存 — F1 可选，非主线必做。  
 5. 前端 lint 既有 warnings 未清；不阻塞 E5。
 
 ## Incomplete items
 
-1. **V2 / V7 专用单测**未补（实现存在）。  
-2. **V10** 部署日志物化步骤未断言。  
-3. **E5 Verification 待用户 Accept** 本文件。  
-4. **E6** Requirement 仍 Draft（Q1–Q6）。  
-5. **F1–F7** 未开始。
+1. **V2 / V7 / V10** 部分专用断言仍可加强（非主路径阻塞）。  
+2. 本 Verification **待用户显式 Accept** Review status。  
+3. **E6 已交付**（见 `docs/verification/20260722-cd-gateway-domain-config-e6.md`）；非本文件 Incomplete。  
+4. **F1–F7** 为可选 backlog（F1/external 用户排除出强制后续）。
 
 ## Conclusion
 
-在 Req / Spec / Plan 边界内，E5 **主交付已落地且可验收**：结构化挂载与 content 物化、RuntimeConfig 部署面、gateway 网络、rest 全量路由、单 gateway 约束、全 kind 共用解析、前端表单，以及废除 File 写平台路由。自动化测试与前端 typecheck/lint（0 error）通过。
+在 Req / Spec / Plan 边界内，E5 **主交付已落地且可验收**：结构化挂载与 content 物化、RuntimeConfig 部署面、gateway 网络、rest 全量路由、单 gateway 约束、全 kind 共用解析、前端表单，以及废除 File 写平台路由。
 
-残留为测试补强与 F1/E6 边界说明，**不构成** E5 主路径未交付。  
-建议用户将本 Verification 标为 **Accepted** 后进入 **E6 Requirement** 闭合。
+用户实机路径与 E6 一并验收；cleanup 补强单 gateway 专用测。  
+建议用户将本 Verification 标为 **Accepted**。
 
 ---
 
-**当前：严格模式 / strict，验证 / Verification — Review status: Draft**
+**当前：严格模式 / strict，验证 / Verification — Review status: Draft（主路径完成；待用户 Accept）**

@@ -1,5 +1,5 @@
 # CD 应用版本化领域模型兑现节奏
-最后修改时间: 2026-07-22 19:15:00
+最后修改时间: 2026-07-23 10:35:22
 
 Review status: Accepted
 
@@ -47,7 +47,7 @@ CD 应用管理职责过载。目标：Application 身份 + Version 规格 + Ser
 | **修订 R1** | [environment-expose-service](./20260721-cd-environment-expose-service.md) | Env 实体、Expose、多 Service、Traefik MVP | **Accepted**；已实现 + Verification Accepted |
 | **修订 R2** | [environment-ingress-policy](./20260722-cd-environment-ingress-policy.md) | 环境**接入策略**取代 per-component Binding | Requirement/Spec/Plan/Verification **Accepted** |
 | **修订 R3** | [application-kind-gateway](./20260722-cd-application-kind-gateway.md) | Application.**kind**=`standard`\|`gateway`，决定 Render 分支 | Requirement/Spec/Plan/Verification **Accepted** |
-| 后续 | consumer 网 / K8s / **网关领域配置** 等 | 见 **E1–E6**；**E5** 已实现（Verification Draft）；**E6** Req/Spec/Plan Accepted；**A/B 已实现**（C compile 可后续）：`docs/requirement/20260722-cd-gateway-domain-config-e6.md` | — |
+| 后续 | 主路径已闭环；可选 backlog | **E1–E6 主能力已交付**（用户实机可启 managed Traefik 并部署应用）；收口清理：`docs/requirement/20260723-cd-post-e6-cleanup.md`；可选 F2–F6 / E2–E4 / K8s（**不含** F1 证书、external 为必做） | — |
 
 ```text
 P0 领域
@@ -57,13 +57,13 @@ P0 领域
   -> R1 Environment / Expose / Service（已交付）
   -> R2 Environment IngressPolicy（standard 如何被入口暴露）
   -> R3 Application.kind gateway|standard（已交付 + Verification Accepted）
-  -> E5 通用挂载 / Component 全规格 / rest 动态路由 / mount content（Req/Spec/Plan Accepted；实现已提交；Verification Draft：`docs/verification/20260722-cd-gateway-component-mount-e5.md`）
-  -> E6 网关领域 ★ Req/Spec/Plan **Accepted**；**E6-A/B 已实现**（Env 无 domain 字段；Host 固定；C compile 可选后续）
+  -> E5 通用挂载 / Component 全规格 / rest 动态路由 / mount content（Req/Spec/Plan Accepted；实现已提交；Verification：`docs/verification/20260722-cd-gateway-component-mount-e5.md` — 用户实机路径已验收，文档随 cleanup 对齐）
+  -> E6 网关领域 ★ Req/Spec/Plan **Accepted**；**E6-A/B/C/D 已实现**（含 CompileGatewayToVersion；Env 无 domain；Host 固定）
        · gateway_config 表；rest+base_domain 在 Gateway；Env 删 base_domain+domain_template；去全局 traefik api/domain
        · 导航 Gateway；应用列表 kind=standard；Version 挂载保留
-  -> E5-F1..F7 后续（证书 / 鉴权 / 多 gateway / dashboard / …）
-  -> E1 consumer 网络（standard+Expose join 网关网 external）— **已实现**；Verification **Accepted**：`docs/verification/20260722-cd-consumer-platform-network-e1.md`
-  -> 扩展 E2–E4 / K8s 等
+  -> E1 consumer 网络 — **已实现**；Verification **Accepted**
+  -> 收口 cleanup light：`docs/requirement/20260723-cd-post-e6-cleanup.md`（死 BindEnv、单 gateway 单测、文档对齐）
+  -> 可选 backlog：E5-F2..F6 / E2–E4 / K8s（F1 自签证书、external 用户自管 Traefik **不**作主线必做）
 ```
 
 **注意**：不再采用「P2 先用 compose 全文当 Version 存储」；与 P0/P1 **Version=业务结构化规格** 冲突，已废止。
@@ -148,11 +148,13 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 | Spec R3 | `docs/spec/20260722-cd-application-kind-gateway.md` | **Accepted** |
 | Plan R3 | `docs/plan/20260722-cd-application-kind-gateway.md` | **Accepted**；已实现 |
 | Verification R3 | `docs/verification/20260722-cd-application-kind-gateway.md` | **Accepted** |
-| 扩展 E5 | `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | Requirement **Accepted**；Spec/Plan **Accepted**；实现已提交；Verification **Draft** `docs/verification/20260722-cd-gateway-component-mount-e5.md` |
-| 扩展 **E6** | `docs/requirement/20260722-cd-gateway-domain-config-e6.md` | Requirement **Accepted** |
+| 扩展 E5 | `docs/requirement/20260722-cd-gateway-component-mount-e5.md` | Requirement **Accepted**；Spec/Plan **Accepted**；实现已提交；Verification 见 `docs/verification/20260722-cd-gateway-component-mount-e5.md`（cleanup 对齐） |
+| 扩展 **E6** | `docs/requirement/20260722-cd-gateway-domain-config-e6.md` | Requirement **Accepted**；**A–D 已实现**（含 C compile） |
 | Spec E6 | `docs/spec/20260722-cd-gateway-domain-config-e6.md` | **Accepted** |
 | Plan E6 | `docs/plan/20260722-cd-gateway-domain-config-e6.md` | **Accepted** — A 表/导航 → B 读路径 → C compile → D 回归 |
-| E5 后续 F1–F7 | Spec「后续任务」 | 自定义 PEM、rest 鉴权、**多 gateway**、provider 演进、dashboard、healthcheck、预期外缺口 |
+| Verification E6 | `docs/verification/20260722-cd-gateway-domain-config-e6.md` | 主路径可验收；用户实机已启 Traefik/部署应用；cleanup 关闭残留 Incomplete |
+| 收口 cleanup | `docs/requirement/20260723-cd-post-e6-cleanup.md` | light；**Accepted**（实现中） |
+| 可选 backlog | E5 Spec F2–F6；E2–E4；K8s | **非**主线必做；F1/external 用户排除出强制后续 |
 | Plan | `docs/plan/20260721-cd-application-version.md` | Implemented（Version 闭环） |
 | Plan | `docs/plan/20260721-cd-environment-expose-service.md` | **Accepted**；已实现 |
 | Verification | `docs/verification/20260721-cd-environment-expose-service.md` | **Accepted**（有条件） |
@@ -195,3 +197,5 @@ P2/P3 实现向细节（不阻塞 P0/P1 业务语义）：
 - 2026-07-22：用户「推进任务」→ E6 Requirement **Accepted**；Spec Draft。  
 - 2026-07-22：E6 Spec 按用户纠正修订 — gateway_config 表；rest/域名从 Gateway；去全局配置；Intent 更名为 Gateway config。  
 - 2026-07-22：E6 Spec/Plan **Accepted** — Env.base_domain 删除归 Gateway；实现批 A–D。
+- 2026-07-23：用户实机验收 — 可启动 managed Traefik 并部署其他应用；排除 F1 自签与 external 后主 cadence **无强制大任务**。
+- 2026-07-23：开 light 收口 `20260723-cd-post-e6-cleanup.md`（BindEnv 死键、单 gateway 专用测、Verification/cadence 对齐）并 **开始实现**。

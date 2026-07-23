@@ -323,6 +323,10 @@ type VersionExposeReq struct {
 	Protocol      string                 `protobuf:"bytes,2,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	ContainerPort int32                  `protobuf:"varint,3,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
 	PathPrefix    *string                `protobuf:"bytes,4,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
+	// local | public; empty treated as public
+	Access string `protobuf:"bytes,5,opt,name=access,proto3" json:"access,omitempty"`
+	// 0/omit = use container_port
+	ListenPort    *int32 `protobuf:"varint,6,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -385,6 +389,20 @@ func (x *VersionExposeReq) GetPathPrefix() string {
 	return ""
 }
 
+func (x *VersionExposeReq) GetAccess() string {
+	if x != nil {
+		return x.Access
+	}
+	return ""
+}
+
+func (x *VersionExposeReq) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
+}
+
 type VersionExposeResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -395,6 +413,8 @@ type VersionExposeResp struct {
 	PathPrefix    *string                `protobuf:"bytes,6,opt,name=path_prefix,json=pathPrefix,proto3,oneof" json:"path_prefix,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Access        string                 `protobuf:"bytes,9,opt,name=access,proto3" json:"access,omitempty"`
+	ListenPort    *int32                 `protobuf:"varint,10,opt,name=listen_port,json=listenPort,proto3,oneof" json:"listen_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -483,6 +503,20 @@ func (x *VersionExposeResp) GetUpdatedAt() string {
 		return x.UpdatedAt
 	}
 	return ""
+}
+
+func (x *VersionExposeResp) GetAccess() string {
+	if x != nil {
+		return x.Access
+	}
+	return ""
+}
+
+func (x *VersionExposeResp) GetListenPort() int32 {
+	if x != nil && x.ListenPort != nil {
+		return *x.ListenPort
+	}
+	return 0
 }
 
 type VersionCreateReq struct {
@@ -1172,14 +1206,18 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\x10_depends_on_jsonB\x13\n" +
 	"\x11_healthcheck_jsonB\x11\n" +
 	"\x0f_resources_jsonB\x0e\n" +
-	"\f_pull_policy\"\xb2\x01\n" +
+	"\f_pull_policy\"\x80\x02\n" +
 	"\x10VersionExposeReq\x12%\n" +
 	"\x0ecomponent_name\x18\x01 \x01(\tR\rcomponentName\x12\x1a\n" +
 	"\bprotocol\x18\x02 \x01(\tR\bprotocol\x12%\n" +
 	"\x0econtainer_port\x18\x03 \x01(\x05R\rcontainerPort\x12$\n" +
 	"\vpath_prefix\x18\x04 \x01(\tH\x00R\n" +
-	"pathPrefix\x88\x01\x01B\x0e\n" +
-	"\f_path_prefix\"\xa0\x02\n" +
+	"pathPrefix\x88\x01\x01\x12\x16\n" +
+	"\x06access\x18\x05 \x01(\tR\x06access\x12$\n" +
+	"\vlisten_port\x18\x06 \x01(\x05H\x01R\n" +
+	"listenPort\x88\x01\x01B\x0e\n" +
+	"\f_path_prefixB\x0e\n" +
+	"\f_listen_port\"\xee\x02\n" +
 	"\x11VersionExposeResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1192,8 +1230,13 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\b \x01(\tR\tupdatedAtB\x0e\n" +
-	"\f_path_prefix\"\x93\x02\n" +
+	"updated_at\x18\b \x01(\tR\tupdatedAt\x12\x16\n" +
+	"\x06access\x18\t \x01(\tR\x06access\x12$\n" +
+	"\vlisten_port\x18\n" +
+	" \x01(\x05H\x01R\n" +
+	"listenPort\x88\x01\x01B\x0e\n" +
+	"\f_path_prefixB\x0e\n" +
+	"\f_listen_port\"\x93\x02\n" +
 	"\x10VersionCreateReq\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x1e\n" +

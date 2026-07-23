@@ -9,7 +9,7 @@ import (
 )
 
 func TestBuildTraefikStaticConfigEnablesRestAndDocker(t *testing.T) {
-	yml := buildTraefikStaticConfig()
+	yml := buildTraefikStaticConfig(model.GatewayConfig{TLSMode: "none"}, nil)
 	for _, want := range []string{
 		"providers:",
 		"rest:",
@@ -27,10 +27,30 @@ func TestBuildTraefikStaticConfigEnablesRestAndDocker(t *testing.T) {
 			t.Fatalf("expected %q in static config:\n%s", want, yml)
 		}
 	}
+	if strings.Contains(yml, "certificatesResolvers") {
+		t.Fatalf("none mode should not include ACME resolver:\n%s", yml)
+	}
+}
+
+func TestBuildTraefikStaticConfigTCPAndACME(t *testing.T) {
+	yml := buildTraefikStaticConfig(model.GatewayConfig{TLSMode: "letsencrypt"}, []int{6379, 3306})
+	for _, want := range []string{
+		"tcp6379:",
+		`address: ":6379"`,
+		"tcp3306:",
+		"certificatesResolvers:",
+		"letsencrypt:",
+		"httpChallenge:",
+		"entryPoint: web",
+	} {
+		if !strings.Contains(yml, want) {
+			t.Fatalf("expected %q in static config:\n%s", want, yml)
+		}
+	}
 }
 
 func TestBuildManagedGatewayMountsValid(t *testing.T) {
-	mounts := buildManagedGatewayMounts()
+	mounts := buildManagedGatewayMounts(model.GatewayConfig{}, nil)
 	if len(mounts) != 3 {
 		t.Fatalf("expected 3 managed mounts, got %d", len(mounts))
 	}
@@ -62,7 +82,7 @@ func TestMergeManagedGatewayMountsPreservesCustomTargets(t *testing.T) {
 		{SourceType: mountSourceLogical, Source: "custom.conf", Target: "/etc/custom.conf", Content: "x", ContentMode: contentModeSeed},
 		{SourceType: mountSourceSpecial, Source: specialDockerSock, Target: gatewayMountTargetDockerSock, ReadOnly: false},
 	}
-	managed := buildManagedGatewayMounts()
+	managed := buildManagedGatewayMounts(model.GatewayConfig{}, nil)
 	got := mergeManagedGatewayMounts(existing, managed)
 	targets := make(map[string]MountSpec, len(got))
 	for _, m := range got {
@@ -79,25 +99,21 @@ func TestMergeManagedGatewayMountsPreservesCustomTargets(t *testing.T) {
 	}
 }
 
-func TestBuildManagedGatewayComponentUsesImageAndDefault(t *testing.T) {
-	custom := "traefik:v3.9"
-	c, err := buildManagedGatewayComponent(model.GatewayConfig{Image: &custom}, nil)
+func TestBuildManagedGatewayComponentRequiresImage(t *testing.T) {
+	custom := "traefik:3.6"
+	c, err := buildManagedGatewayComponent(model.GatewayConfig{Image: &custom}, nil, []int{6379})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if c.Name != gatewayManagedComponentName || c.Image != custom {
 		t.Fatalf("got name=%s image=%s", c.Name, c.Image)
 	}
-	if c.PortsJSON == nil || !strings.Contains(*c.PortsJSON, "80:80") {
-		t.Fatalf("expected ports, got %v", c.PortsJSON)
+	if c.PortsJSON == nil || !strings.Contains(*c.PortsJSON, "80:80") || !strings.Contains(*c.PortsJSON, "6379:6379") {
+		t.Fatalf("expected ports including 6379, got %v", c.PortsJSON)
 	}
 
-	c2, err := buildManagedGatewayComponent(model.GatewayConfig{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c2.Image != defaultGatewayImage {
-		t.Fatalf("default image want %s got %s", defaultGatewayImage, c2.Image)
+	if _, err := buildManagedGatewayComponent(model.GatewayConfig{}, nil, nil); err == nil {
+		t.Fatal("expected error when image is empty")
 	}
 }
 

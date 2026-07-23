@@ -4,7 +4,7 @@
 
 Pomelo Orbit 使用 Traefik 作为反向代理网关，实现动态路由和 HTTPS 证书管理。
 
-- **平台路由**（CD Route 表）：经 Traefik **`providers.rest`** 全量 PUT，控制面 URL 来自 **Gateway config `rest_api_url`**（不再使用全局 `traefik.api_url`）。
+- **平台路由**（CD Route 表）：经 Traefik **`providers.rest`** 全量 PUT，控制面 URL 来自 **Gateway config `rest_api_url`**。
 - **应用暴露**（Version Expose）：部署时写入 Docker labels；Host 推导为 `{app_code}.{gateway.base_domain}`。
 - **证书文件**：平台写入证书目录供 TLS 路由引用（见下文）。
 

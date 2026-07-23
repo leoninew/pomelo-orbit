@@ -328,12 +328,14 @@ func newCDIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 func seedTestGateway(t *testing.T, service Service) {
 	t.Helper()
 	ctx := context.Background()
+	img := "traefik:3.6"
 	_, err := service.CreateGateway(ctx, cdTestUserId, cdto.GatewayCreateInput{
 		ProjectId:       cdTestProjectId,
 		Code:            "test-gateway",
 		Name:            "Test Gateway",
-		RestAPIURL:      "http://traefik:8080",
+		RestApiUrl:      "http://traefik:8080",
 		BaseDomain:      "lvh.me",
+		Image:           &img,
 		ImagePullPolicy: "missing",
 	})
 	if err != nil {
@@ -352,7 +354,7 @@ func TestCreateGatewayCompilesManagedVersion(t *testing.T) {
 		ProjectId:       cdTestProjectId,
 		Code:            "edge-gw",
 		Name:            "Edge GW",
-		RestAPIURL:      "http://127.0.0.1:8080",
+		RestApiUrl:      "http://127.0.0.1:8080",
 		BaseDomain:      "example.test",
 		Image:           &img,
 		ImagePullPolicy: "always",
@@ -415,6 +417,87 @@ func TestCreateGatewayCompilesManagedVersion(t *testing.T) {
 	}
 	if versions2[0].Components[0].Image != img2 {
 		t.Fatalf("compile did not refresh image, got %s", versions2[0].Components[0].Image)
+	}
+}
+
+// TestDeploySecondGatewayRejectedWhenAnotherGatewayActive covers E5/E6 V9:
+// only one gateway Service may be deploying or running at a time.
+func TestDeploySecondGatewayRejectedWhenAnotherGatewayActive(t *testing.T) {
+	service, database := newCDIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	localEnv := loadLocalEnvironment(t, service)
+
+	gateways, err := service.ListGateways(ctx, cdTestUserId, cdTestProjectId, 1, 20, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(gateways.Items) == 0 {
+		t.Fatal("expected seedTestGateway application")
+	}
+	first := gateways.Items[0]
+	versions, err := service.ListVersions(ctx, cdTestUserId, first.Application.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(versions) == 0 {
+		t.Fatal("expected compiled version on seed gateway")
+	}
+
+	// Simulate active runtime binding for the first gateway (deploying/running).
+	if err := service.store.UpsertService(ctx, model.Service{
+		Id:            "01KSERVICE0000000000000GW01",
+		ApplicationId: first.Application.Id,
+		EnvironmentId: localEnv.Id,
+		InstanceKey:   "default",
+		VersionId:     versions[0].Version.Id,
+		Status:        status.ServiceStatusRunning,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	secondImg := "traefik:3.6"
+	second, err := service.CreateGateway(ctx, cdTestUserId, cdto.GatewayCreateInput{
+		ProjectId:       cdTestProjectId,
+		Code:            "second-gw",
+		Name:            "Second Gateway",
+		RestApiUrl:      "http://127.0.0.1:18080",
+		BaseDomain:      "second.test",
+		Image:           &secondImg,
+		ImagePullPolicy: "missing",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondVersions, err := service.ListVersions(ctx, cdTestUserId, second.Application.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(secondVersions) == 0 {
+		t.Fatal("expected compiled version on second gateway")
+	}
+
+	_, err = service.DeployApplication(ctx, cdTestUserId, second.Application.Id, cdto.ApplicationDeployInput{
+		VersionId:     secondVersions[0].Version.Id,
+		EnvironmentId: localEnv.Id,
+	})
+	if err == nil {
+		t.Fatal("expected deploy of second gateway to be rejected while first is running")
+	}
+	if apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected validation status, got %d: %v", apperror.StatusCode(err), err)
+	}
+	if !strings.Contains(err.Error(), "another gateway is already deploying or running") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+
+	// Redeploying the same active gateway application must still be allowed.
+	_, err = service.DeployApplication(ctx, cdTestUserId, first.Application.Id, cdto.ApplicationDeployInput{
+		VersionId:     versions[0].Version.Id,
+		EnvironmentId: localEnv.Id,
+	})
+	if err != nil {
+		t.Fatalf("deploy of the active gateway application itself must be allowed: %v", err)
 	}
 }
 

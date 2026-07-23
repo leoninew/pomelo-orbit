@@ -15,11 +15,6 @@ import (
 
 var environmentCodePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
-const (
-	defaultHTTPEntrypoint     = "web"
-	defaultEnvironmentTLSMode = "none"
-)
-
 func (s Service) ListEnvironments(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Environment], error) {
 	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
@@ -56,19 +51,12 @@ func (s Service) CreateEnvironment(ctx context.Context, userId string, input cdt
 	if code == "" || len(code) > 100 || !environmentCodePattern.MatchString(code) || name == "" || len(name) > 255 {
 		return cdto.EnvironmentView{}, apperror.New(apperror.KindValidation, "Invalid environment fields")
 	}
-	policy, err := normalizeIngressPolicy(input.DefaultEntrypoint, input.TCPEntrypoint, input.TLSMode, true)
-	if err != nil {
-		return cdto.EnvironmentView{}, err
-	}
 	env := model.Environment{
-		Id:                idutil.NewId(),
-		ProjectId:         projectId,
-		Code:              code,
-		Name:              name,
-		Description:       normalizeOptionalText(input.Description),
-		DefaultEntrypoint: policy.DefaultEntrypoint,
-		TCPEntrypoint:     policy.TCPEntrypoint,
-		TLSMode:           policy.TLSMode,
+		Id:          idutil.NewId(),
+		ProjectId:   projectId,
+		Code:        code,
+		Name:        name,
+		Description: normalizeOptionalText(input.Description),
 	}
 	if err := s.store.CreateEnvironment(ctx, env); err != nil {
 		return cdto.EnvironmentView{}, apperror.Wrap(apperror.KindInternal, "Failed to create environment", err)
@@ -91,25 +79,6 @@ func (s Service) UpdateEnvironment(ctx context.Context, userId string, environme
 	if input.Description != nil {
 		env.Description = normalizeOptionalText(input.Description)
 	}
-	defaultEntrypoint := &env.DefaultEntrypoint
-	if input.DefaultEntrypoint != nil {
-		defaultEntrypoint = input.DefaultEntrypoint
-	}
-	tcpEntrypoint := env.TCPEntrypoint
-	if input.TCPEntrypoint != nil {
-		tcpEntrypoint = input.TCPEntrypoint
-	}
-	tlsMode := &env.TLSMode
-	if input.TLSMode != nil {
-		tlsMode = input.TLSMode
-	}
-	policy, err := normalizeIngressPolicy(defaultEntrypoint, tcpEntrypoint, tlsMode, false)
-	if err != nil {
-		return cdto.EnvironmentView{}, err
-	}
-	env.DefaultEntrypoint = policy.DefaultEntrypoint
-	env.TCPEntrypoint = policy.TCPEntrypoint
-	env.TLSMode = policy.TLSMode
 	if err := s.store.UpdateEnvironment(ctx, env); err != nil {
 		return cdto.EnvironmentView{}, apperror.Wrap(apperror.KindInternal, "Failed to update environment", err)
 	}
@@ -147,48 +116,4 @@ func (s Service) loadEnvironmentForUser(ctx context.Context, userId string, envi
 		return model.Environment{}, err
 	}
 	return env, nil
-}
-
-type ingressPolicyValues struct {
-	DefaultEntrypoint string
-	TCPEntrypoint     *string
-	TLSMode           string
-}
-
-func normalizeIngressPolicy(
-	defaultEntrypoint *string,
-	tcpEntrypoint *string,
-	tlsMode *string,
-	applyCreateDefaults bool,
-) (ingressPolicyValues, error) {
-	out := ingressPolicyValues{}
-
-	if defaultEntrypoint != nil {
-		out.DefaultEntrypoint = strings.TrimSpace(*defaultEntrypoint)
-	}
-	if applyCreateDefaults && out.DefaultEntrypoint == "" {
-		out.DefaultEntrypoint = defaultHTTPEntrypoint
-	}
-	if out.DefaultEntrypoint == "" {
-		return ingressPolicyValues{}, apperror.New(apperror.KindValidation, "default_entrypoint is required")
-	}
-	if len(out.DefaultEntrypoint) > 128 {
-		return ingressPolicyValues{}, apperror.New(apperror.KindValidation, "default_entrypoint is too long")
-	}
-
-	out.TCPEntrypoint = normalizeOptionalText(tcpEntrypoint)
-	if out.TCPEntrypoint != nil && len(strings.TrimSpace(*out.TCPEntrypoint)) > 128 {
-		return ingressPolicyValues{}, apperror.New(apperror.KindValidation, "tcp_entrypoint is too long")
-	}
-
-	if tlsMode != nil {
-		out.TLSMode = strings.ToLower(strings.TrimSpace(*tlsMode))
-	}
-	if out.TLSMode == "" {
-		out.TLSMode = defaultEnvironmentTLSMode
-	}
-	if out.TLSMode != "none" && out.TLSMode != "letsencrypt" && out.TLSMode != "tls" {
-		return ingressPolicyValues{}, apperror.New(apperror.KindValidation, "Invalid tls_mode")
-	}
-	return out, nil
 }

@@ -248,9 +248,9 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
 		return "", apperror.New(apperror.KindValidation, "application and environment must belong to the same project")
 	}
-	instanceKey = strings.TrimSpace(instanceKey)
-	if instanceKey == "" {
-		instanceKey = "default"
+	instanceKey, err = normalizeInstanceKey(instanceKey)
+	if err != nil {
+		return "", err
 	}
 	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
@@ -284,7 +284,7 @@ func (s Service) PreviewVersion(ctx context.Context, userId string, versionId st
 // optionalGatewayForRender loads gateway config when Host/dashboard domains are needed.
 func (s Service) optionalGatewayForRender(ctx context.Context, components []model.VersionComponent, exposes []model.VersionExpose, app model.Application) (*model.GatewayConfig, error) {
 	kind := strings.TrimSpace(app.Kind)
-	needsGateway := kind == status.ApplicationKindGateway || len(exposes) > 0
+	needsGateway := kind == status.ApplicationKindGateway || needsPublicGateway(exposes)
 	if !needsGateway {
 		return nil, nil
 	}
@@ -395,12 +395,44 @@ func normalizeVersionExposes(inputs []cdto.VersionExposeInput) ([]model.VersionE
 		if componentName == "" || (protocol != "http" && protocol != "tcp") || input.ContainerPort < 1 || input.ContainerPort > 65535 {
 			return nil, apperror.New(apperror.KindValidation, "Invalid expose fields")
 		}
+		access := strings.ToLower(strings.TrimSpace(input.Access))
+		if access == "" {
+			access = exposeAccessPublic
+		}
+		if access != exposeAccessLocal && access != exposeAccessPublic {
+			return nil, apperror.New(apperror.KindValidation, "expose access must be local or public")
+		}
+		var listenPort *int
+		if input.ListenPort != nil && *input.ListenPort > 0 {
+			if *input.ListenPort > 65535 {
+				return nil, apperror.New(apperror.KindValidation, "expose listen_port out of range")
+			}
+			v := *input.ListenPort
+			listenPort = &v
+		}
+		pathPrefix := normalizeOptionalText(input.PathPrefix)
+		if protocol == "tcp" && pathPrefix != nil && strings.TrimSpace(*pathPrefix) != "" {
+			return nil, apperror.New(apperror.KindValidation, "path_prefix is only allowed for http expose")
+		}
 		exposes = append(exposes, model.VersionExpose{
 			ComponentName: componentName,
 			Protocol:      protocol,
 			ContainerPort: input.ContainerPort,
-			PathPrefix:    normalizeOptionalText(input.PathPrefix),
+			PathPrefix:    pathPrefix,
+			Access:        access,
+			ListenPort:    listenPort,
 		})
 	}
 	return exposes, nil
+}
+
+func normalizeInstanceKey(instanceKey string) (string, error) {
+	instanceKey = strings.TrimSpace(instanceKey)
+	if instanceKey == "" {
+		instanceKey = "default"
+	}
+	if instanceKey != "default" {
+		return "", apperror.New(apperror.KindValidation, "instance_key must be default (single runtime per application)")
+	}
+	return instanceKey, nil
 }

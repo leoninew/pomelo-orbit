@@ -41,6 +41,10 @@ message VersionExposeReq {
   string protocol = 2;
   int32 container_port = 3;
   optional string path_prefix = 4;
+  // local | public; empty treated as public
+  string access = 5;
+  // 0/omit = use container_port
+  optional int32 listen_port = 6;
 }
 
 message VersionExposeResp {
@@ -52,6 +56,8 @@ message VersionExposeResp {
   optional string path_prefix = 6;
   string created_at = 7;
   string updated_at = 8;
+  string access = 9;
+  optional int32 listen_port = 10;
 }
 
 message VersionCreateReq {

@@ -93,11 +93,11 @@ func (r Repository) CreateProject(ctx context.Context, project model.Project, us
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO project_member (project_id, user_id, created_at) VALUES (?, ?, %s)`, db.NowExpr(r.driver)), project.Id, userId); err != nil {
 		return fmt.Errorf("add project creator %s/%s: %w", project.Id, userId, err)
 	}
-	// Seed default Environment for the project (code=local) with IngressPolicy defaults.
+	// Seed default Environment for the project (code=local). Ingress policy lives on Gateway.
 	envID := idutil.NewId()
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO environment (
-		id, project_id, code, name, description, default_entrypoint, tcp_entrypoint, tls_mode, created_at, updated_at
-	) VALUES (?, ?, 'local', 'Local', NULL, 'web', NULL, 'none', %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), envID, project.Id); err != nil {
+		id, project_id, code, name, description, created_at, updated_at
+	) VALUES (?, ?, 'local', 'Local', NULL, %s, %s)`, db.NowExpr(r.driver), db.NowExpr(r.driver)), envID, project.Id); err != nil {
 		return fmt.Errorf("seed local environment for project %s: %w", project.Code, err)
 	}
 	if err := tx.Commit(); err != nil {

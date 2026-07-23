@@ -77,6 +77,8 @@ type VersionExposeInput struct {
 	Protocol      string
 	ContainerPort int
 	PathPrefix    *string
+	Access        string // local | public; empty → public
+	ListenPort    *int   // nil/0 → container_port
 }
 
 // VersionView is version plus its components and exposes for API responses.
@@ -92,21 +94,15 @@ type ServiceView struct {
 }
 
 type EnvironmentCreateInput struct {
-	ProjectId         string
-	Code              string
-	Name              string
-	Description       *string
-	DefaultEntrypoint *string
-	TCPEntrypoint     *string
-	TLSMode           *string
+	ProjectId   string
+	Code        string
+	Name        string
+	Description *string
 }
 
 type EnvironmentUpdateInput struct {
-	Name              *string
-	Description       *string
-	DefaultEntrypoint *string
-	TCPEntrypoint     *string
-	TLSMode           *string
+	Name        *string
+	Description *string
 }
 
 type EnvironmentView struct {
@@ -114,26 +110,45 @@ type EnvironmentView struct {
 }
 
 type GatewayCreateInput struct {
-	ProjectId       string
-	Code            string
-	Name            string
-	RestAPIURL      string
-	BaseDomain      string
-	Image           *string
-	ImagePullPolicy string
+	ProjectId         string
+	Code              string
+	Name              string
+	RestApiUrl        string
+	BaseDomain        string
+	Image             *string
+	ImagePullPolicy   string
+	DefaultEntrypoint *string
+	TLSMode           *string
 }
 
 type GatewayUpdateInput struct {
-	Name            *string
-	RestAPIURL      *string
-	BaseDomain      *string
-	Image           *string
-	ImagePullPolicy *string
+	Name              *string
+	RestApiUrl        *string
+	BaseDomain        *string
+	Image             *string
+	ImagePullPolicy   *string
+	DefaultEntrypoint *string
+	TLSMode           *string
+}
+
+// GatewayExposureItem is a read-only row for active local/public exits (and internal DNS).
+type GatewayExposureItem struct {
+	ApplicationId   string
+	ApplicationCode string
+	ComponentName   string
+	Protocol        string
+	Access          string
+	ContainerPort   int
+	ListenPort      int
+	PublicHost      string
+	InternalDns     string
+	ClientHint      string
 }
 
 type GatewayView struct {
 	Application model.Application
 	Config      model.GatewayConfig
+	Exposures   []GatewayExposureItem
 }
 
 type ApplicationDeployDispatchInput struct {

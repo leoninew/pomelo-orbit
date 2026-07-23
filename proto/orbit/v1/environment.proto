@@ -7,17 +7,11 @@ message EnvironmentCreateReq {
   string code = 2;
   string name = 3;
   optional string description = 4;
-  optional string default_entrypoint = 5;
-  optional string tcp_entrypoint = 6;
-  optional string tls_mode = 7;
 }
 
 message EnvironmentUpdateReq {
   optional string name = 1;
   optional string description = 2;
-  optional string default_entrypoint = 3;
-  optional string tcp_entrypoint = 4;
-  optional string tls_mode = 5;
 }
 
 message EnvironmentResp {
@@ -28,9 +22,6 @@ message EnvironmentResp {
   optional string description = 5;
   string created_at = 6;
   string updated_at = 7;
-  string default_entrypoint = 8;
-  optional string tcp_entrypoint = 9;
-  string tls_mode = 10;
 }
 
 message EnvironmentPaginatedResp {

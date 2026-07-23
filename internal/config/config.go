@@ -264,8 +264,6 @@ func bindEnv(loader *viper.Viper) {
 		"database.mysql.dsn",
 		"orbit.root",
 		"jwt.secret_key",
-		"traefik.api_url",
-		"traefik.domain_suffix",
 		"traefik.cert_dir",
 		"turnstile.enabled",
 		"turnstile.site_key",

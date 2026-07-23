@@ -341,7 +341,7 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	if err != nil {
 		return cdto.TraefikRouteListResp{}, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestAPIURL)
+	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestApiUrl)
 	if err != nil {
 		if s.traefikRouterClient.IsConnectionError(err) {
 			return cdto.TraefikRouteListResp{}, apperror.New(apperror.KindValidation, fmt.Sprintf("无法连接到 Traefik: %v", err))
@@ -379,14 +379,14 @@ func (s Service) publishRouteSnapshot(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(gw.RestAPIURL) == "" {
+	if strings.TrimSpace(gw.RestApiUrl) == "" {
 		return apperror.New(apperror.KindValidation, "gateway rest_api_url is required for route publish")
 	}
 	routes, err := s.store.ListEnabledRoutes(ctx)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
 	}
-	if err := s.routePublisher.ApplySnapshot(ctx, gw.RestAPIURL, routes); err != nil {
+	if err := s.routePublisher.ApplySnapshot(ctx, gw.RestApiUrl, routes); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
 	}
 	return nil

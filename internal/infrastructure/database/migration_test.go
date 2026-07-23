@@ -29,7 +29,7 @@ func TestMigrateUpPreparesApplicationData(t *testing.T) {
 	assertTaskQueueUsable(t, database)
 	assertAdminUserPermissions(t, database)
 	assertDeploymentCommandTextAvailable(t, database)
-	assertGolangMigrateVersion(t, database, 11, false)
+	assertGolangMigrateVersion(t, database, 13, false)
 	assertLegacyMigrationHistoryTableAbsent(t, database)
 }
 
@@ -43,7 +43,7 @@ func TestMigrateUpIsIdempotent(t *testing.T) {
 	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	assertGolangMigrateVersion(t, database, 11, false)
+	assertGolangMigrateVersion(t, database, 13, false)
 }
 
 func TestReadMigrationVersion(t *testing.T) {
@@ -57,7 +57,7 @@ func TestReadMigrationVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if version.Version != 11 || version.Dirty {
+	if version.Version != 13 || version.Dirty {
 		t.Fatalf("unexpected migration version: %+v", version)
 	}
 }

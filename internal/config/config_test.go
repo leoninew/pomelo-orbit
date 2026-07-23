@@ -693,8 +693,6 @@ orbit:
 jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 traefik:
-  api_url: http://traefik:8080
-  domain_suffix: lvh.me
   cert_dir: data/cd/traefik/data/certs
 turnstile:
   enabled: true

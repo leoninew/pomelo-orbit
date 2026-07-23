@@ -62,8 +62,16 @@ func containerLogsSinceCommand(projectName string, since string) composeCommand 
 	return composeCommand{Name: "docker", Args: []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "logs", "--since", since}}
 }
 
-func containerLogsTailCommand(projectName string, tail string) composeCommand {
-	return composeCommand{Name: "docker", Args: []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "logs", "--tail", tail}}
+func containerLogsTailCommand(projectName string, tail string, serviceNames ...string) composeCommand {
+	args := []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "logs", "--tail", tail}
+	for _, name := range serviceNames {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		args = append(args, name)
+	}
+	return composeCommand{Name: "docker", Args: args}
 }
 
 func containerPsCommand(projectName string) composeCommand {

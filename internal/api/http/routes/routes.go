@@ -72,6 +72,7 @@ func (r Router) Handler() http.Handler {
 	r.registerApplication(engine)
 	r.registerDeployment(engine)
 	r.registerApplicationExtra(engine)
+	r.registerService(engine)
 	r.registerEnvironment(engine)
 	r.registerGateway(engine)
 	r.registerRoute(engine)

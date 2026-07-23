@@ -88,9 +88,27 @@ type VersionView struct {
 	Exposes    []model.VersionExpose
 }
 
-// ServiceView is the runtime binding for an application instance.
+// ServiceView is the runtime binding for an application instance, with display labels.
 type ServiceView struct {
-	Service model.Service
+	Service                    model.Service
+	ApplicationName            string
+	ApplicationCode            string
+	ApplicationKind            string
+	EnvironmentName            string
+	EnvironmentCode            string
+	VersionLabel               string
+	LastSuccessfulVersionLabel *string
+}
+
+// ServiceListInput filters project-scoped service listing.
+type ServiceListInput struct {
+	ProjectId     string
+	ApplicationId string
+	EnvironmentId string
+	Status        string
+	Search        string
+	Page          int
+	PerPage       int
 }
 
 type EnvironmentCreateInput struct {

@@ -377,6 +377,10 @@ func (s Service) validateAndReconcileGatewayForDeploy(ctx context.Context, app m
 			return err
 		}
 		if gateway != nil {
+			// CompileGatewayToVersion mutates versions via CDStore; worker must wire store.
+			if s.store == nil {
+				return fmt.Errorf("gateway deploy requires CDStore on execution service")
+			}
 			if _, err := s.CompileGatewayToVersion(ctx, app, *gateway, tcpListens...); err != nil {
 				return err
 			}

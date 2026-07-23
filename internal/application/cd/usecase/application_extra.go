@@ -177,13 +177,17 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, applicati
 	return output, nil
 }
 
-func (s Service) ApplicationLogs(ctx context.Context, userId string, applicationId string, tail int, input cdto.ApplicationServiceTargetInput) (string, error) {
+func (s Service) ApplicationLogs(ctx context.Context, userId string, applicationId string, tail int, input cdto.ApplicationServiceTargetInput, component string) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return "", err
 	}
 	if tail < 1 || tail > 1000 {
 		return "", apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
+	}
+	component, err = normalizeComposeServiceName(component)
+	if err != nil {
+		return "", err
 	}
 	svc, err := s.resolveServiceTarget(ctx, app.Id, input)
 	if err != nil {
@@ -194,12 +198,30 @@ func (s Service) ApplicationLogs(ctx context.Context, userId string, application
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
 	}
 	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
-	command := containerLogsTailCommand(projectName, strconv.Itoa(tail))
+	var command composeCommand
+	if component != "" {
+		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)
+	} else {
+		command = containerLogsTailCommand(projectName, strconv.Itoa(tail))
+	}
 	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, env.Code, svc.InstanceKey), command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
 	return output, nil
+}
+
+// normalizeComposeServiceName validates an optional compose service/component name for log filtering.
+func normalizeComposeServiceName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", nil
+	}
+	// Reject values that could be interpreted as docker CLI flags or paths.
+	if strings.HasPrefix(name, "-") || strings.ContainsAny(name, "/\\ \t\n") {
+		return "", apperror.New(apperror.KindValidation, "invalid component name")
+	}
+	return name, nil
 }
 
 func (s Service) DeploymentContainerLog(ctx context.Context, userId string, deploymentId string, tail int) (cdto.DeploymentContainerLog, error) {

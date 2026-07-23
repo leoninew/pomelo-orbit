@@ -107,3 +107,32 @@ func serviceResponses(items []model.Service) []pomeloorbit.ServiceResp {
 	}
 	return resp
 }
+
+func serviceViewResponse(item cddto.ServiceView) pomeloorbit.ServiceResp {
+	return pomeloorbit.ServiceResp{
+		Id:                         item.Service.Id,
+		ApplicationId:              item.Service.ApplicationId,
+		EnvironmentId:              item.Service.EnvironmentId,
+		InstanceKey:                item.Service.InstanceKey,
+		VersionId:                  item.Service.VersionId,
+		LastSuccessfulVersionId:    item.Service.LastSuccessfulVersionId,
+		Status:                     item.Service.Status,
+		CreatedAt:                  transportresponse.FormatTime(item.Service.CreatedAt),
+		UpdatedAt:                  transportresponse.FormatTime(item.Service.UpdatedAt),
+		ApplicationName:            item.ApplicationName,
+		ApplicationCode:            item.ApplicationCode,
+		ApplicationKind:            item.ApplicationKind,
+		EnvironmentName:            item.EnvironmentName,
+		EnvironmentCode:            item.EnvironmentCode,
+		VersionLabel:               item.VersionLabel,
+		LastSuccessfulVersionLabel: item.LastSuccessfulVersionLabel,
+	}
+}
+
+func serviceViewResponses(items []cddto.ServiceView) []pomeloorbit.ServiceResp {
+	resp := make([]pomeloorbit.ServiceResp, 0, len(items))
+	for _, item := range items {
+		resp = append(resp, serviceViewResponse(item))
+	}
+	return resp
+}

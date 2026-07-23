@@ -19,7 +19,7 @@ import type {
   ServiceResp,
   VersionCreateReq,
   VersionForkReq,
-  VersionListResp,
+  VersionPaginatedResp,
   VersionPreviewReq,
   VersionPreviewResp,
   VersionResp,
@@ -82,6 +82,7 @@ export const applicationApi = {
       environment_id?: string;
       instance_key?: string;
       service_id?: string;
+      component?: string;
     }
   ): Promise<ApplicationLogsResp> {
     return request.get(`/api/cd/application/${id}/logs`, { params });
@@ -109,8 +110,11 @@ export const applicationApi = {
     });
   },
 
-  listVersions(id: string): Promise<VersionListResp> {
-    return request.get(`/api/cd/application/${id}/version`);
+  listVersions(
+    id: string,
+    params?: { page?: number; per_page?: number; search?: string }
+  ): Promise<VersionPaginatedResp> {
+    return request.get(`/api/cd/application/${id}/version`, { params });
   },
 
   createVersion(id: string, data: VersionCreateReq): Promise<VersionResp> {
@@ -127,6 +131,10 @@ export const applicationApi = {
 
   publishVersion(versionId: string): Promise<VersionResp> {
     return request.post(`/api/cd/version/${versionId}/publish`);
+  },
+
+  deleteVersion(versionId: string): Promise<void> {
+    return request.delete(`/api/cd/version/${versionId}`);
   },
 
   forkVersion(versionId: string, data: VersionForkReq): Promise<VersionResp> {

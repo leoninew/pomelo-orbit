@@ -77,13 +77,37 @@ const router = createRouter({
       path: '/cd/applications',
       name: 'Applications',
       component: () => import('@/views/cd/ApplicationPage.vue'),
-      meta: { title: '应用管理', menuKey: 'applications' },
+      meta: { title: '应用', menuKey: 'applications' },
     },
     {
       path: '/cd/application/:id',
       name: 'ApplicationDetail',
       component: () => import('@/views/cd/ApplicationDetail.vue'),
       meta: { title: '应用详情', menuKey: 'applications' },
+    },
+    {
+      path: '/cd/versions',
+      name: 'Versions',
+      component: () => import('@/views/cd/VersionsPage.vue'),
+      meta: { title: '版本', menuKey: 'versions' },
+    },
+    {
+      path: '/cd/version/:id',
+      name: 'VersionDetail',
+      component: () => import('@/views/cd/VersionDetail.vue'),
+      meta: { title: '版本详情', menuKey: 'versions' },
+    },
+    {
+      path: '/cd/services',
+      name: 'Services',
+      component: () => import('@/views/cd/ServicePage.vue'),
+      meta: { title: '服务', menuKey: 'services' },
+    },
+    {
+      path: '/cd/service/:id',
+      name: 'ServiceDetail',
+      component: () => import('@/views/cd/ServiceDetail.vue'),
+      meta: { title: '服务详情', menuKey: 'services' },
     },
     {
       path: '/cd/gateways',

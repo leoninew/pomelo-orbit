@@ -90,12 +90,11 @@
                   </span>
                 </div>
               </div>
-              <AppBadge
-                variant="status"
-                :tone="appStatusTone(normalizeServiceStatus(app.service_status))"
-              >
-                {{ t('status.' + normalizeServiceStatus(app.service_status)) }}
-              </AppBadge>
+              <div class="flex shrink-0 flex-col items-end gap-1.5">
+                <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
+                  {{ t('application.kindBadges.' + (app.kind || 'standard')) }}
+                </AppBadge>
+              </div>
             </div>
 
             <div class="mt-5 grid gap-3 text-sm">
@@ -105,10 +104,6 @@
                   {{ pullPolicyLabel(app.image_pull_policy) }}
                 </span>
               </div>
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-muted-foreground">{{ t('application.serviceCount') }}</span>
-                <span class="text-foreground">{{ app.service_count ?? 0 }}</span>
-              </div>
             </div>
 
             <div
@@ -117,26 +112,6 @@
             >
               <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                 {{ t('application.view') }}
-              </button>
-              <button
-                v-if="normalizeServiceStatus(app.service_status) === 'running'"
-                class="app-link-danger"
-                :disabled="isAppOperating(app)"
-                @click="handleStop(app)"
-              >
-                {{ t('application.stop') }}
-              </button>
-              <button
-                v-else
-                class="app-link"
-                :disabled="
-                  normalizeServiceStatus(app.service_status) === 'deploying' ||
-                  !app.version_id ||
-                  isAppOperating(app)
-                "
-                @click="handleDeploy(app)"
-              >
-                {{ t('application.deploy') }}
               </button>
             </div>
           </div>
@@ -163,9 +138,8 @@
               <tr>
                 <th>{{ t('common.name') }}</th>
                 <th>{{ t('application.code') }}</th>
+                <th>{{ t('application.kind') }}</th>
                 <th>{{ t('application.imagePullPolicy') }}</th>
-                <th>{{ t('common.status') }}</th>
-                <th>{{ t('application.serviceCount') }}</th>
                 <th>{{ t('common.createdAt') }}</th>
                 <th>{{ t('common.operation') }}</th>
               </tr>
@@ -178,42 +152,17 @@
                   </button>
                 </td>
                 <td class="text-foreground">{{ app.code }}</td>
-                <td class="text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</td>
                 <td>
-                  <AppBadge
-                    variant="status"
-                    :tone="appStatusTone(normalizeServiceStatus(app.service_status))"
-                    class="font-normal"
-                  >
-                    {{ t('status.' + normalizeServiceStatus(app.service_status)) }}
+                  <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
+                    {{ t('application.kindBadges.' + (app.kind || 'standard')) }}
                   </AppBadge>
                 </td>
-                <td class="text-foreground">{{ app.service_count ?? 0 }}</td>
+                <td class="text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</td>
                 <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
                 <td>
                   <div class="flex items-center gap-3">
                     <button class="app-link" @click="router.push(`/cd/application/${app.id}`)">
                       {{ t('application.view') }}
-                    </button>
-                    <button
-                      v-if="normalizeServiceStatus(app.service_status) === 'running'"
-                      class="app-link-danger"
-                      :disabled="operating"
-                      @click="handleStop(app)"
-                    >
-                      {{ t('application.stop') }}
-                    </button>
-                    <button
-                      v-else
-                      class="app-link"
-                      :disabled="
-                        normalizeServiceStatus(app.service_status) === 'deploying' ||
-                        !app.version_id ||
-                        operating
-                      "
-                      @click="handleDeploy(app)"
-                    >
-                      {{ t('application.deploy') }}
                     </button>
                   </div>
                 </td>
@@ -276,7 +225,6 @@
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/cd/application';
-  import { environmentApi } from '@/api/cd/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -289,7 +237,7 @@
   import { useProjectStore } from '@/stores/project';
   import type { ApplicationCreateReq, ApplicationResp } from '@/gen/proto/orbit/v1/application';
   import type { ApplicationImportReq } from '@/gen/proto/orbit/v1/application_bundle';
-  import { appStatusTone, normalizeServiceStatus } from '@/utils/status';
+  import { applicationKindTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
@@ -302,11 +250,10 @@
 
   const applications = ref<ApplicationResp[]>([]);
   const searchText = ref('');
-  const viewMode = ref<'card' | 'table'>('card');
+  const viewMode = ref<'card' | 'table'>('table');
   const isCreateDialogOpen = ref(false);
   const isImportDialogOpen = ref(false);
   const fileInput = ref<HTMLInputElement>();
-  const operatingAppId = ref<string | null>(null);
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const createForm = reactive<ApplicationCreateReq>({
@@ -340,10 +287,6 @@
     return t(`application.imagePullPolicyLabels.${policy}`);
   }
 
-  function isAppOperating(app: ApplicationResp) {
-    return operating && operatingAppId.value === app.id;
-  }
-
   async function fetchApplications() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
@@ -357,7 +300,6 @@
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
           project_id: projectId,
-          kind: 'standard',
         });
         applications.value = res.items;
         pagination.total = res.total;
@@ -483,58 +425,6 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.importFailed'));
-    }
-  }
-
-  async function handleDeploy(app: ApplicationResp) {
-    const versionId = app.version_id;
-    if (!versionId) {
-      toast.error(t('application.toast.deployVersionRequired'));
-      return;
-    }
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error(t('application.toast.selectProjectRequired'));
-      return;
-    }
-    operatingAppId.value = app.id;
-    try {
-      await executeOp(async () => {
-        const envResp = await environmentApi.list({ project_id: projectId, per_page: 100 });
-        const environments = envResp.items ?? [];
-        const localEnv = environments.find((item) => item.code === 'local') || environments[0];
-        if (!localEnv) {
-          throw new Error(t('application.toast.environmentRequired'));
-        }
-        const { deployment_id } = await applicationApi.deploy(app.id, {
-          version_id: versionId,
-          environment_id: localEnv.id,
-          instance_key: 'default',
-          force_recreate: false,
-          runtime_config: {},
-        });
-        toast.success(t('application.toast.deployTriggered', { name: app.name }));
-        router.push(`/cd/deployment/${deployment_id}`);
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
-    } finally {
-      operatingAppId.value = null;
-    }
-  }
-
-  async function handleStop(app: ApplicationResp) {
-    operatingAppId.value = app.id;
-    try {
-      await executeOp(async () => {
-        const { deployment_id } = await applicationApi.stop(app.id, { remove_volumes: false });
-        toast.success(t('application.toast.stopTriggered', { name: app.name }));
-        router.push(`/cd/deployment/${deployment_id}`);
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.stopFailed'));
-    } finally {
-      operatingAppId.value = null;
     }
   }
 

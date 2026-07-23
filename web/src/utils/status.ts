@@ -7,6 +7,16 @@
 export type BadgeTone = 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info';
 
 /**
+ * Application kind -> Badge 色调
+ *
+ * - standard: 中性
+ * - gateway: 主色，便于在列表右上角区分
+ */
+export function applicationKindTone(kind: string | undefined | null): BadgeTone {
+  return kind === 'gateway' ? 'primary' : 'default';
+}
+
+/**
  * 应用运行态 -> Badge 色调
  *
  * 来自 Service.status（application.service_status）；无 Service 时为空。
@@ -44,6 +54,28 @@ export function versionStatusTone(status: string): BadgeTone {
 /** 展示用 service_status：空串视为从未部署 */
 export function normalizeServiceStatus(status: string | undefined | null): string {
   return status && status.trim() ? status : 'undeployed';
+}
+
+/**
+ * docker compose 容器 State -> Badge 色调
+ *
+ * 常见值: running | exited | dead | paused | created | restarting | removing
+ */
+export function containerStateTone(state: string | undefined | null): BadgeTone {
+  const value = (state || '').toLowerCase();
+  if (value === 'running' || value === 'up') {
+    return 'success';
+  }
+  if (value === 'exited' || value === 'dead' || value === 'removing') {
+    return 'error';
+  }
+  if (value === 'restarting' || value === 'created') {
+    return 'info';
+  }
+  if (value === 'paused' || value === 'stopped') {
+    return 'warning';
+  }
+  return 'default';
 }
 
 /**

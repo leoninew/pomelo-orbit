@@ -47,6 +47,10 @@ export interface VersionExposeReq {
   protocol: string;
   container_port: number;
   path_prefix?: string | undefined;
+  /** local | public; empty treated as public */
+  access: string;
+  /** 0/omit = use container_port */
+  listen_port?: number | undefined;
 }
 
 export interface VersionExposeResp {
@@ -58,6 +62,8 @@ export interface VersionExposeResp {
   path_prefix?: string | undefined;
   created_at: string;
   updated_at: string;
+  access: string;
+  listen_port?: number | undefined;
 }
 
 export interface VersionCreateReq {
@@ -95,8 +101,12 @@ export interface VersionResp {
   exposes: VersionExposeResp[];
 }
 
-export interface VersionListResp {
+export interface VersionPaginatedResp {
   items: VersionResp[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
 }
 
 export interface VersionPreviewReq {
@@ -118,8 +128,24 @@ export interface ServiceResp {
   status: string;
   created_at: string;
   updated_at: string;
+  /** Display labels (filled on project-scoped list; empty on bare app-scoped list). */
+  application_name: string;
+  application_code: string;
+  application_kind: string;
+  environment_name: string;
+  environment_code: string;
+  version_label: string;
+  last_successful_version_label?: string | undefined;
 }
 
 export interface ServiceListResp {
   items: ServiceResp[];
+}
+
+export interface ServicePaginatedResp {
+  items: ServiceResp[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
 }

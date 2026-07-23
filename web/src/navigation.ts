@@ -109,9 +109,16 @@ const cdNavigation: NavigationBranch[] = [
     children: [
       {
         key: 'applications',
-        label: '应用管理',
+        label: '应用',
         labelKey: 'nav.applications',
         path: '/cd/applications',
+      },
+      { key: 'versions', label: '版本', labelKey: 'nav.versions', path: '/cd/versions' },
+      {
+        key: 'services',
+        label: '服务',
+        labelKey: 'nav.services',
+        path: '/cd/services',
       },
       {
         key: 'deployments',

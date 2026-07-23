@@ -21,9 +21,15 @@ type CDStore interface {
 
 	// Version / Component / Expose
 	ListVersions(ctx context.Context, applicationId string) ([]model.Version, error)
+	ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (Page[model.Version], error)
 	Version(ctx context.Context, id string) (model.Version, error)
 	CreateVersion(ctx context.Context, version model.Version) error
 	UpdateVersion(ctx context.Context, version model.Version) error
+	// DeleteVersion removes a version row and its components/exposes.
+	// Callers must enforce unpublished-only and non-reference rules.
+	DeleteVersion(ctx context.Context, id string) error
+	// CountVersionRuntimeRefs counts service/deployment rows that still point at the version.
+	CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error)
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
@@ -41,6 +47,10 @@ type CDStore interface {
 
 	// Runtime Service binding
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
+	// ListServicesByProject lists runtime bindings for applications in a project, with display labels.
+	ListServicesByProject(ctx context.Context, projectId string, applicationId string, environmentId string, status string, search string, page int, perPage int) (Page[model.ServiceListItem], error)
+	// ServiceListItem loads one runtime binding with application / environment / version labels.
+	ServiceListItem(ctx context.Context, id string) (model.ServiceListItem, error)
 	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpsertService(ctx context.Context, svc model.Service) error

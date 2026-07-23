@@ -14,23 +14,31 @@ import (
 )
 
 func (s Service) ListVersions(ctx context.Context, userId string, applicationId string) ([]cdto.VersionView, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
+	page, err := s.ListVersionsPage(ctx, userId, applicationId, 1, 100, "")
 	if err != nil {
 		return nil, err
 	}
-	versions, err := s.store.ListVersions(ctx, app.Id)
+	return page.Items, nil
+}
+
+func (s Service) ListVersionsPage(ctx context.Context, userId string, applicationId string, page int, perPage int, search string) (repository.Page[cdto.VersionView], error) {
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list versions", err)
+		return repository.Page[cdto.VersionView]{}, err
 	}
-	views := make([]cdto.VersionView, 0, len(versions))
-	for _, version := range versions {
+	versions, err := s.store.ListVersionsPage(ctx, app.Id, page, perPage, search)
+	if err != nil {
+		return repository.Page[cdto.VersionView]{}, apperror.Wrap(apperror.KindInternal, "Failed to list versions", err)
+	}
+	views := make([]cdto.VersionView, 0, len(versions.Items))
+	for _, version := range versions.Items {
 		view, err := s.versionView(ctx, version)
 		if err != nil {
-			return nil, err
+			return repository.Page[cdto.VersionView]{}, err
 		}
 		views = append(views, view)
 	}
-	return views, nil
+	return repository.Page[cdto.VersionView]{Items: views, Total: versions.Total, Page: versions.Page, PerPage: versions.PerPage}, nil
 }
 
 func (s Service) VersionForUser(ctx context.Context, userId string, versionId string) (cdto.VersionView, error) {
@@ -163,6 +171,9 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 	if err != nil {
 		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
+	if len(components) == 0 {
+		return cdto.VersionView{}, apperror.New(apperror.KindValidation, "At least one component is required")
+	}
 	if err := validateVersionComponents(components); err != nil {
 		return cdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
@@ -178,6 +189,27 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 		return cdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to publish version", err)
 	}
 	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) DeleteVersion(ctx context.Context, userId string, versionId string) error {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return err
+	}
+	if version.Status != status.VersionStatusUnpublished {
+		return apperror.New(apperror.KindValidation, "Only unpublished versions can be deleted")
+	}
+	refs, err := s.store.CountVersionRuntimeRefs(ctx, version.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check version references", err)
+	}
+	if refs > 0 {
+		return apperror.New(apperror.KindValidation, "Version is referenced by a service or deployment")
+	}
+	if err := s.store.DeleteVersion(ctx, version.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete version", err)
+	}
+	return nil
 }
 
 func (s Service) ForkVersion(ctx context.Context, userId string, versionId string, label string) (cdto.VersionView, error) {
@@ -317,6 +349,58 @@ func (s Service) ListServicesByApplication(ctx context.Context, userId string, a
 	return services, nil
 }
 
+// ListServices returns runtime bindings (application + version + environment) for a project.
+func (s Service) ListServices(ctx context.Context, userId string, input cdto.ServiceListInput) (repository.Page[cdto.ServiceView], error) {
+	projectId := strings.TrimSpace(input.ProjectId)
+	if projectId == "" {
+		return repository.Page[cdto.ServiceView]{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return repository.Page[cdto.ServiceView]{}, err
+	}
+	page, err := s.store.ListServicesByProject(ctx, projectId, input.ApplicationId, input.EnvironmentId, input.Status, input.Search, input.Page, input.PerPage)
+	if err != nil {
+		return repository.Page[cdto.ServiceView]{}, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
+	}
+	items := make([]cdto.ServiceView, 0, len(page.Items))
+	for _, item := range page.Items {
+		items = append(items, serviceViewFromListItem(item))
+	}
+	return repository.Page[cdto.ServiceView]{Items: items, Total: page.Total, Page: page.Page, PerPage: page.PerPage}, nil
+}
+
+// GetService returns one runtime binding with display labels when the user can access its application.
+func (s Service) GetService(ctx context.Context, userId string, serviceId string) (cdto.ServiceView, error) {
+	serviceId = strings.TrimSpace(serviceId)
+	if serviceId == "" {
+		return cdto.ServiceView{}, apperror.New(apperror.KindValidation, "service_id is required")
+	}
+	item, err := s.store.ServiceListItem(ctx, serviceId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return cdto.ServiceView{}, apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
+		}
+		return cdto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	if _, err := s.loadApplicationForUser(ctx, userId, item.ApplicationId); err != nil {
+		return cdto.ServiceView{}, err
+	}
+	return serviceViewFromListItem(item), nil
+}
+
+func serviceViewFromListItem(item model.ServiceListItem) cdto.ServiceView {
+	return cdto.ServiceView{
+		Service:                    item.Service(),
+		ApplicationName:            item.ApplicationName,
+		ApplicationCode:            item.ApplicationCode,
+		ApplicationKind:            item.ApplicationKind,
+		EnvironmentName:            item.EnvironmentName,
+		EnvironmentCode:            item.EnvironmentCode,
+		VersionLabel:               item.VersionLabel,
+		LastSuccessfulVersionLabel: item.LastSuccessfulVersionLabel,
+	}
+}
+
 func (s Service) PrimaryServiceByApplication(ctx context.Context, userId string, applicationId string) (*model.Service, error) {
 	services, err := s.ListServicesByApplication(ctx, userId, applicationId)
 	if err != nil {
@@ -356,8 +440,9 @@ func (s Service) loadVersionForUser(ctx context.Context, userId string, versionI
 }
 
 func normalizeVersionComponents(inputs []cdto.VersionComponentInput) ([]model.VersionComponent, error) {
+	// Empty is allowed for unpublished drafts; PublishVersion enforces at least one component.
 	if len(inputs) == 0 {
-		return nil, apperror.New(apperror.KindValidation, "At least one component is required")
+		return []model.VersionComponent{}, nil
 	}
 	components := make([]model.VersionComponent, 0, len(inputs))
 	for _, input := range inputs {

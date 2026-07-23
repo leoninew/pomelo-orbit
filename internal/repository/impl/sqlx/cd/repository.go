@@ -135,8 +135,29 @@ func (r Repository) DeleteApplication(ctx context.Context, id string) error {
 		return fmt.Errorf("begin delete application %s: %w", id, err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	// deployment.service_id / version_id FK without CASCADE block service/version delete.
+	// Keep deployment history rows; only detach runtime/version links.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE deployment
+		SET service_id = NULL
+		WHERE service_id IN (SELECT id FROM service WHERE application_id = ?)`, id); err != nil {
+		return fmt.Errorf("detach deployment service refs for application %s: %w", id, err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE deployment
+		SET version_id = NULL
+		WHERE version_id IN (SELECT id FROM version WHERE application_id = ?)`, id); err != nil {
+		return fmt.Errorf("detach deployment version refs for application %s: %w", id, err)
+	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM service WHERE application_id = ?`, id); err != nil {
 		return fmt.Errorf("delete application service %s: %w", id, err)
+	}
+	// version.created_from_version_id is self-FK without CASCADE.
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE version
+		SET created_from_version_id = NULL
+		WHERE application_id = ?`, id); err != nil {
+		return fmt.Errorf("detach version fork refs for application %s: %w", id, err)
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM version WHERE application_id = ?`, id); err != nil {
 		return fmt.Errorf("delete application versions %s: %w", id, err)
@@ -157,6 +178,28 @@ func (r Repository) ListVersions(ctx context.Context, applicationId string) ([]m
 		return nil, fmt.Errorf("list versions for application %s: %w", applicationId, err)
 	}
 	return items, nil
+}
+
+func (r Repository) ListVersionsPage(ctx context.Context, applicationId string, page int, perPage int, search string) (repository.Page[model.Version], error) {
+	page, perPage = repository.NormalizePage(page, perPage)
+	where := " WHERE application_id = ?"
+	args := []any{applicationId}
+	search = strings.TrimSpace(search)
+	if search != "" {
+		where += " AND (label LIKE ? OR note LIKE ?)"
+		pattern := "%" + search + "%"
+		args = append(args, pattern, pattern)
+	}
+	var total int
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM version`+where, args...); err != nil {
+		return repository.Page[model.Version]{}, fmt.Errorf("count versions for application %s: %w", applicationId, err)
+	}
+	args = append(args, perPage, (page-1)*perPage)
+	var items []model.Version
+	if err := r.db.SelectContext(ctx, &items, `SELECT `+versionColumns+` FROM version`+where+` ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, args...); err != nil {
+		return repository.Page[model.Version]{}, fmt.Errorf("list versions for application %s: %w", applicationId, err)
+	}
+	return repository.Page[model.Version]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
 }
 
 func (r Repository) Version(ctx context.Context, id string) (model.Version, error) {
@@ -183,6 +226,43 @@ func (r Repository) UpdateVersion(ctx context.Context, version model.Version) er
 		version.Label, version.Status, version.EnvJSON, version.Note, version.Id)
 	if err != nil {
 		return fmt.Errorf("update version %s: %w", version.Id, err)
+	}
+	return nil
+}
+
+func (r Repository) CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error) {
+	var total int
+	err := r.db.GetContext(ctx, &total, `
+		SELECT (
+			(SELECT COUNT(*) FROM service WHERE version_id = ? OR last_successful_version_id = ?) +
+			(SELECT COUNT(*) FROM deployment WHERE version_id = ?)
+		)`, versionId, versionId, versionId)
+	if err != nil {
+		return 0, fmt.Errorf("count runtime refs for version %s: %w", versionId, err)
+	}
+	return total, nil
+}
+
+func (r Repository) DeleteVersion(ctx context.Context, id string) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin delete version %s: %w", id, err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `UPDATE version SET created_from_version_id = NULL WHERE created_from_version_id = ?`, id); err != nil {
+		return fmt.Errorf("clear created_from_version_id for %s: %w", id, err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM version_component WHERE version_id = ?`, id); err != nil {
+		return fmt.Errorf("delete components for version %s: %w", id, err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM version_expose WHERE version_id = ?`, id); err != nil {
+		return fmt.Errorf("delete exposes for version %s: %w", id, err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM version WHERE id = ?`, id); err != nil {
+		return fmt.Errorf("delete version %s: %w", id, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit delete version %s: %w", id, err)
 	}
 	return nil
 }
@@ -386,6 +466,67 @@ func (r Repository) ListServicesByApplication(ctx context.Context, applicationId
 		return nil, fmt.Errorf("list services for application %s: %w", applicationId, err)
 	}
 	return items, nil
+}
+
+const serviceListItemColumns = `s.id, s.application_id, s.environment_id, s.instance_key, s.version_id, s.last_successful_version_id, s.status, s.created_at, s.updated_at,
+	a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
+	e.name AS environment_name, e.code AS environment_code,
+	v.label AS version_label,
+	lv.label AS last_successful_version_label`
+
+func (r Repository) ListServicesByProject(ctx context.Context, projectId string, applicationId string, environmentId string, statusFilter string, search string, page int, perPage int) (repository.Page[model.ServiceListItem], error) {
+	page, perPage = repository.NormalizePage(page, perPage)
+	projectId = strings.TrimSpace(projectId)
+	clauses := []string{"a.project_id = ?"}
+	args := []any{projectId}
+	if applicationId = strings.TrimSpace(applicationId); applicationId != "" {
+		clauses = append(clauses, "s.application_id = ?")
+		args = append(args, applicationId)
+	}
+	if environmentId = strings.TrimSpace(environmentId); environmentId != "" {
+		clauses = append(clauses, "s.environment_id = ?")
+		args = append(args, environmentId)
+	}
+	if statusFilter = strings.TrimSpace(statusFilter); statusFilter != "" {
+		clauses = append(clauses, "s.status = ?")
+		args = append(args, statusFilter)
+	}
+	if search = strings.TrimSpace(search); search != "" {
+		like := "%" + search + "%"
+		clauses = append(clauses, "(a.name LIKE ? OR a.code LIKE ? OR e.name LIKE ? OR e.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)")
+		args = append(args, like, like, like, like, like, like)
+	}
+	where := " WHERE " + strings.Join(clauses, " AND ")
+	from := ` FROM service s
+		INNER JOIN application a ON a.id = s.application_id
+		INNER JOIN environment e ON e.id = s.environment_id
+		INNER JOIN version v ON v.id = s.version_id
+		LEFT JOIN version lv ON lv.id = s.last_successful_version_id`
+	var total int
+	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*)`+from+where, args...); err != nil {
+		return repository.Page[model.ServiceListItem]{}, fmt.Errorf("count services for project %s: %w", projectId, err)
+	}
+	args = append(args, perPage, (page-1)*perPage)
+	var items []model.ServiceListItem
+	err := r.db.SelectContext(ctx, &items, `SELECT `+serviceListItemColumns+from+where+` ORDER BY s.updated_at DESC, a.name, e.code, s.instance_key LIMIT ? OFFSET ?`, args...)
+	if err != nil {
+		return repository.Page[model.ServiceListItem]{}, fmt.Errorf("list services for project %s: %w", projectId, err)
+	}
+	return repository.Page[model.ServiceListItem]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+}
+
+func (r Repository) ServiceListItem(ctx context.Context, id string) (model.ServiceListItem, error) {
+	from := ` FROM service s
+		INNER JOIN application a ON a.id = s.application_id
+		INNER JOIN environment e ON e.id = s.environment_id
+		INNER JOIN version v ON v.id = s.version_id
+		LEFT JOIN version lv ON lv.id = s.last_successful_version_id`
+	var item model.ServiceListItem
+	err := r.db.GetContext(ctx, &item, `SELECT `+serviceListItemColumns+from+` WHERE s.id = ?`, id)
+	if err != nil {
+		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
+	}
+	return item, nil
 }
 
 func (r Repository) ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {

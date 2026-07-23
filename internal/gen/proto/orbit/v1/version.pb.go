@@ -847,27 +847,31 @@ func (x *VersionResp) GetExposes() []*VersionExposeResp {
 	return nil
 }
 
-type VersionListResp struct {
+type VersionPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*VersionResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	PerPage       int32                  `protobuf:"varint,4,opt,name=per_page,json=perPage,proto3" json:"per_page,omitempty"`
+	Pages         int32                  `protobuf:"varint,5,opt,name=pages,proto3" json:"pages,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *VersionListResp) Reset() {
-	*x = VersionListResp{}
+func (x *VersionPaginatedResp) Reset() {
+	*x = VersionPaginatedResp{}
 	mi := &file_orbit_v1_version_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *VersionListResp) String() string {
+func (x *VersionPaginatedResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*VersionListResp) ProtoMessage() {}
+func (*VersionPaginatedResp) ProtoMessage() {}
 
-func (x *VersionListResp) ProtoReflect() protoreflect.Message {
+func (x *VersionPaginatedResp) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_version_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -879,16 +883,44 @@ func (x *VersionListResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use VersionListResp.ProtoReflect.Descriptor instead.
-func (*VersionListResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use VersionPaginatedResp.ProtoReflect.Descriptor instead.
+func (*VersionPaginatedResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_version_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *VersionListResp) GetItems() []*VersionResp {
+func (x *VersionPaginatedResp) GetItems() []*VersionResp {
 	if x != nil {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *VersionPaginatedResp) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *VersionPaginatedResp) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *VersionPaginatedResp) GetPerPage() int32 {
+	if x != nil {
+		return x.PerPage
+	}
+	return 0
+}
+
+func (x *VersionPaginatedResp) GetPages() int32 {
+	if x != nil {
+		return x.Pages
+	}
+	return 0
 }
 
 type VersionPreviewReq struct {
@@ -998,8 +1030,16 @@ type ServiceResp struct {
 	Status                  string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
 	CreatedAt               string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt               string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Display labels (filled on project-scoped list; empty on bare app-scoped list).
+	ApplicationName            string  `protobuf:"bytes,10,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
+	ApplicationCode            string  `protobuf:"bytes,11,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
+	ApplicationKind            string  `protobuf:"bytes,12,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
+	EnvironmentName            string  `protobuf:"bytes,13,opt,name=environment_name,json=environmentName,proto3" json:"environment_name,omitempty"`
+	EnvironmentCode            string  `protobuf:"bytes,14,opt,name=environment_code,json=environmentCode,proto3" json:"environment_code,omitempty"`
+	VersionLabel               string  `protobuf:"bytes,15,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	LastSuccessfulVersionLabel *string `protobuf:"bytes,16,opt,name=last_successful_version_label,json=lastSuccessfulVersionLabel,proto3,oneof" json:"last_successful_version_label,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *ServiceResp) Reset() {
@@ -1095,6 +1135,55 @@ func (x *ServiceResp) GetUpdatedAt() string {
 	return ""
 }
 
+func (x *ServiceResp) GetApplicationName() string {
+	if x != nil {
+		return x.ApplicationName
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetApplicationCode() string {
+	if x != nil {
+		return x.ApplicationCode
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetApplicationKind() string {
+	if x != nil {
+		return x.ApplicationKind
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetEnvironmentName() string {
+	if x != nil {
+		return x.EnvironmentName
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetEnvironmentCode() string {
+	if x != nil {
+		return x.EnvironmentCode
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetVersionLabel() string {
+	if x != nil {
+		return x.VersionLabel
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetLastSuccessfulVersionLabel() string {
+	if x != nil && x.LastSuccessfulVersionLabel != nil {
+		return *x.LastSuccessfulVersionLabel
+	}
+	return ""
+}
+
 type ServiceListResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*ServiceResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -1137,6 +1226,82 @@ func (x *ServiceListResp) GetItems() []*ServiceResp {
 		return x.Items
 	}
 	return nil
+}
+
+type ServicePaginatedResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*ServiceResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	PerPage       int32                  `protobuf:"varint,4,opt,name=per_page,json=perPage,proto3" json:"per_page,omitempty"`
+	Pages         int32                  `protobuf:"varint,5,opt,name=pages,proto3" json:"pages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServicePaginatedResp) Reset() {
+	*x = ServicePaginatedResp{}
+	mi := &file_orbit_v1_version_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServicePaginatedResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServicePaginatedResp) ProtoMessage() {}
+
+func (x *ServicePaginatedResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_version_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServicePaginatedResp.ProtoReflect.Descriptor instead.
+func (*ServicePaginatedResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_version_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ServicePaginatedResp) GetItems() []*ServiceResp {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *ServicePaginatedResp) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *ServicePaginatedResp) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ServicePaginatedResp) GetPerPage() int32 {
+	if x != nil {
+		return x.PerPage
+	}
+	return 0
+}
+
+func (x *ServicePaginatedResp) GetPages() int32 {
+	if x != nil {
+		return x.Pages
+	}
+	return 0
 }
 
 var File_orbit_v1_version_proto protoreflect.FileDescriptor
@@ -1280,15 +1445,19 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\aexposes\x18\v \x03(\v2\x1b.orbit.v1.VersionExposeRespR\aexposesB\v\n" +
 	"\t_env_jsonB\x1a\n" +
 	"\x18_created_from_version_idB\a\n" +
-	"\x05_note\">\n" +
-	"\x0fVersionListResp\x12+\n" +
-	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.VersionRespR\x05items\"s\n" +
+	"\x05_note\"\x9e\x01\n" +
+	"\x14VersionPaginatedResp\x12+\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.VersionRespR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
+	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"s\n" +
 	"\x11VersionPreviewReq\x12%\n" +
 	"\x0eenvironment_id\x18\x01 \x01(\tR\renvironmentId\x12&\n" +
 	"\finstance_key\x18\x02 \x01(\tH\x00R\vinstanceKey\x88\x01\x01B\x0f\n" +
 	"\r_instance_key\"7\n" +
 	"\x12VersionPreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xe4\x02\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xca\x05\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12%\n" +
@@ -1301,10 +1470,25 @@ const file_orbit_v1_version_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\tR\tupdatedAtB\x1d\n" +
-	"\x1b_last_successful_version_id\">\n" +
+	"updated_at\x18\t \x01(\tR\tupdatedAt\x12)\n" +
+	"\x10application_name\x18\n" +
+	" \x01(\tR\x0fapplicationName\x12)\n" +
+	"\x10application_code\x18\v \x01(\tR\x0fapplicationCode\x12)\n" +
+	"\x10application_kind\x18\f \x01(\tR\x0fapplicationKind\x12)\n" +
+	"\x10environment_name\x18\r \x01(\tR\x0fenvironmentName\x12)\n" +
+	"\x10environment_code\x18\x0e \x01(\tR\x0fenvironmentCode\x12#\n" +
+	"\rversion_label\x18\x0f \x01(\tR\fversionLabel\x12F\n" +
+	"\x1dlast_successful_version_label\x18\x10 \x01(\tH\x01R\x1alastSuccessfulVersionLabel\x88\x01\x01B\x1d\n" +
+	"\x1b_last_successful_version_idB \n" +
+	"\x1e_last_successful_version_label\">\n" +
 	"\x0fServiceListResp\x12+\n" +
-	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.ServiceRespR\x05itemsB\xa4\x01\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.ServiceRespR\x05items\"\x9e\x01\n" +
+	"\x14ServicePaginatedResp\x12+\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.orbit.v1.ServiceRespR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
+	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xa4\x01\n" +
 	"\fcom.orbit.v1B\fVersionProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1;orbitv1\xa2\x02\x03OXX\xaa\x02\bOrbit.V1\xca\x02\bOrbit\\V1\xe2\x02\x14Orbit\\V1\\GPBMetadata\xea\x02\tOrbit::V1b\x06proto3"
 
 var (
@@ -1319,7 +1503,7 @@ func file_orbit_v1_version_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_version_proto_rawDescData
 }
 
-var file_orbit_v1_version_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_orbit_v1_version_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_orbit_v1_version_proto_goTypes = []any{
 	(*VersionComponentReq)(nil),  // 0: orbit.v1.VersionComponentReq
 	(*VersionComponentResp)(nil), // 1: orbit.v1.VersionComponentResp
@@ -1329,11 +1513,12 @@ var file_orbit_v1_version_proto_goTypes = []any{
 	(*VersionUpdateReq)(nil),     // 5: orbit.v1.VersionUpdateReq
 	(*VersionForkReq)(nil),       // 6: orbit.v1.VersionForkReq
 	(*VersionResp)(nil),          // 7: orbit.v1.VersionResp
-	(*VersionListResp)(nil),      // 8: orbit.v1.VersionListResp
+	(*VersionPaginatedResp)(nil), // 8: orbit.v1.VersionPaginatedResp
 	(*VersionPreviewReq)(nil),    // 9: orbit.v1.VersionPreviewReq
 	(*VersionPreviewResp)(nil),   // 10: orbit.v1.VersionPreviewResp
 	(*ServiceResp)(nil),          // 11: orbit.v1.ServiceResp
 	(*ServiceListResp)(nil),      // 12: orbit.v1.ServiceListResp
+	(*ServicePaginatedResp)(nil), // 13: orbit.v1.ServicePaginatedResp
 }
 var file_orbit_v1_version_proto_depIdxs = []int32{
 	0,  // 0: orbit.v1.VersionCreateReq.components:type_name -> orbit.v1.VersionComponentReq
@@ -1342,13 +1527,14 @@ var file_orbit_v1_version_proto_depIdxs = []int32{
 	2,  // 3: orbit.v1.VersionUpdateReq.exposes:type_name -> orbit.v1.VersionExposeReq
 	1,  // 4: orbit.v1.VersionResp.components:type_name -> orbit.v1.VersionComponentResp
 	3,  // 5: orbit.v1.VersionResp.exposes:type_name -> orbit.v1.VersionExposeResp
-	7,  // 6: orbit.v1.VersionListResp.items:type_name -> orbit.v1.VersionResp
+	7,  // 6: orbit.v1.VersionPaginatedResp.items:type_name -> orbit.v1.VersionResp
 	11, // 7: orbit.v1.ServiceListResp.items:type_name -> orbit.v1.ServiceResp
-	8,  // [8:8] is the sub-list for method output_type
-	8,  // [8:8] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	11, // 8: orbit.v1.ServicePaginatedResp.items:type_name -> orbit.v1.ServiceResp
+	9,  // [9:9] is the sub-list for method output_type
+	9,  // [9:9] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_version_proto_init() }
@@ -1371,7 +1557,7 @@ func file_orbit_v1_version_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_version_proto_rawDesc), len(file_orbit_v1_version_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

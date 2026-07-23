@@ -99,7 +99,14 @@ func (h Handler) GetApplicationLogs(c *gin.Context) {
 	if !ok {
 		return
 	}
-	logs, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Param("app_id"), binding.QueryInt(c.Request.URL.Query().Get("tail"), 100), applicationServiceTargetFromQuery(c))
+	logs, err := h.service.ApplicationLogs(
+		c.Request.Context(),
+		current.Id,
+		c.Param("app_id"),
+		binding.QueryInt(c.Request.URL.Query().Get("tail"), 100),
+		applicationServiceTargetFromQuery(c),
+		c.Request.URL.Query().Get("component"),
+	)
 	if err != nil {
 		transportresponse.ProtoJSON(c, http.StatusInternalServerError, &pomeloorbit.ApplicationLogsResp{Logs: logs})
 		return
@@ -121,18 +128,64 @@ func (h Handler) ListApplicationServices(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ServiceListResp{Items: transportresponse.Ptrs(resp)})
 }
 
+func (h Handler) ListServices(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	items, err := h.service.ListServices(c.Request.Context(), current.Id, cddto.ServiceListInput{
+		ProjectId:     c.Request.URL.Query().Get("project_id"),
+		ApplicationId: c.Request.URL.Query().Get("application_id"),
+		EnvironmentId: c.Request.URL.Query().Get("environment_id"),
+		Status:        c.Request.URL.Query().Get("status"),
+		Search:        c.Request.URL.Query().Get("search"),
+		Page:          page,
+		PerPage:       perPage,
+	})
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := serviceViewResponses(items.Items)
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ServicePaginatedResp{
+		Items:   transportresponse.Ptrs(resp),
+		Total:   int32(items.Total),
+		Page:    int32(items.Page),
+		PerPage: int32(items.PerPage),
+		Pages:   int32(transportresponse.PageCount(items.Total, items.PerPage)),
+	})
+}
+
+func (h Handler) GetService(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	view, err := h.service.GetService(c.Request.Context(), current.Id, c.Param("service_id"))
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := serviceViewResponse(view)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
 func (h Handler) ListVersions(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
 	}
-	views, err := h.service.ListVersions(c.Request.Context(), current.Id, c.Param("app_id"))
+	page := binding.QueryInt(c.Request.URL.Query().Get("page"), 1)
+	perPage := binding.QueryInt(c.Request.URL.Query().Get("per_page"), 10)
+	views, err := h.service.ListVersionsPage(c.Request.Context(), current.Id, c.Param("app_id"), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.writeError(c, err)
 		return
 	}
-	resp := versionResponses(views)
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.VersionListResp{Items: transportresponse.Ptrs(resp)})
+	resp := versionResponses(views.Items)
+	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.VersionPaginatedResp{Items: transportresponse.Ptrs(resp), Total: int32(views.Total), Page: int32(views.Page), PerPage: int32(views.PerPage), Pages: int32(transportresponse.PageCount(views.Total, views.PerPage))})
 }
 
 func (h Handler) CreateVersion(c *gin.Context) {
@@ -207,6 +260,18 @@ func (h Handler) PublishVersion(c *gin.Context) {
 	}
 	resp := versionResponse(view)
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
+func (h Handler) DeleteVersion(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.DeleteVersion(c.Request.Context(), current.Id, c.Param("version_id")); err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (h Handler) ForkVersion(c *gin.Context) {

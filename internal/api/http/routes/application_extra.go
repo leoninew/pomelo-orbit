@@ -20,6 +20,7 @@ func (r Router) registerApplicationExtra(engine *gin.Engine) {
 	engine.POST("/api/cd/application/:app_id/version", handler.CreateVersion)
 	engine.GET("/api/cd/version/:version_id", handler.GetVersion)
 	engine.PUT("/api/cd/version/:version_id", handler.UpdateVersion)
+	engine.DELETE("/api/cd/version/:version_id", handler.DeleteVersion)
 	engine.POST("/api/cd/version/:version_id/publish", handler.PublishVersion)
 	engine.POST("/api/cd/version/:version_id/fork", handler.ForkVersion)
 	engine.POST("/api/cd/version/:version_id/preview", handler.PreviewVersion)

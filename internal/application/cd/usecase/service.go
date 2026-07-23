@@ -49,7 +49,15 @@ func New(store repository.CDStore, dispatcher cdport.ApplicationDispatcher, cfg 
 }
 
 func NewExecutionService(store repository.DeploymentExecutionStore, cfg config.Config, logger *slog.Logger, workspace cdport.Workspace, runner cdport.CommandRunner, logStore cdport.ExecutionLogStore) Service {
-	return Service{executionStore: store, cfg: cfg, workspace: workspace, logStore: logStore, executionLogStore: logStore, logger: logger, runner: runner}
+	// Worker uses DeploymentExecutionStore for deploy/stop. Gateway compile and expose
+	// occupancy still need CDStore (ListVersions / ReplaceVersionComponents / ListServices…).
+	// The production sqlx CD repository implements both; wire store when available so
+	// kind=gateway deploys do not nil-panic inside CompileGatewayToVersion.
+	svc := Service{executionStore: store, cfg: cfg, workspace: workspace, logStore: logStore, executionLogStore: logStore, logger: logger, runner: runner}
+	if full, ok := store.(repository.CDStore); ok {
+		svc.store = full
+	}
+	return svc
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
@@ -83,6 +91,17 @@ func (s Service) CreateApplication(ctx context.Context, userId string, input cdt
 	app := model.Application{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
 	if err := s.store.CreateApplication(ctx, app); err != nil {
 		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create application", err)
+	}
+	// First version uses application code as label so Versions page has a draft immediately.
+	initialVersion := model.Version{
+		Id:            idutil.NewId(),
+		ApplicationId: app.Id,
+		Label:         code,
+		Status:        status.VersionStatusUnpublished,
+	}
+	if err := s.store.CreateVersion(ctx, initialVersion); err != nil {
+		_ = s.store.DeleteApplication(ctx, app.Id)
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to create initial version", err)
 	}
 	created, err := s.store.Application(ctx, app.Id)
 	if err != nil {

@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = "orbit.v1";
+export const protobufPackage = 'orbit.v1';
 
 export interface GatewayCreateReq {
   project_id: string;
@@ -14,15 +14,11 @@ export interface GatewayCreateReq {
   name: string;
   rest_api_url: string;
   base_domain: string;
-  image?:
-    | string
-    | undefined;
+  image?: string | undefined;
   /** docker compose --pull: always|missing|never */
   image_pull_policy: string;
   /** Traefik entryPoints name: web|websecure (default web when empty on create) */
-  default_entrypoint?:
-    | string
-    | undefined;
+  default_entrypoint?: string | undefined;
   /** none|letsencrypt|tls (default none when empty on create) */
   tls_mode?: string | undefined;
 }

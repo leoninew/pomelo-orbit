@@ -223,11 +223,26 @@
   let refreshGeneration = 0;
   let logEditorInstance: editor.IStandaloneCodeEditor | null = null;
 
-  const backButtonText = computed(() => (route.query.from === 'application' ? '返回应用' : '返回'));
+  const backButtonText = computed(() => {
+    if (route.query.from === 'application') {
+      return '返回应用';
+    }
+    if (route.query.from === 'versions') {
+      return '返回版本';
+    }
+    return '返回';
+  });
 
   function goBack() {
     if (route.query.from === 'application' && deployment.value?.application_id) {
       router.push(`/cd/application/${deployment.value.application_id}`);
+      return;
+    }
+    if (route.query.from === 'versions' && deployment.value?.application_id) {
+      router.push({
+        path: '/cd/versions',
+        query: { application_id: deployment.value.application_id },
+      });
       return;
     }
     router.push('/cd/deployments');

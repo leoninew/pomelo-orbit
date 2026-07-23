@@ -25,8 +25,6 @@
             <tr>
               <th>{{ t('environment.fields.name') }}</th>
               <th>{{ t('environment.fields.code') }}</th>
-              <th>{{ t('environment.fields.defaultEntrypoint') }}</th>
-              <th>{{ t('environment.fields.tlsMode') }}</th>
               <th>{{ t('common.createdAt') }}</th>
               <th>{{ t('common.operation') }}</th>
             </tr>
@@ -35,8 +33,6 @@
             <tr v-for="env in environments" :key="env.id">
               <td class="text-foreground">{{ env.name }}</td>
               <td class="text-foreground">{{ env.code }}</td>
-              <td class="text-foreground">{{ env.default_entrypoint || '—' }}</td>
-              <td class="text-foreground">{{ env.tls_mode || 'none' }}</td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(env.created_at) }}
               </td>
@@ -114,36 +110,6 @@
             :placeholder="t('environment.placeholders.description')"
           />
         </div>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="app-field-label block">
-              {{ t('environment.fields.defaultEntrypoint') }}
-            </label>
-            <input
-              v-model="form.default_entrypoint"
-              type="text"
-              class="app-input"
-              :placeholder="t('environment.placeholders.defaultEntrypoint')"
-            />
-          </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label block">{{ t('environment.fields.tcpEntrypoint') }}</label>
-            <input
-              v-model="form.tcp_entrypoint"
-              type="text"
-              class="app-input"
-              :placeholder="t('environment.placeholders.tcpEntrypoint')"
-            />
-          </div>
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('environment.fields.tlsMode') }}</label>
-          <select v-model="form.tls_mode" class="app-input">
-            <option value="none">none</option>
-            <option value="letsencrypt">letsencrypt</option>
-            <option value="tls">tls</option>
-          </select>
-        </div>
       </div>
       <template #footer>
         <button class="app-button" @click="isFormDialogOpen = false">
@@ -212,9 +178,6 @@
     code: '',
     name: '',
     description: '',
-    default_entrypoint: 'web',
-    tcp_entrypoint: '',
-    tls_mode: 'none',
   });
   const errors = reactive({ code: '', name: '' });
 
@@ -285,9 +248,6 @@
       code: '',
       name: '',
       description: '',
-      default_entrypoint: 'web',
-      tcp_entrypoint: '',
-      tls_mode: 'none',
     });
     Object.assign(errors, { code: '', name: '' });
   }
@@ -304,9 +264,6 @@
       code: env.code,
       name: env.name,
       description: env.description || '',
-      default_entrypoint: env.default_entrypoint || 'web',
-      tcp_entrypoint: env.tcp_entrypoint || '',
-      tls_mode: env.tls_mode || 'none',
     });
     Object.assign(errors, { code: '', name: '' });
     isFormDialogOpen.value = true;
@@ -327,9 +284,6 @@
           await environmentApi.update(editingId.value, {
             name: form.name.trim(),
             description: form.description.trim() || undefined,
-            default_entrypoint: form.default_entrypoint.trim(),
-            tcp_entrypoint: form.tcp_entrypoint.trim(),
-            tls_mode: form.tls_mode || 'none',
           });
         } else {
           await environmentApi.create(
@@ -338,9 +292,6 @@
               code: form.code.trim(),
               name: form.name.trim(),
               description: form.description.trim() || undefined,
-              default_entrypoint: form.default_entrypoint.trim() || undefined,
-              tcp_entrypoint: form.tcp_entrypoint.trim() || undefined,
-              tls_mode: form.tls_mode || undefined,
             },
             { project_id: projectId }
           );

@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface GatewayCreateReq {
   project_id: string;
@@ -14,9 +14,17 @@ export interface GatewayCreateReq {
   name: string;
   rest_api_url: string;
   base_domain: string;
-  image?: string | undefined;
+  image?:
+    | string
+    | undefined;
   /** docker compose --pull: always|missing|never */
   image_pull_policy: string;
+  /** Traefik entryPoints name: web|websecure (default web when empty on create) */
+  default_entrypoint?:
+    | string
+    | undefined;
+  /** none|letsencrypt|tls (default none when empty on create) */
+  tls_mode?: string | undefined;
 }
 
 export interface GatewayUpdateReq {
@@ -25,6 +33,22 @@ export interface GatewayUpdateReq {
   base_domain?: string | undefined;
   image?: string | undefined;
   image_pull_policy?: string | undefined;
+  default_entrypoint?: string | undefined;
+  tls_mode?: string | undefined;
+}
+
+/** Read-only active exit / cluster DNS row (not a CRUD resource). */
+export interface GatewayExposureItem {
+  application_id: string;
+  application_code: string;
+  component_name: string;
+  protocol: string;
+  access: string;
+  container_port: number;
+  listen_port: number;
+  public_host: string;
+  internal_dns: string;
+  client_hint: string;
 }
 
 export interface GatewayResp {
@@ -40,6 +64,9 @@ export interface GatewayResp {
   updated_at: string;
   config_updated_at: string;
   image_pull_policy: string;
+  default_entrypoint: string;
+  tls_mode: string;
+  exposures: GatewayExposureItem[];
 }
 
 export interface GatewayPaginatedResp {

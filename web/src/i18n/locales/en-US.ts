@@ -66,6 +66,7 @@ export default {
     users: 'Users',
     roles: 'Roles',
     applications: 'Applications',
+    versions: 'Versions',
     gateways: 'Gateways',
     deployments: 'Deployments',
     environments: 'Environments',
@@ -77,6 +78,15 @@ export default {
     pipelineRuns: 'Pipeline Runs',
     artifacts: 'Artifacts',
     credentials: 'Credentials',
+    groups: {
+      workspace: 'Workspace',
+      admin: 'Administration',
+      workload: 'Workload',
+      access: 'Access',
+      pipeline: 'Pipeline',
+      runtime: 'Runtime',
+      security: 'Security',
+    },
   },
   home: {
     title: 'Project Overview',
@@ -338,6 +348,8 @@ export default {
         containerPort: 'Container port, for example 80',
         exposeComponent: 'Select component',
         exposeProtocol: 'Select protocol',
+        exposeAccess: 'local or public',
+        listenPort: 'Listen port (optional, default=container)',
         environment: 'Select environment',
         serviceInstance: 'Select service instance',
         mountSourceType: 'Source type',
@@ -418,9 +430,6 @@ export default {
     fields: {
       name: 'Name',
       code: 'Code',
-      defaultEntrypoint: 'HTTP entrypoint',
-      tcpEntrypoint: 'TCP entrypoint',
-      tlsMode: 'TLS mode',
     },
     dialog: {
       create: 'Create Environment',
@@ -435,8 +444,6 @@ export default {
       code: 'e.g. local, staging',
       name: 'e.g. Local',
       description: 'Optional description',
-      defaultEntrypoint: 'e.g. web',
-      tcpEntrypoint: 'Optional; falls back to HTTP entrypoint',
     },
     validation: {
       codeInvalid:
@@ -459,13 +466,30 @@ export default {
     detailTitle: 'Gateway detail',
     backToList: 'Back to gateways',
     openWorkload: 'Versions & deploy',
+    sections: {
+      config: 'Gateway configuration',
+    },
     fields: {
       name: 'Name',
       code: 'Code',
       restApiUrl: 'Rest API URL',
       baseDomain: 'Base domain',
+      defaultEntrypoint: 'HTTP entrypoint',
+      tlsMode: 'TLS mode',
       imagePullPolicy: 'Image pull policy',
-      image: 'Image (optional)',
+      image: 'Image',
+    },
+    exposures: {
+      title: 'Active exposures (read-only)',
+      hint: 'Aggregated from deployed Version Expose rows; not a manual route table.',
+      empty: 'No active local/public exposures.',
+      app: 'Application',
+      component: 'Component',
+      protocol: 'Protocol',
+      access: 'Access',
+      listen: 'Listen → container',
+      internalDns: 'Internal DNS',
+      clientHint: 'Client hint',
     },
     dialog: {
       create: 'Create Gateway',
@@ -477,16 +501,20 @@ export default {
       code: 'Start with a lowercase letter; letters, digits, and hyphens only. Immutable after create.',
       restApiUrl: 'Base URL for Traefik providers.rest PUT/GET, e.g. http://traefik:8080',
       baseDomain: 'App host is derived as {app_code}.{base_domain}',
-      image: 'Defaults to traefik:v3.6 when empty. Compiled into the managed Version component.',
+      defaultEntrypoint:
+        'Traefik HTTP entryPoints name (web / websecure); drives Docker label entrypoints=',
+      image: 'Compiled into the managed Version component, e.g. traefik:3.6',
       compileOnSave:
         'Saving updates the unpublished Version (component traefik: ports, docker.sock, traefik.yml). Use Versions & deploy for advanced mounts and deploy.',
     },
     placeholders: {
-      code: 'e.g. edge',
-      name: 'e.g. Edge Gateway',
+      code: 'e.g. traefik',
+      name: 'e.g. Traefik',
       restApiUrl: 'http://traefik:8080',
-      baseDomain: 'e.g. local.test',
-      image: 'e.g. traefik:v3.6',
+      baseDomain: 'e.g. lvh.me',
+      defaultEntrypoint: 'web',
+      tlsMode: 'none',
+      image: 'traefik:3.6',
     },
     validation: {
       codeInvalid:
@@ -494,7 +522,8 @@ export default {
       nameRequired: 'Gateway name is required',
       restApiUrlRequired: 'Rest API URL is required',
       baseDomainRequired: 'Base domain is required',
-      requiredFields: 'Name, Rest API URL and base domain are required',
+      imageRequired: 'Image is required',
+      requiredFields: 'Name, Rest API URL, base domain and image are required',
     },
     toast: {
       selectProjectRequired: 'Please select a project first',

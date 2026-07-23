@@ -92,6 +92,18 @@ const router = createRouter({
       meta: { title: '网关', menuKey: 'gateways' },
     },
     {
+      path: '/cd/gateway/create',
+      name: 'GatewayCreate',
+      component: () => import('@/views/cd/GatewayCreate.vue'),
+      meta: { title: '创建网关', menuKey: 'gateways' },
+    },
+    {
+      path: '/cd/gateway/:id/edit',
+      name: 'GatewayEdit',
+      component: () => import('@/views/cd/GatewayEdit.vue'),
+      meta: { title: '编辑网关', menuKey: 'gateways' },
+    },
+    {
       path: '/cd/gateway/:id',
       name: 'GatewayDetail',
       component: () => import('@/views/cd/GatewayDetail.vue'),

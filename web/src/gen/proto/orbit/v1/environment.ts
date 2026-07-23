@@ -6,24 +6,18 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'orbit.v1';
+export const protobufPackage = "orbit.v1";
 
 export interface EnvironmentCreateReq {
   project_id: string;
   code: string;
   name: string;
   description?: string | undefined;
-  default_entrypoint?: string | undefined;
-  tcp_entrypoint?: string | undefined;
-  tls_mode?: string | undefined;
 }
 
 export interface EnvironmentUpdateReq {
   name?: string | undefined;
   description?: string | undefined;
-  default_entrypoint?: string | undefined;
-  tcp_entrypoint?: string | undefined;
-  tls_mode?: string | undefined;
 }
 
 export interface EnvironmentResp {
@@ -34,9 +28,6 @@ export interface EnvironmentResp {
   description?: string | undefined;
   created_at: string;
   updated_at: string;
-  default_entrypoint: string;
-  tcp_entrypoint?: string | undefined;
-  tls_mode: string;
 }
 
 export interface EnvironmentPaginatedResp {

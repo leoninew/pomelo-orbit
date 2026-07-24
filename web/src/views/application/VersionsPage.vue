@@ -87,7 +87,9 @@
     if (fromQuery && ids.has(fromQuery)) {
       return fromQuery;
     }
-    const fromStorage = storageStore.getItem<string>(applicationVersionsApplicationIdKey(projectId));
+    const fromStorage = storageStore.getItem<string>(
+      applicationVersionsApplicationIdKey(projectId)
+    );
     if (fromStorage && ids.has(fromStorage)) {
       return fromStorage;
     }

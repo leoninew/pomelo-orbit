@@ -60,6 +60,8 @@ export default {
     home: 'Overview',
     pipeline: 'Pipeline',
     deployment: 'Deployment',
+    continuousIntegration: 'Continuous Integration',
+    continuousDeployment: 'Continuous Deployment',
     settings: 'Settings',
     loginHistory: 'Login History',
     projects: 'Projects',

@@ -194,8 +194,8 @@
   const { status, execute } = useStatusAsync();
   const { t } = useI18n({ useScope: 'global' });
 
-  const ciStats = reactive({ projectCount: 0, todayRuns: 0 });
-  const cdStats = reactive({ applicationCount: 0, todayDeploys: 0 });
+  const pipelineStats = reactive({ projectCount: 0, todayRuns: 0 });
+  const deploymentStats = reactive({ applicationCount: 0, todayDeploys: 0 });
   const recentRuns = ref<PipelineRunResp[]>([]);
   const recentDeploys = ref<DeploymentResp[]>([]);
 
@@ -215,7 +215,7 @@
   const overviewCards = computed(() => [
     {
       label: t('home.repositories'),
-      value: ciStats.projectCount,
+      value: pipelineStats.projectCount,
       description: t('home.repositoriesDesc'),
       path: '/repository',
       icon: FolderGit2,
@@ -224,7 +224,7 @@
     },
     {
       label: t('home.todayBuilds'),
-      value: ciStats.todayRuns,
+      value: pipelineStats.todayRuns,
       description: t('home.todayBuildsDesc'),
       path: '/pipeline-run',
       icon: Play,
@@ -233,7 +233,7 @@
     },
     {
       label: t('home.applications'),
-      value: cdStats.applicationCount,
+      value: deploymentStats.applicationCount,
       description: t('home.applicationsDesc'),
       path: '/applications',
       icon: LayoutGrid,
@@ -242,7 +242,7 @@
     },
     {
       label: t('home.todayDeploys'),
-      value: cdStats.todayDeploys,
+      value: deploymentStats.todayDeploys,
       description: t('home.todayDeploysDesc'),
       path: '/deployments',
       icon: Rocket,
@@ -252,10 +252,10 @@
   ]);
 
   function resetOverview() {
-    ciStats.projectCount = 0;
-    ciStats.todayRuns = 0;
-    cdStats.applicationCount = 0;
-    cdStats.todayDeploys = 0;
+    pipelineStats.projectCount = 0;
+    pipelineStats.todayRuns = 0;
+    deploymentStats.applicationCount = 0;
+    deploymentStats.todayDeploys = 0;
     recentRuns.value = [];
     recentDeploys.value = [];
   }
@@ -275,32 +275,38 @@
         const todayEnd = todayStart.add(1, 'day');
 
         // 并行请求所有数据以提升性能
-        const [ciProjectsRes, ciRunsRes, ciTodayRunsRes, cdAppsRes, cdTodayRes, cdRecentRes] =
-          await Promise.all([
-            repositoryApi.list({ per_page: 1, project_id: activeProjectId }),
-            pipelineRunApi.list({ per_page: 5, project_id: activeProjectId }),
-            pipelineRunApi.list({
-              per_page: 1,
-              date_from: todayStart.toISOString(),
-              date_to: todayEnd.toISOString(),
-              project_id: activeProjectId,
-            }),
-            applicationApi.list({ per_page: 1, project_id: activeProjectId }),
-            deploymentApi.list({
-              per_page: 1,
-              date_from: todayStart.toISOString(),
-              date_to: todayEnd.toISOString(),
-              project_id: activeProjectId,
-            }),
-            deploymentApi.list({ per_page: 5, project_id: activeProjectId }),
-          ]);
+        const [
+          repositoryRes,
+          pipelineRunsRes,
+          pipelineTodayRunsRes,
+          applicationRes,
+          deploymentTodayRes,
+          deploymentRecentRes,
+        ] = await Promise.all([
+          repositoryApi.list({ per_page: 1, project_id: activeProjectId }),
+          pipelineRunApi.list({ per_page: 5, project_id: activeProjectId }),
+          pipelineRunApi.list({
+            per_page: 1,
+            date_from: todayStart.toISOString(),
+            date_to: todayEnd.toISOString(),
+            project_id: activeProjectId,
+          }),
+          applicationApi.list({ per_page: 1, project_id: activeProjectId }),
+          deploymentApi.list({
+            per_page: 1,
+            date_from: todayStart.toISOString(),
+            date_to: todayEnd.toISOString(),
+            project_id: activeProjectId,
+          }),
+          deploymentApi.list({ per_page: 5, project_id: activeProjectId }),
+        ]);
 
-        ciStats.projectCount = ciProjectsRes.total;
-        recentRuns.value = ciRunsRes.items;
-        ciStats.todayRuns = ciTodayRunsRes.total;
-        cdStats.applicationCount = cdAppsRes.total;
-        cdStats.todayDeploys = cdTodayRes.total;
-        recentDeploys.value = cdRecentRes.items;
+        pipelineStats.projectCount = repositoryRes.total;
+        recentRuns.value = pipelineRunsRes.items;
+        pipelineStats.todayRuns = pipelineTodayRunsRes.total;
+        deploymentStats.applicationCount = applicationRes.total;
+        deploymentStats.todayDeploys = deploymentTodayRes.total;
+        recentDeploys.value = deploymentRecentRes.items;
       });
     } catch {
       toast.error('获取数据失败');

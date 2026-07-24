@@ -2,8 +2,8 @@ import { FolderGit2, KeyRound, Layers, LayoutGrid, Network, Play, Wrench } from 
 import type { Component } from 'vue';
 import { PERMISSIONS } from '@/constants/permissions';
 
-export type NavigationScope = 'home' | 'pipeline' | 'deployment';
-export type PrimaryNavigationKey = 'pipeline' | 'deployment';
+export type NavigationScope = 'home' | 'settings' | 'pipeline' | 'deployment';
+export type PrimaryNavigationKey = 'pipeline' | 'deployment' | 'settings';
 
 /** Level-2 leaf (navigable route). */
 export interface NavigationLeaf {
@@ -64,6 +64,9 @@ const homeNavigation: NavigationBranch[] = [
       },
     ],
   },
+];
+
+const settingsNavigation: NavigationBranch[] = [
   {
     key: 'admin',
     labelKey: 'nav.groups.admin',
@@ -224,6 +227,7 @@ const pipelineNavigation: NavigationBranch[] = [
 /** Two-level secondary navigation keyed by scope. */
 export const secondaryNavigation: Record<NavigationScope, NavigationBranch[]> = {
   home: homeNavigation,
+  settings: settingsNavigation,
   pipeline: pipelineNavigation,
   deployment: deploymentNavigation,
 };
@@ -267,15 +271,21 @@ export function resolveSecondaryNavigation(
 export const primaryNavigation = [
   {
     key: 'pipeline',
-    label: '流水线',
-    labelKey: 'nav.pipeline',
+    label: '持续集成',
+    labelKey: 'nav.continuousIntegration',
     path: firstNavigationPath(secondaryNavigation.pipeline),
   },
   {
     key: 'deployment',
-    label: '部署',
-    labelKey: 'nav.deployment',
+    label: '持续部署',
+    labelKey: 'nav.continuousDeployment',
     path: firstNavigationPath(secondaryNavigation.deployment),
+  },
+  {
+    key: 'settings',
+    label: '系统设置',
+    labelKey: 'nav.settings',
+    path: firstNavigationPath(secondaryNavigation.settings),
   },
 ] satisfies PrimaryNavigationEntry[];
 
@@ -292,7 +302,9 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/login-history' ||
     path === '/settings'
   ) {
-    return 'home';
+    return path === '/' || path === '/home' || path === '/projects' || path.startsWith('/project/')
+      ? 'home'
+      : 'settings';
   }
   if (
     path === '/pipeline' ||
@@ -336,5 +348,5 @@ export function getNavigationScope(path: string): NavigationScope | null {
 
 export function getPrimaryNavigationKey(path: string): PrimaryNavigationKey | null {
   const scope = getNavigationScope(path);
-  return scope === 'pipeline' || scope === 'deployment' ? scope : null;
+  return scope === 'pipeline' || scope === 'deployment' || scope === 'settings' ? scope : null;
 }

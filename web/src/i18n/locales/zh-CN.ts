@@ -59,6 +59,8 @@ export default {
     home: '项目概览',
     pipeline: '流水线',
     deployment: '部署',
+    continuousIntegration: '持续集成',
+    continuousDeployment: '持续部署',
     settings: '系统设置',
     loginHistory: '登录历史',
     projects: '项目管理',

@@ -80,7 +80,7 @@
   const openState = reactive<Record<string, boolean>>({});
 
   function isOpen(key: string) {
-    return openState[key] ?? false;
+    return openState[key] ?? true;
   }
 
   function setOpen(key: string, open: boolean) {

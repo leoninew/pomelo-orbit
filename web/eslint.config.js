@@ -13,7 +13,7 @@ const srcPath = resolve(__dirname, 'src');
 
 export default [
   {
-    ignores: ['dist', 'node_modules', 'coverage', '*.config.js', '*.config.ts'],
+    ignores: ['dist', 'node_modules', 'coverage', 'src/gen/proto/**', '*.config.js', '*.config.ts'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

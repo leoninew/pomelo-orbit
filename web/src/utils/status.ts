@@ -30,9 +30,6 @@ export function appStatusTone(status: string): BadgeTone {
     running: 'success',
     stopped: 'warning',
     faulted: 'error',
-    // 兼容旧文案键（历史部署态，已不由后端返回）
-    deployed: 'success',
-    deploy_failed: 'error',
   };
   return tones[status] ?? 'default';
 }

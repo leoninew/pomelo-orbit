@@ -2,8 +2,8 @@ import { FolderGit2, KeyRound, Layers, LayoutGrid, Network, Play, Wrench } from 
 import type { Component } from 'vue';
 import { PERMISSIONS } from '@/constants/permissions';
 
-export type NavigationScope = 'home' | 'ci' | 'cd';
-export type PrimaryNavigationKey = 'ci' | 'cd';
+export type NavigationScope = 'home' | 'pipeline' | 'deployment';
+export type PrimaryNavigationKey = 'pipeline' | 'deployment';
 
 /** Level-2 leaf (navigable route). */
 export interface NavigationLeaf {
@@ -101,7 +101,7 @@ const homeNavigation: NavigationBranch[] = [
   },
 ];
 
-const cdNavigation: NavigationBranch[] = [
+const deploymentNavigation: NavigationBranch[] = [
   {
     key: 'workload',
     labelKey: 'nav.groups.workload',
@@ -111,26 +111,26 @@ const cdNavigation: NavigationBranch[] = [
         key: 'applications',
         label: '应用',
         labelKey: 'nav.applications',
-        path: '/cd/applications',
+        path: '/applications',
       },
-      { key: 'versions', label: '版本', labelKey: 'nav.versions', path: '/cd/versions' },
+      { key: 'versions', label: '版本', labelKey: 'nav.versions', path: '/versions' },
       {
         key: 'services',
         label: '服务',
         labelKey: 'nav.services',
-        path: '/cd/services',
+        path: '/services',
       },
       {
         key: 'deployments',
         label: '部署记录',
         labelKey: 'nav.deployments',
-        path: '/cd/deployments',
+        path: '/deployments',
       },
       {
         key: 'environments',
         label: '环境管理',
         labelKey: 'nav.environments',
-        path: '/cd/environments',
+        path: '/environments',
       },
     ],
   },
@@ -143,25 +143,25 @@ const cdNavigation: NavigationBranch[] = [
         key: 'gateways',
         label: '网关',
         labelKey: 'nav.gateways',
-        path: '/cd/gateways',
+        path: '/gateways',
       },
       {
         key: 'route',
         label: '路由配置',
         labelKey: 'nav.routes',
-        path: '/cd/routes',
+        path: '/routes',
       },
       {
         key: 'traefik-http-routers',
         label: 'Traefik Routers',
         labelKey: 'nav.traefikRoutes',
-        path: '/cd/traefik-http-routers',
+        path: '/route/traefik',
       },
     ],
   },
 ];
 
-const ciNavigation: NavigationBranch[] = [
+const pipelineNavigation: NavigationBranch[] = [
   {
     key: 'pipeline',
     labelKey: 'nav.groups.pipeline',
@@ -171,19 +171,19 @@ const ciNavigation: NavigationBranch[] = [
         key: 'repository',
         label: '代码仓库',
         labelKey: 'nav.repositories',
-        path: '/ci/repository',
+        path: '/repository',
       },
       {
         key: 'buildstages',
         label: '构建阶段',
         labelKey: 'nav.buildStages',
-        path: '/ci/build-stage',
+        path: '/pipeline/stage',
       },
       {
         key: 'pipelinetemplates',
         label: '流水线模板',
         labelKey: 'nav.pipelineTemplates',
-        path: '/ci/template',
+        path: '/pipeline/template',
       },
     ],
   },
@@ -196,13 +196,13 @@ const ciNavigation: NavigationBranch[] = [
         key: 'pipelineruns',
         label: '流水线记录',
         labelKey: 'nav.pipelineRuns',
-        path: '/ci/run',
+        path: '/pipeline-run',
       },
       {
         key: 'artifacts',
         label: '制品记录',
         labelKey: 'nav.artifacts',
-        path: '/ci/artifact',
+        path: '/pipeline-run/artifact',
       },
     ],
   },
@@ -215,7 +215,7 @@ const ciNavigation: NavigationBranch[] = [
         key: 'credentials',
         label: '凭据管理',
         labelKey: 'nav.credentials',
-        path: '/ci/credential',
+        path: '/credential',
       },
     ],
   },
@@ -224,8 +224,8 @@ const ciNavigation: NavigationBranch[] = [
 /** Two-level secondary navigation keyed by scope. */
 export const secondaryNavigation: Record<NavigationScope, NavigationBranch[]> = {
   home: homeNavigation,
-  cd: cdNavigation,
-  ci: ciNavigation,
+  pipeline: pipelineNavigation,
+  deployment: deploymentNavigation,
 };
 
 export function firstNavigationPath(branches: NavigationBranch[]): string {
@@ -266,16 +266,16 @@ export function resolveSecondaryNavigation(
 
 export const primaryNavigation = [
   {
-    key: 'ci',
-    label: '持续集成',
-    labelKey: 'nav.ci',
-    path: firstNavigationPath(secondaryNavigation.ci),
+    key: 'pipeline',
+    label: '流水线',
+    labelKey: 'nav.pipeline',
+    path: firstNavigationPath(secondaryNavigation.pipeline),
   },
   {
-    key: 'cd',
-    label: '持续部署',
-    labelKey: 'nav.cd',
-    path: firstNavigationPath(secondaryNavigation.cd),
+    key: 'deployment',
+    label: '部署',
+    labelKey: 'nav.deployment',
+    path: firstNavigationPath(secondaryNavigation.deployment),
   },
 ] satisfies PrimaryNavigationEntry[];
 
@@ -294,16 +294,47 @@ export function getNavigationScope(path: string): NavigationScope | null {
   ) {
     return 'home';
   }
-  if (path === '/ci' || path.startsWith('/ci/')) {
-    return 'ci';
+  if (
+    path === '/pipeline' ||
+    path.startsWith('/pipeline/') ||
+    path === '/pipeline-run' ||
+    path.startsWith('/pipeline-run/') ||
+    path === '/repository' ||
+    path.startsWith('/repository/') ||
+    path === '/credential' ||
+    path.startsWith('/credential/')
+  ) {
+    return 'pipeline';
   }
-  if (path === '/cd' || path.startsWith('/cd/')) {
-    return 'cd';
+  if (
+    path === '/application' ||
+    path.startsWith('/application/') ||
+    path === '/applications' ||
+    path === '/version' ||
+    path.startsWith('/version/') ||
+    path === '/versions' ||
+    path === '/service' ||
+    path.startsWith('/service/') ||
+    path === '/services' ||
+    path === '/deployment' ||
+    path.startsWith('/deployment/') ||
+    path === '/deployments' ||
+    path === '/environment' ||
+    path.startsWith('/environment/') ||
+    path === '/environments' ||
+    path === '/gateway' ||
+    path.startsWith('/gateway/') ||
+    path === '/gateways' ||
+    path === '/route' ||
+    path.startsWith('/route/') ||
+    path === '/routes'
+  ) {
+    return 'deployment';
   }
   return null;
 }
 
 export function getPrimaryNavigationKey(path: string): PrimaryNavigationKey | null {
   const scope = getNavigationScope(path);
-  return scope === 'ci' || scope === 'cd' ? scope : null;
+  return scope === 'pipeline' || scope === 'deployment' ? scope : null;
 }

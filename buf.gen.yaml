@@ -5,9 +5,6 @@ managed:
   override:
     - file_option: go_package_prefix
       value: gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto
-  except:
-    - buf.build/googleapis/googleapis
-    - buf.build/grpc/grpc
 
 clean: true
 plugins:

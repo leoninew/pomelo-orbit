@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { authApi } from '@/api/auth';
-import type { UserInfoResp } from '@/gen/proto/orbit/v1/auth';
+import { authApi } from '@/api/auth/auth';
+import type { UserInfoResp } from '@/gen/proto/orbit/v1/auth/auth';
 
 const TOKEN_KEY = 'pomelo_orbit_token';
 

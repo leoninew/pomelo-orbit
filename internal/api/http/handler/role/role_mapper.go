@@ -3,29 +3,29 @@ package rolehandler
 import (
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	rolev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/role"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-func roleCreateInput(req *pomeloorbit.RoleCreateReq) roledto.SaveInput {
+func roleCreateInput(req *rolev1.RoleCreateReq) roledto.SaveInput {
 	return roledto.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes}
 }
 
-func roleUpdateInput(req *pomeloorbit.RoleUpdateReq) roledto.SaveInput {
+func roleUpdateInput(req *rolev1.RoleUpdateReq) roledto.SaveInput {
 	return roledto.SaveInput{Code: req.Code, Name: req.Name, Description: req.Description, PermissionCodes: req.PermissionCodes}
 }
 
-func roleDetailResponse(detail roledto.Detail) pomeloorbit.RoleResp {
+func roleDetailResponse(detail roledto.Detail) rolev1.RoleResp {
 	return roleResponse(detail.Role, detail.PermissionCodes)
 }
 
-func roleResponse(role model.Role, permissionCodes []string) pomeloorbit.RoleResp {
+func roleResponse(role model.Role, permissionCodes []string) rolev1.RoleResp {
 	if permissionCodes == nil {
 		permissionCodes = []string{}
 	}
-	return pomeloorbit.RoleResp{Id: role.Id, Code: role.Code, Name: role.Name, Description: role.Description, CreatedAt: transportresponse.FormatTime(role.CreatedAt), UpdatedAt: transportresponse.FormatTime(role.UpdatedAt), PermissionCodes: permissionCodes}
+	return rolev1.RoleResp{Id: role.Id, Code: role.Code, Name: role.Name, Description: role.Description, CreatedAt: transportresponse.FormatTime(role.CreatedAt), UpdatedAt: transportresponse.FormatTime(role.UpdatedAt), PermissionCodes: permissionCodes}
 }
 
-func permissionResponse(permission roledto.Permission) pomeloorbit.PermissionResp {
-	return pomeloorbit.PermissionResp{Id: permission.Id, Code: permission.Code, Name: permission.Name, Description: permission.Description}
+func permissionResponse(permission roledto.Permission) rolev1.PermissionResp {
+	return rolev1.PermissionResp{Id: permission.Id, Code: permission.Code, Name: permission.Name, Description: permission.Description}
 }

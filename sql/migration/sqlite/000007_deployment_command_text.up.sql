@@ -1,1 +1,0 @@
-ALTER TABLE deployment ADD COLUMN command_text TEXT NOT NULL DEFAULT '';

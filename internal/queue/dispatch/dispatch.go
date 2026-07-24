@@ -3,35 +3,37 @@ package dispatch
 import (
 	"context"
 
-	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
-	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
+	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
-type CIDispatcher struct {
+// PipelineRunDispatcher enqueues pipeline_run execution tasks.
+type PipelineRunDispatcher struct {
 	tasks tasksvc.Service
 }
 
-func NewCIDispatcher(tasks tasksvc.Service) CIDispatcher {
-	return CIDispatcher{tasks: tasks}
+func NewPipelineRunDispatcher(tasks tasksvc.Service) PipelineRunDispatcher {
+	return PipelineRunDispatcher{tasks: tasks}
 }
 
-func (d CIDispatcher) DispatchPipelineRun(ctx context.Context, input cidto.PipelineRunDispatchInput) error {
-	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeCIPipelineRunExecute, pipelineRunExecutePayload{PipelineRunID: input.PipelineRunID})
+func (d PipelineRunDispatcher) DispatchPipelineRun(ctx context.Context, input pipelinerundto.PipelineRunDispatchInput) error {
+	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypePipelineRunExecute, pipelineRunExecutePayload{PipelineRunID: input.PipelineRunID})
 	return err
 }
 
-type CDDispatcher struct {
+// DeploymentDispatcher enqueues deployment command tasks.
+type DeploymentDispatcher struct {
 	tasks tasksvc.Service
 }
 
-func NewCDDispatcher(tasks tasksvc.Service) CDDispatcher {
-	return CDDispatcher{tasks: tasks}
+func NewDeploymentDispatcher(tasks tasksvc.Service) DeploymentDispatcher {
+	return DeploymentDispatcher{tasks: tasks}
 }
 
-func (d CDDispatcher) DispatchApplicationDeploy(ctx context.Context, input cdto.ApplicationDeployDispatchInput) error {
-	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationDeploy, applicationDeployPayload{
+func (d DeploymentDispatcher) DispatchDeploy(ctx context.Context, input deploymentdto.DeployDispatchInput) error {
+	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeDeploymentDeploy, deploymentDeployPayload{
 		ApplicationID: input.ApplicationID,
 		DeploymentID:  input.DeploymentID,
 		ForceRecreate: input.ForceRecreate,
@@ -39,16 +41,16 @@ func (d CDDispatcher) DispatchApplicationDeploy(ctx context.Context, input cdto.
 	return err
 }
 
-func (d CDDispatcher) DispatchApplicationRestart(ctx context.Context, input cdto.ApplicationRestartDispatchInput) error {
-	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationRestart, applicationRestartPayload{
+func (d DeploymentDispatcher) DispatchRestart(ctx context.Context, input deploymentdto.RestartDispatchInput) error {
+	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeDeploymentRestart, deploymentRestartPayload{
 		ApplicationID: input.ApplicationID,
 		DeploymentID:  input.DeploymentID,
 	})
 	return err
 }
 
-func (d CDDispatcher) DispatchApplicationStop(ctx context.Context, input cdto.ApplicationStopDispatchInput) error {
-	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeCDApplicationStop, applicationStopPayload{
+func (d DeploymentDispatcher) DispatchStop(ctx context.Context, input deploymentdto.StopDispatchInput) error {
+	_, err := d.tasks.EnqueueTyped(ctx, status.TaskTypeDeploymentStop, deploymentStopPayload{
 		ApplicationID: input.ApplicationID,
 		DeploymentID:  input.DeploymentID,
 		RemoveVolumes: input.RemoveVolumes,
@@ -60,18 +62,18 @@ type pipelineRunExecutePayload struct {
 	PipelineRunID string `json:"pipeline_run_id"`
 }
 
-type applicationDeployPayload struct {
+type deploymentDeployPayload struct {
 	ApplicationID string `json:"application_id"`
 	DeploymentID  string `json:"deployment_id"`
 	ForceRecreate bool   `json:"force_recreate"`
 }
 
-type applicationRestartPayload struct {
+type deploymentRestartPayload struct {
 	ApplicationID string `json:"application_id"`
 	DeploymentID  string `json:"deployment_id"`
 }
 
-type applicationStopPayload struct {
+type deploymentStopPayload struct {
 	ApplicationID string `json:"application_id"`
 	DeploymentID  string `json:"deployment_id"`
 	RemoveVolumes bool   `json:"remove_volumes"`

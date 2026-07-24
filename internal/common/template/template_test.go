@@ -14,10 +14,10 @@ func TestRenderLiquidTemplate(t *testing.T) {
 	}{
 		{
 			name:  "simple variables",
-			input: "image: {{ app.code }}.{{ config.domain_suffix }}",
+			input: "image: {{ app.code }}.{{ config.base_domain }}",
 			values: map[string]any{
 				"app":    map[string]any{"code": "demo"},
-				"config": map[string]any{"domain_suffix": "lvh.me"},
+				"config": map[string]any{"base_domain": "lvh.me"},
 			},
 			want: "image: demo.lvh.me",
 		},

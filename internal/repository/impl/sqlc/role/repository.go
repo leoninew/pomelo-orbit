@@ -2,13 +2,12 @@ package rolerepo
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"strings"
+	"time"
 
-	"github.com/jmoiron/sqlx"
-
-	dbsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	rolesqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc/role"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
@@ -18,63 +17,89 @@ import (
 var _ repository.RoleStore = Repository{}
 
 type Repository struct {
-	db      *sqlx.DB
-	driver  string
-	queries *dbsqlc.Queries
+	db *sql.DB
 }
 
-func NewRepository(db *sqlx.DB, driver string) Repository {
-	return Repository{db: db, driver: driver, queries: dbsqlc.New(db)}
+func NewRepository(db *sql.DB) Repository {
+	return Repository{db: db}
+}
+
+func (r Repository) q(ctx context.Context) *rolesqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *rolesqlc.Queries {
+		return rolesqlc.New(dbtx)
+	})
 }
 
 func (r Repository) RoleById(ctx context.Context, id string) (model.Role, error) {
-	role, err := r.queries.RoleByID(ctx, id)
+	role, err := r.q(ctx).RoleByID(ctx, id)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return dbmodel.RoleFromSQLC(role), nil
+	return roleFromSQLC(role), nil
 }
 
 func (r Repository) RoleByCode(ctx context.Context, code string) (model.Role, error) {
-	role, err := r.queries.RoleByCode(ctx, code)
+	role, err := r.q(ctx).RoleByCode(ctx, code)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role by code %s: %w", code, sqlcommon.TranslateError(err))
 	}
-	return dbmodel.RoleFromSQLC(role), nil
+	return roleFromSQLC(role), nil
 }
 
 func (r Repository) RoleByName(ctx context.Context, name string) (model.Role, error) {
-	role, err := r.queries.RoleByName(ctx, name)
+	role, err := r.q(ctx).RoleByName(ctx, name)
 	if err != nil {
 		return model.Role{}, fmt.Errorf("load role by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return dbmodel.RoleFromSQLC(role), nil
+	return roleFromSQLC(role), nil
 }
 
 func (r Repository) ListRoles(ctx context.Context, page int, perPage int, search string) (repository.Page[model.Role], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	where, args := roleSearchWhere(search)
-	var total int
-	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM role`+where, args...); err != nil {
+	raw, pattern := dbmodel.LowerSearchPattern(search)
+	q := r.q(ctx)
+	total, err := q.CountRoles(ctx, rolesqlc.CountRolesParams{
+		Column1:     raw,
+		Code:        pattern,
+		Name:        pattern,
+		Description: sql.NullString{String: pattern, Valid: true},
+	})
+	if err != nil {
 		return repository.Page[model.Role]{}, fmt.Errorf("count roles: %w", err)
 	}
-	args = append(args, perPage, (page-1)*perPage)
-	var items []model.Role
-	err := r.db.SelectContext(ctx, &items, `SELECT id, code, name, description, created_at, updated_at FROM role`+where+` ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, args...)
+	rows, err := q.ListRoles(ctx, rolesqlc.ListRolesParams{
+		Column1:     raw,
+		Code:        pattern,
+		Name:        pattern,
+		Description: sql.NullString{String: pattern, Valid: true},
+		Limit:       int64(perPage),
+		Offset:      int64((page - 1) * perPage),
+	})
 	if err != nil {
 		return repository.Page[model.Role]{}, fmt.Errorf("list roles: %w", err)
 	}
-	return repository.Page[model.Role]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+	items := make([]model.Role, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, roleFromSQLC(row))
+	}
+	return repository.Page[model.Role]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
 func (r Repository) ListPermissions(ctx context.Context) ([]model.Permission, error) {
-	rows, err := r.queries.ListPermissions(ctx)
+	rows, err := r.q(ctx).ListPermissions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list permissions: %w", err)
 	}
 	permissions := make([]model.Permission, 0, len(rows))
 	for _, row := range rows {
-		permissions = append(permissions, dbmodel.PermissionFromSQLC(row))
+		permissions = append(permissions, model.Permission{
+			Id:          row.ID,
+			Code:        row.Code,
+			Name:        row.Name,
+			Description: dbmodel.StringPtr(row.Description),
+			CreatedAt:   row.CreatedAt,
+			UpdatedAt:   row.UpdatedAt,
+		})
 	}
 	return permissions, nil
 }
@@ -84,12 +109,8 @@ func (r Repository) PermissionCodesExist(ctx context.Context, codes []string) (m
 	if len(codes) == 0 {
 		return found, nil
 	}
-	query, args, err := sqlx.In(`SELECT code FROM permission WHERE code IN (?)`, codes)
+	rows, err := r.q(ctx).PermissionCodesByCodes(ctx, codes)
 	if err != nil {
-		return nil, fmt.Errorf("build permission query: %w", err)
-	}
-	var rows []string
-	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("load permissions by code: %w", err)
 	}
 	for _, code := range rows {
@@ -100,125 +121,92 @@ func (r Repository) PermissionCodesExist(ctx context.Context, codes []string) (m
 
 func (r Repository) RolePermissionCodesByRoleIds(ctx context.Context, roleIds []string) (map[string][]string, error) {
 	permissionsByRoleId := make(map[string][]string, len(roleIds))
-	if len(roleIds) == 0 {
-		return permissionsByRoleId, nil
-	}
 	for _, roleId := range roleIds {
 		permissionsByRoleId[roleId] = []string{}
 	}
-	query, args, err := sqlIn(`SELECT role_permission.role_id, permission.code FROM role_permission
-		JOIN permission ON permission.id = role_permission.permission_id
-		WHERE role_permission.role_id IN (?) ORDER BY role_permission.role_id, permission.code`, roleIds)
+	if len(roleIds) == 0 {
+		return permissionsByRoleId, nil
+	}
+	rows, err := r.q(ctx).RolePermissionCodesByRoleIds(ctx, roleIds)
 	if err != nil {
-		return nil, fmt.Errorf("build role permissions query: %w", err)
-	}
-	var rows []struct {
-		RoleId string `db:"role_id"`
-		Code   string `db:"code"`
-	}
-	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("load role permissions: %w", err)
 	}
 	for _, row := range rows {
-		permissionsByRoleId[row.RoleId] = append(permissionsByRoleId[row.RoleId], row.Code)
+		permissionsByRoleId[row.RoleID] = append(permissionsByRoleId[row.RoleID], row.Code)
 	}
 	return permissionsByRoleId, nil
 }
 
 func (r Repository) CreateRole(ctx context.Context, role model.Role, permissionCodes []string) error {
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin create role %s: %w", role.Code, err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO role (id, code, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`, role.Id, role.Code, role.Name, role.Description, role.CreatedAt, role.UpdatedAt); err != nil {
+	q := r.q(ctx)
+	if err := q.CreateRole(ctx, rolesqlc.CreateRoleParams{
+		ID:          role.Id,
+		Code:        role.Code,
+		Name:        role.Name,
+		Description: dbmodel.NullString(role.Description),
+		CreatedAt:   role.CreatedAt,
+		UpdatedAt:   role.UpdatedAt,
+	}); err != nil {
 		return fmt.Errorf("create role %s: %w", role.Code, err)
 	}
-	if err := setRolePermissionsTx(ctx, tx, r.driver, role.Id, permissionCodes); err != nil {
+	if err := setRolePermissions(ctx, q, role.Id, permissionCodes); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit create role %s: %w", role.Code, err)
-	}
-	committed = true
 	return nil
 }
 
 func (r Repository) UpdateRole(ctx context.Context, role model.Role, permissionCodes []string) error {
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin update role %s: %w", role.Id, err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`UPDATE role SET code = ?, name = ?, description = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), role.Code, role.Name, role.Description, role.Id); err != nil {
+	q := r.q(ctx)
+	if err := q.UpdateRole(ctx, rolesqlc.UpdateRoleParams{
+		Code:        role.Code,
+		Name:        role.Name,
+		Description: dbmodel.NullString(role.Description),
+		UpdatedAt:   time.Now().UTC(),
+		ID:          role.Id,
+	}); err != nil {
 		return fmt.Errorf("update role %s: %w", role.Id, err)
 	}
-	if err := setRolePermissionsTx(ctx, tx, r.driver, role.Id, permissionCodes); err != nil {
+	if err := setRolePermissions(ctx, q, role.Id, permissionCodes); err != nil {
 		return err
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit update role %s: %w", role.Id, err)
-	}
-	committed = true
 	return nil
 }
 
 func (r Repository) DeleteRole(ctx context.Context, roleId string) error {
-	err := r.queries.DeleteRole(ctx, roleId)
-	if err != nil {
+	if err := r.q(ctx).DeleteRole(ctx, roleId); err != nil {
 		return fmt.Errorf("delete role %s: %w", roleId, err)
 	}
 	return nil
 }
 
-func setRolePermissionsTx(ctx context.Context, tx *sqlx.Tx, driver string, roleId string, permissionCodes []string) error {
-	queries := dbsqlc.New(tx)
-	if _, err := tx.ExecContext(ctx, `DELETE FROM role_permission WHERE role_id = ?`, roleId); err != nil {
+func setRolePermissions(ctx context.Context, q *rolesqlc.Queries, roleId string, permissionCodes []string) error {
+	if err := q.DeleteRolePermissions(ctx, roleId); err != nil {
 		return fmt.Errorf("delete role permissions %s: %w", roleId, err)
 	}
+	now := time.Now().UTC()
 	for _, code := range permissionCodes {
-		permissionId, err := queries.PermissionIDByCode(ctx, code)
+		permissionId, err := q.PermissionIDByCode(ctx, code)
 		if err != nil {
 			return fmt.Errorf("load permission %s: %w", code, err)
 		}
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO role_permission (role_id, permission_id, created_at) VALUES (?, ?, %s)`, db.NowExpr(driver)), roleId, permissionId); err != nil {
+		if err := q.InsertRolePermission(ctx, rolesqlc.InsertRolePermissionParams{
+			RoleID:       roleId,
+			PermissionID: permissionId,
+			CreatedAt:    now,
+		}); err != nil {
 			return fmt.Errorf("insert role permission %s/%s: %w", roleId, code, err)
 		}
 	}
 	return nil
 }
 
-func roleSearchWhere(search string) (string, []any) {
-	search = strings.TrimSpace(search)
-	if search == "" {
-		return "", nil
+func roleFromSQLC(role rolesqlc.Role) model.Role {
+	return model.Role{
+		Id:          role.ID,
+		Code:        role.Code,
+		Name:        role.Name,
+		Description: dbmodel.StringPtr(role.Description),
+		CreatedAt:   role.CreatedAt,
+		UpdatedAt:   role.UpdatedAt,
 	}
-	like := "%" + strings.ToLower(search) + "%"
-	return " WHERE LOWER(code) LIKE ? OR LOWER(name) LIKE ? OR LOWER(COALESCE(description, '')) LIKE ?", []any{like, like, like}
-}
-
-func sqlIn(query string, values []string) (string, []any, error) {
-	args := make([]any, len(values))
-	for i, value := range values {
-		args[i] = value
-	}
-	return sqlxIn(query, args...)
-}
-
-func sqlxIn(query string, args ...any) (string, []any, error) {
-	expanded, expandedArgs, err := sqlx.In(query, args...)
-	if err != nil {
-		return "", nil, err
-	}
-	return expanded, expandedArgs, nil
 }

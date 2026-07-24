@@ -16,7 +16,7 @@ func TestOpenSQLiteConfiguresPragmas(t *testing.T) {
 	defer func() { _ = database.Close() }()
 
 	var busyTimeout int
-	if err := database.Get(&busyTimeout, "PRAGMA busy_timeout"); err != nil {
+	if err := database.QueryRow("PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
 		t.Fatal(err)
 	}
 	if busyTimeout != 5000 {
@@ -24,7 +24,7 @@ func TestOpenSQLiteConfiguresPragmas(t *testing.T) {
 	}
 
 	var journalMode string
-	if err := database.Get(&journalMode, "PRAGMA journal_mode"); err != nil {
+	if err := database.QueryRow("PRAGMA journal_mode").Scan(&journalMode); err != nil {
 		t.Fatal(err)
 	}
 	if strings.ToLower(journalMode) != "wal" {
@@ -32,7 +32,7 @@ func TestOpenSQLiteConfiguresPragmas(t *testing.T) {
 	}
 
 	var foreignKeys int
-	if err := database.Get(&foreignKeys, "PRAGMA foreign_keys"); err != nil {
+	if err := database.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
 		t.Fatal(err)
 	}
 	if foreignKeys != 1 {

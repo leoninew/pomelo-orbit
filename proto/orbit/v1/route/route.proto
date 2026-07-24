@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package orbit.v1.route;
+
+
+message RouteResp {
+  string id = 1;
+  string name = 2;
+  string domain = 3;
+  string path_prefix = 4;
+  string target_url = 5;
+  bool enabled = 6;
+  bool https_enabled = 7;
+  string cert_type = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message RouteCreateReq {
+  string name = 1;
+  string domain = 2;
+  string path_prefix = 3;
+  string target_url = 4;
+  bool enabled = 5;
+}
+
+message RouteUpdateReq {
+  optional string name = 1;
+  optional string domain = 2;
+  optional string path_prefix = 3;
+  optional string target_url = 4;
+  optional bool enabled = 5;
+}
+
+message RouteEnableReq {}
+
+message RouteDisableReq {}
+
+message RouteSyncReq {}
+
+message RouteLetsEncryptEnableReq {}
+
+message RouteMkcertEnableReq {}
+
+message RouteEnableResp {
+  string message = 1;
+}
+
+message RouteDisableResp {
+  string message = 1;
+}
+
+message RouteSyncResp {
+  string message = 1;
+}
+
+message RoutePaginatedResp {
+  repeated RouteResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

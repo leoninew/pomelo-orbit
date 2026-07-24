@@ -7,22 +7,72 @@
 export type BadgeTone = 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info';
 
 /**
- * 应用状态 -> Badge 色调
+ * Application kind -> Badge 色调
  *
- * 后端枚举: ApplicationStatus
- * - undeployed: 未部署
- * - deploying: 部署中
- * - deployed: 已部署
- * - deploy_failed: 部署失败
+ * - standard: 中性
+ * - gateway: 主色，便于在列表右上角区分
+ */
+export function applicationKindTone(kind: string | undefined | null): BadgeTone {
+  return kind === 'gateway' ? 'primary' : 'default';
+}
+
+/**
+ * 应用运行态 -> Badge 色调
+ *
+ * 来自 Service.status（application.service_status）；无 Service 时为空。
+ * - '' / undeployed: 从未部署
+ * - deploying | running | stopped | faulted
  */
 export function appStatusTone(status: string): BadgeTone {
   const tones: Record<string, BadgeTone> = {
     undeployed: 'default',
     deploying: 'info',
-    deployed: 'success',
-    deploy_failed: 'error',
+    running: 'success',
+    stopped: 'warning',
+    faulted: 'error',
   };
   return tones[status] ?? 'default';
+}
+
+/**
+ * Version 生命周期 -> Badge 色调
+ *
+ * - unpublished: 可编辑
+ * - published: 已发布、不可变
+ */
+export function versionStatusTone(status: string): BadgeTone {
+  const tones: Record<string, BadgeTone> = {
+    unpublished: 'warning',
+    published: 'success',
+  };
+  return tones[status] ?? 'default';
+}
+
+/** 展示用 service_status：空串视为从未部署 */
+export function normalizeServiceStatus(status: string | undefined | null): string {
+  return status && status.trim() ? status : 'undeployed';
+}
+
+/**
+ * docker compose 容器 State -> Badge 色调
+ *
+ * 常见值: running | exited | dead | paused | created | restarting | removing
+ */
+export function containerStateTone(state: string | undefined | null): BadgeTone {
+  const value = (state || '').toLowerCase();
+  if (value === 'running' || value === 'up') {
+    return 'success';
+  }
+  if (value === 'exited' || value === 'dead' || value === 'removing') {
+    return 'error';
+  }
+  if (value === 'restarting' || value === 'created') {
+    return 'info';
+  }
+  if (value === 'paused' || value === 'stopped') {
+    return 'warning';
+  }
+  return 'default';
 }
 
 /**

@@ -9,10 +9,10 @@ const (
 )
 
 const (
-	TaskTypeCIPipelineRunExecute = "ci.pipeline_run.execute"
-	TaskTypeCDApplicationDeploy  = "cd.application.deploy"
-	TaskTypeCDApplicationRestart = "cd.application.restart"
-	TaskTypeCDApplicationStop    = "cd.application.stop"
+	TaskTypePipelineRunExecute = "pipeline_run.execute"
+	TaskTypeDeploymentDeploy   = "deployment.deploy"
+	TaskTypeDeploymentRestart  = "deployment.restart"
+	TaskTypeDeploymentStop     = "deployment.stop"
 )
 
 const (
@@ -23,9 +23,22 @@ const (
 	WorkStatusCanceled        = "canceled"
 )
 
+// ServiceStatus is the runtime binding status for model.Service (not Application).
 const (
-	ApplicationStatusDeployed     = "deployed"
-	ApplicationStatusDeploying    = "deploying"
-	ApplicationStatusUndeployed   = "undeployed"
-	ApplicationStatusDeployFailed = "deploy_failed"
+	ServiceStatusDeploying = "deploying"
+	ServiceStatusRunning   = "running"
+	ServiceStatusStopped   = "stopped"
+	ServiceStatusFaulted   = "faulted"
+)
+
+// ApplicationKind is the render strategy for an application.
+const (
+	ApplicationKindStandard = "standard"
+	ApplicationKindGateway  = "gateway"
+)
+
+// VersionStatus is the lifecycle of model.Version.
+const (
+	VersionStatusUnpublished = "unpublished"
+	VersionStatusPublished   = "published"
 )

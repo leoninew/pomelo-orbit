@@ -16,27 +16,11 @@
           class="flex shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200"
           :class="collapsed ? 'md:w-16' : 'md:w-60'"
         >
-          <nav class="flex-1 overflow-x-auto overflow-y-hidden p-3 md:overflow-y-auto md:p-4">
-            <div class="flex gap-2 md:block md:space-y-2">
-              <RouterLink
-                v-for="item in sidebarItems"
-                :key="item.key"
-                :to="item.path"
-                class="flex h-10 shrink-0 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors"
-                :class="
-                  selectedKey === item.key
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                "
-                :title="collapsed ? item.label : undefined"
-              >
-                <component :is="item.icon" class="size-4 shrink-0" />
-                <span v-if="!collapsed" class="max-w-28 truncate md:max-w-none">
-                  {{ item.label }}
-                </span>
-              </RouterLink>
-            </div>
-          </nav>
+          <AppVerticalNav
+            :items="sidebarItems"
+            :selected-key="selectedKey"
+            :collapsed="collapsed"
+          />
 
           <button
             class="hidden h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground md:flex"
@@ -65,8 +49,13 @@
   import { useRoute } from 'vue-router';
   import AppToaster from '@/components/AppToaster.vue';
   import AppTopBar from '@/components/AppTopBar.vue';
+  import AppVerticalNav from '@/components/AppVerticalNav.vue';
   import { useTheme } from '@/composables/useTheme';
-  import { getNavigationScope, getPrimaryNavigationKey, secondaryNavigation } from '@/navigation';
+  import {
+    getNavigationScope,
+    getPrimaryNavigationKey,
+    resolveSecondaryNavigation,
+  } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
 
   const route = useRoute();
@@ -83,12 +72,10 @@
     if (!currentScope.value) {
       return [];
     }
-    return (secondaryNavigation[currentScope.value] ?? [])
-      .filter((item) => !item.permission || authStore.hasPermission(item.permission))
-      .map((item) => ({
-        ...item,
-        label: t(item.labelKey),
-      }));
+    return resolveSecondaryNavigation(currentScope.value, {
+      hasPermission: (permission) => authStore.hasPermission(permission),
+      t: (key) => t(key),
+    });
   });
 
   const isLoginPage = computed(() => route.name === 'Login');

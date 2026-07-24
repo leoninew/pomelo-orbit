@@ -11,10 +11,10 @@
       <div class="hidden flex-col sm:flex">
         <span class="text-base font-semibold leading-tight tracking-normal">Pomelo Orbit</span>
         <span
-          v-if="config.envLabel"
+          v-if="runtimeConfig.envLabel"
           class="text-xs font-medium leading-tight text-amber-600 dark:text-amber-400"
         >
-          {{ config.envLabel }}
+          {{ runtimeConfig.envLabel }}
         </span>
       </div>
     </RouterLink>
@@ -231,7 +231,7 @@
   import { setLocale, type Locale } from '@/i18n';
   import { useToast } from '@/composables/useToast';
   import { useStatusAsync } from '@/composables/useStatusAsync';
-  import config from '@/config';
+  import runtimeConfig from '@/config';
   import {
     DropdownMenuContent,
     DropdownMenuItem,

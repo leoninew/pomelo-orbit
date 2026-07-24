@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package orbit.v1.service;
+
+message ServiceResp {
+  string id = 1;
+  string application_id = 2;
+  string environment_id = 3;
+  string instance_key = 4;
+  string version_id = 5;
+  optional string last_successful_version_id = 6;
+  string status = 7;
+  string created_at = 8;
+  string updated_at = 9;
+  // Display labels (filled on project-scoped list; empty on bare app-scoped list).
+  string application_name = 10;
+  string application_code = 11;
+  string application_kind = 12;
+  string environment_name = 13;
+  string environment_code = 14;
+  string version_label = 15;
+  optional string last_successful_version_label = 16;
+}
+
+message ServiceListResp {
+  repeated ServiceResp items = 1;
+}
+
+message ServicePaginatedResp {
+  repeated ServiceResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

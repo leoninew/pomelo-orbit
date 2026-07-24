@@ -41,9 +41,9 @@ func (a App) RunWorker(ctx context.Context) error {
 		return err
 	}
 
-	taskRepo := taskrepo.NewRepository(database, a.cfg.Database.Driver)
+	taskRepo := taskrepo.NewRepository(database)
 	router := NewTaskRouter(database, a.cfg, a.logger)
-	backgroundWorker := worker.New(taskRepo, router, a.logger, worker.Config{
+	backgroundWorker := worker.New(database, taskRepo, router, a.logger, worker.Config{
 		WorkerId:      a.cfg.Worker.Id,
 		PollInterval:  a.cfg.Worker.PollInterval,
 		LeaseDuration: a.cfg.Worker.LeaseDuration,
@@ -72,11 +72,11 @@ func (a App) Serve(ctx context.Context) error {
 		return err
 	}
 
-	taskRepo := taskrepo.NewRepository(database, a.cfg.Database.Driver)
+	taskRepo := taskrepo.NewRepository(database)
 	server := NewHTTPServer(a.cfg, a.logger, database, taskRepo)
 	httpServer := &http.Server{Addr: server.Addr(), Handler: server.Handler()}
 	router := NewTaskRouter(database, a.cfg, a.logger)
-	backgroundWorker := worker.New(taskRepo, router, a.logger, worker.Config{
+	backgroundWorker := worker.New(database, taskRepo, router, a.logger, worker.Config{
 		WorkerId:      a.cfg.Worker.Id,
 		PollInterval:  a.cfg.Worker.PollInterval,
 		LeaseDuration: a.cfg.Worker.LeaseDuration,

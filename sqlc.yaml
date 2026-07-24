@@ -2,11 +2,165 @@ version: "2"
 sql:
   - engine: "sqlite"
     schema: "sql/migration/sqlite"
-    queries: "sql/query"
+    queries: "sql/query/auth"
     gen:
       go:
-        package: "sqlc"
-        out: "internal/gen/sqlc"
+        package: "auth"
+        out: "internal/gen/sqlc/auth"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/user"
+    gen:
+      go:
+        package: "user"
+        out: "internal/gen/sqlc/user"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/role"
+    gen:
+      go:
+        package: "role"
+        out: "internal/gen/sqlc/role"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/project"
+    gen:
+      go:
+        package: "project"
+        out: "internal/gen/sqlc/project"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/task"
+    gen:
+      go:
+        package: "task"
+        out: "internal/gen/sqlc/task"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/credential"
+    gen:
+      go:
+        package: "credential"
+        out: "internal/gen/sqlc/credential"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/repository"
+    gen:
+      go:
+        package: "repository"
+        out: "internal/gen/sqlc/repository"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/pipeline"
+    gen:
+      go:
+        package: "pipeline"
+        out: "internal/gen/sqlc/pipeline"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/pipeline_run"
+    gen:
+      go:
+        package: "pipelinerun"
+        out: "internal/gen/sqlc/pipeline_run"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/application"
+    gen:
+      go:
+        package: "application"
+        out: "internal/gen/sqlc/application"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/environment"
+    gen:
+      go:
+        package: "environment"
+        out: "internal/gen/sqlc/environment"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/service"
+    gen:
+      go:
+        package: "service"
+        out: "internal/gen/sqlc/service"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/deployment"
+    gen:
+      go:
+        package: "deployment"
+        out: "internal/gen/sqlc/deployment"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/gateway"
+    gen:
+      go:
+        package: "gateway"
+        out: "internal/gen/sqlc/gateway"
+        sql_package: "database/sql"
+        emit_db_tags: true
+        emit_json_tags: false
+        emit_interface: true
+  - engine: "sqlite"
+    schema: "sql/migration/sqlite"
+    queries: "sql/query/route"
+    gen:
+      go:
+        package: "route"
+        out: "internal/gen/sqlc/route"
         sql_package: "database/sql"
         emit_db_tags: true
         emit_json_tags: false

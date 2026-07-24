@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	authv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,11 +25,11 @@ type Handler struct {
 	logger            *slog.Logger
 	turnstile         config.TurnstileConfig
 	service           authsvc.Service
-	authenticator     authz.Authenticator
+	authenticator     security.Authenticator
 	turnstileVerifier TurnstileVerifier
 }
 
-func New(logger *slog.Logger, turnstile config.TurnstileConfig, service authsvc.Service, authenticator authz.Authenticator, verifier TurnstileVerifier) Handler {
+func New(logger *slog.Logger, turnstile config.TurnstileConfig, service authsvc.Service, authenticator security.Authenticator, verifier TurnstileVerifier) Handler {
 	return Handler{logger: logger, turnstile: turnstile, service: service, authenticator: authenticator, turnstileVerifier: verifier}
 }
 
@@ -50,7 +50,7 @@ func (h Handler) GetTurnstileConfig(c *gin.Context) {
 }
 
 func (h Handler) Login(c *gin.Context) {
-	var req pomeloorbit.LoginReq
+	var req authv1.LoginReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -82,7 +82,7 @@ func (h Handler) Login(c *gin.Context) {
 }
 
 func (h Handler) Logout(c *gin.Context) {
-	var req pomeloorbit.LogoutReq
+	var req authv1.LogoutReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -116,7 +116,7 @@ func (h Handler) ChangePassword(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.PasswordChangeReq
+	var req authv1.PasswordChangeReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -145,11 +145,11 @@ func (h Handler) ListLoginHistory(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list login history")
 		return
 	}
-	items := make([]pomeloorbit.LoginHistoryResp, 0, len(history.Items))
+	items := make([]authv1.LoginHistoryResp, 0, len(history.Items))
 	for _, item := range history.Items {
 		items = append(items, loginHistoryResponse(item))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(history.Total), Page: int32(history.Page), PerPage: int32(history.PerPage), Pages: int32(transportresponse.PageCount(history.Total, history.PerPage))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &authv1.LoginHistoryPaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(history.Total), Page: int32(history.Page), PerPage: int32(history.PerPage), Pages: int32(transportresponse.PageCount(history.Total, history.PerPage))})
 }
 
 func (h Handler) GoogleOAuth(c *gin.Context) {
@@ -157,7 +157,7 @@ func (h Handler) GoogleOAuth(c *gin.Context) {
 }
 
 func (h Handler) GoogleCallback(c *gin.Context) {
-	var req pomeloorbit.GoogleCallbackReq
+	var req authv1.GoogleCallbackReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return

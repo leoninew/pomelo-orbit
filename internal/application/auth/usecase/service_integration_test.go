@@ -2,11 +2,11 @@ package authsvc
 
 import (
 	"context"
+	"database/sql"
 	"io"
 	"log/slog"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
 	authdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/dto"
@@ -14,6 +14,7 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	authrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/auth"
 	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
 )
 
@@ -31,7 +32,7 @@ func TestLoginChangePasswordAndHistory(t *testing.T) {
 	if token == "" {
 		t.Fatal("expected login token")
 	}
-	user, err := userrepo.NewRepository(database, config.DatabaseDriverSQLite).UserByUsername(ctx, "admin")
+	user, err := userrepo.NewRepository(database).UserByUsername(ctx, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +55,7 @@ func TestChangePasswordRejectsWrongOldPassword(t *testing.T) {
 	service, database := newAuthIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
-	user, err := userrepo.NewRepository(database, config.DatabaseDriverSQLite).UserByUsername(ctx, "admin")
+	user, err := userrepo.NewRepository(database).UserByUsername(ctx, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,9 +64,9 @@ func TestChangePasswordRejectsWrongOldPassword(t *testing.T) {
 	}
 }
 
-func newAuthIntegrationService(t *testing.T) (Service, *sqlx.DB) {
+func newAuthIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
-	database, err := sqlx.Open("sqlite", ":memory:")
+	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,6 +75,6 @@ func newAuthIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 		t.Fatal(err)
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	service := New(userrepo.NewRepository(database, config.DatabaseDriverSQLite), jwt.NewTokenService(authTestSecretKey), logger)
+	service := New(userrepo.NewRepository(database), authrepo.NewRepository(database), jwt.NewTokenService(authTestSecretKey), logger)
 	return service, database
 }

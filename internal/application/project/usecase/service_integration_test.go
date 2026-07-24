@@ -2,15 +2,16 @@ package projectsvc
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
 	projectdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/dto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	environmentrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/environment"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
 )
@@ -92,9 +93,9 @@ func TestProjectServiceRejectsDuplicateCodeAndLastActiveDeprecation(t *testing.T
 	}
 }
 
-func newProjectIntegrationService(t *testing.T) (Service, *sqlx.DB) {
+func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
-	database, err := sqlx.Open("sqlite", ":memory:")
+	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +103,10 @@ func newProjectIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	service := New(projectrepo.NewRepository(database, config.DatabaseDriverSQLite), userrepo.NewRepository(database, config.DatabaseDriverSQLite))
+	service := New(
+		projectrepo.NewRepository(database),
+		environmentrepo.NewRepository(database),
+		userrepo.NewRepository(database),
+	)
 	return service, database
 }

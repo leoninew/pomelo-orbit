@@ -1,1 +1,0 @@
-ALTER TABLE deployment ADD COLUMN command_text VARCHAR(2048) NOT NULL DEFAULT '';

@@ -2,12 +2,14 @@ package worker
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
@@ -48,6 +50,7 @@ type Repository interface {
 }
 
 type Worker struct {
+	db            *sql.DB
 	repo          Repository
 	router        Handler
 	logger        *slog.Logger
@@ -64,8 +67,17 @@ type Config struct {
 	Concurrency   int
 }
 
-func New(repo Repository, router Handler, logger *slog.Logger, cfg Config) *Worker {
+// New constructs a worker.
+//
+// Transaction boundaries (aligned with sqlc UoW plan):
+//   - ClaimNext uses an independent short RunInTx (lease lifecycle ≠ handler).
+//   - Handler context gets *sql.DB via WithDB only — no outer message transaction —
+//     so Docker/file/network work never holds a DB connection lease.
+//   - Complete/Fail are single-statement writes on that DB handle after the handler.
+//   - Multi-write atomic segments inside handlers use tx.RunInTx when needed.
+func New(db *sql.DB, repo Repository, router Handler, logger *slog.Logger, cfg Config) *Worker {
 	return &Worker{
+		db:            db,
 		repo:          repo,
 		router:        router,
 		logger:        logger,
@@ -115,6 +127,9 @@ func (w *Worker) runSlot(ctx context.Context, slot int) {
 }
 
 func (w *Worker) runOnce(ctx context.Context, slot int) error {
+	if w.db != nil {
+		ctx = tx.WithDB(ctx, w.db)
+	}
 	taskItem, err := w.repo.ClaimNext(ctx, w.workerId, w.leaseDuration)
 	if err != nil {
 		return err

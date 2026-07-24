@@ -34,6 +34,17 @@
     </div>
 
     <div class="space-y-1.5">
+      <label class="app-field-label block">{{ t('application.kind') }}</label>
+      <SelectControl
+        :model-value="form.kind || 'standard'"
+        :options="kindOptions"
+        :placeholder="t('application.kindPlaceholder')"
+        @update:model-value="updateField('kind', String($event))"
+      />
+      <p class="app-field-hint">{{ t('application.kindHint') }}</p>
+    </div>
+
+    <div class="space-y-1.5">
       <label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
       <SelectControl
         :model-value="form.image_pull_policy"
@@ -42,20 +53,6 @@
         @update:model-value="updateField('image_pull_policy', String($event))"
       />
     </div>
-
-    <div class="flex items-center gap-2">
-      <input
-        id="route_managed"
-        :checked="form.route_managed"
-        type="checkbox"
-        class="app-checkbox"
-        @change="updateField('route_managed', ($event.target as HTMLInputElement).checked)"
-      />
-      <label for="route_managed" class="text-sm font-medium text-foreground">
-        {{ t('application.enableRouteManaged') }}
-      </label>
-    </div>
-    <p class="app-field-hint">{{ t('application.routeManagedHint') }}</p>
   </div>
 </template>
 
@@ -63,7 +60,7 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import SelectControl from '@/components/SelectControl.vue';
-  import type { ApplicationCreateReq } from '@/gen/proto/orbit/v1/application';
+  import type { ApplicationCreateReq } from '@/gen/proto/orbit/v1/application/application';
 
   const props = defineProps<{
     form: ApplicationCreateReq;
@@ -82,6 +79,11 @@
   ) {
     emit('update:form', { ...props.form, [field]: value });
   }
+
+  const kindOptions = computed(() => [
+    { value: 'standard', label: t('application.kindOptions.standard') },
+    { value: 'gateway', label: t('application.kindOptions.gateway') },
+  ]);
 
   const imagePullPolicyOptions = computed(() => [
     { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },

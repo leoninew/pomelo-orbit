@@ -9,9 +9,9 @@ import (
 func (r Router) registerTask(engine *gin.Engine) {
 	handler := taskhandler.New(r.logger, r.deps.TaskService)
 	engine.POST("/api/background/task", handler.CreateTask)
-	engine.POST("/api/background/ci/pipeline-run/:run_id/execute", handler.EnqueueCIPipelineRun)
-	engine.POST("/api/background/cd/application/:app_id/deploy/:deployment_id", handler.EnqueueCDApplicationDeploy)
-	engine.POST("/api/background/cd/application/:app_id/restart/:deployment_id", handler.EnqueueCDApplicationRestart)
-	engine.POST("/api/background/cd/application/:app_id/stop/:deployment_id", handler.EnqueueCDApplicationStop)
+	engine.POST("/api/background/pipeline-run/:run_id/execute", handler.EnqueuePipelineRun)
+	engine.POST("/api/background/application/:app_id/deployment/:deployment_id", handler.EnqueueDeployment)
+	engine.POST("/api/background/application/:app_id/deployment/:deployment_id/restart", handler.EnqueueDeploymentRestart)
+	engine.POST("/api/background/application/:app_id/deployment/:deployment_id/stop", handler.EnqueueDeploymentStop)
 	engine.GET("/api/background/task/:id", handler.GetTask)
 }

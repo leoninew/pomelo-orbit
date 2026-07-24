@@ -1,10 +1,13 @@
 # Reka UI Integration Guide
+最后修改时间: 2026-07-24 10:47:37
 
-> **For LLM Readers**: This document describes integration patterns and practices specific to this project. For Reka UI component API reference, see [archived documentation](../archive/reka-ui-llms.txt).
+Doc role: living guide。与代码冲突时以代码为准。
+
+> **For LLM Readers**: This document describes integration patterns and practices specific to this project. For Reka UI component API reference, see [reka-llms.txt](./reka-llms.txt).
 
 ## Quick Reference
 
-- **Reka UI Docs**: See [archived documentation](../archive/reka-ui-llms.txt) for complete component catalog
+- **Reka UI Docs**: See [reka-llms.txt](./reka-llms.txt) for complete component catalog
 - **Official Site**: https://reka-ui.com/
 - **Key Concept**: Reka UI provides unstyled, accessible primitives. We style them with Tailwind CSS v4.
 

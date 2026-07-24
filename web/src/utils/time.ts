@@ -1,11 +1,11 @@
-import dayjs, { type Dayjs } from 'dayjs';
+import dayjs, { extend, type Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(relativeTime);
+extend(utc);
+extend(timezone);
+extend(relativeTime);
 
 /**
  * 格式化时间 - 将 UTC 时间转换为本地时间显示

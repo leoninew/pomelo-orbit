@@ -132,7 +132,6 @@ func settingDefinitions(cfg config.Config) []settingsdto.Definition {
 		{Key: "database__sqlite__path", Default: cfg.Database.SQLite.Path, Description: "SQLite database file path"},
 		{Key: "database__mysql__dsn", Default: cfg.Database.MySQL.DSN, Description: "MySQL DSN"},
 		{Key: "jwt__secret_key", Default: cfg.JWT.SecretKey, Description: "JWT signing secret"},
-		{Key: "traefik__domain_suffix", Default: cfg.Traefik.DomainSuffix, Description: "Default Traefik domain suffix"},
 		{Key: "turnstile__enabled", Default: cfg.Turnstile.Enabled, Description: "Enable Cloudflare Turnstile verification"},
 		{Key: "turnstile__site_key", Default: cfg.Turnstile.SiteKey, Description: "Cloudflare Turnstile site key"},
 		{Key: "turnstile__secret_key", Default: cfg.Turnstile.SecretKey, Description: "Cloudflare Turnstile secret key"},

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package orbit.v1.pipeline_run;
+
+message PipelineStageRunResp {
+  string id = 1;
+  string pipeline_run_id = 2;
+  string stage_id = 3;
+  string stage_name = 4;
+  string status = 5;
+  optional string started_at = 6;
+  optional string finished_at = 7;
+  optional int32 exit_code = 8;
+  optional string error_message = 9;
+}

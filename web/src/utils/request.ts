@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
-import config from '@/config';
+import runtimeConfig from '@/config';
 import { useAuthStore } from '@/stores/auth';
 import { handleUnauthorized } from '@/utils/handle-unauthorized';
 
@@ -21,7 +21,7 @@ export class ApiError extends Error {
 }
 
 const request = axios.create({
-  baseURL: config.publicUrl,
+  baseURL: runtimeConfig.publicUrl,
   timeout: 30000,
 });
 

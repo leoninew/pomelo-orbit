@@ -1,4 +1,7 @@
 # 服务器首次部署指南
+最后修改时间: 2026-07-24 10:47:37
+
+Doc role: living guide（运维向）。与代码冲突时以代码为准。
 
 本指南说明如何在新服务器上手动完成 Pomelo Orbit 的首次部署。
 
@@ -61,11 +64,12 @@ cat > /opt/pomelo-orbit/.env << 'EOF'
 # JWT 密钥（同时用于凭据加密，必须使用 Fernet 格式）
 # 生成方法: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 POMELO_ORBIT_JWT__SECRET_KEY=00000000000000000000000000000000000000000000
-POMELO_ORBIT_TRAEFIK__API_URL=http://traefik:8080
 EOF
 ```
 
 **必须**将 `POMELO_ORBIT_JWT__SECRET_KEY` 替换为真实的 Fernet 密钥，否则启动后无法登录。
+
+Traefik 控制面 URL 与业务域名后缀在 **CD 网关（Gateway config）** 中配置（`rest_api_url`、`base_domain`）。
 
 生成方法（需要 Python + cryptography）：
 

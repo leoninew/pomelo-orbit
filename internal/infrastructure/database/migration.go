@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -12,7 +13,6 @@ import (
 	migratemysql "github.com/golang-migrate/migrate/v4/database/mysql"
 	migratesqlite "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	"github.com/jmoiron/sqlx"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	migrationfiles "gitee.com/leoninew/PomeloOrbit-go/sql"
@@ -25,7 +25,7 @@ type MigrationVersion struct {
 	Dirty   bool
 }
 
-func MigrateUp(sqlDB *sqlx.DB, driver string) error {
+func MigrateUp(sqlDB *sql.DB, driver string) error {
 	runner, err := newMigrationRunner(sqlDB, driver)
 	if err != nil {
 		return err
@@ -38,7 +38,7 @@ func MigrateUp(sqlDB *sqlx.DB, driver string) error {
 	return nil
 }
 
-func ReadMigrationVersion(sqlDB *sqlx.DB, driver string) (MigrationVersion, error) {
+func ReadMigrationVersion(sqlDB *sql.DB, driver string) (MigrationVersion, error) {
 	databaseDriver, err := migrationDatabaseDriver(sqlDB, driver)
 	if err != nil {
 		return MigrationVersion{}, err
@@ -55,7 +55,7 @@ func ReadMigrationVersion(sqlDB *sqlx.DB, driver string) (MigrationVersion, erro
 	return MigrationVersion{Version: uint(version), Dirty: dirty}, nil
 }
 
-func newMigrationRunner(sqlDB *sqlx.DB, driver string) (*gomigrate.Migrate, error) {
+func newMigrationRunner(sqlDB *sql.DB, driver string) (*gomigrate.Migrate, error) {
 	migrationSource, err := iofs.New(migrationfiles.Files, path.Join(migrationsRoot, driver))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -79,10 +79,10 @@ func newMigrationRunner(sqlDB *sqlx.DB, driver string) (*gomigrate.Migrate, erro
 	return runner, nil
 }
 
-func migrationDatabaseDriver(sqlDB *sqlx.DB, driver string) (database.Driver, error) {
+func migrationDatabaseDriver(sqlDB *sql.DB, driver string) (database.Driver, error) {
 	switch driver {
 	case config.DatabaseDriverSQLite:
-		driver, err := migratesqlite.WithInstance(sqlDB.DB, &migratesqlite.Config{})
+		driver, err := migratesqlite.WithInstance(sqlDB, &migratesqlite.Config{})
 		if err != nil {
 			return nil, err
 		}

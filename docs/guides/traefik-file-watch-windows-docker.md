@@ -1,4 +1,7 @@
 # Traefik 文件监听在 Windows + Docker 环境下的问题
+最后修改时间: 2026-07-24 10:47:37
+
+Doc role: living guide。与代码冲突时以代码为准。
 
 ## 问题现象
 

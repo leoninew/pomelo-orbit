@@ -74,7 +74,7 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	}
 
 	spaRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(spaRecorder, httptest.NewRequest(http.MethodGet, "/ci/repository", nil))
+	server.Handler().ServeHTTP(spaRecorder, httptest.NewRequest(http.MethodGet, "/repository", nil))
 	if spaRecorder.Code != http.StatusOK || !strings.Contains(spaRecorder.Body.String(), "<script>window.__CONFIG__ = {};</script>") {
 		t.Fatalf("expected spa fallback with runtime config, got %d: %s", spaRecorder.Code, spaRecorder.Body.String())
 	}
@@ -98,7 +98,7 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	}
 
 	postRecorder := httptest.NewRecorder()
-	server.Handler().ServeHTTP(postRecorder, httptest.NewRequest(http.MethodPost, "/ci/repository", nil))
+	server.Handler().ServeHTTP(postRecorder, httptest.NewRequest(http.MethodPost, "/repository", nil))
 	if postRecorder.Code != http.StatusNotFound {
 		t.Fatalf("expected non-get static fallback status 404, got %d: %s", postRecorder.Code, postRecorder.Body.String())
 	}

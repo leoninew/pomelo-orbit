@@ -3,15 +3,15 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	cdhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/cd"
+	deploymenthandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/deployment"
 )
 
 func (r Router) registerDeployment(engine *gin.Engine) {
-	handler := cdhandler.New(r.logger, r.deps.CDService, r.deps.Authenticator)
+	handler := deploymenthandler.New(r.logger, r.deps.DeploymentService, r.deps.Authenticator)
 
-	engine.GET("/api/cd/deployment", handler.ListDeployments)
-	engine.GET("/api/cd/deployment/:deployment_id", handler.GetDeployment)
-	engine.GET("/api/cd/deployment/:deployment_id/logs", handler.GetDeploymentLogs)
-	engine.GET("/api/cd/deployment/:deployment_id/container-logs", handler.GetDeploymentContainerLogs)
-	engine.POST("/api/cd/deployment/:deployment_id/cancel", handler.CancelDeployment)
+	engine.GET("/api/deployment", handler.ListDeployments)
+	engine.GET("/api/deployment/:deployment_id", handler.GetDeployment)
+	engine.GET("/api/deployment/:deployment_id/logs", handler.GetDeploymentLogs)
+	engine.GET("/api/deployment/:deployment_id/container-logs", handler.GetDeploymentContainerLogs)
+	engine.POST("/api/deployment/:deployment_id/cancel", handler.CancelDeployment)
 }

@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
-CERT_DIR = SCRIPT_DIR.parent / "data/cd/traefik/data/certs"
+CERT_DIR = SCRIPT_DIR.parent / "data/deployment/traefik/data/certs"
 
 
 def run(

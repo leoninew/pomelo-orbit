@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package orbit.v1.application;
+
+import "orbit/v1/application/version.proto";
+import "orbit/v1/service/service.proto";
+
+message ApplicationExportResp {
+  string id = 1;
+  optional string project_id = 2;
+  string name = 3;
+  string code = 4;
+  string image_pull_policy = 5;
+  repeated VersionResp versions = 6;
+  repeated orbit.v1.service.ServiceResp services = 7;
+  string kind = 8;
+}
+
+message ApplicationImportReq {
+  string name = 1;
+  string code = 2;
+  string image_pull_policy = 3;
+  string version_label = 4;
+  optional string version_env_json = 5;
+  optional string version_note = 6;
+  repeated VersionComponentReq components = 7;
+  repeated VersionExposeReq exposes = 8;
+  optional string kind = 9;
+}

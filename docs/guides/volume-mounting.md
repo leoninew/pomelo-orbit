@@ -1,4 +1,7 @@
 # Pomelo Orbit 目录挂载原理
+最后修改时间: 2026-07-24 10:47:37
+
+Doc role: living guide。与代码冲突时以代码为准。
 
 ## 概述
 
@@ -97,25 +100,23 @@ traefik/
 
 ## 路由配置同步
 
-### 同步流程
+平台路由 **不再** 依赖 `dynamic/routes.yml` 文件 watch。
+
+### 同步流程（E5/E6）
 
 ```
 1. 用户在 Web UI 配置路由
    ↓
 2. 保存到数据库 route 表
    ↓
-3. Pomelo Orbit 同步服务
-   - 读取 route 表
-   - 生成 Traefik 动态配置
+3. 解析当前 Gateway → gateway_config.rest_api_url
    ↓
-4. 写入文件系统
-   /app/data/applications/traefik/data/dynamic/routes.yml
+4. PUT {rest_api_url}/api/providers/rest 全量快照
    ↓
-5. 挂载到 Traefik 容器
-   /etc/traefik/dynamic/routes.yml
-   ↓
-6. Traefik 自动加载（watch: true）
+5. Traefik rest provider 生效
 ```
+
+网关静态配置（含 `providers.rest`）由 Gateway compile 生成到 Version 挂载 `traefik.yml`（logical + content_mode=sync），Deploy 时物化。
 
 ## 证书文件同步
 
@@ -279,12 +280,12 @@ Traefik 监听配置文件变化，自动重载路由，无需重启容器。
 
 ### 配置文件未同步
 
-**问题**：修改配置后 Traefik 未生效
+**问题**：修改平台路由后 Traefik 未生效
 
 **解决**：
-1. 检查配置文件是否写入：`cat /app/data/applications/traefik/data/dynamic/routes.yml`
-2. 检查 Traefik 日志：`docker logs traefik`
-3. 检查文件权限
+1. 确认 Gateway `rest_api_url` 可达（平台 PUT `/api/providers/rest`）
+2. 确认网关 Version 已 compile 并部署含 `providers.rest` 的 `traefik.yml`
+3. 检查 Traefik 日志：`docker logs <gateway-container>`
 
 ### 证书文件无法访问
 

@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	repositoryv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/repository"
 )
 
 func TestMarshalProtoJSONUsesProtoNames(t *testing.T) {
-	data, err := MarshalProtoJSON(&pomeloorbit.RepositoryResp{RepositoryUrl: "https://example.test/repo.git"})
+	data, err := MarshalProtoJSON(&repositoryv1.RepositoryResp{RepositoryUrl: "https://example.test/repo.git"})
 	if err != nil {
 		t.Fatalf("MarshalProtoJSON() error = %v", err)
 	}
@@ -22,7 +22,7 @@ func TestMarshalProtoJSONUsesProtoNames(t *testing.T) {
 }
 
 func TestMarshalProtoJSONEmitsUnpopulatedFields(t *testing.T) {
-	data, err := MarshalProtoJSON(&pomeloorbit.RepositoryResp{})
+	data, err := MarshalProtoJSON(&repositoryv1.RepositoryResp{})
 	if err != nil {
 		t.Fatalf("MarshalProtoJSON() error = %v", err)
 	}
@@ -35,7 +35,7 @@ func TestMarshalProtoJSONEmitsUnpopulatedFields(t *testing.T) {
 }
 
 func TestUnmarshalProtoJSONRejectsUnknownFields(t *testing.T) {
-	var req pomeloorbit.RepositoryCreateReq
+	var req repositoryv1.RepositoryCreateReq
 	err := UnmarshalProtoJSON([]byte(`{"name":"repo","unknown_field":"x"}`), &req)
 	if err == nil {
 		t.Fatal("UnmarshalProtoJSON() error = nil, want unknown field error")

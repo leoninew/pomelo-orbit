@@ -1,19 +1,19 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
 	gomysql "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
 
-func Open(cfg config.DatabaseConfig) (*sqlx.DB, error) {
+func Open(cfg config.DatabaseConfig) (*sql.DB, error) {
 	switch cfg.Driver {
 	case config.DatabaseDriverSQLite:
 		return openSQLite(cfg.SQLite)
@@ -24,11 +24,11 @@ func Open(cfg config.DatabaseConfig) (*sqlx.DB, error) {
 	}
 }
 
-func openSQLite(cfg config.SQLiteConfig) (*sqlx.DB, error) {
+func openSQLite(cfg config.SQLiteConfig) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(cfg.Path), 0o755); err != nil {
 		return nil, fmt.Errorf("create sqlite directory: %w", err)
 	}
-	database, err := sqlx.Open("sqlite", cfg.Path)
+	database, err := sql.Open("sqlite", cfg.Path)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
@@ -44,7 +44,7 @@ func openSQLite(cfg config.SQLiteConfig) (*sqlx.DB, error) {
 	return database, nil
 }
 
-func configureSQLite(database *sqlx.DB) error {
+func configureSQLite(database *sql.DB) error {
 	pragmas := []string{
 		"PRAGMA busy_timeout = 5000",
 		"PRAGMA journal_mode = WAL",
@@ -58,12 +58,12 @@ func configureSQLite(database *sqlx.DB) error {
 	return nil
 }
 
-func openMySQL(cfg config.MySQLConfig) (*sqlx.DB, error) {
+func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
 	dsn, err := mysqlDSN(cfg.DSN)
 	if err != nil {
 		return nil, err
 	}
-	database, err := sqlx.Open("mysql", dsn)
+	database, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open mysql database: %w", err)
 	}

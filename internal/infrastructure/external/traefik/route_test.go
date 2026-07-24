@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
@@ -128,5 +129,14 @@ func TestBuildRestSnapshotSkipsDisabled(t *testing.T) {
 	httpCfg := snapshot["http"].(map[string]any)
 	if len(httpCfg["routers"].(map[string]any)) != 1 {
 		t.Fatalf("expected one router: %#v", snapshot)
+	}
+}
+
+func TestRouteManagerUsesDeploymentCertificateDirectory(t *testing.T) {
+	root := t.TempDir()
+	manager := NewRouteManager(config.Config{Orbit: config.OrbitConfig{Root: root}})
+	want := filepath.Join(root, "data", deploymentDataDir, "traefik", "data", "certs")
+	if got := manager.routeCertDir(); got != want {
+		t.Fatalf("certificate directory = %q, want %q", got, want)
 	}
 }

@@ -1,8 +1,6 @@
 # SQL 迁移合并：领域对齐基线 — Verification
 最后修改时间: 2026-07-24 11:55:56
 
-Review status: Accepted
-
 ## Requirement alignment
 
 | 需求项 | 结果 |

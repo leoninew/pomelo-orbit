@@ -6,7 +6,7 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-// UserStore persists user accounts and login history.
+// UserStore persists user accounts and role assignments.
 type UserStore interface {
 	UserById(ctx context.Context, id string) (model.User, error)
 	UserByUsername(ctx context.Context, username string) (model.User, error)
@@ -16,8 +16,6 @@ type UserStore interface {
 	SetUserStatus(ctx context.Context, userId string, status string) error
 	DeleteUser(ctx context.Context, userId string) error
 	MarkUserLoggedIn(ctx context.Context, id string) error
-	SaveLoginHistory(ctx context.Context, history model.LoginHistory) error
-	ListLoginHistory(ctx context.Context, page int, perPage int, search string) (Page[model.LoginHistory], error)
 	UserRoles(ctx context.Context, userId string) ([]string, error)
 	UserPermissions(ctx context.Context, userId string) ([]string, error)
 	ListUsers(ctx context.Context, page int, perPage int, search string) (Page[model.User], error)

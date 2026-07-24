@@ -4,12 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
+	"time"
 
-	"github.com/jmoiron/sqlx"
-
-	dbsqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc"
-	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
+	usersqlc "gitee.com/leoninew/PomeloOrbit-go/internal/gen/sqlc/user"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database/tx"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/dbmodel"
@@ -19,41 +17,45 @@ import (
 var _ repository.UserStore = Repository{}
 
 type Repository struct {
-	db      *sqlx.DB
-	driver  string
-	queries *dbsqlc.Queries
+	db *sql.DB
 }
 
-func NewRepository(db *sqlx.DB, driver string) Repository {
-	return Repository{db: db, driver: driver, queries: dbsqlc.New(db)}
+func NewRepository(db *sql.DB) Repository {
+	return Repository{db: db}
+}
+
+func (r Repository) q(ctx context.Context) *usersqlc.Queries {
+	return dbmodel.Queries(ctx, r.db, func(dbtx tx.DBTX) *usersqlc.Queries {
+		return usersqlc.New(dbtx)
+	})
 }
 
 func (r Repository) UserByUsername(ctx context.Context, username string) (model.User, error) {
-	user, err := r.queries.UserByUsername(ctx, username)
+	user, err := r.q(ctx).UserByUsername(ctx, username)
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by username %s: %w", username, sqlcommon.TranslateError(err))
 	}
-	return dbmodel.UserFromByUsername(user), nil
+	return userFromRow(user.ID, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OauthProviderID, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
 func (r Repository) UserById(ctx context.Context, id string) (model.User, error) {
-	user, err := r.queries.UserByID(ctx, id)
+	user, err := r.q(ctx).UserByID(ctx, id)
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return dbmodel.UserFromByID(user), nil
+	return userFromRow(user.ID, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OauthProviderID, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
 func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, error) {
-	user, err := r.queries.UserByEmail(ctx, sql.NullString{String: email, Valid: true})
+	user, err := r.q(ctx).UserByEmail(ctx, sql.NullString{String: email, Valid: true})
 	if err != nil {
 		return model.User{}, fmt.Errorf("load user by email %s: %w", email, sqlcommon.TranslateError(err))
 	}
-	return dbmodel.UserFromByEmail(user), nil
+	return userFromRow(user.ID, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OauthProviderID, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
 func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, error) {
-	roles, err := r.queries.UserRoles(ctx, userId)
+	roles, err := r.q(ctx).UserRoles(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("load user roles %s: %w", userId, err)
 	}
@@ -61,7 +63,7 @@ func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, err
 }
 
 func (r Repository) UserPermissions(ctx context.Context, userId string) ([]string, error) {
-	permissions, err := r.queries.UserPermissions(ctx, userId)
+	permissions, err := r.q(ctx).UserPermissions(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("load user permissions %s: %w", userId, err)
 	}
@@ -70,62 +72,79 @@ func (r Repository) UserPermissions(ctx context.Context, userId string) ([]strin
 
 func (r Repository) ListUsers(ctx context.Context, page int, perPage int, search string) (repository.Page[model.User], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	where, args := userSearchWhere(search)
-	var total int
-	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM user`+where, args...); err != nil {
+	raw, pattern := dbmodel.LowerSearchPattern(search)
+	q := r.q(ctx)
+	total, err := q.CountUsers(ctx, usersqlc.CountUsersParams{
+		Column1:  raw,
+		Username: pattern,
+		Email:    sql.NullString{String: pattern, Valid: true},
+	})
+	if err != nil {
 		return repository.Page[model.User]{}, fmt.Errorf("count users: %w", err)
 	}
-	args = append(args, perPage, (page-1)*perPage)
-	var items []model.User
-	err := r.db.SelectContext(ctx, &items, `SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
-		email, auth_source, created_at, updated_at, last_login_at FROM user`+where+` ORDER BY created_at DESC, id LIMIT ? OFFSET ?`, args...)
+	rows, err := q.ListUsers(ctx, usersqlc.ListUsersParams{
+		Column1:  raw,
+		Username: pattern,
+		Email:    sql.NullString{String: pattern, Valid: true},
+		Limit:    int64(perPage),
+		Offset:   int64((page - 1) * perPage),
+	})
 	if err != nil {
 		return repository.Page[model.User]{}, fmt.Errorf("list users: %w", err)
 	}
-	return repository.Page[model.User]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
+	items := make([]model.User, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, userFromRow(row.ID, row.Username, row.PasswordHash, row.Status, row.OauthProvider, row.OauthProviderID, row.Email, row.AuthSource, row.CreatedAt, row.UpdatedAt, row.LastLoginAt))
+	}
+	return repository.Page[model.User]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
 func (r Repository) UserRolesByUserIds(ctx context.Context, userIds []string) (map[string][]model.Role, error) {
 	rolesByUserId := make(map[string][]model.Role, len(userIds))
-	if len(userIds) == 0 {
-		return rolesByUserId, nil
-	}
 	for _, userId := range userIds {
 		rolesByUserId[userId] = []model.Role{}
 	}
-	query, args, err := sqlIn(`SELECT user_role.user_id, role.id, role.code, role.name, role.description, role.created_at, role.updated_at FROM user_role
-		JOIN role ON role.id = user_role.role_id
-		WHERE user_role.user_id IN (?) ORDER BY user_role.user_id, role.code`, userIds)
+	if len(userIds) == 0 {
+		return rolesByUserId, nil
+	}
+	rows, err := r.q(ctx).UserRolesByUserIds(ctx, userIds)
 	if err != nil {
-		return nil, fmt.Errorf("build user roles query: %w", err)
-	}
-	var rows []struct {
-		UserId string `db:"user_id"`
-		model.Role
-	}
-	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
 		return nil, fmt.Errorf("load users roles: %w", err)
 	}
-	for _, item := range rows {
-		rolesByUserId[item.UserId] = append(rolesByUserId[item.UserId], item.Role)
+	for _, row := range rows {
+		rolesByUserId[row.UserID] = append(rolesByUserId[row.UserID], model.Role{
+			Id:          row.ID,
+			Code:        row.Code,
+			Name:        row.Name,
+			Description: dbmodel.StringPtr(row.Description),
+			CreatedAt:   row.CreatedAt,
+			UpdatedAt:   row.UpdatedAt,
+		})
 	}
 	return rolesByUserId, nil
 }
 
 func (r Repository) UserRoleDetails(ctx context.Context, userId string) ([]model.Role, error) {
-	rows, err := r.queries.UserRoleDetails(ctx, userId)
+	rows, err := r.q(ctx).UserRoleDetails(ctx, userId)
 	if err != nil {
 		return nil, fmt.Errorf("load user role details %s: %w", userId, err)
 	}
 	roles := make([]model.Role, 0, len(rows))
 	for _, row := range rows {
-		roles = append(roles, dbmodel.RoleFromSQLC(row))
+		roles = append(roles, model.Role{
+			Id:          row.ID,
+			Code:        row.Code,
+			Name:        row.Name,
+			Description: dbmodel.StringPtr(row.Description),
+			CreatedAt:   row.CreatedAt,
+			UpdatedAt:   row.UpdatedAt,
+		})
 	}
 	return roles, nil
 }
 
 func (r Repository) CreateUser(ctx context.Context, user model.User) error {
-	err := r.queries.CreateUser(ctx, dbsqlc.CreateUserParams{
+	err := r.q(ctx).CreateUser(ctx, usersqlc.CreateUserParams{
 		ID:              user.Id,
 		Username:        user.Username,
 		PasswordHash:    user.PasswordHash,
@@ -145,8 +164,17 @@ func (r Repository) CreateUser(ctx context.Context, user model.User) error {
 }
 
 func (r Repository) UpdateUser(ctx context.Context, user model.User) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE user SET username = ?, password_hash = ?, status = ?, email = ?, auth_source = ?, oauth_provider = ?, oauth_provider_id = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)),
-		user.Username, user.PasswordHash, user.Status, user.Email, user.AuthSource, user.OAuthProvider, user.OAuthProviderId, user.Id)
+	err := r.q(ctx).UpdateUser(ctx, usersqlc.UpdateUserParams{
+		Username:        user.Username,
+		PasswordHash:    user.PasswordHash,
+		Status:          user.Status,
+		Email:           dbmodel.NullString(user.Email),
+		AuthSource:      user.AuthSource,
+		OauthProvider:   user.OAuthProvider,
+		OauthProviderID: user.OAuthProviderId,
+		UpdatedAt:       time.Now().UTC(),
+		ID:              user.Id,
+	})
 	if err != nil {
 		return fmt.Errorf("update user %s: %w", user.Id, err)
 	}
@@ -154,7 +182,11 @@ func (r Repository) UpdateUser(ctx context.Context, user model.User) error {
 }
 
 func (r Repository) SetUserStatus(ctx context.Context, userId string, status string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE user SET status = ?, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), status, userId)
+	err := r.q(ctx).SetUserStatus(ctx, usersqlc.SetUserStatusParams{
+		Status:    status,
+		UpdatedAt: time.Now().UTC(),
+		ID:        userId,
+	})
 	if err != nil {
 		return fmt.Errorf("set user status %s: %w", userId, err)
 	}
@@ -162,112 +194,67 @@ func (r Repository) SetUserStatus(ctx context.Context, userId string, status str
 }
 
 func (r Repository) SetUserRoles(ctx context.Context, userId string, roleIds []string) error {
-	tx, err := r.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin set user roles %s: %w", userId, err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
-	if _, err := tx.ExecContext(ctx, `DELETE FROM user_role WHERE user_id = ?`, userId); err != nil {
+	q := r.q(ctx)
+	if err := q.DeleteUserRoles(ctx, userId); err != nil {
 		return fmt.Errorf("delete user roles %s: %w", userId, err)
 	}
+	now := time.Now().UTC()
 	for _, roleId := range roleIds {
-		if _, err := tx.ExecContext(ctx, fmt.Sprintf(`INSERT INTO user_role (user_id, role_id, created_at) VALUES (?, ?, %s)`, db.NowExpr(r.driver)), userId, roleId); err != nil {
+		if err := q.InsertUserRole(ctx, usersqlc.InsertUserRoleParams{
+			UserID:    userId,
+			RoleID:    roleId,
+			CreatedAt: now,
+		}); err != nil {
 			return fmt.Errorf("insert user role %s/%s: %w", userId, roleId, err)
 		}
 	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(`UPDATE user SET updated_at = %s WHERE id = ?`, db.NowExpr(r.driver)), userId); err != nil {
+	if err := q.TouchUserUpdatedAt(ctx, usersqlc.TouchUserUpdatedAtParams{
+		UpdatedAt: now,
+		ID:        userId,
+	}); err != nil {
 		return fmt.Errorf("touch user %s: %w", userId, err)
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit set user roles %s: %w", userId, err)
-	}
-	committed = true
 	return nil
 }
 
 func (r Repository) DeleteUser(ctx context.Context, userId string) error {
-	err := r.queries.DeleteUser(ctx, userId)
-	if err != nil {
+	if err := r.q(ctx).DeleteUser(ctx, userId); err != nil {
 		return fmt.Errorf("delete user %s: %w", userId, err)
 	}
 	return nil
 }
 
 func (r Repository) MarkUserLoggedIn(ctx context.Context, userId string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE user SET last_login_at = %s, updated_at = %s WHERE id = ?`, db.NowExpr(r.driver), db.NowExpr(r.driver)), userId)
+	now := time.Now().UTC()
+	err := r.q(ctx).MarkUserLoggedIn(ctx, usersqlc.MarkUserLoggedInParams{
+		LastLoginAt: sql.NullTime{Time: now, Valid: true},
+		UpdatedAt:   now,
+		ID:          userId,
+	})
 	if err != nil {
 		return fmt.Errorf("mark user logged in %s: %w", userId, err)
 	}
 	return nil
 }
 
-func (r Repository) SaveLoginHistory(ctx context.Context, history model.LoginHistory) error {
-	err := r.queries.SaveLoginHistory(ctx, dbsqlc.SaveLoginHistoryParams{
-		ID:        history.Id,
-		UserID:    history.UserId,
-		Username:  history.Username,
-		IpAddress: dbmodel.NullString(history.IpAddress),
-		UserAgent: dbmodel.NullString(history.UserAgent),
-		LoginAt:   history.LoginAt,
-		Success:   dbmodel.BoolInt(history.Success),
-	})
-	if err != nil {
-		return fmt.Errorf("save login history %s: %w", history.Id, err)
+func userFromRow(
+	id, username, passwordHash, status, oauthProvider, oauthProviderID string,
+	email sql.NullString,
+	authSource string,
+	createdAt, updatedAt time.Time,
+	lastLoginAt sql.NullTime,
+) model.User {
+	return model.User{
+		Id:              id,
+		Username:        username,
+		PasswordHash:    passwordHash,
+		Status:          status,
+		OAuthProvider:   oauthProvider,
+		OAuthProviderId: oauthProviderID,
+		Email:           dbmodel.StringPtr(email),
+		AuthSource:      authSource,
+		CreatedAt:       createdAt,
+		UpdatedAt:       updatedAt,
+		LastLoginAt:     dbmodel.TimePtr(lastLoginAt),
 	}
-	return nil
-}
-
-func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int, search string) (repository.Page[model.LoginHistory], error) {
-	page, perPage = repository.NormalizePage(page, perPage)
-	where, args := loginHistorySearchWhere(search)
-	var total int
-	if err := r.db.GetContext(ctx, &total, `SELECT COUNT(*) FROM login_history`+where, args...); err != nil {
-		return repository.Page[model.LoginHistory]{}, fmt.Errorf("count login history: %w", err)
-	}
-	args = append(args, perPage, (page-1)*perPage)
-	var items []model.LoginHistory
-	err := r.db.SelectContext(ctx, &items, `SELECT id, user_id, username, ip_address, user_agent, login_at, success FROM login_history`+where+` ORDER BY login_at DESC, id DESC LIMIT ? OFFSET ?`, args...)
-	if err != nil {
-		return repository.Page[model.LoginHistory]{}, fmt.Errorf("list login history: %w", err)
-	}
-	return repository.Page[model.LoginHistory]{Items: items, Total: total, Page: page, PerPage: perPage}, nil
-}
-
-func userSearchWhere(search string) (string, []any) {
-	search = strings.TrimSpace(search)
-	if search == "" {
-		return "", nil
-	}
-	like := "%" + strings.ToLower(search) + "%"
-	return " WHERE LOWER(username) LIKE ? OR LOWER(COALESCE(email, '')) LIKE ?", []any{like, like}
-}
-
-func loginHistorySearchWhere(search string) (string, []any) {
-	search = strings.TrimSpace(search)
-	if search == "" {
-		return "", nil
-	}
-	like := "%" + strings.ToLower(search) + "%"
-	return " WHERE LOWER(username) LIKE ?", []any{like}
-}
-
-func sqlIn(query string, values []string) (string, []any, error) {
-	args := make([]any, len(values))
-	for i, value := range values {
-		args[i] = value
-	}
-	return sqlxIn(query, args...)
-}
-
-func sqlxIn(query string, args ...any) (string, []any, error) {
-	expanded, expandedArgs, err := sqlx.In(query, args...)
-	if err != nil {
-		return "", nil, err
-	}
-	return expanded, expandedArgs, nil
 }

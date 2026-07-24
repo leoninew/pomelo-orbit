@@ -6,20 +6,20 @@ import (
 	"errors"
 	"testing"
 
-	cdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/dto"
-	cidto "gitee.com/leoninew/PomeloOrbit-go/internal/application/ci/dto"
+	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	pipelinerundto "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 )
 
-func TestCIDispatcherPreservesTaskContract(t *testing.T) {
+func TestPipelineRunDispatcherPreservesTaskContract(t *testing.T) {
 	repo := &recordingTaskRepository{}
-	dispatcher := NewCIDispatcher(tasksvc.New(repo, 3))
+	dispatcher := NewPipelineRunDispatcher(tasksvc.New(repo, 3))
 
-	if err := dispatcher.DispatchPipelineRun(context.Background(), cidto.PipelineRunDispatchInput{PipelineRunID: "run-1"}); err != nil {
+	if err := dispatcher.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunID: "run-1"}); err != nil {
 		t.Fatal(err)
 	}
-	if repo.taskType != status.TaskTypeCIPipelineRunExecute {
+	if repo.taskType != status.TaskTypePipelineRunExecute {
 		t.Fatalf("unexpected task type: %q", repo.taskType)
 	}
 	assertPayloadJSON(t, repo.payloadJSON, `{"pipeline_run_id":"run-1"}`)
@@ -29,30 +29,30 @@ func TestDispatchersPropagateEnqueueError(t *testing.T) {
 	want := errors.New("enqueue unavailable")
 	tests := []struct {
 		name     string
-		dispatch func(CIDispatcher, CDDispatcher) error
+		dispatch func(PipelineRunDispatcher, DeploymentDispatcher) error
 	}{
 		{
-			name: "ci pipeline run",
-			dispatch: func(ci CIDispatcher, _ CDDispatcher) error {
-				return ci.DispatchPipelineRun(context.Background(), cidto.PipelineRunDispatchInput{PipelineRunID: "run-1"})
+			name: "pipeline_run execute",
+			dispatch: func(pipelineRun PipelineRunDispatcher, _ DeploymentDispatcher) error {
+				return pipelineRun.DispatchPipelineRun(context.Background(), pipelinerundto.PipelineRunDispatchInput{PipelineRunID: "run-1"})
 			},
 		},
 		{
-			name: "cd deploy",
-			dispatch: func(_ CIDispatcher, cd CDDispatcher) error {
-				return cd.DispatchApplicationDeploy(context.Background(), cdto.ApplicationDeployDispatchInput{ApplicationID: "app-1", DeploymentID: "deploy-1"})
+			name: "deployment deploy",
+			dispatch: func(_ PipelineRunDispatcher, deployment DeploymentDispatcher) error {
+				return deployment.DispatchDeploy(context.Background(), deploymentdto.DeployDispatchInput{ApplicationID: "app-1", DeploymentID: "deploy-1"})
 			},
 		},
 		{
-			name: "cd restart",
-			dispatch: func(_ CIDispatcher, cd CDDispatcher) error {
-				return cd.DispatchApplicationRestart(context.Background(), cdto.ApplicationRestartDispatchInput{ApplicationID: "app-1", DeploymentID: "restart-1"})
+			name: "deployment restart",
+			dispatch: func(_ PipelineRunDispatcher, deployment DeploymentDispatcher) error {
+				return deployment.DispatchRestart(context.Background(), deploymentdto.RestartDispatchInput{ApplicationID: "app-1", DeploymentID: "restart-1"})
 			},
 		},
 		{
-			name: "cd stop",
-			dispatch: func(_ CIDispatcher, cd CDDispatcher) error {
-				return cd.DispatchApplicationStop(context.Background(), cdto.ApplicationStopDispatchInput{ApplicationID: "app-1", DeploymentID: "stop-1"})
+			name: "deployment stop",
+			dispatch: func(_ PipelineRunDispatcher, deployment DeploymentDispatcher) error {
+				return deployment.DispatchStop(context.Background(), deploymentdto.StopDispatchInput{ApplicationID: "app-1", DeploymentID: "stop-1"})
 			},
 		},
 	}
@@ -60,7 +60,7 @@ func TestDispatchersPropagateEnqueueError(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repo := &recordingTaskRepository{enqueueErr: want}
-			err := test.dispatch(NewCIDispatcher(tasksvc.New(repo, 3)), NewCDDispatcher(tasksvc.New(repo, 3)))
+			err := test.dispatch(NewPipelineRunDispatcher(tasksvc.New(repo, 3)), NewDeploymentDispatcher(tasksvc.New(repo, 3)))
 			if !errors.Is(err, want) {
 				t.Fatalf("expected enqueue error %v, got %v", want, err)
 			}
@@ -68,35 +68,35 @@ func TestDispatchersPropagateEnqueueError(t *testing.T) {
 	}
 }
 
-func TestCDDispatcherPreservesTaskContracts(t *testing.T) {
+func TestDeploymentDispatcherPreservesTaskContracts(t *testing.T) {
 	tests := []struct {
 		name     string
-		dispatch func(CDDispatcher) error
+		dispatch func(DeploymentDispatcher) error
 		taskType string
 		payload  string
 	}{
 		{
 			name: "deploy",
-			dispatch: func(d CDDispatcher) error {
-				return d.DispatchApplicationDeploy(context.Background(), cdto.ApplicationDeployDispatchInput{ApplicationID: "app-1", DeploymentID: "deploy-1", ForceRecreate: true})
+			dispatch: func(d DeploymentDispatcher) error {
+				return d.DispatchDeploy(context.Background(), deploymentdto.DeployDispatchInput{ApplicationID: "app-1", DeploymentID: "deploy-1", ForceRecreate: true})
 			},
-			taskType: status.TaskTypeCDApplicationDeploy,
+			taskType: status.TaskTypeDeploymentDeploy,
 			payload:  `{"application_id":"app-1","deployment_id":"deploy-1","force_recreate":true}`,
 		},
 		{
 			name: "restart",
-			dispatch: func(d CDDispatcher) error {
-				return d.DispatchApplicationRestart(context.Background(), cdto.ApplicationRestartDispatchInput{ApplicationID: "app-1", DeploymentID: "restart-1"})
+			dispatch: func(d DeploymentDispatcher) error {
+				return d.DispatchRestart(context.Background(), deploymentdto.RestartDispatchInput{ApplicationID: "app-1", DeploymentID: "restart-1"})
 			},
-			taskType: status.TaskTypeCDApplicationRestart,
+			taskType: status.TaskTypeDeploymentRestart,
 			payload:  `{"application_id":"app-1","deployment_id":"restart-1"}`,
 		},
 		{
 			name: "stop",
-			dispatch: func(d CDDispatcher) error {
-				return d.DispatchApplicationStop(context.Background(), cdto.ApplicationStopDispatchInput{ApplicationID: "app-1", DeploymentID: "stop-1", RemoveVolumes: true})
+			dispatch: func(d DeploymentDispatcher) error {
+				return d.DispatchStop(context.Background(), deploymentdto.StopDispatchInput{ApplicationID: "app-1", DeploymentID: "stop-1", RemoveVolumes: true})
 			},
-			taskType: status.TaskTypeCDApplicationStop,
+			taskType: status.TaskTypeDeploymentStop,
 			payload:  `{"application_id":"app-1","deployment_id":"stop-1","remove_volumes":true}`,
 		},
 	}
@@ -104,7 +104,7 @@ func TestCDDispatcherPreservesTaskContracts(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			repo := &recordingTaskRepository{}
-			if err := test.dispatch(NewCDDispatcher(tasksvc.New(repo, 3))); err != nil {
+			if err := test.dispatch(NewDeploymentDispatcher(tasksvc.New(repo, 3))); err != nil {
 				t.Fatal(err)
 			}
 			if repo.taskType != test.taskType {

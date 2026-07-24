@@ -81,17 +81,17 @@ func TestMySQLE2E(t *testing.T) {
 	}
 
 	var userCount int
-	if err := database.Get(&userCount, "SELECT COUNT(*) FROM user WHERE username = ?", "admin"); err != nil {
+	if err := database.QueryRow("SELECT COUNT(*) FROM user WHERE username = ?", "admin").Scan(&userCount); err != nil {
 		t.Fatal(err)
 	}
 	if userCount != 1 {
 		t.Fatalf("expected admin user, got %d", userCount)
 	}
 
-	taskRepo := taskrepo.NewRepository(database, cfg.Database.Driver)
+	taskRepo := taskrepo.NewRepository(database)
 	taskId := idutil.NewId()
 	ctx := context.Background()
-	if err := taskRepo.Enqueue(ctx, taskId, status.TaskTypeCIPipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 1); err != nil {
+	if err := taskRepo.Enqueue(ctx, taskId, status.TaskTypePipelineRunExecute, `{"pipeline_run_id":"run-1"}`, 1); err != nil {
 		t.Fatal(err)
 	}
 	queued, err := taskRepo.FindById(ctx, taskId)

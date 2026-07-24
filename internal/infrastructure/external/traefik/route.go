@@ -15,14 +15,16 @@ import (
 	"sync"
 	"time"
 
-	cdport "gitee.com/leoninew/PomeloOrbit-go/internal/application/cd/port"
+	routeport "gitee.com/leoninew/PomeloOrbit-go/internal/application/route/port"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
-var _ cdport.RouteConfigPublisher = (*RouteManager)(nil)
-var _ cdport.TraefikRouterClient = (*RouteManager)(nil)
+var _ routeport.RouteConfigPublisher = (*RouteManager)(nil)
+var _ routeport.TraefikRouterClient = (*RouteManager)(nil)
+
+const deploymentDataDir = "deployment"
 
 // RouteManager publishes platform routes via Traefik providers.rest full PUT.
 type RouteManager struct {
@@ -79,7 +81,7 @@ func (m *RouteManager) RevokeCertificate(_ context.Context, routeName string) er
 	return nil
 }
 
-func (m *RouteManager) ListRouters(ctx context.Context, restAPIURL string) ([]cdport.TraefikRouter, error) {
+func (m *RouteManager) ListRouters(ctx context.Context, restAPIURL string) ([]routeport.TraefikRouter, error) {
 	base := strings.TrimRight(strings.TrimSpace(restAPIURL), "/")
 	if base == "" {
 		return nil, apperror.New(apperror.KindValidation, "gateway rest_api_url is required")
@@ -109,9 +111,9 @@ func (m *RouteManager) ListRouters(ctx context.Context, restAPIURL string) ([]cd
 	if err := json.NewDecoder(response.Body).Decode(&routers); err != nil {
 		return nil, fmt.Errorf("decode traefik routers: %w", err)
 	}
-	items := make([]cdport.TraefikRouter, 0, len(routers))
+	items := make([]routeport.TraefikRouter, 0, len(routers))
 	for _, router := range routers {
-		items = append(items, cdport.TraefikRouter{
+		items = append(items, routeport.TraefikRouter{
 			Name:        router.Name,
 			Provider:    router.Provider,
 			Status:      router.Status,
@@ -172,7 +174,7 @@ func (m *RouteManager) writeCertificateUnlocked(routeName string, certPEM string
 
 func (m *RouteManager) routeCertDir() string {
 	if strings.TrimSpace(m.cfg.Traefik.CertDir) == "" {
-		return filepath.Join(m.cfg.DataRoot(), "cd", "traefik", "data", "certs")
+		return filepath.Join(m.cfg.DataRoot(), deploymentDataDir, "traefik", "data", "certs")
 	}
 	return cleanConfigPath(m.cfg.OrbitRoot(), m.cfg.Traefik.CertDir)
 }

@@ -35,7 +35,7 @@ jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 traefik:
-  cert_dir: data/cd/traefik/data/certs
+  cert_dir: data/deployment/traefik/data/certs
 
 turnstile:
   enabled: true

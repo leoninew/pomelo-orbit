@@ -13,3 +13,10 @@
   - `go fmt ./cmd/... ./internal/...`
   - `go vet ./cmd/... ./internal/...`
   - `go test ./cmd/... ./internal/...`
+
+## 文档阅读顺序
+
+- 默认依据：`docs/README.md` → `docs/INDEX.md` → `docs/product/`、`docs/architecture/`、`docs/decisions/`，以及已校准的 `docs/guides/`、`docs/frontend/`。
+- `docs/archive/**` 为历史材料：**无须采信，不得作为实现或验收依据**。
+- SpecFlow 过程目录（`docs/requirement|spec|plan|verification`）仅用于**进行中**任务；已归档过程文档在 `docs/archive/specflow/`。
+- 文档与代码冲突时 **以代码为准**，并回写活文档。

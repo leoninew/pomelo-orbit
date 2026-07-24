@@ -1,4 +1,8 @@
 # Pomelo Orbit 路由和证书原理
+最后修改时间: 2026-07-24 10:47:37
+
+Doc role: living guide  
+领域总览见 [CD 模型](../product/cd-model.md)。与代码冲突时以代码为准。
 
 ## 概述
 
@@ -7,6 +11,7 @@ Pomelo Orbit 使用 Traefik 作为反向代理网关，实现动态路由和 HTT
 - **平台路由**（CD Route 表）：经 Traefik **`providers.rest`** 全量 PUT，控制面 URL 来自 **Gateway config `rest_api_url`**。
 - **应用暴露**（Version Expose）：部署时写入 Docker labels；Host 推导为 `{app_code}.{gateway.base_domain}`。
 - **证书文件**：平台写入证书目录供 TLS 路由引用（见下文）。
+- **接入配置 SoT**：`gateway_config`（非全局 `traefik.api_url` / `domain_suffix` 产品路径）。
 
 ## 路由系统架构
 

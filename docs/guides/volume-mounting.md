@@ -1,4 +1,7 @@
 # Pomelo Orbit 目录挂载原理
+最后修改时间: 2026-07-24 10:47:37
+
+Doc role: living guide。与代码冲突时以代码为准。
 
 ## 概述
 

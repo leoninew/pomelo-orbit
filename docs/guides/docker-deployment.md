@@ -1,4 +1,7 @@
 # Docker 部署指南
+最后修改时间: 2026-07-24 10:47:37
+
+Doc role: living guide（运维向）。领域模型见 [CD 模型](../product/cd-model.md)。与代码冲突时以代码为准。
 
 本文档介绍如何通过 Docker 部署 Pomelo Orbit 系统。
 

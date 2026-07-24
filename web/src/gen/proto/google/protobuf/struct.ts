@@ -6,7 +6,7 @@
 
 /* eslint-disable */
 
-export const protobufPackage = 'google.protobuf';
+export const protobufPackage = "google.protobuf";
 
 /**
  * `NullValue` is a singleton enumeration to represent the null value for the
@@ -50,15 +50,25 @@ export interface Struct_FieldsEntry {
  */
 export interface Value {
   /** Represents a null value. */
-  null_value?: NullValue | undefined;
+  null_value?:
+    | NullValue
+    | undefined;
   /** Represents a double value. */
-  number_value?: number | undefined;
+  number_value?:
+    | number
+    | undefined;
   /** Represents a string value. */
-  string_value?: string | undefined;
+  string_value?:
+    | string
+    | undefined;
   /** Represents a boolean value. */
-  bool_value?: boolean | undefined;
+  bool_value?:
+    | boolean
+    | undefined;
   /** Represents a structured value. */
-  struct_value?: { [key: string]: any } | undefined;
+  struct_value?:
+    | { [key: string]: any }
+    | undefined;
   /** Represents a repeated `Value`. */
   list_value?: Array<any> | undefined;
 }

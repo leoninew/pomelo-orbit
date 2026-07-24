@@ -216,7 +216,153 @@ sqlc query 文件和实现包按下表领域拆分，禁止继续用 `ci`、`cd`
 4. application use case、HTTP handler、worker 对旧路径和旧类型的引用；
 5. Go、TypeScript 生成和全量测试。
 
-## 10. 来源
+## 10. 跨层物理文件组织与命名
+
+本节定义 model、application、Repository、infrastructure、入站 adapter 和 bootstrap 的共同物理组织规则。它服务于本文的领域边界，但不要求 HTTP URL、Proto 文件、SQL query、Go 文件或 use case 一一对应。
+
+基本原则是：**目录和 package 提供第一层语义，文件名只表达该作用域内的第二层主题。**Go 文件不是全局命名空间，也不是领域边界本身；不应要求单个文件名脱离路径后仍能完整说明其层次、领域和职责。
+
+### 10.1 分层目录与领域文件
+
+| 层 | 推荐组织 | 文件命名规则 |
+|---|---|---|
+| `model` | 保持业务模型，不依赖 HTTP、Proto、sqlc 或外部 SDK 类型。 | 在集中 `model` package 中用 `<domain>.go` 或 `<entity>.go`；禁止用 `ci.go`、`cd.go` 充当跨领域桶。 |
+| `application/<domain>` | 领域 use case、DTO 和 port 分别位于 `usecase/`、`dto/`、`port/`。 | 用 `<entity>.go`、`<capability>.go` 或动作名；`service.go` 仅用于定义该领域主 `Service` 类型及其构造。 |
+| `repository` | 根 package 定义领域 port；`impl/sqlc/<domain>` 隔离 sqlc 实现和 DB Row 转换。 | 根 package 用 `<domain>.go`；领域实现目录内可用 `repository.go` 表示该实现的主 Repository。 |
+| `infrastructure` | 按外部系统或技术实现组织，例如 `<provider>`、`runner`、`storage`。 | 用 provider 或能力名，不以业务领域命名来掩盖外部系统适配。 |
+| 入站 adapter | HTTP handler、routes、worker handler 等按 transport 和领域分组。 | `handler/<domain>/` 内使用 `handler.go`、`<entity>.go`、`<entity>_mapper.go`；`routes/<domain>.go` 只绑定 URL 与 handler。 |
+| `bootstrap` | 组合根，负责创建实现并注入 port。 | 使用 transport 或组合目标命名，例如 `http.go`、`worker.go`；不承载业务规则。 |
+
+在一个扁平的多领域目录中，选择 `<domain>.go`，不选择 `<domain>_<layer>.go`：父目录已经给出层语义，后缀重复信息。例如 `repository/<domain>.go` 优于 `<domain>_repository.go`，`model/<domain>.go` 优于 `<domain>_model.go`。当领域拥有多个实体或行为时，先进入 `<layer>/<domain>/`，再以 `<entity>.go` 或 `<action>.go` 划分。
+
+结构性文件名如 `handler.go`、`service.go`、`repository.go` 只适合位于已同时限定层和领域的 package 中，且文件确实定义该 package 的主类型、构造或共享行为；它们不应在承载多个领域的扁平目录中替代领域名。若领域名与层名相同且路径仍容易误读，可以使用真实业务限定词，例如 `vcs_repository.go`，而不是机械追加 `_handler`、`_service` 或 `_repository` 后缀。
+
+```text
+internal/
+  model/
+    <domain>.go
+  application/<domain>/
+    dto/<entity>.go
+    port/<capability>.go
+    usecase/service.go
+    usecase/<entity>.go
+  repository/
+    <domain>.go
+    impl/sqlc/<domain>/repository.go
+  api/http/
+    handler/<domain>/handler.go
+    handler/<domain>/<entity>.go
+    routes/<domain>.go
+  bootstrap/
+    http.go
+    worker.go
+```
+
+同名文件由路径和 package 消除歧义。例如 `routes/route.go` 是 `route` 领域的路由声明，`handler/route/route.go` 是该领域 endpoint 实现，`model/route.go` 是领域模型；不应仅因同名而改为冗余的 `route_handler.go`。
+
+### 10.2 聚合、注册与装配文件
+
+聚合式文件不能使用一个业务领域名，也不应假装是领域。按实际职责命名：
+
+| 名称 | 适用职责 | 不应承担的职责 |
+|---|---|---|
+| `registry.go` | 定义 registry、静态映射或集合，并集中协调已注册项。HTTP Router 聚合、worker handler registry 等均可使用。 | 领域业务规则、具体 endpoint 或 task 实现。 |
+| `register.go` | 仅提供 `registerAll` 或同类总注册函数。 | 依赖创建、进程启动和业务规则。 |
+| `wire.go` | 组合根中的依赖构造、接口实现注入或生成的 Wire 装配代码。 | 路由声明、任务注册和业务规则。 |
+| `server.go` | HTTP server 生命周期、fallback/static serving 等 server 职责。 | application service、Repository 或外部系统实现的实例化。 |
+| `index.go` | 仅用于确有必要的生成代码或兼容性入口。Go 不赋予它特殊语义。 | 作为无职责的包概览或杂项收集点。 |
+
+现有 `routes.go` 同时定义 `Router` 并聚合 `register<Domain>` 调用，语义上符合 `registry.go`。由于其 package 已命名为 `routes`，继续使用 `routes.go` 也可接受；若后续拆出纯总注册函数，采用 `registry.go` + `register.go` 会更精确。依赖实例化应保留在 `bootstrap`，而不应迁入 `routes`、领域 use case 或 Repository。
+
+### 10.3 禁止的模糊名称
+
+不要创建 `common.go` 作为跨领域代码的默认落点。它没有可验证的职责边界，容易演变为杂物箱。共享代码必须根据实际技术职责进入明确的包或文件，例如 `response`、`binding`、`codec`、`middleware`、`security`、`errors` 或 `<capability>.go`。业务领域之间的读取、写入、事件或外部能力共享，应以 application port 表达，不应放入 `common`。
+
+`common` package 如确有必要，只能容纳无业务语义、向内稳定且没有上层依赖的基础能力；它不能依赖 domain model、Proto、sqlc、HTTP 或外部 provider。领域专属的辅助函数必须留在所属领域 package 中。
+
+`authz` 这类跨 handler 的请求认证/授权辅助能力也不是业务领域；应位于明确的 HTTP 技术职责包，例如 `security`，若实现为 Gin middleware 则位于 `middleware`。
+
+### 10.4 协议 DTO 与 application 用例契约
+
+Proto 生成类型是 transport contract，不是 application DTO。它们属于 `internal/gen/proto/...`，只能由 HTTP、gRPC、worker task 等入站/出站 adapter 导入；application、model、Repository 和 infrastructure 不得依赖生成的 Proto 类型。这样 API 字段兼容、`oneof`、wrapper、field presence、JSON 表示和分页编码不会渗透到业务用例。
+
+application 可以且应当定义自己的用例输入/输出类型，但不应机械逐字段复制所有 Proto message。为避免“DTO”一词混淆，按契约角色组织：
+
+| 类型 | 所属层 | 职责 |
+|---|---|---|
+| `*v1.<Entity>CreateReq`、`*v1.<Entity>Resp` | Proto / transport | 版本化的对外请求、响应和任务消息格式。 |
+| `<Entity>CreateInput`、`<Entity>UpdateInput` | application command | 用例需要的业务输入，可由 HTTP、worker、CLI 等多个 adapter 共享。 |
+| `<Entity>ListQuery` | application query | 用例需要的查询条件，不包含 HTTP URL、Proto wrapper 等协议细节。 |
+| `<Entity>View` | application view | 跨聚合投影、组合视图或脱敏后的用例输出；简单聚合无需强制定义。 |
+| `model.<Entity>` | model | 聚合的业务状态，不承载协议或持久化细节。 |
+| sqlc Row / generated query 参数 | Repository 实现 | 持久化实现细节，仅限 `impl/sqlc`。 |
+
+标准调用方向为：
+
+```text
+Proto request / worker task message
+  -> transport mapper
+  -> application Command or Query
+  -> use case
+  -> model or application View
+  -> transport mapper
+  -> Proto response
+```
+
+mapper 是刻意保留的反腐层，而非应消除的重复：它执行协议解码、路径/Query/Body 合并、字段形状转换和协议默认值；application use case 是业务校验、授权、状态转换和跨领域编排的唯一位置。不得在两层重复业务规则。简单聚合读取或写入可直接返回 `model.<Entity>`，再由 adapter 映射为 Proto response；只有投影、组合或脱敏需要时才定义 application View。
+
+仅有单一 gRPC/HTTP 入口、没有 worker/CLI、业务简单且 API 生命周期完全等同于用例时，直接把 Proto request 传入 service 是可接受的简化。它不是本项目的默认规则：本项目同时存在 HTTP 与 worker task 入站方式，并要求长期 API 兼容和领域拆分。因此每个领域应拥有自身 application Command/Query/View，旧 `ci/dto`、`cd/dto` 不得继续作为跨领域 DTO 桶。
+
+### 10.5 外部 API 与 SPA 地址
+
+HTTP path 和 SPA 页面地址同样必须表达资源领域；`ci`、`cd` 是历史技术流程分组，不得继续作为 `/api` 下或浏览器页面地址中的父 segment。`/api` 是 transport 前缀，不是领域；`pipeline`、`pipeline_run`、`application`、`deployment` 等才是资源能力边界。
+
+本次地址迁移采用硬切换：不注册旧 `/api/ci/**`、`/api/cd/**` 后端别名，不保留 Vue Router 旧 route、redirect 或 rewrite，也不保留导航入口。旧 API 必须未注册并返回 404；旧 SPA path 不应解析到任何领域页面。数据库 migration 标签和已持久化 task value 的兼容策略不构成保留 HTTP 或 SPA URL 的理由。
+
+路径只因领域归属而调整，不顺带统一单复数、引入 API version 或改变 DTO。API 与 SPA 不要求逐字相同：前者保持现有 transport 资源路径，后者可以用既有 collection / detail 约定；两者都不得重建 `ci` / `cd` 粗粒度父层。
+
+## 11. 当前实施评估（2026-07-24）
+
+本节核对当前 workspace 的实现与本文领域地图。评估时工作树正处于迁移过程中，存在未提交变更；因此这里记录的是当前实现状态，而不是对目标领域边界的修订。
+
+结论：Proto、sqlc、Repository、HTTP handler、worker、bootstrap 和 application 已完成领域切换。生产代码不再依赖 `internal/application/ci` 或 `internal/application/cd` 业务包，application family 只保留 application / version 规格。任务 06 已完成：前端状态键、运维数据路径、规则 package、文案和一次性迁移脚本均已完成硬切换，不保留历史 `ci` / `cd` 兼容面。
+
+### 11.1 已符合的组织实践
+
+- HTTP handler 已按 `internal/api/http/handler/<domain>/` 内聚，领域内以 `handler.go` 放置构造和共享错误处理，以实体或子资源文件放置 endpoint 与 mapper。
+- `internal/api/http/routes/<domain>.go` 分别声明各领域路由；`routes.go` 作为复数的聚合和注册入口，不与 `route` 领域混淆，且没有引入无边界的 `common.go`。
+- 旧 `/api/ci`、`/api/cd` URL 与 `/ci/**`、`/cd/**` SPA 页面地址不保留兼容面：不注册 alias、redirect 或 rewrite；历史地址不改变内部用例、DTO、端口和 Repository 的逻辑归属。
+- `pipeline_stage`、`pipeline_stage_run` 已成为 Proto、SQL、Repository 和 application 层的业务主名称；`application/gateway`、`application/deployment`、`application/service` 均已具备独立 DTO、port、use case 和定向测试。
+
+### 11.2 收尾任务状态
+
+| 任务 | 状态 | 已核对结果 | 剩余收口 |
+|---|---|---|---|
+| 01 Pipeline 术语 | 完成 | `PipelineStage`、`PipelineStageRun` 已取代旧主模型与 DTO；模型已拆为 credential、repository、pipeline、pipeline_run 等领域文件，变量规则 package 已命名为 `pipelinevariable`。 | 无。 |
+| 02 Gateway use case | 完成 | gateway 已拥有 DTO、port、use case 和测试；仅通过 port 协调 deployment，不依赖 HTTP、Proto、sqlc implementation 或 infrastructure。 | 无。 |
+| 03 Deployment use case | 完成 | command、execution、DTO、port 和 worker 已迁入 deployment；Gateway 规则经 `DeploymentCoordinator` port 调用，不复制 Gateway 编译规则，且 deployment service 不再携带未使用的 `config.Config`。 | 无。 |
+| 04 Service use case | 完成 | service 已拥有 project list、单项读取、application-scoped list、primary service 与 target resolver，生产实现无越界 import。 | 无。 |
+| 05 Application Family 总切换 | 完成 | HTTP handler、worker、queue dispatch 和 bootstrap 均注入 gateway、deployment、service 的独立 use case；application 仅保留 application / version 规格。 | 无。 |
+| 06 历史命名与边界审计 | 完成 | 旧内部业务包、模型双桶、`authz`、任务类型、HTTP / SPA route、Proto 向内层穿透、前端状态键、运维路径和一次性迁移脚本均已清理。 | 无。 |
+
+### 11.3 已完成的收口
+
+| 项目 | 完成结果 |
+|---|---|
+| 运维数据路径 | `scripts/cert.py` 已改用 `data/deployment/traefik/data/certs`；备份脚本仅排除 `data/pipeline/*/workspace`，不读取旧目录。 |
+| 前端状态 | `web/src/constants/application.ts` 提供 `applicationVersionsApplicationIdKey`，键为 `pomelo_orbit_application_versions_application_id:<projectId>`；版本页只读写新键。 |
+| Pipeline 变量规则 | `civariable` 已迁为 `pipelinevariable`，pipeline、pipeline_run 和 repository use case 均使用新 import 与 package 名。 |
+| Application 最小依赖 | deployment command / execution service 及测试辅助构造器均已移除未使用的 `config.Config` 依赖。 |
+| 文案与迁移工具 | deployment 注释、repository credential 注释和首页文案已采用领域语言；九个引用旧树的一次性迁移脚本已删除。 |
+
+### 11.4 验证状态
+
+- `go vet ./...` 与 `go test ./...` 已通过；HTTP、worker、queue dispatch、bootstrap 和 e2e 均完成当前工作树构建。
+- `yarn --cwd web typecheck`、`yarn --cwd web test`、`yarn --cwd web lint` 和 `yarn --cwd web build` 已通过；lint 为零 error、零 warning。生成的 `web/src/gen/proto/**` 由 ESLint 精确忽略，手写 `src` 代码仍在 lint 范围内。
+- production HTTP / SPA path、task type、旧 Go 业务 package、Proto 向 application / model / Repository / infrastructure 的 import、`common.go`、旧 local storage key、旧运维目录及本节原列的历史命名均已通过静态扫描；历史备份文件不作为运行时兼容实现。
+- 领域拆分完成的最低验证门槛是：全量 Go 测试通过；HTTP handler、worker、bootstrap 和 use case 均调用正确的领域服务；生产内部业务包、前端状态键和运维数据路径不再使用 `ci` / `cd` 双桶；Gateway 规则仅由 gateway 领域拥有；历史 HTTP / SPA path、task type、数据目录和协议字段不保留兼容层。
+
+## 12. 来源
 
 - `20260724-api-proto-domain-split-proto视角.md`
 - `20260724-ci-cd-schema-domain-split-数据库视角.md`

@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package orbit.v1.gateway;
+
+message GatewayCreateReq {
+  string project_id = 1;
+  string code = 2;
+  string name = 3;
+  string rest_api_url = 4;
+  string base_domain = 5;
+  optional string image = 6;
+  // docker compose --pull: always|missing|never
+  string image_pull_policy = 7;
+  // Traefik entryPoints name: web|websecure (default web when empty on create)
+  optional string default_entrypoint = 8;
+  // none|letsencrypt|tls (default none when empty on create)
+  optional string tls_mode = 10;
+}
+
+message GatewayUpdateReq {
+  optional string name = 1;
+  optional string rest_api_url = 2;
+  optional string base_domain = 3;
+  optional string image = 4;
+  optional string image_pull_policy = 5;
+  optional string default_entrypoint = 6;
+  optional string tls_mode = 8;
+}
+
+// Read-only active exit / cluster DNS row (not a CRUD resource).
+message GatewayExposureItem {
+  string application_id = 1;
+  string application_code = 2;
+  string component_name = 3;
+  string protocol = 4;
+  string access = 5;
+  int32 container_port = 6;
+  int32 listen_port = 7;
+  string public_host = 8;
+  string internal_dns = 9;
+  string client_hint = 10;
+}
+
+message GatewayResp {
+  string id = 1;
+  string project_id = 2;
+  string code = 3;
+  string name = 4;
+  string kind = 5;
+  string rest_api_url = 6;
+  string base_domain = 7;
+  optional string image = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  string config_updated_at = 11;
+  string image_pull_policy = 12;
+  string default_entrypoint = 13;
+  string tls_mode = 15;
+  repeated GatewayExposureItem exposures = 16;
+}
+
+message GatewayPaginatedResp {
+  repeated GatewayResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}

@@ -174,7 +174,7 @@ func (q *Queries) ListArtifacts(ctx context.Context, arg ListArtifactsParams) ([
 const listArtifactsByRun = `-- name: ListArtifactsByRun :many
 SELECT id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at
 FROM artifact
-WHERE pipeline_run_id = ?
+WHERE pipeline_run_id = ?1
   AND (?2 IS NULL OR project_id = ?2)
 ORDER BY created_at, id
 `

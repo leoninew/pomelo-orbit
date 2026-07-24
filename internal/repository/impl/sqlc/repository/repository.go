@@ -36,24 +36,20 @@ func (r Repository) ListRepositories(ctx context.Context, projectId *string, pag
 	raw, pattern := dbmodel.SearchPattern(search)
 	q := r.q(ctx)
 	params := reposqlc.CountRepositoriesParams{
-		ProjectID:     optionalNarg(projectId),
-		Column2:       raw,
-		Name:          pattern,
-		Code:          pattern,
-		RepositoryUrl: pattern,
+		ProjectID: optionalNarg(projectId),
+		Search:    raw,
+		Pattern:   pattern,
 	}
 	total, err := q.CountRepositories(ctx, params)
 	if err != nil {
 		return repository.Page[model.Repository]{}, fmt.Errorf("count repositories: %w", err)
 	}
 	rows, err := q.ListRepositories(ctx, reposqlc.ListRepositoriesParams{
-		ProjectID:     optionalNarg(projectId),
-		Column2:       raw,
-		Name:          pattern,
-		Code:          pattern,
-		RepositoryUrl: pattern,
-		Limit:         int64(perPage),
-		Offset:        int64((page - 1) * perPage),
+		ProjectID: optionalNarg(projectId),
+		Search:    raw,
+		Pattern:   pattern,
+		Offset:    int64((page - 1) * perPage),
+		Limit:     int64(perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Repository]{}, fmt.Errorf("list repositories: %w", err)

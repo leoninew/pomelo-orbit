@@ -54,29 +54,35 @@ func (q *Queries) CompletePipelineRun(ctx context.Context, arg CompletePipelineR
 const countPipelineRuns = `-- name: CountPipelineRuns :one
 SELECT COUNT(*)
 FROM pipeline_run
-WHERE project_id = ?
-  AND (? = '' OR repository_id = ?)
-  AND (? = '' OR template_id = ?)
+WHERE project_id = ?1
+  AND (
+    ?2 = ''
+    OR repository_id = ?3
+  )
+  AND (
+    ?4 = ''
+    OR template_id = ?5
+  )
   AND (?6 IS NULL OR created_at >= ?6)
   AND (?7 IS NULL OR created_at < ?7)
 `
 
 type CountPipelineRunsParams struct {
-	ProjectID    sql.NullString `db:"project_id"`
-	Column2      interface{}    `db:"column_2"`
-	RepositoryID string         `db:"repository_id"`
-	Column4      interface{}    `db:"column_4"`
-	TemplateID   string         `db:"template_id"`
-	DateFrom     interface{}    `db:"date_from"`
-	DateTo       interface{}    `db:"date_to"`
+	ProjectID        sql.NullString `db:"project_id"`
+	RepositoryFilter interface{}    `db:"repository_filter"`
+	RepositoryID     string         `db:"repository_id"`
+	TemplateFilter   interface{}    `db:"template_filter"`
+	TemplateID       string         `db:"template_id"`
+	DateFrom         interface{}    `db:"date_from"`
+	DateTo           interface{}    `db:"date_to"`
 }
 
 func (q *Queries) CountPipelineRuns(ctx context.Context, arg CountPipelineRunsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countPipelineRuns,
 		arg.ProjectID,
-		arg.Column2,
+		arg.RepositoryFilter,
 		arg.RepositoryID,
-		arg.Column4,
+		arg.TemplateFilter,
 		arg.TemplateID,
 		arg.DateFrom,
 		arg.DateTo,
@@ -148,25 +154,31 @@ SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
        template_name, template_version, "trigger", trigger_ref, variables_snapshot, status, retry_of,
        started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE project_id = ?
-  AND (? = '' OR repository_id = ?)
-  AND (? = '' OR template_id = ?)
-  AND (?8 IS NULL OR created_at >= ?8)
-  AND (?9 IS NULL OR created_at < ?9)
+WHERE project_id = ?1
+  AND (
+    ?2 = ''
+    OR repository_id = ?3
+  )
+  AND (
+    ?4 = ''
+    OR template_id = ?5
+  )
+  AND (?6 IS NULL OR created_at >= ?6)
+  AND (?7 IS NULL OR created_at < ?7)
 ORDER BY created_at DESC
-LIMIT ? OFFSET ?
+LIMIT ?9 OFFSET ?8
 `
 
 type ListPipelineRunsParams struct {
-	ProjectID    sql.NullString `db:"project_id"`
-	Column2      interface{}    `db:"column_2"`
-	RepositoryID string         `db:"repository_id"`
-	Column4      interface{}    `db:"column_4"`
-	TemplateID   string         `db:"template_id"`
-	DateFrom     interface{}    `db:"date_from"`
-	DateTo       interface{}    `db:"date_to"`
-	Limit        int64          `db:"limit"`
-	Offset       int64          `db:"offset"`
+	ProjectID        sql.NullString `db:"project_id"`
+	RepositoryFilter interface{}    `db:"repository_filter"`
+	RepositoryID     string         `db:"repository_id"`
+	TemplateFilter   interface{}    `db:"template_filter"`
+	TemplateID       string         `db:"template_id"`
+	DateFrom         interface{}    `db:"date_from"`
+	DateTo           interface{}    `db:"date_to"`
+	Offset           int64          `db:"offset"`
+	Limit            int64          `db:"limit"`
 }
 
 type ListPipelineRunsRow struct {
@@ -192,14 +204,14 @@ type ListPipelineRunsRow struct {
 func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsParams) ([]ListPipelineRunsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPipelineRuns,
 		arg.ProjectID,
-		arg.Column2,
+		arg.RepositoryFilter,
 		arg.RepositoryID,
-		arg.Column4,
+		arg.TemplateFilter,
 		arg.TemplateID,
 		arg.DateFrom,
 		arg.DateTo,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

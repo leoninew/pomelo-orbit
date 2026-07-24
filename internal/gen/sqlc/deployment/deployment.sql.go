@@ -64,34 +64,43 @@ func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeployment
 const countDeployments = `-- name: CountDeployments :one
 SELECT COUNT(*)
 FROM deployment
-WHERE project_id = ?
-  AND (? = '' OR application_id = ?)
-  AND (? = '' OR status = ?)
-  AND (? = '' OR application_name LIKE ?)
+WHERE project_id = ?1
+  AND (
+    ?2 = ''
+    OR application_id = ?3
+  )
+  AND (
+    ?4 = ''
+    OR status = ?5
+  )
+  AND (
+    ?6 = ''
+    OR application_name LIKE ?7
+  )
   AND (?8 IS NULL OR started_at >= ?8)
   AND (?9 IS NULL OR started_at < ?9)
 `
 
 type CountDeploymentsParams struct {
-	ProjectID       sql.NullString `db:"project_id"`
-	Column2         interface{}    `db:"column_2"`
-	ApplicationID   sql.NullString `db:"application_id"`
-	Column4         interface{}    `db:"column_4"`
-	Status          string         `db:"status"`
-	Column6         interface{}    `db:"column_6"`
-	ApplicationName string         `db:"application_name"`
-	DateFrom        interface{}    `db:"date_from"`
-	DateTo          interface{}    `db:"date_to"`
+	ProjectID             sql.NullString `db:"project_id"`
+	ApplicationFilter     interface{}    `db:"application_filter"`
+	ApplicationID         sql.NullString `db:"application_id"`
+	StatusFilter          interface{}    `db:"status_filter"`
+	Status                string         `db:"status"`
+	ApplicationNameFilter interface{}    `db:"application_name_filter"`
+	ApplicationName       string         `db:"application_name"`
+	DateFrom              interface{}    `db:"date_from"`
+	DateTo                interface{}    `db:"date_to"`
 }
 
 func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countDeployments,
 		arg.ProjectID,
-		arg.Column2,
+		arg.ApplicationFilter,
 		arg.ApplicationID,
-		arg.Column4,
+		arg.StatusFilter,
 		arg.Status,
-		arg.Column6,
+		arg.ApplicationNameFilter,
 		arg.ApplicationName,
 		arg.DateFrom,
 		arg.DateTo,
@@ -222,28 +231,37 @@ SELECT id, project_id, application_id, application_name, version_id, service_id,
        operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
        error_message, is_rollback, rollback_from_deployment_id
 FROM deployment
-WHERE project_id = ?
-  AND (? = '' OR application_id = ?)
-  AND (? = '' OR status = ?)
-  AND (? = '' OR application_name LIKE ?)
-  AND (?10 IS NULL OR started_at >= ?10)
-  AND (?11 IS NULL OR started_at < ?11)
+WHERE project_id = ?1
+  AND (
+    ?2 = ''
+    OR application_id = ?3
+  )
+  AND (
+    ?4 = ''
+    OR status = ?5
+  )
+  AND (
+    ?6 = ''
+    OR application_name LIKE ?7
+  )
+  AND (?8 IS NULL OR started_at >= ?8)
+  AND (?9 IS NULL OR started_at < ?9)
 ORDER BY started_at DESC, id
-LIMIT ? OFFSET ?
+LIMIT ?11 OFFSET ?10
 `
 
 type ListDeploymentsParams struct {
-	ProjectID       sql.NullString `db:"project_id"`
-	Column2         interface{}    `db:"column_2"`
-	ApplicationID   sql.NullString `db:"application_id"`
-	Column4         interface{}    `db:"column_4"`
-	Status          string         `db:"status"`
-	Column6         interface{}    `db:"column_6"`
-	ApplicationName string         `db:"application_name"`
-	DateFrom        interface{}    `db:"date_from"`
-	DateTo          interface{}    `db:"date_to"`
-	Limit           int64          `db:"limit"`
-	Offset          int64          `db:"offset"`
+	ProjectID             sql.NullString `db:"project_id"`
+	ApplicationFilter     interface{}    `db:"application_filter"`
+	ApplicationID         sql.NullString `db:"application_id"`
+	StatusFilter          interface{}    `db:"status_filter"`
+	Status                string         `db:"status"`
+	ApplicationNameFilter interface{}    `db:"application_name_filter"`
+	ApplicationName       string         `db:"application_name"`
+	DateFrom              interface{}    `db:"date_from"`
+	DateTo                interface{}    `db:"date_to"`
+	Offset                int64          `db:"offset"`
+	Limit                 int64          `db:"limit"`
 }
 
 type ListDeploymentsRow struct {
@@ -271,16 +289,16 @@ type ListDeploymentsRow struct {
 func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listDeployments,
 		arg.ProjectID,
-		arg.Column2,
+		arg.ApplicationFilter,
 		arg.ApplicationID,
-		arg.Column4,
+		arg.StatusFilter,
 		arg.Status,
-		arg.Column6,
+		arg.ApplicationNameFilter,
 		arg.ApplicationName,
 		arg.DateFrom,
 		arg.DateTo,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

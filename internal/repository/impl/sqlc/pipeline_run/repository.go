@@ -50,9 +50,13 @@ func (r Repository) ListPipelineRuns(ctx context.Context, projectId string, repo
 	repoRaw, repoID := optionalFilter(repositoryId)
 	tplRaw, tplID := optionalFilter(templateId)
 	params := pipelinerunsqlc.CountPipelineRunsParams{
-		ProjectID: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:   repoRaw, RepositoryID: repoID, Column4: tplRaw, TemplateID: tplID,
-		DateFrom: nullTimeArg(dateFrom), DateTo: nullTimeArg(dateTo),
+		ProjectID:        sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+		RepositoryFilter: repoRaw,
+		RepositoryID:     repoID,
+		TemplateFilter:   tplRaw,
+		TemplateID:       tplID,
+		DateFrom:         nullTimeArg(dateFrom),
+		DateTo:           nullTimeArg(dateTo),
 	}
 	q := r.q(ctx)
 	total, err := q.CountPipelineRuns(ctx, params)
@@ -60,9 +64,15 @@ func (r Repository) ListPipelineRuns(ctx context.Context, projectId string, repo
 		return repository.Page[model.PipelineRun]{}, fmt.Errorf("count pipeline runs: %w", err)
 	}
 	rows, err := q.ListPipelineRuns(ctx, pipelinerunsqlc.ListPipelineRunsParams{
-		ProjectID: params.ProjectID, Column2: params.Column2, RepositoryID: params.RepositoryID,
-		Column4: params.Column4, TemplateID: params.TemplateID, DateFrom: params.DateFrom, DateTo: params.DateTo,
-		Limit: int64(perPage), Offset: int64((page - 1) * perPage),
+		ProjectID:        params.ProjectID,
+		RepositoryFilter: params.RepositoryFilter,
+		RepositoryID:     params.RepositoryID,
+		TemplateFilter:   params.TemplateFilter,
+		TemplateID:       params.TemplateID,
+		DateFrom:         params.DateFrom,
+		DateTo:           params.DateTo,
+		Offset:           int64((page - 1) * perPage),
+		Limit:            int64(perPage),
 	})
 	if err != nil {
 		return repository.Page[model.PipelineRun]{}, fmt.Errorf("list pipeline runs: %w", err)

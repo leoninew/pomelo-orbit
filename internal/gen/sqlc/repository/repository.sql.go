@@ -14,26 +14,23 @@ import (
 const countRepositories = `-- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE (?5 IS NULL OR project_id = ?5)
-  AND (? = '' OR name LIKE ? OR code LIKE ? OR repository_url LIKE ?)
+WHERE (?1 IS NULL OR project_id = ?1)
+  AND (
+    ?2 = ''
+    OR name LIKE ?3
+    OR code LIKE ?3
+    OR repository_url LIKE ?3
+  )
 `
 
 type CountRepositoriesParams struct {
-	ProjectID     interface{} `db:"project_id"`
-	Column2       interface{} `db:"column_2"`
-	Name          string      `db:"name"`
-	Code          string      `db:"code"`
-	RepositoryUrl string      `db:"repository_url"`
+	ProjectID interface{} `db:"project_id"`
+	Search    interface{} `db:"search"`
+	Pattern   string      `db:"pattern"`
 }
 
 func (q *Queries) CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRepositories,
-		arg.ProjectID,
-		arg.Column2,
-		arg.Name,
-		arg.Code,
-		arg.RepositoryUrl,
-	)
+	row := q.db.QueryRowContext(ctx, countRepositories, arg.ProjectID, arg.Search, arg.Pattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -87,20 +84,23 @@ const listRepositories = `-- name: ListRepositories :many
 SELECT id, project_id, name, code, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE (?7 IS NULL OR project_id = ?7)
-  AND (? = '' OR name LIKE ? OR code LIKE ? OR repository_url LIKE ?)
+WHERE (?1 IS NULL OR project_id = ?1)
+  AND (
+    ?2 = ''
+    OR name LIKE ?3
+    OR code LIKE ?3
+    OR repository_url LIKE ?3
+  )
 ORDER BY created_at DESC, id
-LIMIT ? OFFSET ?
+LIMIT ?5 OFFSET ?4
 `
 
 type ListRepositoriesParams struct {
-	ProjectID     interface{} `db:"project_id"`
-	Column2       interface{} `db:"column_2"`
-	Name          string      `db:"name"`
-	Code          string      `db:"code"`
-	RepositoryUrl string      `db:"repository_url"`
-	Limit         int64       `db:"limit"`
-	Offset        int64       `db:"offset"`
+	ProjectID interface{} `db:"project_id"`
+	Search    interface{} `db:"search"`
+	Pattern   string      `db:"pattern"`
+	Offset    int64       `db:"offset"`
+	Limit     int64       `db:"limit"`
 }
 
 type ListRepositoriesRow struct {
@@ -119,12 +119,10 @@ type ListRepositoriesRow struct {
 func (q *Queries) ListRepositories(ctx context.Context, arg ListRepositoriesParams) ([]ListRepositoriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRepositories,
 		arg.ProjectID,
-		arg.Column2,
-		arg.Name,
-		arg.Code,
-		arg.RepositoryUrl,
-		arg.Limit,
+		arg.Search,
+		arg.Pattern,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -162,7 +160,7 @@ const repositoryByCode = `-- name: RepositoryByCode :one
 SELECT id, project_id, name, code, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE code = ?
+WHERE code = ?1
   AND (?2 IS NULL OR project_id = ?2)
 `
 

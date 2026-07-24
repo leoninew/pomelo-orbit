@@ -19,7 +19,7 @@ LIMIT ? OFFSET ?;
 -- name: ListArtifactsByRun :many
 SELECT id, project_id, pipeline_run_id, repository_id, repository_name, template_id, template_name, stage_name, type, name, path, created_at
 FROM artifact
-WHERE pipeline_run_id = ?
+WHERE pipeline_run_id = sqlc.arg(pipeline_run_id)
   AND (sqlc.narg(project_id) IS NULL OR project_id = sqlc.narg(project_id))
 ORDER BY created_at, id;
 

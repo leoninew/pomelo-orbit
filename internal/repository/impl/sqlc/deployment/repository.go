@@ -96,31 +96,31 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	appNS := sql.NullString{String: appFilter, Valid: appFilter != ""}
 	q := r.q(ctx)
 	total, err := q.CountDeployments(ctx, deploymentsqlc.CountDeploymentsParams{
-		ProjectID:       sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:         appFilter,
-		ApplicationID:   appNS,
-		Column4:         stFilter,
-		Status:          stFilter,
-		Column6:         raw,
-		ApplicationName: pattern,
-		DateFrom:        optionalTime(dateFrom),
-		DateTo:          optionalTime(dateTo),
+		ProjectID:             sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+		ApplicationFilter:     appFilter,
+		ApplicationID:         appNS,
+		StatusFilter:          stFilter,
+		Status:                stFilter,
+		ApplicationNameFilter: raw,
+		ApplicationName:       pattern,
+		DateFrom:              optionalTime(dateFrom),
+		DateTo:                optionalTime(dateTo),
 	})
 	if err != nil {
 		return repository.Page[model.Deployment]{}, fmt.Errorf("count deployments: %w", err)
 	}
 	rows, err := q.ListDeployments(ctx, deploymentsqlc.ListDeploymentsParams{
-		ProjectID:       sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
-		Column2:         appFilter,
-		ApplicationID:   appNS,
-		Column4:         stFilter,
-		Status:          stFilter,
-		Column6:         raw,
-		ApplicationName: pattern,
-		DateFrom:        optionalTime(dateFrom),
-		DateTo:          optionalTime(dateTo),
-		Limit:           int64(perPage),
-		Offset:          int64((page - 1) * perPage),
+		ProjectID:             sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+		ApplicationFilter:     appFilter,
+		ApplicationID:         appNS,
+		StatusFilter:          stFilter,
+		Status:                stFilter,
+		ApplicationNameFilter: raw,
+		ApplicationName:       pattern,
+		DateFrom:              optionalTime(dateFrom),
+		DateTo:                optionalTime(dateTo),
+		Offset:                int64((page - 1) * perPage),
+		Limit:                 int64(perPage),
 	})
 	if err != nil {
 		return repository.Page[model.Deployment]{}, fmt.Errorf("list deployments: %w", err)

@@ -8,9 +8,15 @@ WHERE id = ?;
 -- name: CountPipelineRuns :one
 SELECT COUNT(*)
 FROM pipeline_run
-WHERE project_id = ?
-  AND (? = '' OR repository_id = ?)
-  AND (? = '' OR template_id = ?)
+WHERE project_id = sqlc.arg(project_id)
+  AND (
+    sqlc.arg(repository_filter) = ''
+    OR repository_id = sqlc.arg(repository_id)
+  )
+  AND (
+    sqlc.arg(template_filter) = ''
+    OR template_id = sqlc.arg(template_id)
+  )
   AND (sqlc.narg(date_from) IS NULL OR created_at >= sqlc.narg(date_from))
   AND (sqlc.narg(date_to) IS NULL OR created_at < sqlc.narg(date_to));
 
@@ -19,13 +25,19 @@ SELECT id, project_id, repository_id, repository_name, snapshot_id, template_id,
        template_name, template_version, "trigger", trigger_ref, variables_snapshot, status, retry_of,
        started_at, finished_at, error_message, created_at
 FROM pipeline_run
-WHERE project_id = ?
-  AND (? = '' OR repository_id = ?)
-  AND (? = '' OR template_id = ?)
+WHERE project_id = sqlc.arg(project_id)
+  AND (
+    sqlc.arg(repository_filter) = ''
+    OR repository_id = sqlc.arg(repository_id)
+  )
+  AND (
+    sqlc.arg(template_filter) = ''
+    OR template_id = sqlc.arg(template_id)
+  )
   AND (sqlc.narg(date_from) IS NULL OR created_at >= sqlc.narg(date_from))
   AND (sqlc.narg(date_to) IS NULL OR created_at < sqlc.narg(date_to))
 ORDER BY created_at DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg(limit) OFFSET sqlc.arg(offset);
 
 -- name: CountPipelineRunsByRepository :one
 SELECT COUNT(*)

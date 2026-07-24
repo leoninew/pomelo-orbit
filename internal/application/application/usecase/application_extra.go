@@ -1,0 +1,104 @@
+package applicationsvc
+
+import (
+	"context"
+	"errors"
+	"strings"
+
+	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
+)
+
+func (s Service) ImportApplication(ctx context.Context, userID string, input applicationdto.ApplicationImportInput) (model.Application, error) {
+	projectID := strings.TrimSpace(input.ProjectId)
+	if projectID == "" {
+		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
+	}
+	if err := s.ensureProjectMembership(ctx, projectID, userID); err != nil {
+		return model.Application{}, err
+	}
+	name, code, kind, imagePullPolicy, err := normalizeApplicationImportInput(input)
+	if err != nil {
+		return model.Application{}, err
+	}
+	if err := s.ensureApplicationNameAvailable(ctx, name); err != nil {
+		return model.Application{}, err
+	}
+	if err := s.ensureApplicationCodeAvailable(ctx, code); err != nil {
+		return model.Application{}, err
+	}
+	app := model.Application{Id: idutil.NewId(), ProjectId: &projectID, Name: name, Code: code, Kind: kind, ImagePullPolicy: imagePullPolicy}
+	if err := s.store.CreateApplication(ctx, app); err != nil {
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to import application", err)
+	}
+	label := strings.TrimSpace(input.VersionLabel)
+	if label == "" {
+		label = "v1"
+	}
+	if _, err := s.CreateVersion(ctx, userID, applicationdto.VersionCreateInput{
+		ApplicationId: app.Id, Label: label, EnvJSON: input.VersionEnvJSON, Note: input.VersionNote,
+		Components: input.Components, Exposes: input.Exposes,
+	}); err != nil {
+		_ = s.store.DeleteApplication(ctx, app.Id)
+		return model.Application{}, err
+	}
+	created, err := s.store.Application(ctx, app.Id)
+	if err != nil {
+		return model.Application{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+	}
+	return created, nil
+}
+
+func (s Service) ExportApplication(ctx context.Context, userID string, applicationID string) (applicationdto.ApplicationExport, error) {
+	app, err := s.loadApplicationForUser(ctx, userID, applicationID)
+	if err != nil {
+		return applicationdto.ApplicationExport{}, err
+	}
+	versions, err := s.ListVersions(ctx, userID, app.Id)
+	if err != nil {
+		return applicationdto.ApplicationExport{}, err
+	}
+	return applicationdto.ApplicationExport{Application: app, Versions: versions}, nil
+}
+
+func normalizeApplicationImportInput(input applicationdto.ApplicationImportInput) (string, string, string, string, error) {
+	name := strings.TrimSpace(input.Name)
+	code := strings.TrimSpace(input.Code)
+	kind, err := normalizeApplicationKind(input.Kind)
+	if err != nil {
+		return "", "", "", "", err
+	}
+	imagePullPolicy := strings.TrimSpace(input.ImagePullPolicy)
+	if imagePullPolicy == "" {
+		imagePullPolicy = "missing"
+	}
+	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !applicationCreateCodePattern.MatchString(code) || !validImagePullPolicy(imagePullPolicy) {
+		return "", "", "", "", apperror.New(apperror.KindValidation, "Invalid application fields")
+	}
+	return name, code, kind, imagePullPolicy, nil
+}
+
+func (s Service) ensureApplicationCodeAvailable(ctx context.Context, code string) error {
+	existing, err := s.store.ApplicationByCode(ctx, code)
+	if err == nil {
+		return apperror.New(apperror.KindValidation, "Application code '"+existing.Code+"' already exists")
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check application code", err)
+	}
+	return nil
+}
+
+func normalizeOptionalText(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	text := strings.TrimSpace(*value)
+	if text == "" {
+		return nil
+	}
+	return &text
+}

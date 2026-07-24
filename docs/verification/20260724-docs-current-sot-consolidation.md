@@ -1,8 +1,6 @@
 # 文档整理：归档历史并沉淀当前 SoT — 验证记录
 最后修改时间: 2026-07-24 11:17:30
 
-Review status: Accepted
-
 Flow mode: light
 
 ## Requirement alignment / 需求对齐

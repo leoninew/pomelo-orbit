@@ -9,10 +9,10 @@ const (
 )
 
 const (
-	TaskTypeCIPipelineRunExecute = "ci.pipeline_run.execute"
-	TaskTypeCDApplicationDeploy  = "cd.application.deploy"
-	TaskTypeCDApplicationRestart = "cd.application.restart"
-	TaskTypeCDApplicationStop    = "cd.application.stop"
+	TaskTypePipelineRunExecute = "pipeline_run.execute"
+	TaskTypeDeploymentDeploy   = "deployment.deploy"
+	TaskTypeDeploymentRestart  = "deployment.restart"
+	TaskTypeDeploymentStop     = "deployment.stop"
 )
 
 const (

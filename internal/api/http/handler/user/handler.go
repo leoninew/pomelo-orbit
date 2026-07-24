@@ -6,21 +6,21 @@ import (
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
 	usersvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/user/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	userv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/user"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	logger        *slog.Logger
 	service       usersvc.Service
-	authenticator authz.Authenticator
+	authenticator security.Authenticator
 }
 
-func New(logger *slog.Logger, service usersvc.Service, authenticator authz.Authenticator) Handler {
+func New(logger *slog.Logger, service usersvc.Service, authenticator security.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
 
@@ -36,18 +36,18 @@ func (h Handler) ListUsers(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list users")
 		return
 	}
-	items := make([]pomeloorbit.UserListResp, 0, len(users.Items))
+	items := make([]userv1.UserListResp, 0, len(users.Items))
 	for _, user := range users.Items {
 		items = append(items, userListResponse(user))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.UserPaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(users.Total), Page: int32(users.Page), PerPage: int32(users.PerPage), Pages: int32(transportresponse.PageCount(users.Total, users.PerPage))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &userv1.UserPaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(users.Total), Page: int32(users.Page), PerPage: int32(users.PerPage), Pages: int32(transportresponse.PageCount(users.Total, users.PerPage))})
 }
 
 func (h Handler) CreateUser(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "user:write"); !ok {
 		return
 	}
-	var req pomeloorbit.UserCreateReq
+	var req userv1.UserCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -84,7 +84,7 @@ func (h Handler) UpdateUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.UserUpdateReq
+	var req userv1.UserUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -103,7 +103,7 @@ func (h Handler) UpdateUserRoles(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.UserRoleUpdateReq
+	var req userv1.UserRoleUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -122,7 +122,7 @@ func (h Handler) DisableUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.UserDisableReq
+	var req userv1.UserDisableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -139,7 +139,7 @@ func (h Handler) EnableUser(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.UserEnableReq
+	var req userv1.UserEnableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return

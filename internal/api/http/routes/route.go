@@ -3,22 +3,25 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 
-	cdhandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/cd"
+	routehandler "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/route"
 )
 
 func (r Router) registerRoute(engine *gin.Engine) {
-	handler := cdhandler.New(r.logger, r.deps.CDService, r.deps.Authenticator)
+	handler := routehandler.New(r.logger, r.deps.RouteService, r.deps.Authenticator)
 
-	engine.GET("/api/cd/route", handler.ListRoutes)
-	engine.POST("/api/cd/route", handler.CreateRoute)
-	engine.POST("/api/cd/route/sync", handler.SyncRoutes)
-	engine.GET("/api/cd/route/:route_id", handler.GetRoute)
-	engine.PUT("/api/cd/route/:route_id", handler.UpdateRoute)
-	engine.DELETE("/api/cd/route/:route_id", handler.DeleteRoute)
-	engine.POST("/api/cd/route/:route_id/enable", handler.EnableRoute)
-	engine.POST("/api/cd/route/:route_id/disable", handler.DisableRoute)
-	engine.POST("/api/cd/route/:route_id/cert", handler.UploadRouteCert)
-	engine.DELETE("/api/cd/route/:route_id/https", handler.DisableRouteHTTPS)
-	engine.POST("/api/cd/route/:route_id/letsencrypt", handler.EnableRouteLetsEncrypt)
-	engine.POST("/api/cd/route/:route_id/mkcert", handler.EnableRouteMkcert)
+	engine.GET("/api/route", handler.ListRoutes)
+	engine.POST("/api/route", handler.CreateRoute)
+	engine.POST("/api/route/sync", handler.SyncRoutes)
+	engine.GET("/api/route/:route_id", handler.GetRoute)
+	engine.PUT("/api/route/:route_id", handler.UpdateRoute)
+	engine.DELETE("/api/route/:route_id", handler.DeleteRoute)
+	engine.POST("/api/route/:route_id/enable", handler.EnableRoute)
+	engine.POST("/api/route/:route_id/disable", handler.DisableRoute)
+	engine.POST("/api/route/:route_id/cert", handler.UploadRouteCert)
+	engine.DELETE("/api/route/:route_id/https", handler.DisableRouteHTTPS)
+	engine.POST("/api/route/:route_id/letsencrypt", handler.EnableRouteLetsEncrypt)
+	engine.POST("/api/route/:route_id/mkcert", handler.EnableRouteMkcert)
+
+	engine.GET("/api/route/traefik/config", handler.GetTraefikRouteConfig)
+	engine.GET("/api/route/traefik", handler.ListTraefikRoutes)
 }

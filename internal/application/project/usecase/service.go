@@ -20,11 +20,12 @@ var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 type Service struct {
 	repo  repository.ProjectStore
+	envs  repository.EnvironmentStore
 	users repository.UserStore
 }
 
-func New(repo repository.ProjectStore, users repository.UserStore) Service {
-	return Service{repo: repo, users: users}
+func New(repo repository.ProjectStore, envs repository.EnvironmentStore, users repository.UserStore) Service {
+	return Service{repo: repo, envs: envs, users: users}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
@@ -43,6 +44,17 @@ func (s Service) Create(ctx context.Context, userId string, input projectdto.Sav
 	project := model.Project{Id: idutil.NewId(), Name: name, Code: code, IsActive: true, CreatedAt: now, UpdatedAt: now}
 	if err := s.repo.CreateProject(ctx, project, userId); err != nil {
 		return model.Project{}, err
+	}
+	// Seed default local environment in the same request UoW (mirrors system seed).
+	if err := s.envs.CreateEnvironment(ctx, model.Environment{
+		Id:        idutil.NewId(),
+		ProjectId: project.Id,
+		Code:      "local",
+		Name:      "Local",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}); err != nil {
+		return model.Project{}, fmt.Errorf("seed default environment for project %s: %w", project.Id, err)
 	}
 	return project, nil
 }

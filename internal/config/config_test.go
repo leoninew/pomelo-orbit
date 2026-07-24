@@ -63,7 +63,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.JWT.SecretKey != testJWTSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.JWT.SecretKey)
 	}
-	if cfg.Traefik.CertDir != "data/cd/traefik/data/certs" {
+	if cfg.Traefik.CertDir != "data/deployment/traefik/data/certs" {
 		t.Fatalf("unexpected traefik cert dir: %s", cfg.Traefik.CertDir)
 	}
 	if !cfg.Turnstile.Enabled {
@@ -693,7 +693,7 @@ orbit:
 jwt:
   secret_key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 traefik:
-  cert_dir: data/cd/traefik/data/certs
+  cert_dir: data/deployment/traefik/data/certs
 turnstile:
   enabled: true
   site_key: "1x00000000000000000000AA"

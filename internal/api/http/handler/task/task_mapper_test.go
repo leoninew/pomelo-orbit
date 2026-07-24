@@ -3,7 +3,7 @@ package taskhandler
 import (
 	"testing"
 
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	taskv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/task"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -12,8 +12,8 @@ func TestTaskCreateInputPreservesPayloadSemantics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create payload: %v", err)
 	}
-	input := taskCreateInput(&pomeloorbit.CreateTaskReq{Id: "task-1", TaskType: "ci.run", Payload: payload, PayloadJson: `{"ignored":true}`, MaxAttempts: 3})
-	if input.Id != "task-1" || input.TaskType != "ci.run" || input.MaxAttempts != 3 || string(input.Payload) != `{"run":"run-1"}` || input.PayloadJSON != `{"ignored":true}` {
+	input := taskCreateInput(&taskv1.CreateTaskReq{Id: "task-1", TaskType: "pipeline.run", Payload: payload, PayloadJson: `{"ignored":true}`, MaxAttempts: 3})
+	if input.Id != "task-1" || input.TaskType != "pipeline.run" || input.MaxAttempts != 3 || string(input.Payload) != `{"run":"run-1"}` || input.PayloadJSON != `{"ignored":true}` {
 		t.Fatalf("unexpected task input: %+v", input)
 	}
 	if rawPayload(nil) != nil {

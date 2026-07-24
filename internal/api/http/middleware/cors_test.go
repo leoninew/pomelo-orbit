@@ -85,7 +85,7 @@ func TestCORSDeniedPreflightReturnsForbidden(t *testing.T) {
 }
 
 func TestCORSIgnoresNonAPIPaths(t *testing.T) {
-	paths := []string{"/ci/repository", "/apix/health"}
+	paths := []string{"/repository", "/apix/health"}
 	for _, path := range paths {
 		recorder := serveCORSRequest(t, []string{"https://orbit.preflite.cn"}, http.MethodOptions, path, "https://orbit.preflite.cn")
 

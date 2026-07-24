@@ -22,12 +22,13 @@ import (
 
 type Service struct {
 	repo   repository.UserStore
+	auth   repository.AuthStore
 	tokens jwt.TokenService
 	logger *slog.Logger
 }
 
-func New(repo repository.UserStore, tokens jwt.TokenService, logger *slog.Logger) Service {
-	return Service{repo: repo, tokens: tokens, logger: logger}
+func New(repo repository.UserStore, auth repository.AuthStore, tokens jwt.TokenService, logger *slog.Logger) Service {
+	return Service{repo: repo, auth: auth, tokens: tokens, logger: logger}
 }
 
 func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, error) {
@@ -42,7 +43,7 @@ func (s Service) Login(ctx context.Context, input authdto.LoginInput) (string, e
 	if err := s.repo.MarkUserLoggedIn(ctx, user.Id); err != nil {
 		s.logger.Warn("mark user login time failed", "user_id", user.Id, "error", err)
 	}
-	if err := s.repo.SaveLoginHistory(ctx, model.LoginHistory{Id: idutil.NewId(), UserId: user.Id, Username: user.Username, IpAddress: optionalString(input.IP), UserAgent: optionalString(input.UserAgent), LoginAt: time.Now().UTC(), Success: true}); err != nil {
+	if err := s.auth.SaveLoginHistory(ctx, model.LoginHistory{Id: idutil.NewId(), UserId: user.Id, Username: user.Username, IpAddress: optionalString(input.IP), UserAgent: optionalString(input.UserAgent), LoginAt: time.Now().UTC(), Success: true}); err != nil {
 		s.logger.Warn("save login history failed", "user_id", user.Id, "error", err)
 	}
 	return s.tokens.Sign(user.Id, user.Username)
@@ -98,7 +99,7 @@ func (s Service) ChangePassword(ctx context.Context, input authdto.ChangePasswor
 }
 
 func (s Service) ListLoginHistory(ctx context.Context, page int, perPage int, search string) (repository.Page[model.LoginHistory], error) {
-	return s.repo.ListLoginHistory(ctx, page, perPage, search)
+	return s.auth.ListLoginHistory(ctx, page, perPage, search)
 }
 
 func (s Service) NewCSRFToken() (string, error) {

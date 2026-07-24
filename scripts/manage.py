@@ -482,10 +482,10 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     local_archive = local_backup_dir / f"data-{date_str}.tar.gz"
 
     logger.info(f"备份远程目录: {remote_dir}")
-    logger.info("排除: CI 工作区 (workspace)")
+    logger.info("排除: 流水线工作区 (workspace)")
 
     # 构建排除参数
-    excludes = ["./data/ci/*/workspace"]
+    excludes = ["./data/pipeline/*/workspace"]
     exclude_args = " ".join(f"--exclude={shlex.quote(pattern)}" for pattern in excludes)
 
     run_ssh_command(

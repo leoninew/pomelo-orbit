@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	projectv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/project"
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
 	projectsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/project/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -19,10 +19,10 @@ import (
 type Handler struct {
 	logger        *slog.Logger
 	service       projectsvc.Service
-	authenticator authz.Authenticator
+	authenticator security.Authenticator
 }
 
-func New(logger *slog.Logger, service projectsvc.Service, authenticator authz.Authenticator) Handler {
+func New(logger *slog.Logger, service projectsvc.Service, authenticator security.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
 
@@ -37,11 +37,11 @@ func (h Handler) ListProjects(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list projects")
 		return
 	}
-	resp := make([]pomeloorbit.ProjectResp, 0, len(items))
+	resp := make([]projectv1.ProjectResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, projectResponse(item))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ProjectListResp{Items: transportresponse.Ptrs(resp)})
+	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectListResp{Items: transportresponse.Ptrs(resp)})
 }
 
 func (h Handler) CreateProject(c *gin.Context) {
@@ -49,7 +49,7 @@ func (h Handler) CreateProject(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.ProjectSaveReq
+	var req projectv1.ProjectSaveReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -77,7 +77,7 @@ func (h Handler) UpdateProject(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.ProjectSaveReq
+	var req projectv1.ProjectSaveReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -100,7 +100,7 @@ func (h Handler) DeprecateProject(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.ProjectDeprecateReq
+	var req projectv1.ProjectDeprecateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -125,7 +125,7 @@ func (h Handler) AddProjectMember(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var req pomeloorbit.ProjectMemberReq
+	var req projectv1.ProjectMemberReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -135,7 +135,7 @@ func (h Handler) AddProjectMember(c *gin.Context) {
 		h.writeServiceError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) RemoveProjectMember(c *gin.Context) {
@@ -148,7 +148,7 @@ func (h Handler) RemoveProjectMember(c *gin.Context) {
 		h.writeServiceError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) writeProjectMembers(c *gin.Context, projectId string) {
@@ -158,7 +158,7 @@ func (h Handler) writeProjectMembers(c *gin.Context, projectId string) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list project members")
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
 }
 
 func (h Handler) loadProjectForCurrentUser(c *gin.Context) (model.Project, bool) {

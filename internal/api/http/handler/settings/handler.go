@@ -5,11 +5,11 @@ import (
 	"net/http"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	settingsv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/settings"
 	"github.com/gin-gonic/gin"
 
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
 	settingssvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/settings/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
@@ -17,10 +17,10 @@ import (
 type Handler struct {
 	logger        *slog.Logger
 	service       settingssvc.Service
-	authenticator authz.Authenticator
+	authenticator security.Authenticator
 }
 
-func New(logger *slog.Logger, service settingssvc.Service, authenticator authz.Authenticator) Handler {
+func New(logger *slog.Logger, service settingssvc.Service, authenticator security.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
 
@@ -41,7 +41,7 @@ func (h Handler) UpdateConfig(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "setting:write"); !ok {
 		return
 	}
-	var req pomeloorbit.SystemConfigUpdateReq
+	var req settingsv1.SystemConfigUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -59,7 +59,7 @@ func (h Handler) ResetConfig(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "setting:write"); !ok {
 		return
 	}
-	var req pomeloorbit.SystemConfigResetReq
+	var req settingsv1.SystemConfigResetReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return

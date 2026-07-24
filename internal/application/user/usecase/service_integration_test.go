@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
+	"database/sql"
+
 	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 
@@ -67,9 +68,9 @@ func TestUserServiceRejectsDuplicateUsernameAndEmail(t *testing.T) {
 	}
 }
 
-func newUserIntegrationService(t *testing.T) (Service, *sqlx.DB) {
+func newUserIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
-	database, err := sqlx.Open("sqlite", ":memory:")
+	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,8 +79,8 @@ func newUserIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 		t.Fatal(err)
 	}
 	return New(
-		userrepo.NewRepository(database, config.DatabaseDriverSQLite),
-		rolerepo.NewRepository(database, config.DatabaseDriverSQLite),
+		userrepo.NewRepository(database),
+		rolerepo.NewRepository(database),
 	), database
 }
 

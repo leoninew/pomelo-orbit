@@ -6,21 +6,21 @@ import (
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/handler/authz"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/security"
 	rolesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/usecase"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	rolev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/role"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	logger        *slog.Logger
 	service       rolesvc.Service
-	authenticator authz.Authenticator
+	authenticator security.Authenticator
 }
 
-func New(logger *slog.Logger, service rolesvc.Service, authenticator authz.Authenticator) Handler {
+func New(logger *slog.Logger, service rolesvc.Service, authenticator security.Authenticator) Handler {
 	return Handler{logger: logger, service: service, authenticator: authenticator}
 }
 
@@ -36,11 +36,11 @@ func (h Handler) ListRoles(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list roles")
 		return
 	}
-	items := make([]pomeloorbit.RoleResp, 0, len(roles.Items))
+	items := make([]rolev1.RoleResp, 0, len(roles.Items))
 	for _, role := range roles.Items {
 		items = append(items, roleDetailResponse(role))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.RolePaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(roles.Total), Page: int32(roles.Page), PerPage: int32(roles.PerPage), Pages: int32(transportresponse.PageCount(roles.Total, roles.PerPage))})
+	transportresponse.ProtoJSON(c, http.StatusOK, &rolev1.RolePaginatedResp{Items: transportresponse.Ptrs(items), Total: int32(roles.Total), Page: int32(roles.Page), PerPage: int32(roles.PerPage), Pages: int32(transportresponse.PageCount(roles.Total, roles.PerPage))})
 }
 
 func (h Handler) ListPermissions(c *gin.Context) {
@@ -53,11 +53,11 @@ func (h Handler) ListPermissions(c *gin.Context) {
 		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list permissions")
 		return
 	}
-	items := make([]pomeloorbit.PermissionResp, 0, len(permissions))
+	items := make([]rolev1.PermissionResp, 0, len(permissions))
 	for _, permission := range permissions {
 		items = append(items, permissionResponse(permission))
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &pomeloorbit.PermissionListResp{Items: transportresponse.Ptrs(items)})
+	transportresponse.ProtoJSON(c, http.StatusOK, &rolev1.PermissionListResp{Items: transportresponse.Ptrs(items)})
 }
 
 func (h Handler) GetRole(c *gin.Context) {
@@ -77,7 +77,7 @@ func (h Handler) CreateRole(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "role:write"); !ok {
 		return
 	}
-	var req pomeloorbit.RoleCreateReq
+	var req rolev1.RoleCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -95,7 +95,7 @@ func (h Handler) UpdateRole(c *gin.Context) {
 	if _, ok := h.authenticator.RequirePermission(c, "role:write"); !ok {
 		return
 	}
-	var req pomeloorbit.RoleUpdateReq
+	var req rolev1.RoleUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return

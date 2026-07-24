@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	deploymentv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/deployment"
+	pipelinerunv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/pipeline_run"
+	taskv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/task"
 	"github.com/gin-gonic/gin"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
@@ -25,7 +27,7 @@ func New(logger *slog.Logger, service tasksvc.Service) Handler {
 }
 
 func (h Handler) CreateTask(c *gin.Context) {
-	var req pomeloorbit.CreateTaskReq
+	var req taskv1.CreateTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -40,8 +42,8 @@ func (h Handler) CreateTask(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
-func (h Handler) EnqueueCIPipelineRun(c *gin.Context) {
-	var req pomeloorbit.PipelineRunExecuteTaskReq
+func (h Handler) EnqueuePipelineRun(c *gin.Context) {
+	var req pipelinerunv1.PipelineRunExecuteTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -51,11 +53,11 @@ func (h Handler) EnqueueCIPipelineRun(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "run_id is required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCIPipelineRunExecute, pipelineRunExecutePayload(runId))
+	h.enqueueTypedTask(c, status.TaskTypePipelineRunExecute, pipelineRunExecutePayload(runId))
 }
 
-func (h Handler) EnqueueCDApplicationDeploy(c *gin.Context) {
-	var req pomeloorbit.ApplicationDeployTaskReq
+func (h Handler) EnqueueDeployment(c *gin.Context) {
+	var req deploymentv1.ApplicationDeployTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -66,11 +68,11 @@ func (h Handler) EnqueueCDApplicationDeploy(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCDApplicationDeploy, applicationDeploymentPayload(appId, deploymentId))
+	h.enqueueTypedTask(c, status.TaskTypeDeploymentDeploy, applicationDeploymentPayload(appId, deploymentId))
 }
 
-func (h Handler) EnqueueCDApplicationRestart(c *gin.Context) {
-	var req pomeloorbit.ApplicationRestartTaskReq
+func (h Handler) EnqueueDeploymentRestart(c *gin.Context) {
+	var req deploymentv1.ApplicationRestartTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -81,11 +83,11 @@ func (h Handler) EnqueueCDApplicationRestart(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCDApplicationRestart, applicationDeploymentPayload(appId, deploymentId))
+	h.enqueueTypedTask(c, status.TaskTypeDeploymentRestart, applicationDeploymentPayload(appId, deploymentId))
 }
 
-func (h Handler) EnqueueCDApplicationStop(c *gin.Context) {
-	var req pomeloorbit.ApplicationStopTaskReq
+func (h Handler) EnqueueDeploymentStop(c *gin.Context) {
+	var req deploymentv1.ApplicationStopTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
 		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
 		return
@@ -96,7 +98,7 @@ func (h Handler) EnqueueCDApplicationStop(c *gin.Context) {
 		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
-	h.enqueueTypedTask(c, status.TaskTypeCDApplicationStop, applicationDeploymentPayload(appId, deploymentId))
+	h.enqueueTypedTask(c, status.TaskTypeDeploymentStop, applicationDeploymentPayload(appId, deploymentId))
 }
 
 func (h Handler) enqueueTypedTask(c *gin.Context, taskType string, payload any) {

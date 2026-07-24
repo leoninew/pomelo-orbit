@@ -5,12 +5,12 @@ import (
 
 	transportcodec "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
-	pomeloorbit "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1"
+	taskv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/task"
 	tasksvc "gitee.com/leoninew/PomeloOrbit-go/internal/queue/task"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func taskCreateInput(req *pomeloorbit.CreateTaskReq) tasksvc.CreateInput {
+func taskCreateInput(req *taskv1.CreateTaskReq) tasksvc.CreateInput {
 	return tasksvc.CreateInput{
 		Id:          req.Id,
 		TaskType:    req.TaskType,
@@ -28,8 +28,8 @@ func applicationDeploymentPayload(applicationID string, deploymentID string) map
 	return map[string]string{"application_id": applicationID, "deployment_id": deploymentID}
 }
 
-func taskResponse(item *tasksvc.Task) pomeloorbit.TaskResp {
-	return pomeloorbit.TaskResp{
+func taskResponse(item *tasksvc.Task) taskv1.TaskResp {
+	return taskv1.TaskResp{
 		Id:           item.Id,
 		TaskType:     item.TaskType,
 		PayloadJson:  item.PayloadJSON,

@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
+	"database/sql"
+
 	_ "modernc.org/sqlite"
 
 	roledto "gitee.com/leoninew/PomeloOrbit-go/internal/application/role/dto"
@@ -34,7 +35,7 @@ func TestRoleServiceCreateUpdateAndDelete(t *testing.T) {
 	if updated.Role.Name != "Auditor Updated" || updated.Role.Description != nil {
 		t.Fatalf("unexpected updated role: %+v", updated.Role)
 	}
-	permissions, err := rolerepo.NewRepository(database, config.DatabaseDriverSQLite).RolePermissionCodesByRoleIds(ctx, []string{updated.Role.Id})
+	permissions, err := rolerepo.NewRepository(database).RolePermissionCodesByRoleIds(ctx, []string{updated.Role.Id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,9 +59,9 @@ func TestRoleServiceRejectsMissingPermissionAndDuplicatePermissions(t *testing.T
 	}
 }
 
-func newRoleIntegrationService(t *testing.T) (Service, *sqlx.DB) {
+func newRoleIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
-	database, err := sqlx.Open("sqlite", ":memory:")
+	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,5 +69,5 @@ func newRoleIntegrationService(t *testing.T) (Service, *sqlx.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	return New(rolerepo.NewRepository(database, config.DatabaseDriverSQLite)), database
+	return New(rolerepo.NewRepository(database)), database
 }

@@ -81,7 +81,7 @@ Web UI 配置路由
 
 | 层级 | 技术 |
 |------|------|
-| 后端 | Go 1.25 + Gin + sqlx + sqlc + SQLite/MySQL |
+| 后端 | Go 1.25 + Gin + sqlc + SQLite/MySQL |
 | Web | Vue 3 + Vite + Reka UI + Tailwind CSS + TypeScript |
 | 网关 | Traefik |
 | 容器 | Docker + docker-compose |

@@ -1,7 +1,16 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground">{{ user?.username ?? '用户详情' }}</h1>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+          {{ user?.username ?? '用户详情' }}
+        </h1>
+        <DetailHeaderMeta v-if="user">
+          <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
+            {{ user.status }}
+          </AppBadge>
+        </DetailHeaderMeta>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="user && canWriteUsers"
@@ -281,6 +290,7 @@
   import { roleApi } from '@/api/role/role';
   import { userApi } from '@/api/user/user';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

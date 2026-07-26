@@ -1,9 +1,19 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground">
-        {{ project?.name ?? t('project.detailTitle') }}
-      </h1>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+          {{ project?.name ?? t('project.detailTitle') }}
+        </h1>
+        <DetailHeaderMeta v-if="project">
+          <AppBadge v-if="project.is_active" variant="status" tone="success">
+            {{ t('project.active') }}
+          </AppBadge>
+          <AppBadge v-else variant="status" tone="default">
+            {{ t('project.deprecated') }}
+          </AppBadge>
+        </DetailHeaderMeta>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="project"
@@ -204,6 +214,7 @@
   import { projectApi } from '@/api/project/project';
   import { userApi } from '@/api/user/user';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';

@@ -1,7 +1,12 @@
 <template>
   <div class="flex h-full min-h-0 flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground">部署详情</h1>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">部署详情</h1>
+        <DetailHeaderMeta v-if="deployment">
+          <AppBadge variant="status" :tone="deploymentStatusTone">{{ deployment.status }}</AppBadge>
+        </DetailHeaderMeta>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="isCancelable"
@@ -191,6 +196,7 @@
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

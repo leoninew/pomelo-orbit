@@ -1,13 +1,15 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="min-w-0">
-        <h1 class="truncate text-xl font-semibold text-foreground">
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
           {{ titleText }}
         </h1>
-        <p v-if="service" class="mt-1 text-sm text-muted-foreground">
-          {{ subtitleText }}
-        </p>
+        <DetailHeaderMeta v-if="service">
+          <AppBadge variant="status" :tone="appStatusTone(service.status)">
+            {{ service.status }}
+          </AppBadge>
+        </DetailHeaderMeta>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
@@ -355,6 +357,7 @@
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -424,15 +427,6 @@
       service.value.environment_name ||
       service.value.environment_id;
     return `${app} / ${env}`;
-  });
-
-  const subtitleText = computed(() => {
-    if (!service.value) {
-      return '';
-    }
-    const instance = service.value.instance_key || 'default';
-    const version = service.value.version_label || service.value.version_id;
-    return t('service.detail.subtitle', { instance, version });
   });
 
   const versionSelectOptions = computed(() =>

@@ -1,4 +1,4 @@
-import { FolderGit2, KeyRound, Layers, LayoutGrid, Network, Play, Wrench } from 'lucide-vue-next';
+import { FolderGit2, Layers, LayoutGrid, Network, Play, Wrench } from 'lucide-vue-next';
 import type { Component } from 'vue';
 import { PERMISSIONS } from '@/constants/permissions';
 
@@ -74,14 +74,14 @@ const settingsNavigation: NavigationBranch[] = [
     children: [
       {
         key: 'users',
-        label: '用户管理',
+        label: '用户',
         labelKey: 'nav.users',
         path: '/users',
         permission: PERMISSIONS.USER_READ,
       },
       {
         key: 'roles',
-        label: '角色管理',
+        label: '角色',
         labelKey: 'nav.roles',
         path: '/roles',
         permission: PERMISSIONS.ROLE_READ,
@@ -106,40 +106,8 @@ const settingsNavigation: NavigationBranch[] = [
 
 const deploymentNavigation: NavigationBranch[] = [
   {
-    key: 'workload',
-    labelKey: 'nav.groups.workload',
-    icon: Layers,
-    children: [
-      {
-        key: 'applications',
-        label: '应用',
-        labelKey: 'nav.applications',
-        path: '/applications',
-      },
-      { key: 'versions', label: '版本', labelKey: 'nav.versions', path: '/versions' },
-      {
-        key: 'services',
-        label: '服务',
-        labelKey: 'nav.services',
-        path: '/services',
-      },
-      {
-        key: 'deployments',
-        label: '部署记录',
-        labelKey: 'nav.deployments',
-        path: '/deployments',
-      },
-      {
-        key: 'environments',
-        label: '环境管理',
-        labelKey: 'nav.environments',
-        path: '/environments',
-      },
-    ],
-  },
-  {
-    key: 'access',
-    labelKey: 'nav.groups.access',
+    key: 'environment',
+    labelKey: 'nav.groups.environment',
     icon: Network,
     children: [
       {
@@ -147,6 +115,12 @@ const deploymentNavigation: NavigationBranch[] = [
         label: '网关',
         labelKey: 'nav.gateways',
         path: '/gateways',
+      },
+      {
+        key: 'services',
+        label: '服务',
+        labelKey: 'nav.services',
+        path: '/services',
       },
       {
         key: 'route',
@@ -160,65 +134,84 @@ const deploymentNavigation: NavigationBranch[] = [
         labelKey: 'nav.traefikRoutes',
         path: '/route/traefik',
       },
+      {
+        key: 'environments',
+        label: '环境管理',
+        labelKey: 'nav.environments',
+        path: '/environments',
+      },
+    ],
+  },
+  {
+    key: 'workload',
+    labelKey: 'nav.groups.workload',
+    icon: Layers,
+    children: [
+      {
+        key: 'applications',
+        label: '应用',
+        labelKey: 'nav.applications',
+        path: '/applications',
+      },
+      { key: 'versions', label: '版本', labelKey: 'nav.versions', path: '/versions' },
+      {
+        key: 'deployments',
+        label: '部署记录',
+        labelKey: 'nav.deployments',
+        path: '/deployments',
+      },
     ],
   },
 ];
 
 const pipelineNavigation: NavigationBranch[] = [
   {
-    key: 'pipeline',
-    labelKey: 'nav.groups.pipeline',
+    key: 'code',
+    labelKey: 'nav.groups.code',
     icon: FolderGit2,
     children: [
       {
         key: 'repository',
-        label: '代码仓库',
+        label: '仓库',
         labelKey: 'nav.repositories',
         path: '/repository',
       },
       {
-        key: 'buildstages',
-        label: '构建阶段',
-        labelKey: 'nav.buildStages',
-        path: '/pipeline/stage',
-      },
-      {
-        key: 'pipelinetemplates',
-        label: '流水线模板',
-        labelKey: 'nav.pipelineTemplates',
-        path: '/pipeline/template',
+        key: 'credentials',
+        label: '凭据',
+        labelKey: 'nav.credentials',
+        path: '/credential',
       },
     ],
   },
   {
-    key: 'runtime',
-    labelKey: 'nav.groups.runtime',
+    key: 'pipeline',
+    labelKey: 'nav.groups.pipeline',
     icon: Play,
     children: [
       {
+        key: 'pipelinetemplates',
+        label: '模板',
+        labelKey: 'nav.pipelineTemplates',
+        path: '/pipeline/template',
+      },
+      {
+        key: 'buildstages',
+        label: '阶段',
+        labelKey: 'nav.buildStages',
+        path: '/pipeline/stage',
+      },
+      {
         key: 'pipelineruns',
-        label: '流水线记录',
+        label: '记录',
         labelKey: 'nav.pipelineRuns',
         path: '/pipeline-run',
       },
       {
         key: 'artifacts',
-        label: '制品记录',
+        label: '制品',
         labelKey: 'nav.artifacts',
         path: '/pipeline-run/artifact',
-      },
-    ],
-  },
-  {
-    key: 'security',
-    labelKey: 'nav.groups.security',
-    icon: KeyRound,
-    children: [
-      {
-        key: 'credentials',
-        label: '凭据管理',
-        labelKey: 'nav.credentials',
-        path: '/credential',
       },
     ],
   },
@@ -283,8 +276,8 @@ export const primaryNavigation = [
   },
   {
     key: 'settings',
-    label: '系统设置',
-    labelKey: 'nav.settings',
+    label: '系统管理',
+    labelKey: 'nav.systemManagement',
     path: firstNavigationPath(secondaryNavigation.settings),
   },
 ] satisfies PrimaryNavigationEntry[];

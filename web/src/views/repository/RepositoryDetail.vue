@@ -1,13 +1,9 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div>
-          <h1 class="text-xl font-semibold text-foreground">
-            {{ repository?.name ?? '仓库详情' }}
-          </h1>
-        </div>
-      </div>
+      <h1 class="break-words text-xl font-semibold text-foreground">
+        {{ repository?.name ?? '仓库详情' }}
+      </h1>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="repository"

@@ -2,20 +2,9 @@
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="min-w-0">
-        <h1 class="truncate text-xl font-semibold text-foreground">
+        <h1 class="break-words text-xl font-semibold text-foreground">
           {{ gateway?.name || t('gateway.detailTitle') }}
         </h1>
-        <p v-if="gateway" class="mt-1 text-sm text-muted-foreground">
-          {{ gateway.code }}
-          <AppBadge
-            v-if="primaryService"
-            variant="status"
-            :tone="appStatusTone(primaryService.status)"
-            class="ml-1"
-          >
-            {{ primaryService.status }}
-          </AppBadge>
-        </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
@@ -263,7 +252,6 @@
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
-  import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
 
   const toast = useToast();

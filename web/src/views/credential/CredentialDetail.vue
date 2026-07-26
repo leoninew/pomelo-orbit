@@ -1,7 +1,14 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground">{{ credential?.name ?? '凭据详情' }}</h1>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+          {{ credential?.name ?? '凭据详情' }}
+        </h1>
+        <DetailHeaderMeta v-if="credential">
+          <AppBadge>{{ credential.type }}</AppBadge>
+        </DetailHeaderMeta>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="credential"
@@ -140,6 +147,7 @@
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/AppDialog.vue';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

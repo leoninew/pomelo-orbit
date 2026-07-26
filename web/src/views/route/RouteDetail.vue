@@ -2,10 +2,18 @@
   <div class="flex flex-col gap-4">
     <!-- Header -->
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <h1 class="text-xl font-semibold text-foreground">
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
           {{ routeData?.name ?? t('route.detailTitle') }}
         </h1>
+        <DetailHeaderMeta v-if="routeData">
+          <AppBadge variant="status" :tone="routeData.enabled ? 'success' : 'default'">
+            {{ routeData.enabled ? t('route.status.enabled') : t('route.status.disabled') }}
+          </AppBadge>
+          <AppBadge variant="status" :tone="routeData.https_enabled ? 'info' : 'default'">
+            {{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
+          </AppBadge>
+        </DetailHeaderMeta>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="routeData" class="app-button-primary h-9 px-3" @click="openEditModal">
@@ -216,6 +224,7 @@
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
   import { routeApi } from '@/api/route/route';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

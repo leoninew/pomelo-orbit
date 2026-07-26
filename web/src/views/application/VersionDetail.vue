@@ -1,12 +1,16 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="flex flex-wrap items-center gap-2 text-xl font-semibold text-foreground">
-        {{ version?.label || t('application.versionDetail.title') }}
-        <AppBadge v-if="version" variant="pill" :tone="versionStatusTone(version.status)">
-          {{ version.status }}
-        </AppBadge>
-      </h1>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+          {{ version?.label || t('application.versionDetail.title') }}
+        </h1>
+        <DetailHeaderMeta v-if="version">
+          <AppBadge variant="status" :tone="versionStatusTone(version.status)">
+            {{ version.status }}
+          </AppBadge>
+        </DetailHeaderMeta>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="version && isEditable"
@@ -600,6 +604,7 @@
   import { applicationApi } from '@/api/application/application';
   import { environmentApi } from '@/api/environment/environment';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

@@ -1,12 +1,14 @@
 <template>
   <div class="flex flex-col gap-4">
     <div v-if="!versionsOnly" class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="flex flex-wrap items-center gap-2 text-xl font-semibold text-foreground">
-        {{ application?.name || t('application.detail.title') }}
-        <AppBadge v-if="application" variant="pill" :tone="applicationKindTone(application.kind)">
-          {{ application.kind }}
-        </AppBadge>
-      </h1>
+      <div class="flex min-w-0 flex-wrap items-center gap-2">
+        <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
+          {{ application?.name || t('application.detail.title') }}
+        </h1>
+        <DetailHeaderMeta v-if="application">
+          <AppBadge :tone="applicationKindTone(application.kind)">{{ application.kind }}</AppBadge>
+        </DetailHeaderMeta>
+      </div>
       <div class="flex flex-wrap items-center gap-2">
         <button v-if="application" class="app-button-primary h-9 px-3" @click="openEditModal">
           <Pencil class="size-4" />
@@ -431,6 +433,7 @@
   import { applicationApi } from '@/api/application/application';
   import { environmentApi } from '@/api/environment/environment';
   import AppBadge from '@/components/AppBadge.vue';
+  import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

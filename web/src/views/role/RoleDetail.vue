@@ -1,7 +1,9 @@
 <template>
   <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold text-foreground">{{ role?.name ?? '角色详情' }}</h1>
+      <h1 class="break-words text-xl font-semibold text-foreground">
+        {{ role?.name ?? '角色详情' }}
+      </h1>
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="role && canWriteRoles"

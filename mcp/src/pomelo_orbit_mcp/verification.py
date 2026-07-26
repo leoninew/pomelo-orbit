@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Collection, Mapping
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -34,13 +34,21 @@ async def resolve_runtime_target(
     settings: Settings,
     application_id: str,
     instance_key: str,
+    *,
+    allowed_application_kinds: Collection[str] = ("standard",),
 ) -> RuntimeTarget:
     application = await client.get_application(application_id)
     services = await client.list_application_services(application_id)
     matches = [service for service in services if service.get("instance_key") == instance_key]
     if len(matches) != 1:
         raise RuntimeTargetError("expected exactly one managed service for application and instance key")
-    return build_runtime_target(settings, application, matches[0], instance_key)
+    return build_runtime_target(
+        settings,
+        application,
+        matches[0],
+        instance_key,
+        allowed_application_kinds=allowed_application_kinds,
+    )
 
 
 async def verify_deployment(

@@ -146,3 +146,42 @@ async def test_list_applications_uses_project_and_kind_filters(tmp_path) -> None
     settings = make_settings(tmp_path, jwt_from_environment=token)
     async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
         assert await OrbitClient(settings, http_client).list_applications("project-1", "standard") == [{"id": "app-1"}]
+
+
+@pytest.mark.asyncio
+async def test_client_maps_gateway_read_and_create_routes(tmp_path) -> None:
+    token = make_jwt()
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        if request.method == "GET":
+            assert request.url.path == "/api/gateway"
+            assert dict(request.url.params) == {"project_id": "project-1", "per_page": "100"}
+            return httpx.Response(200, json={"items": [{"id": "gateway-1"}]})
+        if request.method == "POST":
+            assert request.url.path == "/api/gateway"
+            assert dict(request.url.params) == {"project_id": "project-1"}
+            assert json.loads(request.content) == {"project_id": "project-1", "code": "traefik", "name": "Traefik"}
+            return httpx.Response(201, json={"id": "gateway-1", "kind": "gateway"})
+        assert request.method == "PUT"
+        assert request.url.path == "/api/gateway/gateway-1"
+        assert json.loads(request.content) == {"rest_api_url": "http://localhost:8080"}
+        return httpx.Response(200, json={"id": "gateway-1", "rest_api_url": "http://localhost:8080"})
+
+    settings = make_settings(tmp_path, jwt_from_environment=token)
+    async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
+        client = OrbitClient(settings, http_client)
+        assert await client.list_gateways("project-1") == [{"id": "gateway-1"}]
+        assert await client.create_gateway(
+            "project-1", {"project_id": "project-1", "code": "traefik", "name": "Traefik"}
+        ) == {
+            "id": "gateway-1",
+            "kind": "gateway",
+        }
+        assert await client.update_gateway("gateway-1", {"rest_api_url": "http://localhost:8080"}) == {
+            "id": "gateway-1",
+            "rest_api_url": "http://localhost:8080",
+        }
+    assert [request.method for request in requests] == ["GET", "POST", "PUT"]

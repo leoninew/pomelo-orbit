@@ -101,7 +101,11 @@
       formError.value = t('application.validation.componentNameInvalid');
       return;
     }
-    if (props.componentNames.some((componentName) => componentName === name && name !== props.component?.name)) {
+    if (
+      props.componentNames.some(
+        (componentName) => componentName === name && name !== props.component?.name
+      )
+    ) {
       formError.value = t('application.versionDetail.validation.duplicateComponent');
       return;
     }

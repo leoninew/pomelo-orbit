@@ -44,8 +44,12 @@
                   {{ deployment.application_name || deployment.application_id }}
                 </router-link>
               </td>
-              <td><AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge></td>
-              <td><AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge></td>
+              <td>
+                <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>
+              </td>
+              <td>
+                <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
+              </td>
               <td>
                 <AppBadge variant="status" :tone="statusTone(deployment.status)">
                   {{ deployment.status }}

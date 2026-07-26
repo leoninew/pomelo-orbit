@@ -65,12 +65,7 @@
     applications.value.map((application) => ({
       value: application.id,
       label: application.name,
-      description: [
-        application.code,
-        application.kind,
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      description: [application.code, application.kind].filter(Boolean).join(' · '),
     }))
   );
 

@@ -76,17 +76,23 @@
             <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('gateway.fields.defaultEntrypoint') }}
             </dt>
-            <dd><AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge></dd>
+            <dd>
+              <AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge>
+            </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.tlsMode') }}</dt>
-            <dd><AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge></dd>
+            <dd>
+              <AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge>
+            </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('gateway.fields.imagePullPolicy') }}
             </dt>
-            <dd><AppBadge variant="pill">{{ gateway.image_pull_policy }}</AppBadge></dd>
+            <dd>
+              <AppBadge variant="pill">{{ gateway.image_pull_policy }}</AppBadge>
+            </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.image') }}</dt>
@@ -129,8 +135,12 @@
                 <tr v-for="(row, idx) in gateway.exposures" :key="idx">
                   <td class="text-foreground">{{ row.application_code }}</td>
                   <td class="text-foreground">{{ row.component_name }}</td>
-                  <td><AppBadge variant="pill">{{ row.protocol }}</AppBadge></td>
-                  <td><AppBadge variant="pill">{{ row.access }}</AppBadge></td>
+                  <td>
+                    <AppBadge variant="pill">{{ row.protocol }}</AppBadge>
+                  </td>
+                  <td>
+                    <AppBadge variant="pill">{{ row.access }}</AppBadge>
+                  </td>
                   <td class="text-foreground">{{ row.listen_port }} → {{ row.container_port }}</td>
                   <td class="text-foreground">{{ row.internal_dns }}</td>
                   <td class="text-foreground">{{ row.client_hint }}</td>
@@ -279,10 +289,7 @@
   const versionSelectOptions = computed(() =>
     versions.value.map((item) => ({
       value: item.id,
-      label:
-        item.status === 'published'
-          ? item.label
-          : `${item.label} (${item.status})`,
+      label: item.status === 'published' ? item.label : `${item.label} (${item.status})`,
     }))
   );
 

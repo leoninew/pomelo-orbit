@@ -6,11 +6,14 @@ import (
 	"fmt"
 )
 
-// RunInTx executes fn inside a short independent transaction.
-// It does not nest into an outer request/message UoW.
+// RunInTx executes fn inside an existing request/message UoW when present.
+// Otherwise, it creates and commits a short independent transaction.
 func RunInTx(ctx context.Context, db *sql.DB, fn func(ctx context.Context) error) error {
 	if db == nil {
 		return fmt.Errorf("database is nil")
+	}
+	if _, ok := TxFrom(ctx); ok {
+		return fn(ctx)
 	}
 	sqlTx, err := db.BeginTx(ctx, nil)
 	if err != nil {

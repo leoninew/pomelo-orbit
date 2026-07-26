@@ -141,6 +141,18 @@ class OrbitClient:
             params["kind"] = kind
         return _items(await self.request("GET", "/api/application", params=params))
 
+    async def list_gateways(self, project_id: str) -> list[dict[str, Any]]:
+        return _items(await self.request("GET", "/api/gateway", params={"project_id": project_id, "per_page": 100}))
+
+    async def create_gateway(self, project_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return await self.request("POST", "/api/gateway", params={"project_id": project_id}, json_body=payload)
+
+    async def get_gateway(self, gateway_id: str) -> dict[str, Any]:
+        return await self.request("GET", f"/api/gateway/{gateway_id}")
+
+    async def update_gateway(self, gateway_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return await self.request("PUT", f"/api/gateway/{gateway_id}", json_body=payload)
+
     async def create_application(self, project_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return await self.request("POST", "/api/application", params={"project_id": project_id}, json_body=payload)
 

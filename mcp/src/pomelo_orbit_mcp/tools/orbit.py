@@ -25,6 +25,92 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             "applications": await client.list_applications(project_id, kind),
         }
 
+    @mcp.tool(name="orbit_list_gateways")
+    async def orbit_list_gateways(project_id: str) -> dict[str, Any]:
+        """List Gateway metadata in a Project through Orbit."""
+        return {"project_id": project_id, "gateways": await client.list_gateways(project_id)}
+
+    @mcp.tool(name="orbit_create_gateway")
+    async def orbit_create_gateway(
+        project_id: str,
+        code: str,
+        name: str,
+        rest_api_url: str,
+        base_domain: str,
+        image: str | None = None,
+        image_pull_policy: str = "missing",
+        default_entrypoint: str | None = None,
+        tls_mode: str | None = None,
+    ) -> dict[str, Any]:
+        """Create an Orbit-managed Gateway; deploy it with the existing deployment tools."""
+        body = compact(
+            {
+                "project_id": project_id,
+                "code": code,
+                "name": name,
+                "rest_api_url": rest_api_url,
+                "base_domain": base_domain,
+                "image": image,
+                "image_pull_policy": image_pull_policy,
+                "default_entrypoint": default_entrypoint,
+                "tls_mode": tls_mode,
+            }
+        )
+        gateway = await client.create_gateway(project_id, body)
+        gateway_id = str(gateway.get("id") or "")
+        if not gateway_id:
+            raise ValueError("Orbit gateway create response did not contain an id")
+        return write_result(
+            "create_gateway",
+            {"gateway_id": gateway_id, "application_id": gateway_id},
+            "POST",
+            "/api/gateway",
+            request_body=body,
+            steps=["Created Gateway Application through Orbit"],
+            data={"gateway": gateway},
+        )
+
+    @mcp.tool(name="orbit_get_gateway")
+    async def orbit_get_gateway(gateway_id: str) -> dict[str, Any]:
+        """Read one Gateway and its Application metadata through Orbit."""
+        return {"gateway": await client.get_gateway(gateway_id)}
+
+    @mcp.tool(name="orbit_update_gateway")
+    async def orbit_update_gateway(
+        gateway_id: str,
+        name: str | None = None,
+        rest_api_url: str | None = None,
+        base_domain: str | None = None,
+        image: str | None = None,
+        image_pull_policy: str | None = None,
+        default_entrypoint: str | None = None,
+        tls_mode: str | None = None,
+    ) -> dict[str, Any]:
+        """Update an Orbit-managed Gateway configuration through Orbit."""
+        body = compact(
+            {
+                "name": name,
+                "rest_api_url": rest_api_url,
+                "base_domain": base_domain,
+                "image": image,
+                "image_pull_policy": image_pull_policy,
+                "default_entrypoint": default_entrypoint,
+                "tls_mode": tls_mode,
+            }
+        )
+        if not body:
+            raise ValueError("at least one Gateway field must be supplied")
+        gateway = await client.update_gateway(gateway_id, body)
+        return write_result(
+            "update_gateway",
+            {"gateway_id": gateway_id, "application_id": gateway_id},
+            "PUT",
+            f"/api/gateway/{gateway_id}",
+            request_body=body,
+            steps=["Updated Gateway Application through Orbit"],
+            data={"gateway": gateway},
+        )
+
     @mcp.tool(name="orbit_create_application")
     async def orbit_create_application(
         project_id: str,

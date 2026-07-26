@@ -1,6 +1,6 @@
 # Pomelo Orbit MCP
 
-本目录提供本地 stdio MCP Server。Application、Version 与 Deployment 的写操作只调用 Pomelo Orbit HTTP API；Docker / Docker Compose 仅用于读取受管部署的运行时事实。
+本目录提供本地 stdio MCP Server。Application、Version、Deployment 与 Gateway 的写操作只调用 Pomelo Orbit HTTP API；Docker / Docker Compose 仅用于受管运行时诊断，以及固定、无正文的组件 HTTP Probe。
 
 ## Prerequisites
 
@@ -36,3 +36,5 @@ make -C mcp run
 ```
 
 `make -C mcp help` 列出全部入口。Docker 集成测试需显式配置隔离的 Compose workspace 与 project 后执行 `make -C mcp test-docker`。
+
+`runtime_doctor` 可使用已部署的 Gateway Application target 派生并检查固定的 `traefik` 网络；MCP 不创建 Docker network。`runtime_http_probe` 仅对目标 Compose `ps` 返回的 running component 执行固定 `docker exec ... curl`，不接受任意 Docker 命令、不返回 HTTP body 或容器错误输出。

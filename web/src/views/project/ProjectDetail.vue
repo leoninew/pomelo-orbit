@@ -108,7 +108,9 @@
                   {{ member.status }}
                 </AppBadge>
               </td>
-              <td><AppBadge variant="pill">{{ member.auth_source }}</AppBadge></td>
+              <td>
+                <AppBadge variant="pill">{{ member.auth_source }}</AppBadge>
+              </td>
               <td>{{ member.last_login_at ? formatTime(member.last_login_at) : '—' }}</td>
               <td class="text-right">
                 <button

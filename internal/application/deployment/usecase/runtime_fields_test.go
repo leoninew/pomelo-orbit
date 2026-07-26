@@ -26,7 +26,7 @@ func TestRenderComposeIncludesStructuredRuntimeFieldsAndSecretEnvFile(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, expected := range []string{"restart: unless-stopped", "env_file:", ".runtime/web.env", "target: /tmp", "size: 1048576", "memlock:", "soft: -1"} {
+	for _, expected := range []string{"restart: unless-stopped", "env_file:", ".runtime/web.env", "/tmp:size=1048576,mode=1777", "memlock:", "soft: -1"} {
 		if !strings.Contains(compose, expected) {
 			t.Fatalf("compose missing %q:\n%s", expected, compose)
 		}

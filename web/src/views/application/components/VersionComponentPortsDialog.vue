@@ -96,7 +96,11 @@
   }
 
   function save() {
-    if (ports.value.some((port) => !isValidPort(Number(port.host_port)) || !isValidPort(Number(port.container_port)))) {
+    if (
+      ports.value.some(
+        (port) => !isValidPort(Number(port.host_port)) || !isValidPort(Number(port.container_port))
+      )
+    ) {
       formError.value = t('application.validation.portRange');
       return;
     }

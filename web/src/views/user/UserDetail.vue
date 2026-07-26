@@ -83,7 +83,9 @@
         </div>
         <div class="flex gap-2">
           <dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.authSource') }}</dt>
-          <dd><AppBadge variant="pill">{{ user.auth_source }}</AppBadge></dd>
+          <dd>
+            <AppBadge variant="pill">{{ user.auth_source }}</AppBadge>
+          </dd>
         </div>
         <div class="flex gap-2">
           <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>

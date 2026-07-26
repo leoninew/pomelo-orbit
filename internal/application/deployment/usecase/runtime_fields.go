@@ -56,7 +56,7 @@ func applyComponentRuntimeFields(service map[string]any, component model.Version
 	return nil
 }
 
-func parseRuntimeTmpfs(raw *string) ([]map[string]any, error) {
+func parseRuntimeTmpfs(raw *string) ([]string, error) {
 	if raw == nil || *raw == "" {
 		return nil, nil
 	}
@@ -68,7 +68,7 @@ func parseRuntimeTmpfs(raw *string) ([]map[string]any, error) {
 		return nil, fmt.Errorf("tmpfs_json supports at most 8 entries")
 	}
 	seen := make(map[string]struct{}, len(entries))
-	result := make([]map[string]any, 0, len(entries))
+	result := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		if !validRuntimeTmpfsTarget(entry.Target) {
 			return nil, fmt.Errorf("tmpfs target is invalid")
@@ -83,7 +83,7 @@ func parseRuntimeTmpfs(raw *string) ([]map[string]any, error) {
 			return nil, fmt.Errorf("duplicate tmpfs target %s", entry.Target)
 		}
 		seen[entry.Target] = struct{}{}
-		result = append(result, map[string]any{"target": entry.Target, "size": entry.SizeBytes, "mode": entry.Mode})
+		result = append(result, fmt.Sprintf("%s:size=%d,mode=%s", entry.Target, entry.SizeBytes, entry.Mode))
 	}
 	return result, nil
 }

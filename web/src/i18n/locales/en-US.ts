@@ -340,7 +340,8 @@ export default {
         components: 'No components yet. Add one before publishing.',
         exposes: 'No expose specs yet.',
       },
-      deployDescription: 'Deploy version "{label}" to the selected instance. Deploy maintains the service binding.',
+      deployDescription:
+        'Deploy version "{label}" to the selected instance. Deploy maintains the service binding.',
       instanceKeyPlaceholder: 'default',
       dialog: {
         editBasic: 'Edit Basic Info',
@@ -467,7 +468,8 @@ export default {
     },
     deploy: {
       dialogTitle: 'Deploy service',
-      description: 'Deploy the selected version to this instance. Deploy maintains the service binding.',
+      description:
+        'Deploy the selected version to this instance. Deploy maintains the service binding.',
       selectVersion: 'Select version',
       forceRecreate: 'Force recreate containers',
       versionRequired: 'Version is required',
@@ -516,7 +518,8 @@ export default {
     },
     deploy: {
       dialogTitle: 'Deploy gateway',
-      description: 'Pick a published version and instance. Uses the same deploy pipeline as standard apps.',
+      description:
+        'Pick a published version and instance. Uses the same deploy pipeline as standard apps.',
       version: 'Version',
       instanceKey: 'Instance key',
       instanceKeyPlaceholder: 'default',

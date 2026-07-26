@@ -62,11 +62,15 @@
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">操作类型</dt>
-            <dd><AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge></dd>
+            <dd>
+              <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>
+            </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
-            <dd><AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge></dd>
+            <dd>
+              <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
+            </dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt class="w-32 shrink-0 text-muted-foreground">执行命令</dt>

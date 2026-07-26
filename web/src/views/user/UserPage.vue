@@ -64,7 +64,9 @@
                   {{ user.status }}
                 </AppBadge>
               </td>
-              <td><AppBadge variant="pill">{{ user.auth_source }}</AppBadge></td>
+              <td>
+                <AppBadge variant="pill">{{ user.auth_source }}</AppBadge>
+              </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(user.created_at) }}
               </td>

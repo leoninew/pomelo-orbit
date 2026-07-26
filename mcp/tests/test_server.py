@@ -20,9 +20,13 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
     assert names == {
         "orbit_list_projects",
         "orbit_list_applications",
+        "orbit_list_gateways",
         "orbit_create_application",
+        "orbit_create_gateway",
+        "orbit_update_gateway",
         "orbit_bootstrap_application",
         "orbit_get_application",
+        "orbit_get_gateway",
         "orbit_delete_application",
         "orbit_list_versions",
         "orbit_get_version",
@@ -46,5 +50,6 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "runtime_compose_logs",
         "runtime_container_inspect",
         "runtime_network_inspect",
+        "runtime_http_probe",
         "verify_deployment",
     }

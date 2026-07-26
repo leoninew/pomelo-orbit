@@ -34,13 +34,18 @@ CommandRunner = Callable[[Sequence[str], Path | None], Awaitable[CommandResult]]
 
 
 class DockerRuntime:
-    """Executes only the Docker read commands listed in the accepted spec."""
+    """Executes restricted Docker diagnostics and fixed HTTP probes."""
 
     def __init__(self, settings: Settings, runner: CommandRunner | None = None) -> None:
         self.settings = settings
         self._runner = runner or self._run_subprocess
 
-    async def doctor(self, target: RuntimeTarget | None = None) -> dict[str, Any]:
+    async def doctor(
+        self,
+        target: RuntimeTarget | None = None,
+        *,
+        expected_external_networks: Sequence[str] = (),
+    ) -> dict[str, Any]:
         context = await self._run(["docker", "context", "show"], None)
         compose = await self._run(["docker", "compose", "version"], None)
         actual_context = context.stdout.strip()
@@ -53,6 +58,23 @@ class DockerRuntime:
             issues.append(f"configured data root does not exist: {self.settings.data_root}")
         if target and not target.working_directory.is_dir():
             issues.append(f"deployment workspace does not exist: {target.working_directory}")
+        external_networks: list[str] = []
+        external_network_details: list[dict[str, str]] = []
+        for network_name in expected_external_networks:
+            if target is None:
+                issues.append(f"external network {network_name} requires a managed target")
+                continue
+            try:
+                inspected = await self.network_inspect(target, network_name)
+                detail = _external_network_detail(network_name, inspected)
+            except DockerRuntimeError:
+                issues.append(f"external network {network_name} is unavailable from the managed target")
+                continue
+            if detail["driver"] != "bridge":
+                issues.append(f"external network {network_name} has unsupported driver")
+                continue
+            external_networks.append(network_name)
+            external_network_details.append(detail)
         return {
             "healthy": not issues,
             "issues": issues,
@@ -61,6 +83,8 @@ class DockerRuntime:
             "working_directory": str(target.working_directory) if target else None,
             "commands": [context.rendered_command, compose.rendered_command],
             "docker_compose_version": compose.stdout.strip(),
+            "external_networks": external_networks,
+            "external_network_details": external_network_details,
         }
 
     async def compose_config(self, target: RuntimeTarget) -> dict[str, Any]:
@@ -132,6 +156,35 @@ class DockerRuntime:
         result = await self._run(["docker", "network", "inspect", network_name], None)
         return {"command": result.rendered_command, "inspect": _parse_inspect(result.stdout), "stderr": result.stderr}
 
+    async def http_probe(
+        self, target: RuntimeTarget, component_name: str, port: int, path: str = "/"
+    ) -> dict[str, Any]:
+        component_name = str(component_name).strip()
+        if not component_name or len(component_name) > 128:
+            raise DockerRuntimeError("component name is invalid")
+        if port < 1 or port > 65_535:
+            raise DockerRuntimeError("probe port must be between 1 and 65535")
+        if not path.startswith("/") or len(path) > 512 or any(character.isspace() for character in path):
+            raise DockerRuntimeError("probe path is invalid")
+        containers = (await self.compose_ps(target))["containers"]
+        matching = [item for item in containers if str(item.get("Service") or "") == component_name]
+        if len(matching) != 1:
+            raise DockerRuntimeError("probe component was not uniquely returned by the resolved Compose project")
+        container = matching[0]
+        if str(container.get("State") or "").lower() != "running":
+            raise DockerRuntimeError("probe component is not running")
+        container_id = _container_id(container)
+        if not container_id:
+            raise DockerRuntimeError("probe component did not contain a container id")
+        endpoint = f"http://127.0.0.1:{port}{path}"
+        result = await self._runner(
+            ["docker", "exec", container_id, "curl", "-fsS", "--max-time", "10", "--output", "/dev/null", endpoint],
+            None,
+        )
+        if result.return_code != 0:
+            raise DockerRuntimeError("HTTP probe failed")
+        return {"status": "reachable", "component_name": component_name, "port": port, "path": path}
+
     def _compose_command(self, target: RuntimeTarget, *args: str) -> list[str]:
         return ["docker", "compose", "-p", target.compose_project, "-f", "docker-compose.yml", *args]
 
@@ -193,6 +246,20 @@ def _parse_inspect(output: str) -> list[dict[str, Any]]:
     if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
         raise DockerRuntimeError("docker inspect returned an unexpected JSON value")
     return value
+
+
+def _external_network_detail(network_name: str, result: dict[str, Any]) -> dict[str, str]:
+    inspected = result.get("inspect")
+    if not isinstance(inspected, list) or len(inspected) != 1 or not isinstance(inspected[0], dict):
+        raise DockerRuntimeError("docker network inspect returned an unexpected result")
+    network = inspected[0]
+    if str(network.get("Name") or "") != network_name:
+        raise DockerRuntimeError("docker network inspect returned a different network")
+    driver = str(network.get("Driver") or "")
+    scope = str(network.get("Scope") or "")
+    if not driver or not scope:
+        raise DockerRuntimeError("docker network inspect did not include driver and scope")
+    return {"name": network_name, "driver": driver, "scope": scope}
 
 
 def _container_id(container: dict[str, Any]) -> str:

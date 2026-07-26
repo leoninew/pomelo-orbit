@@ -281,7 +281,8 @@ export default {
       },
       drawer: {
         composePreview: 'docker-compose 预览',
-        composePreviewDescription: '由选定 Version 和实例渲染生成，与部署时写入的 docker-compose.yml 一致（含 Traefik labels）。',
+        composePreviewDescription:
+          '由选定 Version 和实例渲染生成，与部署时写入的 docker-compose.yml 一致（含 Traefik labels）。',
       },
       dialog: {
         editApplication: '编辑应用',

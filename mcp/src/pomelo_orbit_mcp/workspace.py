@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -57,9 +58,13 @@ def build_runtime_target(
     application: dict[str, Any],
     service: dict[str, Any],
     instance_key: str,
+    *,
+    allowed_application_kinds: Collection[str] = ("standard",),
 ) -> RuntimeTarget:
-    if application.get("kind") != "standard":
-        raise RuntimeTargetError("runtime tools only support kind=standard applications")
+    application_kind = application.get("kind")
+    if application_kind not in allowed_application_kinds:
+        supported_kinds = ", ".join(sorted(allowed_application_kinds))
+        raise RuntimeTargetError(f"runtime tools only support application kinds: {supported_kinds}")
     application_id = _safe_segment(application.get("id"), "application id")
     service_id = _safe_segment(service.get("id"), "service id")
     application_code = _safe_segment(application.get("code"), "application code")

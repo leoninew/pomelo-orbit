@@ -41,11 +41,7 @@
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import AppDialog from '@/components/AppDialog.vue';
-  import {
-    parseEnvJson,
-    serializeEnvRows,
-    type EnvFormRow,
-  } from '@/utils/versionComponentForm';
+  import { parseEnvJson, serializeEnvRows, type EnvFormRow } from '@/utils/versionComponentForm';
 
   const props = withDefaults(
     defineProps<{

@@ -1,0 +1,292 @@
+# RAGFlow split deployment desired-state fixture
+# Last updated: 2026-07-26 20:06:12
+#
+# This is a non-secret semantic fixture. An adapter must encode the fields named
+# in payload_encoding before passing Components to the Orbit Version API or MCP.
+# Do not replace any placeholder with a live credential, resource ID, host path,
+# or Project ID in this file.
+
+schema_version: 1
+kind: pomelo-orbit-ragflow-desired-state
+
+parameters:
+  project_id: "<PROJECT_ID>"
+  instance_key: "<INSTANCE_KEY>"
+  ragflow_exposure: "<local|public>"
+  local_http_port: "<LOCAL_HTTP_PORT>"
+  gateway_base_domain: "<GATEWAY_BASE_DOMAIN>"
+  backup_location: "<BACKUP_LOCATION>"
+
+payload_encoding:
+  command: command_json as a JSON array of strings
+  environment: env_json as a JSON array of {key,value} objects
+  mounts: mounts_json as a JSON array of mount objects
+  healthcheck: healthcheck_json as a JSON object
+  resources: resources_json as a JSON object
+  restart_policy: Task 1 VersionComponent field
+  tmpfs: Task 1 tmpfs_json field as a JSON array
+  ulimits: Task 1 ulimits_json field as a JSON array
+  secret_env_refs: Task 1 secret_env_refs field as a structured array
+
+runtime_contract:
+  application_kind: standard
+  image_pull_policy: missing
+  workspace: "deployment/<application_code>/<instance_key>"
+  compose_project: "<application_code>-<instance_key>"
+  platform_network: traefik
+  component_alias: "<application_code>-<component_name>"
+  prohibited:
+    - environment_id
+    - host_path_mount
+    - compose_include
+    - compose_profile
+    - direct_env_file
+    - dependency_host_port
+
+credential_templates:
+  - name: ragflow-mysql
+    type: runtime_env
+    keys: [MYSQL_PASSWORD]
+  - name: ragflow-redis
+    type: runtime_env
+    keys: [REDIS_PASSWORD]
+  - name: ragflow-minio
+    type: runtime_env
+    keys: [MINIO_USER, MINIO_PASSWORD]
+  - name: ragflow-elasticsearch
+    type: runtime_env
+    keys: [ELASTIC_PASSWORD]
+
+applications:
+  - name: RAGFlow MySQL
+    code: ragflow-mysql
+    version_label: 8.0.39-initial
+    components:
+      - name: mysql
+        image: mysql:8.0.39
+        command:
+          - --max_connections=1000
+          - --character-set-server=utf8mb4
+          - --collation-server=utf8mb4_unicode_ci
+          - --default-authentication-plugin=mysql_native_password
+          - --tls_version=TLSv1.2,TLSv1.3
+          - --binlog_expire_logs_seconds=604800
+        environment:
+          - key: MYSQL_DATABASE
+            value: rag_flow
+        mounts:
+          - source_type: logical
+            source: data
+            target: /var/lib/mysql
+            read_only: false
+        healthcheck:
+          test: [CMD-SHELL, "mysqladmin ping -uroot -p\"$${MYSQL_ROOT_PASSWORD}\""]
+          interval: 10s
+          timeout: 10s
+          retries: 120
+        restart_policy: unless-stopped
+        secret_env_refs:
+          - env_key: MYSQL_ROOT_PASSWORD
+            credential_name: ragflow-mysql
+            data_key: MYSQL_PASSWORD
+    exposes: []
+
+  - name: RAGFlow Redis
+    code: ragflow-redis
+    version_label: 8-initial
+    components:
+      - name: redis
+        image: valkey/valkey:8
+        command:
+          - sh
+          - -c
+          - "exec redis-server --requirepass \"$${REDIS_PASSWORD}\" --maxmemory 128mb --maxmemory-policy allkeys-lru"
+        mounts:
+          - source_type: logical
+            source: data
+            target: /data
+            read_only: false
+        healthcheck:
+          test: [CMD-SHELL, "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
+          interval: 10s
+          timeout: 10s
+          retries: 120
+        restart_policy: unless-stopped
+        secret_env_refs:
+          - env_key: REDIS_PASSWORD
+            credential_name: ragflow-redis
+            data_key: REDIS_PASSWORD
+    exposes: []
+
+  - name: RAGFlow MinIO
+    code: ragflow-minio
+    version_label: RELEASE.2026-03-25-initial
+    components:
+      - name: minio
+        image: pgsty/minio:RELEASE.2026-03-25T00-00-00Z
+        command: [server, --console-address, ":9001", /data]
+        mounts:
+          - source_type: logical
+            source: data
+            target: /data
+            read_only: false
+        healthcheck:
+          test: [CMD, curl, -fsS, http://localhost:9000/minio/health/live]
+          interval: 10s
+          timeout: 10s
+          retries: 120
+        restart_policy: unless-stopped
+        secret_env_refs:
+          - env_key: MINIO_ROOT_USER
+            credential_name: ragflow-minio
+            data_key: MINIO_USER
+          - env_key: MINIO_ROOT_PASSWORD
+            credential_name: ragflow-minio
+            data_key: MINIO_PASSWORD
+    exposes: []
+
+  - name: RAGFlow Elasticsearch
+    code: ragflow-elasticsearch
+    version_label: 8.11.3-initial
+    components:
+      - name: es01
+        image: elasticsearch:8.11.3
+        environment:
+          - key: node.name
+            value: es01
+          - key: bootstrap.memory_lock
+            value: "false"
+          - key: discovery.type
+            value: single-node
+          - key: xpack.security.enabled
+            value: "true"
+          - key: xpack.security.http.ssl.enabled
+            value: "false"
+          - key: xpack.security.transport.ssl.enabled
+            value: "false"
+          - key: cluster.routing.allocation.disk.watermark.low
+            value: 5gb
+          - key: cluster.routing.allocation.disk.watermark.high
+            value: 3gb
+          - key: cluster.routing.allocation.disk.watermark.flood_stage
+            value: 2gb
+        mounts:
+          - source_type: logical
+            source: data
+            target: /usr/share/elasticsearch/data
+            read_only: false
+        healthcheck:
+          test: [CMD-SHELL, "curl -fsS -u \"elastic:$${ELASTIC_PASSWORD}\" http://localhost:9200"]
+          interval: 10s
+          timeout: 10s
+          retries: 120
+        resources:
+          limits:
+            memory: "8073741824"
+        restart_policy: unless-stopped
+        tmpfs:
+          - target: /tmp
+            size_bytes: 536870912
+            mode: "1777"
+        ulimits:
+          - name: memlock
+            soft: -1
+            hard: -1
+        secret_env_refs:
+          - env_key: ELASTIC_PASSWORD
+            credential_name: ragflow-elasticsearch
+            data_key: ELASTIC_PASSWORD
+    exposes: []
+
+  - name: RAGFlow
+    code: ragflow
+    version_label: v0.26.4-cpu-elasticsearch
+    components:
+      - name: ragflow-cpu
+        image: infiniflow/ragflow:v0.26.4
+        command: [--enable-adminserver, --init-model-provider-tables]
+        environment:
+          - key: DOC_ENGINE
+            value: elasticsearch
+          - key: DEVICE
+            value: cpu
+          - key: API_PROXY_SCHEME
+            value: python
+          - key: TZ
+            value: Asia/Shanghai
+          - key: MYSQL_HOST
+            value: ragflow-mysql-mysql
+          - key: MYSQL_PORT
+            value: "3306"
+          - key: MYSQL_DBNAME
+            value: rag_flow
+          - key: MYSQL_USER
+            value: root
+          - key: MYSQL_MAX_PACKET
+            value: "1073741824"
+          - key: REDIS_HOST
+            value: ragflow-redis-redis
+          - key: MINIO_HOST
+            value: ragflow-minio-minio
+          - key: ES_HOST
+            value: ragflow-elasticsearch-es01
+          - key: ES_USER
+            value: elastic
+        mounts:
+          - source_type: logical
+            source: logs
+            target: /ragflow/logs
+            read_only: false
+        restart_policy: unless-stopped
+        secret_env_refs:
+          - env_key: MYSQL_PASSWORD
+            credential_name: ragflow-mysql
+            data_key: MYSQL_PASSWORD
+          - env_key: REDIS_PASSWORD
+            credential_name: ragflow-redis
+            data_key: REDIS_PASSWORD
+          - env_key: MINIO_USER
+            credential_name: ragflow-minio
+            data_key: MINIO_USER
+          - env_key: MINIO_PASSWORD
+            credential_name: ragflow-minio
+            data_key: MINIO_PASSWORD
+          - env_key: ELASTIC_PASSWORD
+            credential_name: ragflow-elasticsearch
+            data_key: ELASTIC_PASSWORD
+    expose_variants:
+      local:
+        - component_name: ragflow-cpu
+          protocol: http
+          container_port: 80
+          access: local
+          listen_port: "<LOCAL_HTTP_PORT>"
+      public:
+        - component_name: ragflow-cpu
+          protocol: http
+          container_port: 80
+          access: public
+          path_prefix: /
+    readiness_gate:
+      status: required_after_deploy
+      candidate_healthcheck:
+        test: [CMD, curl, -fsS, http://localhost:80/]
+      http_probe:
+        component_name: ragflow-cpu
+        port: 80
+        path: /
+      acceptance: "After deployment, require Docker health and the managed HTTP probe to succeed at the candidate endpoint."
+
+deployment_order:
+  - ragflow-mysql
+  - ragflow-redis
+  - ragflow-minio
+  - ragflow-elasticsearch
+  - ragflow
+
+post_deploy_assertions:
+  - "Every dependency has no VersionExpose and no host port mapping."
+  - "Every component joins the external traefik network with the stated alias."
+  - "Preview, runtime config, inspect, logs, and verification evidence redact secret values."
+  - "Each dependency is stable and healthy before RAGFlow is deployed."
+  - "RAGFlow is exposed through exactly one selected access variant."

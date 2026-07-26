@@ -53,10 +53,7 @@
         >
           <div class="mb-3 flex items-start justify-between gap-4">
             <h3 class="min-w-0 text-sm font-medium">
-              <router-link
-                :to="`/pipeline/template/${tpl.id}`"
-                class="app-link block truncate"
-              >
+              <router-link :to="`/pipeline/template/${tpl.id}`" class="app-link block truncate">
                 {{ tpl.name }}
               </router-link>
             </h3>
@@ -124,11 +121,7 @@
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
               <td>
-                <button
-                  :disabled="duplicating"
-                  class="app-link"
-                  @click="handleDuplicate(tpl.id)"
-                >
+                <button :disabled="duplicating" class="app-link" @click="handleDuplicate(tpl.id)">
                   {{ t('common.copy') }}
                 </button>
               </td>

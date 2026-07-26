@@ -214,6 +214,34 @@ func TestGatewayCRUDCompilesManagedVersionAndProjectsExposures(t *testing.T) {
 	}
 }
 
+func TestCompileGatewayToVersionCreatesUniqueDraftAfterManagedVersionIsPublished(t *testing.T) {
+	service, store := newGatewayTestService()
+	context := context.Background()
+	image := "traefik:v3"
+	view, err := service.CreateGateway(context, "user-1", gatewaydto.GatewayCreateInput{
+		ProjectId: "project-1", Code: "gateway", Name: "Gateway", RestApiUrl: "http://localhost:8080",
+		BaseDomain: "example.com", Image: &image, ImagePullPolicy: "missing",
+	})
+	if err != nil {
+		t.Fatalf("create gateway: %v", err)
+	}
+	versions := store.versions[view.Application.Id]
+	versions[0].Status = status.VersionStatusPublished
+	store.versions[view.Application.Id] = versions
+
+	draftVersionId, err := service.CompileGatewayToVersion(context, view.Application, view.Config)
+	if err != nil {
+		t.Fatalf("compile gateway after publish: %v", err)
+	}
+	versions = store.versions[view.Application.Id]
+	if len(versions) != 2 || versions[1].Id != draftVersionId || versions[1].Status != status.VersionStatusUnpublished {
+		t.Fatalf("unexpected versions after compile: %+v", versions)
+	}
+	if !strings.HasPrefix(versions[1].Label, gatewayCompileVersionLabel+"-") {
+		t.Fatalf("expected unique managed draft label, got %q", versions[1].Label)
+	}
+}
+
 func TestGatewayRejectsActivePortConflicts(t *testing.T) {
 	service, store := newGatewayTestService()
 	projectId := "project-1"

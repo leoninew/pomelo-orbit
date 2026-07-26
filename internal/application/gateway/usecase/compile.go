@@ -67,7 +67,7 @@ func (s Service) ensureUnpublishedGatewayVersion(ctx context.Context, applicatio
 	version := model.Version{
 		Id:            idutil.NewId(),
 		ApplicationId: applicationId,
-		Label:         gatewayCompileVersionLabel,
+		Label:         gatewayCompileVersionLabel + "-" + idutil.NewId(),
 		Status:        status.VersionStatusUnpublished,
 	}
 	if err := s.application.CreateVersion(ctx, version); err != nil {

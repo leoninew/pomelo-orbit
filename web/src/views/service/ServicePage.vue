@@ -34,7 +34,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="services.length === 0" :message="t('service.empty')" />
       <div v-else class="overflow-x-auto">
-          <table class="app-table-list min-w-[840px]">
+        <table class="app-table-list min-w-[840px]">
           <thead>
             <tr>
               <th>{{ t('service.fields.instanceKey') }}</th>

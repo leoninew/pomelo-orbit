@@ -20,6 +20,19 @@ def test_build_runtime_target_uses_orbit_workspace_rule(tmp_path) -> None:
     assert compose_project_name("demo-app", "instance-1") == "demo-app-instance-1"
 
 
+def test_build_runtime_target_allows_gateway_when_explicitly_requested(tmp_path) -> None:
+    settings = make_settings(tmp_path)
+    target = build_runtime_target(
+        settings,
+        {"id": "gateway-1", "kind": "gateway", "code": "traefik"},
+        {"id": "service-1", "application_id": "gateway-1", "instance_key": "default"},
+        "default",
+        allowed_application_kinds=("gateway",),
+    )
+
+    assert target.working_directory == tmp_path.resolve() / "deployment" / "traefik" / "default"
+
+
 def test_runtime_target_rejects_cross_project_or_path_escape(tmp_path) -> None:
     settings = make_settings(tmp_path)
     with pytest.raises(RuntimeTargetError):

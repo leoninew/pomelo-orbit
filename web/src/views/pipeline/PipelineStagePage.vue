@@ -51,11 +51,7 @@
                 {{ formatTime(stage.created_at) }}
               </td>
               <td class="whitespace-nowrap">
-                <button
-                  class="app-link"
-                  :disabled="duplicating"
-                  @click="handleDuplicate(stage.id)"
-                >
+                <button class="app-link" :disabled="duplicating" @click="handleDuplicate(stage.id)">
                   复制
                 </button>
               </td>

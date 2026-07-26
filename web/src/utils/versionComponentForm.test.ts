@@ -22,7 +22,9 @@ describe('versionComponentForm', () => {
   });
 
   it('supports legacy port formats and serializes valid pairs', () => {
-    expect(parsePortsJson('[80,"443","127.0.0.1:8080:80",{"published":3000,"target":3000}]')).toEqual([
+    expect(
+      parsePortsJson('[80,"443","127.0.0.1:8080:80",{"published":3000,"target":3000}]')
+    ).toEqual([
       { host_port: 80, container_port: 80 },
       { host_port: 443, container_port: 443 },
       { host_port: 8080, container_port: 80 },

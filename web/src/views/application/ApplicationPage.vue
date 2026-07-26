@@ -72,18 +72,12 @@
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 space-y-1">
                 <h3 class="text-base font-semibold">
-                  <router-link
-                    :to="`/application/${app.id}`"
-                    class="app-link block truncate"
-                  >
+                  <router-link :to="`/application/${app.id}`" class="app-link block truncate">
                     {{ app.name }}
                   </router-link>
                 </h3>
                 <div class="flex min-w-0 items-center gap-2">
-                  <span
-                    class="min-w-0 truncate text-xs text-muted-foreground"
-                    :title="app.code"
-                  >
+                  <span class="min-w-0 truncate text-xs text-muted-foreground" :title="app.code">
                     {{ app.code }}
                   </span>
                   <span class="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
@@ -106,7 +100,9 @@
               </div>
             </div>
 
-            <div class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm">
+            <div
+              class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm"
+            >
               <router-link
                 :to="{ path: '/versions', query: { application_id: app.id } }"
                 class="app-link"
@@ -153,11 +149,13 @@
                 </td>
                 <td class="text-foreground">{{ app.code }}</td>
                 <td>
-                <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
+                  <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
                     {{ app.kind }}
                   </AppBadge>
                 </td>
-                <td><AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge></td>
+                <td>
+                  <AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge>
+                </td>
                 <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
                 <td>
                   <div class="flex items-center gap-3">

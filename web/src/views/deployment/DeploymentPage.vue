@@ -47,11 +47,11 @@
                   {{ deployment.application_name || deployment.application_id }}
                 </button>
               </td>
-              <td class="text-foreground">{{ operationTypeLabel(deployment.operation_type) }}</td>
-              <td class="text-foreground">{{ triggerTypeLabel(deployment.trigger_type) }}</td>
+              <td><AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge></td>
+              <td><AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge></td>
               <td>
                 <AppBadge variant="status" :tone="statusTone(deployment.status)">
-                  {{ deploymentStatusLabel(deployment.status) }}
+                  {{ deployment.status }}
                 </AppBadge>
               </td>
               <td
@@ -143,7 +143,7 @@
 
   const router = useRouter();
   const route = useRoute();
-  const { t, te } = useI18n();
+  const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
@@ -180,21 +180,6 @@
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('application.toast.loadFailed'));
     }
-  }
-
-  function operationTypeLabel(type: string) {
-    const key = `deployment.operationType.${type}`;
-    return te(key) ? t(key) : type;
-  }
-
-  function triggerTypeLabel(type: string) {
-    const key = `deployment.triggerType.${type}`;
-    return te(key) ? t(key) : type;
-  }
-
-  function deploymentStatusLabel(status: string) {
-    const key = `deployment.status.${status}`;
-    return te(key) ? t(key) : status;
   }
 
   async function fetchDeployments() {

@@ -32,7 +32,7 @@
           </td>
           <td>
             <AppBadge variant="status" :tone="getSourceTone(requireSource(decl))">
-              {{ t(`variableDeclaration.sourceLabels.${requireSource(decl)}`) }}
+              {{ requireSource(decl) }}
             </AppBadge>
           </td>
           <td v-if="!readonly">

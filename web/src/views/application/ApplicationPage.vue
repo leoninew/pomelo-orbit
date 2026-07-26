@@ -92,7 +92,7 @@
               </div>
               <div class="flex shrink-0 flex-col items-end gap-1.5">
                 <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
-                  {{ t('application.kindBadges.' + (app.kind || 'standard')) }}
+                  {{ app.kind }}
                 </AppBadge>
               </div>
             </div>
@@ -100,9 +100,7 @@
             <div class="mt-5 grid gap-3 text-sm">
               <div class="flex items-center justify-between gap-3">
                 <span class="text-muted-foreground">{{ t('application.imagePull') }}</span>
-                <span class="text-foreground">
-                  {{ pullPolicyLabel(app.image_pull_policy) }}
-                </span>
+                <AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge>
               </div>
             </div>
 
@@ -159,11 +157,11 @@
                 </td>
                 <td class="text-foreground">{{ app.code }}</td>
                 <td>
-                  <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
-                    {{ t('application.kindBadges.' + (app.kind || 'standard')) }}
+                <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
+                    {{ app.kind }}
                   </AppBadge>
                 </td>
-                <td class="text-foreground">{{ pullPolicyLabel(app.image_pull_policy) }}</td>
+                <td><AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge></td>
                 <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
                 <td>
                   <div class="flex items-center gap-3">
@@ -298,10 +296,6 @@
     })
   );
 
-  function pullPolicyLabel(policy: string) {
-    return t(`application.imagePullPolicyLabels.${policy}`);
-  }
-
   async function fetchApplications() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
@@ -382,7 +376,7 @@
           {
             name: createForm.name,
             code: createForm.code,
-            kind: createForm.kind || 'standard',
+            kind: createForm.kind,
             image_pull_policy: createForm.image_pull_policy,
           },
           { project_id: projectId }

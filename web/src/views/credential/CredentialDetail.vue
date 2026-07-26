@@ -54,8 +54,8 @@
         <div class="flex gap-2">
           <dt class="w-32 shrink-0 text-muted-foreground">类型</dt>
           <dd>
-            <AppBadge>
-              {{ credentialTypeLabels[credential.type] ?? credential.type }}
+            <AppBadge variant="pill">
+              {{ credential.type }}
             </AppBadge>
           </dd>
         </div>
@@ -144,7 +144,6 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';
-  import { credentialTypeLabels } from '@/constants/credential';
   import { formatTime } from '@/utils/time';
 
   const props = defineProps<{ id: string }>();

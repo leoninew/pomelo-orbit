@@ -77,8 +77,8 @@
                 </router-link>
               </td>
               <td>
-                <AppBadge>
-                  {{ artifactTypeLabel(a.type) }}
+                <AppBadge variant="pill">
+                  {{ a.type }}
                 </AppBadge>
               </td>
               <td class="overflow-hidden truncate text-foreground" :title="a.stage_name">
@@ -146,14 +146,6 @@
 
   const repoOptions = ref<RepositoryResp[]>([]);
   const templateOptions = ref<PipelineTemplateResp[]>([]);
-
-  function artifactTypeLabel(type: string) {
-    const map: Record<string, string> = {
-      docker_image: 'Docker 镜像',
-      binary: '二进制文件',
-    };
-    return map[type] ?? type;
-  }
 
   const repoSelectOptions = computed(() =>
     repoOptions.value.map((repo) => ({

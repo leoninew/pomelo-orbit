@@ -297,7 +297,6 @@
   import type { PipelineTemplateResp } from '@/gen/proto/orbit/v1/pipeline/template';
   import type { RepositoryWebhookResp } from '@/gen/proto/orbit/v1/repository/webhook';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
-  import { credentialTypeLabels } from '@/constants/credential';
   import { formatTime } from '@/utils/time';
   import TriggerModal from '@/views/repository/components/TriggerModal.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
@@ -356,7 +355,7 @@
     gitCredentials.value.map((credential) => ({
       value: credential.id,
       label: credential.name,
-      description: credentialTypeLabels[credential.type] ?? credential.type,
+      description: credential.type,
     }))
   );
   const repositoryVariables = computed(() => repository.value?.variable_declarations ?? []);

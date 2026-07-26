@@ -67,7 +67,7 @@
       label: application.name,
       description: [
         application.code,
-        t('application.kindLabels.' + (application.kind || 'standard')),
+        application.kind,
       ]
         .filter(Boolean)
         .join(' · '),

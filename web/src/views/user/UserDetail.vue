@@ -67,17 +67,14 @@
         <div class="flex gap-2">
           <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
           <dd>
-            <AppBadge v-if="user.status === 'enabled'" variant="status" tone="success">
-              {{ t('userManagement.enabled') }}
-            </AppBadge>
-            <AppBadge v-else variant="status" tone="default">
-              {{ t('userManagement.disabled') }}
+            <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
+              {{ user.status }}
             </AppBadge>
           </dd>
         </div>
         <div class="flex gap-2">
           <dt class="w-32 shrink-0 text-muted-foreground">{{ t('userManagement.authSource') }}</dt>
-          <dd class="text-foreground">{{ formatAuthSource(user.auth_source) }}</dd>
+          <dd><AppBadge variant="pill">{{ user.auth_source }}</AppBadge></dd>
         </div>
         <div class="flex gap-2">
           <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
@@ -176,7 +173,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">{{ t('common.status') }}</label>
-          <SelectControl v-model="form.status" :options="userStatusOptions" :disabled="operating" />
+          <RawValueSelect v-model="form.status" :values="userStatusValues" :disabled="operating" />
         </div>
       </form>
       <template #footer>
@@ -286,7 +283,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
@@ -322,21 +319,7 @@
       authStore.hasPermission(PERMISSIONS.ROLE_READ) &&
       authStore.hasPermission(PERMISSIONS.ROLE_WRITE)
   );
-  const userStatusOptions = computed(() => [
-    { value: 'enabled', label: t('userManagement.enabled') },
-    { value: 'disabled', label: t('userManagement.disabled') },
-  ]);
-
-  function formatAuthSource(authSource: string) {
-    switch (authSource) {
-      case 'oauth':
-        return t('userManagement.authSourceOAuth');
-      case 'password':
-        return t('userManagement.authSourcePassword');
-      default:
-        throw new Error(`Unsupported auth source: ${authSource}`);
-    }
-  }
+  const userStatusValues = ['enabled', 'disabled'];
 
   async function fetchUser() {
     try {

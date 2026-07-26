@@ -204,7 +204,7 @@
               <tr v-for="(artifact, idx) in artifactDeclarations" :key="idx">
                 <td class="text-foreground">{{ artifact.stageName }}</td>
                 <td>
-                  <AppBadge>
+                  <AppBadge variant="pill">
                     {{ artifact.type }}
                   </AppBadge>
                 </td>

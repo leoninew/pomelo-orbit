@@ -4,7 +4,7 @@
       <h1 class="flex flex-wrap items-center gap-2 text-xl font-semibold text-foreground">
         {{ version?.label || t('application.versionDetail.title') }}
         <AppBadge v-if="version" variant="pill" :tone="versionStatusTone(version.status)">
-          {{ t('status.' + version.status) }}
+          {{ version.status }}
         </AppBadge>
       </h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -74,7 +74,7 @@
             </dt>
             <dd>
               <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
-                {{ t('status.' + version.status) }}
+                {{ version.status }}
               </AppBadge>
             </dd>
           </div>
@@ -226,8 +226,8 @@
               </tr>
               <tr v-for="(row, index) in version.exposes" :key="row.id || index">
                 <td class="text-foreground">{{ row.component_name }}</td>
-                <td class="text-muted-foreground">{{ row.protocol }}</td>
-                <td class="text-muted-foreground">{{ row.access || 'public' }}</td>
+                <td><AppBadge variant="pill">{{ row.protocol }}</AppBadge></td>
+                <td><AppBadge variant="pill">{{ row.access }}</AppBadge></td>
                 <td class="text-muted-foreground">{{ row.container_port }}</td>
                 <td class="text-muted-foreground">{{ row.listen_port || row.container_port }}</td>
                 <td v-if="isEditable">
@@ -383,9 +383,9 @@
             {{ t('application.detail.fields.component') }}
             <span class="text-destructive">*</span>
           </label>
-          <SelectControl
+          <RawValueSelect
             v-model="exposeForm.component_name"
-            :options="componentNameOptions"
+            :values="componentNameValues"
             :placeholder="t('application.detail.placeholders.exposeComponent')"
           />
         </div>
@@ -394,9 +394,9 @@
             <label class="app-field-label mb-1.5 block">
               {{ t('application.detail.placeholders.exposeProtocol') }}
             </label>
-            <SelectControl
+            <RawValueSelect
               v-model="exposeForm.protocol"
-              :options="exposeProtocolOptions"
+              :values="exposeProtocolValues"
               :placeholder="t('application.detail.placeholders.exposeProtocol')"
             />
           </div>
@@ -404,9 +404,9 @@
             <label class="app-field-label mb-1.5 block">
               {{ t('application.detail.placeholders.exposeAccess') }}
             </label>
-            <SelectControl
+            <RawValueSelect
               v-model="exposeForm.access"
-              :options="exposeAccessOptions"
+              :values="exposeAccessValues"
               :placeholder="t('application.detail.placeholders.exposeAccess')"
             />
           </div>
@@ -604,6 +604,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import VersionComponentBaseDialog from '@/views/application/components/VersionComponentBaseDialog.vue';
   import VersionComponentDeleteDialog from '@/views/application/components/VersionComponentDeleteDialog.vue';
@@ -688,14 +689,8 @@
     listen_port: 0,
   });
 
-  const exposeProtocolOptions = [
-    { value: 'http', label: 'http' },
-    { value: 'tcp', label: 'tcp' },
-  ];
-  const exposeAccessOptions = [
-    { value: 'local', label: 'local' },
-    { value: 'public', label: 'public' },
-  ];
+  const exposeProtocolValues = ['http', 'tcp'];
+  const exposeAccessValues = ['local', 'public'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
   const isDeployable = computed(() => Boolean(version.value));
   const environmentSelectOptions = computed(() =>
@@ -705,9 +700,7 @@
     }))
   );
   const envRows = computed(() => parseEnvJson(version.value?.env_json));
-  const componentNameOptions = computed(() =>
-    (version.value?.components ?? []).map((c) => ({ value: c.name, label: c.name }))
-  );
+  const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
   const componentNames = computed(() => (version.value?.components ?? []).map((component) => component.name));
   const editingComponent = computed(() => {
     const index = editingComponentIndex.value;

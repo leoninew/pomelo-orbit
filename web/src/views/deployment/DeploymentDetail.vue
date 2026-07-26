@@ -51,19 +51,17 @@
             <dt class="w-32 shrink-0 text-muted-foreground">状态</dt>
             <dd>
               <AppBadge variant="pill" :tone="deploymentStatusTone">
-                {{ deploymentStatusLabel }}
+                {{ deployment.status }}
               </AppBadge>
             </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">操作类型</dt>
-            <dd class="text-foreground">
-              {{ operationTypeLabel }}
-            </dd>
+            <dd><AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge></dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">触发方式</dt>
-            <dd class="text-foreground">{{ triggerTypeLabel }}</dd>
+            <dd><AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge></dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt class="w-32 shrink-0 text-muted-foreground">执行命令</dt>
@@ -204,7 +202,7 @@
 
   const route = useRoute();
   const router = useRouter();
-  const { t, te } = useI18n();
+  const { t } = useI18n();
   const deploymentId = computed(() => String(route.params.id ?? ''));
   const toast = useToast();
   const { status, execute } = useStatusAsync();
@@ -252,27 +250,6 @@
     deployment.value ? statusTone(deployment.value.status) : 'default'
   );
 
-  const deploymentStatusLabel = computed(() => {
-    if (!deployment.value) {
-      return '';
-    }
-    const key = `deployment.status.${deployment.value.status}`;
-    return te(key) ? t(key) : deployment.value.status;
-  });
-  const operationTypeLabel = computed(() => {
-    if (!deployment.value) {
-      return '';
-    }
-    const key = `deployment.operationType.${deployment.value.operation_type}`;
-    return te(key) ? t(key) : deployment.value.operation_type;
-  });
-  const triggerTypeLabel = computed(() => {
-    if (!deployment.value) {
-      return '';
-    }
-    const key = `deployment.triggerType.${deployment.value.trigger_type}`;
-    return te(key) ? t(key) : deployment.value.trigger_type;
-  });
   const isTerminalDeployment = computed(() => isTerminalStatus(deployment.value?.status ?? ''));
   const isFaultedDeployment = computed(() => deployment.value?.status === 'faulted');
   const isCancelable = computed(() =>

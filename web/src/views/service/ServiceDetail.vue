@@ -76,7 +76,7 @@
                   variant="status"
                   :tone="applicationKindTone(service.application_kind)"
                 >
-                  {{ kindLabel(service.application_kind) }}
+                  {{ service.application_kind }}
                 </AppBadge>
               </div>
               <p class="text-xs text-muted-foreground">{{ service.application_code }}</p>
@@ -111,7 +111,7 @@
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
             <dd>
               <AppBadge variant="status" :tone="appStatusTone(service.status)">
-                {{ serviceStatusLabel(service.status) }}
+                {{ service.status }}
               </AppBadge>
             </dd>
           </div>
@@ -186,7 +186,7 @@
                   <td>
                     <div class="flex flex-col gap-1">
                       <AppBadge variant="status" :tone="containerStateTone(container.state)">
-                        {{ containerStateLabel(container.state) }}
+                        {{ container.state }}
                       </AppBadge>
                       <span
                         v-if="container.status"
@@ -373,7 +373,7 @@
 
   const route = useRoute();
   const router = useRouter();
-  const { t, te } = useI18n();
+  const { t } = useI18n();
   const toast = useToast();
   const { status, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
@@ -466,24 +466,6 @@
     }
     return t('service.logs.titleWithTarget', { app, env, instance });
   });
-
-  function kindLabel(kind: string) {
-    const key = `application.kindLabels.${kind || 'standard'}`;
-    return te(key) ? t(key) : kind;
-  }
-
-  function serviceStatusLabel(value: string) {
-    const key = `status.${value}`;
-    return te(key) ? t(key) : value;
-  }
-
-  function containerStateLabel(value: string) {
-    if (!value) {
-      return '—';
-    }
-    const key = `service.containerState.${value}`;
-    return te(key) ? t(key) : value;
-  }
 
   async function fetchService() {
     if (!serviceId.value) {

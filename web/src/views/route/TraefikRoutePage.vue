@@ -75,7 +75,7 @@
               <td class="max-w-0 truncate text-foreground" :title="r.service">{{ r.service }}</td>
               <td class="max-w-0" :title="r.entrypoints.join(', ')">
                 <div class="flex flex-nowrap gap-1 overflow-hidden">
-                  <AppBadge v-for="ep in r.entrypoints" :key="ep">
+                  <AppBadge v-for="ep in r.entrypoints" :key="ep" variant="pill">
                     {{ ep }}
                   </AppBadge>
                 </div>

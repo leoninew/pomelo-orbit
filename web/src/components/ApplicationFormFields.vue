@@ -35,9 +35,9 @@
 
     <div class="space-y-1.5">
       <label class="app-field-label block">{{ t('application.kind') }}</label>
-      <SelectControl
-        :model-value="form.kind || 'standard'"
-        :options="kindOptions"
+      <RawValueSelect
+        :model-value="form.kind"
+        :values="kindValues"
         :placeholder="t('application.kindPlaceholder')"
         @update:model-value="updateField('kind', String($event))"
       />
@@ -46,9 +46,9 @@
 
     <div class="space-y-1.5">
       <label class="app-field-label block">{{ t('application.imagePullPolicy') }}</label>
-      <SelectControl
+      <RawValueSelect
         :model-value="form.image_pull_policy"
-        :options="imagePullPolicyOptions"
+        :values="imagePullPolicyValues"
         :placeholder="t('application.imagePullPolicyPlaceholder')"
         @update:model-value="updateField('image_pull_policy', String($event))"
       />
@@ -57,9 +57,8 @@
 </template>
 
 <script setup lang="ts">
-  import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import type { ApplicationCreateReq } from '@/gen/proto/orbit/v1/application/application';
 
   const props = defineProps<{
@@ -80,14 +79,7 @@
     emit('update:form', { ...props.form, [field]: value });
   }
 
-  const kindOptions = computed(() => [
-    { value: 'standard', label: t('application.kindOptions.standard') },
-    { value: 'gateway', label: t('application.kindOptions.gateway') },
-  ]);
+  const kindValues = ['standard', 'gateway'];
 
-  const imagePullPolicyOptions = computed(() => [
-    { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
-    { value: 'always', label: t('application.imagePullPolicyOptions.always') },
-    { value: 'never', label: t('application.imagePullPolicyOptions.never') },
-  ]);
+  const imagePullPolicyValues = ['missing', 'always', 'never'];
 </script>

@@ -80,26 +80,26 @@
           </div>
           <div class="space-y-1.5">
             <label class="app-field-label block">{{ t('gateway.fields.defaultEntrypoint') }}</label>
-            <SelectControl
+            <RawValueSelect
               v-model="form.default_entrypoint"
-              :options="entrypointOptions"
+              :values="entrypointValues"
               :placeholder="t('gateway.placeholders.defaultEntrypoint')"
             />
             <p class="app-field-hint">{{ t('gateway.hints.defaultEntrypoint') }}</p>
           </div>
           <div class="space-y-1.5">
             <label class="app-field-label block">{{ t('gateway.fields.tlsMode') }}</label>
-            <SelectControl
+            <RawValueSelect
               v-model="form.tls_mode"
-              :options="tlsModeOptions"
+              :values="tlsModeValues"
               :placeholder="t('gateway.placeholders.tlsMode')"
             />
           </div>
           <div class="space-y-1.5">
             <label class="app-field-label block">{{ t('gateway.fields.imagePullPolicy') }}</label>
-            <SelectControl
+            <RawValueSelect
               v-model="form.image_pull_policy"
-              :options="imagePullPolicyOptions"
+              :values="imagePullPolicyValues"
               :placeholder="t('application.imagePullPolicyPlaceholder')"
             />
           </div>
@@ -127,12 +127,12 @@
 
 <script setup lang="ts">
   import { ArrowLeft, Save } from 'lucide-vue-next';
-  import { computed, onMounted, reactive, ref, watch } from 'vue';
+  import { onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppSpinner from '@/components/AppSpinner.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
@@ -161,20 +161,9 @@
     image: '',
   });
 
-  const imagePullPolicyOptions = computed(() => [
-    { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
-    { value: 'always', label: t('application.imagePullPolicyOptions.always') },
-    { value: 'never', label: t('application.imagePullPolicyOptions.never') },
-  ]);
-  const entrypointOptions = computed(() => [
-    { value: 'web', label: 'web' },
-    { value: 'websecure', label: 'websecure' },
-  ]);
-  const tlsModeOptions = computed(() => [
-    { value: 'none', label: 'none' },
-    { value: 'letsencrypt', label: 'letsencrypt' },
-    { value: 'tls', label: 'tls' },
-  ]);
+  const imagePullPolicyValues = ['missing', 'always', 'never'];
+  const entrypointValues = ['web', 'websecure'];
+  const tlsModeValues = ['none', 'letsencrypt', 'tls'];
 
   const gatewayId = () => String(route.params.id || '');
 
@@ -184,9 +173,9 @@
       rest_api_url: data.rest_api_url || '',
       base_domain: data.base_domain || '',
       image: data.image || '',
-      image_pull_policy: data.image_pull_policy || 'missing',
-      default_entrypoint: data.default_entrypoint || 'web',
-      tls_mode: data.tls_mode || 'none',
+      image_pull_policy: data.image_pull_policy,
+      default_entrypoint: data.default_entrypoint,
+      tls_mode: data.tls_mode,
     });
     errors.name = '';
     errors.rest_api_url = '';

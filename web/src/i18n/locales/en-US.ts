@@ -110,21 +110,6 @@ export default {
     noBuilds: 'No build records',
     noDeploys: 'No deployment records',
   },
-  status: {
-    waiting: 'Waiting',
-    running: 'Running',
-    success: 'Success',
-    failed: 'Failed',
-    canceled: 'Canceled',
-    deployed: 'Deployed',
-    deploying: 'Deploying',
-    stopped: 'Stopped',
-    undeployed: 'Undeployed',
-    deploy_failed: 'Deploy Failed',
-    faulted: 'Faulted',
-    unpublished: 'Unpublished',
-    published: 'Published',
-  },
   user: {
     logout: 'Logout',
     profile: 'Profile',
@@ -191,18 +176,6 @@ export default {
     kind: 'Application Kind',
     kindPlaceholder: 'Select application kind',
     kindHint: 'Immutable after create; gateway uses a dedicated render strategy',
-    kindOptions: {
-      standard: 'Standard (standard)',
-      gateway: 'Gateway (gateway)',
-    },
-    kindLabels: {
-      standard: 'Standard',
-      gateway: 'Gateway',
-    },
-    kindBadges: {
-      standard: 'Standard',
-      gateway: 'Gateway',
-    },
     serviceCount: 'Services',
     namePlaceholder: 'Enter application name',
     codePlaceholder:
@@ -210,16 +183,6 @@ export default {
     codeHint:
       'Application code is used to generate the working directory and cannot be changed after creation',
     imagePullPolicyPlaceholder: 'Select image pull policy',
-    imagePullPolicyOptions: {
-      missing: 'Pull if missing (missing)',
-      always: 'Always pull (always)',
-      never: 'Never pull (never)',
-    },
-    imagePullPolicyLabels: {
-      missing: 'Pull if missing',
-      always: 'Always pull',
-      never: 'Never pull',
-    },
     importSummary: 'Version {versionLabel} / Components {components} / Exposes {exposes}',
     createWizard: {
       title: 'Create Application',
@@ -528,17 +491,6 @@ export default {
       empty: 'No containers',
       loadFailed: 'Failed to load container status',
     },
-    containerState: {
-      running: 'Running',
-      up: 'Running',
-      exited: 'Exited',
-      dead: 'Dead',
-      paused: 'Paused',
-      created: 'Created',
-      restarting: 'Restarting',
-      removing: 'Removing',
-      stopped: 'Stopped',
-    },
     logs: {
       title: 'Container logs',
       titleWithTarget: '{app} / {env} / {instance} · Container logs',
@@ -718,21 +670,6 @@ export default {
       errorMessage: 'Error Message',
       startTime: 'Start Time',
       duration: 'Duration',
-    },
-    operationType: {
-      deploy: 'Deploy',
-      stop: 'Stop',
-      restart: 'Restart',
-    },
-    triggerType: {
-      manual: 'Manual',
-    },
-    status: {
-      waiting_to_run: 'Waiting',
-      running: 'Running',
-      ran_to_completion: 'Success',
-      faulted: 'Faulted',
-      canceled: 'Canceled',
     },
     dialog: {
       confirmCancel: 'Confirm Cancel',
@@ -959,14 +896,6 @@ export default {
       duration: 'Duration',
       path: 'Path',
     },
-    status: {
-      waiting_to_run: 'Waiting',
-      running: 'Running',
-      ran_to_completion: 'Success',
-      faulted: 'Failed',
-      canceled: 'Canceled',
-      skipped: 'Skipped',
-    },
     toast: {
       selectProjectRequired: 'Please select a project first',
       loadFailed: 'Failed to load pipeline runs',
@@ -985,15 +914,6 @@ export default {
     description: 'Description',
     value: 'Variable Value',
     source: 'Source',
-    sourceLabels: {
-      global: 'Global',
-      repository: 'Repository Runtime',
-      repository_custom: 'Repository Custom',
-      template: 'Template Runtime',
-      template_stage: 'Template Stage',
-      template_custom: 'Template Custom',
-      runtime: 'Runtime',
-    },
   },
   userManagement: {
     searchPlaceholder: 'Search username/email',
@@ -1005,11 +925,7 @@ export default {
     roles: 'Roles',
     passwordHint: 'Enter a new password with at least 6 characters',
     authSource: 'Auth Source',
-    authSourcePassword: 'Password',
-    authSourceOAuth: 'OAuth',
     lastLoginAt: 'Last Login',
-    enabled: 'Enabled',
-    disabled: 'Disabled',
     enable: 'Enable',
     disable: 'Disable',
     basicInfo: 'Basic Info',
@@ -1147,10 +1063,6 @@ export default {
     deleteStage: 'Delete Stage',
     deleteArtifactConfirm: 'Delete artifact "{name}"?',
     deleteStageConfirm: 'Delete stage "{name}"? This action cannot be undone.',
-    artifactTypes: {
-      dockerImage: 'Docker Image',
-      binary: 'Binary File',
-    },
     fetchFailed: 'Failed to load stage',
     scriptCopied: 'Script copied to clipboard',
     copyFailed: 'Failed to copy',

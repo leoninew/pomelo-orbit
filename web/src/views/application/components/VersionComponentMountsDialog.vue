@@ -17,9 +17,9 @@
         class="space-y-2 rounded border border-dashed border-border p-2"
       >
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-[0.9fr_1fr_1fr_auto_auto]">
-          <SelectControl
+          <RawValueSelect
             v-model="mountRow.source_type"
-            :options="mountSourceTypeOptions"
+            :values="mountSourceTypeValues"
             :placeholder="t('application.detail.placeholders.mountSourceType')"
           />
           <input
@@ -47,9 +47,9 @@
             <span class="text-xs text-muted-foreground">
               {{ t('application.detail.fields.mountContent') }}
             </span>
-            <SelectControl
+            <RawValueSelect
               v-model="mountRow.content_mode"
-              :options="mountContentModeOptions"
+              :values="mountContentModeValues"
               :placeholder="t('application.detail.placeholders.mountContentMode')"
               class="w-36"
             />
@@ -76,7 +76,7 @@
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import AppDialog from '@/components/AppDialog.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import {
     isFileMountRow,
     parseMountsJson,
@@ -100,15 +100,8 @@
 
   const { t } = useI18n();
   const mounts = ref<MountFormRow[]>([]);
-  const mountSourceTypeOptions = [
-    { value: 'logical', label: 'logical' },
-    { value: 'volume', label: 'volume' },
-    { value: 'special', label: 'special' },
-  ];
-  const mountContentModeOptions = computed(() => [
-    { value: 'seed', label: t('application.detail.contentMode.seed') },
-    { value: 'sync', label: t('application.detail.contentMode.sync') },
-  ]);
+  const mountSourceTypeValues = ['logical', 'volume', 'special'];
+  const mountContentModeValues = ['seed', 'sync'];
   const isOpen = computed({
     get: () => props.open,
     set: (open) => emit('update:open', open),

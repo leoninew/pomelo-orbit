@@ -44,7 +44,7 @@
               </td>
               <td>
                 <AppBadge variant="pill" tone="info">
-                  {{ credentialTypeLabels[cred.type] || cred.type }}
+                  {{ cred.type }}
                 </AppBadge>
               </td>
               <td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
@@ -89,9 +89,9 @@
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">凭据类型</label>
-        <SelectControl
+        <RawValueSelect
           v-model="form.type"
-          :options="credentialTypeOptions"
+          :values="credentialTypeValues"
           :disabled="isEditing"
           placeholder="选择凭据类型"
         />
@@ -149,9 +149,9 @@
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">凭据类型</label>
-        <SelectControl
+        <RawValueSelect
           v-model="importForm.type"
-          :options="credentialTypeOptions"
+          :values="credentialTypeValues"
           placeholder="选择凭据类型"
         />
       </div>
@@ -183,7 +183,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -191,7 +191,6 @@
     CredentialImportReq,
     CredentialResp,
   } from '@/gen/proto/orbit/v1/credential/credential';
-  import { credentialTypeLabels } from '@/constants/credential';
   import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
@@ -214,11 +213,7 @@
   const pendingDeleteId = ref('');
 
   const form = reactive({ name: '', type: 'github_token' as string, data: '' });
-  const credentialTypeOptions = [
-    { value: 'github_token', label: 'GitHub Token' },
-    { value: 'gitee_token', label: 'Gitee Token' },
-    { value: 'git_ssh', label: 'Git SSH 密钥' },
-  ];
+  const credentialTypeValues = ['github_token', 'gitee_token', 'git_ssh'];
   const errors = reactive({ name: '', data: '' });
   const importForm = reactive<CredentialImportReq>({
     version: '',
@@ -383,7 +378,7 @@
       Object.assign(importForm, {
         version: data.version,
         name: data.name || '',
-        type: data.type || 'git_ssh',
+        type: data.type,
         data: data.data || '',
       });
       Object.assign(importErrors, { name: '', data: '' });

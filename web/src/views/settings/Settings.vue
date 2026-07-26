@@ -63,17 +63,17 @@
                 <!-- Editing Mode -->
                 <div v-if="editingState.key === item.key">
                   <!-- Boolean -->
-                  <SelectControl
+                  <RawValueSelect
                     v-if="typeof item.default === 'boolean'"
                     v-model="editingState.boolValue"
-                    :options="booleanOptions"
+                    :values="booleanValues"
                     width-class="w-28"
                   />
                   <!-- Select -->
-                  <SelectControl
+                  <RawValueSelect
                     v-else-if="selectOptions[item.key]"
                     v-model="editingState.stringValue"
-                    :options="getSettingOptions(item.key)"
+                    :values="getSettingValues(item.key)"
                     width-class="w-40"
                   />
                   <!-- Text -->
@@ -149,7 +149,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import SearchControl from '@/components/SearchControl.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { PERMISSIONS } from '@/constants/permissions';
@@ -184,10 +184,7 @@
   const selectOptions: Record<string, string[]> = {
     cert__letsencrypt__challenge: ['http', 'dns'],
   };
-  const booleanOptions = [
-    { value: 'true', label: 'true' },
-    { value: 'false', label: 'false' },
-  ];
+  const booleanValues = ['true', 'false'];
 
   interface EditingState {
     key: string | null;
@@ -205,11 +202,8 @@
 
   const editingState = ref<EditingState>(createEditingState());
 
-  function getSettingOptions(key: string) {
-    return (selectOptions[key] ?? []).map((option) => ({
-      value: option,
-      label: option,
-    }));
+  function getSettingValues(key: string) {
+    return selectOptions[key];
   }
 
   function displayConfigValue(value: unknown) {

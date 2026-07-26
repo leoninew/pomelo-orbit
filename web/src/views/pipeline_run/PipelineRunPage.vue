@@ -84,7 +84,7 @@
               </td>
               <td>
                 <AppBadge variant="status" :tone="statusTone(run.status)">
-                  {{ t(`pipelineRun.status.${run.status}`) }}
+                  {{ run.status }}
                 </AppBadge>
               </td>
               <td

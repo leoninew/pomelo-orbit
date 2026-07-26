@@ -7,9 +7,14 @@
         </h1>
         <p v-if="gateway" class="mt-1 text-sm text-muted-foreground">
           {{ gateway.code }}
-          <span v-if="primaryService" class="text-muted-foreground">
-            · {{ serviceStatusLabel(primaryService.status) }}
-          </span>
+          <AppBadge
+            v-if="primaryService"
+            variant="status"
+            :tone="appStatusTone(primaryService.status)"
+            class="ml-1"
+          >
+            {{ primaryService.status }}
+          </AppBadge>
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -82,17 +87,17 @@
             <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('gateway.fields.defaultEntrypoint') }}
             </dt>
-            <dd class="text-foreground">{{ gateway.default_entrypoint || '—' }}</dd>
+            <dd><AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge></dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.tlsMode') }}</dt>
-            <dd class="text-foreground">{{ gateway.tls_mode || 'none' }}</dd>
+            <dd><AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge></dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('gateway.fields.imagePullPolicy') }}
             </dt>
-            <dd class="text-foreground">{{ imagePullPolicyLabel(gateway.image_pull_policy) }}</dd>
+            <dd><AppBadge variant="pill">{{ gateway.image_pull_policy }}</AppBadge></dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('gateway.fields.image') }}</dt>
@@ -135,8 +140,8 @@
                 <tr v-for="(row, idx) in gateway.exposures" :key="idx">
                   <td class="text-foreground">{{ row.application_code }}</td>
                   <td class="text-foreground">{{ row.component_name }}</td>
-                  <td class="text-foreground">{{ row.protocol }}</td>
-                  <td class="text-foreground">{{ row.access }}</td>
+                  <td><AppBadge variant="pill">{{ row.protocol }}</AppBadge></td>
+                  <td><AppBadge variant="pill">{{ row.access }}</AppBadge></td>
                   <td class="text-foreground">{{ row.listen_port }} → {{ row.container_port }}</td>
                   <td class="text-foreground">{{ row.internal_dns }}</td>
                   <td class="text-foreground">{{ row.client_hint }}</td>
@@ -248,6 +253,7 @@
   import { applicationApi } from '@/api/application/application';
   import { environmentApi } from '@/api/environment/environment';
   import { gatewayApi } from '@/api/gateway/gateway';
+  import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import SelectControl from '@/components/SelectControl.vue';
@@ -257,10 +263,11 @@
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+  import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
 
   const toast = useToast();
-  const { t, te } = useI18n();
+  const { t } = useI18n();
   const route = useRoute();
   const router = useRouter();
   const { status, execute } = useStatusAsync();
@@ -302,7 +309,7 @@
       label:
         item.status === 'published'
           ? item.label
-          : `${item.label} (${serviceStatusLabel(item.status)})`,
+          : `${item.label} (${item.status})`,
     }))
   );
 
@@ -320,21 +327,10 @@
     }))
   );
 
-  function imagePullPolicyLabel(policy: string) {
-    const key = `application.imagePullPolicyLabels.${policy}`;
-    return te(key) ? t(key) : policy || '—';
-  }
-
-  function serviceStatusLabel(value: string) {
-    const key = `status.${value}`;
-    return te(key) ? t(key) : value;
-  }
-
   function serviceOptionLabel(item: ServiceResp) {
     const env = item.environment_code || item.environment_name || item.environment_id;
     const instance = item.instance_key || 'default';
-    const statusText = serviceStatusLabel(item.status);
-    return `${env} / ${instance} (${statusText})`;
+    return `${env} / ${instance} (${item.status})`;
   }
 
   async function loadGateway() {

@@ -135,8 +135,8 @@
               <tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
                 <td class="text-muted-foreground">{{ idx + 1 }}</td>
                 <td>
-                  <AppBadge>
-                    {{ getArtifactTypeLabel(artifact.type) }}
+                  <AppBadge variant="pill">
+                    {{ artifact.type }}
                   </AppBadge>
                 </td>
                 <td class="text-foreground">{{ artifact.name }}</td>
@@ -233,9 +233,9 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label class="app-field-label block">{{ t('buildStageDetail.artifactType') }}</label>
-          <SelectControl
+          <RawValueSelect
             v-model="artifactForm.type"
-            :options="artifactTypeOptions"
+            :values="artifactTypeValues"
             :placeholder="t('buildStageDetail.artifactTypePlaceholder')"
           />
         </div>
@@ -321,7 +321,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -348,10 +348,7 @@
   const isDeleteArtifactDialogOpen = ref(false);
   const showScriptDrawer = ref(false);
   const scriptTemp = ref('');
-  const artifactTypeOptions = computed(() => [
-    { value: 'docker_image', label: t('buildStageDetail.artifactTypes.dockerImage') },
-    { value: 'binary', label: t('buildStageDetail.artifactTypes.binary') },
-  ]);
+  const artifactTypeValues = ['docker_image', 'binary'];
   const form = reactive({ name: '', image: '', description: '' });
   const artifactForm = reactive({
     isEdit: false,
@@ -468,10 +465,6 @@
       path: artifact.path,
     });
     isArtifactDialogOpen.value = true;
-  }
-
-  function getArtifactTypeLabel(type: string) {
-    return artifactTypeOptions.value.find((option) => option.value === type)?.label ?? type;
   }
 
   function confirmRemoveArtifact(idx: number) {

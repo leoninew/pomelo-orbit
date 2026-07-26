@@ -4,7 +4,7 @@
       <h1 class="flex flex-wrap items-center gap-2 text-xl font-semibold text-foreground">
         {{ application?.name || t('application.detail.title') }}
         <AppBadge v-if="application" variant="pill" :tone="applicationKindTone(application.kind)">
-          {{ t('application.kindBadges.' + (application.kind || 'standard')) }}
+          {{ application.kind }}
         </AppBadge>
       </h1>
       <div class="flex flex-wrap items-center gap-2">
@@ -61,7 +61,7 @@
             </dt>
             <dd>
               <AppBadge variant="pill" :tone="applicationKindTone(application.kind)">
-                {{ t('application.kindBadges.' + (application.kind || 'standard')) }}
+                {{ application.kind }}
               </AppBadge>
             </dd>
           </div>
@@ -70,7 +70,7 @@
               {{ t('application.imagePullPolicy') }}
             </dt>
             <dd class="text-foreground">
-              {{ t('application.imagePullPolicyLabels.' + application.image_pull_policy) }}
+              <AppBadge variant="pill">{{ application.image_pull_policy }}</AppBadge>
             </dd>
           </div>
           <div class="flex gap-2">
@@ -157,7 +157,7 @@
                 </td>
                 <td>
                   <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
-                    {{ t('status.' + version.status) }}
+                    {{ version.status }}
                   </AppBadge>
                 </td>
                 <td
@@ -240,7 +240,7 @@
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('application.imagePullPolicy') }}</label>
-        <SelectControl v-model="editForm.image_pull_policy" :options="imagePullPolicyOptions" />
+        <RawValueSelect v-model="editForm.image_pull_policy" :values="imagePullPolicyValues" />
       </div>
       <template #footer>
         <button class="app-button" @click="isEditDialogOpen = false">
@@ -436,7 +436,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
@@ -494,11 +494,7 @@
     image_pull_policy: 'missing',
   });
   const editErrors = reactive({ name: '' });
-  const imagePullPolicyOptions = computed(() => [
-    { value: 'missing', label: t('application.imagePullPolicyOptions.missing') },
-    { value: 'always', label: t('application.imagePullPolicyOptions.always') },
-    { value: 'never', label: t('application.imagePullPolicyOptions.never') },
-  ]);
+  const imagePullPolicyValues = ['missing', 'always', 'never'];
 
   const versionForm = reactive({
     label: '',

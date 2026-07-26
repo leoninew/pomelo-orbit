@@ -56,7 +56,7 @@
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.status') }}</dt>
             <dd>
               <AppBadge variant="pill" :tone="pipelineStatusTone">
-                {{ pipelineStatusLabel }}
+                {{ run.status }}
               </AppBadge>
             </dd>
           </div>
@@ -217,7 +217,7 @@
                       variant="pill"
                       :tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
                     >
-                      {{ stageStatusLabel(stageRunMap[stage.id]?.status ?? 'waiting_to_run') }}
+                      {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}
                     </AppBadge>
                   </td>
                   <td class="max-w-xs">
@@ -302,7 +302,7 @@
               <tr v-for="artifact in artifacts" :key="artifact.id">
                 <td class="text-foreground">{{ artifact.stage_name }}</td>
                 <td>
-                  <AppBadge>
+                  <AppBadge variant="pill">
                     {{ artifact.type }}
                   </AppBadge>
                 </td>
@@ -455,19 +455,8 @@
   const isPolling = ref(false);
 
   const pipelineStatusTone = computed(() => (run.value ? statusTone(run.value.status) : 'default'));
-  const pipelineStatusLabel = computed(() =>
-    run.value ? t(`pipelineRun.status.${run.value.status}`) : ''
-  );
-
   function stageStatusTone(status: string) {
     return status === 'skipped' ? 'default' : statusTone(status);
-  }
-
-  function stageStatusLabel(status: string) {
-    if (status === 'skipped') {
-      return t('pipelineRun.status.skipped');
-    }
-    return t(`pipelineRun.status.${status}`);
   }
 
   function openLogDrawer(sr: PipelineStageRunResp) {

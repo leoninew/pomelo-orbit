@@ -57,16 +57,14 @@
                 {{ formatRoleNames(user) || '-' }}
               </td>
               <td>
-                <AppBadge v-if="user.status === 'enabled'" variant="status" tone="success">
-                  {{ t('userManagement.enabled') }}
-                </AppBadge>
-                <AppBadge v-else variant="status" tone="default">
-                  {{ t('userManagement.disabled') }}
+                <AppBadge
+                  variant="status"
+                  :tone="user.status === 'enabled' ? 'success' : 'default'"
+                >
+                  {{ user.status }}
                 </AppBadge>
               </td>
-              <td class="whitespace-nowrap text-foreground">
-                {{ formatAuthSource(user.auth_source) }}
-              </td>
+              <td><AppBadge variant="pill">{{ user.auth_source }}</AppBadge></td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(user.created_at) }}
               </td>
@@ -184,7 +182,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">{{ t('common.status') }}</label>
-          <SelectControl v-model="editForm.status" :options="userStatusOptions" />
+          <RawValueSelect v-model="editForm.status" :values="userStatusValues" />
         </div>
       </form>
       <template #footer>
@@ -229,7 +227,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
@@ -260,10 +258,7 @@
     status: '',
   });
   const canWriteUsers = computed(() => authStore.hasPermission(PERMISSIONS.USER_WRITE));
-  const userStatusOptions = computed(() => [
-    { value: 'enabled', label: t('userManagement.enabled') },
-    { value: 'disabled', label: t('userManagement.disabled') },
-  ]);
+  const userStatusValues = ['enabled', 'disabled'];
   const totalPages = computed(() => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)));
   const confirmDialogOpen = computed({
     get: () => confirmAction.value !== null,
@@ -281,17 +276,6 @@
     form.username = '';
     form.email = '';
     form.password = '';
-  }
-
-  function formatAuthSource(authSource: string) {
-    switch (authSource) {
-      case 'oauth':
-        return t('userManagement.authSourceOAuth');
-      case 'password':
-        return t('userManagement.authSourcePassword');
-      default:
-        throw new Error(`Unsupported auth source: ${authSource}`);
-    }
   }
 
   function formatRoleNames(user: UserListResp) {

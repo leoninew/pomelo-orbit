@@ -16,9 +16,9 @@
           width-class="app-toolbar-select"
           @update:model-value="handleEnvironmentChange"
         />
-        <ComboboxSelect
+        <RawValueCombobox
           :model-value="query.status"
-          :options="statusSelectOptions"
+          :values="statusValues"
           :placeholder="t('service.filterStatus')"
           width-class="app-toolbar-select"
           @update:model-value="handleStatusChange"
@@ -69,7 +69,7 @@
                       variant="status"
                       :tone="applicationKindTone(svc.application_kind)"
                     >
-                      {{ kindLabel(svc.application_kind) }}
+                      {{ svc.application_kind }}
                     </AppBadge>
                   </div>
                   <span class="text-xs text-muted-foreground">{{ svc.application_code }}</span>
@@ -91,7 +91,7 @@
               </td>
               <td>
                 <AppBadge variant="status" :tone="appStatusTone(svc.status)">
-                  {{ serviceStatusLabel(svc.status) }}
+                  {{ svc.status }}
                 </AppBadge>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(svc.updated_at) }}</td>
@@ -144,6 +144,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
+  import RawValueCombobox from '@/components/RawValueCombobox.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -155,7 +156,7 @@
   import { formatTime } from '@/utils/time';
 
   const router = useRouter();
-  const { t, te } = useI18n();
+  const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
   const { status, execute } = useStatusAsync();
@@ -192,23 +193,7 @@
     })),
   ]);
 
-  const statusSelectOptions = computed(() => [
-    { value: '', label: t('service.filterStatusAll') },
-    { value: 'deploying', label: serviceStatusLabel('deploying') },
-    { value: 'running', label: serviceStatusLabel('running') },
-    { value: 'stopped', label: serviceStatusLabel('stopped') },
-    { value: 'faulted', label: serviceStatusLabel('faulted') },
-  ]);
-
-  function kindLabel(kind: string) {
-    const key = `application.kindLabels.${kind || 'standard'}`;
-    return te(key) ? t(key) : kind;
-  }
-
-  function serviceStatusLabel(value: string) {
-    const key = `status.${value}`;
-    return te(key) ? t(key) : value;
-  }
+  const statusValues = ['deploying', 'running', 'stopped', 'faulted'];
 
   async function loadFilterOptions() {
     const projectId = projectStore.activeProjectId;

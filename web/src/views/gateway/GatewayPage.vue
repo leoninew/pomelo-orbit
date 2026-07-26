@@ -44,8 +44,8 @@
               <td class="text-foreground">{{ item.code }}</td>
               <td class="text-foreground">{{ item.rest_api_url }}</td>
               <td class="text-foreground">{{ item.base_domain }}</td>
-              <td class="text-foreground">{{ item.default_entrypoint || '—' }}</td>
-              <td class="text-foreground">{{ item.tls_mode || 'none' }}</td>
+              <td><AppBadge variant="pill">{{ item.default_entrypoint }}</AppBadge></td>
+              <td><AppBadge variant="pill">{{ item.tls_mode }}</AppBadge></td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(item.created_at) }}
               </td>
@@ -108,6 +108,7 @@
   import { useRouter } from 'vue-router';
   import { ToolbarRoot } from 'reka-ui';
   import { gatewayApi } from '@/api/gateway/gateway';
+  import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';

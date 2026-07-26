@@ -3,9 +3,9 @@ package deploymentsvc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
@@ -18,16 +18,12 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	if err != nil {
 		return err
 	}
-	versionId := ""
-	if deployment.VersionId != nil {
-		versionId = strings.TrimSpace(*deployment.VersionId)
-	}
-	if versionId == "" {
+	if deployment.VersionId == nil || *deployment.VersionId == "" {
 		err := fmt.Errorf("deployment %s missing version_id", deployment.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if deployment.EnvironmentId == nil || strings.TrimSpace(*deployment.EnvironmentId) == "" {
+	if deployment.EnvironmentId == nil || *deployment.EnvironmentId == "" {
 		err := fmt.Errorf("deployment %s missing environment_id", deployment.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -37,17 +33,22 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	opts := parseDeployOptions(deployment.OptionsJSON)
+	opts, err := parseDeployOptions(deployment.OptionsJSON)
+	if err != nil {
+		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
 	if forceRecreate {
 		opts.ForceRecreate = true
 	}
-	instanceKey, err := normalizeInstanceKey(opts.InstanceKey)
-	if err != nil {
+	if opts.InstanceKey == "" {
+		err := fmt.Errorf("deployment %s missing instance_key", deployment.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 
-	version, err := s.executionStore.Version(ctx, versionId)
+	version, err := s.executionStore.Version(ctx, *deployment.VersionId)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -72,7 +73,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.ensureSingleRuntime(ctx, app, env.Id, instanceKey); err != nil {
+	if err := s.ensureSingleRuntime(ctx, app, env.Id, opts.InstanceKey); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -107,6 +108,12 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId string, deploymentId string) error {
 	app, deployment, err := s.loadDeploymentExecution(ctx, applicationId, deploymentId)
 	if err != nil {
+		return err
+	}
+	restartOpts, err := parseDeployOptions(deployment.OptionsJSON)
+	if err != nil {
+		err = fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
@@ -153,7 +160,6 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	restartOpts := parseDeployOptions(deployment.OptionsJSON)
 	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, preparation.RenderConfig, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -222,7 +228,7 @@ func (s Service) loadDeploymentExecution(ctx context.Context, applicationId stri
 }
 
 func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId string, deployment model.Deployment) (model.Service, error) {
-	if deployment.ServiceId == nil || strings.TrimSpace(*deployment.ServiceId) == "" {
+	if deployment.ServiceId == nil || *deployment.ServiceId == "" {
 		return model.Service{}, fmt.Errorf("deployment %s missing service_id", deployment.Id)
 	}
 	svc, err := s.executionStore.Service(ctx, *deployment.ServiceId)
@@ -301,15 +307,15 @@ func countLogicalMounts(items []ResolvedMount) int {
 	return n
 }
 
-func parseDeployOptions(raw *string) deploymentdto.DeployOptionsJSON {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
-		return deploymentdto.DeployOptionsJSON{}
+func parseDeployOptions(raw *string) (deploymentdto.DeployOptionsJSON, error) {
+	if raw == nil || *raw == "" {
+		return deploymentdto.DeployOptionsJSON{}, errors.New("options_json is required")
 	}
 	var opts deploymentdto.DeployOptionsJSON
 	if err := json.Unmarshal([]byte(*raw), &opts); err != nil {
-		return deploymentdto.DeployOptionsJSON{}
+		return deploymentdto.DeployOptionsJSON{}, err
 	}
-	return opts
+	return opts, nil
 }
 
 func writeWorkingDirectory(w io.Writer, dir string) error {
@@ -319,7 +325,7 @@ func writeWorkingDirectory(w io.Writer, dir string) error {
 
 // ensureSingleRuntime rejects a second active service binding for the same standard app.
 func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application, environmentId, instanceKey string) error {
-	if strings.TrimSpace(app.Kind) == status.ApplicationKindGateway {
+	if app.Kind == status.ApplicationKindGateway {
 		return nil
 	}
 	if s.store == nil {

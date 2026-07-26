@@ -15,7 +15,7 @@ func TestDeployApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 
 	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", EnvironmentId: "environment-1", ForceRecreate: true,
+		VersionId: "version-1", EnvironmentId: "environment-1", InstanceKey: "default", ForceRecreate: true,
 	})
 	if err != nil {
 		t.Fatalf("DeployApplication returned error: %v", err)
@@ -50,7 +50,7 @@ func TestDeployApplicationCreatesServiceBeforeFirstDeployment(t *testing.T) {
 	store.service = model.Service{}
 
 	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", EnvironmentId: "environment-1",
+		VersionId: "version-1", EnvironmentId: "environment-1", InstanceKey: "default",
 	})
 	if err != nil {
 		t.Fatalf("DeployApplication returned error: %v", err)
@@ -102,7 +102,7 @@ func TestDeployApplicationRejectsMissingDispatcherBeforePersisting(t *testing.T)
 	service.dispatcher = nil
 
 	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", EnvironmentId: "environment-1",
+		VersionId: "version-1", EnvironmentId: "environment-1", InstanceKey: "default",
 	})
 	if err == nil {
 		t.Fatal("expected deployment dispatcher error")

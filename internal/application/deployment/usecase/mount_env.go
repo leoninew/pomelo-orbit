@@ -62,7 +62,7 @@ type ResolvedMount struct {
 }
 
 func parseMountSpecs(raw *string) ([]MountSpec, error) {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
+	if raw == nil || *raw == "" {
 		return nil, nil
 	}
 	var rawItems []map[string]any
@@ -75,7 +75,7 @@ func parseMountSpecs(raw *string) ([]MountSpec, error) {
 		source, _ := item["source"].(string)
 		target, _ := item["target"].(string)
 		ro := false
-		if strings.TrimSpace(sourceType) == mountSourceSpecial && strings.TrimSpace(source) == specialDockerSock {
+		if sourceType == mountSourceSpecial && source == specialDockerSock {
 			ro = true // Spec default for docker.sock
 		}
 		if v, ok := item["read_only"].(bool); ok {
@@ -84,12 +84,12 @@ func parseMountSpecs(raw *string) ([]MountSpec, error) {
 		content, _ := item["content"].(string)
 		contentMode, _ := item["content_mode"].(string)
 		spec := MountSpec{
-			SourceType:  strings.TrimSpace(sourceType),
-			Source:      strings.TrimSpace(source),
-			Target:      strings.TrimSpace(target),
+			SourceType:  sourceType,
+			Source:      source,
+			Target:      target,
 			ReadOnly:    ro,
 			Content:     content,
-			ContentMode: strings.TrimSpace(strings.ToLower(contentMode)),
+			ContentMode: contentMode,
 		}
 		if err := validateMountSpec(spec); err != nil {
 			return nil, fmt.Errorf("mounts[%d]: %w", i, err)
@@ -125,10 +125,6 @@ func validateMountSpec(m MountSpec) error {
 		return fmt.Errorf("unsupported source_type %q", m.SourceType)
 	}
 	hasContent := m.Content != ""
-	mode := m.ContentMode
-	if mode == "" {
-		mode = contentModeSeed
-	}
 	if hasContent || m.ContentMode != "" {
 		if m.SourceType != mountSourceLogical {
 			return fmt.Errorf("content is only allowed on logical file mounts")
@@ -136,7 +132,10 @@ func validateMountSpec(m MountSpec) error {
 		if !isFileMountSource(m.Source, m.Target) {
 			return fmt.Errorf("content is only allowed on file mounts (source/target with file suffix)")
 		}
-		if mode != contentModeSeed && mode != contentModeSync {
+		if m.ContentMode == "" {
+			return fmt.Errorf("content_mode is required for file mounts")
+		}
+		if m.ContentMode != contentModeSeed && m.ContentMode != contentModeSync {
 			return fmt.Errorf("content_mode must be seed or sync")
 		}
 		if len(m.Content) > maxMountContentBytes {
@@ -147,19 +146,18 @@ func validateMountSpec(m MountSpec) error {
 }
 
 func parseEnvVars(raw *string) ([]EnvVar, error) {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
+	if raw == nil || *raw == "" {
 		return nil, nil
 	}
-	trimmed := strings.TrimSpace(*raw)
-	if strings.HasPrefix(trimmed, "{") {
+	if strings.HasPrefix(*raw, "{") {
 		return nil, fmt.Errorf("env_json must be a JSON array of {key,value}, not an object")
 	}
 	var vars []EnvVar
-	if err := json.Unmarshal([]byte(trimmed), &vars); err != nil {
+	if err := json.Unmarshal([]byte(*raw), &vars); err != nil {
 		return nil, fmt.Errorf("env must be a JSON array of objects: %w", err)
 	}
 	for i, item := range vars {
-		if strings.TrimSpace(item.Key) == "" {
+		if item.Key == "" {
 			return nil, fmt.Errorf("env[%d].key is required", i)
 		}
 	}
@@ -197,7 +195,6 @@ func collectPlaceholders(varsList ...[]EnvVar) map[string]placeholderNeed {
 }
 
 func parsePlaceholder(value string) (string, placeholderNeed, bool) {
-	value = strings.TrimSpace(value)
 	if m := envPlaceholderRequired.FindStringSubmatch(value); len(m) == 2 {
 		return m[1], placeholderNeed{Required: true}, true
 	}
@@ -234,7 +231,7 @@ func applyEnvPlaceholders(vars []EnvVar, runtime map[string]string) map[string]s
 	}
 	out := make(map[string]string, len(vars))
 	for _, item := range vars {
-		key := strings.TrimSpace(item.Key)
+		key := item.Key
 		value := item.Value
 		if name, _, ok := parsePlaceholder(value); ok {
 			if runtime != nil {
@@ -250,9 +247,8 @@ func applyEnvPlaceholders(vars []EnvVar, runtime map[string]string) map[string]s
 
 func isFileMountSource(source string, target string) bool {
 	for _, path := range []string{source, target} {
-		lower := strings.ToLower(path)
 		for _, suffix := range fileMountSuffixes {
-			if strings.HasSuffix(lower, suffix) {
+			if strings.HasSuffix(path, suffix) {
 				return true
 			}
 		}
@@ -262,7 +258,6 @@ func isFileMountSource(source string, target string) bool {
 
 // isAbsoluteMountSource rejects host absolute paths for logical sources, independent of GOOS.
 func isAbsoluteMountSource(source string) bool {
-	source = strings.TrimSpace(source)
 	if source == "" {
 		return false
 	}
@@ -321,17 +316,13 @@ func resolveMountSpecs(mounts []MountSpec, physicalServiceDir string) ([]Resolve
 		default:
 			return nil, fmt.Errorf("unsupported source_type %q", m.SourceType)
 		}
-		mode := strings.TrimSpace(strings.ToLower(m.ContentMode))
-		if mode == "" {
-			mode = contentModeSeed
-		}
 		out = append(out, ResolvedMount{
 			Compose:     compose,
 			HostSource:  host,
 			IsFile:      isFile,
 			SourceType:  m.SourceType,
 			Content:     m.Content,
-			ContentMode: mode,
+			ContentMode: m.ContentMode,
 		})
 	}
 	return out, nil
@@ -360,7 +351,7 @@ func MaterializeLogicalMountSources(resolved []ResolvedMount) error {
 
 func materializeFile(path string, content string, mode string) error {
 	if mode == "" {
-		mode = contentModeSeed
+		return fmt.Errorf("content_mode is required for file mount %s", path)
 	}
 	if st, err := os.Stat(path); err == nil {
 		if st.IsDir() {

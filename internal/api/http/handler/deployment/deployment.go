@@ -152,7 +152,7 @@ func (h Handler) GetApplicationStatus(c *gin.Context) {
 	}
 	value, err := h.service.ApplicationStatus(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTargetFromQuery(c))
 	if err != nil {
-		transportresponse.ProtoJSON(c, http.StatusInternalServerError, &applicationv1.ApplicationStatusResp{Status: value})
+		h.writeError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.ApplicationStatusResp{Status: value})
@@ -165,7 +165,7 @@ func (h Handler) GetApplicationLogs(c *gin.Context) {
 	}
 	value, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Param("app_id"), binding.QueryInt(c.Request.URL.Query().Get("tail"), 100), deploymentTargetFromQuery(c), c.Request.URL.Query().Get("component"))
 	if err != nil {
-		transportresponse.ProtoJSON(c, http.StatusInternalServerError, &applicationv1.ApplicationLogsResp{Logs: value})
+		h.writeError(c, err)
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.ApplicationLogsResp{Logs: value})

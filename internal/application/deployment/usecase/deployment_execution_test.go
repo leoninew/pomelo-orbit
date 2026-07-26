@@ -40,13 +40,15 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 	versionID := testVersionID()
 	envID := testEnvID()
 	projectID := testProjectID()
+	optionsJSON := `{"instance_key":"default"}`
 	return &fakeDeploymentExecutionStore{
-		app: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", ImagePullPolicy: "missing"},
+		app: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard, ImagePullPolicy: "missing"},
 		deployment: model.Deployment{
 			Id:            "deploy-1",
 			VersionId:     &versionID,
 			EnvironmentId: &envID,
 			ServiceId:     stringPtr("svc-1"),
+			OptionsJSON:   &optionsJSON,
 		},
 		version: model.Version{Id: versionID, ApplicationId: "app-1", Label: "v1", Status: status.VersionStatusUnpublished},
 		components: []model.VersionComponent{
@@ -220,7 +222,7 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	cfg := config.Config{Orbit: config.OrbitConfig{Root: t.TempDir()}}
 	store := deployStore(t)
 	store.exposes = []model.VersionExpose{
-		{ComponentName: "web", Protocol: "http", ContainerPort: 80},
+		{ComponentName: "web", Protocol: "http", Access: exposeAccessPublic, ContainerPort: 80},
 	}
 	store.gateway = model.GatewayConfig{
 		ApplicationId:     "gw-1",

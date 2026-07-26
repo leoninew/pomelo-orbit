@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -25,7 +24,7 @@ func TestWorkspaceUsesLogicalDataRootForServiceFiles(t *testing.T) {
 	}
 }
 
-func TestWorkspaceWritesConfigAndNormalizesInitScriptLineEndings(t *testing.T) {
+func TestWorkspaceWritesInitScriptWithoutChangingContent(t *testing.T) {
 	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
 	content := "#!/bin/bash\r\nset -e\r\necho ok\r"
 
@@ -36,7 +35,7 @@ func TestWorkspaceWritesConfigAndNormalizesInitScriptLineEndings(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(written), "\r") || string(written) != "#!/bin/bash\nset -e\necho ok\n" {
+	if string(written) != content {
 		t.Fatalf("unexpected init script content: %q", string(written))
 	}
 }

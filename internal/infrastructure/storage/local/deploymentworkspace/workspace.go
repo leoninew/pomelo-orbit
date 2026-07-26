@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -22,7 +21,7 @@ type Workspace struct {
 }
 
 func NewWithResolver(dataRoot string, resolver PhysicalDataRootResolver) *Workspace {
-	return &Workspace{logicalDataRoot: filepath.Clean(dataRoot), resolver: resolver}
+	return &Workspace{logicalDataRoot: dataRoot, resolver: resolver}
 }
 
 func (w *Workspace) AppDir(appCode string) string {
@@ -41,9 +40,6 @@ func (w *Workspace) WriteConfig(appCode string, envCode string, instanceKey stri
 	path = filepath.Join(w.ServiceDir(appCode, envCode, instanceKey), path)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
-	}
-	if filepath.Base(path) == "init.sh" {
-		content = normalizeShellScriptLineEndings(content)
 	}
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err
@@ -79,9 +75,4 @@ func (w *Workspace) PhysicalServiceDir(ctx context.Context, appCode string, envC
 		return "", err
 	}
 	return filepath.ToSlash(filepath.Join(physicalDataRoot, deploymentDataDir, appCode, envCode, instanceKey)), nil
-}
-
-func normalizeShellScriptLineEndings(content string) string {
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	return strings.ReplaceAll(content, "\r", "\n")
 }

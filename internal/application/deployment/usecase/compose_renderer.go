@@ -52,17 +52,13 @@ func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, 
 // RenderComposeDetailed returns compose YAML and resolved mounts for materialize.
 func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (RenderResult, error) {
 	_ = ctx
-	kind := strings.TrimSpace(input.App.Kind)
-	if kind == "" {
-		kind = status.ApplicationKindStandard
-	}
-	switch kind {
+	switch input.App.Kind {
 	case status.ApplicationKindStandard:
 		return renderStandardCompose(input)
 	case status.ApplicationKindGateway:
 		return renderGatewayCompose(input)
 	default:
-		return RenderResult{}, fmt.Errorf("unsupported application kind %q", kind)
+		return RenderResult{}, fmt.Errorf("unsupported application kind %q", input.App.Kind)
 	}
 }
 
@@ -91,11 +87,10 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 	}
 	versionEnv := applyEnvPlaceholders(versionEnvVars, input.RuntimeConfig)
 
-	appCode := strings.TrimSpace(input.App.Code)
 	services := make(map[string]any, len(input.Components))
 	var allResolved []ResolvedMount
 	for _, component := range input.Components {
-		service, resolved, err := renderVersionComponentService(component, versionEnv, appCode, input.PhysicalSvcDir, input.RuntimeConfig)
+		service, resolved, err := renderVersionComponentService(component, versionEnv, input.App.Code, input.PhysicalSvcDir, input.RuntimeConfig)
 		if err != nil {
 			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
 		}
@@ -120,7 +115,7 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 
 	// Standard apps always join platform network for cluster DNS (with or without expose).
 	if !injectGatewayNetwork {
-		if err := injectAllComponentsPlatformNetwork(services, appCode); err != nil {
+		if err := injectAllComponentsPlatformNetwork(services, input.App.Code); err != nil {
 			return RenderResult{}, err
 		}
 	}
@@ -155,11 +150,7 @@ func injectAllComponentsPlatformNetwork(services map[string]any, appCode string)
 		if !ok {
 			continue
 		}
-		alias, err := runtimeName(appCode, name)
-		if err != nil {
-			return err
-		}
-		ensureServiceJoinsNetworksWithAlias(service, alias)
+		ensureServiceJoinsNetworksWithAlias(service, runtimeName(appCode, name))
 	}
 	return nil
 }
@@ -211,8 +202,7 @@ func injectExposeOutlets(services map[string]any, input RenderInput) error {
 		if !ok {
 			return fmt.Errorf("component %s not found in compose services", expose.ComponentName)
 		}
-		access := exposeAccessOf(expose)
-		switch access {
+		switch expose.Access {
 		case exposeAccessLocal:
 			listen := effectiveListen(expose)
 			portMapping := fmt.Sprintf("127.0.0.1:%d:%d", listen, expose.ContainerPort)
@@ -226,8 +216,8 @@ func injectExposeOutlets(services map[string]any, input RenderInput) error {
 			}
 			service["ports"] = append(existing, portMapping)
 		case exposeAccessPublic:
-			routerName := sanitizeComposeName(fmt.Sprintf("%s-%s-%s-%s-%s",
-				input.App.Code, input.Env.Code, input.Service.InstanceKey, expose.ComponentName, expose.Protocol))
+			routerName := fmt.Sprintf("%s-%s-%s-%s-%s",
+				input.App.Code, input.Env.Code, input.Service.InstanceKey, expose.ComponentName, expose.Protocol)
 			labels, err := buildTraefikLabels(routerName, expose, input, host)
 			if err != nil {
 				return err
@@ -235,7 +225,7 @@ func injectExposeOutlets(services map[string]any, input RenderInput) error {
 			existing, _ := service["labels"].([]string)
 			service["labels"] = append(existing, labels...)
 		default:
-			return fmt.Errorf("unsupported expose access %q", access)
+			return fmt.Errorf("unsupported expose access %q", expose.Access)
 		}
 	}
 	return nil
@@ -244,7 +234,7 @@ func injectExposeOutlets(services map[string]any, input RenderInput) error {
 func validateLocalListenConflicts(exposes []model.VersionExpose) error {
 	seen := map[int]string{}
 	for _, expose := range exposes {
-		if exposeAccessOf(expose) != exposeAccessLocal {
+		if expose.Access != exposeAccessLocal {
 			continue
 		}
 		listen := effectiveListen(expose)
@@ -262,10 +252,10 @@ func validatePolicyForExposes(gateway *model.GatewayConfig, exposes []model.Vers
 	hasPublicTCP := false
 	hasPublicTCPWithTLS := false
 	for _, expose := range exposes {
-		if exposeAccessOf(expose) != exposeAccessPublic {
+		if expose.Access != exposeAccessPublic {
 			continue
 		}
-		switch strings.ToLower(strings.TrimSpace(expose.Protocol)) {
+		switch expose.Protocol {
 		case "http":
 			hasPublicHTTP = true
 		case "tcp":
@@ -278,15 +268,15 @@ func validatePolicyForExposes(gateway *model.GatewayConfig, exposes []model.Vers
 	if gateway == nil {
 		return fmt.Errorf("gateway config required for public expose")
 	}
-	tlsMode := strings.ToLower(strings.TrimSpace(gateway.TLSMode))
-	if tlsMode == "" {
-		tlsMode = "none"
+	tlsMode := gateway.TLSMode
+	if tlsMode != "none" && tlsMode != "letsencrypt" && tlsMode != "tls" {
+		return fmt.Errorf("gateway tls_mode must be none, letsencrypt or tls")
 	}
 	if hasPublicTCP && (tlsMode == "letsencrypt" || tlsMode == "tls") {
 		hasPublicTCPWithTLS = true
 	}
 	if hasPublicHTTP {
-		entrypoint := strings.TrimSpace(gateway.DefaultEntrypoint)
+		entrypoint := gateway.DefaultEntrypoint
 		if entrypoint == "" {
 			return fmt.Errorf("gateway ingress policy incomplete: default_entrypoint is required")
 		}
@@ -315,13 +305,13 @@ func validateHTTPPathConflicts(gateway *model.GatewayConfig, appCode string, exp
 	}
 	seen := map[string]struct{}{}
 	for _, expose := range exposes {
-		if strings.ToLower(strings.TrimSpace(expose.Protocol)) != "http" {
+		if expose.Protocol != "http" {
 			continue
 		}
-		if exposeAccessOf(expose) != exposeAccessPublic {
+		if expose.Access != exposeAccessPublic {
 			continue
 		}
-		path := normalizeHTTPPath(ptrString(expose.PathPrefix))
+		path := ptrString(expose.PathPrefix)
 		key := host + "|" + path
 		if _, ok := seen[key]; ok {
 			return fmt.Errorf("duplicate http route host+path for version: %s%s (use distinct path_prefix)", host, path)
@@ -331,31 +321,19 @@ func validateHTTPPathConflicts(gateway *model.GatewayConfig, appCode string, exp
 	return nil
 }
 
-func normalizeHTTPPath(path string) string {
-	path = strings.TrimSpace(path)
-	if path == "" || path == "/" {
-		return "/"
-	}
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return path
-}
-
 // deriveHost builds {app_code}.{gateway.base_domain}.
 func deriveHost(gateway *model.GatewayConfig, appCode string) (string, error) {
 	if gateway == nil {
 		return "", fmt.Errorf("gateway config required for host derivation")
 	}
-	baseDomain := strings.TrimSpace(gateway.BaseDomain)
+	baseDomain := gateway.BaseDomain
 	if baseDomain == "" {
 		return "", fmt.Errorf("gateway base_domain is required for host derivation")
 	}
-	appCode = strings.TrimSpace(appCode)
 	if appCode == "" {
 		return "", fmt.Errorf("app code is required for host derivation")
 	}
-	host := strings.ToLower(appCode + "." + baseDomain)
+	host := appCode + "." + baseDomain
 	if !validDeploymentRouteDomain(host) {
 		return "", fmt.Errorf("invalid derived host %q", host)
 	}
@@ -367,31 +345,34 @@ func injectGatewayDashboardLabels(services map[string]any, input RenderInput) er
 	if input.Gateway == nil {
 		return nil
 	}
-	entrypoint := strings.TrimSpace(input.Gateway.DefaultEntrypoint)
-	if entrypoint == "" || !validGatewayEntrypoint(entrypoint) {
-		return nil
+	entrypoint := input.Gateway.DefaultEntrypoint
+	if entrypoint == "" {
+		return fmt.Errorf("gateway default_entrypoint is required")
+	}
+	if !validGatewayEntrypoint(entrypoint) {
+		return fmt.Errorf("gateway default_entrypoint must be web or websecure")
 	}
 	host, err := deriveHost(input.Gateway, input.App.Code)
 	if err != nil {
-		return nil
+		return err
 	}
 	if len(input.Components) == 0 {
 		return nil
 	}
-	componentName := strings.TrimSpace(input.Components[0].Name)
+	componentName := input.Components[0].Name
 	service, ok := services[componentName].(map[string]any)
 	if !ok {
 		return fmt.Errorf("gateway component %s not found in compose services", componentName)
 	}
-	routerName := sanitizeComposeName(fmt.Sprintf("%s-%s-%s-dashboard",
-		input.App.Code, input.Env.Code, input.Service.InstanceKey))
+	routerName := fmt.Sprintf("%s-%s-%s-dashboard",
+		input.App.Code, input.Env.Code, input.Service.InstanceKey)
 	labels := []string{
 		"traefik.enable=true",
 		"traefik.http.routers." + routerName + ".rule=Host(`" + host + "`)",
 		"traefik.http.routers." + routerName + ".entrypoints=" + entrypoint,
 		"traefik.http.routers." + routerName + ".service=api@internal",
 	}
-	tlsMode := strings.ToLower(strings.TrimSpace(input.Gateway.TLSMode))
+	tlsMode := input.Gateway.TLSMode
 	switch tlsMode {
 	case "letsencrypt":
 		labels = append(labels,
@@ -400,6 +381,9 @@ func injectGatewayDashboardLabels(services map[string]any, input RenderInput) er
 		)
 	case "tls":
 		labels = append(labels, "traefik.http.routers."+routerName+".tls=true")
+	case "none":
+	default:
+		return fmt.Errorf("gateway tls_mode must be none, letsencrypt or tls")
 	}
 	existing, _ := service["labels"].([]string)
 	service["labels"] = append(existing, labels...)
@@ -411,13 +395,13 @@ func buildTraefikLabels(routerName string, expose model.VersionExpose, input Ren
 	if input.Gateway == nil {
 		return nil, fmt.Errorf("gateway config required for public expose labels")
 	}
-	entrypoint := strings.TrimSpace(input.Gateway.DefaultEntrypoint)
-	tlsMode := strings.ToLower(strings.TrimSpace(input.Gateway.TLSMode))
-	if tlsMode == "" {
-		tlsMode = "none"
+	entrypoint := input.Gateway.DefaultEntrypoint
+	tlsMode := input.Gateway.TLSMode
+	if tlsMode != "none" && tlsMode != "letsencrypt" && tlsMode != "tls" {
+		return nil, fmt.Errorf("gateway tls_mode must be none, letsencrypt or tls")
 	}
 
-	switch strings.ToLower(strings.TrimSpace(expose.Protocol)) {
+	switch expose.Protocol {
 	case "http":
 		if entrypoint == "" {
 			return nil, fmt.Errorf("gateway default_entrypoint is required for %s", expose.ComponentName)
@@ -433,11 +417,8 @@ func buildTraefikLabels(routerName string, expose model.VersionExpose, input Ren
 			host = derived
 		}
 		rule := "Host(`" + host + "`)"
-		path := strings.TrimSpace(ptrString(expose.PathPrefix))
+		path := ptrString(expose.PathPrefix)
 		if path != "" && path != "/" {
-			if !strings.HasPrefix(path, "/") {
-				path = "/" + path
-			}
 			rule = rule + " && PathPrefix(`" + path + "`)"
 		}
 		labels = append(labels,
@@ -491,7 +472,7 @@ func buildTraefikLabels(routerName string, expose model.VersionExpose, input Ren
 }
 
 func exposeKey(componentName string, protocol string, port int) string {
-	return strings.ToLower(strings.TrimSpace(componentName)) + "|" + strings.ToLower(strings.TrimSpace(protocol)) + "|" + strconv.Itoa(port)
+	return componentName + "|" + protocol + "|" + strconv.Itoa(port)
 }
 
 func ptrString(v *string) string {
@@ -504,11 +485,11 @@ func ptrString(v *string) string {
 func validateVersionComponents(components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
 	for _, component := range components {
-		name := strings.TrimSpace(component.Name)
+		name := component.Name
 		if name == "" {
 			return fmt.Errorf("component name is required")
 		}
-		if strings.TrimSpace(component.Image) == "" {
+		if component.Image == "" {
 			return fmt.Errorf("component %s image is required", name)
 		}
 		if _, exists := names[name]; exists {
@@ -539,29 +520,29 @@ func validateVersionComponents(components []model.VersionComponent) error {
 func validateVersionExposes(exposes []model.VersionExpose, components []model.VersionComponent) error {
 	names := make(map[string]struct{}, len(components))
 	for _, c := range components {
-		names[strings.TrimSpace(c.Name)] = struct{}{}
+		names[c.Name] = struct{}{}
 	}
 	seen := map[string]struct{}{}
 	for _, expose := range exposes {
-		name := strings.TrimSpace(expose.ComponentName)
+		name := expose.ComponentName
 		if name == "" {
 			return fmt.Errorf("expose component_name is required")
 		}
 		if _, ok := names[name]; !ok {
 			return fmt.Errorf("expose component %s not found in version components", name)
 		}
-		protocol := strings.ToLower(strings.TrimSpace(expose.Protocol))
+		protocol := expose.Protocol
 		if protocol != "http" && protocol != "tcp" {
 			return fmt.Errorf("expose protocol must be http or tcp")
 		}
 		if expose.ContainerPort < 1 || expose.ContainerPort > 65535 {
 			return fmt.Errorf("expose container_port out of range")
 		}
-		access := exposeAccessOf(expose)
+		access := expose.Access
 		if access != exposeAccessLocal && access != exposeAccessPublic {
 			return fmt.Errorf("expose access must be local or public")
 		}
-		if protocol == "tcp" && strings.TrimSpace(ptrString(expose.PathPrefix)) != "" {
+		if protocol == "tcp" && ptrString(expose.PathPrefix) != "" {
 			return fmt.Errorf("path_prefix is only allowed for http expose")
 		}
 		if expose.ListenPort != nil && *expose.ListenPort != 0 {
@@ -585,13 +566,9 @@ func renderVersionComponentService(
 	physicalServiceDir string,
 	runtime map[string]string,
 ) (map[string]any, []ResolvedMount, error) {
-	name, err := runtimeName(appCode, component.Name)
-	if err != nil {
-		return nil, nil, err
-	}
 	service := map[string]any{
-		"image":          strings.TrimSpace(component.Image),
-		"container_name": name,
+		"image":          component.Image,
+		"container_name": runtimeName(appCode, component.Name),
 	}
 	if command, err := parseStringSliceJSON(component.CommandJSON); err != nil {
 		return nil, nil, err
@@ -656,8 +633,8 @@ func renderVersionComponentService(
 	} else if resources != nil {
 		service["deploy"] = map[string]any{"resources": resources}
 	}
-	if component.PullPolicy != nil && strings.TrimSpace(*component.PullPolicy) != "" {
-		service["pull_policy"] = strings.TrimSpace(*component.PullPolicy)
+	if component.PullPolicy != nil && *component.PullPolicy != "" {
+		service["pull_policy"] = *component.PullPolicy
 	}
 	return service, resolved, nil
 }
@@ -677,7 +654,7 @@ func mergeEnv(base map[string]string, override map[string]string) map[string]str
 }
 
 func parseStringSliceJSON(raw *string) ([]string, error) {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
+	if raw == nil || *raw == "" {
 		return nil, nil
 	}
 	var out []string
@@ -688,7 +665,7 @@ func parseStringSliceJSON(raw *string) ([]string, error) {
 }
 
 func parseAnyJSON(raw *string) (any, error) {
-	if raw == nil || strings.TrimSpace(*raw) == "" {
+	if raw == nil || *raw == "" {
 		return nil, nil
 	}
 	var out any

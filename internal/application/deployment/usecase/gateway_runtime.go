@@ -2,7 +2,6 @@ package deploymentsvc
 
 import (
 	"context"
-	"strings"
 
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
@@ -22,11 +21,11 @@ func (s Service) gatewayForDeployment(ctx context.Context, app model.Application
 }
 
 func validGatewayEntrypoint(name string) bool {
-	return strings.TrimSpace(name) == entrypointWeb || strings.TrimSpace(name) == entrypointWebSecure
+	return name == entrypointWeb || name == entrypointWebSecure
 }
 
 func isActiveServiceStatus(statusValue string) bool {
-	switch strings.TrimSpace(statusValue) {
+	switch statusValue {
 	case status.ServiceStatusRunning, status.ServiceStatusDeploying:
 		return true
 	default:

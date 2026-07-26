@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
-	"strings"
 	"time"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
@@ -61,11 +60,10 @@ func New(
 }
 
 func (s Service) ListDeployments(ctx context.Context, userId string, input deploymentdto.DeploymentListInput) (repository.Page[model.Deployment], error) {
-	projectId := strings.TrimSpace(input.ProjectId)
-	if projectId == "" {
+	if input.ProjectId == "" {
 		return repository.Page[model.Deployment]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+	if err := s.ensureProjectMembership(ctx, input.ProjectId, userId); err != nil {
 		return repository.Page[model.Deployment]{}, err
 	}
 	dateFrom, err := parseOptionalRunTime(input.DateFrom, "date_from")
@@ -76,7 +74,7 @@ func (s Service) ListDeployments(ctx context.Context, userId string, input deplo
 	if err != nil {
 		return repository.Page[model.Deployment]{}, err
 	}
-	items, err := s.deployment.ListDeployments(ctx, projectId, input.ApplicationId, input.Status, input.Search, dateFrom, dateTo, input.Page, input.PerPage)
+	items, err := s.deployment.ListDeployments(ctx, input.ProjectId, input.ApplicationId, input.Status, input.Search, dateFrom, dateTo, input.Page, input.PerPage)
 	if err != nil {
 		return repository.Page[model.Deployment]{}, apperror.Wrap(apperror.KindInternal, "Failed to list deployments", err)
 	}
@@ -134,7 +132,7 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	if deployment.Status == status.WorkStatusWaitingToRun {
 		return deploymentdto.DeploymentContainerLog{Source: "pending", IsRealtimeSupported: true}, nil
 	}
-	if deployment.ApplicationId == nil || strings.TrimSpace(*deployment.ApplicationId) == "" {
+	if deployment.ApplicationId == nil || *deployment.ApplicationId == "" {
 		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
 	}
 	app, err := s.application.Application(ctx, *deployment.ApplicationId)
@@ -168,7 +166,6 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 }
 
 func (s Service) loadDeploymentForUser(ctx context.Context, userId string, deploymentId string) (model.Deployment, error) {
-	deploymentId = strings.TrimSpace(deploymentId)
 	deployment, err := s.deployment.Deployment(ctx, deploymentId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -217,7 +214,7 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 }
 
 func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deployment, offset int) (string, int, error) {
-	if deployment.ApplicationId == nil || strings.TrimSpace(*deployment.ApplicationId) == "" {
+	if deployment.ApplicationId == nil || *deployment.ApplicationId == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
 	}
 	app, err := s.application.Application(ctx, *deployment.ApplicationId)
@@ -227,18 +224,24 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	envCode := "local"
-	instanceKey := "default"
-	if deployment.EnvironmentId != nil && strings.TrimSpace(*deployment.EnvironmentId) != "" {
-		if env, err := s.environment.Environment(ctx, *deployment.EnvironmentId); err == nil {
-			envCode = env.Code
+	if deployment.EnvironmentId == nil || *deployment.EnvironmentId == "" {
+		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated environment")
+	}
+	env, err := s.environment.Environment(ctx, *deployment.EnvironmentId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return "", offset, apperror.New(apperror.KindNotFound, "Environment "+*deployment.EnvironmentId+" not found")
 		}
+		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
 	}
-	opts := parseDeployOptions(deployment.OptionsJSON)
-	if strings.TrimSpace(opts.InstanceKey) != "" {
-		instanceKey = opts.InstanceKey
+	opts, err := parseDeployOptions(deployment.OptionsJSON)
+	if err != nil {
+		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has invalid options: "+err.Error())
 	}
-	logPath := s.workspace.DeploymentLogPath(app.Code, envCode, instanceKey, deployment.Id)
+	if opts.InstanceKey == "" {
+		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated instance")
+	}
+	logPath := s.workspace.DeploymentLogPath(app.Code, env.Code, opts.InstanceKey, deployment.Id)
 	content, newOffset, err := s.logStore.Read(logPath, offset)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)
@@ -247,7 +250,6 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 }
 
 func parseOptionalRunTime(value string, name string) (*time.Time, error) {
-	value = strings.TrimSpace(value)
 	if value == "" {
 		return nil, nil
 	}
@@ -263,7 +265,7 @@ func deploymentStatusComplete(value string) bool {
 }
 
 func outputOrError(output string, err error) string {
-	if strings.TrimSpace(output) != "" {
+	if output != "" {
 		return output
 	}
 	return fmt.Sprint(err)

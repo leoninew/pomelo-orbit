@@ -22,24 +22,7 @@ func (c composeCommand) argv() []string {
 }
 
 func composeProjectName(appCode string, envCode string, instanceKey string) string {
-	return sanitizeComposeName(fmt.Sprintf("%s-%s-%s", appCode, envCode, instanceKey))
-}
-
-func sanitizeComposeName(value string) string {
-	value = strings.ToLower(strings.TrimSpace(value))
-	var b strings.Builder
-	for _, r := range value {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
-			b.WriteRune(r)
-			continue
-		}
-		b.WriteByte('-')
-	}
-	out := strings.Trim(b.String(), "-_")
-	if out == "" {
-		return "app"
-	}
-	return out
+	return fmt.Sprintf("%s-%s-%s", appCode, envCode, instanceKey)
 }
 
 func deployComposeCommand(projectName string, imagePullPolicy string, forceRecreate bool) composeCommand {
@@ -65,7 +48,6 @@ func containerLogsSinceCommand(projectName string, since string) composeCommand 
 func containerLogsTailCommand(projectName string, tail string, serviceNames ...string) composeCommand {
 	args := []string{"compose", "-p", projectName, "-f", "docker-compose.yml", "logs", "--tail", tail}
 	for _, name := range serviceNames {
-		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
 		}

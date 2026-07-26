@@ -1,0 +1,38 @@
+# Pomelo Orbit MCP
+
+本目录提供本地 stdio MCP Server。Application、Version 与 Deployment 的写操作只调用 Pomelo Orbit HTTP API；Docker / Docker Compose 仅用于读取受管部署的运行时事实。
+
+## Prerequisites
+
+- Python 3.11+ 与 `uv`
+- 已启动且可登录的 Pomelo Orbit HTTP API
+- 与 Orbit 使用同一 Docker context 和可见 data root 的 Docker CLI
+
+## Configuration
+
+从 `.env.example` 创建本地 `mcp/.env`，填写既有 Orbit 用户名、密码和 API 地址。默认 data root 是仓库的 `data/` 目录，缺失时会创建；仅在 Docker CLI 可见路径不同于默认值时设置 `POMELO_ORBIT_DATA_ROOT` 覆盖。Server 登录后会将短期 JWT 缓存到 `mcp/.mcp-jwt.env`。这两个文件均被 Git 忽略，且绝不能加入 MCP 配置或日志。
+
+可选变量：
+
+- `POMELO_ORBIT_DOCKER_CONTEXT`
+- `POMELO_ORBIT_WAIT_TIMEOUT_SECONDS`，默认 `300`
+- `POMELO_ORBIT_STABILITY_WINDOW_SECONDS`，默认 `60`
+- `POMELO_ORBIT_STABILITY_POLL_SECONDS`，默认 `2`
+
+## Run
+
+```text
+uv --directory mcp run pomelo-orbit-mcp
+```
+
+该进程使用 stdio transport。将此命令配置为 MCP client 的 server command；不要通过 HTTP 暴露该本地 Server。
+
+## Development checks
+
+```text
+make -C mcp sync
+make -C mcp check
+make -C mcp run
+```
+
+`make -C mcp help` 列出全部入口。Docker 集成测试需显式配置隔离的 Compose workspace 与 project 后执行 `make -C mcp test-docker`。

@@ -48,6 +48,7 @@ func NewCommandService(
 func NewExecutionService(
 	project repository.ProjectReader,
 	application repository.ApplicationStore,
+	credential repository.CredentialStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	gatewayCoordinator gatewayport.DeploymentCoordinator,
@@ -55,6 +56,7 @@ func NewExecutionService(
 	workspace deploymentport.Workspace,
 	runner deploymentport.CommandRunner,
 	logStore deploymentport.ExecutionLogStore,
+	secretKey string,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -66,6 +68,7 @@ func NewExecutionService(
 		logger: logger, workspace: workspace, runner: runner,
 		logStore: logStore, executionLogStore: logStore,
 		gatewayCoordinator: gatewayCoordinator,
+		credential:         credential, secretKey: secretKey,
 	}
 }
 

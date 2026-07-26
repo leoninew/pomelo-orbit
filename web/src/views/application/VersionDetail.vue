@@ -141,10 +141,7 @@
               </tr>
               <tr v-for="(comp, index) in version.components" :key="comp.id || index">
                 <td class="text-foreground">{{ comp.name }}</td>
-                <td
-                  class="max-w-xs truncate text-xs text-muted-foreground"
-                  :title="comp.image"
-                >
+                <td class="max-w-xs truncate text-xs text-muted-foreground" :title="comp.image">
                   {{ comp.image }}
                 </td>
                 <td class="text-muted-foreground">{{ portsSummary(comp.ports_json) }}</td>
@@ -230,8 +227,12 @@
               </tr>
               <tr v-for="(row, index) in version.exposes" :key="row.id || index">
                 <td class="text-foreground">{{ row.component_name }}</td>
-                <td><AppBadge variant="pill">{{ row.protocol }}</AppBadge></td>
-                <td><AppBadge variant="pill">{{ row.access }}</AppBadge></td>
+                <td>
+                  <AppBadge variant="pill">{{ row.protocol }}</AppBadge>
+                </td>
+                <td>
+                  <AppBadge variant="pill">{{ row.access }}</AppBadge>
+                </td>
                 <td class="text-muted-foreground">{{ row.container_port }}</td>
                 <td class="text-muted-foreground">{{ row.listen_port || row.container_port }}</td>
                 <td v-if="isEditable">
@@ -303,12 +304,7 @@
             :key="'venv-' + envIndex"
             class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
           >
-            <input
-              v-model="envRow.key"
-              type="text"
-              class="app-input text-xs"
-              placeholder="KEY"
-            />
+            <input v-model="envRow.key" type="text" class="app-input text-xs" placeholder="KEY" />
             <input
               v-model="envRow.value"
               type="text"
@@ -683,7 +679,9 @@
   const isDeployable = computed(() => Boolean(version.value));
   const envRows = computed(() => parseEnvJson(version.value?.env_json));
   const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
-  const componentNames = computed(() => (version.value?.components ?? []).map((component) => component.name));
+  const componentNames = computed(() =>
+    (version.value?.components ?? []).map((component) => component.name)
+  );
   const editingComponent = computed(() => {
     const index = editingComponentIndex.value;
     return index === null ? undefined : version.value?.components?.[index];
@@ -715,6 +713,10 @@
       healthcheck_json: component.healthcheck_json,
       resources_json: component.resources_json,
       pull_policy: component.pull_policy,
+      restart_policy: component.restart_policy,
+      tmpfs_json: component.tmpfs_json,
+      ulimits_json: component.ulimits_json,
+      secret_env_refs: component.secret_env_refs ?? [],
     };
   }
 
@@ -722,7 +724,10 @@
     return (version.value?.components ?? []).map(componentPayload);
   }
 
-  function replaceComponent(index: number, patch: Partial<VersionComponentReq>): VersionComponentReq[] | undefined {
+  function replaceComponent(
+    index: number,
+    patch: Partial<VersionComponentReq>
+  ): VersionComponentReq[] | undefined {
     const next = componentsPayload();
     if (!next[index]) {
       return undefined;
@@ -745,7 +750,10 @@
       }
       try {
         const dependencies = JSON.parse(component.depends_on_json) as unknown;
-        if (!Array.isArray(dependencies) || !dependencies.every((item) => typeof item === 'string')) {
+        if (
+          !Array.isArray(dependencies) ||
+          !dependencies.every((item) => typeof item === 'string')
+        ) {
           return component;
         }
         return {
@@ -878,7 +886,7 @@
     let next = componentsPayload();
     const editingIndex = editingComponentIndex.value;
     if (editingIndex === null) {
-      next.push({ name, image });
+      next.push({ name, image, secret_env_refs: [] });
     } else {
       const oldName = version.value?.components?.[editingIndex]?.name;
       if (!oldName) {
@@ -976,7 +984,9 @@
       return;
     }
     try {
-      await updateComponents(componentsPayload().filter((_, componentIndex) => componentIndex !== index));
+      await updateComponents(
+        componentsPayload().filter((_, componentIndex) => componentIndex !== index)
+      );
       isDeleteComponentDialogOpen.value = false;
       pendingDeleteComponentIndex.value = null;
     } catch (error) {

@@ -94,9 +94,11 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			traefik.MkcertGenerator{},
 			routeManager,
 		),
-		ApplicationService: applicationsvc.New(
+		ApplicationService: applicationsvc.NewWithCredential(
 			stores.project,
 			stores.application,
+			stores.credential,
+			cfg.JWT.SecretKey,
 		),
 		ServiceService: servicesvc.New(stores.project, stores.application, stores.service),
 		DeploymentService: deploymentsvc.NewCommandService(

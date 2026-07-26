@@ -7,6 +7,9 @@ export default defineConfig({
 	plugins: [tailwindcss(), vue()],
 	server: {
 		port: 9020,
+		watch: {
+			ignored: ["**/src/gen/proto/**"],
+		},
 		proxy: {
 			"/api": {
 				target: "http://127.0.0.1:9021",

@@ -74,6 +74,10 @@ func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdt
 		HealthcheckJSON: req.HealthcheckJson,
 		ResourcesJSON:   req.ResourcesJson,
 		PullPolicy:      req.PullPolicy,
+		RestartPolicy:   req.RestartPolicy,
+		TmpfsJSON:       req.TmpfsJson,
+		UlimitsJSON:     req.UlimitsJson,
+		SecretEnvRefs:   secretEnvRefInputs(req.SecretEnvRefs),
 	}
 }
 
@@ -202,9 +206,40 @@ func versionComponentResponse(component model.VersionComponent) applicationv1.Ve
 		HealthcheckJson: component.HealthcheckJSON,
 		ResourcesJson:   component.ResourcesJSON,
 		PullPolicy:      component.PullPolicy,
+		RestartPolicy:   component.RestartPolicy,
+		TmpfsJson:       component.TmpfsJSON,
+		UlimitsJson:     component.UlimitsJSON,
+		SecretEnvRefs:   secretEnvRefResponses(component.SecretEnvRefs),
 		CreatedAt:       transportresponse.FormatTime(component.CreatedAt),
 		UpdatedAt:       transportresponse.FormatTime(component.UpdatedAt),
 	}
+}
+
+func secretEnvRefInputs(refs []*applicationv1.VersionComponentSecretEnvRef) []applicationdto.VersionComponentSecretEnvRefInput {
+	items := make([]applicationdto.VersionComponentSecretEnvRefInput, 0, len(refs))
+	for _, ref := range refs {
+		if ref == nil {
+			continue
+		}
+		items = append(items, applicationdto.VersionComponentSecretEnvRefInput{
+			EnvKey:       ref.EnvKey,
+			CredentialId: ref.CredentialId,
+			DataKey:      ref.DataKey,
+		})
+	}
+	return items
+}
+
+func secretEnvRefResponses(refs []model.VersionComponentSecretEnvRef) []*applicationv1.VersionComponentSecretEnvRef {
+	items := make([]*applicationv1.VersionComponentSecretEnvRef, 0, len(refs))
+	for _, ref := range refs {
+		items = append(items, &applicationv1.VersionComponentSecretEnvRef{
+			EnvKey:       ref.EnvKey,
+			CredentialId: ref.CredentialId,
+			DataKey:      ref.DataKey,
+		})
+	}
+	return items
 }
 
 func versionExposeResponse(expose model.VersionExpose) applicationv1.VersionExposeResp {

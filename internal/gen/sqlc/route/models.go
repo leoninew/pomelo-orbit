@@ -326,8 +326,18 @@ type VersionComponent struct {
 	HealthcheckJson sql.NullString `db:"healthcheck_json"`
 	ResourcesJson   sql.NullString `db:"resources_json"`
 	PullPolicy      sql.NullString `db:"pull_policy"`
+	RestartPolicy   sql.NullString `db:"restart_policy"`
+	TmpfsJson       sql.NullString `db:"tmpfs_json"`
+	UlimitsJson     sql.NullString `db:"ulimits_json"`
 	CreatedAt       time.Time      `db:"created_at"`
 	UpdatedAt       time.Time      `db:"updated_at"`
+}
+
+type VersionComponentSecretEnvRef struct {
+	ComponentID  string `db:"component_id"`
+	EnvKey       string `db:"env_key"`
+	CredentialID string `db:"credential_id"`
+	DataKey      string `db:"data_key"`
 }
 
 type VersionExpose struct {

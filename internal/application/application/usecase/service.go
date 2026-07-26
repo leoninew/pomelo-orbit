@@ -8,6 +8,7 @@ import (
 
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
@@ -19,11 +20,28 @@ var applicationUpdateCodePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 // Service owns application and version specifications only.
 type Service struct {
-	store *stores
+	store      *stores
+	credential repository.CredentialStore
+	secretKey  string
 }
 
 func New(project repository.ProjectReader, application repository.ApplicationStore) Service {
 	return Service{store: &stores{project: project, application: application}}
+}
+
+func NewWithCredential(project repository.ProjectReader, application repository.ApplicationStore, credential repository.CredentialStore, secretKey string) Service {
+	service := New(project, application)
+	service.credential = credential
+	service.secretKey = secretKey
+	return service
+}
+
+func (s Service) decryptRuntimeEnvData(encrypted string) (map[string]string, error) {
+	plain, err := security.DecryptString(s.secretKey, encrypted)
+	if err != nil {
+		return nil, err
+	}
+	return runtimeEnvData(plain)
 }
 
 func (s Service) ListApplications(ctx context.Context, userID string, projectID *string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {

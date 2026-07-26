@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -53,6 +54,31 @@ func TestWorkspaceWritesNonInitConfigWithoutChangingContent(t *testing.T) {
 	}
 	if string(written) != content {
 		t.Fatalf("unexpected compose content: %q", string(written))
+	}
+}
+
+func TestWorkspaceWriteRuntimeEnvUsesRestrictedPermissions(t *testing.T) {
+	workspace := NewWithResolver(t.TempDir(), func(context.Context, string) (string, error) { return "", nil })
+	content := "MYSQL_PASSWORD=\"runtime-test-secret\"\n"
+	if err := workspace.WriteRuntimeEnv("demo", "default", "web", content); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(workspace.ServiceDir("demo", "default"), ".runtime", "web.env")
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(written) != content {
+		t.Fatalf("unexpected runtime env content: %q", string(written))
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			t.Fatalf("runtime env file mode = %o, want 600", info.Mode().Perm())
+		}
 	}
 }
 

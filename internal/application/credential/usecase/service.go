@@ -2,6 +2,7 @@ package credentialsvc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 
@@ -89,6 +90,21 @@ func (s Service) UpdateCredential(ctx context.Context, userId string, credential
 		if *input.Data == "" {
 			return model.Credential{}, apperror.New(apperror.KindValidation, "Invalid credential fields")
 		}
+		if credential.Type == "runtime_env" {
+			values, ok := runtimeEnvCredentialValues(*input.Data)
+			if !ok {
+				return model.Credential{}, apperror.New(apperror.KindValidation, "Invalid runtime_env credential data")
+			}
+			refs, err := s.credential.VersionComponentSecretEnvRefsByCredential(ctx, credential.Id)
+			if err != nil {
+				return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to load runtime_env credential references", err)
+			}
+			for _, ref := range refs {
+				if _, exists := values[ref.DataKey]; !exists {
+					return model.Credential{}, apperror.New(apperror.KindConflict, "runtime_env credential update would remove a referenced data_key")
+				}
+			}
+		}
 		encrypted, err := s.encryptCredentialData(*input.Data)
 		if err != nil {
 			return model.Credential{}, err
@@ -117,6 +133,13 @@ func (s Service) DeleteCredential(ctx context.Context, userId string, credential
 	if referenced {
 		return apperror.New(apperror.KindConflict, "Credential is referenced by projects, cannot delete")
 	}
+	runtimeReferenced, err := s.credential.CredentialReferencedByVersionComponents(ctx, credential.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to check runtime_env credential references", err)
+	}
+	if runtimeReferenced {
+		return apperror.New(apperror.KindConflict, "Credential is referenced by version components, cannot delete")
+	}
 	if err := s.credential.DeleteCredential(ctx, credential.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete credential", err)
 	}
@@ -138,6 +161,9 @@ func (s Service) ExportCredential(ctx context.Context, userId string, credential
 func (s Service) createCredentialRecord(ctx context.Context, projectId string, name string, credentialType string, data string) (model.Credential, error) {
 	if err := s.ensureCredentialNameAvailable(ctx, projectId, name, ""); err != nil {
 		return model.Credential{}, err
+	}
+	if credentialType == "runtime_env" && !validRuntimeEnvCredentialData(data) {
+		return model.Credential{}, apperror.New(apperror.KindValidation, "Invalid runtime_env credential data")
 	}
 	encrypted, err := s.encryptCredentialData(data)
 	if err != nil {
@@ -223,11 +249,29 @@ func credentialProjectId(item model.Credential) string {
 
 func validCredentialType(value string) bool {
 	switch value {
-	case "git_ssh", "github_token", "gitee_token", "registry_token":
+	case "git_ssh", "github_token", "gitee_token", "registry_token", "runtime_env":
 		return true
 	default:
 		return false
 	}
+}
+
+func validRuntimeEnvCredentialData(raw string) bool {
+	_, ok := runtimeEnvCredentialValues(raw)
+	return ok
+}
+
+func runtimeEnvCredentialValues(raw string) (map[string]string, bool) {
+	var values map[string]string
+	if err := json.Unmarshal([]byte(raw), &values); err != nil || len(values) == 0 {
+		return nil, false
+	}
+	for key, value := range values {
+		if !runtimeEnvKeyPattern.MatchString(key) || value == "" {
+			return nil, false
+		}
+	}
+	return values, true
 }
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {

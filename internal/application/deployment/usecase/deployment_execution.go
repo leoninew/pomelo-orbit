@@ -232,6 +232,10 @@ func (s Service) renderAndDeployWithOptions(
 	if err != nil {
 		return err
 	}
+	secretValues, err := s.materializeRuntimeEnvFiles(ctx, app, components, svc)
+	if err != nil {
+		return err
+	}
 	result, err := s.RenderComposeDetailed(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
 		Service: svc, Gateway: gateway, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
@@ -247,16 +251,18 @@ func (s Service) renderAndDeployWithOptions(
 		return err
 	}
 	defer func() { _ = logWriter.Close() }()
+	redactedLogWriter := &secretRedactingWriter{destination: logWriter, redactor: NewSecretRedactor(secretValues)}
+	defer func() { _ = redactedLogWriter.Flush() }()
 
-	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
+	if err := writeWorkingDirectory(redactedLogWriter, serviceDir); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
+	if _, err := fmt.Fprintf(redactedLogWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
 		version.Label, version.Id, len(components), svc.InstanceKey); err != nil {
 		return err
 	}
 	if len(result.ResolvedMounts) > 0 {
-		if _, err := fmt.Fprintf(logWriter, "Materializing %d logical mount source(s)\n", countLogicalMounts(result.ResolvedMounts)); err != nil {
+		if _, err := fmt.Fprintf(redactedLogWriter, "Materializing %d logical mount source(s)\n", countLogicalMounts(result.ResolvedMounts)); err != nil {
 			return err
 		}
 		if err := MaterializeLogicalMountSources(result.ResolvedMounts); err != nil {
@@ -268,7 +274,10 @@ func (s Service) renderAndDeployWithOptions(
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
-	return s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...)
+	if err := s.runner.Run(ctx, serviceDir, redactedLogWriter, command.Name, command.Args...); err != nil {
+		return fmt.Errorf("%s", redactedLogWriter.redactor.RedactText(err.Error()))
+	}
+	return nil
 }
 
 func countLogicalMounts(items []ResolvedMount) int {

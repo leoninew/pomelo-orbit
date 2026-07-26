@@ -65,6 +65,10 @@ func (w *workspaceFake) WriteConfig(appCode string, instanceKey string, path str
 	return nil
 }
 
+func (w *workspaceFake) WriteRuntimeEnv(appCode string, instanceKey string, componentName string, content string) error {
+	return w.WriteConfig(appCode, instanceKey, runtimeEnvFilePath(componentName), content)
+}
+
 func (w *workspaceFake) RemoveAppDir(appCode string) error {
 	w.removedApps = append(w.removedApps, appCode)
 	return nil

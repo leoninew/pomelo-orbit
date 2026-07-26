@@ -32,6 +32,9 @@ func validateVersionComponents(components []model.VersionComponent) error {
 		if err := validateOptionalJSON(component.EnvJSON, "env_json", name); err != nil {
 			return err
 		}
+		if err := validateComponentRuntimeFields(component); err != nil {
+			return err
+		}
 		names[name] = struct{}{}
 	}
 	for _, component := range components {

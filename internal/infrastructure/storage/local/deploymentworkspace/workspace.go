@@ -2,8 +2,10 @@ package deploymentworkspace
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -48,6 +50,41 @@ func (w *Workspace) WriteConfig(appCode string, instanceKey string, path string,
 		return os.Chmod(path, 0o755)
 	}
 	return nil
+}
+
+func (w *Workspace) WriteRuntimeEnv(appCode string, instanceKey string, componentName string, content string) error {
+	if componentName == "" || strings.ContainsAny(componentName, `/\\`) || componentName == "." || componentName == ".." {
+		return fmt.Errorf("invalid component name for runtime env file")
+	}
+	dir := filepath.Join(w.ServiceDir(appCode, instanceKey), ".runtime")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return err
+	}
+	temp, err := os.CreateTemp(dir, "."+componentName+".env-*")
+	if err != nil {
+		return err
+	}
+	tempPath := temp.Name()
+	defer func() { _ = os.Remove(tempPath) }()
+	if err := temp.Chmod(0o600); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if _, err := temp.WriteString(content); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Sync(); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempPath, filepath.Join(dir, componentName+".env"))
 }
 
 func (w *Workspace) RemoveAppDir(appCode string) error {

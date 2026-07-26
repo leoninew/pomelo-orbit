@@ -8,6 +8,12 @@
 
 export const protobufPackage = "orbit.v1.application";
 
+export interface VersionComponentSecretEnvRef {
+  env_key: string;
+  credential_id: string;
+  data_key: string;
+}
+
 export interface VersionComponentReq {
   name: string;
   image: string;
@@ -21,6 +27,10 @@ export interface VersionComponentReq {
   healthcheck_json?: string | undefined;
   resources_json?: string | undefined;
   pull_policy?: string | undefined;
+  restart_policy?: string | undefined;
+  tmpfs_json?: string | undefined;
+  ulimits_json?: string | undefined;
+  secret_env_refs: VersionComponentSecretEnvRef[];
 }
 
 export interface VersionComponentResp {
@@ -40,6 +50,10 @@ export interface VersionComponentResp {
   pull_policy?: string | undefined;
   created_at: string;
   updated_at: string;
+  restart_policy?: string | undefined;
+  tmpfs_json?: string | undefined;
+  ulimits_json?: string | undefined;
+  secret_env_refs: VersionComponentSecretEnvRef[];
 }
 
 export interface VersionExposeReq {

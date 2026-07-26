@@ -57,10 +57,17 @@ WHERE id = ?;
 
 -- name: VersionComponentsByVersion :many
 SELECT id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json,
-       depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at
+       depends_on_json, healthcheck_json, resources_json, pull_policy, restart_policy, tmpfs_json, ulimits_json, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name;
+
+-- name: VersionComponentSecretEnvRefsByVersion :many
+SELECT ref.component_id, ref.env_key, ref.credential_id, ref.data_key
+FROM version_component_secret_env_ref AS ref
+JOIN version_component AS component ON component.id = ref.component_id
+WHERE component.version_id = ?
+ORDER BY component.name, ref.env_key;
 
 -- name: VersionExposesByVersion :many
 SELECT id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
@@ -71,8 +78,12 @@ ORDER BY component_name, protocol, container_port;
 -- name: InsertVersionComponent :exec
 INSERT INTO version_component (
   id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json,
-  depends_on_json, healthcheck_json, resources_json, pull_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  depends_on_json, healthcheck_json, resources_json, pull_policy, restart_policy, tmpfs_json, ulimits_json, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: InsertVersionComponentSecretEnvRef :exec
+INSERT INTO version_component_secret_env_ref (component_id, env_key, credential_id, data_key)
+VALUES (?, ?, ?, ?);
 
 -- name: InsertVersionExpose :exec
 INSERT INTO version_expose (

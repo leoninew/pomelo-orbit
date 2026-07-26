@@ -289,6 +289,22 @@ func (r Repository) VersionComponentsByVersion(ctx context.Context, versionId st
 	for _, row := range rows {
 		items = append(items, componentFrom(row))
 	}
+	refs, err := r.q(ctx).VersionComponentSecretEnvRefsByVersion(ctx, versionId)
+	if err != nil {
+		return nil, fmt.Errorf("list version component secret env refs %s: %w", versionId, err)
+	}
+	byComponent := make(map[string][]model.VersionComponentSecretEnvRef, len(items))
+	for _, ref := range refs {
+		byComponent[ref.ComponentID] = append(byComponent[ref.ComponentID], model.VersionComponentSecretEnvRef{
+			ComponentId:  ref.ComponentID,
+			EnvKey:       ref.EnvKey,
+			CredentialId: ref.CredentialID,
+			DataKey:      ref.DataKey,
+		})
+	}
+	for i := range items {
+		items[i].SecretEnvRefs = byComponent[items[i].Id]
+	}
 	return items, nil
 }
 
@@ -305,6 +321,12 @@ func (r Repository) VersionExposesByVersion(ctx context.Context, versionId strin
 }
 
 func (r Repository) ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		return r.replaceVersionComponents(txCtx, versionId, components)
+	})
+}
+
+func (r Repository) replaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error {
 	q := r.q(ctx)
 	if err := q.DeleteVersionComponents(ctx, versionId); err != nil {
 		return fmt.Errorf("delete version components %s: %w", versionId, err)
@@ -333,10 +355,23 @@ func (r Repository) ReplaceVersionComponents(ctx context.Context, versionId stri
 			HealthcheckJson: dbmodel.NullString(c.HealthcheckJSON),
 			ResourcesJson:   dbmodel.NullString(c.ResourcesJSON),
 			PullPolicy:      dbmodel.NullString(c.PullPolicy),
+			RestartPolicy:   dbmodel.NullString(c.RestartPolicy),
+			TmpfsJson:       dbmodel.NullString(c.TmpfsJSON),
+			UlimitsJson:     dbmodel.NullString(c.UlimitsJSON),
 			CreatedAt:       createdAt,
 			UpdatedAt:       updatedAt,
 		}); err != nil {
 			return fmt.Errorf("insert version component %s: %w", c.Name, err)
+		}
+		for _, ref := range c.SecretEnvRefs {
+			if err := q.InsertVersionComponentSecretEnvRef(ctx, applicationsqlc.InsertVersionComponentSecretEnvRefParams{
+				ComponentID:  c.Id,
+				EnvKey:       ref.EnvKey,
+				CredentialID: ref.CredentialId,
+				DataKey:      ref.DataKey,
+			}); err != nil {
+				return fmt.Errorf("insert version component secret env ref %s/%s: %w", c.Name, ref.EnvKey, err)
+			}
 		}
 	}
 	return nil
@@ -375,16 +410,15 @@ func (r Repository) ReplaceVersionExposes(ctx context.Context, versionId string,
 }
 
 func (r Repository) CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error {
-	if err := r.CreateVersion(ctx, version); err != nil {
-		return err
-	}
-	if err := r.ReplaceVersionComponents(ctx, version.Id, components); err != nil {
-		return err
-	}
-	if err := r.ReplaceVersionExposes(ctx, version.Id, exposes); err != nil {
-		return err
-	}
-	return nil
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		if err := r.CreateVersion(txCtx, version); err != nil {
+			return err
+		}
+		if err := r.replaceVersionComponents(txCtx, version.Id, components); err != nil {
+			return err
+		}
+		return r.ReplaceVersionExposes(txCtx, version.Id, exposes)
+	})
 }
 
 func appFrom(id string, projectID sql.NullString, name, code, kind, imagePullPolicy string, createdAt, updatedAt time.Time) model.Application {
@@ -430,6 +464,9 @@ func componentFrom(row applicationsqlc.VersionComponent) model.VersionComponent 
 		HealthcheckJSON: dbmodel.StringPtr(row.HealthcheckJson),
 		ResourcesJSON:   dbmodel.StringPtr(row.ResourcesJson),
 		PullPolicy:      dbmodel.StringPtr(row.PullPolicy),
+		RestartPolicy:   dbmodel.StringPtr(row.RestartPolicy),
+		TmpfsJSON:       dbmodel.StringPtr(row.TmpfsJson),
+		UlimitsJSON:     dbmodel.StringPtr(row.UlimitsJson),
 		CreatedAt:       row.CreatedAt,
 		UpdatedAt:       row.UpdatedAt,
 	}

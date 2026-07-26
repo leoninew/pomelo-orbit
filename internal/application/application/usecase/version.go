@@ -65,6 +65,9 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 	if err := validateVersionComponents(components); err != nil {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
+	if err := s.validateRuntimeEnvReferences(ctx, app, components); err != nil {
+		return applicationdto.VersionView{}, err
+	}
 	exposes, err := normalizeVersionExposes(input.Exposes)
 	if err != nil {
 		return applicationdto.VersionView{}, err
@@ -83,6 +86,9 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 	for i := range components {
 		components[i].Id = idutil.NewId()
 		components[i].VersionId = version.Id
+		for j := range components[i].SecretEnvRefs {
+			components[i].SecretEnvRefs[j].ComponentId = components[i].Id
+		}
 	}
 	for i := range exposes {
 		exposes[i].Id = idutil.NewId()
@@ -124,9 +130,19 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 		if err := validateVersionComponents(components); err != nil {
 			return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 		}
+		app, err := s.store.Application(ctx, version.ApplicationId)
+		if err != nil {
+			return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+		}
+		if err := s.validateRuntimeEnvReferences(ctx, app, components); err != nil {
+			return applicationdto.VersionView{}, err
+		}
 		for i := range components {
 			components[i].Id = idutil.NewId()
 			components[i].VersionId = version.Id
+			for j := range components[i].SecretEnvRefs {
+				components[i].SecretEnvRefs[j].ComponentId = components[i].Id
+			}
 		}
 		if err := s.store.ReplaceVersionComponents(ctx, version.Id, components); err != nil {
 			return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to replace components", err)
@@ -173,6 +189,13 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 	}
 	if err := validateVersionComponents(components); err != nil {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	app, err := s.store.Application(ctx, version.ApplicationId)
+	if err != nil {
+		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
+	}
+	if err := s.validateRuntimeEnvReferences(ctx, app, components); err != nil {
+		return applicationdto.VersionView{}, err
 	}
 	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
 	if err != nil {
@@ -237,6 +260,9 @@ func (s Service) ForkVersion(ctx context.Context, userId string, versionId strin
 	for _, component := range components {
 		component.Id = idutil.NewId()
 		component.VersionId = version.Id
+		for i := range component.SecretEnvRefs {
+			component.SecretEnvRefs[i].ComponentId = component.Id
+		}
 		forkedComponents = append(forkedComponents, component)
 	}
 	forkedExposes := make([]model.VersionExpose, 0, len(exposes))
@@ -306,6 +332,10 @@ func normalizeVersionComponents(inputs []applicationdto.VersionComponentInput) (
 			HealthcheckJSON: normalizeOptionalText(input.HealthcheckJSON),
 			ResourcesJSON:   normalizeOptionalText(input.ResourcesJSON),
 			PullPolicy:      normalizeOptionalText(input.PullPolicy),
+			RestartPolicy:   input.RestartPolicy,
+			TmpfsJSON:       input.TmpfsJSON,
+			UlimitsJSON:     input.UlimitsJSON,
+			SecretEnvRefs:   secretEnvRefsFromInput(input.SecretEnvRefs),
 		})
 	}
 	return components, nil
@@ -348,4 +378,16 @@ func normalizeVersionExposes(inputs []applicationdto.VersionExposeInput) ([]mode
 		})
 	}
 	return exposes, nil
+}
+
+func secretEnvRefsFromInput(inputs []applicationdto.VersionComponentSecretEnvRefInput) []model.VersionComponentSecretEnvRef {
+	refs := make([]model.VersionComponentSecretEnvRef, 0, len(inputs))
+	for _, input := range inputs {
+		refs = append(refs, model.VersionComponentSecretEnvRef{
+			EnvKey:       input.EnvKey,
+			CredentialId: input.CredentialId,
+			DataKey:      input.DataKey,
+		})
+	}
+	return refs
 }

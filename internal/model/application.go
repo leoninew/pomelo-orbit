@@ -28,22 +28,35 @@ type Version struct {
 
 // VersionComponent is a version-scoped specification unit (own table).
 type VersionComponent struct {
-	Id              string    `db:"id"`
-	VersionId       string    `db:"version_id"`
-	Name            string    `db:"name"`
-	Image           string    `db:"image"`
-	CommandJSON     *string   `db:"command_json"`
-	ArgsJSON        *string   `db:"args_json"`
-	EnvJSON         *string   `db:"env_json"`
-	PortsJSON       *string   `db:"ports_json"`
-	MountsJSON      *string   `db:"mounts_json"`
-	NetworksJSON    *string   `db:"networks_json"`
-	DependsOnJSON   *string   `db:"depends_on_json"`
-	HealthcheckJSON *string   `db:"healthcheck_json"`
-	ResourcesJSON   *string   `db:"resources_json"`
-	PullPolicy      *string   `db:"pull_policy"`
+	Id              string  `db:"id"`
+	VersionId       string  `db:"version_id"`
+	Name            string  `db:"name"`
+	Image           string  `db:"image"`
+	CommandJSON     *string `db:"command_json"`
+	ArgsJSON        *string `db:"args_json"`
+	EnvJSON         *string `db:"env_json"`
+	PortsJSON       *string `db:"ports_json"`
+	MountsJSON      *string `db:"mounts_json"`
+	NetworksJSON    *string `db:"networks_json"`
+	DependsOnJSON   *string `db:"depends_on_json"`
+	HealthcheckJSON *string `db:"healthcheck_json"`
+	ResourcesJSON   *string `db:"resources_json"`
+	PullPolicy      *string `db:"pull_policy"`
+	RestartPolicy   *string `db:"restart_policy"`
+	TmpfsJSON       *string `db:"tmpfs_json"`
+	UlimitsJSON     *string `db:"ulimits_json"`
+	SecretEnvRefs   []VersionComponentSecretEnvRef
 	CreatedAt       time.Time `db:"created_at"`
 	UpdatedAt       time.Time `db:"updated_at"`
+}
+
+// VersionComponentSecretEnvRef identifies one runtime_env credential value.
+// Credential data is deliberately never part of the Version model.
+type VersionComponentSecretEnvRef struct {
+	ComponentId  string `db:"component_id"`
+	EnvKey       string `db:"env_key"`
+	CredentialId string `db:"credential_id"`
+	DataKey      string `db:"data_key"`
 }
 
 // VersionExpose is version-scoped protocol/port exposure (no domain).

@@ -1,5 +1,5 @@
 -- Domain: application
--- Tables: application, version, version_component, version_expose
+-- Tables: application, version, version_component, version_component_secret_env_ref, version_expose
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
 
 CREATE TABLE IF NOT EXISTS application (
@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS version_component (
     healthcheck_json LONGTEXT,
     resources_json LONGTEXT,
     pull_policy VARCHAR(32),
+    restart_policy VARCHAR(32),
+    tmpfs_json LONGTEXT,
+    ulimits_json LONGTEXT,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE,
@@ -56,6 +59,19 @@ CREATE TABLE IF NOT EXISTS version_component (
 );
 
 CREATE INDEX idx_version_component_version ON version_component(version_id);
+
+CREATE TABLE IF NOT EXISTS version_component_secret_env_ref (
+    component_id VARCHAR(26) NOT NULL,
+    env_key VARCHAR(255) NOT NULL,
+    credential_id VARCHAR(26) NOT NULL,
+    data_key VARCHAR(255) NOT NULL,
+    PRIMARY KEY (component_id, env_key),
+    KEY idx_version_component_secret_env_ref_credential (credential_id),
+    CONSTRAINT fk_version_component_secret_env_ref_component
+        FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
+    CONSTRAINT fk_version_component_secret_env_ref_credential
+        FOREIGN KEY (credential_id) REFERENCES credential(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS version_expose (
     id VARCHAR(26) PRIMARY KEY,

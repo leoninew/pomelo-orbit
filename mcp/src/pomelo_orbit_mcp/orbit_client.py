@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -181,6 +182,32 @@ class OrbitClient:
             f"/api/version/{version_id}/preview",
             json_body={"instance_key": instance_key},
         )
+
+    async def list_runtime_env_credentials(self, project_id: str) -> list[dict[str, Any]]:
+        credentials = _items(
+            await self.request("GET", "/api/credential", params={"project_id": project_id, "per_page": 100})
+        )
+        return [item for item in credentials if item.get("type") == "runtime_env"]
+
+    async def create_runtime_env_credential(
+        self, project_id: str, name: str, values: Mapping[str, str]
+    ) -> dict[str, Any]:
+        return await self.request(
+            "POST",
+            "/api/credential",
+            params={"project_id": project_id},
+            json_body={"name": name, "type": "runtime_env", "data": json.dumps(dict(values), separators=(",", ":"))},
+        )
+
+    async def update_runtime_env_credential(
+        self, credential_id: str, name: str | None, values: Mapping[str, str] | None
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {}
+        if name is not None:
+            payload["name"] = name
+        if values is not None:
+            payload["data"] = json.dumps(dict(values), separators=(",", ":"))
+        return await self.request("PUT", f"/api/credential/{credential_id}", json_body=payload)
 
     async def list_application_services(self, application_id: str) -> list[dict[str, Any]]:
         return _items(await self.request("GET", f"/api/application/{application_id}/service"))

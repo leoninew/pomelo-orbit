@@ -201,6 +201,47 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             "preview": preview,
         }
 
+    @mcp.tool(name="orbit_list_runtime_env_credentials")
+    async def orbit_list_runtime_env_credentials(project_id: str) -> dict[str, Any]:
+        """List runtime_env Credential metadata without exposing credential values."""
+        credentials = await client.list_runtime_env_credentials(project_id)
+        return {
+            "project_id": project_id,
+            "credentials": [runtime_env_credential_metadata(item) for item in credentials],
+        }
+
+    @mcp.tool(name="orbit_create_runtime_env_credential")
+    async def orbit_create_runtime_env_credential(project_id: str, name: str, values: dict[str, str]) -> dict[str, Any]:
+        """Create a runtime_env Credential; values are never returned or recorded in the request summary."""
+        credential = await client.create_runtime_env_credential(project_id, name, values)
+        metadata = runtime_env_credential_metadata(credential)
+        return write_result(
+            "create_runtime_env_credential",
+            {"project_id": project_id, "credential_id": str(metadata["id"])},
+            "POST",
+            "/api/credential",
+            request_body={"name": name, "type": "runtime_env"},
+            data={"credential": metadata},
+        )
+
+    @mcp.tool(name="orbit_update_runtime_env_credential")
+    async def orbit_update_runtime_env_credential(
+        credential_id: str, name: str | None = None, values: dict[str, str] | None = None
+    ) -> dict[str, Any]:
+        """Update runtime_env Credential metadata or values without returning the values."""
+        if name is None and values is None:
+            raise ValueError("name or values must be supplied")
+        credential = await client.update_runtime_env_credential(credential_id, name, values)
+        metadata = runtime_env_credential_metadata(credential)
+        return write_result(
+            "update_runtime_env_credential",
+            {"credential_id": credential_id},
+            "PUT",
+            f"/api/credential/{credential_id}",
+            request_body=compact({"name": name, "values_updated": values is not None}),
+            data={"credential": metadata},
+        )
+
     @mcp.tool(name="orbit_deploy")
     async def orbit_deploy(
         application_id: str,
@@ -305,3 +346,12 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """Wait only until an Orbit Deployment reaches a terminal state or the configured timeout."""
         result = await client.wait_deployment(deployment_id, timeout_seconds)
         return {"operation": "wait_deployment", "deployment_id": deployment_id, **result}
+
+
+def runtime_env_credential_metadata(credential: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": credential.get("id"),
+        "name": credential.get("name"),
+        "type": credential.get("type"),
+        "created_at": credential.get("created_at"),
+    }

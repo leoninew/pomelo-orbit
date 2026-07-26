@@ -3,7 +3,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
         <h1 class="min-w-0 break-words text-xl font-semibold text-foreground">
-          {{ titleText }}
+          {{ t('service.detail.title') }}
         </h1>
         <DetailHeaderMeta v-if="service">
           <AppBadge variant="status" :tone="appStatusTone(service.status)">
@@ -66,34 +66,16 @@
               {{ t('service.fields.application') }}
             </dt>
             <dd class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <button
-                  class="app-link text-left"
-                  @click="router.push(`/application/${service.application_id}`)"
-                >
-                  {{ service.application_name || service.application_id }}
-                </button>
-                <AppBadge
-                  v-if="service.application_kind"
-                  variant="status"
-                  :tone="applicationKindTone(service.application_kind)"
-                >
-                  {{ service.application_kind }}
-                </AppBadge>
-              </div>
-              <p class="text-xs text-muted-foreground">{{ service.application_code }}</p>
+              <router-link :to="`/application/${service.application_id}`" class="app-link">
+                {{ service.application_name || service.application_id }}
+              </router-link>
             </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('service.fields.environment') }}
             </dt>
-            <dd>
-              <p class="text-foreground">
-                {{ service.environment_name || service.environment_id }}
-              </p>
-              <p class="text-xs text-muted-foreground">{{ service.environment_code }}</p>
-            </dd>
+            <dd class="text-foreground">{{ service.environment_name || service.environment_id }}</dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">
@@ -179,10 +161,10 @@
                   v-for="container in containers"
                   :key="container.id || container.name || container.service"
                 >
-                  <td class="font-mono text-sm text-foreground">
+                  <td class="text-sm text-foreground">
                     {{ container.service || '—' }}
                   </td>
-                  <td class="font-mono text-xs text-muted-foreground">
+                  <td class="text-xs text-muted-foreground">
                     {{ container.name || container.id || '—' }}
                   </td>
                   <td>
@@ -201,7 +183,7 @@
                   </td>
                   <td class="text-sm text-foreground">{{ container.health || '—' }}</td>
                   <td
-                    class="max-w-[280px] truncate font-mono text-xs text-muted-foreground"
+                    class="max-w-[280px] truncate text-xs text-muted-foreground"
                     :title="container.image"
                   >
                     {{ container.image || '—' }}
@@ -369,7 +351,7 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { parseComposePsOutput, type ComposeContainer } from '@/utils/compose';
-  import { applicationKindTone, appStatusTone, containerStateTone } from '@/utils/status';
+  import { appStatusTone, containerStateTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
   type LogStatus = 'loading' | 'streaming' | 'done' | 'empty' | 'error';
@@ -414,21 +396,6 @@
     return s === 'running' || s === 'faulted';
   });
 
-  const titleText = computed(() => {
-    if (!service.value) {
-      return t('service.detail.title');
-    }
-    const app =
-      service.value.application_name ||
-      service.value.application_code ||
-      service.value.application_id;
-    const env =
-      service.value.environment_code ||
-      service.value.environment_name ||
-      service.value.environment_id;
-    return `${app} / ${env}`;
-  });
-
   const versionSelectOptions = computed(() =>
     versions.value.map((v) => ({
       value: v.id,
@@ -441,14 +408,8 @@
     if (!service.value) {
       return t('service.logs.title');
     }
-    const app =
-      service.value.application_name ||
-      service.value.application_code ||
-      service.value.application_id;
-    const env =
-      service.value.environment_code ||
-      service.value.environment_name ||
-      service.value.environment_id;
+    const app = service.value.application_name || service.value.application_id;
+    const env = service.value.environment_name || service.value.environment_id;
     const instance = service.value.instance_key || 'default';
     if (logsComponent.value) {
       return t('service.logs.titleWithComponent', {

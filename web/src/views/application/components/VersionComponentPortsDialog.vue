@@ -21,7 +21,7 @@
           type="number"
           min="1"
           max="65535"
-          class="app-input font-mono text-xs"
+          class="app-input text-xs"
           :placeholder="t('application.detail.placeholders.hostPort')"
         />
         <input
@@ -29,7 +29,7 @@
           type="number"
           min="1"
           max="65535"
-          class="app-input font-mono text-xs"
+          class="app-input text-xs"
           :placeholder="t('application.detail.placeholders.containerPort')"
         />
         <button type="button" class="app-link-danger" @click="ports.splice(portIndex, 1)">

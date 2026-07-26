@@ -70,7 +70,7 @@
           </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt class="w-32 shrink-0 text-muted-foreground">执行命令</dt>
-            <dd class="min-w-0 break-all font-mono text-xs text-foreground">
+            <dd class="min-w-0 break-all text-xs text-foreground">
               {{ deployment.command_text || '未记录' }}
             </dd>
           </div>
@@ -95,7 +95,7 @@
           <div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
             <dt class="w-32 shrink-0 text-muted-foreground">错误信息</dt>
             <dd class="min-w-0 text-destructive">
-              <pre class="whitespace-pre-wrap break-words font-mono text-xs">{{
+              <pre class="whitespace-pre-wrap break-words font-sans text-xs">{{
                 deployment.error_message
               }}</pre>
             </dd>

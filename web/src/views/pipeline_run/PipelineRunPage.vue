@@ -59,13 +59,13 @@
           <tbody>
             <tr v-for="run in runs" :key="run.id">
               <td class="overflow-hidden">
-                <button
+                <router-link
+                  :to="`/repository/${run.repository_id}`"
                   class="app-link block truncate"
                   :title="run.repository_name"
-                  @click="router.push(`/repository/${run.repository_id}`)"
                 >
                   {{ run.repository_name }}
-                </button>
+                </router-link>
               </td>
               <td class="overflow-hidden">
                 <router-link
@@ -101,12 +101,9 @@
                 {{ formatDuration(run.started_at, run.finished_at) }}
               </td>
               <td>
-                <button
-                  class="app-link whitespace-nowrap"
-                  @click="router.push(`/pipeline-run/${run.id}`)"
-                >
+                <router-link :to="`/pipeline-run/${run.id}`" class="app-link whitespace-nowrap">
                   {{ t('application.view') }}
-                </button>
+                </router-link>
               </td>
             </tr>
           </tbody>
@@ -129,7 +126,7 @@
   import { Search } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRoute } from 'vue-router';
   import { pipelineTemplateApi } from '@/api/pipeline/template';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import { repositoryApi } from '@/api/repository/repository';
@@ -149,7 +146,6 @@
   import { ToolbarRoot } from 'reka-ui';
 
   const route = useRoute();
-  const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();

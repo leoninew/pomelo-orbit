@@ -147,9 +147,9 @@
               </tr>
               <tr v-for="version in versions" :key="version.id">
                 <td class="text-foreground">
-                  <button class="app-link font-medium" @click="goVersionDetail(version.id)">
+                  <router-link :to="`/version/${version.id}`" class="app-link font-medium">
                     {{ version.label }}
-                  </button>
+                  </router-link>
                   <span
                     v-if="application.version_id === version.id"
                     class="ml-2 text-xs text-muted-foreground"
@@ -174,9 +174,6 @@
                 <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
                   <div class="flex flex-wrap items-center gap-3">
-                    <button class="app-link" @click="goVersionDetail(version.id)">
-                      {{ t('application.view') }}
-                    </button>
                     <button class="app-link" @click="openPreview(version.id)">
                       {{ t('application.detail.actions.preview') }}
                     </button>
@@ -519,10 +516,6 @@
       return '—';
     }
     return version.components.map((c) => `${c.name}:${c.image}`).join(', ');
-  }
-
-  function goVersionDetail(versionId: string) {
-    router.push(`/version/${versionId}`);
   }
 
   function defaultEnvironmentId() {

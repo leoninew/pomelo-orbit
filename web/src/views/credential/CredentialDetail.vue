@@ -110,7 +110,7 @@
           <label class="app-field-label block">凭据内容</label>
           <textarea
             v-model="form.data"
-            class="app-textarea font-mono text-xs"
+            class="app-textarea text-xs"
             :class="errors.data ? 'app-input-error' : ''"
             rows="8"
             :placeholder="credential ? getDataPlaceholder(credential.type) : ''"

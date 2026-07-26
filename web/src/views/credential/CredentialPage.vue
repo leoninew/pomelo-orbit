@@ -102,7 +102,7 @@
           v-model="form.data"
           rows="8"
           :placeholder="getDataPlaceholder(form.type)"
-          class="app-textarea font-mono"
+          class="app-textarea"
           :class="errors.data ? 'app-input-error' : ''"
         />
         <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
@@ -160,7 +160,7 @@
         <textarea
           v-model="importForm.data"
           rows="8"
-          class="app-textarea font-mono"
+          class="app-textarea"
           :class="importErrors.data ? 'app-input-error' : ''"
         />
         <p v-if="importErrors.data" class="app-field-error text-xs">{{ importErrors.data }}</p>

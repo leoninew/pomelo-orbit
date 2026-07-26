@@ -16,11 +16,11 @@
         :key="'cenv-' + envIndex"
         class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.2fr_auto]"
       >
-        <input v-model="envRow.key" type="text" class="app-input font-mono text-xs" placeholder="KEY" />
+        <input v-model="envRow.key" type="text" class="app-input text-xs" placeholder="KEY" />
         <input
           v-model="envRow.value"
           type="text"
-          class="app-input font-mono text-xs"
+          class="app-input text-xs"
           :placeholder="t('application.detail.placeholders.envValue')"
         />
         <button type="button" class="app-link-danger" @click="env.splice(envIndex, 1)">

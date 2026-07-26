@@ -25,13 +25,13 @@
           <input
             v-model="mountRow.source"
             type="text"
-            class="app-input font-mono text-xs"
+            class="app-input text-xs"
             :placeholder="t('application.detail.placeholders.mountSource')"
           />
           <input
             v-model="mountRow.target"
             type="text"
-            class="app-input font-mono text-xs"
+            class="app-input text-xs"
             :placeholder="t('application.detail.placeholders.mountTarget')"
           />
           <label class="flex items-center gap-1 text-xs text-muted-foreground">
@@ -57,7 +57,7 @@
           <textarea
             v-model="mountRow.content"
             rows="5"
-            class="app-input min-h-[6rem] w-full font-mono text-xs"
+            class="app-input min-h-[6rem] w-full text-xs"
             :placeholder="t('application.detail.placeholders.mountContent')"
           />
         </div>

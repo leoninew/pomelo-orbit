@@ -100,7 +100,7 @@
             </dt>
             <dd class="min-w-0 flex-1">
               <div v-if="envRows.length === 0" class="text-muted-foreground">—</div>
-              <div v-else class="space-y-1 font-mono text-xs text-foreground">
+              <div v-else class="space-y-1 text-xs text-foreground">
                 <div v-for="row in envRows" :key="row.key">{{ row.key }}={{ row.value }}</div>
               </div>
             </dd>
@@ -142,7 +142,7 @@
               <tr v-for="(comp, index) in version.components" :key="comp.id || index">
                 <td class="text-foreground">{{ comp.name }}</td>
                 <td
-                  class="max-w-xs truncate font-mono text-xs text-muted-foreground"
+                  class="max-w-xs truncate text-xs text-muted-foreground"
                   :title="comp.image"
                 >
                   {{ comp.image }}
@@ -306,13 +306,13 @@
             <input
               v-model="envRow.key"
               type="text"
-              class="app-input font-mono text-xs"
+              class="app-input text-xs"
               placeholder="KEY"
             />
             <input
               v-model="envRow.value"
               type="text"
-              class="app-input font-mono text-xs"
+              class="app-input text-xs"
               :placeholder="t('application.detail.placeholders.envValue')"
             />
             <button

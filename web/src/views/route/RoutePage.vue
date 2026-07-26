@@ -81,9 +81,6 @@
               <td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
-                  <router-link :to="`/route/${route.id}`" class="app-link">
-                    {{ t('application.view') }}
-                  </router-link>
                   <button
                     v-if="!route.enabled"
                     class="app-link-success"

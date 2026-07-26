@@ -34,13 +34,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="item in gateways"
-              :key="item.id"
-              class="cursor-pointer"
-              @click="router.push(`/gateway/${item.id}`)"
-            >
-              <td class="text-foreground">{{ item.name }}</td>
+            <tr v-for="item in gateways" :key="item.id">
+              <td>
+                <router-link :to="`/gateway/${item.id}`" class="app-link">
+                  {{ item.name }}
+                </router-link>
+              </td>
               <td class="text-foreground">{{ item.code }}</td>
               <td class="text-foreground">{{ item.rest_api_url }}</td>
               <td class="text-foreground">{{ item.base_domain }}</td>
@@ -49,14 +48,11 @@
               <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(item.created_at) }}
               </td>
-              <td class="whitespace-nowrap" @click.stop>
+              <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
-                  <button class="app-link" @click="router.push(`/gateway/${item.id}`)">
-                    {{ t('application.view') }}
-                  </button>
-                  <button class="app-link" @click="router.push(`/gateway/${item.id}/edit`)">
+                  <router-link :to="`/gateway/${item.id}/edit`" class="app-link">
                     {{ t('common.edit') }}
-                  </button>
+                  </router-link>
                   <button
                     class="app-link-danger"
                     :disabled="operating"

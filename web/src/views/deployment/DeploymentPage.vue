@@ -40,12 +40,9 @@
           <tbody>
             <tr v-for="deployment in deployments" :key="deployment.id">
               <td>
-                <button
-                  class="app-link"
-                  @click="router.push(`/application/${deployment.application_id}`)"
-                >
+                <router-link :to="`/application/${deployment.application_id}`" class="app-link">
                   {{ deployment.application_name || deployment.application_id }}
-                </button>
+                </router-link>
               </td>
               <td><AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge></td>
               <td><AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge></td>
@@ -67,9 +64,9 @@
               </td>
               <td>
                 <div class="flex items-center gap-3">
-                  <button class="app-link" @click="router.push(`/deployment/${deployment.id}`)">
+                  <router-link :to="`/deployment/${deployment.id}`" class="app-link">
                     {{ t('application.view') }}
-                  </button>
+                  </router-link>
                   <button
                     v-if="isCancelable(deployment)"
                     class="app-link-danger"
@@ -122,7 +119,7 @@
 <script setup lang="ts">
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRoute } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import { deploymentApi } from '@/api/deployment/deployment';
   import AppBadge from '@/components/AppBadge.vue';
@@ -141,7 +138,6 @@
   import { formatDuration, formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
-  const router = useRouter();
   const route = useRoute();
   const { t } = useI18n();
   const toast = useToast();

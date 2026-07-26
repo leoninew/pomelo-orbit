@@ -18,7 +18,7 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="repositories.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[1120px]">
+        <table class="app-table-list min-w-[960px]">
           <thead>
             <tr>
               <th>名称</th>
@@ -27,18 +27,14 @@
               <th>地址</th>
               <th>Git 凭据</th>
               <th>创建时间</th>
-              <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="p in repositories" :key="p.id">
               <td>
-                <button
-                  class="app-link whitespace-nowrap"
-                  @click="router.push(`/repository/${p.id}`)"
-                >
+                <router-link :to="`/repository/${p.id}`" class="app-link whitespace-nowrap">
                   {{ p.name }}
-                </button>
+                </router-link>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
               <td class="whitespace-nowrap text-foreground">{{ p.default_branch || '—' }}</td>
@@ -57,9 +53,6 @@
                 <span v-else class="text-muted-foreground">—</span>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(p.created_at) }}</td>
-              <td class="whitespace-nowrap">
-                <button class="app-link" @click="router.push(`/repository/${p.id}`)">查看</button>
-              </td>
             </tr>
           </tbody>
         </table>

@@ -49,19 +49,21 @@
         <div
           v-for="tpl in templates"
           :key="tpl.id"
-          class="app-surface group cursor-pointer p-5 transition-colors hover:border-primary"
-          @click="router.push(`/pipeline/template/${tpl.id}`)"
+          class="app-surface p-5 transition-colors hover:border-primary"
         >
           <div class="mb-3 flex items-start justify-between gap-4">
-            <h3
-              class="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary"
-            >
-              {{ tpl.name }}
+            <h3 class="min-w-0 text-sm font-medium">
+              <router-link
+                :to="`/pipeline/template/${tpl.id}`"
+                class="app-link block truncate"
+              >
+                {{ tpl.name }}
+              </router-link>
             </h3>
             <button
               :disabled="duplicating"
               class="app-link shrink-0 text-sm"
-              @click.stop="handleDuplicate(tpl.id)"
+              @click="handleDuplicate(tpl.id)"
             >
               {{ t('common.copy') }}
             </button>
@@ -122,12 +124,9 @@
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(tpl.created_at) }}</td>
               <td>
-                <router-link :to="`/pipeline/template/${tpl.id}`" class="app-link">
-                  {{ t('application.view') }}
-                </router-link>
                 <button
                   :disabled="duplicating"
-                  class="app-link ml-3"
+                  class="app-link"
                   @click="handleDuplicate(tpl.id)"
                 >
                   {{ t('common.copy') }}

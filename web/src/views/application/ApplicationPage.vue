@@ -67,19 +67,21 @@
           <div
             v-for="app in applications"
             :key="app.id"
-            class="app-surface group flex min-h-56 cursor-pointer flex-col p-5 transition-colors hover:border-primary"
-            @click="router.push(`/application/${app.id}`)"
+            class="app-surface flex min-h-56 flex-col p-5 transition-colors hover:border-primary"
           >
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 space-y-1">
-                <h3
-                  class="truncate text-base font-semibold text-foreground group-hover:text-primary"
-                >
-                  {{ app.name }}
+                <h3 class="text-base font-semibold">
+                  <router-link
+                    :to="`/application/${app.id}`"
+                    class="app-link block truncate"
+                  >
+                    {{ app.name }}
+                  </router-link>
                 </h3>
                 <div class="flex min-w-0 items-center gap-2">
                   <span
-                    class="min-w-0 truncate font-mono text-xs text-muted-foreground"
+                    class="min-w-0 truncate text-xs text-muted-foreground"
                     :title="app.code"
                   >
                     {{ app.code }}
@@ -104,19 +106,13 @@
               </div>
             </div>
 
-            <div
-              class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm"
-              @click.stop
-            >
-              <button class="app-link" @click="router.push(`/application/${app.id}`)">
-                {{ t('application.view') }}
-              </button>
-              <button
+            <div class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm">
+              <router-link
+                :to="{ path: '/versions', query: { application_id: app.id } }"
                 class="app-link"
-                @click="router.push({ path: '/versions', query: { application_id: app.id } })"
               >
                 {{ t('nav.versions') }}
-              </button>
+              </router-link>
             </div>
           </div>
         </div>
@@ -151,9 +147,9 @@
             <tbody>
               <tr v-for="app in applications" :key="app.id">
                 <td>
-                  <button class="app-link" @click="router.push(`/application/${app.id}`)">
+                  <router-link :to="`/application/${app.id}`" class="app-link">
                     {{ app.name }}
-                  </button>
+                  </router-link>
                 </td>
                 <td class="text-foreground">{{ app.code }}</td>
                 <td>
@@ -165,15 +161,12 @@
                 <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
                 <td>
                   <div class="flex items-center gap-3">
-                    <button class="app-link" @click="router.push(`/application/${app.id}`)">
-                      {{ t('application.view') }}
-                    </button>
-                    <button
+                    <router-link
+                      :to="{ path: '/versions', query: { application_id: app.id } }"
                       class="app-link"
-                      @click="router.push({ path: '/versions', query: { application_id: app.id } })"
                     >
                       {{ t('nav.versions') }}
-                    </button>
+                    </router-link>
                   </div>
                 </td>
               </tr>
@@ -233,7 +226,6 @@
   import { LayoutGrid, List, Plus, Upload } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import AppBadge from '@/components/AppBadge.vue';
   import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
@@ -254,7 +246,6 @@
   import { formatTime } from '@/utils/time';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
 
-  const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();

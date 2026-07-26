@@ -51,9 +51,8 @@
                 {{ formatTime(stage.created_at) }}
               </td>
               <td class="whitespace-nowrap">
-                <router-link :to="`/pipeline/stage/${stage.id}`" class="app-link">查看</router-link>
                 <button
-                  class="app-link ml-3"
+                  class="app-link"
                   :disabled="duplicating"
                   @click="handleDuplicate(stage.id)"
                 >

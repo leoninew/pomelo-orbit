@@ -41,13 +41,12 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="services.length === 0" :message="t('service.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[1080px]">
+        <table class="app-table-list min-w-[960px]">
           <thead>
             <tr>
-              <th>{{ t('service.fields.application') }}</th>
-              <th>{{ t('service.fields.environment') }}</th>
               <th>{{ t('service.fields.instanceKey') }}</th>
-              <th>{{ t('service.fields.version') }}</th>
+              <th>{{ t('service.fields.application') }} / {{ t('service.fields.version') }}</th>
+              <th>{{ t('service.fields.environment') }}</th>
               <th>{{ t('common.status') }}</th>
               <th>{{ t('common.updatedAt') }}</th>
               <th>{{ t('common.operation') }}</th>
@@ -56,39 +55,22 @@
           <tbody>
             <tr v-for="svc in services" :key="svc.id">
               <td>
-                <div class="flex flex-col gap-0.5">
-                  <div class="flex items-center gap-2">
-                    <button
-                      class="app-link text-left"
-                      @click="router.push(`/application/${svc.application_id}`)"
-                    >
-                      {{ svc.application_name || svc.application_id }}
-                    </button>
-                    <AppBadge
-                      v-if="svc.application_kind"
-                      variant="status"
-                      :tone="applicationKindTone(svc.application_kind)"
-                    >
-                      {{ svc.application_kind }}
-                    </AppBadge>
-                  </div>
-                  <span class="text-xs text-muted-foreground">{{ svc.application_code }}</span>
-                </div>
+                <router-link :to="`/service/${svc.id}`" class="app-link">
+                  {{ svc.instance_key || 'default' }}
+                </router-link>
               </td>
               <td>
-                <div class="flex flex-col gap-0.5">
-                  <span class="text-foreground">
-                    {{ svc.environment_name || svc.environment_id }}
-                  </span>
-                  <span class="text-xs text-muted-foreground">{{ svc.environment_code }}</span>
+                <div class="flex items-center gap-2 whitespace-nowrap">
+                  <router-link :to="`/application/${svc.application_id}`" class="app-link">
+                    {{ svc.application_name || svc.application_id }}
+                  </router-link>
+                  <span class="text-muted-foreground">/</span>
+                  <router-link :to="`/version/${svc.version_id}`" class="app-link">
+                    {{ svc.version_label || svc.version_id }}
+                  </router-link>
                 </div>
               </td>
-              <td class="text-foreground">{{ svc.instance_key || 'default' }}</td>
-              <td>
-                <button class="app-link" @click="router.push(`/version/${svc.version_id}`)">
-                  {{ svc.version_label || svc.version_id }}
-                </button>
-              </td>
+              <td class="text-foreground">{{ svc.environment_name || svc.environment_id }}</td>
               <td>
                 <AppBadge variant="status" :tone="appStatusTone(svc.status)">
                   {{ svc.status }}
@@ -97,20 +79,12 @@
               <td class="whitespace-nowrap text-foreground">{{ formatTime(svc.updated_at) }}</td>
               <td>
                 <div class="flex items-center gap-3">
-                  <button class="app-link" @click="router.push(`/service/${svc.id}`)">
-                    {{ t('service.actions.view') }}
-                  </button>
-                  <button
+                  <router-link
+                    :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
                     class="app-link"
-                    @click="
-                      router.push({
-                        path: '/deployments',
-                        query: { application_id: svc.application_id },
-                      })
-                    "
                   >
                     {{ t('service.actions.deployments') }}
-                  </button>
+                  </router-link>
                 </div>
               </td>
             </tr>
@@ -134,7 +108,6 @@
   import { RefreshCw } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
   import { ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import { environmentApi } from '@/api/environment/environment';
@@ -152,10 +125,9 @@
   import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
-  import { applicationKindTone, appStatusTone } from '@/utils/status';
+  import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
 
-  const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();

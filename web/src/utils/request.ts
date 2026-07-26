@@ -4,20 +4,50 @@ import { useAuthStore } from '@/stores/auth';
 import { handleUnauthorized } from '@/utils/handle-unauthorized';
 
 /**
- * API 错误类，保留 HTTP 状态码
+ * API 错误契约。
  */
-interface ErrorResp {
-  detail?: string;
+export interface HttpErrorResponse {
+  code: string;
+  error: string;
+  requestId: string;
 }
+
+export type ApiErrorKind = 'api' | 'contract_mismatch' | 'network';
 
 export class ApiError extends Error {
   constructor(
     message: string,
-    public status?: number
+    public status?: number,
+    public code?: string,
+    public requestId?: string,
+    public kind: ApiErrorKind = 'api'
   ) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+export function isHttpErrorResponse(value: unknown): value is HttpErrorResponse {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const response = value as Record<string, unknown>;
+  return [response.code, response.error, response.requestId].every(
+    (item) => typeof item === 'string' && item.trim() !== ''
+  );
+}
+
+export function toApiError(status: number | undefined, value: unknown): ApiError {
+  if (isHttpErrorResponse(value)) {
+    return new ApiError(value.error, status, value.code, value.requestId);
+  }
+  return new ApiError(
+    '服务响应格式异常',
+    status,
+    'contract_mismatch',
+    undefined,
+    'contract_mismatch'
+  );
 }
 
 const request = axios.create({
@@ -42,20 +72,36 @@ request.interceptors.request.use(
 // 响应拦截器 - 处理基础错误
 request.interceptors.response.use(
   (response) => response.data,
-  (error: AxiosError<ErrorResp>) => {
+  (error: AxiosError<unknown>) => {
+    const status = error.response?.status;
+
     // 401 - token 失效，清除登录状态并跳转登录页
-    if (error.response?.status === 401) {
+    if (status === 401) {
       handleUnauthorized();
-      return Promise.reject(new ApiError('登录已过期，请重新登录', 401));
+      const apiError = toApiError(status, error.response?.data);
+      if (apiError.kind === 'contract_mismatch') {
+        return Promise.reject(apiError);
+      }
+      return Promise.reject(
+        new ApiError('登录已过期，请重新登录', status, apiError.code, apiError.requestId)
+      );
     }
 
-    if (error.response?.data?.detail) {
-      return Promise.reject(new ApiError(error.response.data.detail, error.response.status));
+    if (error.response) {
+      return Promise.reject(toApiError(status, error.response.data));
     }
 
     // 处理网络错误等基础错误
     if (error.request) {
-      return Promise.reject(new ApiError('网络连接失败，请检查网络设置'));
+      return Promise.reject(
+        new ApiError(
+          '网络连接失败，请检查网络设置',
+          undefined,
+          'network_error',
+          undefined,
+          'network'
+        )
+      );
     }
 
     return Promise.reject(error);

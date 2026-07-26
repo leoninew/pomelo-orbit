@@ -34,7 +34,7 @@ func (h Handler) ListProjects(c *gin.Context) {
 	items, err := h.service.ListByMember(c.Request.Context(), current.Id)
 	if err != nil {
 		h.logger.Error("list projects failed", "user_id", current.Id, "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list projects")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	resp := make([]projectv1.ProjectResp, 0, len(items))
@@ -51,7 +51,7 @@ func (h Handler) CreateProject(c *gin.Context) {
 	}
 	var req projectv1.ProjectSaveReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	project, err := h.service.Create(c.Request.Context(), current.Id, projectSaveInput(&req))
@@ -79,7 +79,7 @@ func (h Handler) UpdateProject(c *gin.Context) {
 	}
 	var req projectv1.ProjectSaveReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	updated, err := h.service.Update(c.Request.Context(), project, projectSaveInput(&req))
@@ -102,7 +102,7 @@ func (h Handler) DeprecateProject(c *gin.Context) {
 	}
 	var req projectv1.ProjectDeprecateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.Deprecate(c.Request.Context(), project, current.Id); err != nil {
@@ -127,7 +127,7 @@ func (h Handler) AddProjectMember(c *gin.Context) {
 	}
 	var req projectv1.ProjectMemberReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	members, err := h.service.AddMember(c.Request.Context(), project.Id, req.UserId)
@@ -155,7 +155,7 @@ func (h Handler) writeProjectMembers(c *gin.Context, projectId string) {
 	members, err := h.service.Members(c.Request.Context(), projectId)
 	if err != nil {
 		h.logger.Error("list project members failed", "project_id", projectId, "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list project members")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	transportresponse.ProtoJSON(c, http.StatusOK, &projectv1.ProjectMemberListResp{Items: transportresponse.Ptrs(projectMemberResponses(members))})
@@ -183,5 +183,5 @@ func (h Handler) writeServiceError(c *gin.Context, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("project request failed", "error", err)
 	}
-	transportresponse.Error(c, apperror.StatusCode(err), err.Error())
+	transportresponse.WriteError(c, err)
 }

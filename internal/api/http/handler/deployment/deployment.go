@@ -76,7 +76,7 @@ func (h Handler) CancelDeployment(c *gin.Context) {
 	}
 	var req deploymentv1.DeploymentCancelReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	deployment, err := h.service.CancelDeployment(c.Request.Context(), current.Id, c.Param("deployment_id"))
@@ -95,7 +95,7 @@ func (h Handler) DeployApplication(c *gin.Context) {
 	}
 	var req applicationv1.ApplicationDeployReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	deploymentID, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentdto.DeployInput{
@@ -116,7 +116,7 @@ func (h Handler) StopApplication(c *gin.Context) {
 	}
 	var req applicationv1.ApplicationStopReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	deploymentID, err := h.service.StopApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(derefString(req.InstanceKey), derefString(req.ServiceId), req.RemoveVolumes))
@@ -134,7 +134,7 @@ func (h Handler) RestartApplication(c *gin.Context) {
 	}
 	var req applicationv1.ApplicationRestartReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	deploymentID, err := h.service.RestartApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(derefString(req.InstanceKey), derefString(req.ServiceId), false))
@@ -178,7 +178,7 @@ func (h Handler) PreviewVersion(c *gin.Context) {
 	}
 	var req applicationv1.VersionPreviewReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	compose, err := h.service.PreviewVersion(c.Request.Context(), current.Id, c.Param("version_id"), derefString(req.InstanceKey))

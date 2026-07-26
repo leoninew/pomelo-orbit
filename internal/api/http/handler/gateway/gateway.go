@@ -38,7 +38,7 @@ func (h Handler) CreateGateway(c *gin.Context) {
 	}
 	var req gatewayv1.GatewayCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if projectId := c.Request.URL.Query().Get("project_id"); projectId != "" && req.ProjectId == "" {
@@ -74,7 +74,7 @@ func (h Handler) UpdateGateway(c *gin.Context) {
 	}
 	var req gatewayv1.GatewayUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.UpdateGateway(c.Request.Context(), current.Id, c.Param("gateway_id"), gatewayUpdateInput(&req))

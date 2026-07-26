@@ -1,8 +1,11 @@
 package response
 
 import (
+	"net/http"
 	"time"
 
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -10,16 +13,33 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/codec"
 )
 
-type ErrorResp[T any] struct {
-	Detail T `json:"detail"`
+type ErrorResp struct {
+	Code      string `json:"code"`
+	Error     string `json:"error"`
+	RequestId string `json:"requestId"`
 }
 
 func ProtoJSON(c *gin.Context, status int, message proto.Message) {
 	c.Render(status, codec.ProtoJSON{Message: message})
 }
 
-func Error[T any](c *gin.Context, status int, detail T) {
-	c.JSON(status, ErrorResp[T]{Detail: detail})
+func WriteStatusError(c *gin.Context, status int, message string) {
+	WriteError(c, apperror.NewForHTTPStatus(status, message))
+}
+
+func WriteError(c *gin.Context, err error) {
+	classification := apperror.Classify(err)
+	if err != nil && classification.StatusCode >= 500 {
+		_ = c.Error(err)
+	}
+	if classification.StatusCode == http.StatusUnauthorized {
+		c.Header("WWW-Authenticate", "Bearer")
+	}
+	c.AbortWithStatusJSON(classification.StatusCode, ErrorResp{
+		Code:      classification.Code,
+		Error:     classification.Message,
+		RequestId: requestid.FromContext(c),
+	})
 }
 
 func PageCount(total int, perPage int) int {

@@ -27,5 +27,5 @@ func (h Handler) writeError(c *gin.Context, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("application request failed", "error", err)
 	}
-	transportresponse.Error(c, apperror.StatusCode(err), err.Error())
+	transportresponse.WriteError(c, err)
 }

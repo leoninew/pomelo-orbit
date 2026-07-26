@@ -37,7 +37,7 @@ func (h Handler) CreatePipelineStage(c *gin.Context) {
 	}
 	var req pipelinev1.PipelineStageCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	stage, err := h.service.CreatePipelineStage(c.Request.Context(), current.Id, pipelinedto.PipelineStageCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Image: req.Image, Script: req.Script, Artifacts: serviceArtifacts(req.Artifacts), Description: req.Description})
@@ -70,7 +70,7 @@ func (h Handler) UpdatePipelineStage(c *gin.Context) {
 	}
 	var req pipelinev1.PipelineStageUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	var artifacts *[]pipelinedto.ArtifactConfig
@@ -106,7 +106,7 @@ func (h Handler) DuplicatePipelineStage(c *gin.Context) {
 	}
 	var req pipelinev1.PipelineStageDuplicateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	stage, err := h.service.DuplicatePipelineStage(c.Request.Context(), current.Id, c.Param("stage_id"))

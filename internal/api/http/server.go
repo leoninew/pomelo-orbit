@@ -9,9 +9,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 
 	"github.com/gin-gonic/gin"
 
@@ -37,14 +39,66 @@ func (s Server) Handler() http.Handler {
 func (s Server) registerFallbackRoutes(r *gin.Engine) {
 	r.NoRoute(func(c *gin.Context) {
 		if isAPIPath(c.Request.URL.Path, s.appCfg.Server.ApiPathPrefixes) {
-			transportresponse.Error(c, http.StatusNotFound, "Not Found")
+			transportresponse.WriteError(c, apperror.New(apperror.KindNotFound, ""))
 			return
 		}
 		if s.serveStatic(c, "static") {
 			return
 		}
-		transportresponse.Error(c, http.StatusNotFound, "Not Found")
+		transportresponse.WriteError(c, apperror.New(apperror.KindNotFound, ""))
 	})
+	r.NoMethod(func(c *gin.Context) {
+		if methods := allowedHTTPMethods(r.Routes(), c.Request.URL.Path); len(methods) > 0 {
+			c.Header("Allow", strings.Join(methods, ", "))
+		}
+		transportresponse.WriteError(c, apperror.New(apperror.KindMethodNotAllowed, ""))
+	})
+}
+
+func allowedHTTPMethods(routes []gin.RouteInfo, requestPath string) []string {
+	methods := make(map[string]struct{})
+	for _, route := range routes {
+		if routePathMatches(route.Path, requestPath) {
+			methods[route.Method] = struct{}{}
+		}
+	}
+	result := make([]string, 0, len(methods))
+	for method := range methods {
+		result = append(result, method)
+	}
+	sort.Strings(result)
+	return result
+}
+
+func routePathMatches(routePath string, requestPath string) bool {
+	routeSegments := pathSegments(routePath)
+	requestSegments := pathSegments(requestPath)
+	for index, routeSegment := range routeSegments {
+		if strings.HasPrefix(routeSegment, "*") {
+			return true
+		}
+		if index >= len(requestSegments) {
+			return false
+		}
+		if strings.HasPrefix(routeSegment, ":") {
+			if requestSegments[index] == "" {
+				return false
+			}
+			continue
+		}
+		if routeSegment != requestSegments[index] {
+			return false
+		}
+	}
+	return len(routeSegments) == len(requestSegments)
+}
+
+func pathSegments(value string) []string {
+	value = strings.Trim(value, "/")
+	if value == "" {
+		return nil
+	}
+	return strings.Split(value, "/")
 }
 
 func (s Server) serveStatic(c *gin.Context, staticDir string) bool {

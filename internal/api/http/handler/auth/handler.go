@@ -37,7 +37,7 @@ func (h Handler) GetCSRFToken(c *gin.Context) {
 	token, err := h.service.NewCSRFToken()
 	if err != nil {
 		h.logger.Error("generate csrf token failed", "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to generate token")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	resp := csrfTokenResponse(token)
@@ -52,7 +52,7 @@ func (h Handler) GetTurnstileConfig(c *gin.Context) {
 func (h Handler) Login(c *gin.Context) {
 	var req authv1.LoginReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	input := loginInput(&req, clientIP(c), c.Request.UserAgent())
@@ -68,7 +68,7 @@ func (h Handler) Login(c *gin.Context) {
 		}
 		if err := h.turnstileVerifier.Verify(c.Request.Context(), turnstileToken, clientIP(c)); err != nil {
 			h.logger.Warn("turnstile verification failed", "error", err)
-			transportresponse.Error(c, http.StatusBadRequest, "Invalid verification")
+			transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid verification")
 			return
 		}
 	}
@@ -84,7 +84,7 @@ func (h Handler) Login(c *gin.Context) {
 func (h Handler) Logout(c *gin.Context) {
 	var req authv1.LogoutReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -98,13 +98,13 @@ func (h Handler) GetMe(c *gin.Context) {
 	roles, err := h.service.UserRoles(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user roles failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to load user roles")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	permissions, err := h.service.UserPermissions(c.Request.Context(), user.Id)
 	if err != nil {
 		h.logger.Error("load user permissions failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to load user permissions")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	resp := userInfoResponse(user, roles, permissions)
@@ -118,7 +118,7 @@ func (h Handler) ChangePassword(c *gin.Context) {
 	}
 	var req authv1.PasswordChangeReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.ChangePassword(c.Request.Context(), changePasswordInput(user, &req)); err != nil {
@@ -127,7 +127,7 @@ func (h Handler) ChangePassword(c *gin.Context) {
 			return
 		}
 		h.logger.Error("change password failed", "user_id", user.Id, "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to change password")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -142,7 +142,7 @@ func (h Handler) ListLoginHistory(c *gin.Context) {
 	history, err := h.service.ListLoginHistory(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list login history failed", "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list login history")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	items := make([]authv1.LoginHistoryResp, 0, len(history.Items))
@@ -153,28 +153,20 @@ func (h Handler) ListLoginHistory(c *gin.Context) {
 }
 
 func (h Handler) GoogleOAuth(c *gin.Context) {
-	transportresponse.Error(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
+	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
 }
 
 func (h Handler) GoogleCallback(c *gin.Context) {
 	var req authv1.GoogleCallbackReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	transportresponse.Error(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
+	transportresponse.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
 }
 
 func (h Handler) writeServiceError(c *gin.Context, err error) {
-	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(c, http.StatusBadRequest, err.Error())
-		return
-	}
-	if apperror.IsKind(err, apperror.KindUnauthorized) {
-		transportresponse.Error(c, http.StatusUnauthorized, err.Error())
-		return
-	}
-	transportresponse.Error(c, http.StatusInternalServerError, "Failed to sign token")
+	transportresponse.WriteError(c, err)
 }
 
 func clientIP(c *gin.Context) string {

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -12,12 +13,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
 const (
-	RequestIDKey        = "request_id"
-	RequestIDHeader     = "X-Request-Id"
+	RequestIdKey        = requestid.ContextKey
+	RequestIdHeader     = requestid.HeaderName
 	TruncatedBodySuffix = "..."
 )
 
@@ -27,25 +31,20 @@ type LogRequestConfig struct {
 	SkipAssets200Enabled bool
 }
 
-func RequestID() gin.HandlerFunc {
+func RequestId() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		requestID := strings.TrimSpace(c.GetHeader(RequestIDHeader))
-		if requestID == "" {
-			requestID = uuid.NewString()
+		requestId := strings.TrimSpace(c.GetHeader(RequestIdHeader))
+		if requestId == "" {
+			requestId = requestid.New()
 		}
-		c.Set(RequestIDKey, requestID)
-		c.Writer.Header().Set(RequestIDHeader, requestID)
+		c.Set(RequestIdKey, requestId)
+		c.Writer.Header().Set(RequestIdHeader, requestId)
 		c.Next()
 	}
 }
 
-func RequestIDFromContext(c *gin.Context) string {
-	value, ok := c.Get(RequestIDKey)
-	if !ok {
-		return ""
-	}
-	requestID, _ := value.(string)
-	return requestID
+func RequestIdFromContext(c *gin.Context) string {
+	return requestid.FromContext(c)
 }
 
 func RealIP() gin.HandlerFunc {
@@ -88,6 +87,13 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		c.Next()
 
 		status := c.Writer.Status()
+		if status >= http.StatusInternalServerError {
+			if lastError := c.Errors.Last(); lastError != nil {
+				failureAttrs := append([]any{}, requestAttrs...)
+				failureAttrs = append(failureAttrs, "status", status, "error", lastError.Err)
+				logger.Error("request failed", failureAttrs...)
+			}
+		}
 		if shouldSkipRequestLog(c.Request, status, cfg) {
 			return
 		}
@@ -109,9 +115,13 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 }
 
 func Recovery(logger *slog.Logger) gin.HandlerFunc {
-	_ = logger
-	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
-		c.AbortWithStatus(http.StatusInternalServerError)
+	return gin.CustomRecoveryWithWriter(io.Discard, func(c *gin.Context, recovered any) {
+		logger.Error("http panic recovered", append(requestLogAttrs(c), "panic", recovered)...)
+		if c.Writer.Written() {
+			c.Abort()
+			return
+		}
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", fmt.Errorf("panic: %v", recovered)))
 	})
 }
 
@@ -121,7 +131,7 @@ func requestLogAttrs(c *gin.Context) []any {
 		"method", r.Method,
 		"path", r.URL.Path,
 		"uri", r.URL.RequestURI(),
-		"request_id", RequestIDFromContext(c),
+		"request_id", RequestIdFromContext(c),
 		"remote_addr", r.RemoteAddr,
 		"user_agent", r.UserAgent(),
 	}

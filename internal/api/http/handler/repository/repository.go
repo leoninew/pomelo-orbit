@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	repositoryv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/repository"
 	"github.com/gin-gonic/gin"
 
@@ -39,7 +40,7 @@ func (h Handler) CreateRepository(c *gin.Context) {
 	}
 	var req repositoryv1.RepositoryCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.CreateRepository(c.Request.Context(), current.Id, repositorydto.RepositoryCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Code: req.Code, RepositoryURL: req.RepositoryUrl, GitCredentialId: req.GitCredentialId, VariableOverrides: variableDeclarationRequestMaps(req.VariableOverrides), DefaultBranch: req.DefaultBranch})
@@ -72,7 +73,7 @@ func (h Handler) UpdateRepository(c *gin.Context) {
 	}
 	var req repositoryv1.RepositoryUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	var variableOverrides *[]map[string]any
@@ -125,7 +126,7 @@ func (h Handler) CreateRepositoryWebhook(c *gin.Context) {
 	}
 	var req repositoryv1.RepositoryWebhookCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	webhook, err := h.service.CreateRepositoryWebhook(c.Request.Context(), current.Id, c.Param("repository_id"), repositorydto.WebhookCreateInput{Name: req.Name, TemplateId: req.TemplateId, Secret: req.Secret, BranchFilter: req.BranchFilter})
@@ -158,7 +159,7 @@ func (h Handler) UpdateRepositoryWebhook(c *gin.Context) {
 	}
 	var req binding.RepositoryWebhookUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	webhook, err := h.service.UpdateRepositoryWebhook(c.Request.Context(), current.Id, c.Param("repository_id"), c.Param("webhook_id"), repositorydto.WebhookUpdateInput{Name: req.Body.Name, TemplateId: req.Body.TemplateId, Secret: req.Body.Secret, BranchFilter: req.Body.BranchFilter, BranchSet: req.BranchSet, Enabled: req.Body.Enabled})
@@ -186,7 +187,7 @@ func (h Handler) ReceiveRepositoryWebhook(c *gin.Context) {
 	payload, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		h.logger.Error("read webhook payload failed", "webhook_id", c.Param("webhook_id"), "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to read webhook payload")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	result, err := h.service.ReceiveRepositoryWebhook(c.Request.Context(), repositorydto.WebhookReceiveInput{WebhookId: c.Param("webhook_id"), Headers: requestHeaders(c), Payload: payload})

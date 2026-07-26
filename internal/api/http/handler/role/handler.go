@@ -33,7 +33,7 @@ func (h Handler) ListRoles(c *gin.Context) {
 	roles, err := h.service.List(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list roles failed", "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list roles")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	items := make([]rolev1.RoleResp, 0, len(roles.Items))
@@ -50,7 +50,7 @@ func (h Handler) ListPermissions(c *gin.Context) {
 	permissions, err := h.service.ListPermissions(c.Request.Context())
 	if err != nil {
 		h.logger.Error("list permissions failed", "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list permissions")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	items := make([]rolev1.PermissionResp, 0, len(permissions))
@@ -79,7 +79,7 @@ func (h Handler) CreateRole(c *gin.Context) {
 	}
 	var req rolev1.RoleCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	role, err := h.service.Create(c.Request.Context(), roleCreateInput(&req))
@@ -97,7 +97,7 @@ func (h Handler) UpdateRole(c *gin.Context) {
 	}
 	var req rolev1.RoleUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.UpdateByID(c.Request.Context(), roleID(c), roleUpdateInput(&req))
@@ -121,20 +121,10 @@ func (h Handler) DeleteRole(c *gin.Context) {
 }
 
 func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail string) {
-	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(c, http.StatusBadRequest, err.Error())
-		return
+	if apperror.Classify(err).StatusCode >= http.StatusInternalServerError {
+		h.logger.Error(internalDetail, "error", err)
 	}
-	if apperror.IsKind(err, apperror.KindConflict) {
-		transportresponse.Error(c, http.StatusConflict, err.Error())
-		return
-	}
-	if apperror.IsKind(err, apperror.KindNotFound) {
-		transportresponse.Error(c, http.StatusNotFound, err.Error())
-		return
-	}
-	h.logger.Error("role service failed", "error", err)
-	transportresponse.Error(c, http.StatusInternalServerError, internalDetail)
+	transportresponse.WriteError(c, err)
 }
 
 func roleID(c *gin.Context) string {

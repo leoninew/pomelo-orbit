@@ -116,8 +116,8 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 		t.Fatalf("expected port data to be independent from the application view, got %+v", client.routers)
 	}
 	client.err = errors.New("connection refused")
-	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || apperror.StatusCode(err) != http.StatusBadRequest {
-		t.Fatalf("expected traefik connection validation error, got %v", err)
+	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || apperror.StatusCode(err) != http.StatusServiceUnavailable || apperror.Classify(err).Message != "Traefik is unavailable." {
+		t.Fatalf("expected safe traefik unavailable error, got %v", err)
 	}
 }
 

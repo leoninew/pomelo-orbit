@@ -66,7 +66,8 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies, fallback fun
 func (r Router) Handler() http.Handler {
 	gin.SetMode(gin.ReleaseMode)
 	engine := gin.New()
-	engine.Use(transportmiddleware.RequestID())
+	engine.HandleMethodNotAllowed = true
+	engine.Use(transportmiddleware.RequestId())
 	engine.Use(transportmiddleware.RealIP())
 	engine.Use(transportmiddleware.LogRequest(r.logger, transportmiddleware.LogRequestConfig{BodyEnabled: r.cfg.Logging.HTTPBodyEnabled, BodyMaxBytes: r.cfg.Logging.HTTPBodyMaxBytes, SkipAssets200Enabled: r.cfg.Logging.HTTPSkipAssets200Enabled}))
 	engine.Use(transportmiddleware.Recovery(r.logger))

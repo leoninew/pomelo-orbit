@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+	"github.com/oklog/ulid/v2"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 )
 
 const testBodyMaxBytes = 32
@@ -61,15 +66,63 @@ func TestLogRequestIncludesMetadata(t *testing.T) {
 	assertLogValue(t, completed, "response_body", `{"ok":true}`)
 }
 
+func TestRequestIdPreservesIncomingValueAndGeneratesULID(t *testing.T) {
+	cases := []struct {
+		name      string
+		requestId string
+	}{
+		{name: "preserves incoming request id", requestId: "upstream-request-1"},
+		{name: "generates ulid"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			router := gin.New()
+			router.Use(RequestId())
+			router.GET("/", func(c *gin.Context) {
+				transportresponse.WriteError(c, transportError())
+			})
+
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.requestId != "" {
+				request.Header.Set(requestid.HeaderName, tc.requestId)
+			}
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+
+			var response transportresponse.ErrorResp
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatalf("decode error response: %v", err)
+			}
+			if response.RequestId == "" || recorder.Header().Get(requestid.HeaderName) != response.RequestId {
+				t.Fatalf("request id did not propagate: header=%q body=%q", recorder.Header().Get(requestid.HeaderName), response.RequestId)
+			}
+			if tc.requestId != "" && response.RequestId != tc.requestId {
+				t.Fatalf("expected incoming request id %q, got %q", tc.requestId, response.RequestId)
+			}
+			if tc.requestId == "" {
+				if _, err := ulid.ParseStrict(response.RequestId); err != nil {
+					t.Fatalf("generated request id is not a ULID: %q: %v", response.RequestId, err)
+				}
+			}
+		})
+	}
+}
+
 func TestLogRequestKeepsInfoLevelForErrorStatus(t *testing.T) {
 	entries, _ := runLoggedRequest(t, http.MethodGet, "/api/error", "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeTestJSON(w, http.StatusInternalServerError, map[string]string{"detail": "boom"})
+		writeTestJSON(w, http.StatusInternalServerError, map[string]string{"error": "boom"})
 	}))
 	started, completed := assertStartedAndCompleted(t, entries)
 
 	assertLogValue(t, started, "level", "INFO")
 	assertLogValue(t, completed, "level", "INFO")
 	assertLogNumber(t, completed, "status", http.StatusInternalServerError)
+}
+
+func transportError() error {
+	return errors.New("database password=secret")
 }
 
 func TestLogRequestSkipsAssets200WhenEnabled(t *testing.T) {
@@ -252,7 +305,7 @@ func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(RequestID())
+	router.Use(RequestId())
 	router.Use(RealIP())
 	router.Use(LogRequest(logger, testLogRequestConfig()))
 	router.Use(Recovery(logger))
@@ -266,10 +319,28 @@ func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 		t.Fatalf("expected status 500, got %d", recorder.Code)
 	}
 	entries := decodeLogEntries(t, logBuffer.String())
-	started, completed := assertStartedAndCompleted(t, entries)
+	if len(entries) != 4 {
+		t.Fatalf("expected 4 log entries, got %d: %+v", len(entries), entries)
+	}
+	started, recovery, failed, completed := entries[0], entries[1], entries[2], entries[3]
 	assertLogValue(t, started, "level", "INFO")
+	assertLogValue(t, recovery, "level", "ERROR")
+	assertLogValue(t, recovery, "msg", "http panic recovered")
+	assertLogValue(t, recovery, "request_id", started["request_id"].(string))
+	assertLogValue(t, failed, "level", "ERROR")
+	assertLogValue(t, failed, "msg", "request failed")
+	assertLogValue(t, failed, "request_id", started["request_id"].(string))
+	assertLogNumber(t, failed, "status", http.StatusInternalServerError)
+	assertLogValue(t, failed, "error", "panic: boom")
 	assertLogValue(t, completed, "level", "INFO")
 	assertLogNumber(t, completed, "status", http.StatusInternalServerError)
+	var response transportresponse.ErrorResp
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode recovery error response: %v", err)
+	}
+	if response.Code != "internal_error" || response.Error != "Internal server error." || response.RequestId != started["request_id"] {
+		t.Fatalf("unexpected recovery error response: %+v", response)
+	}
 }
 
 func runLoggedRequest(t *testing.T, method string, target string, contentType string, body string, handler http.Handler) ([]map[string]any, *httptest.ResponseRecorder) {
@@ -289,7 +360,7 @@ func runLoggedRequestContentWithConfig(t *testing.T, cfg LogRequestConfig, metho
 	logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	router.Use(RequestID())
+	router.Use(RequestId())
 	router.Use(RealIP())
 	router.Use(LogRequest(logger, cfg))
 	router.NoRoute(func(c *gin.Context) {

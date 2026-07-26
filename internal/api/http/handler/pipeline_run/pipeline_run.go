@@ -37,7 +37,7 @@ func (h Handler) TriggerRepository(c *gin.Context) {
 	}
 	var req pipelinerunv1.PipelineRunTriggerReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.TriggerRepository(c.Request.Context(), current.Id, pipelinerundto.PipelineRunTriggerInput{RepositoryId: c.Param("repository_id"), TemplateId: req.TemplateId, TriggerRef: req.TriggerRef, Variables: req.Variables})
@@ -119,7 +119,7 @@ func (h Handler) CancelPipelineRun(c *gin.Context) {
 	}
 	var req pipelinerunv1.PipelineRunCancelReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.CancelPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))
@@ -138,7 +138,7 @@ func (h Handler) RetryPipelineRun(c *gin.Context) {
 	}
 	var req pipelinerunv1.PipelineRunRetryReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.RetryPipelineRun(c.Request.Context(), current.Id, c.Param("run_id"))

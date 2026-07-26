@@ -17,7 +17,7 @@ func (h Handler) ImportApplication(c *gin.Context) {
 	}
 	var req applicationv1.ApplicationImportReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	app, err := h.service.ImportApplication(c.Request.Context(), current.Id, applicationImportInput(c.Request.URL.Query().Get("project_id"), &req))
@@ -72,7 +72,7 @@ func (h Handler) CreateVersion(c *gin.Context) {
 	}
 	var req applicationv1.VersionCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if req.ApplicationId == "" {
@@ -108,12 +108,12 @@ func (h Handler) UpdateVersion(c *gin.Context) {
 	}
 	data, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	input, err := versionUpdateInputFromJSON(data)
 	if err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.UpdateVersion(c.Request.Context(), current.Id, c.Param("version_id"), input)
@@ -158,7 +158,7 @@ func (h Handler) ForkVersion(c *gin.Context) {
 	}
 	var req applicationv1.VersionForkReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	view, err := h.service.ForkVersion(c.Request.Context(), current.Id, c.Param("version_id"), req.Label)

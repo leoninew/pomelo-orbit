@@ -55,7 +55,9 @@ async def test_client_reauthenticates_once_after_401(tmp_path) -> None:
             project_calls += 1
             if project_calls == 1:
                 assert request.headers["Authorization"] == f"Bearer {stale}"
-                return httpx.Response(401, json={"detail": "expired"})
+                return httpx.Response(
+                    401, json={"code": "unauthorized", "error": "Expired session.", "requestId": "request-1"}
+                )
             assert request.headers["Authorization"] == f"Bearer {fresh}"
             return httpx.Response(200, json={"items": []})
         if request.url.path == "/api/auth/csrf-token":
@@ -83,6 +85,52 @@ async def test_authentication_error_never_exposes_password(tmp_path) -> None:
         with pytest.raises(OrbitAPIError) as raised:
             await OrbitClient(settings, http_client).list_projects()
     assert "not-for-output" not in str(raised.value)
+
+
+@pytest.mark.asyncio
+async def test_client_preserves_structured_error_contract(tmp_path) -> None:
+    token = make_jwt()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        return httpx.Response(
+            409,
+            json={
+                "code": "version_already_published",
+                "error": "Version is already published.",
+                "requestId": "request-2",
+            },
+        )
+
+    settings = make_settings(tmp_path, jwt_from_environment=token)
+    async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
+        with pytest.raises(OrbitAPIError) as raised:
+            await OrbitClient(settings, http_client).list_projects()
+    error = raised.value
+    assert error.status_code == 409
+    assert error.code == "version_already_published"
+    assert error.request_id == "request-2"
+    assert error.message == "Version is already published."
+    assert "request_id=request-2" in str(error)
+
+
+@pytest.mark.asyncio
+async def test_client_rejects_old_or_invalid_error_contract_without_exposing_body(tmp_path) -> None:
+    token = make_jwt()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["Authorization"] == f"Bearer {token}"
+        return httpx.Response(500, json={"detail": "database password=not-for-output"})
+
+    settings = make_settings(tmp_path, jwt_from_environment=token)
+    async with httpx.AsyncClient(base_url=settings.orbit_url, transport=httpx.MockTransport(handler)) as http_client:
+        with pytest.raises(OrbitAPIError) as raised:
+            await OrbitClient(settings, http_client).list_projects()
+    error = raised.value
+    assert error.code is None
+    assert error.request_id is None
+    assert error.message == "request failed due to invalid error contract"
+    assert "not-for-output" not in str(error)
 
 
 @pytest.mark.asyncio

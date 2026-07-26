@@ -19,11 +19,18 @@ class OrbitAPIError(RuntimeError):
     method: str
     path: str
     status_code: int | None
-    detail: str
+    message: str
+    code: str | None = None
+    request_id: str | None = None
 
     def __str__(self) -> str:
         status = str(self.status_code) if self.status_code is not None else "network"
-        return f"Orbit API {self.method} {self.path} failed ({status}): {self.detail}"
+        context = [status]
+        if self.code is not None:
+            context.append(self.code)
+        if self.request_id is not None:
+            context.append(f"request_id={self.request_id}")
+        return f"Orbit API {self.method} {self.path} failed ({', '.join(context)}): {self.message}"
 
 
 class OrbitClient:
@@ -88,8 +95,10 @@ class OrbitClient:
         if response.is_error:
             # Login responses may contain sensitive echo data on a proxy or a
             # non-standard error path, so never include their body.
-            detail = "authentication request failed" if path.startswith("/api/auth/") else _error_detail(response)
-            raise OrbitAPIError(method, path, response.status_code, detail)
+            if path.startswith("/api/auth/"):
+                raise OrbitAPIError(method, path, response.status_code, "authentication request failed")
+            message, code, request_id = _error_summary(response)
+            raise OrbitAPIError(method, path, response.status_code, message, code, request_id)
         return _json_object(response, method, path)
 
     async def request(
@@ -117,7 +126,8 @@ class OrbitClient:
                 self._cache.clear()
                 continue
             if response.is_error:
-                raise OrbitAPIError(method, path, response.status_code, _error_detail(response))
+                message, code, request_id = _error_summary(response)
+                raise OrbitAPIError(method, path, response.status_code, message, code, request_id)
             return _json_object(response, method, path)
         raise OrbitAPIError(method, path, 401, "authentication retry failed")
 
@@ -232,13 +242,20 @@ def _json_object(response: httpx.Response, method: str, path: str) -> dict[str, 
     return value
 
 
-def _error_detail(response: httpx.Response) -> str:
+def _error_summary(response: httpx.Response) -> tuple[str, str | None, str | None]:
     try:
         value = response.json()
     except ValueError:
-        return "request failed"
-    if isinstance(value, dict):
-        detail = value.get("detail")
-        if isinstance(detail, str):
-            return detail
-    return "request failed"
+        return "request failed due to invalid error contract", None, None
+    if not isinstance(value, dict):
+        return "request failed due to invalid error contract", None, None
+    code = value.get("code")
+    message = value.get("error")
+    request_id = value.get("requestId")
+    if not isinstance(code, str) or not code.strip():
+        return "request failed due to invalid error contract", None, None
+    if not isinstance(message, str) or not message.strip():
+        return "request failed due to invalid error contract", None, None
+    if not isinstance(request_id, str) or not request_id.strip():
+        return "request failed due to invalid error contract", None, None
+    return message, code, request_id

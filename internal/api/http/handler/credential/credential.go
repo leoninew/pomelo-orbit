@@ -37,7 +37,7 @@ func (h Handler) CreateCredential(c *gin.Context) {
 	}
 	var req credentialv1.CredentialCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	created, err := h.service.CreateCredential(c.Request.Context(), current.Id, credentialdto.CredentialCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Type: req.Type, Data: req.Data})
@@ -56,7 +56,7 @@ func (h Handler) ImportCredential(c *gin.Context) {
 	}
 	var req credentialv1.CredentialImportReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if req.Version == "" {
@@ -92,7 +92,7 @@ func (h Handler) UpdateCredential(c *gin.Context) {
 	}
 	var req credentialv1.CredentialUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	updated, err := h.service.UpdateCredential(c.Request.Context(), current.Id, c.Param("credential_id"), credentialdto.CredentialUpdateInput{Name: req.Name, Data: req.Data})

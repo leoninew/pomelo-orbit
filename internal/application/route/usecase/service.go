@@ -396,7 +396,7 @@ func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId
 	items, err := s.traefikRouterClient.ListRouters(ctx, gw.RestApiUrl)
 	if err != nil {
 		if s.traefikRouterClient.IsConnectionError(err) {
-			return nil, apperror.New(apperror.KindValidation, fmt.Sprintf("无法连接到 Traefik: %v", err))
+			return nil, apperror.Wrap(apperror.KindUnavailable, "Traefik is unavailable.", err)
 		}
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list Traefik routes", err)
 	}

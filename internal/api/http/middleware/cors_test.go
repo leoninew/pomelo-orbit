@@ -1,11 +1,15 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/requestid"
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 )
 
 func TestCORSNoopWhenNotConfigured(t *testing.T) {
@@ -82,6 +86,13 @@ func TestCORSDeniedPreflightReturnsForbidden(t *testing.T) {
 	if recorder.Header().Get("Access-Control-Allow-Origin") != "" {
 		t.Fatalf("expected no cors origin header, got %s", recorder.Header().Get("Access-Control-Allow-Origin"))
 	}
+	var response transportresponse.ErrorResp
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if response.Code != "forbidden" || response.RequestId == "" || recorder.Header().Get(requestid.HeaderName) != response.RequestId {
+		t.Fatalf("unexpected forbidden response: %+v", response)
+	}
 }
 
 func TestCORSIgnoresNonAPIPaths(t *testing.T) {
@@ -140,6 +151,7 @@ func serveCORSRequestWithPrefixes(t *testing.T, allowedOrigins []string, apiPath
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	router.Use(RequestId())
 	router.Use(CORS(allowedOrigins, apiPathPrefixes))
 	router.NoRoute(func(c *gin.Context) {
 		c.Status(http.StatusOK)

@@ -1,6 +1,7 @@
 package transporthttp
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/routes"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 )
@@ -104,6 +108,38 @@ func TestStaticFilesFallbackServesFrontend(t *testing.T) {
 	}
 }
 
+func TestApiFallbackWritesNotFoundContract(t *testing.T) {
+	server := newServerForServerTest(config.Config{})
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/api/missing", nil))
+
+	assertServerErrorResponse(t, recorder, http.StatusNotFound, "not_found")
+}
+
+func TestApiMethodMismatchWritesContract(t *testing.T) {
+	server := newServerForServerTest(config.Config{})
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/api/health", nil))
+
+	assertServerErrorResponse(t, recorder, http.StatusMethodNotAllowed, "method_not_allowed")
+	if got := recorder.Header().Get("Allow"); got != http.MethodGet {
+		t.Fatalf("expected Allow header %q, got %q", http.MethodGet, got)
+	}
+}
+
+func TestAllowedHTTPMethodsMatchesParameterizedRoute(t *testing.T) {
+	routes := []gin.RouteInfo{
+		{Method: http.MethodGet, Path: "/api/projects/:projectId"},
+		{Method: http.MethodPut, Path: "/api/projects/:projectId"},
+		{Method: http.MethodDelete, Path: "/api/projects/:projectId/members/:userId"},
+	}
+
+	methods := allowedHTTPMethods(routes, "/api/projects/project-1")
+	if got := strings.Join(methods, ", "); got != "GET, PUT" {
+		t.Fatalf("expected parameterized route methods, got %q", got)
+	}
+}
+
 func TestStaticFilesInjectRuntimeConfigPublicURL(t *testing.T) {
 	server := newServerForServerTest(config.Config{Server: config.ServerConfig{PublicURL: "https://orbit-api.preflite.cn"}})
 	withStaticDir(t, "<html><head><!-- __RUNTIME_CONFIG__ --></head><body>app</body></html>", nil)
@@ -181,4 +217,21 @@ func withStaticDir(t *testing.T, indexHTML string, files map[string]string) {
 			t.Fatal(err)
 		}
 	})
+}
+
+func assertServerErrorResponse(t *testing.T, recorder *httptest.ResponseRecorder, statusCode int, code string) {
+	t.Helper()
+	if recorder.Code != statusCode {
+		t.Fatalf("expected status %d, got %d: %s", statusCode, recorder.Code, recorder.Body.String())
+	}
+	var response transportresponse.ErrorResp
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if response.Code != code || response.RequestId == "" {
+		t.Fatalf("unexpected error response: %+v", response)
+	}
+	if got := recorder.Header().Get("X-Request-ID"); got != response.RequestId {
+		t.Fatalf("expected matching request id header and body, got header=%q body=%q", got, response.RequestId)
+	}
 }

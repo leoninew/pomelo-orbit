@@ -29,7 +29,7 @@ func New(logger *slog.Logger, service tasksvc.Service) Handler {
 func (h Handler) CreateTask(c *gin.Context) {
 	var req taskv1.CreateTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 
@@ -45,12 +45,12 @@ func (h Handler) CreateTask(c *gin.Context) {
 func (h Handler) EnqueuePipelineRun(c *gin.Context) {
 	var req pipelinerunv1.PipelineRunExecuteTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	runId := strings.TrimSpace(c.Param("run_id"))
 	if runId == "" {
-		transportresponse.Error(c, http.StatusBadRequest, "run_id is required")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "run_id is required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypePipelineRunExecute, pipelineRunExecutePayload(runId))
@@ -59,13 +59,13 @@ func (h Handler) EnqueuePipelineRun(c *gin.Context) {
 func (h Handler) EnqueueDeployment(c *gin.Context) {
 	var req deploymentv1.ApplicationDeployTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeDeploymentDeploy, applicationDeploymentPayload(appId, deploymentId))
@@ -74,13 +74,13 @@ func (h Handler) EnqueueDeployment(c *gin.Context) {
 func (h Handler) EnqueueDeploymentRestart(c *gin.Context) {
 	var req deploymentv1.ApplicationRestartTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeDeploymentRestart, applicationDeploymentPayload(appId, deploymentId))
@@ -89,13 +89,13 @@ func (h Handler) EnqueueDeploymentRestart(c *gin.Context) {
 func (h Handler) EnqueueDeploymentStop(c *gin.Context) {
 	var req deploymentv1.ApplicationStopTaskReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	appId := strings.TrimSpace(c.Param("app_id"))
 	deploymentId := strings.TrimSpace(c.Param("deployment_id"))
 	if appId == "" || deploymentId == "" {
-		transportresponse.Error(c, http.StatusBadRequest, "app_id and deployment_id are required")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "app_id and deployment_id are required")
 		return
 	}
 	h.enqueueTypedTask(c, status.TaskTypeDeploymentStop, applicationDeploymentPayload(appId, deploymentId))
@@ -114,7 +114,7 @@ func (h Handler) enqueueTypedTask(c *gin.Context, taskType string, payload any) 
 func (h Handler) GetTask(c *gin.Context) {
 	item, err := h.service.FindById(c.Request.Context(), c.Param("id"))
 	if err != nil {
-		transportresponse.Error(c, http.StatusNotFound, "Task not found")
+		transportresponse.WriteStatusError(c, http.StatusNotFound, "Task not found")
 		return
 	}
 	resp := taskResponse(item)
@@ -122,10 +122,8 @@ func (h Handler) GetTask(c *gin.Context) {
 }
 
 func (h Handler) writeServiceError(c *gin.Context, err error) {
-	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(c, http.StatusBadRequest, err.Error())
-		return
+	if apperror.Classify(err).StatusCode >= http.StatusInternalServerError {
+		h.logger.Error("task service failed", "error", err)
 	}
-	h.logger.Error("task service failed", "error", err)
-	transportresponse.Error(c, http.StatusInternalServerError, "Failed to process task")
+	transportresponse.WriteError(c, err)
 }

@@ -33,7 +33,7 @@ func (h Handler) ListUsers(c *gin.Context) {
 	users, err := h.service.List(c.Request.Context(), page, perPage, c.Request.URL.Query().Get("search"))
 	if err != nil {
 		h.logger.Error("list users failed", "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to list users")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	items := make([]userv1.UserListResp, 0, len(users.Items))
@@ -49,7 +49,7 @@ func (h Handler) CreateUser(c *gin.Context) {
 	}
 	var req userv1.UserCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	user, err := h.service.Create(c.Request.Context(), userCreateInput(&req))
@@ -86,7 +86,7 @@ func (h Handler) UpdateUser(c *gin.Context) {
 	}
 	var req userv1.UserUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.UpdateByActor(c.Request.Context(), actor(current), userID(c), userUpdateInput(&req))
@@ -105,7 +105,7 @@ func (h Handler) UpdateUserRoles(c *gin.Context) {
 	}
 	var req userv1.UserRoleUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.SetRoles(c.Request.Context(), actor(current), userID(c), req.RoleIds)
@@ -124,7 +124,7 @@ func (h Handler) DisableUser(c *gin.Context) {
 	}
 	var req userv1.UserDisableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userID(c), "disabled"); err != nil {
@@ -141,7 +141,7 @@ func (h Handler) EnableUser(c *gin.Context) {
 	}
 	var req userv1.UserEnableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.SetStatusByActor(c.Request.Context(), actor(current), userID(c), "enabled"); err != nil {
@@ -164,24 +164,10 @@ func (h Handler) DeleteUser(c *gin.Context) {
 }
 
 func (h Handler) writeServiceError(c *gin.Context, err error, internalDetail string) {
-	if apperror.IsKind(err, apperror.KindValidation) {
-		transportresponse.Error(c, http.StatusBadRequest, err.Error())
-		return
+	if apperror.Classify(err).StatusCode >= http.StatusInternalServerError {
+		h.logger.Error(internalDetail, "error", err)
 	}
-	if apperror.IsKind(err, apperror.KindConflict) {
-		transportresponse.Error(c, http.StatusConflict, err.Error())
-		return
-	}
-	if apperror.IsKind(err, apperror.KindForbidden) {
-		transportresponse.Error(c, http.StatusForbidden, err.Error())
-		return
-	}
-	if apperror.IsKind(err, apperror.KindNotFound) {
-		transportresponse.Error(c, http.StatusNotFound, err.Error())
-		return
-	}
-	h.logger.Error("user service failed", "error", err)
-	transportresponse.Error(c, http.StatusInternalServerError, internalDetail)
+	transportresponse.WriteError(c, err)
 }
 
 func userID(c *gin.Context) string {

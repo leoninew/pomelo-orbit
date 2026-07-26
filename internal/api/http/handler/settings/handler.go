@@ -43,7 +43,7 @@ func (h Handler) UpdateConfig(c *gin.Context) {
 	}
 	var req settingsv1.SystemConfigUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	resp, err := h.service.Update(c.Request.Context(), req.Key, configUpdateValue(&req))
@@ -61,7 +61,7 @@ func (h Handler) ResetConfig(c *gin.Context) {
 	}
 	var req settingsv1.SystemConfigResetReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	resp, err := h.service.Reset(c.Request.Context(), req.Keys)
@@ -77,5 +77,5 @@ func (h Handler) writeError(c *gin.Context, err error) {
 	if apperror.StatusCode(err) == http.StatusInternalServerError {
 		h.logger.Error("settings request failed", "error", err)
 	}
-	transportresponse.Error(c, apperror.StatusCode(err), err.Error())
+	transportresponse.WriteError(c, err)
 }

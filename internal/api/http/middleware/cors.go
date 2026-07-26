@@ -5,6 +5,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 )
 
 const (
@@ -38,7 +41,7 @@ func CORS(allowedOrigins []string, apiPathPrefixes []string) gin.HandlerFunc {
 		}
 
 		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusForbidden)
+			transportresponse.WriteError(c, apperror.New(apperror.KindForbidden, "CORS origin is not allowed."))
 			return
 		}
 		c.Next()

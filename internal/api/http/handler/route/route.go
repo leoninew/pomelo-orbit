@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"gitee.com/leoninew/PomeloOrbit-go/internal/api/http/binding"
+	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	routev1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/route"
 	"github.com/gin-gonic/gin"
 
@@ -36,7 +37,7 @@ func (h Handler) CreateRoute(c *gin.Context) {
 	}
 	var req routev1.RouteCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.CreateRoute(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeCreateInput(&req))
@@ -69,7 +70,7 @@ func (h Handler) UpdateRoute(c *gin.Context) {
 	}
 	var req routev1.RouteUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.UpdateRoute(c.Request.Context(), current.Id, c.Param("route_id"), routeUpdateInput(&req))
@@ -100,7 +101,7 @@ func (h Handler) EnableRoute(c *gin.Context) {
 	}
 	var req routev1.RouteEnableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if _, err := h.service.EnableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
@@ -117,7 +118,7 @@ func (h Handler) DisableRoute(c *gin.Context) {
 	}
 	var req routev1.RouteDisableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if _, err := h.service.DisableRoute(c.Request.Context(), current.Id, c.Param("route_id")); err != nil {
@@ -134,7 +135,7 @@ func (h Handler) SyncRoutes(c *gin.Context) {
 	}
 	var req routev1.RouteSyncReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	if err := h.service.SyncRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id")); err != nil {
@@ -151,19 +152,19 @@ func (h Handler) UploadRouteCert(c *gin.Context) {
 	}
 	file, _, err := c.Request.FormFile("pem")
 	if err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "pem is required")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "pem is required")
 		return
 	}
 	defer func() { _ = file.Close() }()
 	var content bytes.Buffer
 	if _, err := content.ReadFrom(file); err != nil {
 		h.logger.Error("read certificate upload failed", "route_id", c.Param("route_id"), "error", err)
-		transportresponse.Error(c, http.StatusInternalServerError, "Failed to read certificate")
+		transportresponse.WriteError(c, apperror.Wrap(apperror.KindInternal, "", err))
 		return
 	}
 	certPEM, certKey, ok := splitPEM(content.Bytes())
 	if !ok {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid PEM certificate")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid PEM certificate")
 		return
 	}
 	route, err := h.service.UploadRouteCert(c.Request.Context(), current.Id, c.Param("route_id"), certPEM, certKey)
@@ -196,7 +197,7 @@ func (h Handler) EnableRouteLetsEncrypt(c *gin.Context) {
 	}
 	var req routev1.RouteLetsEncryptEnableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.EnableRouteLetsEncrypt(c.Request.Context(), current.Id, c.Param("route_id"))
@@ -215,7 +216,7 @@ func (h Handler) EnableRouteMkcert(c *gin.Context) {
 	}
 	var req routev1.RouteMkcertEnableReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	route, err := h.service.EnableRouteMkcert(c.Request.Context(), current.Id, c.Param("route_id"))
@@ -249,7 +250,7 @@ func (h Handler) ListTraefikRoutes(c *gin.Context) {
 	items, err := h.service.ListTraefikRoutes(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"))
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "无法连接到 Traefik:") {
-			transportresponse.Error(c, http.StatusServiceUnavailable, err.Error())
+			transportresponse.WriteError(c, apperror.Wrap(apperror.KindUnavailable, "", err))
 			return
 		}
 		h.writeError(c, err)

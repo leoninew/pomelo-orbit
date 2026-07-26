@@ -37,7 +37,7 @@ func (h Handler) CreatePipelineTemplate(c *gin.Context) {
 	}
 	var req pipelinev1.PipelineTemplateCreateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.CreatePipelineTemplate(c.Request.Context(), current.Id, pipelinedto.PipelineTemplateCreateInput{ProjectId: c.Request.URL.Query().Get("project_id"), Name: req.Name, Description: req.Description, VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})
@@ -70,7 +70,7 @@ func (h Handler) UpdatePipelineTemplate(c *gin.Context) {
 	}
 	var req pipelinev1.PipelineTemplateUpdateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	var orchestration *[]pipelinedto.StageOrchestration
@@ -111,7 +111,7 @@ func (h Handler) DuplicatePipelineTemplate(c *gin.Context) {
 	}
 	var req pipelinev1.PipelineTemplateDuplicateReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	detail, err := h.service.DuplicatePipelineTemplate(c.Request.Context(), current.Id, c.Param("template_id"))
@@ -130,7 +130,7 @@ func (h Handler) ResolvePipelineTemplateVariables(c *gin.Context) {
 	}
 	var req pipelinev1.TemplateVariableResolveReq
 	if err := binding.DecodeJSON(c, &req); err != nil {
-		transportresponse.Error(c, http.StatusBadRequest, "Invalid JSON body")
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
 	variables, err := h.service.ResolvePipelineTemplateVariables(c.Request.Context(), current.Id, pipelinedto.PipelineTemplateResolveInput{ProjectId: c.Request.URL.Query().Get("project_id"), Orchestration: serviceOrchestration(req.Orchestration), VariableDeclarations: variableDeclarationRequestMaps(req.VariableDeclarations)})

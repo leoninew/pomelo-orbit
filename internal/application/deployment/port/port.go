@@ -22,8 +22,7 @@ type CommandStore interface {
 	Application(ctx context.Context, id string) (model.Application, error)
 	Version(ctx context.Context, id string) (model.Version, error)
 	VersionComponentsByVersion(ctx context.Context, versionID string) ([]model.VersionComponent, error)
-	Environment(ctx context.Context, id string) (model.Environment, error)
-	ServiceByKey(ctx context.Context, applicationID string, environmentID string, instanceKey string) (model.Service, error)
+	ServiceByKey(ctx context.Context, applicationID string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	ListServicesByApplication(ctx context.Context, applicationID string) ([]model.Service, error)
 	UpsertService(ctx context.Context, service model.Service) error
@@ -39,7 +38,6 @@ type ExecutionStore interface {
 	Version(ctx context.Context, id string) (model.Version, error)
 	VersionComponentsByVersion(ctx context.Context, versionID string) ([]model.VersionComponent, error)
 	VersionExposesByVersion(ctx context.Context, versionID string) ([]model.VersionExpose, error)
-	Environment(ctx context.Context, id string) (model.Environment, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionID string, lastSuccessfulVersionID *string) error
@@ -69,10 +67,10 @@ type ExecutionLogStore interface {
 // Workspace is the deployment runtime filesystem boundary.
 type Workspace interface {
 	AppDir(appCode string) string
-	ServiceDir(appCode string, envCode string, instanceKey string) string
-	DeploymentLogPath(appCode string, envCode string, instanceKey string, deploymentID string) string
+	ServiceDir(appCode string, instanceKey string) string
+	DeploymentLogPath(appCode string, instanceKey string, deploymentID string) string
 	PhysicalDir(ctx context.Context) (string, error)
-	PhysicalServiceDir(ctx context.Context, appCode string, envCode string, instanceKey string) (string, error)
-	WriteConfig(appCode string, envCode string, instanceKey string, path string, content string) error
+	PhysicalServiceDir(ctx context.Context, appCode string, instanceKey string) (string, error)
+	WriteConfig(appCode string, instanceKey string, path string, content string) error
 	RemoveAppDir(appCode string) error
 }

@@ -9,7 +9,6 @@ type Deployment struct {
 	ApplicationName          string     `db:"application_name"`
 	VersionId                *string    `db:"version_id"`
 	ServiceId                *string    `db:"service_id"`
-	EnvironmentId            *string    `db:"environment_id"`
 	OptionsJSON              *string    `db:"options_json"`
 	OperationType            string     `db:"operation_type"`
 	TriggerType              string     `db:"trigger_type"`

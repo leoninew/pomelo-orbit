@@ -112,17 +112,6 @@ sql:
         emit_interface: true
   - engine: "sqlite"
     schema: "sql/migration/sqlite"
-    queries: "sql/query/environment"
-    gen:
-      go:
-        package: "environment"
-        out: "internal/gen/sqlc/environment"
-        sql_package: "database/sql"
-        emit_db_tags: true
-        emit_json_tags: false
-        emit_interface: true
-  - engine: "sqlite"
-    schema: "sql/migration/sqlite"
     queries: "sql/query/service"
     gen:
       go:

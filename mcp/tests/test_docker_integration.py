@@ -23,11 +23,9 @@ async def test_external_compose_workspace_is_readable_when_explicitly_enabled(tm
     workspace = Path(workspace_value).resolve()
     target = RuntimeTarget(
         application_id="integration-app",
-        environment_id="integration-env",
         service_id="integration-service",
         instance_key="integration",
         application_code="integration-app",
-        environment_code="integration-env",
         working_directory=workspace,
         compose_project=project,
     )

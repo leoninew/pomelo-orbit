@@ -41,7 +41,6 @@ export interface ApplicationUpdateReq {
 
 export interface ApplicationDeployReq {
   version_id: string;
-  environment_id: string;
   instance_key: string;
   force_recreate: boolean;
   runtime_config: { [key: string]: string };
@@ -54,13 +53,11 @@ export interface ApplicationDeployReq_RuntimeConfigEntry {
 
 export interface ApplicationStopReq {
   remove_volumes: boolean;
-  environment_id?: string | undefined;
   instance_key?: string | undefined;
   service_id?: string | undefined;
 }
 
 export interface ApplicationRestartReq {
-  environment_id?: string | undefined;
   instance_key?: string | undefined;
   service_id?: string | undefined;
 }

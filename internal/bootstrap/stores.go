@@ -7,7 +7,6 @@ import (
 	authrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/auth"
 	credentialrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/credential"
 	deploymentrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/deployment"
-	environmentrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/environment"
 	gatewayrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/gateway"
 	pipelinerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/pipeline"
 	pipelinerunrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/pipeline_run"
@@ -31,7 +30,6 @@ type domainStores struct {
 	pipeline    pipelinerepo.Repository
 	pipelineRun pipelinerunrepo.Repository
 	application applicationrepo.Repository
-	environment environmentrepo.Repository
 	service     servicerepo.Repository
 	deployment  deploymentrepo.Repository
 	gateway     gatewayrepo.Repository
@@ -49,7 +47,6 @@ func newDomainStores(database *sql.DB) domainStores {
 		pipeline:    pipelinerepo.NewRepository(database),
 		pipelineRun: pipelinerunrepo.NewRepository(database),
 		application: applicationrepo.NewRepository(database),
-		environment: environmentrepo.NewRepository(database),
 		service:     servicerepo.NewRepository(database),
 		deployment:  deploymentrepo.NewRepository(database),
 		gateway:     gatewayrepo.NewRepository(database),

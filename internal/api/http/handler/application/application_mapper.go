@@ -68,7 +68,6 @@ func serviceResponse(item model.Service) servicev1.ServiceResp {
 	return servicev1.ServiceResp{
 		Id:                      item.Id,
 		ApplicationId:           item.ApplicationId,
-		EnvironmentId:           item.EnvironmentId,
 		InstanceKey:             item.InstanceKey,
 		VersionId:               item.VersionId,
 		LastSuccessfulVersionId: item.LastSuccessfulVersionId,

@@ -14,7 +14,6 @@ type DeploymentListInput struct {
 // DeployInput describes a user-requested deployment of an application version.
 type DeployInput struct {
 	VersionId     string
-	EnvironmentId string
 	InstanceKey   string
 	ForceRecreate bool
 	RuntimeConfig map[string]string
@@ -22,7 +21,6 @@ type DeployInput struct {
 
 // ServiceTargetInput identifies the runtime service affected by a restart or stop.
 type ServiceTargetInput struct {
-	EnvironmentId string
 	InstanceKey   string
 	ServiceId     string
 	RemoveVolumes bool

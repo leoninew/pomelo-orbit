@@ -21,7 +21,6 @@ func (h Handler) ListServices(c *gin.Context) {
 	items, err := h.service.ListServices(c.Request.Context(), current.Id, servicedto.ServiceListInput{
 		ProjectId:     c.Request.URL.Query().Get("project_id"),
 		ApplicationId: c.Request.URL.Query().Get("application_id"),
-		EnvironmentId: c.Request.URL.Query().Get("environment_id"),
 		Status:        c.Request.URL.Query().Get("status"),
 		Search:        c.Request.URL.Query().Get("search"),
 		Page:          page,
@@ -74,7 +73,7 @@ func applicationServiceResponses(items []model.Service) []servicev1.ServiceResp 
 	resp := make([]servicev1.ServiceResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, servicev1.ServiceResp{
-			Id: item.Id, ApplicationId: item.ApplicationId, EnvironmentId: item.EnvironmentId,
+			Id: item.Id, ApplicationId: item.ApplicationId,
 			InstanceKey: item.InstanceKey, VersionId: item.VersionId,
 			LastSuccessfulVersionId: item.LastSuccessfulVersionId, Status: item.Status,
 			CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),

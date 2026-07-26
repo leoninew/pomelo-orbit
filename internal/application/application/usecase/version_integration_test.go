@@ -16,7 +16,6 @@ import (
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	applicationrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/application"
-	environmentrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/environment"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	servicerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/service"
 )
@@ -66,15 +65,9 @@ func TestDeletePublishedVersionKeepsRuntimeReferenceProtection(t *testing.T) {
 	ctx := context.Background()
 
 	app, version := createPublishedVersion(t, ctx, applicationStore, "published-referenced")
-	environmentStore := environmentrepo.NewRepository(database)
-	local, err := environmentStore.EnvironmentByProjectCode(ctx, versionTestProjectId, "local")
-	if err != nil {
-		t.Fatal(err)
-	}
 	if err := servicerepo.NewRepository(database).UpsertService(ctx, model.Service{
 		Id:            idutil.NewId(),
 		ApplicationId: app.Id,
-		EnvironmentId: local.Id,
 		InstanceKey:   "default",
 		VersionId:     version.Id,
 		Status:        status.ServiceStatusRunning,
@@ -82,7 +75,7 @@ func TestDeletePublishedVersionKeepsRuntimeReferenceProtection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = service.DeleteVersion(ctx, versionTestUserId, version.Id)
+	err := service.DeleteVersion(ctx, versionTestUserId, version.Id)
 	if apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected referenced published version to be rejected, got %v", err)
 	}

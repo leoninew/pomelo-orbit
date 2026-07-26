@@ -73,7 +73,6 @@ export default {
     services: 'Services',
     gateways: 'Gateways',
     deployments: 'Deployments',
-    environments: 'Environments',
     routes: 'Routes',
     traefikRoutes: 'Traefik Routers',
     repositories: 'Repository',
@@ -86,7 +85,7 @@ export default {
       workspace: 'Workspace',
       admin: 'Administration',
       workload: 'Workload',
-      environment: 'Environment',
+      runtime: 'Runtime',
       code: 'Code',
       pipeline: 'Pipeline',
     },
@@ -276,7 +275,6 @@ export default {
         mountContent: 'File content',
         runtimeConfig: 'Runtime config',
         exposes: 'Ingress expose (Traefik labels)',
-        environment: 'Environment',
         instanceKey: 'Instance Key',
         forceRecreate: 'Force recreate',
         serviceInstance: 'Service instance',
@@ -291,7 +289,7 @@ export default {
       drawer: {
         composePreview: 'docker-compose Preview',
         composePreviewDescription:
-          'Rendered from Version × Environment; matches the docker-compose.yml written on deploy (including Traefik labels).',
+          'Rendered from the selected Version and instance; matches the docker-compose.yml written on deploy (including Traefik labels).',
       },
       dialog: {
         editApplication: 'Edit Application',
@@ -324,7 +322,6 @@ export default {
         exposeProtocol: 'Select protocol',
         exposeAccess: 'local or public',
         listenPort: 'Listen port (optional, default=container)',
-        environment: 'Select environment',
         serviceInstance: 'Select service instance',
         mountSourceType: 'Source type',
         mountSource: 'Source (relative / volume / docker.sock)',
@@ -343,8 +340,7 @@ export default {
         components: 'No components yet. Add one before publishing.',
         exposes: 'No expose specs yet.',
       },
-      deployDescription:
-        'Deploy version "{label}" to the selected environment. Deploy maintains the service binding.',
+      deployDescription: 'Deploy version "{label}" to the selected instance. Deploy maintains the service binding.',
       instanceKeyPlaceholder: 'default',
       dialog: {
         editBasic: 'Edit Basic Info',
@@ -404,14 +400,12 @@ export default {
       deployTriggered: '{name} deployment triggered',
       deployFailed: 'Failed to deploy',
       deployVersionRequired: 'Create and select a version before deploying',
-      environmentRequired: 'Create or select an environment first',
       serviceTargetRequired: 'Select a service instance first',
       stopTriggered: '{name} stop triggered',
       stopFailed: 'Failed to stop',
       loadDetailFailed: 'Failed to load application',
       loadVersionsFailed: 'Failed to load versions',
       loadServicesFailed: 'Failed to load services',
-      loadEnvironmentsFailed: 'Failed to load environments',
       deployTriggeredDetail: 'Deployment triggered',
       restartSubmitted: 'Restart operation submitted',
       restartFailed: 'Failed to restart',
@@ -436,17 +430,14 @@ export default {
   },
   service: {
     toolbar: 'Services toolbar',
-    searchPlaceholder: 'Search app / environment / instance / version',
+    searchPlaceholder: 'Search app / instance / version',
     filterApplication: 'Filter application',
     filterApplicationAll: 'All applications',
-    filterEnvironment: 'Filter environment',
-    filterEnvironmentAll: 'All environments',
     filterStatus: 'Filter status',
     filterStatusAll: 'All statuses',
-    empty: 'No services yet. Deploy to create application + version + environment bindings.',
+    empty: 'No services yet. Deploy to create application + version bindings.',
     fields: {
       application: 'Application',
-      environment: 'Environment',
       instanceKey: 'Instance',
       version: 'Version',
       containers: 'Containers',
@@ -476,8 +467,7 @@ export default {
     },
     deploy: {
       dialogTitle: 'Deploy service',
-      description:
-        'Deploy the selected version to this environment/instance. Deploy maintains the service binding.',
+      description: 'Deploy the selected version to this instance. Deploy maintains the service binding.',
       selectVersion: 'Select version',
       forceRecreate: 'Force recreate containers',
       versionRequired: 'Version is required',
@@ -493,8 +483,8 @@ export default {
     },
     logs: {
       title: 'Container logs',
-      titleWithTarget: '{app} / {env} / {instance} · Container logs',
-      titleWithComponent: '{app} / {env} / {instance} · {component}',
+      titleWithTarget: '{app} / {instance} · Container logs',
+      titleWithComponent: '{app} / {instance} · {component}',
       description: 'Recent container logs for this service instance (compose logs --tail).',
       loading: 'Loading container logs...',
       streaming: 'Refreshing container logs...',
@@ -513,42 +503,6 @@ export default {
       stopFailed: 'Stop failed',
     },
   },
-  environment: {
-    toolbar: 'Environment toolbar',
-    searchPlaceholder: 'Search environment name or code',
-    create: 'Create Environment',
-    fields: {
-      name: 'Name',
-      code: 'Code',
-    },
-    dialog: {
-      create: 'Create Environment',
-      edit: 'Edit Environment',
-      delete: 'Confirm Delete',
-      deleteConfirm: 'Delete environment "{name}"? This action cannot be undone.',
-    },
-    hints: {
-      code: 'Start with a lowercase letter; letters, digits, and hyphens only. Immutable after create.',
-    },
-    placeholders: {
-      code: 'e.g. local, staging',
-      name: 'e.g. Local',
-      description: 'Optional description',
-    },
-    validation: {
-      codeInvalid:
-        'Must start with a lowercase letter and only contain lowercase letters, numbers, and hyphens',
-      nameRequired: 'Environment name is required',
-    },
-    toast: {
-      selectProjectRequired: 'Please select a project first',
-      loadFailed: 'Failed to load environments',
-      saveSuccess: 'Saved successfully',
-      saveFailed: 'Failed to save',
-      deleteSuccess: 'Deleted successfully',
-      deleteFailed: 'Failed to delete',
-    },
-  },
   gateway: {
     toolbar: 'Gateway toolbar',
     searchPlaceholder: 'Search gateway name or code',
@@ -562,14 +516,11 @@ export default {
     },
     deploy: {
       dialogTitle: 'Deploy gateway',
-      description:
-        'Pick a published version and environment. Uses the same deploy pipeline as standard apps.',
+      description: 'Pick a published version and instance. Uses the same deploy pipeline as standard apps.',
       version: 'Version',
-      environment: 'Environment',
       instanceKey: 'Instance key',
       instanceKeyPlaceholder: 'default',
       selectVersion: 'Select version',
-      selectEnvironment: 'Select environment',
       forceRecreate: 'Force recreate',
     },
     stop: {
@@ -645,7 +596,6 @@ export default {
       loadDeployOptionsFailed: 'Failed to load deploy options',
       noPublishedVersion: 'No published version available to deploy',
       noVersion: 'No version available to deploy',
-      environmentRequired: 'Environment is required',
       versionRequired: 'Version is required',
       serviceRequired: 'Select a service instance to stop',
       deployQueued: 'Deploy queued',

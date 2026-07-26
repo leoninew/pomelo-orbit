@@ -12,13 +12,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// RenderInput is the dual-input render context: Version×Environment×Gateway.
+// RenderInput is the render context for one application version and gateway policy.
 type RenderInput struct {
 	App            model.Application
 	Version        model.Version
 	Components     []model.VersionComponent
 	Exposes        []model.VersionExpose
-	Env            model.Environment
 	Service        model.Service
 	Gateway        *model.GatewayConfig // required for public HTTP host / gateway dashboard when domains needed
 	RuntimeConfig  map[string]string    // resolved placeholders for this deploy/preview
@@ -39,7 +38,7 @@ const gatewayNetworkKey = "default"
 // consumerPlatformNetworkKey is the compose network key standard apps use to join the gateway network.
 const consumerPlatformNetworkKey = "traefik"
 
-// RenderCompose builds docker-compose.yml from Version + Environment.
+// RenderCompose builds docker-compose.yml from a version and runtime binding.
 // Preview and deploy share this function. Branch is driven by Application.kind only.
 func (s Service) RenderCompose(ctx context.Context, input RenderInput) (string, error) {
 	result, err := s.RenderComposeDetailed(ctx, input)
@@ -216,8 +215,8 @@ func injectExposeOutlets(services map[string]any, input RenderInput) error {
 			}
 			service["ports"] = append(existing, portMapping)
 		case exposeAccessPublic:
-			routerName := fmt.Sprintf("%s-%s-%s-%s-%s",
-				input.App.Code, input.Env.Code, input.Service.InstanceKey, expose.ComponentName, expose.Protocol)
+			routerName := fmt.Sprintf("%s-%s-%s-%s",
+				input.App.Code, input.Service.InstanceKey, expose.ComponentName, expose.Protocol)
 			labels, err := buildTraefikLabels(routerName, expose, input, host)
 			if err != nil {
 				return err
@@ -364,8 +363,7 @@ func injectGatewayDashboardLabels(services map[string]any, input RenderInput) er
 	if !ok {
 		return fmt.Errorf("gateway component %s not found in compose services", componentName)
 	}
-	routerName := fmt.Sprintf("%s-%s-%s-dashboard",
-		input.App.Code, input.Env.Code, input.Service.InstanceKey)
+	routerName := fmt.Sprintf("%s-%s-dashboard", input.App.Code, input.Service.InstanceKey)
 	labels := []string{
 		"traefik.enable=true",
 		"traefik.http.routers." + routerName + ".rule=Host(`" + host + "`)",

@@ -33,20 +33,14 @@ async def resolve_runtime_target(
     client: OrbitClient,
     settings: Settings,
     application_id: str,
-    environment_id: str,
     instance_key: str,
 ) -> RuntimeTarget:
     application = await client.get_application(application_id)
-    environment = await client.get_environment(environment_id)
     services = await client.list_application_services(application_id)
-    matches = [
-        service
-        for service in services
-        if service.get("environment_id") == environment_id and service.get("instance_key") == instance_key
-    ]
+    matches = [service for service in services if service.get("instance_key") == instance_key]
     if len(matches) != 1:
-        raise RuntimeTargetError("expected exactly one managed service for application, environment, and instance key")
-    return build_runtime_target(settings, application, environment, matches[0], instance_key)
+        raise RuntimeTargetError("expected exactly one managed service for application and instance key")
+    return build_runtime_target(settings, application, matches[0], instance_key)
 
 
 async def verify_deployment(
@@ -76,21 +70,19 @@ async def verify_deployment(
         )
 
     service_id = _nonempty_string(deployment.get("service_id"))
-    environment_id = _nonempty_string(deployment.get("environment_id"))
     version_id = _nonempty_string(deployment.get("version_id"))
-    if service_id is None or environment_id is None or version_id is None:
+    if service_id is None or version_id is None:
         return VerificationResult(
-            "inconclusive", {"deployment": deployment}, ["deployment lacks service, environment, or version linkage"]
+            "inconclusive", {"deployment": deployment}, ["deployment lacks service or version linkage"]
         )
     try:
         application = await client.get_application(application_id)
-        environment = await client.get_environment(environment_id)
         version = await client.get_version(version_id)
         service = await client.get_service(service_id)
         target = build_runtime_target(
-            settings, application, environment, service, _nonempty_string(service.get("instance_key")) or ""
+            settings, application, service, _nonempty_string(service.get("instance_key")) or ""
         )
-        preview = await client.preview_version(version_id, environment_id, target.instance_key)
+        preview = await client.preview_version(version_id, target.instance_key)
         compose_config = await runtime.compose_config(target)
         ps = await runtime.compose_ps(target)
         inspections = await _inspect_containers(runtime, target, ps["containers"])
@@ -101,7 +93,6 @@ async def verify_deployment(
     evidence: dict[str, Any] = {
         "deployment": deployment,
         "application": application,
-        "environment": environment,
         "service": service,
         "version": version,
         "target": target.as_dict(),

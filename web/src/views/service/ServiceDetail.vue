@@ -73,12 +73,6 @@
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">
-              {{ t('service.fields.environment') }}
-            </dt>
-            <dd class="text-foreground">{{ service.environment_name || service.environment_id }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('service.fields.instanceKey') }}
             </dt>
             <dd class="text-foreground">{{ service.instance_key || 'default' }}</dd>
@@ -409,17 +403,15 @@
       return t('service.logs.title');
     }
     const app = service.value.application_name || service.value.application_id;
-    const env = service.value.environment_name || service.value.environment_id;
     const instance = service.value.instance_key || 'default';
     if (logsComponent.value) {
       return t('service.logs.titleWithComponent', {
         app,
-        env,
         instance,
         component: logsComponent.value,
       });
     }
-    return t('service.logs.titleWithTarget', { app, env, instance });
+    return t('service.logs.titleWithTarget', { app, instance });
   });
 
   async function fetchService() {
@@ -527,7 +519,6 @@
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.application_id, {
           version_id: deployForm.version_id,
-          environment_id: current.environment_id,
           instance_key: current.instance_key || 'default',
           force_recreate: deployForm.force_recreate,
           runtime_config: {},

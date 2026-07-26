@@ -19,7 +19,6 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         await client.aclose()
     assert names == {
         "orbit_list_projects",
-        "orbit_list_environments",
         "orbit_list_applications",
         "orbit_create_application",
         "orbit_bootstrap_application",

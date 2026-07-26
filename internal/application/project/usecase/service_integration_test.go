@@ -11,7 +11,6 @@ import (
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
-	environmentrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/environment"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	userrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/user"
 )
@@ -105,7 +104,6 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	}
 	service := New(
 		projectrepo.NewRepository(database),
-		environmentrepo.NewRepository(database),
 		userrepo.NewRepository(database),
 	)
 	return service, database

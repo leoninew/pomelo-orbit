@@ -162,17 +162,6 @@
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
-            {{ t('gateway.deploy.environment') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="deployForm.environment_id"
-            :options="environmentSelectOptions"
-            :placeholder="t('gateway.deploy.selectEnvironment')"
-          />
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
             {{ t('gateway.deploy.instanceKey') }}
           </label>
           <input
@@ -240,7 +229,6 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import { environmentApi } from '@/api/environment/environment';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -248,7 +236,6 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
@@ -264,13 +251,11 @@
   const gateway = ref<GatewayResp | null>(null);
   const services = ref<ServiceResp[]>([]);
   const versions = ref<VersionResp[]>([]);
-  const environments = ref<EnvironmentResp[]>([]);
 
   const isDeployDialogOpen = ref(false);
   const deployError = ref('');
   const deployForm = reactive({
     version_id: '',
-    environment_id: '',
     instance_key: 'default',
     force_recreate: false,
   });
@@ -301,13 +286,6 @@
     }))
   );
 
-  const environmentSelectOptions = computed(() =>
-    environments.value.map((item) => ({
-      value: item.id,
-      label: item.name || item.code || item.id,
-    }))
-  );
-
   const stopServiceSelectOptions = computed(() =>
     stoppableServices.value.map((item) => ({
       value: item.id,
@@ -316,9 +294,8 @@
   );
 
   function serviceOptionLabel(item: ServiceResp) {
-    const env = item.environment_code || item.environment_name || item.environment_id;
     const instance = item.instance_key || 'default';
-    return `${env} / ${instance} (${item.status})`;
+    return `${instance} (${item.status})`;
   }
 
   async function loadGateway() {
@@ -354,17 +331,10 @@
     const current = gateway.value;
     if (!current) {
       versions.value = [];
-      environments.value = [];
       return;
     }
-    const [versionResp, envResp] = await Promise.all([
-      applicationApi.listVersions(current.id, { per_page: 100 }),
-      current.project_id
-        ? environmentApi.list({ project_id: current.project_id, per_page: 100 })
-        : Promise.resolve({ items: [] as EnvironmentResp[] }),
-    ]);
+    const versionResp = await applicationApi.listVersions(current.id, { per_page: 100 });
     versions.value = selectDeployableVersions(versionResp.items ?? []);
-    environments.value = envResp.items ?? [];
   }
 
   /** Prefer published versions; if none, fall back to all versions newest-first. */
@@ -382,11 +352,6 @@
       }
       return b.id.localeCompare(a.id);
     });
-  }
-
-  function defaultEnvironmentId() {
-    const local = environments.value.find((item) => item.code === 'local');
-    return local?.id || environments.value[0]?.id || '';
   }
 
   function defaultVersionId() {
@@ -416,11 +381,6 @@
       return;
     }
     deployForm.version_id = defaultVersionId();
-    deployForm.environment_id = primaryService.value?.environment_id || defaultEnvironmentId();
-    if (!deployForm.environment_id) {
-      toast.error(t('gateway.toast.environmentRequired'));
-      return;
-    }
     isDeployDialogOpen.value = true;
   }
 
@@ -433,16 +393,11 @@
       deployError.value = t('gateway.toast.versionRequired');
       return;
     }
-    if (!deployForm.environment_id) {
-      deployError.value = t('gateway.toast.environmentRequired');
-      return;
-    }
     deployError.value = '';
     try {
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.id, {
           version_id: deployForm.version_id,
-          environment_id: deployForm.environment_id,
           instance_key: deployForm.instance_key.trim() || 'default',
           force_recreate: deployForm.force_recreate,
           runtime_config: {},

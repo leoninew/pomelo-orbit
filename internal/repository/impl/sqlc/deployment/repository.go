@@ -51,7 +51,6 @@ func (r Repository) CreateDeployment(ctx context.Context, deployment model.Deplo
 		ApplicationName:          deployment.ApplicationName,
 		VersionID:                dbmodel.NullString(deployment.VersionId),
 		ServiceID:                dbmodel.NullString(deployment.ServiceId),
-		EnvironmentID:            dbmodel.NullString(deployment.EnvironmentId),
 		OptionsJson:              dbmodel.NullString(deployment.OptionsJSON),
 		OperationType:            deployment.OperationType,
 		TriggerType:              deployment.TriggerType,
@@ -128,7 +127,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	items := make([]model.Deployment, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
-			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID, row.EnvironmentID,
+			row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
 			row.OptionsJson, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 		))
@@ -142,7 +141,7 @@ func (r Repository) Deployment(ctx context.Context, id string) (model.Deployment
 		return model.Deployment{}, fmt.Errorf("load deployment %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return deploymentFrom(
-		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID, row.EnvironmentID,
+		row.ID, row.ProjectID, row.ApplicationID, row.ApplicationName, row.VersionID, row.ServiceID,
 		row.OptionsJson, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentID,
 	), nil
@@ -183,7 +182,7 @@ func (r Repository) MarkDeploymentRunning(ctx context.Context, id string) error 
 
 func deploymentFrom(
 	id string, projectID, applicationID sql.NullString, applicationName string,
-	versionID, serviceID, environmentID, optionsJSON sql.NullString,
+	versionID, serviceID, optionsJSON sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
@@ -195,7 +194,6 @@ func deploymentFrom(
 		ApplicationName:          applicationName,
 		VersionId:                dbmodel.StringPtr(versionID),
 		ServiceId:                dbmodel.StringPtr(serviceID),
-		EnvironmentId:            dbmodel.StringPtr(environmentID),
 		OptionsJSON:              dbmodel.StringPtr(optionsJSON),
 		OperationType:            operationType,
 		TriggerType:              triggerType,

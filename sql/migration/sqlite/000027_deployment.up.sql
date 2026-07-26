@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS deployment (
     project_id TEXT REFERENCES project(id),
     version_id TEXT REFERENCES version(id),
     service_id TEXT REFERENCES service(id),
-    environment_id TEXT REFERENCES environment(id),
     options_json TEXT,
     command_text TEXT NOT NULL DEFAULT '',
     FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment(id)

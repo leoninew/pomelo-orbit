@@ -15,7 +15,7 @@ func TestDeployApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 
 	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", EnvironmentId: "environment-1", InstanceKey: "default", ForceRecreate: true,
+		VersionId: "version-1", InstanceKey: "default", ForceRecreate: true,
 	})
 	if err != nil {
 		t.Fatalf("DeployApplication returned error: %v", err)
@@ -50,7 +50,7 @@ func TestDeployApplicationCreatesServiceBeforeFirstDeployment(t *testing.T) {
 	store.service = model.Service{}
 
 	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", EnvironmentId: "environment-1", InstanceKey: "default",
+		VersionId: "version-1", InstanceKey: "default",
 	})
 	if err != nil {
 		t.Fatalf("DeployApplication returned error: %v", err)
@@ -58,7 +58,7 @@ func TestDeployApplicationCreatesServiceBeforeFirstDeployment(t *testing.T) {
 	if len(store.service.Id) != 26 {
 		t.Fatalf("expected a generated service id, got %q", store.service.Id)
 	}
-	if store.service.ApplicationId != "app-1" || store.service.EnvironmentId != "environment-1" || store.service.InstanceKey != "default" {
+	if store.service.ApplicationId != "app-1" || store.service.InstanceKey != "default" {
 		t.Fatalf("unexpected service binding: %+v", store.service)
 	}
 	if store.service.VersionId != "version-1" || store.service.Status != status.ServiceStatusDeploying {
@@ -102,7 +102,7 @@ func TestDeployApplicationRejectsMissingDispatcherBeforePersisting(t *testing.T)
 	service.dispatcher = nil
 
 	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", EnvironmentId: "environment-1", InstanceKey: "default",
+		VersionId: "version-1", InstanceKey: "default",
 	})
 	if err == nil {
 		t.Fatal("expected deployment dispatcher error")
@@ -120,10 +120,9 @@ func newCommandTestService() (Service, *commandStoreFake, *commandDispatcherFake
 	store := &commandStoreFake{
 		application: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Name: "Demo", ImagePullPolicy: "missing"},
 		version:     model.Version{Id: "version-1", ApplicationId: "app-1", Label: "v1"},
-		environment: model.Environment{Id: "environment-1", ProjectId: projectID, Code: "local"},
 		components:  []model.VersionComponent{{Id: "component-1", VersionId: "version-1", Name: "web", Image: "nginx"}},
 		service: model.Service{
-			Id: "service-1", ApplicationId: "app-1", EnvironmentId: "environment-1", InstanceKey: "default", VersionId: "version-1", Status: "running",
+			Id: "service-1", ApplicationId: "app-1", InstanceKey: "default", VersionId: "version-1", Status: "running",
 		},
 	}
 	dispatcher := &commandDispatcherFake{}
@@ -133,7 +132,6 @@ func newCommandTestService() (Service, *commandStoreFake, *commandDispatcherFake
 type commandStoreFake struct {
 	application model.Application
 	version     model.Version
-	environment model.Environment
 	components  []model.VersionComponent
 	service     model.Service
 	deployments []model.Deployment
@@ -160,11 +158,7 @@ func (s *commandStoreFake) VersionComponentsByVersion(_ context.Context, _ strin
 	return s.components, nil
 }
 
-func (s *commandStoreFake) Environment(_ context.Context, _ string) (model.Environment, error) {
-	return s.environment, nil
-}
-
-func (s *commandStoreFake) ServiceByKey(_ context.Context, _, _, _ string) (model.Service, error) {
+func (s *commandStoreFake) ServiceByKey(_ context.Context, _, _ string) (model.Service, error) {
 	if s.service.Id == "" {
 		return model.Service{}, repository.ErrNotFound
 	}

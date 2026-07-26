@@ -10,7 +10,6 @@ func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {
 	return servicev1.ServiceResp{
 		Id:                         item.Service.Id,
 		ApplicationId:              item.Service.ApplicationId,
-		EnvironmentId:              item.Service.EnvironmentId,
 		InstanceKey:                item.Service.InstanceKey,
 		VersionId:                  item.Service.VersionId,
 		LastSuccessfulVersionId:    item.Service.LastSuccessfulVersionId,
@@ -20,8 +19,6 @@ func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {
 		ApplicationName:            item.ApplicationName,
 		ApplicationCode:            item.ApplicationCode,
 		ApplicationKind:            item.ApplicationKind,
-		EnvironmentName:            item.EnvironmentName,
-		EnvironmentCode:            item.EnvironmentCode,
 		VersionLabel:               item.VersionLabel,
 		LastSuccessfulVersionLabel: item.LastSuccessfulVersionLabel,
 	}

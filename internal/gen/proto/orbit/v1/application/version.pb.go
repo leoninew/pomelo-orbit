@@ -925,8 +925,7 @@ func (x *VersionPaginatedResp) GetPages() int32 {
 
 type VersionPreviewReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	EnvironmentId string                 `protobuf:"bytes,1,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
-	InstanceKey   *string                `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
+	InstanceKey   *string                `protobuf:"bytes,1,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -959,13 +958,6 @@ func (x *VersionPreviewReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use VersionPreviewReq.ProtoReflect.Descriptor instead.
 func (*VersionPreviewReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_version_proto_rawDescGZIP(), []int{9}
-}
-
-func (x *VersionPreviewReq) GetEnvironmentId() string {
-	if x != nil {
-		return x.EnvironmentId
-	}
-	return ""
 }
 
 func (x *VersionPreviewReq) GetInstanceKey() string {
@@ -1166,10 +1158,9 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pages\"s\n" +
-	"\x11VersionPreviewReq\x12%\n" +
-	"\x0eenvironment_id\x18\x01 \x01(\tR\renvironmentId\x12&\n" +
-	"\finstance_key\x18\x02 \x01(\tH\x00R\vinstanceKey\x88\x01\x01B\x0f\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"L\n" +
+	"\x11VersionPreviewReq\x12&\n" +
+	"\finstance_key\x18\x01 \x01(\tH\x00R\vinstanceKey\x88\x01\x01B\x0f\n" +
 	"\r_instance_key\"7\n" +
 	"\x12VersionPreviewResp\x12!\n" +
 	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYamlB\xe5\x01\n" +

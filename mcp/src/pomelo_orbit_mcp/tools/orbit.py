@@ -16,11 +16,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """List Projects visible to the configured Orbit user."""
         return {"projects": await client.list_projects()}
 
-    @mcp.tool(name="orbit_list_environments")
-    async def orbit_list_environments(project_id: str) -> dict[str, Any]:
-        """List Environments in a Project visible to the configured Orbit user."""
-        return {"project_id": project_id, "environments": await client.list_environments(project_id)}
-
     @mcp.tool(name="orbit_list_applications")
     async def orbit_list_applications(project_id: str, kind: str | None = "standard") -> dict[str, Any]:
         """List Orbit Applications in a Project, optionally limited to one application kind."""
@@ -197,14 +192,11 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         return write_result("delete_version", {"version_id": version_id}, "DELETE", f"/api/version/{version_id}")
 
     @mcp.tool(name="orbit_preview_version")
-    async def orbit_preview_version(
-        version_id: str, environment_id: str, instance_key: str = "default"
-    ) -> dict[str, Any]:
+    async def orbit_preview_version(version_id: str, instance_key: str = "default") -> dict[str, Any]:
         """Render a Version's expected Compose document through Orbit without deploying it."""
-        preview = await client.preview_version(version_id, environment_id, instance_key)
+        preview = await client.preview_version(version_id, instance_key)
         return {
             "version_id": version_id,
-            "environment_id": environment_id,
             "instance_key": instance_key,
             "preview": preview,
         }
@@ -213,7 +205,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     async def orbit_deploy(
         application_id: str,
         version_id: str,
-        environment_id: str,
         instance_key: str = "default",
         force_recreate: bool = False,
         runtime_config: dict[str, str] | None = None,
@@ -221,7 +212,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """Create an Orbit deployment and immediately return its persisted command summary."""
         body = {
             "version_id": version_id,
-            "environment_id": environment_id,
             "instance_key": instance_key,
             "force_recreate": force_recreate,
             "runtime_config": runtime_config or {},
@@ -246,7 +236,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     @mcp.tool(name="orbit_stop")
     async def orbit_stop(
         application_id: str,
-        environment_id: str | None = None,
         instance_key: str | None = None,
         service_id: str | None = None,
         remove_volumes: bool = False,
@@ -254,7 +243,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """Create an Orbit stop deployment, optionally requesting managed volume removal."""
         body = compact(
             {
-                "environment_id": environment_id,
                 "instance_key": instance_key,
                 "service_id": service_id,
                 "remove_volumes": remove_volumes,
@@ -280,12 +268,11 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     @mcp.tool(name="orbit_restart")
     async def orbit_restart(
         application_id: str,
-        environment_id: str | None = None,
         instance_key: str | None = None,
         service_id: str | None = None,
     ) -> dict[str, Any]:
         """Create an Orbit restart deployment and immediately return its command summary."""
-        body = compact({"environment_id": environment_id, "instance_key": instance_key, "service_id": service_id})
+        body = compact({"instance_key": instance_key, "service_id": service_id})
         action = await client.restart_application(application_id, body)
         deployment_id = str(action["deployment_id"])
         deployment = await client.get_deployment(deployment_id)

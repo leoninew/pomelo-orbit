@@ -22,12 +22,8 @@ func (s Service) ApplicationStatus(ctx context.Context, userID string, applicati
 	if err != nil {
 		return "", err
 	}
-	env, err := s.commandStore.Environment(ctx, service.EnvironmentId)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
-	command := containerPsCommand(composeProjectName(app.Code, env.Code, service.InstanceKey))
-	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, env.Code, service.InstanceKey), command.Name, command.Args...)
+	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
+	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -47,16 +43,12 @@ func (s Service) ApplicationLogs(ctx context.Context, userID string, application
 	if err != nil {
 		return "", err
 	}
-	env, err := s.commandStore.Environment(ctx, service.EnvironmentId)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
-	projectName := composeProjectName(app.Code, env.Code, service.InstanceKey)
+	projectName := composeProjectName(app.Code, service.InstanceKey)
 	command := containerLogsTailCommand(projectName, strconv.Itoa(tail))
 	if component != "" {
 		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)
 	}
-	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, env.Code, service.InstanceKey), command.Name, command.Args...)
+	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), command.Name, command.Args...)
 	if err != nil {
 		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
@@ -64,7 +56,7 @@ func (s Service) ApplicationLogs(ctx context.Context, userID string, application
 }
 
 // PreviewVersion renders the deployment compose file without creating a deployment.
-func (s Service) PreviewVersion(ctx context.Context, userID string, versionID string, environmentID string, instanceKey string) (string, error) {
+func (s Service) PreviewVersion(ctx context.Context, userID string, versionID string, instanceKey string) (string, error) {
 	if s.commandStore == nil || s.executionStore == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment stores are not configured")
 	}
@@ -79,19 +71,6 @@ func (s Service) PreviewVersion(ctx context.Context, userID string, versionID st
 	if err != nil {
 		return "", err
 	}
-	if environmentID == "" {
-		return "", apperror.New(apperror.KindValidation, "environment_id is required")
-	}
-	env, err := s.commandStore.Environment(ctx, environmentID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return "", apperror.New(apperror.KindNotFound, "Environment not found")
-		}
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
-	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
-		return "", apperror.New(apperror.KindValidation, "application and environment must belong to the same project")
-	}
 	if instanceKey == "" {
 		return "", apperror.New(apperror.KindValidation, "instance_key is required")
 	}
@@ -103,7 +82,7 @@ func (s Service) PreviewVersion(ctx context.Context, userID string, versionID st
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
 	}
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, env.Code, instanceKey)
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, instanceKey)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to resolve physical service dir", err)
 	}
@@ -113,7 +92,7 @@ func (s Service) PreviewVersion(ctx context.Context, userID string, versionID st
 	}
 	content, err := s.RenderCompose(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env: env, Service: model.Service{InstanceKey: instanceKey}, Gateway: gateway, PhysicalSvcDir: physicalDir,
+		Service: model.Service{InstanceKey: instanceKey}, Gateway: gateway, PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())

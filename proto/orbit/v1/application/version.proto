@@ -104,8 +104,7 @@ message VersionPaginatedResp {
 }
 
 message VersionPreviewReq {
-  string environment_id = 1;
-  optional string instance_key = 2;
+  optional string instance_key = 1;
 }
 
 message VersionPreviewResp {

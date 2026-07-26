@@ -72,7 +72,7 @@ const router = createRouter({
       props: true,
       meta: { title: '角色详情', menuKey: 'roles', permission: PERMISSIONS.ROLE_READ },
     },
-    // application / environment / service / deployment / gateway / route
+    // application / service / deployment / gateway / route
     {
       path: '/applications',
       name: 'Applications',
@@ -144,12 +144,6 @@ const router = createRouter({
       name: 'DeploymentDetail',
       component: () => import('@/views/deployment/DeploymentDetail.vue'),
       meta: { title: '部署详情', menuKey: 'deployments' },
-    },
-    {
-      path: '/environments',
-      name: 'Environments',
-      component: () => import('@/views/environment/EnvironmentPage.vue'),
-      meta: { title: '环境管理', menuKey: 'environments' },
     },
     {
       path: '/routes',

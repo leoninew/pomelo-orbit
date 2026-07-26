@@ -25,21 +25,18 @@ type ServiceResp struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Id                      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ApplicationId           string                 `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
-	EnvironmentId           string                 `protobuf:"bytes,3,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
-	InstanceKey             string                 `protobuf:"bytes,4,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
-	VersionId               string                 `protobuf:"bytes,5,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	LastSuccessfulVersionId *string                `protobuf:"bytes,6,opt,name=last_successful_version_id,json=lastSuccessfulVersionId,proto3,oneof" json:"last_successful_version_id,omitempty"`
-	Status                  string                 `protobuf:"bytes,7,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt               string                 `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt               string                 `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	InstanceKey             string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
+	VersionId               string                 `protobuf:"bytes,4,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	LastSuccessfulVersionId *string                `protobuf:"bytes,5,opt,name=last_successful_version_id,json=lastSuccessfulVersionId,proto3,oneof" json:"last_successful_version_id,omitempty"`
+	Status                  string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt               string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt               string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Display labels (filled on project-scoped list; empty on bare app-scoped list).
-	ApplicationName            string  `protobuf:"bytes,10,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
-	ApplicationCode            string  `protobuf:"bytes,11,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
-	ApplicationKind            string  `protobuf:"bytes,12,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
-	EnvironmentName            string  `protobuf:"bytes,13,opt,name=environment_name,json=environmentName,proto3" json:"environment_name,omitempty"`
-	EnvironmentCode            string  `protobuf:"bytes,14,opt,name=environment_code,json=environmentCode,proto3" json:"environment_code,omitempty"`
-	VersionLabel               string  `protobuf:"bytes,15,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
-	LastSuccessfulVersionLabel *string `protobuf:"bytes,16,opt,name=last_successful_version_label,json=lastSuccessfulVersionLabel,proto3,oneof" json:"last_successful_version_label,omitempty"`
+	ApplicationName            string  `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
+	ApplicationCode            string  `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
+	ApplicationKind            string  `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
+	VersionLabel               string  `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	LastSuccessfulVersionLabel *string `protobuf:"bytes,13,opt,name=last_successful_version_label,json=lastSuccessfulVersionLabel,proto3,oneof" json:"last_successful_version_label,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -84,13 +81,6 @@ func (x *ServiceResp) GetId() string {
 func (x *ServiceResp) GetApplicationId() string {
 	if x != nil {
 		return x.ApplicationId
-	}
-	return ""
-}
-
-func (x *ServiceResp) GetEnvironmentId() string {
-	if x != nil {
-		return x.EnvironmentId
 	}
 	return ""
 }
@@ -154,20 +144,6 @@ func (x *ServiceResp) GetApplicationCode() string {
 func (x *ServiceResp) GetApplicationKind() string {
 	if x != nil {
 		return x.ApplicationKind
-	}
-	return ""
-}
-
-func (x *ServiceResp) GetEnvironmentName() string {
-	if x != nil {
-		return x.EnvironmentName
-	}
-	return ""
-}
-
-func (x *ServiceResp) GetEnvironmentCode() string {
-	if x != nil {
-		return x.EnvironmentCode
 	}
 	return ""
 }
@@ -310,28 +286,25 @@ var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xca\x05\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xcd\x04\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
-	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12%\n" +
-	"\x0eenvironment_id\x18\x03 \x01(\tR\renvironmentId\x12!\n" +
-	"\finstance_key\x18\x04 \x01(\tR\vinstanceKey\x12\x1d\n" +
+	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12!\n" +
+	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x05 \x01(\tR\tversionId\x12@\n" +
-	"\x1alast_successful_version_id\x18\x06 \x01(\tH\x00R\x17lastSuccessfulVersionId\x88\x01\x01\x12\x16\n" +
-	"\x06status\x18\a \x01(\tR\x06status\x12\x1d\n" +
+	"version_id\x18\x04 \x01(\tR\tversionId\x12@\n" +
+	"\x1alast_successful_version_id\x18\x05 \x01(\tH\x00R\x17lastSuccessfulVersionId\x88\x01\x01\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\t \x01(\tR\tupdatedAt\x12)\n" +
-	"\x10application_name\x18\n" +
-	" \x01(\tR\x0fapplicationName\x12)\n" +
-	"\x10application_code\x18\v \x01(\tR\x0fapplicationCode\x12)\n" +
-	"\x10application_kind\x18\f \x01(\tR\x0fapplicationKind\x12)\n" +
-	"\x10environment_name\x18\r \x01(\tR\x0fenvironmentName\x12)\n" +
-	"\x10environment_code\x18\x0e \x01(\tR\x0fenvironmentCode\x12#\n" +
-	"\rversion_label\x18\x0f \x01(\tR\fversionLabel\x12F\n" +
-	"\x1dlast_successful_version_label\x18\x10 \x01(\tH\x01R\x1alastSuccessfulVersionLabel\x88\x01\x01B\x1d\n" +
+	"updated_at\x18\b \x01(\tR\tupdatedAt\x12)\n" +
+	"\x10application_name\x18\t \x01(\tR\x0fapplicationName\x12)\n" +
+	"\x10application_code\x18\n" +
+	" \x01(\tR\x0fapplicationCode\x12)\n" +
+	"\x10application_kind\x18\v \x01(\tR\x0fapplicationKind\x12#\n" +
+	"\rversion_label\x18\f \x01(\tR\fversionLabel\x12F\n" +
+	"\x1dlast_successful_version_label\x18\r \x01(\tH\x01R\x1alastSuccessfulVersionLabel\x88\x01\x01B\x1d\n" +
 	"\x1b_last_successful_version_idB \n" +
 	"\x1e_last_successful_version_label\"F\n" +
 	"\x0fServiceListResp\x123\n" +

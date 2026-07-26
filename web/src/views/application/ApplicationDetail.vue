@@ -428,7 +428,6 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import { environmentApi } from '@/api/environment/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -440,7 +439,6 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
-  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { applicationKindTone, versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
@@ -472,7 +470,6 @@
   const versionTotalPages = computed(() =>
     Math.ceil(versionPagination.total / versionPagination.pageSize)
   );
-  const environments = ref<EnvironmentResp[]>([]);
 
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
@@ -516,11 +513,6 @@
       return '—';
     }
     return version.components.map((c) => `${c.name}:${c.image}`).join(', ');
-  }
-
-  function defaultEnvironmentId() {
-    const local = environments.value.find((item) => item.code === 'local');
-    return local?.id || environments.value[0]?.id || '';
   }
 
   async function fetchApplication() {
@@ -569,20 +561,6 @@
     versionPagination.pageSize = pageSize;
     versionPagination.current = 1;
     void loadVersions();
-  }
-
-  async function loadEnvironments() {
-    const projectId = application.value?.project_id;
-    if (!projectId) {
-      environments.value = [];
-      return;
-    }
-    try {
-      const resp = await environmentApi.list({ project_id: projectId, per_page: 100 });
-      environments.value = resp.items ?? [];
-    } catch {
-      toast.error(t('application.toast.loadEnvironmentsFailed'));
-    }
   }
 
   async function handleExport() {
@@ -760,21 +738,12 @@
   }
 
   async function openPreview(versionId: string) {
-    if (environments.value.length === 0) {
-      await loadEnvironments();
-    }
-    const environmentId = defaultEnvironmentId();
-    if (!environmentId) {
-      toast.error(t('application.toast.environmentRequired'));
-      return;
-    }
     composePreviewYaml.value = '';
     composePreviewError.value = '';
     composePreviewDrawerOpen.value = true;
     try {
       await executeComposePreview(async () => {
         const { compose_yaml } = await applicationApi.previewVersion(versionId, {
-          environment_id: environmentId,
           instance_key: 'default',
         });
         composePreviewYaml.value = compose_yaml;

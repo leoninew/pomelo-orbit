@@ -23,11 +23,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if deployment.EnvironmentId == nil || *deployment.EnvironmentId == "" {
-		err := fmt.Errorf("deployment %s missing environment_id", deployment.Id)
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -53,16 +48,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	env, err := s.executionStore.Environment(ctx, *deployment.EnvironmentId)
-	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
-	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
-		err := fmt.Errorf("application and environment must belong to the same project")
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 	components, err := s.executionStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
@@ -73,7 +58,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.ensureSingleRuntime(ctx, app, env.Id, opts.InstanceKey); err != nil {
+	if err := s.ensureSingleRuntime(ctx, app, opts.InstanceKey); err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -93,7 +78,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		return err
 	}
 
-	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, preparation.RenderConfig, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, preparation.RenderConfig, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -122,11 +107,6 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 	version, err := s.executionStore.Version(ctx, svc.VersionId)
-	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
-	env, err := s.executionStore.Environment(ctx, svc.EnvironmentId)
 	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -160,7 +140,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 		return err
 	}
 
-	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, env, svc, preparation.RenderConfig, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, preparation.RenderConfig, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
 		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -182,17 +162,12 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	env, err := s.executionStore.Environment(ctx, svc.EnvironmentId)
-	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
 		return err
 	}
 
-	serviceDir := s.workspace.ServiceDir(app.Code, env.Code, svc.InstanceKey)
-	logPath := s.workspace.DeploymentLogPath(app.Code, env.Code, svc.InstanceKey, deployment.Id)
+	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
+	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deployment.Id)
 	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
@@ -202,7 +177,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, applicationId strin
 	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
 		return err
 	}
-	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
+	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := stopComposeCommand(projectName, removeVolumes)
 	if err := s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
 		_ = s.executionStore.UpdateServiceStatus(ctx, svc.Id, status.ServiceStatusFaulted)
@@ -247,27 +222,26 @@ func (s Service) renderAndDeployWithOptions(
 	version model.Version,
 	components []model.VersionComponent,
 	exposes []model.VersionExpose,
-	env model.Environment,
 	svc model.Service,
 	gateway *model.GatewayConfig,
 	deploymentId string,
 	forceRecreate bool,
 	runtimeConfig map[string]string,
 ) error {
-	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, env.Code, svc.InstanceKey)
+	physicalDir, err := s.workspace.PhysicalServiceDir(ctx, app.Code, svc.InstanceKey)
 	if err != nil {
 		return err
 	}
 	result, err := s.RenderComposeDetailed(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Env: env, Service: svc, Gateway: gateway, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
+		Service: svc, Gateway: gateway, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return err
 	}
 
-	serviceDir := s.workspace.ServiceDir(app.Code, env.Code, svc.InstanceKey)
-	logPath := s.workspace.DeploymentLogPath(app.Code, env.Code, svc.InstanceKey, deploymentId)
+	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
+	logPath := s.workspace.DeploymentLogPath(app.Code, svc.InstanceKey, deploymentId)
 	logWriter, err := s.executionLogStore.Writer(logPath)
 	if err != nil {
 		return err
@@ -277,8 +251,8 @@ func (s Service) renderAndDeployWithOptions(
 	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into env %s instance %s\n",
-		version.Label, version.Id, len(components), env.Code, svc.InstanceKey); err != nil {
+	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
+		version.Label, version.Id, len(components), svc.InstanceKey); err != nil {
 		return err
 	}
 	if len(result.ResolvedMounts) > 0 {
@@ -289,10 +263,10 @@ func (s Service) renderAndDeployWithOptions(
 			return err
 		}
 	}
-	if err := s.workspace.WriteConfig(app.Code, env.Code, svc.InstanceKey, "docker-compose.yml", result.Compose); err != nil {
+	if err := s.workspace.WriteConfig(app.Code, svc.InstanceKey, "docker-compose.yml", result.Compose); err != nil {
 		return err
 	}
-	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
+	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
 	return s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...)
 }
@@ -324,7 +298,7 @@ func writeWorkingDirectory(w io.Writer, dir string) error {
 }
 
 // ensureSingleRuntime rejects a second active service binding for the same standard app.
-func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application, environmentId, instanceKey string) error {
+func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application, instanceKey string) error {
 	if app.Kind == status.ApplicationKindGateway {
 		return nil
 	}
@@ -339,7 +313,7 @@ func (s Service) ensureSingleRuntime(ctx context.Context, app model.Application,
 		if !isActiveServiceStatus(svc.Status) {
 			continue
 		}
-		if svc.EnvironmentId == environmentId && svc.InstanceKey == instanceKey {
+		if svc.InstanceKey == instanceKey {
 			continue // same binding — replace in place
 		}
 		return fmt.Errorf("application already has an active runtime (service %s status=%s); single runtime only", svc.Id, svc.Status)
@@ -397,10 +371,6 @@ func (s Service) deployGatewayInPlace(ctx context.Context, gateway *model.Gatewa
 	if err != nil && version.Id == "" {
 		return err
 	}
-	env, err := s.store.Environment(ctx, active.EnvironmentId)
-	if err != nil {
-		return err
-	}
 	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
 		return err
@@ -416,7 +386,7 @@ func (s Service) deployGatewayInPlace(ctx context.Context, gateway *model.Gatewa
 		return err
 	}
 	logID := parentDeploymentId + "-gw"
-	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, env, *active, gateway, logID, true, nil); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logID, true, nil); err != nil {
 		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id, active.LastSuccessfulVersionId)
 		return fmt.Errorf("gateway reconcile deploy failed (business deploy aborted): %w", err)
 	}

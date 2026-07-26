@@ -8,8 +8,6 @@ type ServiceView struct {
 	ApplicationName            string
 	ApplicationCode            string
 	ApplicationKind            string
-	EnvironmentName            string
-	EnvironmentCode            string
 	VersionLabel               string
 	LastSuccessfulVersionLabel *string
 }
@@ -18,7 +16,6 @@ type ServiceView struct {
 type ServiceListInput struct {
 	ProjectId     string
 	ApplicationId string
-	EnvironmentId string
 	Status        string
 	Search        string
 	Page          int
@@ -27,7 +24,6 @@ type ServiceListInput struct {
 
 // ServiceTargetInput identifies a runtime binding for a command or runtime query.
 type ServiceTargetInput struct {
-	EnvironmentId string
-	InstanceKey   string
-	ServiceId     string
+	InstanceKey string
+	ServiceId   string
 }

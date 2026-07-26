@@ -12,7 +12,6 @@ import (
 type stores struct {
 	project     repository.ProjectReader
 	application repository.ApplicationStore
-	environment repository.EnvironmentStore
 	service     repository.ServiceStore
 	deployment  repository.DeploymentStore
 	gateway     repository.GatewayStore
@@ -83,39 +82,17 @@ func (s stores) CreateVersionWithVersionComponentsAndExposes(ctx context.Context
 	return s.application.CreateVersionWithVersionComponentsAndExposes(ctx, version, components, exposes)
 }
 
-func (s stores) ListEnvironments(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.Environment], error) {
-	return s.environment.ListEnvironments(ctx, projectId, page, perPage, search)
-}
-func (s stores) Environment(ctx context.Context, id string) (model.Environment, error) {
-	return s.environment.Environment(ctx, id)
-}
-func (s stores) EnvironmentByProjectCode(ctx context.Context, projectId string, code string) (model.Environment, error) {
-	return s.environment.EnvironmentByProjectCode(ctx, projectId, code)
-}
-func (s stores) CreateEnvironment(ctx context.Context, env model.Environment) error {
-	return s.environment.CreateEnvironment(ctx, env)
-}
-func (s stores) UpdateEnvironment(ctx context.Context, env model.Environment) error {
-	return s.environment.UpdateEnvironment(ctx, env)
-}
-func (s stores) DeleteEnvironment(ctx context.Context, id string) error {
-	return s.environment.DeleteEnvironment(ctx, id)
-}
-func (s stores) CountServicesByEnvironment(ctx context.Context, environmentId string) (int, error) {
-	return s.environment.CountServicesByEnvironment(ctx, environmentId)
-}
-
 func (s stores) ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error) {
 	return s.service.ListServicesByApplication(ctx, applicationId)
 }
-func (s stores) ListServicesByProject(ctx context.Context, projectId string, applicationId string, environmentId string, status string, search string, page int, perPage int) (repository.Page[model.ServiceListItem], error) {
-	return s.service.ListServicesByProject(ctx, projectId, applicationId, environmentId, status, search, page, perPage)
+func (s stores) ListServicesByProject(ctx context.Context, projectId string, applicationId string, status string, search string, page int, perPage int) (repository.Page[model.ServiceListItem], error) {
+	return s.service.ListServicesByProject(ctx, projectId, applicationId, status, search, page, perPage)
 }
 func (s stores) ServiceListItem(ctx context.Context, id string) (model.ServiceListItem, error) {
 	return s.service.ServiceListItem(ctx, id)
 }
-func (s stores) ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {
-	return s.service.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+func (s stores) ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error) {
+	return s.service.ServiceByKey(ctx, applicationId, instanceKey)
 }
 func (s stores) Service(ctx context.Context, id string) (model.Service, error) {
 	return s.service.Service(ctx, id)

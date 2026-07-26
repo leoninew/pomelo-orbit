@@ -7,7 +7,6 @@ export const serviceApi = {
     page?: number;
     per_page?: number;
     application_id?: string;
-    environment_id?: string;
     status?: string;
     search?: string;
   }): Promise<ServicePaginatedResp> {

@@ -11,7 +11,6 @@ export const protobufPackage = "orbit.v1.service";
 export interface ServiceResp {
   id: string;
   application_id: string;
-  environment_id: string;
   instance_key: string;
   version_id: string;
   last_successful_version_id?: string | undefined;
@@ -22,8 +21,6 @@ export interface ServiceResp {
   application_name: string;
   application_code: string;
   application_kind: string;
-  environment_name: string;
-  environment_code: string;
   version_label: string;
   last_successful_version_label?: string | undefined;
 }

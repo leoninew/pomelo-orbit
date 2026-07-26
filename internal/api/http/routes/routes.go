@@ -14,7 +14,6 @@ import (
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	credentialsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/usecase"
 	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
-	environmentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/environment/usecase"
 	gatewaysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/usecase"
 	pipelinesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/usecase"
 	pipelinerunsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/usecase"
@@ -44,7 +43,6 @@ type Dependencies struct {
 	RepositoryService  repositorysvc.Service
 	PipelineService    pipelinesvc.Service
 	PipelineRunService pipelinerunsvc.Service
-	EnvironmentService environmentsvc.Service
 	RouteService       routesvc.Service
 	ApplicationService applicationsvc.Service
 	ServiceService     servicesvc.Service
@@ -91,7 +89,6 @@ func (r Router) Handler() http.Handler {
 	r.registerPipelineRun(engine)
 	r.registerApplication(engine)
 	r.registerService(engine)
-	r.registerEnvironment(engine)
 	r.registerDeployment(engine)
 	r.registerGateway(engine)
 	r.registerRoute(engine)

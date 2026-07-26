@@ -11,7 +11,6 @@ import (
 	authsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/auth/usecase"
 	credentialsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/usecase"
 	deploymentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/usecase"
-	environmentsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/environment/usecase"
 	gatewaysvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/usecase"
 	pipelinesvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline/usecase"
 	pipelinerunsvc "gitee.com/leoninew/PomeloOrbit-go/internal/application/pipeline_run/usecase"
@@ -60,7 +59,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		AuthService:       authService,
 		RoleService:       rolesvc.New(stores.role),
 		UserService:       usersvc.New(stores.user, stores.role),
-		ProjectService:    projectsvc.New(stores.project, stores.environment, stores.user),
+		ProjectService:    projectsvc.New(stores.project, stores.user),
 		SettingsService:   settingssvc.New(cfg, envfile.NewStore(cfg.EnvFilePath)),
 		CredentialService: credentialsvc.New(stores.project, stores.credential, cfg.JWT.SecretKey),
 		RepositoryService: repositorysvc.New(
@@ -86,7 +85,6 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			pipelinerunner.DockerRunner{},
 			logStore,
 		),
-		EnvironmentService: environmentsvc.New(stores.project, stores.environment),
 		RouteService: routesvc.New(
 			stores.project,
 			stores.route,
@@ -104,7 +102,6 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		DeploymentService: deploymentsvc.NewCommandService(
 			stores.project,
 			stores.application,
-			stores.environment,
 			stores.service,
 			stores.deployment,
 			stores.gateway,

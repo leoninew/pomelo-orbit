@@ -112,9 +112,9 @@ func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsPara
 
 const createDeployment = `-- name: CreateDeployment :exec
 INSERT INTO deployment (
-  id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+  id, project_id, application_id, application_name, version_id, service_id, options_json,
   operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeploymentParams struct {
@@ -124,7 +124,6 @@ type CreateDeploymentParams struct {
 	ApplicationName          string         `db:"application_name"`
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
-	EnvironmentID            sql.NullString `db:"environment_id"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	OperationType            string         `db:"operation_type"`
 	TriggerType              string         `db:"trigger_type"`
@@ -143,7 +142,6 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 		arg.ApplicationName,
 		arg.VersionID,
 		arg.ServiceID,
-		arg.EnvironmentID,
 		arg.OptionsJson,
 		arg.OperationType,
 		arg.TriggerType,
@@ -157,7 +155,7 @@ func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentPara
 }
 
 const deploymentByID = `-- name: DeploymentByID :one
-SELECT id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+SELECT id, project_id, application_id, application_name, version_id, service_id, options_json,
        operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
        error_message, is_rollback, rollback_from_deployment_id
 FROM deployment
@@ -171,7 +169,6 @@ type DeploymentByIDRow struct {
 	ApplicationName          string         `db:"application_name"`
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
-	EnvironmentID            sql.NullString `db:"environment_id"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	OperationType            string         `db:"operation_type"`
 	TriggerType              string         `db:"trigger_type"`
@@ -196,7 +193,6 @@ func (q *Queries) DeploymentByID(ctx context.Context, id string) (DeploymentByID
 		&i.ApplicationName,
 		&i.VersionID,
 		&i.ServiceID,
-		&i.EnvironmentID,
 		&i.OptionsJson,
 		&i.OperationType,
 		&i.TriggerType,
@@ -227,7 +223,7 @@ func (q *Queries) DeploymentStartedAt(ctx context.Context, id string) (time.Time
 }
 
 const listDeployments = `-- name: ListDeployments :many
-SELECT id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+SELECT id, project_id, application_id, application_name, version_id, service_id, options_json,
        operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
        error_message, is_rollback, rollback_from_deployment_id
 FROM deployment
@@ -271,7 +267,6 @@ type ListDeploymentsRow struct {
 	ApplicationName          string         `db:"application_name"`
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
-	EnvironmentID            sql.NullString `db:"environment_id"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	OperationType            string         `db:"operation_type"`
 	TriggerType              string         `db:"trigger_type"`
@@ -314,7 +309,6 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			&i.ApplicationName,
 			&i.VersionID,
 			&i.ServiceID,
-			&i.EnvironmentID,
 			&i.OptionsJson,
 			&i.OperationType,
 			&i.TriggerType,

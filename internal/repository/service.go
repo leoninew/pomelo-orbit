@@ -9,9 +9,9 @@ import (
 // ServiceReader provides runtime service binding queries to other domains.
 type ServiceReader interface {
 	ListServicesByApplication(ctx context.Context, applicationId string) ([]model.Service, error)
-	ListServicesByProject(ctx context.Context, projectId string, applicationId string, environmentId string, status string, search string, page int, perPage int) (Page[model.ServiceListItem], error)
+	ListServicesByProject(ctx context.Context, projectId string, applicationId string, status string, search string, page int, perPage int) (Page[model.ServiceListItem], error)
 	ServiceListItem(ctx context.Context, id string) (model.ServiceListItem, error)
-	ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error)
+	ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 }
 

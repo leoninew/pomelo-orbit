@@ -20,7 +20,6 @@ import (
 type Service struct {
 	project            repository.ProjectReader
 	application        repository.ApplicationStore
-	environment        repository.EnvironmentStore
 	service            repository.ServiceStore
 	deployment         repository.DeploymentStore
 	workspace          deploymentport.Workspace
@@ -39,7 +38,6 @@ type Service struct {
 func New(
 	project repository.ProjectReader,
 	application repository.ApplicationStore,
-	environment repository.EnvironmentStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	workspace deploymentport.Workspace,
@@ -48,11 +46,11 @@ func New(
 	gatewayCoordinator gatewayport.DeploymentCoordinator,
 ) Service {
 	store := &stores{
-		project: project, application: application, environment: environment,
+		project: project, application: application,
 		service: service, deployment: deployment,
 	}
 	return Service{
-		project: project, application: application, environment: environment,
+		project: project, application: application,
 		service: service, deployment: deployment, workspace: workspace,
 		logStore: logStore, queryRunner: queryRunner, store: store, executionStore: store,
 		gatewayCoordinator: gatewayCoordinator,
@@ -146,12 +144,8 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, depl
 	if err != nil {
 		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	env, err := s.environment.Environment(ctx, svc.EnvironmentId)
-	if err != nil {
-		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
-	serviceDir := s.workspace.ServiceDir(app.Code, env.Code, svc.InstanceKey)
-	projectName := composeProjectName(app.Code, env.Code, svc.InstanceKey)
+	serviceDir := s.workspace.ServiceDir(app.Code, svc.InstanceKey)
+	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	sinceCommand := containerLogsSinceCommand(projectName, deployment.StartedAt.UTC().Format(time.RFC3339))
 	output, err := s.queryRunner.Run(ctx, serviceDir, sinceCommand.Name, sinceCommand.Args...)
 	if err == nil {
@@ -224,16 +218,6 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	if deployment.EnvironmentId == nil || *deployment.EnvironmentId == "" {
-		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated environment")
-	}
-	env, err := s.environment.Environment(ctx, *deployment.EnvironmentId)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return "", offset, apperror.New(apperror.KindNotFound, "Environment "+*deployment.EnvironmentId+" not found")
-		}
-		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
 	opts, err := parseDeployOptions(deployment.OptionsJSON)
 	if err != nil {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has invalid options: "+err.Error())
@@ -241,7 +225,7 @@ func (s Service) readDeploymentLog(ctx context.Context, deployment model.Deploym
 	if opts.InstanceKey == "" {
 		return "", offset, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated instance")
 	}
-	logPath := s.workspace.DeploymentLogPath(app.Code, env.Code, opts.InstanceKey, deployment.Id)
+	logPath := s.workspace.DeploymentLogPath(app.Code, opts.InstanceKey, deployment.Id)
 	content, newOffset, err := s.logStore.Read(logPath, offset)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to read deployment log", err)

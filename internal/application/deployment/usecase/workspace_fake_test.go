@@ -7,7 +7,6 @@ import (
 
 type workspaceWrite struct {
 	appCode     string
-	envCode     string
 	instanceKey string
 	path        string
 	content     string
@@ -33,12 +32,12 @@ func (w *workspaceFake) AppDir(appCode string) string {
 	return filepath.Join(w.dataRoot, "cd", appCode)
 }
 
-func (w *workspaceFake) ServiceDir(appCode string, envCode string, instanceKey string) string {
-	return filepath.Join(w.AppDir(appCode), envCode, instanceKey)
+func (w *workspaceFake) ServiceDir(appCode string, instanceKey string) string {
+	return filepath.Join(w.AppDir(appCode), instanceKey)
 }
 
-func (w *workspaceFake) DeploymentLogPath(appCode string, envCode string, instanceKey string, deploymentID string) string {
-	return filepath.Join(w.ServiceDir(appCode, envCode, instanceKey), "deployments", deploymentID+".log")
+func (w *workspaceFake) DeploymentLogPath(appCode string, instanceKey string, deploymentID string) string {
+	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentID+".log")
 }
 
 func (w *workspaceFake) PhysicalDir(context.Context) (string, error) {
@@ -48,18 +47,17 @@ func (w *workspaceFake) PhysicalDir(context.Context) (string, error) {
 	return filepath.ToSlash(w.physicalRoot), nil
 }
 
-func (w *workspaceFake) PhysicalServiceDir(ctx context.Context, appCode string, envCode string, instanceKey string) (string, error) {
+func (w *workspaceFake) PhysicalServiceDir(ctx context.Context, appCode string, instanceKey string) (string, error) {
 	physicalRoot, err := w.PhysicalDir(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(filepath.Join(physicalRoot, "cd", appCode, envCode, instanceKey)), nil
+	return filepath.ToSlash(filepath.Join(physicalRoot, "cd", appCode, instanceKey)), nil
 }
 
-func (w *workspaceFake) WriteConfig(appCode string, envCode string, instanceKey string, path string, content string) error {
+func (w *workspaceFake) WriteConfig(appCode string, instanceKey string, path string, content string) error {
 	w.writes = append(w.writes, workspaceWrite{
 		appCode:     appCode,
-		envCode:     envCode,
 		instanceKey: instanceKey,
 		path:        path,
 		content:     content,
@@ -72,10 +70,10 @@ func (w *workspaceFake) RemoveAppDir(appCode string) error {
 	return nil
 }
 
-func (w *workspaceFake) Config(appCode string, envCode string, instanceKey string, path string) (string, bool) {
+func (w *workspaceFake) Config(appCode string, instanceKey string, path string) (string, bool) {
 	for index := len(w.writes) - 1; index >= 0; index-- {
 		write := w.writes[index]
-		if write.appCode == appCode && write.envCode == envCode && write.instanceKey == instanceKey && write.path == path {
+		if write.appCode == appCode && write.instanceKey == instanceKey && write.path == path {
 			return write.content, true
 		}
 	}

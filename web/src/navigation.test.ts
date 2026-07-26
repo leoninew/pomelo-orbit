@@ -49,16 +49,15 @@ describe('domain navigation declarations', () => {
     ]);
   });
 
-  it('groups continuous deployment entries into environment and workload', () => {
+  it('groups continuous deployment entries into runtime and workload', () => {
     expect(secondaryNavigation.deployment).toEqual([
       expect.objectContaining({
-        key: 'environment',
+        key: 'runtime',
         children: [
           expect.objectContaining({ key: 'gateways', path: '/gateways' }),
           expect.objectContaining({ key: 'services', path: '/services' }),
           expect.objectContaining({ key: 'route', path: '/routes' }),
           expect.objectContaining({ key: 'traefik-http-routers', path: '/route/traefik' }),
-          expect.objectContaining({ key: 'environments', path: '/environments' }),
         ],
       }),
       expect.objectContaining({

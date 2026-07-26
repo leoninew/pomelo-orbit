@@ -44,26 +44,21 @@ func (r Repository) ListServicesByApplication(ctx context.Context, applicationId
 	return items, nil
 }
 
-func (r Repository) ListServicesByProject(ctx context.Context, projectId string, applicationId string, environmentId string, statusFilter string, search string, page int, perPage int) (repository.Page[model.ServiceListItem], error) {
+func (r Repository) ListServicesByProject(ctx context.Context, projectId string, applicationId string, statusFilter string, search string, page int, perPage int) (repository.Page[model.ServiceListItem], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
 	appFilter := strings.TrimSpace(applicationId)
-	envFilter := strings.TrimSpace(environmentId)
 	stFilter := strings.TrimSpace(statusFilter)
 	q := r.q(ctx)
 	total, err := q.CountServicesByProject(ctx, servicesqlc.CountServicesByProjectParams{
 		ProjectID:     sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
 		Column2:       appFilter,
 		ApplicationID: appFilter,
-		Column4:       envFilter,
-		EnvironmentID: envFilter,
-		Column6:       stFilter,
+		Column4:       stFilter,
 		Status:        stFilter,
-		Column8:       raw,
+		Column6:       raw,
 		Name:          pattern,
 		Code:          pattern,
-		Name_2:        pattern,
-		Code_2:        pattern,
 		InstanceKey:   pattern,
 		Label:         pattern,
 	})
@@ -74,15 +69,11 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId string,
 		ProjectID:     sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
 		Column2:       appFilter,
 		ApplicationID: appFilter,
-		Column4:       envFilter,
-		EnvironmentID: envFilter,
-		Column6:       stFilter,
+		Column4:       stFilter,
 		Status:        stFilter,
-		Column8:       raw,
+		Column6:       raw,
 		Name:          pattern,
 		Code:          pattern,
-		Name_2:        pattern,
-		Code_2:        pattern,
 		InstanceKey:   pattern,
 		Label:         pattern,
 		Limit:         int64(perPage),
@@ -93,7 +84,7 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId string,
 	}
 	items := make([]model.ServiceListItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, serviceListFrom(row.ID, row.ApplicationID, row.EnvironmentID, row.InstanceKey, row.VersionID, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.EnvironmentName, row.EnvironmentCode, row.VersionLabel, row.LastSuccessfulVersionLabel))
+		items = append(items, serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel))
 	}
 	return repository.Page[model.ServiceListItem]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -103,13 +94,12 @@ func (r Repository) ServiceListItem(ctx context.Context, id string) (model.Servi
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return serviceListFrom(row.ID, row.ApplicationID, row.EnvironmentID, row.InstanceKey, row.VersionID, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.EnvironmentName, row.EnvironmentCode, row.VersionLabel, row.LastSuccessfulVersionLabel), nil
+	return serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel), nil
 }
 
-func (r Repository) ServiceByKey(ctx context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {
+func (r Repository) ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error) {
 	row, err := r.q(ctx).ServiceByKey(ctx, servicesqlc.ServiceByKeyParams{
 		ApplicationID: applicationId,
-		EnvironmentID: environmentId,
 		InstanceKey:   instanceKey,
 	})
 	if err != nil {
@@ -130,7 +120,6 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 	q := r.q(ctx)
 	existingID, err := q.ServiceIDByKey(ctx, servicesqlc.ServiceIDByKeyParams{
 		ApplicationID: svc.ApplicationId,
-		EnvironmentID: svc.EnvironmentId,
 		InstanceKey:   svc.InstanceKey,
 	})
 	now := time.Now().UTC()
@@ -148,7 +137,6 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 		if err := q.InsertService(ctx, servicesqlc.InsertServiceParams{
 			ID:                      svc.Id,
 			ApplicationID:           svc.ApplicationId,
-			EnvironmentID:           svc.EnvironmentId,
 			InstanceKey:             svc.InstanceKey,
 			VersionID:               svc.VersionId,
 			LastSuccessfulVersionID: dbmodel.NullString(svc.LastSuccessfulVersionId),
@@ -206,7 +194,6 @@ func serviceFrom(row servicesqlc.Service) model.Service {
 	return model.Service{
 		Id:                      row.ID,
 		ApplicationId:           row.ApplicationID,
-		EnvironmentId:           row.EnvironmentID,
 		InstanceKey:             row.InstanceKey,
 		VersionId:               row.VersionID,
 		LastSuccessfulVersionId: dbmodel.StringPtr(row.LastSuccessfulVersionID),
@@ -217,15 +204,14 @@ func serviceFrom(row servicesqlc.Service) model.Service {
 }
 
 func serviceListFrom(
-	id, applicationID, environmentID, instanceKey, versionID string, lastSuccessfulVersionID sql.NullString,
+	id, applicationID, instanceKey, versionID string, lastSuccessfulVersionID sql.NullString,
 	svcStatus string, createdAt, updatedAt time.Time,
-	applicationName, applicationCode, applicationKind, environmentName, environmentCode, versionLabel string,
+	applicationName, applicationCode, applicationKind, versionLabel string,
 	lastSuccessfulVersionLabel sql.NullString,
 ) model.ServiceListItem {
 	return model.ServiceListItem{
 		Id:                         id,
 		ApplicationId:              applicationID,
-		EnvironmentId:              environmentID,
 		InstanceKey:                instanceKey,
 		VersionId:                  versionID,
 		LastSuccessfulVersionId:    dbmodel.StringPtr(lastSuccessfulVersionID),
@@ -235,8 +221,6 @@ func serviceListFrom(
 		ApplicationName:            applicationName,
 		ApplicationCode:            applicationCode,
 		ApplicationKind:            applicationKind,
-		EnvironmentName:            environmentName,
-		EnvironmentCode:            environmentCode,
 		VersionLabel:               versionLabel,
 		LastSuccessfulVersionLabel: dbmodel.StringPtr(lastSuccessfulVersionLabel),
 	}

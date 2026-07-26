@@ -24,7 +24,6 @@ DOMAIN_ALIAS = {
     "pipeline": "pipelinev1",
     "pipeline_run": "pipelinerunv1",
     "application": "applicationv1",
-    "environment": "environmentv1",
     "service": "servicev1",
     "deployment": "deploymentv1",
     "gateway": "gatewayv1",

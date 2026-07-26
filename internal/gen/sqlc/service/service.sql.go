@@ -15,14 +15,12 @@ const countServicesByProject = `-- name: CountServicesByProject :one
 SELECT COUNT(*)
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
-INNER JOIN environment e ON e.id = s.environment_id
 INNER JOIN version v ON v.id = s.version_id
 LEFT JOIN version lv ON lv.id = s.last_successful_version_id
 WHERE a.project_id = ?
   AND (? = '' OR s.application_id = ?)
-  AND (? = '' OR s.environment_id = ?)
   AND (? = '' OR s.status = ?)
-  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR e.name LIKE ? OR e.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
+  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
 `
 
 type CountServicesByProjectParams struct {
@@ -30,14 +28,10 @@ type CountServicesByProjectParams struct {
 	Column2       interface{}    `db:"column_2"`
 	ApplicationID string         `db:"application_id"`
 	Column4       interface{}    `db:"column_4"`
-	EnvironmentID string         `db:"environment_id"`
-	Column6       interface{}    `db:"column_6"`
 	Status        string         `db:"status"`
-	Column8       interface{}    `db:"column_8"`
+	Column6       interface{}    `db:"column_6"`
 	Name          string         `db:"name"`
 	Code          string         `db:"code"`
-	Name_2        string         `db:"name_2"`
-	Code_2        string         `db:"code_2"`
 	InstanceKey   string         `db:"instance_key"`
 	Label         string         `db:"label"`
 }
@@ -48,14 +42,10 @@ func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesB
 		arg.Column2,
 		arg.ApplicationID,
 		arg.Column4,
-		arg.EnvironmentID,
-		arg.Column6,
 		arg.Status,
-		arg.Column8,
+		arg.Column6,
 		arg.Name,
 		arg.Code,
-		arg.Name_2,
-		arg.Code_2,
 		arg.InstanceKey,
 		arg.Label,
 	)
@@ -66,14 +56,13 @@ func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesB
 
 const insertService = `-- name: InsertService :exec
 INSERT INTO service (
-  id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, application_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertServiceParams struct {
 	ID                      string         `db:"id"`
 	ApplicationID           string         `db:"application_id"`
-	EnvironmentID           string         `db:"environment_id"`
 	InstanceKey             string         `db:"instance_key"`
 	VersionID               string         `db:"version_id"`
 	LastSuccessfulVersionID sql.NullString `db:"last_successful_version_id"`
@@ -86,7 +75,6 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 	_, err := q.db.ExecContext(ctx, insertService,
 		arg.ID,
 		arg.ApplicationID,
-		arg.EnvironmentID,
 		arg.InstanceKey,
 		arg.VersionID,
 		arg.LastSuccessfulVersionID,
@@ -98,10 +86,10 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 }
 
 const listServicesByApplication = `-- name: ListServicesByApplication :many
-SELECT id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
 FROM service
 WHERE application_id = ?
-ORDER BY environment_id, instance_key
+ORDER BY instance_key
 `
 
 func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error) {
@@ -116,7 +104,6 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 		if err := rows.Scan(
 			&i.ID,
 			&i.ApplicationID,
-			&i.EnvironmentID,
 			&i.InstanceKey,
 			&i.VersionID,
 			&i.LastSuccessfulVersionID,
@@ -138,22 +125,19 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, applicationID s
 }
 
 const listServicesByProject = `-- name: ListServicesByProject :many
-SELECT s.id, s.application_id, s.environment_id, s.instance_key, s.version_id, s.last_successful_version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.application_id, s.instance_key, s.version_id, s.last_successful_version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
-       e.name AS environment_name, e.code AS environment_code,
        v.label AS version_label,
        lv.label AS last_successful_version_label
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
-INNER JOIN environment e ON e.id = s.environment_id
 INNER JOIN version v ON v.id = s.version_id
 LEFT JOIN version lv ON lv.id = s.last_successful_version_id
 WHERE a.project_id = ?
   AND (? = '' OR s.application_id = ?)
-  AND (? = '' OR s.environment_id = ?)
   AND (? = '' OR s.status = ?)
-  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR e.name LIKE ? OR e.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
-ORDER BY s.updated_at DESC, a.name, e.code, s.instance_key
+  AND (? = '' OR a.name LIKE ? OR a.code LIKE ? OR s.instance_key LIKE ? OR v.label LIKE ?)
+ORDER BY s.updated_at DESC, a.name, s.instance_key
 LIMIT ? OFFSET ?
 `
 
@@ -162,14 +146,10 @@ type ListServicesByProjectParams struct {
 	Column2       interface{}    `db:"column_2"`
 	ApplicationID string         `db:"application_id"`
 	Column4       interface{}    `db:"column_4"`
-	EnvironmentID string         `db:"environment_id"`
-	Column6       interface{}    `db:"column_6"`
 	Status        string         `db:"status"`
-	Column8       interface{}    `db:"column_8"`
+	Column6       interface{}    `db:"column_6"`
 	Name          string         `db:"name"`
 	Code          string         `db:"code"`
-	Name_2        string         `db:"name_2"`
-	Code_2        string         `db:"code_2"`
 	InstanceKey   string         `db:"instance_key"`
 	Label         string         `db:"label"`
 	Limit         int64          `db:"limit"`
@@ -179,7 +159,6 @@ type ListServicesByProjectParams struct {
 type ListServicesByProjectRow struct {
 	ID                         string         `db:"id"`
 	ApplicationID              string         `db:"application_id"`
-	EnvironmentID              string         `db:"environment_id"`
 	InstanceKey                string         `db:"instance_key"`
 	VersionID                  string         `db:"version_id"`
 	LastSuccessfulVersionID    sql.NullString `db:"last_successful_version_id"`
@@ -189,8 +168,6 @@ type ListServicesByProjectRow struct {
 	ApplicationName            string         `db:"application_name"`
 	ApplicationCode            string         `db:"application_code"`
 	ApplicationKind            string         `db:"application_kind"`
-	EnvironmentName            string         `db:"environment_name"`
-	EnvironmentCode            string         `db:"environment_code"`
 	VersionLabel               string         `db:"version_label"`
 	LastSuccessfulVersionLabel sql.NullString `db:"last_successful_version_label"`
 }
@@ -201,14 +178,10 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 		arg.Column2,
 		arg.ApplicationID,
 		arg.Column4,
-		arg.EnvironmentID,
-		arg.Column6,
 		arg.Status,
-		arg.Column8,
+		arg.Column6,
 		arg.Name,
 		arg.Code,
-		arg.Name_2,
-		arg.Code_2,
 		arg.InstanceKey,
 		arg.Label,
 		arg.Limit,
@@ -224,7 +197,6 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 		if err := rows.Scan(
 			&i.ID,
 			&i.ApplicationID,
-			&i.EnvironmentID,
 			&i.InstanceKey,
 			&i.VersionID,
 			&i.LastSuccessfulVersionID,
@@ -234,8 +206,6 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 			&i.ApplicationName,
 			&i.ApplicationCode,
 			&i.ApplicationKind,
-			&i.EnvironmentName,
-			&i.EnvironmentCode,
 			&i.VersionLabel,
 			&i.LastSuccessfulVersionLabel,
 		); err != nil {
@@ -253,7 +223,7 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 }
 
 const serviceByID = `-- name: ServiceByID :one
-SELECT id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
 FROM service
 WHERE id = ?
 `
@@ -264,7 +234,6 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.ApplicationID,
-		&i.EnvironmentID,
 		&i.InstanceKey,
 		&i.VersionID,
 		&i.LastSuccessfulVersionID,
@@ -276,24 +245,22 @@ func (q *Queries) ServiceByID(ctx context.Context, id string) (Service, error) {
 }
 
 const serviceByKey = `-- name: ServiceByKey :one
-SELECT id, application_id, environment_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
+SELECT id, application_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at
 FROM service
-WHERE application_id = ? AND environment_id = ? AND instance_key = ?
+WHERE application_id = ? AND instance_key = ?
 `
 
 type ServiceByKeyParams struct {
 	ApplicationID string `db:"application_id"`
-	EnvironmentID string `db:"environment_id"`
 	InstanceKey   string `db:"instance_key"`
 }
 
 func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Service, error) {
-	row := q.db.QueryRowContext(ctx, serviceByKey, arg.ApplicationID, arg.EnvironmentID, arg.InstanceKey)
+	row := q.db.QueryRowContext(ctx, serviceByKey, arg.ApplicationID, arg.InstanceKey)
 	var i Service
 	err := row.Scan(
 		&i.ID,
 		&i.ApplicationID,
-		&i.EnvironmentID,
 		&i.InstanceKey,
 		&i.VersionID,
 		&i.LastSuccessfulVersionID,
@@ -307,31 +274,28 @@ func (q *Queries) ServiceByKey(ctx context.Context, arg ServiceByKeyParams) (Ser
 const serviceIDByKey = `-- name: ServiceIDByKey :one
 SELECT id
 FROM service
-WHERE application_id = ? AND environment_id = ? AND instance_key = ?
+WHERE application_id = ? AND instance_key = ?
 `
 
 type ServiceIDByKeyParams struct {
 	ApplicationID string `db:"application_id"`
-	EnvironmentID string `db:"environment_id"`
 	InstanceKey   string `db:"instance_key"`
 }
 
 func (q *Queries) ServiceIDByKey(ctx context.Context, arg ServiceIDByKeyParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, serviceIDByKey, arg.ApplicationID, arg.EnvironmentID, arg.InstanceKey)
+	row := q.db.QueryRowContext(ctx, serviceIDByKey, arg.ApplicationID, arg.InstanceKey)
 	var id string
 	err := row.Scan(&id)
 	return id, err
 }
 
 const serviceListItemByID = `-- name: ServiceListItemByID :one
-SELECT s.id, s.application_id, s.environment_id, s.instance_key, s.version_id, s.last_successful_version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.application_id, s.instance_key, s.version_id, s.last_successful_version_id, s.status, s.created_at, s.updated_at,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
-       e.name AS environment_name, e.code AS environment_code,
        v.label AS version_label,
        lv.label AS last_successful_version_label
 FROM service s
 INNER JOIN application a ON a.id = s.application_id
-INNER JOIN environment e ON e.id = s.environment_id
 INNER JOIN version v ON v.id = s.version_id
 LEFT JOIN version lv ON lv.id = s.last_successful_version_id
 WHERE s.id = ?
@@ -340,7 +304,6 @@ WHERE s.id = ?
 type ServiceListItemByIDRow struct {
 	ID                         string         `db:"id"`
 	ApplicationID              string         `db:"application_id"`
-	EnvironmentID              string         `db:"environment_id"`
 	InstanceKey                string         `db:"instance_key"`
 	VersionID                  string         `db:"version_id"`
 	LastSuccessfulVersionID    sql.NullString `db:"last_successful_version_id"`
@@ -350,8 +313,6 @@ type ServiceListItemByIDRow struct {
 	ApplicationName            string         `db:"application_name"`
 	ApplicationCode            string         `db:"application_code"`
 	ApplicationKind            string         `db:"application_kind"`
-	EnvironmentName            string         `db:"environment_name"`
-	EnvironmentCode            string         `db:"environment_code"`
 	VersionLabel               string         `db:"version_label"`
 	LastSuccessfulVersionLabel sql.NullString `db:"last_successful_version_label"`
 }
@@ -362,7 +323,6 @@ func (q *Queries) ServiceListItemByID(ctx context.Context, id string) (ServiceLi
 	err := row.Scan(
 		&i.ID,
 		&i.ApplicationID,
-		&i.EnvironmentID,
 		&i.InstanceKey,
 		&i.VersionID,
 		&i.LastSuccessfulVersionID,
@@ -372,8 +332,6 @@ func (q *Queries) ServiceListItemByID(ctx context.Context, id string) (ServiceLi
 		&i.ApplicationName,
 		&i.ApplicationCode,
 		&i.ApplicationKind,
-		&i.EnvironmentName,
-		&i.EnvironmentCode,
 		&i.VersionLabel,
 		&i.LastSuccessfulVersionLabel,
 	)

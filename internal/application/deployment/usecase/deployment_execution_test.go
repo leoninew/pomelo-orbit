@@ -18,7 +18,6 @@ import (
 )
 
 func testVersionID() string { return "ver-1" }
-func testEnvID() string     { return "env-1" }
 func testProjectID() string { return "proj-1" }
 
 func stringPtr(value string) *string { return &value }
@@ -38,32 +37,23 @@ func newTestExecutionService(store deploymentport.ExecutionStore, logger *slog.L
 func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 	t.Helper()
 	versionID := testVersionID()
-	envID := testEnvID()
 	projectID := testProjectID()
 	optionsJSON := `{"instance_key":"default"}`
 	return &fakeDeploymentExecutionStore{
 		app: model.Application{Id: "app-1", ProjectId: &projectID, Code: "demo", Kind: status.ApplicationKindStandard, ImagePullPolicy: "missing"},
 		deployment: model.Deployment{
-			Id:            "deploy-1",
-			VersionId:     &versionID,
-			EnvironmentId: &envID,
-			ServiceId:     stringPtr("svc-1"),
-			OptionsJSON:   &optionsJSON,
+			Id:          "deploy-1",
+			VersionId:   &versionID,
+			ServiceId:   stringPtr("svc-1"),
+			OptionsJSON: &optionsJSON,
 		},
 		version: model.Version{Id: versionID, ApplicationId: "app-1", Label: "v1", Status: status.VersionStatusUnpublished},
 		components: []model.VersionComponent{
 			{Id: "c1", VersionId: versionID, Name: "web", Image: "nginx"},
 		},
-		env: model.Environment{
-			Id:        envID,
-			ProjectId: projectID,
-			Code:      "local",
-			Name:      "Local",
-		},
 		service: model.Service{
 			Id:            "svc-1",
 			ApplicationId: "app-1",
-			EnvironmentId: envID,
 			InstanceKey:   "default",
 			VersionId:     versionID,
 			Status:        status.ServiceStatusRunning,
@@ -102,7 +92,7 @@ func TestExecuteApplicationStopStopsApplication(t *testing.T) {
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
-	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml down -v" {
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-default -f docker-compose.yml down -v" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
@@ -157,7 +147,7 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	if store.deploymentStatus != status.WorkStatusRanToCompletion {
 		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
-	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml up -d --remove-orphans --pull missing" {
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-default -f docker-compose.yml up -d --remove-orphans --pull missing" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
@@ -185,7 +175,7 @@ func TestExecuteApplicationDeployForceRecreatesApplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}
-	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml up -d --remove-orphans --pull missing --force-recreate" {
+	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-default -f docker-compose.yml up -d --remove-orphans --pull missing --force-recreate" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
 	}
 }
@@ -239,7 +229,6 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 		Version:    store.version,
 		Components: store.components,
 		Exposes:    store.exposes,
-		Env:        store.env,
 		Service:    store.service,
 		Gateway:    &store.gateway,
 	})
@@ -249,14 +238,14 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	if err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false); err != nil {
 		t.Fatalf("ExecuteApplicationDeploy returned error: %v", err)
 	}
-	content, ok := workspace.Config("demo", "local", "default", "docker-compose.yml")
+	content, ok := workspace.Config("demo", "default", "docker-compose.yml")
 	if !ok {
 		t.Fatal("expected rendered compose to be written through workspace port")
 	}
 	if preview != content {
 		t.Fatalf("expected preview to match deployed compose\npreview:\n%s\ndeployed:\n%s", preview, content)
 	}
-	wantRule := "traefik.http.routers.demo-local-default-web-http.rule=Host(`demo.example.com`)"
+	wantRule := "traefik.http.routers.demo-default-web-http.rule=Host(`demo.example.com`)"
 	if !strings.Contains(preview, wantRule) {
 		t.Fatalf("expected derived host rule %q, got:\n%s", wantRule, preview)
 	}
@@ -268,7 +257,6 @@ type fakeDeploymentExecutionStore struct {
 	version          model.Version
 	components       []model.VersionComponent
 	exposes          []model.VersionExpose
-	env              model.Environment
 	gateway          model.GatewayConfig
 	service          model.Service
 	serviceStatus    string
@@ -331,13 +319,6 @@ func (s *fakeDeploymentExecutionStore) VersionComponentsByVersion(_ context.Cont
 
 func (s *fakeDeploymentExecutionStore) VersionExposesByVersion(_ context.Context, versionId string) ([]model.VersionExpose, error) {
 	return s.exposes, nil
-}
-
-func (s *fakeDeploymentExecutionStore) Environment(_ context.Context, id string) (model.Environment, error) {
-	if s.env.Id != id {
-		return model.Environment{}, repository.ErrNotFound
-	}
-	return s.env, nil
 }
 
 func (s *fakeDeploymentExecutionStore) Service(_ context.Context, id string) (model.Service, error) {

@@ -9,13 +9,6 @@
           width-class="app-toolbar-select"
           @update:model-value="handleApplicationChange"
         />
-        <ComboboxSelect
-          :model-value="query.environment_id"
-          :options="envSelectOptions"
-          :placeholder="t('service.filterEnvironment')"
-          width-class="app-toolbar-select"
-          @update:model-value="handleEnvironmentChange"
-        />
         <RawValueCombobox
           :model-value="query.status"
           :values="statusValues"
@@ -41,12 +34,11 @@
       <AppSpinner v-if="status === 'loading'" class="py-16" />
       <AppEmptyState v-else-if="services.length === 0" :message="t('service.empty')" />
       <div v-else class="overflow-x-auto">
-        <table class="app-table-list min-w-[960px]">
+          <table class="app-table-list min-w-[840px]">
           <thead>
             <tr>
               <th>{{ t('service.fields.instanceKey') }}</th>
               <th>{{ t('service.fields.application') }} / {{ t('service.fields.version') }}</th>
-              <th>{{ t('service.fields.environment') }}</th>
               <th>{{ t('common.status') }}</th>
               <th>{{ t('common.updatedAt') }}</th>
               <th>{{ t('common.operation') }}</th>
@@ -70,7 +62,6 @@
                   </router-link>
                 </div>
               </td>
-              <td class="text-foreground">{{ svc.environment_name || svc.environment_id }}</td>
               <td>
                 <AppBadge variant="status" :tone="appStatusTone(svc.status)">
                   {{ svc.status }}
@@ -110,7 +101,6 @@
   import { useI18n } from 'vue-i18n';
   import { ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
-  import { environmentApi } from '@/api/environment/environment';
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -122,7 +112,6 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
-  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
   import { appStatusTone } from '@/utils/status';
@@ -140,12 +129,10 @@
   const query = reactive({
     search: '',
     application_id: '',
-    environment_id: '',
     status: '',
   });
 
   const appOptions = ref<ApplicationResp[]>([]);
-  const envOptions = ref<EnvironmentResp[]>([]);
 
   const appSelectOptions = computed(() => [
     { value: '', label: t('service.filterApplicationAll') },
@@ -156,31 +143,17 @@
     })),
   ]);
 
-  const envSelectOptions = computed(() => [
-    { value: '', label: t('service.filterEnvironmentAll') },
-    ...envOptions.value.map((env) => ({
-      value: env.id,
-      label: env.name,
-      description: env.code,
-    })),
-  ]);
-
   const statusValues = ['deploying', 'running', 'stopped', 'faulted'];
 
   async function loadFilterOptions() {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       appOptions.value = [];
-      envOptions.value = [];
       return;
     }
     try {
-      const [apps, envs] = await Promise.all([
-        applicationApi.list({ per_page: 100, project_id: projectId }),
-        environmentApi.list({ project_id: projectId, per_page: 100 }),
-      ]);
+      const apps = await applicationApi.list({ per_page: 100, project_id: projectId });
       appOptions.value = apps.items ?? [];
-      envOptions.value = envs.items ?? [];
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('service.toast.loadFailed'));
     }
@@ -200,7 +173,6 @@
           page: pagination.current,
           per_page: pagination.pageSize,
           application_id: query.application_id || undefined,
-          environment_id: query.environment_id || undefined,
           status: query.status || undefined,
           search: query.search || undefined,
         });
@@ -229,12 +201,6 @@
     void fetchServices();
   }
 
-  function handleEnvironmentChange(value: ComboboxOptionValue) {
-    query.environment_id = String(value || '');
-    pagination.current = 1;
-    void fetchServices();
-  }
-
   function handleStatusChange(value: ComboboxOptionValue) {
     query.status = String(value || '');
     pagination.current = 1;
@@ -256,7 +222,6 @@
     () => projectStore.activeProjectId,
     () => {
       query.application_id = '';
-      query.environment_id = '';
       query.status = '';
       query.search = '';
       pagination.current = 1;

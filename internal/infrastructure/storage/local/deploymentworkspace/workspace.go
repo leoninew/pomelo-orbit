@@ -28,16 +28,16 @@ func (w *Workspace) AppDir(appCode string) string {
 	return filepath.Join(w.logicalDataRoot, deploymentDataDir, appCode)
 }
 
-func (w *Workspace) ServiceDir(appCode string, envCode string, instanceKey string) string {
-	return filepath.Join(w.AppDir(appCode), envCode, instanceKey)
+func (w *Workspace) ServiceDir(appCode string, instanceKey string) string {
+	return filepath.Join(w.AppDir(appCode), instanceKey)
 }
 
-func (w *Workspace) DeploymentLogPath(appCode string, envCode string, instanceKey string, deploymentID string) string {
-	return filepath.Join(w.ServiceDir(appCode, envCode, instanceKey), "deployments", deploymentID+".log")
+func (w *Workspace) DeploymentLogPath(appCode string, instanceKey string, deploymentID string) string {
+	return filepath.Join(w.ServiceDir(appCode, instanceKey), "deployments", deploymentID+".log")
 }
 
-func (w *Workspace) WriteConfig(appCode string, envCode string, instanceKey string, path string, content string) error {
-	path = filepath.Join(w.ServiceDir(appCode, envCode, instanceKey), path)
+func (w *Workspace) WriteConfig(appCode string, instanceKey string, path string, content string) error {
+	path = filepath.Join(w.ServiceDir(appCode, instanceKey), path)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
@@ -69,10 +69,10 @@ func (w *Workspace) PhysicalDir(ctx context.Context) (string, error) {
 	return filepath.ToSlash(physicalDataRoot), nil
 }
 
-func (w *Workspace) PhysicalServiceDir(ctx context.Context, appCode string, envCode string, instanceKey string) (string, error) {
+func (w *Workspace) PhysicalServiceDir(ctx context.Context, appCode string, instanceKey string) (string, error) {
 	physicalDataRoot, err := w.PhysicalDataRoot(ctx)
 	if err != nil {
 		return "", err
 	}
-	return filepath.ToSlash(filepath.Join(physicalDataRoot, deploymentDataDir, appCode, envCode, instanceKey)), nil
+	return filepath.ToSlash(filepath.Join(physicalDataRoot, deploymentDataDir, appCode, instanceKey)), nil
 }

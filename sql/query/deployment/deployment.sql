@@ -1,11 +1,11 @@
 -- name: CreateDeployment :exec
 INSERT INTO deployment (
-  id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+  id, project_id, application_id, application_name, version_id, service_id, options_json,
   operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: DeploymentByID :one
-SELECT id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+SELECT id, project_id, application_id, application_name, version_id, service_id, options_json,
        operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
        error_message, is_rollback, rollback_from_deployment_id
 FROM deployment
@@ -31,7 +31,7 @@ WHERE project_id = sqlc.arg(project_id)
   AND (sqlc.narg(date_to) IS NULL OR started_at < sqlc.narg(date_to));
 
 -- name: ListDeployments :many
-SELECT id, project_id, application_id, application_name, version_id, service_id, environment_id, options_json,
+SELECT id, project_id, application_id, application_name, version_id, service_id, options_json,
        operation_type, trigger_type, command_text, status, started_at, finished_at, duration_ms, log_text,
        error_message, is_rollback, rollback_from_deployment_id
 FROM deployment

@@ -48,7 +48,6 @@ func deploymentResponse(item model.Deployment) deploymentv1.DeploymentResp {
 		VersionId:                item.VersionId,
 		ServiceId:                item.ServiceId,
 		OptionsJson:              item.OptionsJSON,
-		EnvironmentId:            item.EnvironmentId,
 	}
 }
 

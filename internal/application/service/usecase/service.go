@@ -21,7 +21,7 @@ func New(project repository.ProjectReader, application repository.ApplicationRea
 	return Service{project: project, application: application, service: service}
 }
 
-// ListServices returns runtime bindings (application + version + environment) for a project.
+// ListServices returns runtime bindings for a project.
 func (s Service) ListServices(ctx context.Context, userId string, input servicedto.ServiceListInput) (repository.Page[servicedto.ServiceView], error) {
 	projectId := strings.TrimSpace(input.ProjectId)
 	if projectId == "" {
@@ -30,7 +30,7 @@ func (s Service) ListServices(ctx context.Context, userId string, input serviced
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repository.Page[servicedto.ServiceView]{}, err
 	}
-	page, err := s.service.ListServicesByProject(ctx, projectId, input.ApplicationId, input.EnvironmentId, input.Status, input.Search, input.Page, input.PerPage)
+	page, err := s.service.ListServicesByProject(ctx, projectId, input.ApplicationId, input.Status, input.Search, input.Page, input.PerPage)
 	if err != nil {
 		return repository.Page[servicedto.ServiceView]{}, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
 	}
@@ -109,26 +109,11 @@ func (s Service) resolveServiceTarget(ctx context.Context, applicationId string,
 		return svc, nil
 	}
 
-	instanceKey := strings.TrimSpace(input.InstanceKey)
-	if instanceKey == "" {
-		instanceKey = "default"
-	}
-	environmentId := strings.TrimSpace(input.EnvironmentId)
-	if environmentId == "" {
-		services, err := s.service.ListServicesByApplication(ctx, applicationId)
-		if err != nil {
-			return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
-		}
-		if len(services) == 0 {
-			return model.Service{}, apperror.New(apperror.KindValidation, "应用未在运行中")
-		}
-		if len(services) == 1 {
-			return services[0], nil
-		}
-		return model.Service{}, apperror.New(apperror.KindValidation, "environment_id is required when multiple services exist")
+	if input.InstanceKey == "" {
+		return model.Service{}, apperror.New(apperror.KindValidation, "instance_key is required")
 	}
 
-	svc, err := s.service.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+	svc, err := s.service.ServiceByKey(ctx, applicationId, input.InstanceKey)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Service{}, apperror.New(apperror.KindValidation, "应用未在运行中")
@@ -144,8 +129,6 @@ func serviceViewFromListItem(item model.ServiceListItem) servicedto.ServiceView 
 		ApplicationName:            item.ApplicationName,
 		ApplicationCode:            item.ApplicationCode,
 		ApplicationKind:            item.ApplicationKind,
-		EnvironmentName:            item.EnvironmentName,
-		EnvironmentCode:            item.EnvironmentCode,
 		VersionLabel:               item.VersionLabel,
 		LastSuccessfulVersionLabel: item.LastSuccessfulVersionLabel,
 	}

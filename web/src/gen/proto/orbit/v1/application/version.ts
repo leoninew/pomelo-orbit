@@ -112,7 +112,6 @@ export interface VersionPaginatedResp {
 }
 
 export interface VersionPreviewReq {
-  environment_id: string;
   instance_key?: string | undefined;
 }
 

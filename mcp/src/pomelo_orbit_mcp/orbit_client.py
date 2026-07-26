@@ -124,12 +124,6 @@ class OrbitClient:
     async def list_projects(self) -> list[dict[str, Any]]:
         return _items(await self.request("GET", "/api/project"))
 
-    async def list_environments(self, project_id: str) -> list[dict[str, Any]]:
-        return _items(await self.request("GET", "/api/environment", params={"project_id": project_id, "per_page": 100}))
-
-    async def get_environment(self, environment_id: str) -> dict[str, Any]:
-        return await self.request("GET", f"/api/environment/{environment_id}")
-
     async def list_applications(self, project_id: str, kind: str | None = None) -> list[dict[str, Any]]:
         params: dict[str, Any] = {"project_id": project_id, "per_page": 100}
         if kind:
@@ -171,11 +165,11 @@ class OrbitClient:
     async def delete_version(self, version_id: str) -> None:
         await self.request("DELETE", f"/api/version/{version_id}")
 
-    async def preview_version(self, version_id: str, environment_id: str, instance_key: str) -> dict[str, Any]:
+    async def preview_version(self, version_id: str, instance_key: str) -> dict[str, Any]:
         return await self.request(
             "POST",
             f"/api/version/{version_id}/preview",
-            json_body={"environment_id": environment_id, "instance_key": instance_key},
+            json_body={"instance_key": instance_key},
         )
 
     async def list_application_services(self, application_id: str) -> list[dict[str, Any]]:

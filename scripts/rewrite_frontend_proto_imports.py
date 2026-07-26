@@ -19,7 +19,6 @@ ENTITY_MAP = {
     "common": ("common", "common"),
     "credential": ("credential", "credential"),
     "deployment": ("deployment", "deployment"),
-    "environment": ("environment", "environment"),
     "gateway": ("gateway", "gateway"),
     "build_stage": ("pipeline", "pipeline_stage"),
     "snapshot": ("pipeline", "snapshot"),

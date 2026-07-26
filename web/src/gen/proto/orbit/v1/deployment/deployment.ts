@@ -41,7 +41,6 @@ export interface DeploymentResp {
   version_id?: string | undefined;
   service_id?: string | undefined;
   options_json?: string | undefined;
-  environment_id?: string | undefined;
 }
 
 export interface DeploymentCancelReq {

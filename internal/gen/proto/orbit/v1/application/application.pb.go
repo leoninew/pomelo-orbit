@@ -287,10 +287,9 @@ func (x *ApplicationUpdateReq) GetImagePullPolicy() string {
 type ApplicationDeployReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	EnvironmentId string                 `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
-	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
-	ForceRecreate bool                   `protobuf:"varint,4,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
-	RuntimeConfig map[string]string      `protobuf:"bytes,5,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	InstanceKey   string                 `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
+	ForceRecreate bool                   `protobuf:"varint,3,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	RuntimeConfig map[string]string      `protobuf:"bytes,4,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -332,13 +331,6 @@ func (x *ApplicationDeployReq) GetVersionId() string {
 	return ""
 }
 
-func (x *ApplicationDeployReq) GetEnvironmentId() string {
-	if x != nil {
-		return x.EnvironmentId
-	}
-	return ""
-}
-
 func (x *ApplicationDeployReq) GetInstanceKey() string {
 	if x != nil {
 		return x.InstanceKey
@@ -363,9 +355,8 @@ func (x *ApplicationDeployReq) GetRuntimeConfig() map[string]string {
 type ApplicationStopReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RemoveVolumes bool                   `protobuf:"varint,1,opt,name=remove_volumes,json=removeVolumes,proto3" json:"remove_volumes,omitempty"`
-	EnvironmentId *string                `protobuf:"bytes,2,opt,name=environment_id,json=environmentId,proto3,oneof" json:"environment_id,omitempty"`
-	InstanceKey   *string                `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
-	ServiceId     *string                `protobuf:"bytes,4,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	InstanceKey   *string                `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
+	ServiceId     *string                `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -407,13 +398,6 @@ func (x *ApplicationStopReq) GetRemoveVolumes() bool {
 	return false
 }
 
-func (x *ApplicationStopReq) GetEnvironmentId() string {
-	if x != nil && x.EnvironmentId != nil {
-		return *x.EnvironmentId
-	}
-	return ""
-}
-
 func (x *ApplicationStopReq) GetInstanceKey() string {
 	if x != nil && x.InstanceKey != nil {
 		return *x.InstanceKey
@@ -430,9 +414,8 @@ func (x *ApplicationStopReq) GetServiceId() string {
 
 type ApplicationRestartReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	EnvironmentId *string                `protobuf:"bytes,1,opt,name=environment_id,json=environmentId,proto3,oneof" json:"environment_id,omitempty"`
-	InstanceKey   *string                `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
-	ServiceId     *string                `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	InstanceKey   *string                `protobuf:"bytes,1,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
+	ServiceId     *string                `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -465,13 +448,6 @@ func (x *ApplicationRestartReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ApplicationRestartReq.ProtoReflect.Descriptor instead.
 func (*ApplicationRestartReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *ApplicationRestartReq) GetEnvironmentId() string {
-	if x != nil && x.EnvironmentId != nil {
-		return *x.EnvironmentId
-	}
-	return ""
 }
 
 func (x *ApplicationRestartReq) GetInstanceKey() string {
@@ -735,32 +711,27 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
 	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policy\"\xce\x02\n" +
+	"\x12_image_pull_policy\"\xa7\x02\n" +
 	"\x14ApplicationDeployReq\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x01 \x01(\tR\tversionId\x12%\n" +
-	"\x0eenvironment_id\x18\x02 \x01(\tR\renvironmentId\x12!\n" +
-	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12%\n" +
-	"\x0eforce_recreate\x18\x04 \x01(\bR\rforceRecreate\x12d\n" +
-	"\x0eruntime_config\x18\x05 \x03(\v2=.orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
+	"version_id\x18\x01 \x01(\tR\tversionId\x12!\n" +
+	"\finstance_key\x18\x02 \x01(\tR\vinstanceKey\x12%\n" +
+	"\x0eforce_recreate\x18\x03 \x01(\bR\rforceRecreate\x12d\n" +
+	"\x0eruntime_config\x18\x04 \x03(\v2=.orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
 	"\x12RuntimeConfigEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe6\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa7\x01\n" +
 	"\x12ApplicationStopReq\x12%\n" +
-	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12*\n" +
-	"\x0eenvironment_id\x18\x02 \x01(\tH\x00R\renvironmentId\x88\x01\x01\x12&\n" +
-	"\finstance_key\x18\x03 \x01(\tH\x01R\vinstanceKey\x88\x01\x01\x12\"\n" +
+	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12&\n" +
+	"\finstance_key\x18\x02 \x01(\tH\x00R\vinstanceKey\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"service_id\x18\x04 \x01(\tH\x02R\tserviceId\x88\x01\x01B\x11\n" +
-	"\x0f_environment_idB\x0f\n" +
+	"service_id\x18\x03 \x01(\tH\x01R\tserviceId\x88\x01\x01B\x0f\n" +
 	"\r_instance_keyB\r\n" +
-	"\v_service_id\"\xc2\x01\n" +
-	"\x15ApplicationRestartReq\x12*\n" +
-	"\x0eenvironment_id\x18\x01 \x01(\tH\x00R\renvironmentId\x88\x01\x01\x12&\n" +
-	"\finstance_key\x18\x02 \x01(\tH\x01R\vinstanceKey\x88\x01\x01\x12\"\n" +
+	"\v_service_id\"\x83\x01\n" +
+	"\x15ApplicationRestartReq\x12&\n" +
+	"\finstance_key\x18\x01 \x01(\tH\x00R\vinstanceKey\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"service_id\x18\x03 \x01(\tH\x02R\tserviceId\x88\x01\x01B\x11\n" +
-	"\x0f_environment_idB\x0f\n" +
+	"service_id\x18\x02 \x01(\tH\x01R\tserviceId\x88\x01\x01B\x0f\n" +
 	"\r_instance_keyB\r\n" +
 	"\v_service_id\";\n" +
 	"\x14DeploymentActionResp\x12#\n" +

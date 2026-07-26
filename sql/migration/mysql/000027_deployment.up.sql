@@ -20,14 +20,12 @@ CREATE TABLE IF NOT EXISTS deployment (
     project_id VARCHAR(26),
     version_id VARCHAR(26) NULL,
     service_id VARCHAR(26) NULL,
-    environment_id VARCHAR(26) NULL,
     options_json LONGTEXT NULL,
     command_text VARCHAR(2048) NOT NULL DEFAULT '',
     FOREIGN KEY (project_id) REFERENCES project(id),
     FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment(id),
     CONSTRAINT fk_deployment_version FOREIGN KEY (version_id) REFERENCES version(id),
-    CONSTRAINT fk_deployment_service FOREIGN KEY (service_id) REFERENCES service(id),
-    CONSTRAINT fk_deployment_environment FOREIGN KEY (environment_id) REFERENCES environment(id)
+    CONSTRAINT fk_deployment_service FOREIGN KEY (service_id) REFERENCES service(id)
 );
 
 CREATE INDEX idx_deployment_app ON deployment(application_id);

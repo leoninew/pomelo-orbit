@@ -42,7 +42,6 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	deploymentService := deploymentsvc.NewExecutionService(
 		stores.project,
 		stores.application,
-		stores.environment,
 		stores.service,
 		stores.deployment,
 		gatewayService,

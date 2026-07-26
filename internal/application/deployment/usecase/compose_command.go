@@ -21,8 +21,8 @@ func (c composeCommand) argv() []string {
 	return parts
 }
 
-func composeProjectName(appCode string, envCode string, instanceKey string) string {
-	return fmt.Sprintf("%s-%s-%s", appCode, envCode, instanceKey)
+func composeProjectName(appCode string, instanceKey string) string {
+	return fmt.Sprintf("%s-%s", appCode, instanceKey)
 }
 
 func deployComposeCommand(projectName string, imagePullPolicy string, forceRecreate bool) composeCommand {

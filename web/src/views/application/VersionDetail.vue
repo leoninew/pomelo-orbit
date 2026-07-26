@@ -519,18 +519,6 @@
         </p>
         <div>
           <label class="app-field-label mb-1.5 block">
-            {{ t('application.detail.fields.environment') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <SelectControl
-            v-model="deployForm.environment_id"
-            :options="environmentSelectOptions"
-            :placeholder="t('application.detail.fields.environment')"
-          />
-          <p v-if="deployError" class="app-field-error mt-1 text-xs">{{ deployError }}</p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
             {{ t('application.detail.fields.instanceKey') }}
           </label>
           <input
@@ -602,7 +590,6 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import { environmentApi } from '@/api/environment/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -610,7 +597,6 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
-  import SelectControl from '@/components/SelectControl.vue';
   import VersionComponentBaseDialog from '@/views/application/components/VersionComponentBaseDialog.vue';
   import VersionComponentDeleteDialog from '@/views/application/components/VersionComponentDeleteDialog.vue';
   import VersionComponentEnvDialog from '@/views/application/components/VersionComponentEnvDialog.vue';
@@ -625,7 +611,6 @@
   } from 'reka-ui';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import type {
     VersionComponentReq,
     VersionComponentResp,
@@ -652,7 +637,6 @@
   const { loading: composePreviewLoading, execute: executeComposePreview } = useStatusAsync();
 
   const version = ref<VersionResp>();
-  const environments = ref<EnvironmentResp[]>([]);
 
   const isBasicDialogOpen = ref(false);
   const isComponentBaseDialogOpen = ref(false);
@@ -676,7 +660,6 @@
   const exposeFormError = ref('');
   const deployError = ref('');
   const deployForm = reactive({
-    environment_id: '',
     instance_key: 'default',
     force_recreate: false,
   });
@@ -698,12 +681,6 @@
   const exposeAccessValues = ['local', 'public'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
   const isDeployable = computed(() => Boolean(version.value));
-  const environmentSelectOptions = computed(() =>
-    environments.value.map((env) => ({
-      value: env.id,
-      label: env.name ? `${env.name} (${env.code})` : env.code,
-    }))
-  );
   const envRows = computed(() => parseEnvJson(version.value?.env_json));
   const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
   const componentNames = computed(() => (version.value?.components ?? []).map((component) => component.name));
@@ -803,30 +780,6 @@
       toast.error(t('application.toast.loadVersionsFailed'));
       router.push('/versions');
     }
-  }
-
-  async function loadEnvironments() {
-    const appId = version.value?.application_id;
-    if (!appId) {
-      environments.value = [];
-      return;
-    }
-    try {
-      const app = await applicationApi.get(appId);
-      if (!app.project_id) {
-        environments.value = [];
-        return;
-      }
-      const resp = await environmentApi.list({ project_id: app.project_id, per_page: 100 });
-      environments.value = resp.items ?? [];
-    } catch {
-      toast.error(t('application.toast.loadEnvironmentsFailed'));
-    }
-  }
-
-  function defaultEnvironmentId() {
-    const local = environments.value.find((item) => item.code === 'local');
-    return local?.id || environments.value[0]?.id || '';
   }
 
   function goBack() {
@@ -1171,21 +1124,12 @@
   }
 
   async function openPreview() {
-    if (environments.value.length === 0) {
-      await loadEnvironments();
-    }
-    const environmentId = defaultEnvironmentId();
-    if (!environmentId) {
-      toast.error(t('application.toast.environmentRequired'));
-      return;
-    }
     composePreviewYaml.value = '';
     composePreviewError.value = '';
     composePreviewDrawerOpen.value = true;
     try {
       await executeComposePreview(async () => {
         const { compose_yaml } = await applicationApi.previewVersion(versionId, {
-          environment_id: environmentId,
           instance_key: 'default',
         });
         composePreviewYaml.value = compose_yaml;
@@ -1203,14 +1147,6 @@
     deployError.value = '';
     deployForm.force_recreate = false;
     deployForm.instance_key = 'default';
-    if (environments.value.length === 0) {
-      await loadEnvironments();
-    }
-    deployForm.environment_id = defaultEnvironmentId();
-    if (!deployForm.environment_id) {
-      toast.error(t('application.toast.environmentRequired'));
-      return;
-    }
     isDeployDialogOpen.value = true;
   }
 
@@ -1219,16 +1155,11 @@
     if (!current) {
       return;
     }
-    if (!deployForm.environment_id) {
-      deployError.value = t('application.toast.environmentRequired');
-      return;
-    }
     deployError.value = '';
     try {
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.application_id, {
           version_id: current.id,
-          environment_id: deployForm.environment_id,
           instance_key: deployForm.instance_key.trim() || 'default',
           force_recreate: deployForm.force_recreate,
           runtime_config: {},

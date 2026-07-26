@@ -41,13 +41,11 @@ class FakeRunner:
 def target(tmp_path) -> RuntimeTarget:
     return RuntimeTarget(
         application_id="app-1",
-        environment_id="env-1",
         service_id="service-1",
         instance_key="default",
         application_code="demo",
-        environment_code="local",
         working_directory=tmp_path,
-        compose_project="demo-local-default",
+        compose_project="demo-default",
     )
 
 
@@ -62,7 +60,7 @@ async def test_runtime_builds_only_read_only_compose_commands(tmp_path) -> None:
         "docker",
         "compose",
         "-p",
-        "demo-local-default",
+        "demo-default",
         "-f",
         "docker-compose.yml",
         "logs",

@@ -106,8 +106,8 @@ const settingsNavigation: NavigationBranch[] = [
 
 const deploymentNavigation: NavigationBranch[] = [
   {
-    key: 'environment',
-    labelKey: 'nav.groups.environment',
+    key: 'runtime',
+    labelKey: 'nav.groups.runtime',
     icon: Network,
     children: [
       {
@@ -133,12 +133,6 @@ const deploymentNavigation: NavigationBranch[] = [
         label: 'Traefik Routers',
         labelKey: 'nav.traefikRoutes',
         path: '/route/traefik',
-      },
-      {
-        key: 'environments',
-        label: '环境管理',
-        labelKey: 'nav.environments',
-        path: '/environments',
       },
     ],
   },
@@ -324,9 +318,6 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/deployment' ||
     path.startsWith('/deployment/') ||
     path === '/deployments' ||
-    path === '/environment' ||
-    path.startsWith('/environment/') ||
-    path === '/environments' ||
     path === '/gateway' ||
     path.startsWith('/gateway/') ||
     path === '/gateways' ||

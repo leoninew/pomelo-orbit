@@ -21,7 +21,6 @@ import (
 func NewCommandService(
 	project repository.ProjectReader,
 	application repository.ApplicationStore,
-	environment repository.EnvironmentStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	gateway repository.GatewayStore,
@@ -33,11 +32,11 @@ func NewCommandService(
 	gatewayCoordinator gatewayport.DeploymentCoordinator,
 ) Service {
 	store := &stores{
-		project: project, application: application, environment: environment,
+		project: project, application: application,
 		service: service, deployment: deployment, gateway: gateway,
 	}
 	return Service{
-		project: project, application: application, environment: environment,
+		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
 		dispatcher: dispatcher, commandStore: store, logger: logger, workspace: workspace,
 		queryRunner: queryRunner, logStore: logStore,
@@ -49,7 +48,6 @@ func NewCommandService(
 func NewExecutionService(
 	project repository.ProjectReader,
 	application repository.ApplicationStore,
-	environment repository.EnvironmentStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	gatewayCoordinator gatewayport.DeploymentCoordinator,
@@ -59,11 +57,11 @@ func NewExecutionService(
 	logStore deploymentport.ExecutionLogStore,
 ) Service {
 	store := &stores{
-		project: project, application: application, environment: environment,
+		project: project, application: application,
 		service: service, deployment: deployment,
 	}
 	return Service{
-		project: project, application: application, environment: environment,
+		project: project, application: application,
 		service: service, deployment: deployment, store: store, executionStore: store,
 		logger: logger, workspace: workspace, runner: runner,
 		logStore: logStore, executionLogStore: logStore,
@@ -79,9 +77,6 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if input.VersionId == "" {
 		return "", apperror.New(apperror.KindValidation, "version_id is required")
 	}
-	if input.EnvironmentId == "" {
-		return "", apperror.New(apperror.KindValidation, "environment_id is required")
-	}
 	version, err := s.commandStore.Version(ctx, input.VersionId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -91,16 +86,6 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	}
 	if version.ApplicationId != app.Id {
 		return "", apperror.New(apperror.KindValidation, "Version does not belong to this application")
-	}
-	env, err := s.commandStore.Environment(ctx, input.EnvironmentId)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return "", apperror.New(apperror.KindNotFound, "Environment not found")
-		}
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
-	if app.ProjectId == nil || *app.ProjectId != env.ProjectId {
-		return "", apperror.New(apperror.KindValidation, "application and environment must belong to the same project")
 	}
 	components, err := s.commandStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
@@ -127,7 +112,6 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	}
 	deployment := newDeployment(app, "deploy")
 	deployment.VersionId = &version.Id
-	deployment.EnvironmentId = &env.Id
 	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: input.InstanceKey, RuntimeConfig: runtimeConfig}
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return "", err
@@ -135,7 +119,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
-	service, err := s.commandStore.ServiceByKey(ctx, app.Id, env.Id, input.InstanceKey)
+	service, err := s.commandStore.ServiceByKey(ctx, app.Id, input.InstanceKey)
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
@@ -143,7 +127,6 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 		service = model.Service{
 			Id:            idutil.NewId(),
 			ApplicationId: app.Id,
-			EnvironmentId: env.Id,
 			InstanceKey:   input.InstanceKey,
 		}
 	}
@@ -153,7 +136,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to prepare service", err)
 	}
 	deployment.ServiceId = &service.Id
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, env.Code, input.InstanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, input.InstanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -175,18 +158,13 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted {
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法停止")
 	}
-	env, err := s.commandStore.Environment(ctx, service.EnvironmentId)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
 	deployment := newDeployment(app, "stop")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &service.VersionId
-	deployment.EnvironmentId = &service.EnvironmentId
 	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, RemoveVolumes: input.RemoveVolumes}); err != nil {
 		return "", err
 	}
-	deployment.CommandText = stopComposeCommand(composeProjectName(app.Code, env.Code, service.InstanceKey), input.RemoveVolumes).String()
+	deployment.CommandText = stopComposeCommand(composeProjectName(app.Code, service.InstanceKey), input.RemoveVolumes).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
@@ -222,18 +200,13 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err := validateVersionComponents(components); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
-	env, err := s.commandStore.Environment(ctx, service.EnvironmentId)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load environment", err)
-	}
 	deployment := newDeployment(app, "restart")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
-	deployment.EnvironmentId = &service.EnvironmentId
 	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey}); err != nil {
 		return "", err
 	}
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, env.Code, service.InstanceKey), app.ImagePullPolicy, false).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), app.ImagePullPolicy, false).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
@@ -279,24 +252,10 @@ func (s Service) resolveServiceTarget(ctx context.Context, applicationID string,
 		}
 		return service, nil
 	}
-	environmentID := input.EnvironmentId
-	if environmentID == "" {
-		services, err := s.commandStore.ListServicesByApplication(ctx, applicationID)
-		if err != nil {
-			return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
-		}
-		if len(services) == 0 {
-			return model.Service{}, apperror.New(apperror.KindValidation, "应用未在运行中")
-		}
-		if len(services) == 1 {
-			return services[0], nil
-		}
-		return model.Service{}, apperror.New(apperror.KindValidation, "environment_id is required when multiple services exist")
-	}
 	if input.InstanceKey == "" {
 		return model.Service{}, apperror.New(apperror.KindValidation, "instance_key is required")
 	}
-	service, err := s.commandStore.ServiceByKey(ctx, applicationID, environmentID, input.InstanceKey)
+	service, err := s.commandStore.ServiceByKey(ctx, applicationID, input.InstanceKey)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.Service{}, apperror.New(apperror.KindValidation, "应用未在运行中")

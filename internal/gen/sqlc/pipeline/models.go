@@ -78,19 +78,8 @@ type Deployment struct {
 	ProjectID                sql.NullString `db:"project_id"`
 	VersionID                sql.NullString `db:"version_id"`
 	ServiceID                sql.NullString `db:"service_id"`
-	EnvironmentID            sql.NullString `db:"environment_id"`
 	OptionsJson              sql.NullString `db:"options_json"`
 	CommandText              string         `db:"command_text"`
-}
-
-type Environment struct {
-	ID          string         `db:"id"`
-	ProjectID   string         `db:"project_id"`
-	Code        string         `db:"code"`
-	Name        string         `db:"name"`
-	Description sql.NullString `db:"description"`
-	CreatedAt   time.Time      `db:"created_at"`
-	UpdatedAt   time.Time      `db:"updated_at"`
 }
 
 type GatewayConfig struct {
@@ -282,7 +271,6 @@ type Route struct {
 type Service struct {
 	ID                      string         `db:"id"`
 	ApplicationID           string         `db:"application_id"`
-	EnvironmentID           string         `db:"environment_id"`
 	InstanceKey             string         `db:"instance_key"`
 	VersionID               string         `db:"version_id"`
 	LastSuccessfulVersionID sql.NullString `db:"last_successful_version_id"`

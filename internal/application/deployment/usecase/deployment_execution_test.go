@@ -66,7 +66,6 @@ func deployStore(t *testing.T) *fakeDeploymentExecutionStore {
 			VersionId:     versionID,
 			Status:        status.ServiceStatusRunning,
 		},
-		hasService: true,
 	}
 }
 
@@ -158,6 +157,20 @@ func TestExecuteApplicationDeployDeploysApplication(t *testing.T) {
 	}
 	if runner.name != "docker" || strings.Join(runner.args, " ") != "compose -p demo-local-default -f docker-compose.yml up -d --remove-orphans --pull missing" {
 		t.Fatalf("unexpected command: %s %s", runner.name, strings.Join(runner.args, " "))
+	}
+}
+
+func TestExecuteApplicationDeployRequiresServiceId(t *testing.T) {
+	store := deployStore(t)
+	store.deployment.ServiceId = nil
+	service := newTestExecutionService(store, slog.Default(), testWorkspace(t.TempDir()), fakeCommandRunner{}, executionlog.Store{})
+
+	err := service.ExecuteApplicationDeploy(context.Background(), "app-1", "deploy-1", false)
+	if err == nil || !strings.Contains(err.Error(), "missing service_id") {
+		t.Fatalf("expected missing service_id error, got %v", err)
+	}
+	if store.deploymentStatus != status.WorkStatusFaulted {
+		t.Fatalf("unexpected deployment status: %s", store.deploymentStatus)
 	}
 }
 
@@ -259,7 +272,6 @@ type fakeDeploymentExecutionStore struct {
 	serviceStatus    string
 	deploymentStatus string
 	errorMessage     string
-	hasService       bool
 }
 
 type fakeGatewayCoordinator struct {
@@ -326,35 +338,11 @@ func (s *fakeDeploymentExecutionStore) Environment(_ context.Context, id string)
 	return s.env, nil
 }
 
-func (s *fakeDeploymentExecutionStore) ServiceByKey(_ context.Context, applicationId string, environmentId string, instanceKey string) (model.Service, error) {
-	if s.hasService || s.service.Id != "" {
-		return s.service, nil
-	}
-	return model.Service{}, repository.ErrNotFound
-}
-
 func (s *fakeDeploymentExecutionStore) Service(_ context.Context, id string) (model.Service, error) {
 	if s.service.Id == id {
 		return s.service, nil
 	}
 	return model.Service{}, repository.ErrNotFound
-}
-
-func (s *fakeDeploymentExecutionStore) UpsertService(_ context.Context, svc model.Service) error {
-	if s.service.Id == "" {
-		s.service = svc
-	} else {
-		s.service.VersionId = svc.VersionId
-		s.service.Status = svc.Status
-		s.service.EnvironmentId = svc.EnvironmentId
-		s.service.InstanceKey = svc.InstanceKey
-		if svc.LastSuccessfulVersionId != nil {
-			s.service.LastSuccessfulVersionId = svc.LastSuccessfulVersionId
-		}
-	}
-	s.hasService = true
-	s.serviceStatus = s.service.Status
-	return nil
 }
 
 func (s *fakeDeploymentExecutionStore) UpdateServiceStatus(_ context.Context, id string, status string) error {

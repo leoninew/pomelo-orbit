@@ -26,7 +26,7 @@ type VersionCreateInput struct {
 	Exposes       []VersionExposeInput
 }
 
-// VersionUpdateInput updates an unpublished version metadata and optionally components/exposes.
+// VersionUpdateInput updates version metadata and optionally components/exposes.
 type VersionUpdateInput struct {
 	Label      *string
 	EnvJSON    *string

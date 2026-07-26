@@ -136,15 +136,28 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return "", err
 	}
-	if service, err := s.commandStore.ServiceByKey(ctx, app.Id, env.Id, instanceKey); err == nil {
-		deployment.ServiceId = &service.Id
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-	}
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, env.Code, instanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
+	service, err := s.commandStore.ServiceByKey(ctx, app.Id, env.Id, instanceKey)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	if errors.Is(err, repository.ErrNotFound) {
+		service = model.Service{
+			Id:            idutil.NewId(),
+			ApplicationId: app.Id,
+			EnvironmentId: env.Id,
+			InstanceKey:   instanceKey,
+		}
+	}
+	service.VersionId = version.Id
+	service.Status = status.ServiceStatusDeploying
+	if err := s.commandStore.UpsertService(ctx, service); err != nil {
+		return "", apperror.Wrap(apperror.KindInternal, "Failed to prepare service", err)
+	}
+	deployment.ServiceId = &service.Id
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, env.Code, instanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}

@@ -99,9 +99,6 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
-	if version.Status == status.VersionStatusPublished {
-		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Published version is immutable")
-	}
 	if input.Label != nil {
 		label := strings.TrimSpace(*input.Label)
 		if label == "" || len(label) > 128 {
@@ -195,9 +192,6 @@ func (s Service) DeleteVersion(ctx context.Context, userId string, versionId str
 	version, err := s.loadVersionForUser(ctx, userId, versionId)
 	if err != nil {
 		return err
-	}
-	if version.Status != status.VersionStatusUnpublished {
-		return apperror.New(apperror.KindValidation, "Only unpublished versions can be deleted")
 	}
 	refs, err := s.store.CountVersionRuntimeRefs(ctx, version.Id)
 	if err != nil {

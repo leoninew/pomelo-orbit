@@ -3,7 +3,6 @@ package deploymentsvc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -11,9 +10,7 @@ import (
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId string, deploymentId string, forceRecreate bool) error {
@@ -32,6 +29,11 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	}
 	if deployment.EnvironmentId == nil || strings.TrimSpace(*deployment.EnvironmentId) == "" {
 		err := fmt.Errorf("deployment %s missing environment_id", deployment.Id)
+		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	svc, err := s.resolveServiceFromDeployment(ctx, app.Id, deployment)
+	if err != nil {
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
@@ -86,11 +88,6 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 		}
 	}
 
-	svc, err := s.upsertServiceDeploying(ctx, app.Id, env.Id, instanceKey, version.Id)
-	if err != nil {
-		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
-		return err
-	}
 	if err := s.executionStore.MarkDeploymentRunning(ctx, deployment.Id); err != nil {
 		return err
 	}
@@ -225,45 +222,17 @@ func (s Service) loadDeploymentExecution(ctx context.Context, applicationId stri
 }
 
 func (s Service) resolveServiceFromDeployment(ctx context.Context, applicationId string, deployment model.Deployment) (model.Service, error) {
-	if deployment.ServiceId != nil && strings.TrimSpace(*deployment.ServiceId) != "" {
-		return s.executionStore.Service(ctx, *deployment.ServiceId)
+	if deployment.ServiceId == nil || strings.TrimSpace(*deployment.ServiceId) == "" {
+		return model.Service{}, fmt.Errorf("deployment %s missing service_id", deployment.Id)
 	}
-	opts := parseDeployOptions(deployment.OptionsJSON)
-	instanceKey := strings.TrimSpace(opts.InstanceKey)
-	if instanceKey == "" {
-		instanceKey = "default"
-	}
-	if deployment.EnvironmentId == nil || strings.TrimSpace(*deployment.EnvironmentId) == "" {
-		return model.Service{}, fmt.Errorf("deployment %s missing environment_id", deployment.Id)
-	}
-	return s.executionStore.ServiceByKey(ctx, applicationId, *deployment.EnvironmentId, instanceKey)
-}
-
-func (s Service) upsertServiceDeploying(ctx context.Context, applicationId string, environmentId string, instanceKey string, versionId string) (model.Service, error) {
-	existing, err := s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+	svc, err := s.executionStore.Service(ctx, *deployment.ServiceId)
 	if err != nil {
-		if !errors.Is(err, repository.ErrNotFound) {
-			return model.Service{}, err
-		}
-		svc := model.Service{
-			Id:            idutil.NewId(),
-			ApplicationId: applicationId,
-			EnvironmentId: environmentId,
-			InstanceKey:   instanceKey,
-			VersionId:     versionId,
-			Status:        status.ServiceStatusDeploying,
-		}
-		if err := s.executionStore.UpsertService(ctx, svc); err != nil {
-			return model.Service{}, err
-		}
-		return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
-	}
-	existing.VersionId = versionId
-	existing.Status = status.ServiceStatusDeploying
-	if err := s.executionStore.UpsertService(ctx, existing); err != nil {
 		return model.Service{}, err
 	}
-	return s.executionStore.ServiceByKey(ctx, applicationId, environmentId, instanceKey)
+	if svc.ApplicationId != applicationId {
+		return model.Service{}, fmt.Errorf("deployment %s service_id does not belong to application", deployment.Id)
+	}
+	return svc, nil
 }
 
 func (s Service) renderAndDeployWithOptions(

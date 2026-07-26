@@ -26,6 +26,7 @@ type CommandStore interface {
 	ServiceByKey(ctx context.Context, applicationID string, environmentID string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	ListServicesByApplication(ctx context.Context, applicationID string) ([]model.Service, error)
+	UpsertService(ctx context.Context, service model.Service) error
 	CreateDeployment(ctx context.Context, deployment model.Deployment) error
 	HasActiveGatewayService(ctx context.Context, excludeApplicationID string) (bool, error)
 }
@@ -39,9 +40,7 @@ type ExecutionStore interface {
 	VersionComponentsByVersion(ctx context.Context, versionID string) ([]model.VersionComponent, error)
 	VersionExposesByVersion(ctx context.Context, versionID string) ([]model.VersionExpose, error)
 	Environment(ctx context.Context, id string) (model.Environment, error)
-	ServiceByKey(ctx context.Context, applicationID string, environmentID string, instanceKey string) (model.Service, error)
 	Service(ctx context.Context, id string) (model.Service, error)
-	UpsertService(ctx context.Context, service model.Service) error
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionID string, lastSuccessfulVersionID *string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error

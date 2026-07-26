@@ -14,11 +14,23 @@ import (
 )
 
 func (s Service) ListVersions(ctx context.Context, userId string, applicationId string) ([]applicationdto.VersionView, error) {
-	page, err := s.ListVersionsPage(ctx, userId, applicationId, 1, 100, "")
+	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
 		return nil, err
 	}
-	return page.Items, nil
+	versions, err := s.store.ListVersions(ctx, app.Id)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list versions", err)
+	}
+	views := make([]applicationdto.VersionView, 0, len(versions))
+	for _, version := range versions {
+		view, err := s.versionView(ctx, version)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, view)
+	}
+	return views, nil
 }
 
 func (s Service) ListVersionsPage(ctx context.Context, userId string, applicationId string, page int, perPage int, search string) (repository.Page[applicationdto.VersionView], error) {
@@ -32,11 +44,7 @@ func (s Service) ListVersionsPage(ctx context.Context, userId string, applicatio
 	}
 	views := make([]applicationdto.VersionView, 0, len(versions.Items))
 	for _, version := range versions.Items {
-		view, err := s.versionView(ctx, version)
-		if err != nil {
-			return repository.Page[applicationdto.VersionView]{}, err
-		}
-		views = append(views, view)
+		views = append(views, applicationdto.VersionView{Version: version})
 	}
 	return repository.Page[applicationdto.VersionView]{Items: views, Total: versions.Total, Page: versions.Page, PerPage: versions.PerPage}, nil
 }
@@ -207,6 +215,21 @@ func (s Service) PublishVersion(ctx context.Context, userId string, versionId st
 	version.Status = status.VersionStatusPublished
 	if err := s.store.UpdateVersion(ctx, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to publish version", err)
+	}
+	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) UnpublishVersion(ctx context.Context, userId string, versionId string) (applicationdto.VersionView, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return applicationdto.VersionView{}, err
+	}
+	if version.Status == status.VersionStatusUnpublished {
+		return s.VersionForUser(ctx, userId, version.Id)
+	}
+	version.Status = status.VersionStatusUnpublished
+	if err := s.store.UpdateVersion(ctx, version); err != nil {
+		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to unpublish version", err)
 	}
 	return s.VersionForUser(ctx, userId, version.Id)
 }

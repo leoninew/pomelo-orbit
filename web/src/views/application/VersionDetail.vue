@@ -21,6 +21,15 @@
           {{ t('application.detail.actions.publish') }}
         </button>
         <button
+          v-else-if="version && isPublished"
+          class="app-button h-9 px-3"
+          :disabled="operating"
+          @click="handleUnpublish"
+        >
+          <RotateCcw class="size-4" />
+          {{ t('application.detail.actions.unpublish') }}
+        </button>
+        <button
           v-if="version && isDeployable"
           class="app-button-primary h-9 px-3"
           :disabled="operating"
@@ -581,7 +590,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ChevronDown, Pencil, Plus, Rocket, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, ChevronDown, Pencil, Plus, Rocket, RotateCcw, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -676,6 +685,7 @@
   const exposeProtocolValues = ['http', 'tcp'];
   const exposeAccessValues = ['local', 'public'];
   const isEditable = computed(() => version.value?.status === 'unpublished');
+  const isPublished = computed(() => version.value?.status === 'published');
   const isDeployable = computed(() => Boolean(version.value));
   const envRows = computed(() => parseEnvJson(version.value?.env_json));
   const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
@@ -793,10 +803,10 @@
   function goBack() {
     const appId = version.value?.application_id;
     if (appId) {
-      router.push({ path: '/versions', query: { application_id: appId } });
+      router.push(`/application/${appId}`);
       return;
     }
-    router.push('/versions');
+    router.push('/applications');
   }
 
   function openBasicModal() {
@@ -1091,8 +1101,19 @@
     }
   }
 
+  async function handleUnpublish() {
+    try {
+      await executeOp(async () => {
+        version.value = await applicationApi.unpublishVersion(versionId);
+        toast.success(t('application.toast.unpublishSuccess'));
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.unpublishFailed'));
+    }
+  }
+
   function openForkModal() {
-    forkLabel.value = `${version.value?.label || 'v'}-fork`;
+    forkLabel.value = `${version.value?.label || 'v'}-copy`;
     forkLabelError.value = '';
     isForkDialogOpen.value = true;
   }

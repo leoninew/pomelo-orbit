@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"sort"
+	"strings"
+	"time"
+)
 
 type Application struct {
 	Id              string    `db:"id"`
@@ -22,8 +26,25 @@ type Version struct {
 	EnvJSON              *string   `db:"env_json"`
 	CreatedFromVersionId *string   `db:"created_from_version_id"`
 	Note                 *string   `db:"note"`
+	ComponentSummary     string    `db:"component_summary"`
 	CreatedAt            time.Time `db:"created_at"`
 	UpdatedAt            time.Time `db:"updated_at"`
+}
+
+// VersionComponentSummary returns the stable, user-facing image list for a version.
+func VersionComponentSummary(components []VersionComponent) string {
+	if len(components) == 0 {
+		return ""
+	}
+	items := append([]VersionComponent(nil), components...)
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Name < items[j].Name
+	})
+	parts := make([]string, 0, len(items))
+	for _, component := range items {
+		parts = append(parts, component.Image)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // VersionComponent is a version-scoped specification unit (own table).

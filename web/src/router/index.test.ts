@@ -7,7 +7,7 @@ describe('domain route cutover', () => {
     ['/pipeline/stage', 'PipelineStagePage'],
     ['/pipeline-run/42', 'PipelineRunDetail'],
     ['/application/42', 'ApplicationDetail'],
-    ['/gateway/42/edit', 'GatewayEdit'],
+    ['/gateway/edit/42', 'GatewayEdit'],
     ['/route/traefik', 'TraefikRoute'],
   ])('resolves %s to %s', (path, name) => {
     expect(router.resolve(path).name).toBe(name);

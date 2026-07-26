@@ -28,13 +28,8 @@ type ApplicationResp struct {
 	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Code            string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	ImagePullPolicy string                 `protobuf:"bytes,5,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
-	// service_status is runtime binding status when a Service exists; empty if never deployed.
-	ServiceStatus string  `protobuf:"bytes,6,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
-	CreatedAt     string  `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     string  `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	ServiceId     *string `protobuf:"bytes,9,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
-	VersionId     *string `protobuf:"bytes,10,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
-	ServiceCount  int32   `protobuf:"varint,11,opt,name=service_count,json=serviceCount,proto3" json:"service_count,omitempty"`
+	CreatedAt       string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt       string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// kind is standard|gateway; immutable after create.
 	Kind          string `protobuf:"bytes,12,opt,name=kind,proto3" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -106,13 +101,6 @@ func (x *ApplicationResp) GetImagePullPolicy() string {
 	return ""
 }
 
-func (x *ApplicationResp) GetServiceStatus() string {
-	if x != nil {
-		return x.ServiceStatus
-	}
-	return ""
-}
-
 func (x *ApplicationResp) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
@@ -125,27 +113,6 @@ func (x *ApplicationResp) GetUpdatedAt() string {
 		return x.UpdatedAt
 	}
 	return ""
-}
-
-func (x *ApplicationResp) GetServiceId() string {
-	if x != nil && x.ServiceId != nil {
-		return *x.ServiceId
-	}
-	return ""
-}
-
-func (x *ApplicationResp) GetVersionId() string {
-	if x != nil && x.VersionId != nil {
-		return *x.VersionId
-	}
-	return ""
-}
-
-func (x *ApplicationResp) GetServiceCount() int32 {
-	if x != nil {
-		return x.ServiceCount
-	}
-	return 0
 }
 
 func (x *ApplicationResp) GetKind() string {
@@ -676,29 +643,20 @@ var File_orbit_v1_application_application_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\n" +
-	"&orbit/v1/application/application.proto\x12\x14orbit.v1.application\"\xac\x03\n" +
+	"&orbit/v1/application/application.proto\x12\x14orbit.v1.application\"\xfa\x01\n" +
 	"\x0fApplicationResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x04 \x01(\tR\x04code\x12*\n" +
-	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x12%\n" +
-	"\x0eservice_status\x18\x06 \x01(\tR\rserviceStatus\x12\x1d\n" +
+	"\x11image_pull_policy\x18\x05 \x01(\tR\x0fimagePullPolicy\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\b \x01(\tR\tupdatedAt\x12\"\n" +
-	"\n" +
-	"service_id\x18\t \x01(\tH\x01R\tserviceId\x88\x01\x01\x12\"\n" +
-	"\n" +
-	"version_id\x18\n" +
-	" \x01(\tH\x02R\tversionId\x88\x01\x01\x12#\n" +
-	"\rservice_count\x18\v \x01(\x05R\fserviceCount\x12\x12\n" +
+	"updated_at\x18\b \x01(\tR\tupdatedAt\x12\x12\n" +
 	"\x04kind\x18\f \x01(\tR\x04kindB\r\n" +
-	"\v_project_idB\r\n" +
-	"\v_service_idB\r\n" +
-	"\v_version_id\"\x8c\x01\n" +
+	"\v_project_id\"\x8c\x01\n" +
 	"\x14ApplicationCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12*\n" +

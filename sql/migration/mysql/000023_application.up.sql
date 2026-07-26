@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS version (
     env_json LONGTEXT,
     created_from_version_id VARCHAR(26),
     note TEXT,
+    component_summary TEXT NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,

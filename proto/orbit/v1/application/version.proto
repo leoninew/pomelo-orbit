@@ -107,6 +107,7 @@ message VersionResp {
   string updated_at = 9;
   repeated VersionComponentResp components = 10;
   repeated VersionExposeResp exposes = 11;
+  string component_summary = 12;
 }
 
 message VersionPaginatedResp {

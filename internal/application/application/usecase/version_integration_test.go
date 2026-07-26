@@ -81,6 +81,92 @@ func TestDeletePublishedVersionKeepsRuntimeReferenceProtection(t *testing.T) {
 	}
 }
 
+func TestUnpublishVersionChangesPublishedVersionToUnpublished(t *testing.T) {
+	service, database, applicationStore := newVersionIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	_, version := createPublishedVersion(t, ctx, applicationStore, "published-unpublish")
+	view, err := service.UnpublishVersion(ctx, versionTestUserId, version.Id)
+	if err != nil {
+		t.Fatalf("unpublish version: %v", err)
+	}
+	if view.Version.Status != status.VersionStatusUnpublished {
+		t.Fatalf("expected unpublished version view, got %+v", view.Version)
+	}
+	persisted, err := applicationStore.Version(ctx, version.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Status != status.VersionStatusUnpublished {
+		t.Fatalf("expected persisted unpublished version, got %+v", persisted)
+	}
+}
+
+func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *testing.T) {
+	service, database, applicationStore := newVersionIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app := model.Application{
+		Id:              idutil.NewId(),
+		Name:            "component-summary-" + idutil.NewId(),
+		Code:            "component-summary-" + idutil.NewId(),
+		Kind:            status.ApplicationKindStandard,
+		ImagePullPolicy: "missing",
+	}
+	if err := applicationStore.CreateApplication(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.CreateVersion(ctx, versionTestUserId, applicationdto.VersionCreateInput{
+		ApplicationId: app.Id,
+		Label:         "v1",
+		Components: []applicationdto.VersionComponentInput{
+			{Name: "worker", Image: "busybox:1.36"},
+			{Name: "api", Image: "nginx:1.27"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create version: %v", err)
+	}
+	if got, want := created.Version.ComponentSummary, "nginx:1.27, busybox:1.36"; got != want {
+		t.Fatalf("component summary = %q, want %q", got, want)
+	}
+
+	page, err := service.ListVersionsPage(ctx, versionTestUserId, app.Id, 1, 10, "")
+	if err != nil {
+		t.Fatalf("list versions page: %v", err)
+	}
+	if len(page.Items) != 1 {
+		t.Fatalf("list versions page count = %d, want 1", len(page.Items))
+	}
+	item := page.Items[0]
+	if item.Version.ComponentSummary != created.Version.ComponentSummary {
+		t.Fatalf("list component summary = %q, want %q", item.Version.ComponentSummary, created.Version.ComponentSummary)
+	}
+	if item.Components != nil || item.Exposes != nil {
+		t.Fatalf("version list unexpectedly loaded details: %+v", item)
+	}
+
+	components := []applicationdto.VersionComponentInput{{Name: "web", Image: "caddy:2.8"}}
+	updated, err := service.UpdateVersion(ctx, versionTestUserId, created.Version.Id, applicationdto.VersionUpdateInput{
+		Components: &components,
+	})
+	if err != nil {
+		t.Fatalf("update version components: %v", err)
+	}
+	if got, want := updated.Version.ComponentSummary, "caddy:2.8"; got != want {
+		t.Fatalf("updated component summary = %q, want %q", got, want)
+	}
+	persisted, err := applicationStore.Version(ctx, created.Version.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.ComponentSummary != updated.Version.ComponentSummary {
+		t.Fatalf("persisted component summary = %q, want %q", persisted.ComponentSummary, updated.Version.ComponentSummary)
+	}
+}
+
 func newVersionIntegrationService(t *testing.T) (Service, *sql.DB, applicationrepo.Repository) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")

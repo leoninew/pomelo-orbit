@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS version (
     env_json TEXT,
     created_from_version_id TEXT,
     note TEXT,
+    component_summary TEXT NOT NULL DEFAULT '',
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,

@@ -115,6 +115,7 @@ export interface VersionResp {
   updated_at: string;
   components: VersionComponentResp[];
   exposes: VersionExposeResp[];
+  component_summary: string;
 }
 
 export interface VersionPaginatedResp {

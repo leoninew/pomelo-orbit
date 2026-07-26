@@ -77,27 +77,6 @@
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
-              {{ t('application.detail.fields.currentVersion') }}
-            </dt>
-            <dd class="text-foreground">
-              {{ currentVersionLabel }}
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
-              {{ t('application.detail.sections.versions') }}
-            </dt>
-            <dd>
-              <router-link
-                :to="`/versions?application_id=${application.id}`"
-                class="text-primary hover:underline"
-              >
-                {{ t('nav.versions') }}
-              </router-link>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
               {{ t('common.createdAt') }}
             </dt>
             <dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
@@ -112,9 +91,9 @@
       </div>
 
       <!-- 版本 -->
-      <div v-if="versionsOnly" class="app-surface">
+      <div class="app-surface">
         <div class="app-section-header flex items-center justify-between">
-          <h2 class="font-semibold text-foreground">
+          <h2 class="text-base font-semibold text-foreground">
             {{ t('application.detail.sections.versions') }}
           </h2>
           <button class="app-button-primary h-8 px-3" @click="openCreateVersionModal">
@@ -126,12 +105,12 @@
           <table class="app-table-detail min-w-[880px]">
             <thead>
               <tr>
-                <th>{{ t('application.detail.fields.versionLabel') }}</th>
-                <th>{{ t('common.status') }}</th>
-                <th>{{ t('application.detail.fields.components') }}</th>
-                <th>{{ t('application.detail.fields.note') }}</th>
-                <th>{{ t('common.createdAt') }}</th>
-                <th>{{ t('common.operation') }}</th>
+                <th class="font-normal">{{ t('application.detail.fields.versionLabel') }}</th>
+                <th class="font-normal">{{ t('common.status') }}</th>
+                <th class="font-normal">{{ t('application.detail.fields.components') }}</th>
+                <th class="font-normal">{{ t('application.detail.fields.note') }}</th>
+                <th class="font-normal">{{ t('common.createdAt') }}</th>
+                <th class="font-normal">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -147,15 +126,9 @@
               </tr>
               <tr v-for="version in versions" :key="version.id">
                 <td class="text-foreground">
-                  <router-link :to="`/version/${version.id}`" class="app-link font-medium">
+                  <router-link :to="`/version/${version.id}`" class="app-link">
                     {{ version.label }}
                   </router-link>
-                  <span
-                    v-if="application.version_id === version.id"
-                    class="ml-2 text-xs text-muted-foreground"
-                  >
-                    {{ t('application.detail.fields.boundVersion') }}
-                  </span>
                 </td>
                 <td>
                   <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
@@ -164,9 +137,9 @@
                 </td>
                 <td
                   class="max-w-xs truncate text-muted-foreground"
-                  :title="componentSummary(version)"
+                  :title="version.component_summary || ''"
                 >
-                  {{ componentSummary(version) }}
+                  {{ version.component_summary || '—' }}
                 </td>
                 <td class="max-w-xs truncate text-muted-foreground" :title="version.note || ''">
                   {{ version.note || '—' }}
@@ -174,22 +147,30 @@
                 <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
                   <div class="flex flex-wrap items-center gap-3">
-                    <button class="app-link" @click="openPreview(version.id)">
+                    <button v-if="versionsOnly" class="app-link" @click="openPreview(version.id)">
                       {{ t('application.detail.actions.preview') }}
                     </button>
                     <button
-                      v-if="version.status === 'unpublished'"
+                      v-if="versionsOnly && version.status === 'unpublished'"
                       class="app-link"
                       :disabled="operating"
                       @click="handlePublish(version.id)"
                     >
                       {{ t('application.detail.actions.publish') }}
                     </button>
+                    <button
+                      v-else-if="versionsOnly && version.status === 'published'"
+                      class="app-link"
+                      :disabled="operating"
+                      @click="handleUnpublish(version.id)"
+                    >
+                      {{ t('application.detail.actions.unpublish') }}
+                    </button>
                     <button class="app-link" @click="openForkModal(version)">
                       {{ t('application.detail.actions.fork') }}
                     </button>
                     <button
-                      v-if="version.status === 'unpublished'"
+                      v-if="versionsOnly && version.status === 'unpublished'"
                       class="app-link-danger"
                       :disabled="operating"
                       @click="openDeleteVersionModal(version)"
@@ -307,7 +288,6 @@
 
     <!-- 新建版本（仅基本信息） -->
     <AppDialog
-      v-if="versionsOnly"
       v-model:open="isVersionDialogOpen"
       :title="t('application.detail.dialog.createVersion')"
       width-class="w-[min(420px,calc(100vw-32px))]"
@@ -353,7 +333,6 @@
 
     <!-- Fork 版本 -->
     <AppDialog
-      v-if="versionsOnly"
       v-model:open="isForkDialogOpen"
       :title="t('application.detail.dialog.forkVersion')"
       width-class="w-[min(420px,calc(100vw-32px))]"
@@ -498,22 +477,6 @@
     note: '',
   });
   const versionFormErrors = reactive({ label: '' });
-
-  const currentVersionLabel = computed(() => {
-    const boundId = application.value?.version_id;
-    if (!boundId) {
-      return '—';
-    }
-    const found = versions.value.find((item) => item.id === boundId);
-    return found?.label || boundId;
-  });
-
-  function componentSummary(version: VersionResp) {
-    if (!version.components?.length) {
-      return '—';
-    }
-    return version.components.map((c) => `${c.name}:${c.image}`).join(', ');
-  }
 
   async function fetchApplication() {
     try {
@@ -684,6 +647,18 @@
     }
   }
 
+  async function handleUnpublish(versionId: string) {
+    try {
+      await executeOp(async () => {
+        await applicationApi.unpublishVersion(versionId);
+        toast.success(t('application.toast.unpublishSuccess'));
+        await loadVersions();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.unpublishFailed'));
+    }
+  }
+
   function openDeleteVersionModal(version: VersionResp) {
     pendingDeleteVersion.value = version;
     isDeleteVersionDialogOpen.value = true;
@@ -711,7 +686,7 @@
 
   function openForkModal(version: VersionResp) {
     forkingVersionId.value = version.id;
-    forkLabel.value = `${version.label}-fork`;
+    forkLabel.value = `${version.label}-copy`;
     forkLabelError.value = '';
     isForkDialogOpen.value = true;
   }
@@ -764,6 +739,8 @@
 
   onMounted(async () => {
     await fetchApplication();
-    await loadVersions();
+    if (application.value) {
+      await loadVersions();
+    }
   });
 </script>

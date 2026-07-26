@@ -28,7 +28,7 @@
         <button
           v-if="gateway"
           class="app-button h-9 px-3"
-          @click="router.push(`/gateway/${gateway.id}/edit`)"
+          @click="router.push(`/gateway/edit/${gateway.id}`)"
         >
           <Pencil class="size-4" />
           {{ t('common.edit') }}
@@ -64,7 +64,17 @@
             <dt class="w-32 shrink-0 text-muted-foreground">
               {{ t('gateway.fields.restApiUrl') }}
             </dt>
-            <dd class="min-w-0 break-all text-foreground">{{ gateway.rest_api_url }}</dd>
+            <dd class="min-w-0 break-all">
+              <a
+                :href="gateway.rest_api_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="app-link inline-flex items-center gap-1"
+              >
+                {{ gateway.rest_api_url }}
+                <ExternalLink class="size-3.5 shrink-0" />
+              </a>
+            </dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">
@@ -114,7 +124,6 @@
           <h2 class="font-semibold text-foreground">{{ t('gateway.exposures.title') }}</h2>
         </div>
         <div class="px-5 py-4">
-          <p class="mb-4 text-sm text-muted-foreground">{{ t('gateway.exposures.hint') }}</p>
           <div v-if="!(gateway.exposures || []).length" class="text-sm text-muted-foreground">
             {{ t('gateway.exposures.empty') }}
           </div>
@@ -141,9 +150,21 @@
                   <td>
                     <AppBadge variant="pill">{{ row.access }}</AppBadge>
                   </td>
-                  <td class="text-foreground">{{ row.listen_port }} → {{ row.container_port }}</td>
+                  <td class="text-foreground">{{ row.listen_port }}:{{ row.container_port }}</td>
                   <td class="text-foreground">{{ row.internal_dns }}</td>
-                  <td class="text-foreground">{{ row.client_hint }}</td>
+                  <td class="text-foreground">
+                    <a
+                      v-if="isHttpAddress(row.client_hint)"
+                      :href="row.client_hint"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="app-link inline-flex items-center gap-1"
+                    >
+                      {{ row.client_hint }}
+                      <ExternalLink class="size-3.5 shrink-0" />
+                    </a>
+                    <template v-else>{{ row.client_hint }}</template>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -234,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Layers, Pencil, Rocket, Square } from 'lucide-vue-next';
+  import { ArrowLeft, ExternalLink, Layers, Pencil, Rocket, Square } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -303,6 +324,10 @@
   function serviceOptionLabel(item: ServiceResp) {
     const instance = item.instance_key || 'default';
     return `${instance} (${item.status})`;
+  }
+
+  function isHttpAddress(value: string) {
+    return /^https?:\/\//i.test(value);
   }
 
   async function loadGateway() {

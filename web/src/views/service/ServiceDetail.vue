@@ -39,13 +39,6 @@
           <ScrollText class="size-4" />
           {{ t('service.actions.logsAll') }}
         </button>
-        <button class="app-button h-9 px-3" :disabled="status === 'loading'" @click="handleRefresh">
-          <RefreshCw
-            class="size-4"
-            :class="{ 'animate-spin': status === 'loading' || containersLoading }"
-          />
-          {{ t('common.refresh') }}
-        </button>
         <button class="app-button h-9 px-4" @click="router.push('/services')">
           <ArrowLeft class="size-4" />
           {{ t('common.back') }}
@@ -114,14 +107,9 @@
 
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between gap-3">
-          <div>
-            <h2 class="font-semibold text-foreground">
-              {{ t('service.detail.sections.components') }}
-            </h2>
-            <p class="mt-1 text-xs text-muted-foreground">
-              {{ t('service.detail.componentsHint') }}
-            </p>
-          </div>
+          <h2 class="font-semibold text-foreground">
+            {{ t('service.detail.sections.components') }}
+          </h2>
           <button
             class="app-button inline-flex h-8 items-center gap-2 px-3"
             :disabled="containersLoading"
@@ -139,12 +127,13 @@
             :message="t('service.containers.empty')"
           />
           <div v-else class="overflow-x-auto">
-            <table class="app-table-list min-w-[800px]">
+            <table class="app-table-list min-w-[960px]">
               <thead>
                 <tr>
                   <th>{{ t('service.fields.component') }}</th>
                   <th>{{ t('service.fields.container') }}</th>
                   <th>{{ t('common.status') }}</th>
+                  <th>{{ t('service.fields.runtime') }}</th>
                   <th>{{ t('service.fields.health') }}</th>
                   <th>{{ t('service.fields.image') }}</th>
                   <th>{{ t('common.operation') }}</th>
@@ -162,18 +151,15 @@
                     {{ container.name || container.id || '—' }}
                   </td>
                   <td>
-                    <div class="flex flex-col gap-1">
-                      <AppBadge variant="status" :tone="containerStateTone(container.state)">
-                        {{ container.state }}
-                      </AppBadge>
-                      <span
-                        v-if="container.status"
-                        class="max-w-[280px] truncate text-xs text-muted-foreground"
-                        :title="container.status"
-                      >
-                        {{ container.status }}
-                      </span>
-                    </div>
+                    <AppBadge variant="pill" :tone="containerStateTone(container.state)">
+                      {{ container.state || '—' }}
+                    </AppBadge>
+                  </td>
+                  <td
+                    class="max-w-[280px] truncate text-xs text-muted-foreground"
+                    :title="container.status"
+                  >
+                    {{ container.status || '—' }}
                   </td>
                   <td class="text-sm text-foreground">{{ container.health || '—' }}</td>
                   <td

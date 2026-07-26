@@ -231,6 +231,7 @@ func (r Repository) CreateVersion(ctx context.Context, version model.Version) er
 		EnvJson:              dbmodel.NullString(version.EnvJSON),
 		CreatedFromVersionID: dbmodel.NullString(version.CreatedFromVersionId),
 		Note:                 dbmodel.NullString(version.Note),
+		ComponentSummary:     version.ComponentSummary,
 		CreatedAt:            createdAt,
 		UpdatedAt:            updatedAt,
 	})
@@ -242,12 +243,13 @@ func (r Repository) CreateVersion(ctx context.Context, version model.Version) er
 
 func (r Repository) UpdateVersion(ctx context.Context, version model.Version) error {
 	err := r.q(ctx).UpdateVersion(ctx, applicationsqlc.UpdateVersionParams{
-		Label:     version.Label,
-		Status:    version.Status,
-		EnvJson:   dbmodel.NullString(version.EnvJSON),
-		Note:      dbmodel.NullString(version.Note),
-		UpdatedAt: time.Now().UTC(),
-		ID:        version.Id,
+		Label:            version.Label,
+		Status:           version.Status,
+		EnvJson:          dbmodel.NullString(version.EnvJSON),
+		Note:             dbmodel.NullString(version.Note),
+		ComponentSummary: version.ComponentSummary,
+		UpdatedAt:        time.Now().UTC(),
+		ID:               version.Id,
 	})
 	if err != nil {
 		return fmt.Errorf("update version %s: %w", version.Id, err)
@@ -374,6 +376,13 @@ func (r Repository) replaceVersionComponents(ctx context.Context, versionId stri
 			}
 		}
 	}
+	if err := q.UpdateVersionComponentSummary(ctx, applicationsqlc.UpdateVersionComponentSummaryParams{
+		ComponentSummary: model.VersionComponentSummary(components),
+		UpdatedAt:        time.Now().UTC(),
+		ID:               versionId,
+	}); err != nil {
+		return fmt.Errorf("update version component summary %s: %w", versionId, err)
+	}
 	return nil
 }
 
@@ -443,6 +452,7 @@ func versionFrom(row applicationsqlc.Version) model.Version {
 		EnvJSON:              dbmodel.StringPtr(row.EnvJson),
 		CreatedFromVersionId: dbmodel.StringPtr(row.CreatedFromVersionID),
 		Note:                 dbmodel.StringPtr(row.Note),
+		ComponentSummary:     row.ComponentSummary,
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,
 	}

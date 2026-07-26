@@ -89,13 +89,13 @@ const router = createRouter({
       path: '/versions',
       name: 'Versions',
       component: () => import('@/views/application/VersionsPage.vue'),
-      meta: { title: '版本', menuKey: 'versions' },
+      meta: { title: '版本', menuKey: 'applications' },
     },
     {
       path: '/version/:id',
       name: 'VersionDetail',
       component: () => import('@/views/application/VersionDetail.vue'),
-      meta: { title: '版本详情', menuKey: 'versions' },
+      meta: { title: '版本详情', menuKey: 'applications' },
     },
     {
       path: '/services',
@@ -122,7 +122,7 @@ const router = createRouter({
       meta: { title: '创建网关', menuKey: 'gateways' },
     },
     {
-      path: '/gateway/:id/edit',
+      path: '/gateway/edit/:id',
       name: 'GatewayEdit',
       component: () => import('@/views/gateway/GatewayEdit.vue'),
       meta: { title: '编辑网关', menuKey: 'gateways' },

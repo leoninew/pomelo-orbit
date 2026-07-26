@@ -307,6 +307,7 @@ type Version struct {
 	EnvJson              sql.NullString `db:"env_json"`
 	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
 	Note                 sql.NullString `db:"note"`
+	ComponentSummary     string         `db:"component_summary"`
 	CreatedAt            time.Time      `db:"created_at"`
 	UpdatedAt            time.Time      `db:"updated_at"`
 }

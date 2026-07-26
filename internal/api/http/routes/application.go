@@ -32,6 +32,7 @@ func (r Router) registerApplication(engine *gin.Engine) {
 	engine.PUT("/api/version/:version_id", handler.UpdateVersion)
 	engine.DELETE("/api/version/:version_id", handler.DeleteVersion)
 	engine.POST("/api/version/:version_id/publish", handler.PublishVersion)
+	engine.POST("/api/version/:version_id/unpublish", handler.UnpublishVersion)
 	engine.POST("/api/version/:version_id/fork", handler.ForkVersion)
 	engine.POST("/api/version/:version_id/preview", deploymentHandler.PreviewVersion)
 }

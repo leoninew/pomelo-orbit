@@ -183,6 +183,7 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 		EnvJson:              view.Version.EnvJSON,
 		CreatedFromVersionId: view.Version.CreatedFromVersionId,
 		Note:                 view.Version.Note,
+		ComponentSummary:     view.Version.ComponentSummary,
 		CreatedAt:            transportresponse.FormatTime(view.Version.CreatedAt),
 		UpdatedAt:            transportresponse.FormatTime(view.Version.UpdatedAt),
 		Components:           components,

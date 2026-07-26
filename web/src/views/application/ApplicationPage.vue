@@ -9,27 +9,6 @@
         @search="handleSearch"
       />
       <div class="flex items-center gap-3">
-        <ToggleGroupRoot
-          v-model="viewMode"
-          type="single"
-          class="flex h-10 overflow-hidden rounded-md border border-border bg-background"
-          :aria-label="t('application.viewMode')"
-        >
-          <ToggleGroupItem
-            value="card"
-            class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-            :aria-label="t('application.cardView')"
-          >
-            <LayoutGrid class="size-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="table"
-            class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-            :aria-label="t('application.tableView')"
-          >
-            <List class="size-4" />
-          </ToggleGroupItem>
-        </ToggleGroupRoot>
         <button
           class="app-button-primary px-5"
           :disabled="status === 'loading'"
@@ -57,131 +36,50 @@
       <AppSpinner class="py-16" />
     </div>
 
-    <!-- 卡片视图 -->
-    <div v-else-if="viewMode === 'card'" class="space-y-6">
-      <div v-if="applications.length === 0" class="app-surface">
-        <AppEmptyState />
-      </div>
-      <template v-else>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          <div
-            v-for="app in applications"
-            :key="app.id"
-            class="app-surface flex min-h-56 flex-col p-5 transition-colors hover:border-primary"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0 space-y-1">
-                <h3 class="text-base font-semibold">
-                  <router-link :to="`/application/${app.id}`" class="app-link block truncate">
-                    {{ app.name }}
-                  </router-link>
-                </h3>
-                <div class="flex min-w-0 items-center gap-2">
-                  <span class="min-w-0 truncate text-xs text-muted-foreground" :title="app.code">
-                    {{ app.code }}
-                  </span>
-                  <span class="h-1 w-1 shrink-0 rounded-full bg-muted-foreground/40" />
-                  <span class="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
-                    {{ formatTime(app.created_at) }}
-                  </span>
-                </div>
-              </div>
-              <div class="flex shrink-0 flex-col items-end gap-1.5">
+    <div v-else class="app-surface">
+      <AppEmptyState v-if="applications.length === 0" />
+      <div v-else class="overflow-x-auto">
+        <table class="app-table-list min-w-[1040px]">
+          <thead>
+            <tr>
+              <th>{{ t('common.name') }}</th>
+              <th>{{ t('application.code') }}</th>
+              <th>{{ t('application.kind') }}</th>
+              <th>{{ t('application.imagePullPolicy') }}</th>
+              <th>{{ t('common.createdAt') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="app in applications" :key="app.id">
+              <td>
+                <router-link :to="`/application/${app.id}`" class="app-link">
+                  {{ app.name }}
+                </router-link>
+              </td>
+              <td class="text-foreground">{{ app.code }}</td>
+              <td>
                 <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
                   {{ app.kind }}
                 </AppBadge>
-              </div>
-            </div>
-
-            <div class="mt-5 grid gap-3 text-sm">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-muted-foreground">{{ t('application.imagePull') }}</span>
+              </td>
+              <td>
                 <AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge>
-              </div>
-            </div>
-
-            <div
-              class="mt-auto flex items-center justify-end gap-3 border-t border-border pt-4 text-sm"
-            >
-              <router-link
-                :to="{ path: '/versions', query: { application_id: app.id } }"
-                class="app-link"
-              >
-                {{ t('nav.versions') }}
-              </router-link>
-            </div>
-          </div>
-        </div>
-        <ListPagination
-          standalone
-          :current="pagination.current"
-          :page-size="pagination.pageSize"
-          :total="pagination.total"
-          :total-pages="totalPages"
-          @change-page="goPage"
-          @change-page-size="handlePageSizeChange"
-        />
-      </template>
-    </div>
-
-    <!-- 表格视图 -->
-    <template v-else>
-      <div class="app-surface">
-        <AppEmptyState v-if="applications.length === 0" />
-        <div v-else class="overflow-x-auto">
-          <table class="app-table-list min-w-[1040px]">
-            <thead>
-              <tr>
-                <th>{{ t('common.name') }}</th>
-                <th>{{ t('application.code') }}</th>
-                <th>{{ t('application.kind') }}</th>
-                <th>{{ t('application.imagePullPolicy') }}</th>
-                <th>{{ t('common.createdAt') }}</th>
-                <th>{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="app in applications" :key="app.id">
-                <td>
-                  <router-link :to="`/application/${app.id}`" class="app-link">
-                    {{ app.name }}
-                  </router-link>
-                </td>
-                <td class="text-foreground">{{ app.code }}</td>
-                <td>
-                  <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
-                    {{ app.kind }}
-                  </AppBadge>
-                </td>
-                <td>
-                  <AppBadge variant="pill">{{ app.image_pull_policy }}</AppBadge>
-                </td>
-                <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
-                <td>
-                  <div class="flex items-center gap-3">
-                    <router-link
-                      :to="{ path: '/versions', query: { application_id: app.id } }"
-                      class="app-link"
-                    >
-                      {{ t('nav.versions') }}
-                    </router-link>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <ListPagination
-          :current="pagination.current"
-          :page-size="pagination.pageSize"
-          :total="pagination.total"
-          :total-pages="totalPages"
-          @change-page="goPage"
-          @change-page-size="handlePageSizeChange"
-        />
+              </td>
+              <td class="text-foreground">{{ formatTime(app.created_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </template>
+
+      <ListPagination
+        :current="pagination.current"
+        :page-size="pagination.pageSize"
+        :total="pagination.total"
+        :total-pages="totalPages"
+        @change-page="goPage"
+        @change-page-size="handlePageSizeChange"
+      />
+    </div>
 
     <AppDialog v-model:open="isCreateDialogOpen" :title="t('application.createApplication')">
       <ApplicationFormFields
@@ -221,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-  import { LayoutGrid, List, Plus, Upload } from 'lucide-vue-next';
+  import { Plus, Upload } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { applicationApi } from '@/api/application/application';
@@ -242,7 +140,7 @@
   import type { ApplicationImportReq } from '@/gen/proto/orbit/v1/application/application_bundle';
   import { applicationKindTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
+  import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();
   const toast = useToast();
@@ -252,7 +150,6 @@
 
   const applications = ref<ApplicationResp[]>([]);
   const searchText = ref('');
-  const viewMode = ref<'card' | 'table'>('table');
   const isCreateDialogOpen = ref(false);
   const isImportDialogOpen = ref(false);
   const fileInput = ref<HTMLInputElement>();

@@ -36,6 +36,7 @@ type Querier interface {
 	ListVersionsPage(ctx context.Context, arg ListVersionsPageParams) ([]Version, error)
 	UpdateApplication(ctx context.Context, arg UpdateApplicationParams) error
 	UpdateVersion(ctx context.Context, arg UpdateVersionParams) error
+	UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error
 	VersionByID(ctx context.Context, id string) (Version, error)
 	VersionComponentSecretEnvRefsByVersion(ctx context.Context, versionID string) ([]VersionComponentSecretEnvRef, error)
 	VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponent, error)

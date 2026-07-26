@@ -147,7 +147,6 @@ const deploymentNavigation: NavigationBranch[] = [
         labelKey: 'nav.applications',
         path: '/applications',
       },
-      { key: 'versions', label: '版本', labelKey: 'nav.versions', path: '/versions' },
       {
         key: 'deployments',
         label: '部署记录',

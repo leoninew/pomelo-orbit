@@ -860,6 +860,7 @@ type VersionResp struct {
 	UpdatedAt            string                  `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Components           []*VersionComponentResp `protobuf:"bytes,10,rep,name=components,proto3" json:"components,omitempty"`
 	Exposes              []*VersionExposeResp    `protobuf:"bytes,11,rep,name=exposes,proto3" json:"exposes,omitempty"`
+	ComponentSummary     string                  `protobuf:"bytes,12,opt,name=component_summary,json=componentSummary,proto3" json:"component_summary,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -969,6 +970,13 @@ func (x *VersionResp) GetExposes() []*VersionExposeResp {
 		return x.Exposes
 	}
 	return nil
+}
+
+func (x *VersionResp) GetComponentSummary() string {
+	if x != nil {
+		return x.ComponentSummary
+	}
+	return ""
 }
 
 type VersionPaginatedResp struct {
@@ -1278,7 +1286,7 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"\t_env_jsonB\a\n" +
 	"\x05_note\"&\n" +
 	"\x0eVersionForkReq\x12\x14\n" +
-	"\x05label\x18\x01 \x01(\tR\x05label\"\xe6\x03\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\"\x93\x04\n" +
 	"\vVersionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x14\n" +
@@ -1295,7 +1303,8 @@ const file_orbit_v1_application_version_proto_rawDesc = "" +
 	"components\x18\n" +
 	" \x03(\v2*.orbit.v1.application.VersionComponentRespR\n" +
 	"components\x12A\n" +
-	"\aexposes\x18\v \x03(\v2'.orbit.v1.application.VersionExposeRespR\aexposesB\v\n" +
+	"\aexposes\x18\v \x03(\v2'.orbit.v1.application.VersionExposeRespR\aexposes\x12+\n" +
+	"\x11component_summary\x18\f \x01(\tR\x10componentSummaryB\v\n" +
 	"\t_env_jsonB\x1a\n" +
 	"\x18_created_from_version_idB\a\n" +
 	"\x05_note\"\xaa\x01\n" +

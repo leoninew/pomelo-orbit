@@ -63,8 +63,8 @@ func (q *Queries) CountVersions(ctx context.Context, arg CountVersionsParams) (i
 }
 
 const createVersion = `-- name: CreateVersion :exec
-INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateVersionParams struct {
@@ -75,6 +75,7 @@ type CreateVersionParams struct {
 	EnvJson              sql.NullString `db:"env_json"`
 	CreatedFromVersionID sql.NullString `db:"created_from_version_id"`
 	Note                 sql.NullString `db:"note"`
+	ComponentSummary     string         `db:"component_summary"`
 	CreatedAt            time.Time      `db:"created_at"`
 	UpdatedAt            time.Time      `db:"updated_at"`
 }
@@ -88,6 +89,7 @@ func (q *Queries) CreateVersion(ctx context.Context, arg CreateVersionParams) er
 		arg.EnvJson,
 		arg.CreatedFromVersionID,
 		arg.Note,
+		arg.ComponentSummary,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -236,7 +238,7 @@ func (q *Queries) InsertVersionExpose(ctx context.Context, arg InsertVersionExpo
 }
 
 const listVersions = `-- name: ListVersions :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at
+SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
 ORDER BY created_at DESC, id
@@ -259,6 +261,7 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 			&i.EnvJson,
 			&i.CreatedFromVersionID,
 			&i.Note,
+			&i.ComponentSummary,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -276,7 +279,7 @@ func (q *Queries) ListVersions(ctx context.Context, applicationID string) ([]Ver
 }
 
 const listVersionsPage = `-- name: ListVersionsPage :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at
+SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
   AND (? = '' OR label LIKE ? OR note LIKE ?)
@@ -317,6 +320,7 @@ func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPagePara
 			&i.EnvJson,
 			&i.CreatedFromVersionID,
 			&i.Note,
+			&i.ComponentSummary,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -335,17 +339,18 @@ func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPagePara
 
 const updateVersion = `-- name: UpdateVersion :exec
 UPDATE version
-SET label = ?, status = ?, env_json = ?, note = ?, updated_at = ?
+SET label = ?, status = ?, env_json = ?, note = ?, component_summary = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateVersionParams struct {
-	Label     string         `db:"label"`
-	Status    string         `db:"status"`
-	EnvJson   sql.NullString `db:"env_json"`
-	Note      sql.NullString `db:"note"`
-	UpdatedAt time.Time      `db:"updated_at"`
-	ID        string         `db:"id"`
+	Label            string         `db:"label"`
+	Status           string         `db:"status"`
+	EnvJson          sql.NullString `db:"env_json"`
+	Note             sql.NullString `db:"note"`
+	ComponentSummary string         `db:"component_summary"`
+	UpdatedAt        time.Time      `db:"updated_at"`
+	ID               string         `db:"id"`
 }
 
 func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) error {
@@ -354,14 +359,32 @@ func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) er
 		arg.Status,
 		arg.EnvJson,
 		arg.Note,
+		arg.ComponentSummary,
 		arg.UpdatedAt,
 		arg.ID,
 	)
 	return err
 }
 
+const updateVersionComponentSummary = `-- name: UpdateVersionComponentSummary :exec
+UPDATE version
+SET component_summary = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateVersionComponentSummaryParams struct {
+	ComponentSummary string    `db:"component_summary"`
+	UpdatedAt        time.Time `db:"updated_at"`
+	ID               string    `db:"id"`
+}
+
+func (q *Queries) UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error {
+	_, err := q.db.ExecContext(ctx, updateVersionComponentSummary, arg.ComponentSummary, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const versionByID = `-- name: VersionByID :one
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at
+SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE id = ?
 `
@@ -377,6 +400,7 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 		&i.EnvJson,
 		&i.CreatedFromVersionID,
 		&i.Note,
+		&i.ComponentSummary,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

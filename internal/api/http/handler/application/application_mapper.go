@@ -30,24 +30,15 @@ func applicationUpdateInput(req *applicationv1.ApplicationUpdateReq) application
 	}
 }
 
-func applicationResponses(items []model.Application, services map[string][]model.Service) []applicationv1.ApplicationResp {
+func applicationResponses(items []model.Application) []applicationv1.ApplicationResp {
 	resp := make([]applicationv1.ApplicationResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, applicationResponse(item, services[item.Id]))
+		resp = append(resp, applicationResponse(item))
 	}
 	return resp
 }
 
-func applicationResponse(item model.Application, services []model.Service) applicationv1.ApplicationResp {
-	serviceStatus := ""
-	var serviceId *string
-	var versionId *string
-	if len(services) > 0 {
-		primary := services[0]
-		serviceStatus = primary.Status
-		serviceId = &primary.Id
-		versionId = &primary.VersionId
-	}
+func applicationResponse(item model.Application) applicationv1.ApplicationResp {
 	return applicationv1.ApplicationResp{
 		Id:              item.Id,
 		ProjectId:       item.ProjectId,
@@ -55,12 +46,8 @@ func applicationResponse(item model.Application, services []model.Service) appli
 		Code:            item.Code,
 		Kind:            item.Kind,
 		ImagePullPolicy: item.ImagePullPolicy,
-		ServiceStatus:   serviceStatus,
 		CreatedAt:       transportresponse.FormatTime(item.CreatedAt),
 		UpdatedAt:       transportresponse.FormatTime(item.UpdatedAt),
-		ServiceId:       serviceId,
-		VersionId:       versionId,
-		ServiceCount:    int32(len(services)),
 	}
 }
 

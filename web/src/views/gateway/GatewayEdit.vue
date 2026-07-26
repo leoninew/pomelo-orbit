@@ -5,9 +5,6 @@
         <h1 class="truncate text-xl font-semibold text-foreground">
           {{ t('gateway.dialog.edit') }}
         </h1>
-        <p v-if="gateway" class="mt-1 text-sm text-muted-foreground">
-          {{ gateway.code }}
-        </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button class="app-button-primary h-9 px-3" :disabled="operating" @click="handleSave">

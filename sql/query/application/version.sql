@@ -1,5 +1,5 @@
 -- name: ListVersions :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at
+SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
 ORDER BY created_at DESC, id;
@@ -11,7 +11,7 @@ WHERE application_id = ?
   AND (? = '' OR label LIKE ? OR note LIKE ?);
 
 -- name: ListVersionsPage :many
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at
+SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE application_id = ?
   AND (? = '' OR label LIKE ? OR note LIKE ?)
@@ -19,17 +19,22 @@ ORDER BY created_at DESC, id
 LIMIT ? OFFSET ?;
 
 -- name: VersionByID :one
-SELECT id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at
+SELECT id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at
 FROM version
 WHERE id = ?;
 
 -- name: CreateVersion :exec
-INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO version (id, application_id, label, status, env_json, created_from_version_id, note, component_summary, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateVersion :exec
 UPDATE version
-SET label = ?, status = ?, env_json = ?, note = ?, updated_at = ?
+SET label = ?, status = ?, env_json = ?, note = ?, component_summary = ?, updated_at = ?
+WHERE id = ?;
+
+-- name: UpdateVersionComponentSummary :exec
+UPDATE version
+SET component_summary = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: CountVersionRuntimeRefs :one

@@ -69,7 +69,7 @@ type VersionExposeInput struct {
 	ListenPort    *int
 }
 
-// VersionView is version plus its components and exposes for API responses.
+// VersionView is a version with optional component and expose details for API responses.
 type VersionView struct {
 	Version    model.Version
 	Components []model.VersionComponent

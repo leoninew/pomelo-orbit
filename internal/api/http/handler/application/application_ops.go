@@ -25,8 +25,7 @@ func (h Handler) ImportApplication(c *gin.Context) {
 		h.writeError(c, err)
 		return
 	}
-	services, _ := h.runtimeService.ListServicesByApplication(c.Request.Context(), current.Id, app.Id)
-	resp := applicationResponse(app, services)
+	resp := applicationResponse(app)
 	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
 }
 
@@ -131,6 +130,20 @@ func (h Handler) PublishVersion(c *gin.Context) {
 		return
 	}
 	view, err := h.service.PublishVersion(c.Request.Context(), current.Id, c.Param("version_id"))
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := versionResponse(view)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
+func (h Handler) UnpublishVersion(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	view, err := h.service.UnpublishVersion(c.Request.Context(), current.Id, c.Param("version_id"))
 	if err != nil {
 		h.writeError(c, err)
 		return

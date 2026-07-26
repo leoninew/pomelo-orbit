@@ -131,6 +131,10 @@ export const applicationApi = {
     return request.post(`/api/version/${versionId}/publish`);
   },
 
+  unpublishVersion(versionId: string): Promise<VersionResp> {
+    return request.post(`/api/version/${versionId}/unpublish`);
+  },
+
   deleteVersion(versionId: string): Promise<void> {
     return request.delete(`/api/version/${versionId}`);
   },

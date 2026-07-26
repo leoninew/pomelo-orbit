@@ -54,7 +54,7 @@
               </td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
-                  <router-link :to="`/gateway/${item.id}/edit`" class="app-link">
+                  <router-link :to="`/gateway/edit/${item.id}`" class="app-link">
                     {{ t('common.edit') }}
                   </router-link>
                   <button

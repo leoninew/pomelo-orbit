@@ -8,13 +8,8 @@ message ApplicationResp {
   string name = 3;
   string code = 4;
   string image_pull_policy = 5;
-  // service_status is runtime binding status when a Service exists; empty if never deployed.
-  string service_status = 6;
   string created_at = 7;
   string updated_at = 8;
-  optional string service_id = 9;
-  optional string version_id = 10;
-  int32 service_count = 11;
   // kind is standard|gateway; immutable after create.
   string kind = 12;
 }

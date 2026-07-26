@@ -16,7 +16,7 @@ import (
 const runtimeVersionTestSecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 func TestVersionPersistsRuntimeFieldsAndCredentialReferences(t *testing.T) {
-	service, database, applicationStore := newVersionIntegrationService(t)
+	_, database, applicationStore := newVersionIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 	app, _ := createPublishedVersion(t, ctx, applicationStore, "runtime-fields")
@@ -33,7 +33,7 @@ func TestVersionPersistsRuntimeFieldsAndCredentialReferences(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	service = NewWithCredential(projectrepo.NewRepository(database), applicationStore, credentialStore, runtimeVersionTestSecretKey)
+	service := NewWithCredential(projectrepo.NewRepository(database), applicationStore, credentialStore, runtimeVersionTestSecretKey)
 
 	restartPolicy := "unless-stopped"
 	tmpfsJSON := `[{"target":"/tmp","size_bytes":1048576,"mode":"1777"}]`
@@ -80,7 +80,7 @@ func TestVersionRejectsUnsupportedRestartPolicy(t *testing.T) {
 }
 
 func TestVersionClassifiesUnreadableRuntimeEnvCredentialAsInternal(t *testing.T) {
-	service, database, applicationStore := newVersionIntegrationService(t)
+	_, database, applicationStore := newVersionIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 	app, _ := createPublishedVersion(t, ctx, applicationStore, "unreadable-runtime-credential")
@@ -93,7 +93,7 @@ func TestVersionClassifiesUnreadableRuntimeEnvCredentialAsInternal(t *testing.T)
 	}); err != nil {
 		t.Fatal(err)
 	}
-	service = NewWithCredential(projectrepo.NewRepository(database), applicationStore, credentialStore, runtimeVersionTestSecretKey)
+	service := NewWithCredential(projectrepo.NewRepository(database), applicationStore, credentialStore, runtimeVersionTestSecretKey)
 
 	_, err := service.CreateVersion(ctx, versionTestUserId, applicationdto.VersionCreateInput{
 		ApplicationId: app.Id,

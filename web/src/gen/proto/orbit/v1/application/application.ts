@@ -14,13 +14,8 @@ export interface ApplicationResp {
   name: string;
   code: string;
   image_pull_policy: string;
-  /** service_status is runtime binding status when a Service exists; empty if never deployed. */
-  service_status: string;
   created_at: string;
   updated_at: string;
-  service_id?: string | undefined;
-  version_id?: string | undefined;
-  service_count: number;
   /** kind is standard|gateway; immutable after create. */
   kind: string;
 }

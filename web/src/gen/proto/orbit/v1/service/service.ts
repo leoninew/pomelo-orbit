@@ -44,12 +44,27 @@ export interface ServiceCreateReq {
   runtime_config: { [key: string]: string };
 }
 
+export interface ServiceCreateReq_RuntimeConfigEntry {
+  key: string;
+  value: string;
+}
+
 export interface ServiceRuntimeConfigReq {
   runtime_config: { [key: string]: string };
+}
+
+export interface ServiceRuntimeConfigReq_RuntimeConfigEntry {
+  key: string;
+  value: string;
 }
 
 export interface ServiceRuntimeConfigResp {
   service_id: string;
   version_id: string;
   runtime_config: { [key: string]: string };
+}
+
+export interface ServiceRuntimeConfigResp_RuntimeConfigEntry {
+  key: string;
+  value: string;
 }

@@ -116,12 +116,7 @@
 
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between gap-3">
-          <div>
-            <h2 class="font-semibold text-foreground">{{ t('service.runtimeEnv.title') }}</h2>
-            <p class="mt-1 text-xs text-muted-foreground">
-              {{ t('service.runtimeEnv.nextDeployment') }}
-            </p>
-          </div>
+          <h2 class="font-semibold text-foreground">{{ t('service.runtimeEnv.title') }}</h2>
           <button
             class="app-button inline-flex h-8 items-center gap-2 px-3"
             :disabled="runtimeEnvLoading"
@@ -160,16 +155,14 @@
                   :key="`${item.component_name}:${item.env_key}`"
                 >
                   <td class="text-foreground">{{ item.component_name }}</td>
-                  <td class="break-all font-mono text-xs text-foreground">{{ item.env_key }}</td>
+                  <td class="break-all text-sm text-foreground">{{ item.env_key }}</td>
                   <td>
                     <router-link :to="`/credential/${item.credential_id}`" class="app-link">
                       {{ item.credential_name }}
                     </router-link>
                   </td>
-                  <td class="break-all font-mono text-xs text-foreground">{{ item.data_key }}</td>
-                  <td
-                    class="min-w-[240px] whitespace-pre-wrap break-all font-mono text-xs text-foreground"
-                  >
+                  <td class="break-all text-sm text-foreground">{{ item.data_key }}</td>
+                  <td class="min-w-[240px] whitespace-pre-wrap break-all text-sm text-foreground">
                     {{ item.value }}
                   </td>
                 </tr>
@@ -428,9 +421,9 @@
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { ApplicationContainerStatusResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp, ServiceRuntimeEnvResp } from '@/gen/proto/orbit/v1/service/service';
-  import { parseComposePsOutput, type ComposeContainer } from '@/utils/compose';
   import { appStatusTone, containerStateTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
@@ -444,7 +437,7 @@
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 
   const service = ref<ServiceResp | null>(null);
-  const containers = ref<ComposeContainer[]>([]);
+  const containers = ref<ApplicationContainerStatusResp[]>([]);
   const containersLoading = ref(false);
   const containersError = ref('');
   const runtimeEnv = ref<ServiceRuntimeEnvResp | null>(null);
@@ -532,7 +525,7 @@
       const resp = await applicationApi.getStatus(service.value.application_id, {
         service_id: service.value.id,
       });
-      containers.value = parseComposePsOutput(resp.status);
+      containers.value = resp.containers;
     } catch (err: unknown) {
       containers.value = [];
       containersError.value =

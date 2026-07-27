@@ -150,12 +150,12 @@ func (h Handler) GetApplicationStatus(c *gin.Context) {
 	if !ok {
 		return
 	}
-	value, err := h.service.ApplicationStatus(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTargetFromQuery(c))
+	containers, err := h.service.ApplicationStatus(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTargetFromQuery(c))
 	if err != nil {
 		h.writeError(c, err)
 		return
 	}
-	transportresponse.ProtoJSON(c, http.StatusOK, &applicationv1.ApplicationStatusResp{Status: value})
+	transportresponse.ProtoJSON(c, http.StatusOK, applicationStatusResponse(containers))
 }
 
 func (h Handler) GetApplicationLogs(c *gin.Context) {

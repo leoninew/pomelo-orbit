@@ -61,8 +61,18 @@ export interface DeploymentActionResp {
   deployment_id: string;
 }
 
-export interface ApplicationStatusResp {
+export interface ApplicationContainerStatusResp {
+  id: string;
+  name: string;
+  service: string;
+  state: string;
   status: string;
+  health: string;
+  image: string;
+}
+
+export interface ApplicationStatusResp {
+  containers: ApplicationContainerStatusResp[];
 }
 
 export interface ApplicationLogsResp {

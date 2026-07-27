@@ -12,22 +12,26 @@ import (
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
-// ApplicationStatus returns the compose status for a resolved runtime service.
-func (s Service) ApplicationStatus(ctx context.Context, userID string, applicationID string, input deploymentdto.ServiceTargetInput) (string, error) {
+// ApplicationStatus returns normalized container statuses for a resolved runtime service.
+func (s Service) ApplicationStatus(ctx context.Context, userID string, applicationID string, input deploymentdto.ServiceTargetInput) ([]deploymentdto.RuntimeContainer, error) {
 	app, err := s.loadApplicationForUser(ctx, userID, applicationID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	service, err := s.resolveServiceTarget(ctx, app.Id, input)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	command := containerPsCommand(composeProjectName(app.Code, service.InstanceKey))
 	output, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), command.Name, command.Args...)
 	if err != nil {
-		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
+		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}
-	return output, nil
+	containers, err := parseComposePsOutput(output)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to parse compose status", err)
+	}
+	return containers, nil
 }
 
 // ApplicationLogs returns recent compose logs for a resolved runtime service.

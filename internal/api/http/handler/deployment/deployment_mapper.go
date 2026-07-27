@@ -3,6 +3,7 @@ package deploymenthandler
 import (
 	transportresponse "gitee.com/leoninew/PomeloOrbit-go/internal/api/http/response"
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	applicationv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/application"
 	deploymentv1 "gitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/deployment"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
@@ -57,4 +58,20 @@ func deploymentLogsResponse(log deploymentdto.DeploymentLog) deploymentv1.Deploy
 
 func deploymentContainerLogsResponse(log deploymentdto.DeploymentContainerLog) deploymentv1.DeploymentContainerLogsResp {
 	return deploymentv1.DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported}
+}
+
+func applicationStatusResponse(containers []deploymentdto.RuntimeContainer) *applicationv1.ApplicationStatusResp {
+	response := make([]*applicationv1.ApplicationContainerStatusResp, 0, len(containers))
+	for _, container := range containers {
+		response = append(response, &applicationv1.ApplicationContainerStatusResp{
+			Id:      container.ID,
+			Name:    container.Name,
+			Service: container.Service,
+			State:   container.State,
+			Status:  container.Status,
+			Health:  container.Health,
+			Image:   container.Image,
+		})
+	}
+	return &applicationv1.ApplicationStatusResp{Containers: response}
 }

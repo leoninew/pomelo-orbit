@@ -63,3 +63,14 @@ type DeploymentContainerLog struct {
 	Source              string
 	IsRealtimeSupported bool
 }
+
+// RuntimeContainer is a normalized docker compose ps record for one container.
+type RuntimeContainer struct {
+	ID      string
+	Name    string
+	Service string
+	State   string
+	Status  string
+	Health  string
+	Image   string
+}

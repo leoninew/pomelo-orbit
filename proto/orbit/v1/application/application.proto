@@ -50,8 +50,18 @@ message DeploymentActionResp {
   string deployment_id = 1;
 }
 
+message ApplicationContainerStatusResp {
+  string id = 1;
+  string name = 2;
+  string service = 3;
+  string state = 4;
+  string status = 5;
+  string health = 6;
+  string image = 7;
+}
+
 message ApplicationStatusResp {
-  string status = 1;
+  repeated ApplicationContainerStatusResp containers = 1;
 }
 
 message ApplicationLogsResp {

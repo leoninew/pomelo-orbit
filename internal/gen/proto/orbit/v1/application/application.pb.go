@@ -475,16 +475,108 @@ func (x *DeploymentActionResp) GetDeploymentId() string {
 	return ""
 }
 
-type ApplicationStatusResp struct {
+type ApplicationContainerStatusResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Service       string                 `protobuf:"bytes,3,opt,name=service,proto3" json:"service,omitempty"`
+	State         string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
+	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Health        string                 `protobuf:"bytes,6,opt,name=health,proto3" json:"health,omitempty"`
+	Image         string                 `protobuf:"bytes,7,opt,name=image,proto3" json:"image,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApplicationContainerStatusResp) Reset() {
+	*x = ApplicationContainerStatusResp{}
+	mi := &file_orbit_v1_application_application_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApplicationContainerStatusResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApplicationContainerStatusResp) ProtoMessage() {}
+
+func (x *ApplicationContainerStatusResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_application_application_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApplicationContainerStatusResp.ProtoReflect.Descriptor instead.
+func (*ApplicationContainerStatusResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ApplicationContainerStatusResp) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetService() string {
+	if x != nil {
+		return x.Service
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetHealth() string {
+	if x != nil {
+		return x.Health
+	}
+	return ""
+}
+
+func (x *ApplicationContainerStatusResp) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+type ApplicationStatusResp struct {
+	state         protoimpl.MessageState            `protogen:"open.v1"`
+	Containers    []*ApplicationContainerStatusResp `protobuf:"bytes,1,rep,name=containers,proto3" json:"containers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ApplicationStatusResp) Reset() {
 	*x = ApplicationStatusResp{}
-	mi := &file_orbit_v1_application_application_proto_msgTypes[7]
+	mi := &file_orbit_v1_application_application_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -496,7 +588,7 @@ func (x *ApplicationStatusResp) String() string {
 func (*ApplicationStatusResp) ProtoMessage() {}
 
 func (x *ApplicationStatusResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_application_proto_msgTypes[7]
+	mi := &file_orbit_v1_application_application_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -509,14 +601,14 @@ func (x *ApplicationStatusResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationStatusResp.ProtoReflect.Descriptor instead.
 func (*ApplicationStatusResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{7}
+	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *ApplicationStatusResp) GetStatus() string {
+func (x *ApplicationStatusResp) GetContainers() []*ApplicationContainerStatusResp {
 	if x != nil {
-		return x.Status
+		return x.Containers
 	}
-	return ""
+	return nil
 }
 
 type ApplicationLogsResp struct {
@@ -528,7 +620,7 @@ type ApplicationLogsResp struct {
 
 func (x *ApplicationLogsResp) Reset() {
 	*x = ApplicationLogsResp{}
-	mi := &file_orbit_v1_application_application_proto_msgTypes[8]
+	mi := &file_orbit_v1_application_application_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -540,7 +632,7 @@ func (x *ApplicationLogsResp) String() string {
 func (*ApplicationLogsResp) ProtoMessage() {}
 
 func (x *ApplicationLogsResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_application_proto_msgTypes[8]
+	mi := &file_orbit_v1_application_application_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -553,7 +645,7 @@ func (x *ApplicationLogsResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationLogsResp.ProtoReflect.Descriptor instead.
 func (*ApplicationLogsResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{8}
+	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ApplicationLogsResp) GetLogs() string {
@@ -576,7 +668,7 @@ type ApplicationPaginatedResp struct {
 
 func (x *ApplicationPaginatedResp) Reset() {
 	*x = ApplicationPaginatedResp{}
-	mi := &file_orbit_v1_application_application_proto_msgTypes[9]
+	mi := &file_orbit_v1_application_application_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -588,7 +680,7 @@ func (x *ApplicationPaginatedResp) String() string {
 func (*ApplicationPaginatedResp) ProtoMessage() {}
 
 func (x *ApplicationPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_application_application_proto_msgTypes[9]
+	mi := &file_orbit_v1_application_application_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -601,7 +693,7 @@ func (x *ApplicationPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationPaginatedResp.ProtoReflect.Descriptor instead.
 func (*ApplicationPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{9}
+	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ApplicationPaginatedResp) GetItems() []*ApplicationResp {
@@ -693,9 +785,19 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\r_instance_keyB\r\n" +
 	"\v_service_id\";\n" +
 	"\x14DeploymentActionResp\x12#\n" +
-	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\"/\n" +
-	"\x15ApplicationStatusResp\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status\")\n" +
+	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\"\xba\x01\n" +
+	"\x1eApplicationContainerStatusResp\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
+	"\aservice\x18\x03 \x01(\tR\aservice\x12\x14\n" +
+	"\x05state\x18\x04 \x01(\tR\x05state\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\x12\x16\n" +
+	"\x06health\x18\x06 \x01(\tR\x06health\x12\x14\n" +
+	"\x05image\x18\a \x01(\tR\x05image\"m\n" +
+	"\x15ApplicationStatusResp\x12T\n" +
+	"\n" +
+	"containers\x18\x01 \x03(\v24.orbit.v1.application.ApplicationContainerStatusRespR\n" +
+	"containers\")\n" +
 	"\x13ApplicationLogsResp\x12\x12\n" +
 	"\x04logs\x18\x01 \x01(\tR\x04logs\"\xb2\x01\n" +
 	"\x18ApplicationPaginatedResp\x12;\n" +
@@ -718,28 +820,30 @@ func file_orbit_v1_application_application_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_application_application_proto_rawDescData
 }
 
-var file_orbit_v1_application_application_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_orbit_v1_application_application_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_orbit_v1_application_application_proto_goTypes = []any{
-	(*ApplicationResp)(nil),          // 0: orbit.v1.application.ApplicationResp
-	(*ApplicationCreateReq)(nil),     // 1: orbit.v1.application.ApplicationCreateReq
-	(*ApplicationUpdateReq)(nil),     // 2: orbit.v1.application.ApplicationUpdateReq
-	(*ApplicationDeployReq)(nil),     // 3: orbit.v1.application.ApplicationDeployReq
-	(*ApplicationStopReq)(nil),       // 4: orbit.v1.application.ApplicationStopReq
-	(*ApplicationRestartReq)(nil),    // 5: orbit.v1.application.ApplicationRestartReq
-	(*DeploymentActionResp)(nil),     // 6: orbit.v1.application.DeploymentActionResp
-	(*ApplicationStatusResp)(nil),    // 7: orbit.v1.application.ApplicationStatusResp
-	(*ApplicationLogsResp)(nil),      // 8: orbit.v1.application.ApplicationLogsResp
-	(*ApplicationPaginatedResp)(nil), // 9: orbit.v1.application.ApplicationPaginatedResp
-	nil,                              // 10: orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntry
+	(*ApplicationResp)(nil),                // 0: orbit.v1.application.ApplicationResp
+	(*ApplicationCreateReq)(nil),           // 1: orbit.v1.application.ApplicationCreateReq
+	(*ApplicationUpdateReq)(nil),           // 2: orbit.v1.application.ApplicationUpdateReq
+	(*ApplicationDeployReq)(nil),           // 3: orbit.v1.application.ApplicationDeployReq
+	(*ApplicationStopReq)(nil),             // 4: orbit.v1.application.ApplicationStopReq
+	(*ApplicationRestartReq)(nil),          // 5: orbit.v1.application.ApplicationRestartReq
+	(*DeploymentActionResp)(nil),           // 6: orbit.v1.application.DeploymentActionResp
+	(*ApplicationContainerStatusResp)(nil), // 7: orbit.v1.application.ApplicationContainerStatusResp
+	(*ApplicationStatusResp)(nil),          // 8: orbit.v1.application.ApplicationStatusResp
+	(*ApplicationLogsResp)(nil),            // 9: orbit.v1.application.ApplicationLogsResp
+	(*ApplicationPaginatedResp)(nil),       // 10: orbit.v1.application.ApplicationPaginatedResp
+	nil,                                    // 11: orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntry
 }
 var file_orbit_v1_application_application_proto_depIdxs = []int32{
-	10, // 0: orbit.v1.application.ApplicationDeployReq.runtime_config:type_name -> orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntry
-	0,  // 1: orbit.v1.application.ApplicationPaginatedResp.items:type_name -> orbit.v1.application.ApplicationResp
-	2,  // [2:2] is the sub-list for method output_type
-	2,  // [2:2] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	11, // 0: orbit.v1.application.ApplicationDeployReq.runtime_config:type_name -> orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntry
+	7,  // 1: orbit.v1.application.ApplicationStatusResp.containers:type_name -> orbit.v1.application.ApplicationContainerStatusResp
+	0,  // 2: orbit.v1.application.ApplicationPaginatedResp.items:type_name -> orbit.v1.application.ApplicationResp
+	3,  // [3:3] is the sub-list for method output_type
+	3,  // [3:3] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_application_application_proto_init() }
@@ -758,7 +862,7 @@ func file_orbit_v1_application_application_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_application_application_proto_rawDesc), len(file_orbit_v1_application_application_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -70,7 +70,47 @@
           <dt class="w-32 shrink-0 text-muted-foreground">创建时间</dt>
           <dd class="text-muted-foreground">{{ formatTime(credential.created_at) }}</dd>
         </div>
-        <div class="flex gap-2 sm:col-span-2">
+        <div v-if="credential.type === 'runtime_env'" class="flex gap-2 sm:col-span-2">
+          <dt class="w-32 shrink-0 text-muted-foreground">运行时环境变量</dt>
+          <dd class="min-w-0 flex-1">
+            <div class="mb-2 flex justify-end">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                :aria-label="isCredentialDataVisible ? '隐藏凭据内容' : '显示凭据内容'"
+                @click="isCredentialDataVisible = !isCredentialDataVisible"
+              >
+                <EyeOff v-if="isCredentialDataVisible" class="size-4" />
+                <Eye v-else class="size-4" />
+                {{ isCredentialDataVisible ? '隐藏值' : '显示值' }}
+              </button>
+            </div>
+            <div class="overflow-x-auto rounded border border-border">
+              <table class="app-table-detail min-w-[420px]">
+                <thead>
+                  <tr>
+                    <th>键名</th>
+                    <th>值</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="runtimeEnvRows.length === 0">
+                    <td colspan="2" class="text-center text-muted-foreground">—</td>
+                  </tr>
+                  <tr v-for="row in runtimeEnvRows" :key="row.key">
+                    <td class="break-all font-mono text-xs text-foreground">{{ row.key }}</td>
+                    <td
+                      class="min-w-[220px] whitespace-pre-wrap break-all font-mono text-xs text-foreground"
+                    >
+                      {{ isCredentialDataVisible ? row.value : '********' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </dd>
+        </div>
+        <div v-else class="flex gap-2 sm:col-span-2">
           <dt class="w-32 shrink-0 text-muted-foreground">凭据内容</dt>
           <dd class="flex min-w-0 flex-1 items-start gap-2">
             <span class="min-w-0 whitespace-pre-wrap break-all text-foreground">
@@ -108,14 +148,21 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">凭据内容</label>
-          <textarea
-            v-model="form.data"
-            class="app-textarea text-xs"
-            :class="errors.data ? 'app-input-error' : ''"
-            rows="8"
-            :placeholder="credential ? getDataPlaceholder(credential.type) : ''"
+          <RuntimeEnvEditor
+            v-if="credential?.type === 'runtime_env'"
+            v-model="form.runtimeEnvRows"
+            :error="errors.data"
           />
-          <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
+          <template v-else>
+            <textarea
+              v-model="form.data"
+              class="app-textarea text-xs"
+              :class="errors.data ? 'app-input-error' : ''"
+              rows="8"
+              :placeholder="credential ? getDataPlaceholder(credential.type) : ''"
+            />
+            <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
+          </template>
         </div>
       </div>
       <template #footer>
@@ -142,17 +189,24 @@
 
 <script setup lang="ts">
   import { ArrowLeft, Download, Eye, EyeOff, Pencil, Trash2 } from 'lucide-vue-next';
-  import { onMounted, reactive, ref } from 'vue';
+  import { computed, onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/AppDialog.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import RuntimeEnvEditor from '@/components/RuntimeEnvEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';
   import { formatTime } from '@/utils/time';
+  import {
+    parseRuntimeEnvRows,
+    serializeRuntimeEnvRows,
+    validateRuntimeEnvRows,
+    type RuntimeEnvRow,
+  } from '@/utils/runtimeEnv';
 
   const props = defineProps<{ id: string }>();
   const $router = useRouter();
@@ -164,8 +218,9 @@
   const isCredentialDataVisible = ref(false);
   const isEditModalOpen = ref(false);
   const isDeleteModalOpen = ref(false);
-  const form = reactive({ name: '', data: '' });
+  const form = reactive({ name: '', data: '', runtimeEnvRows: [] as RuntimeEnvRow[] });
   const errors = reactive({ name: '', data: '' });
+  const runtimeEnvRows = computed(() => parseRuntimeEnvRows(credential.value?.data));
 
   async function fetchCredential() {
     try {
@@ -179,14 +234,24 @@
   }
 
   function openEditModal() {
-    Object.assign(form, { name: credential.value?.name ?? '', data: credential.value?.data ?? '' });
+    Object.assign(form, {
+      name: credential.value?.name ?? '',
+      data: credential.value?.data ?? '',
+      runtimeEnvRows:
+        credential.value?.type === 'runtime_env' ? parseRuntimeEnvRows(credential.value.data) : [],
+    });
     Object.assign(errors, { name: '', data: '' });
     isEditModalOpen.value = true;
   }
 
   async function handleEditOk() {
     errors.name = form.name.trim() ? '' : '请输入凭据名称';
-    errors.data = form.data.trim() ? '' : '请输入凭据内容';
+    errors.data =
+      credential.value?.type === 'runtime_env'
+        ? validateRuntimeEnvRows(form.runtimeEnvRows) || ''
+        : form.data.trim()
+          ? ''
+          : '请输入凭据内容';
     if (errors.name || errors.data) {
       return;
     }
@@ -194,7 +259,10 @@
       await executeOp(async () => {
         await credentialApi.update(props.id, {
           name: form.name,
-          data: form.data,
+          data:
+            credential.value?.type === 'runtime_env'
+              ? serializeRuntimeEnvRows(form.runtimeEnvRows) || ''
+              : form.data,
         });
         toast.success('更新成功');
         isEditModalOpen.value = false;

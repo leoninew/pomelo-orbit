@@ -133,18 +133,19 @@
           </button>
         </div>
         <div class="overflow-x-auto">
-          <table class="app-table-detail min-w-[720px]">
+          <table class="app-table-detail min-w-[960px]">
             <thead>
               <tr>
                 <th>{{ t('application.detail.fields.component') }}</th>
                 <th>{{ t('application.detail.fields.image') }}</th>
                 <th>{{ t('application.detail.fields.ports') }}</th>
+                <th>{{ t('application.detail.fields.runtimeConfig') }}</th>
                 <th v-if="isEditable">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="(version.components ?? []).length === 0">
-                <td :colspan="isEditable ? 4 : 3" class="text-center text-muted-foreground">
+                <td :colspan="isEditable ? 5 : 4" class="text-center text-muted-foreground">
                   {{ t('application.versionDetail.empty.components') }}
                 </td>
               </tr>
@@ -154,6 +155,11 @@
                   {{ comp.image }}
                 </td>
                 <td class="text-muted-foreground">{{ portsSummary(comp.ports_json) }}</td>
+                <td>
+                  <button class="app-link text-left" @click="openComponentRuntimeDialog(index)">
+                    {{ runtimeSummary(comp) }}
+                  </button>
+                </td>
                 <td v-if="isEditable">
                   <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <button class="app-link" @click="openComponentBaseDialog(index)">
@@ -367,6 +373,15 @@
       :mounts-json="editingComponent?.mounts_json"
       :saving="operating"
       @save="saveComponentMounts"
+    />
+
+    <VersionComponentRuntimeDialog
+      v-model:open="isComponentRuntimeDialogOpen"
+      :component="editingComponent"
+      :runtime-env-credentials="runtimeEnvCredentials"
+      :readonly="!isEditable"
+      :saving="operating"
+      @save="saveComponentRuntime"
     />
 
     <VersionComponentDeleteDialog
@@ -595,6 +610,7 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
+  import { credentialApi } from '@/api/credential/credential';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -607,6 +623,7 @@
   import VersionComponentEnvDialog from '@/views/application/components/VersionComponentEnvDialog.vue';
   import VersionComponentMountsDialog from '@/views/application/components/VersionComponentMountsDialog.vue';
   import VersionComponentPortsDialog from '@/views/application/components/VersionComponentPortsDialog.vue';
+  import VersionComponentRuntimeDialog from '@/views/application/components/VersionComponentRuntimeDialog.vue';
   import {
     DropdownMenuContent,
     DropdownMenuItem,
@@ -616,6 +633,7 @@
   } from 'reka-ui';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { useProjectStore } from '@/stores/project';
   import type {
     VersionComponentReq,
     VersionComponentResp,
@@ -624,6 +642,7 @@
   } from '@/gen/proto/orbit/v1/application/version';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
+  import { parseRuntimeEnvRows } from '@/utils/runtimeEnv';
   import {
     parseEnvJson,
     parsePortsJson,
@@ -635,6 +654,7 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
+  const projectStore = useProjectStore();
   const versionId = route.params.id as string;
 
   const { loading, execute } = useStatusAsync();
@@ -648,6 +668,7 @@
   const isComponentPortsDialogOpen = ref(false);
   const isComponentEnvDialogOpen = ref(false);
   const isComponentMountsDialogOpen = ref(false);
+  const isComponentRuntimeDialogOpen = ref(false);
   const isDeleteComponentDialogOpen = ref(false);
   const isExposeDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
@@ -668,6 +689,7 @@
     instance_key: 'default',
     force_recreate: false,
   });
+  const runtimeEnvCredentials = ref<Array<{ id: string; name: string; dataKeys: string[] }>>([]);
 
   const basicForm = reactive({
     label: '',
@@ -687,6 +709,7 @@
   const isEditable = computed(() => version.value?.status === 'unpublished');
   const isPublished = computed(() => version.value?.status === 'published');
   const isDeployable = computed(() => Boolean(version.value));
+  const hasComponents = computed(() => (version.value?.components ?? []).length > 0);
   const envRows = computed(() => parseEnvJson(version.value?.env_json));
   const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
   const componentNames = computed(() =>
@@ -707,6 +730,25 @@
       return '—';
     }
     return rows.map((r) => `${r.host_port}:${r.container_port}`).join(', ');
+  }
+
+  function runtimeSummary(component: VersionComponentResp) {
+    const parts: string[] = [];
+    if (component.command_json) parts.push(t('application.runtime.summary.command'));
+    if (component.args_json) parts.push(t('application.runtime.summary.args'));
+    if (component.healthcheck_json) parts.push(t('application.runtime.summary.healthcheck'));
+    if (component.resources_json) parts.push(t('application.runtime.summary.resources'));
+    if (component.restart_policy) parts.push(t('application.runtime.summary.restart'));
+    if (component.tmpfs_json) parts.push(t('application.runtime.summary.tmpfs'));
+    if (component.ulimits_json) parts.push(t('application.runtime.summary.ulimits'));
+    if ((component.secret_env_refs ?? []).length > 0) {
+      parts.push(
+        t('application.runtime.summary.secretEnvRefs', {
+          count: component.secret_env_refs.length,
+        })
+      );
+    }
+    return parts.length > 0 ? parts.join(' · ') : t('application.runtime.summary.empty');
   }
 
   function componentPayload(component: VersionComponentResp): VersionComponentReq {
@@ -885,6 +927,42 @@
     isComponentMountsDialogOpen.value = true;
   }
 
+  async function openComponentRuntimeDialog(index: number) {
+    const component = version.value?.components?.[index];
+    if (!component) {
+      return;
+    }
+    editingComponentIndex.value = index;
+    try {
+      await loadRuntimeEnvCredentials();
+      isComponentRuntimeDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+    }
+  }
+
+  async function loadRuntimeEnvCredentials() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      runtimeEnvCredentials.value = [];
+      return;
+    }
+    const page = await credentialApi.list({ project_id: projectId, page: 1, per_page: 100 });
+    const credentials = (page.items ?? []).filter(
+      (credential) => credential.type === 'runtime_env'
+    );
+    runtimeEnvCredentials.value = await Promise.all(
+      credentials.map(async (credential) => {
+        const detail = await credentialApi.get(credential.id);
+        return {
+          id: detail.id,
+          name: detail.name,
+          dataKeys: parseRuntimeEnvRows(detail.data).map((row) => row.key),
+        };
+      })
+    );
+  }
+
   async function updateComponents(next: VersionComponentReq[], exposes = exposesPayload()) {
     await executeOp(async () => {
       version.value = await applicationApi.updateVersion(versionId, { components: next, exposes });
@@ -970,6 +1048,35 @@
     try {
       await updateComponents(next);
       isComponentMountsDialogOpen.value = false;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+    }
+  }
+
+  async function saveComponentRuntime(
+    config: Pick<
+      VersionComponentReq,
+      | 'command_json'
+      | 'args_json'
+      | 'healthcheck_json'
+      | 'resources_json'
+      | 'restart_policy'
+      | 'tmpfs_json'
+      | 'ulimits_json'
+      | 'secret_env_refs'
+    >
+  ) {
+    const index = editingComponentIndex.value;
+    if (index === null) {
+      return;
+    }
+    const next = replaceComponent(index, config);
+    if (!next) {
+      return;
+    }
+    try {
+      await updateComponents(next);
+      isComponentRuntimeDialogOpen.value = false;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
     }
@@ -1175,6 +1282,10 @@
     if (!version.value || !isDeployable.value) {
       return;
     }
+    if (!hasComponents.value) {
+      toast.error(t('application.validation.componentRequired'));
+      return;
+    }
     deployError.value = '';
     deployForm.force_recreate = false;
     deployForm.instance_key = 'default';
@@ -1184,6 +1295,11 @@
   async function handleDeployOk() {
     const current = version.value;
     if (!current) {
+      return;
+    }
+    if (!hasComponents.value) {
+      toast.error(t('application.validation.componentRequired'));
+      isDeployDialogOpen.value = false;
       return;
     }
     deployError.value = '';

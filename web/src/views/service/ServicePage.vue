@@ -106,6 +106,14 @@
             >
               {{ t('service.actions.stop') }}
             </button>
+            <button
+              v-if="svc.status === 'stopped'"
+              class="app-link-danger"
+              :disabled="operating"
+              @click="openDeleteDialog(svc)"
+            >
+              {{ t('service.actions.delete') }}
+            </button>
             <router-link
               :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
               class="app-link"
@@ -178,6 +186,14 @@
                     @click="openStopDialog(svc)"
                   >
                     {{ t('service.actions.stop') }}
+                  </button>
+                  <button
+                    v-if="svc.status === 'stopped'"
+                    class="app-link-danger"
+                    :disabled="operating"
+                    @click="openDeleteDialog(svc)"
+                  >
+                    {{ t('service.actions.delete') }}
                   </button>
                   <router-link
                     :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
@@ -265,6 +281,24 @@
         </button>
       </template>
     </AppDialog>
+
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('service.delete.dialogTitle')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-foreground">
+        {{ t('service.delete.confirm', { instance: selectedService?.instance_key || 'default' }) }}
+      </p>
+      <template #footer>
+        <button class="app-button" @click="isDeleteDialogOpen = false">
+          {{ t('common.cancel') }}
+        </button>
+        <button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
+          {{ t('common.delete') }}
+        </button>
+      </template>
+    </AppDialog>
   </div>
 </template>
 
@@ -318,6 +352,7 @@
   });
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
+  const isDeleteDialogOpen = ref(false);
 
   const versionSelectOptions = computed(() =>
     versions.value.map((version) => ({
@@ -451,6 +486,11 @@
     isStopDialogOpen.value = true;
   }
 
+  function openDeleteDialog(service: ServiceResp) {
+    selectedService.value = service;
+    isDeleteDialogOpen.value = true;
+  }
+
   async function handleStopOk() {
     const service = selectedService.value;
     if (!service) {
@@ -472,6 +512,26 @@
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.stopFailed'));
+    }
+  }
+
+  async function handleDeleteOk() {
+    const service = selectedService.value;
+    if (!service) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        await serviceApi.remove(service.id);
+        toast.success(t('service.toast.deleteSuccess'));
+        isDeleteDialogOpen.value = false;
+        if (services.value.length === 1 && pagination.current > 1) {
+          pagination.current--;
+        }
+        await fetchServices();
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.toast.deleteFailed'));
     }
   }
 

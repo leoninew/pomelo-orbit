@@ -31,6 +31,15 @@
           {{ t('service.actions.stop') }}
         </button>
         <button
+          v-if="canDelete"
+          class="app-button-danger h-9 px-3"
+          :disabled="operating"
+          @click="isDeleteDialogOpen = true"
+        >
+          <Trash2 class="size-4" />
+          {{ t('service.actions.delete') }}
+        </button>
+        <button
           v-if="service"
           class="app-button h-9 px-3"
           :disabled="operating"
@@ -103,6 +112,71 @@
             <dd class="text-muted-foreground">{{ formatTime(service.updated_at) }}</dd>
           </div>
         </dl>
+      </div>
+
+      <div class="app-surface">
+        <div class="app-section-header flex items-center justify-between gap-3">
+          <div>
+            <h2 class="font-semibold text-foreground">{{ t('service.runtimeEnv.title') }}</h2>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{ t('service.runtimeEnv.nextDeployment') }}
+            </p>
+          </div>
+          <button
+            class="app-button inline-flex h-8 items-center gap-2 px-3"
+            :disabled="runtimeEnvLoading"
+            @click="loadRuntimeEnv"
+          >
+            <RefreshCw class="size-4" :class="{ 'animate-spin': runtimeEnvLoading }" />
+            {{ t('common.refresh') }}
+          </button>
+        </div>
+        <div class="px-5 py-4">
+          <AppSpinner v-if="runtimeEnvLoading && !runtimeEnv" class="py-8" />
+          <div v-else-if="runtimeEnvError" class="flex flex-wrap items-center gap-3">
+            <p class="text-sm text-destructive">{{ runtimeEnvError }}</p>
+            <button class="app-link text-sm" @click="loadRuntimeEnv">
+              {{ t('service.runtimeEnv.retry') }}
+            </button>
+          </div>
+          <AppEmptyState
+            v-else-if="!runtimeEnv || runtimeEnv.items.length === 0"
+            :message="t('service.runtimeEnv.empty')"
+          />
+          <div v-else class="overflow-x-auto">
+            <table class="app-table-detail min-w-[900px]">
+              <thead>
+                <tr>
+                  <th>{{ t('service.fields.component') }}</th>
+                  <th>{{ t('service.runtimeEnv.envKey') }}</th>
+                  <th>{{ t('service.runtimeEnv.credential') }}</th>
+                  <th>{{ t('service.runtimeEnv.dataKey') }}</th>
+                  <th>{{ t('service.runtimeEnv.value') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in runtimeEnv.items"
+                  :key="`${item.component_name}:${item.env_key}`"
+                >
+                  <td class="text-foreground">{{ item.component_name }}</td>
+                  <td class="break-all font-mono text-xs text-foreground">{{ item.env_key }}</td>
+                  <td>
+                    <router-link :to="`/credential/${item.credential_id}`" class="app-link">
+                      {{ item.credential_name }}
+                    </router-link>
+                  </td>
+                  <td class="break-all font-mono text-xs text-foreground">{{ item.data_key }}</td>
+                  <td
+                    class="min-w-[240px] whitespace-pre-wrap break-all font-mono text-xs text-foreground"
+                  >
+                    {{ item.value }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div class="app-surface">
@@ -239,6 +313,24 @@
       </template>
     </AppDialog>
 
+    <AppDialog
+      v-model:open="isDeleteDialogOpen"
+      :title="t('service.delete.dialogTitle')"
+      width-class="w-[min(420px,calc(100vw-32px))]"
+    >
+      <p class="text-sm text-foreground">
+        {{ t('service.delete.confirm', { instance: service?.instance_key || 'default' }) }}
+      </p>
+      <template #footer>
+        <button class="app-button" @click="isDeleteDialogOpen = false">
+          {{ t('common.cancel') }}
+        </button>
+        <button class="app-button-destructive" :disabled="operating" @click="handleDeleteOk">
+          {{ t('common.delete') }}
+        </button>
+      </template>
+    </AppDialog>
+
     <AppDrawer
       :open="logsDrawerOpen"
       :title="logsDrawerTitle"
@@ -312,7 +404,15 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Loader2, RefreshCw, Rocket, ScrollText, Square } from 'lucide-vue-next';
+  import {
+    ArrowLeft,
+    Loader2,
+    RefreshCw,
+    Rocket,
+    ScrollText,
+    Square,
+    Trash2,
+  } from 'lucide-vue-next';
   import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -329,7 +429,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
-  import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+  import type { ServiceResp, ServiceRuntimeEnvResp } from '@/gen/proto/orbit/v1/service/service';
   import { parseComposePsOutput, type ComposeContainer } from '@/utils/compose';
   import { appStatusTone, containerStateTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
@@ -347,6 +447,9 @@
   const containers = ref<ComposeContainer[]>([]);
   const containersLoading = ref(false);
   const containersError = ref('');
+  const runtimeEnv = ref<ServiceRuntimeEnvResp | null>(null);
+  const runtimeEnvLoading = ref(false);
+  const runtimeEnvError = ref('');
   const versions = ref<VersionResp[]>([]);
 
   const isDeployDialogOpen = ref(false);
@@ -358,6 +461,7 @@
 
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
+  const isDeleteDialogOpen = ref(false);
 
   const logsDrawerOpen = ref(false);
   const logsComponent = ref('');
@@ -375,6 +479,7 @@
     const s = service.value?.status;
     return s === 'running' || s === 'faulted';
   });
+  const canDelete = computed(() => service.value?.status === 'stopped');
 
   const versionSelectOptions = computed(() =>
     versions.value.map((v) => ({
@@ -437,6 +542,25 @@
     }
   }
 
+  async function loadRuntimeEnv() {
+    if (!service.value) {
+      runtimeEnv.value = null;
+      runtimeEnvError.value = '';
+      return;
+    }
+    runtimeEnvLoading.value = true;
+    runtimeEnvError.value = '';
+    try {
+      runtimeEnv.value = await serviceApi.getRuntimeEnv(service.value.id);
+    } catch (err: unknown) {
+      runtimeEnv.value = null;
+      runtimeEnvError.value =
+        err instanceof Error ? err.message : t('service.runtimeEnv.loadFailed');
+    } finally {
+      runtimeEnvLoading.value = false;
+    }
+  }
+
   async function loadVersions() {
     if (!service.value) {
       versions.value = [];
@@ -472,8 +596,11 @@
   async function handleRefresh() {
     await fetchService();
     if (service.value) {
-      await Promise.all([loadContainers(), loadVersions()]);
+      await Promise.all([loadContainers(), loadVersions(), loadRuntimeEnv()]);
+      return;
     }
+    runtimeEnv.value = null;
+    runtimeEnvError.value = '';
   }
 
   function openDeployDialog() {
@@ -548,6 +675,23 @@
       });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('service.toast.stopFailed'));
+    }
+  }
+
+  async function handleDeleteOk() {
+    const current = service.value;
+    if (!current) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        await serviceApi.remove(current.id);
+        toast.success(t('service.toast.deleteSuccess'));
+        isDeleteDialogOpen.value = false;
+        await router.push('/services');
+      });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('service.toast.deleteFailed'));
     }
   }
 

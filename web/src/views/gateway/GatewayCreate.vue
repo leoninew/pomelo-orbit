@@ -148,7 +148,7 @@
   const form = reactive({
     name: 'Traefik',
     code: 'traefik',
-    rest_api_url: 'http://traefik:8080',
+    rest_api_url: 'http://localhost:8080',
     base_domain: 'lvh.me',
     image: 'traefik:3.6',
     image_pull_policy: 'missing',

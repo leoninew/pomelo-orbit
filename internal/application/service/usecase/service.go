@@ -2,23 +2,71 @@ package servicesvc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"sort"
 	"strings"
 
 	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
+	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
-type Service struct {
-	project     repository.ProjectReader
-	application repository.ApplicationReader
-	service     repository.ServiceReader
+type applicationReader interface {
+	Application(ctx context.Context, id string) (model.Application, error)
+	Version(ctx context.Context, id string) (model.Version, error)
+	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 }
 
-func New(project repository.ProjectReader, application repository.ApplicationReader, service repository.ServiceReader) Service {
-	return Service{project: project, application: application, service: service}
+type credentialReader interface {
+	Credential(ctx context.Context, id string) (model.Credential, error)
+}
+
+type serviceStore interface {
+	repository.ServiceReader
+	DeleteService(ctx context.Context, id string) error
+}
+
+type Service struct {
+	project     repository.ProjectReader
+	application applicationReader
+	credential  credentialReader
+	secretKey   string
+	service     serviceStore
+}
+
+func New(project repository.ProjectReader, application applicationReader, credential credentialReader, secretKey string, service serviceStore) Service {
+	return Service{
+		project: project, application: application, credential: credential, secretKey: secretKey, service: service,
+	}
+}
+
+// DeleteService removes a stopped runtime binding while preserving its deployment history.
+func (s Service) DeleteService(ctx context.Context, userId string, serviceId string) error {
+	serviceId = strings.TrimSpace(serviceId)
+	if serviceId == "" {
+		return apperror.New(apperror.KindValidation, "service_id is required")
+	}
+	item, err := s.service.ServiceListItem(ctx, serviceId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
+		}
+		return apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	if _, err := s.loadApplicationForUser(ctx, userId, item.ApplicationId); err != nil {
+		return err
+	}
+	if item.Status != status.ServiceStatusStopped {
+		return apperror.New(apperror.KindValidation, "Only stopped services can be deleted")
+	}
+	if err := s.service.DeleteService(ctx, item.Id); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete service", err)
+	}
+	return nil
 }
 
 // ListServices returns runtime bindings for a project.
@@ -58,6 +106,97 @@ func (s Service) GetService(ctx context.Context, userId string, serviceId string
 		return servicedto.ServiceView{}, err
 	}
 	return serviceViewFromListItem(item), nil
+}
+
+// RuntimeEnv returns the persisted credential values referenced by the service's current Version.
+func (s Service) RuntimeEnv(ctx context.Context, userId string, serviceId string) (servicedto.RuntimeEnvView, error) {
+	serviceId = strings.TrimSpace(serviceId)
+	if serviceId == "" {
+		return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindValidation, "service_id is required")
+	}
+	item, err := s.service.ServiceListItem(ctx, serviceId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
+		}
+		return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	app, err := s.loadApplicationForUser(ctx, userId, item.ApplicationId)
+	if err != nil {
+		return servicedto.RuntimeEnvView{}, err
+	}
+	version, err := s.application.Version(ctx, item.VersionId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Version "+item.VersionId+" not found")
+		}
+		return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service version", err)
+	}
+	if version.ApplicationId != app.Id {
+		return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
+	}
+	components, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
+	}
+	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
+
+	items := make([]servicedto.RuntimeEnvItem, 0)
+	for _, component := range components {
+		refs := append([]model.VersionComponentSecretEnvRef(nil), component.SecretEnvRefs...)
+		sort.Slice(refs, func(i, j int) bool {
+			if refs[i].EnvKey != refs[j].EnvKey {
+				return refs[i].EnvKey < refs[j].EnvKey
+			}
+			if refs[i].CredentialId != refs[j].CredentialId {
+				return refs[i].CredentialId < refs[j].CredentialId
+			}
+			return refs[i].DataKey < refs[j].DataKey
+		})
+		for _, ref := range refs {
+			credential, err := s.credential.Credential(ctx, ref.CredentialId)
+			if err != nil {
+				if errors.Is(err, repository.ErrNotFound) {
+					return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Credential "+ref.CredentialId+" not found")
+				}
+				return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load runtime_env credential", err)
+			}
+			if credential.Type != "runtime_env" || app.ProjectId == nil || credential.ProjectId == nil || *credential.ProjectId != *app.ProjectId {
+				return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindInternal, "Invalid runtime_env credential reference")
+			}
+			value, err := s.runtimeEnvCredentialValue(credential.EncryptedData, ref.DataKey)
+			if err != nil {
+				return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to read runtime_env credential", err)
+			}
+			items = append(items, servicedto.RuntimeEnvItem{
+				ComponentName: component.Name, EnvKey: ref.EnvKey, CredentialId: credential.Id,
+				CredentialName: credential.Name, DataKey: ref.DataKey, Value: value,
+			})
+		}
+	}
+	return servicedto.RuntimeEnvView{ServiceId: item.Id, VersionId: version.Id, Items: items}, nil
+}
+
+func (s Service) runtimeEnvCredentialValue(encryptedData string, dataKey string) (string, error) {
+	if s.secretKey == "" {
+		return "", errors.New("runtime_env credential decryption is not configured")
+	}
+	plain, err := security.DecryptString(s.secretKey, encryptedData)
+	if err != nil {
+		return "", err
+	}
+	var values map[string]string
+	if err := json.Unmarshal([]byte(plain), &values); err != nil || len(values) == 0 {
+		if err != nil {
+			return "", err
+		}
+		return "", errors.New("runtime_env credential data is empty")
+	}
+	value, exists := values[dataKey]
+	if !exists {
+		return "", errors.New("runtime_env credential data_key is missing")
+	}
+	return value, nil
 }
 
 // ListServicesByApplication returns runtime bindings after authorizing access to the application.

@@ -54,6 +54,27 @@ func (q *Queries) CountServicesByProject(ctx context.Context, arg CountServicesB
 	return count, err
 }
 
+const deleteService = `-- name: DeleteService :exec
+DELETE FROM service
+WHERE id = ?
+`
+
+func (q *Queries) DeleteService(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteService, id)
+	return err
+}
+
+const detachDeploymentServiceRefs = `-- name: DetachDeploymentServiceRefs :exec
+UPDATE deployment
+SET service_id = NULL
+WHERE service_id = ?
+`
+
+func (q *Queries) DetachDeploymentServiceRefs(ctx context.Context, serviceID sql.NullString) error {
+	_, err := q.db.ExecContext(ctx, detachDeploymentServiceRefs, serviceID)
+	return err
+}
+
 const insertService = `-- name: InsertService :exec
 INSERT INTO service (
   id, application_id, instance_key, version_id, last_successful_version_id, status, created_at, updated_at

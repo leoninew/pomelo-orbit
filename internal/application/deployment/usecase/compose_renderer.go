@@ -481,6 +481,9 @@ func ptrString(v *string) string {
 }
 
 func validateVersionComponents(components []model.VersionComponent) error {
+	if len(components) == 0 {
+		return fmt.Errorf("at least one component is required")
+	}
 	names := make(map[string]struct{}, len(components))
 	for _, component := range components {
 		name := component.Name

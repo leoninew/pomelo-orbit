@@ -100,7 +100,13 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			stores.credential,
 			cfg.JWT.SecretKey,
 		),
-		ServiceService: servicesvc.New(stores.project, stores.application, stores.service),
+		ServiceService: servicesvc.New(
+			stores.project,
+			stores.application,
+			stores.credential,
+			cfg.JWT.SecretKey,
+			stores.service,
+		),
 		DeploymentService: deploymentsvc.NewCommandService(
 			stores.project,
 			stores.application,

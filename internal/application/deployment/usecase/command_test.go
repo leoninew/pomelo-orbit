@@ -73,6 +73,24 @@ func TestDeployApplicationCreatesServiceBeforeFirstDeployment(t *testing.T) {
 	}
 }
 
+func TestDeployApplicationRejectsVersionWithoutComponents(t *testing.T) {
+	service, store, dispatcher := newCommandTestService()
+	store.components = nil
+
+	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+		VersionId: "version-1", InstanceKey: "default",
+	})
+	if err == nil {
+		t.Fatal("expected deployment validation error")
+	}
+	if len(store.deployments) != 0 || len(store.operations) != 0 {
+		t.Fatalf("deployment must not be persisted when the version has no components: deployments=%+v operations=%v", store.deployments, store.operations)
+	}
+	if dispatcher.deploy.DeploymentID != "" {
+		t.Fatalf("deployment must not be dispatched when the version has no components: %+v", dispatcher.deploy)
+	}
+}
+
 func TestRestartApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 

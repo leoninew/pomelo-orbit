@@ -1,4 +1,8 @@
-import type { ServicePaginatedResp, ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+import type {
+  ServicePaginatedResp,
+  ServiceResp,
+  ServiceRuntimeEnvResp,
+} from '@/gen/proto/orbit/v1/service/service';
 import request from '@/utils/request';
 
 export const serviceApi = {
@@ -15,5 +19,13 @@ export const serviceApi = {
 
   get(id: string): Promise<ServiceResp> {
     return request.get(`/api/service/${id}`);
+  },
+
+  remove(id: string): Promise<void> {
+    return request.delete(`/api/service/${id}`);
+  },
+
+  getRuntimeEnv(id: string): Promise<ServiceRuntimeEnvResp> {
+    return request.get(`/api/service/${id}/runtime-env`);
   },
 };

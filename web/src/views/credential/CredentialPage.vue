@@ -98,14 +98,21 @@
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">凭据内容</label>
-        <textarea
-          v-model="form.data"
-          rows="8"
-          :placeholder="getDataPlaceholder(form.type)"
-          class="app-textarea"
-          :class="errors.data ? 'app-input-error' : ''"
+        <RuntimeEnvEditor
+          v-if="form.type === 'runtime_env'"
+          v-model="form.runtimeEnvRows"
+          :error="errors.data"
         />
-        <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
+        <template v-else>
+          <textarea
+            v-model="form.data"
+            rows="8"
+            :placeholder="getDataPlaceholder(form.type)"
+            class="app-textarea"
+            :class="errors.data ? 'app-input-error' : ''"
+          />
+          <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
+        </template>
       </div>
     </div>
     <template #footer>
@@ -157,13 +164,22 @@
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">凭据内容</label>
-        <textarea
-          v-model="importForm.data"
-          rows="8"
-          class="app-textarea"
-          :class="importErrors.data ? 'app-input-error' : ''"
+        <RuntimeEnvEditor
+          v-if="importForm.type === 'runtime_env'"
+          v-model="importRuntimeEnvRows"
+          :error="importErrors.data"
         />
-        <p v-if="importErrors.data" class="app-field-error text-xs">{{ importErrors.data }}</p>
+        <template v-else>
+          <textarea
+            v-model="importForm.data"
+            rows="8"
+            class="app-textarea"
+            :class="importErrors.data ? 'app-input-error' : ''"
+          />
+          <p v-if="importErrors.data" class="app-field-error text-xs">
+            {{ importErrors.data }}
+          </p>
+        </template>
       </div>
     </div>
     <template #footer>
@@ -182,6 +198,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
+  import RuntimeEnvEditor from '@/components/RuntimeEnvEditor.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
@@ -192,6 +209,12 @@
     CredentialResp,
   } from '@/gen/proto/orbit/v1/credential/credential';
   import { formatTime } from '@/utils/time';
+  import {
+    parseRuntimeEnvRows,
+    serializeRuntimeEnvRows,
+    validateRuntimeEnvRows,
+    type RuntimeEnvRow,
+  } from '@/utils/runtimeEnv';
   import { ToolbarRoot } from 'reka-ui';
 
   const toast = useToast();
@@ -212,8 +235,13 @@
   const currentId = ref('');
   const pendingDeleteId = ref('');
 
-  const form = reactive({ name: '', type: 'github_token' as string, data: '' });
-  const credentialTypeValues = ['github_token', 'gitee_token', 'git_ssh'];
+  const form = reactive({
+    name: '',
+    type: 'github_token' as string,
+    data: '',
+    runtimeEnvRows: [] as RuntimeEnvRow[],
+  });
+  const credentialTypeValues = ['github_token', 'gitee_token', 'git_ssh', 'runtime_env'];
   const errors = reactive({ name: '', data: '' });
   const importForm = reactive<CredentialImportReq>({
     version: '',
@@ -222,11 +250,21 @@
     data: '',
   });
   const importErrors = reactive({ name: '', data: '' });
+  const importRuntimeEnvRows = ref<RuntimeEnvRow[]>([]);
 
   function validate() {
     errors.name = form.name.trim() ? '' : '请输入凭据名称';
-    errors.data = form.data.trim() ? '' : '请输入凭据内容';
+    errors.data =
+      form.type === 'runtime_env'
+        ? validateRuntimeEnvRows(form.runtimeEnvRows) || ''
+        : form.data.trim()
+          ? ''
+          : '请输入凭据内容';
     return !errors.name && !errors.data;
+  }
+
+  function formData(type: string, data: string, runtimeEnvRows: RuntimeEnvRow[]) {
+    return type === 'runtime_env' ? serializeRuntimeEnvRows(runtimeEnvRows) || '' : data;
   }
 
   async function fetchCredentials() {
@@ -270,7 +308,7 @@
   function openCreateModal() {
     isEditing.value = false;
     currentId.value = '';
-    Object.assign(form, { name: '', type: 'github_token', data: '' });
+    Object.assign(form, { name: '', type: 'github_token', data: '', runtimeEnvRows: [] });
     Object.assign(errors, { name: '', data: '' });
     showCredentialDialog.value = true;
   }
@@ -281,7 +319,12 @@
         const detail = await credentialApi.get(record.id);
         isEditing.value = true;
         currentId.value = record.id;
-        Object.assign(form, { name: detail.name, type: detail.type, data: detail.data });
+        Object.assign(form, {
+          name: detail.name,
+          type: detail.type,
+          data: detail.data,
+          runtimeEnvRows: detail.type === 'runtime_env' ? parseRuntimeEnvRows(detail.data) : [],
+        });
         Object.assign(errors, { name: '', data: '' });
         showCredentialDialog.value = true;
       });
@@ -304,7 +347,7 @@
         if (isEditing.value) {
           await credentialApi.update(currentId.value, {
             name: form.name,
-            data: form.data,
+            data: formData(form.type, form.data, form.runtimeEnvRows),
           });
           toast.success('更新成功');
         } else {
@@ -381,6 +424,8 @@
         type: data.type,
         data: data.data || '',
       });
+      importRuntimeEnvRows.value =
+        data.type === 'runtime_env' ? parseRuntimeEnvRows(data.data) : [];
       Object.assign(importErrors, { name: '', data: '' });
       showImportDialog.value = true;
     } catch {
@@ -392,7 +437,12 @@
 
   async function handleImportOk() {
     importErrors.name = importForm.name.trim() ? '' : '请输入凭据名称';
-    importErrors.data = importForm.data.trim() ? '' : '请输入凭据内容';
+    importErrors.data =
+      importForm.type === 'runtime_env'
+        ? validateRuntimeEnvRows(importRuntimeEnvRows.value) || ''
+        : importForm.data.trim()
+          ? ''
+          : '请输入凭据内容';
     if (importErrors.name || importErrors.data) {
       return;
     }
@@ -408,7 +458,7 @@
             version: importForm.version,
             name: importForm.name,
             type: importForm.type,
-            data: importForm.data,
+            data: formData(importForm.type, importForm.data, importRuntimeEnvRows.value),
           },
           { project_id: projectId }
         );

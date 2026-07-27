@@ -11,4 +11,6 @@ func (r Router) registerService(engine *gin.Engine) {
 
 	engine.GET("/api/service", handler.ListServices)
 	engine.GET("/api/service/:service_id", handler.GetService)
+	engine.DELETE("/api/service/:service_id", handler.DeleteService)
+	engine.GET("/api/service/:service_id/runtime-env", handler.GetServiceRuntimeEnv)
 }

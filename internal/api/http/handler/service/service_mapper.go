@@ -31,3 +31,14 @@ func serviceViewResponses(items []servicedto.ServiceView) []servicev1.ServiceRes
 	}
 	return resp
 }
+
+func serviceRuntimeEnvResponse(item servicedto.RuntimeEnvView) servicev1.ServiceRuntimeEnvResp {
+	items := make([]*servicev1.ServiceRuntimeEnvItem, 0, len(item.Items))
+	for _, env := range item.Items {
+		items = append(items, &servicev1.ServiceRuntimeEnvItem{
+			ComponentName: env.ComponentName, EnvKey: env.EnvKey, CredentialId: env.CredentialId,
+			CredentialName: env.CredentialName, DataKey: env.DataKey, Value: env.Value,
+		})
+	}
+	return servicev1.ServiceRuntimeEnvResp{ServiceId: item.ServiceId, VersionId: item.VersionId, Items: items}
+}

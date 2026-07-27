@@ -107,60 +107,108 @@
         </dl>
       </div>
 
-      <!-- 日志卡片 -->
-      <div class="app-surface flex min-h-[360px] flex-1 flex-col">
-        <div class="app-section-header flex shrink-0 items-center justify-between">
-          <div>
-            <h2 class="font-semibold text-foreground">{{ logSectionTitle }}</h2>
-            <p v-if="logMode === 'operation'" class="mt-1 text-xs text-muted-foreground">
-              部署失败时展示 compose 操作日志，便于定位命令失败原因。
-            </p>
-            <p
-              v-else-if="logMode === 'container' && containerLogSource === 'tail'"
-              class="mt-1 text-xs text-muted-foreground"
+      <div class="app-surface flex min-h-[360px] min-w-0 flex-1 flex-col">
+        <TabsRoot default-value="operation" class="flex min-h-0 flex-1 flex-col">
+          <div class="app-section-header flex shrink-0 items-center justify-between">
+            <TabsList aria-label="日志类型" class="flex gap-1 border-b border-border">
+              <TabsTrigger
+                value="operation"
+                class="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+              >
+                操作日志
+              </TabsTrigger>
+              <TabsTrigger
+                value="container"
+                class="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+              >
+                容器日志
+              </TabsTrigger>
+            </TabsList>
+            <button
+              v-if="!isTerminalDeployment"
+              class="app-button inline-flex h-8 items-center gap-2 px-3"
+              :class="isAutoRefreshing ? 'text-primary' : ''"
+              @click="toggleAutoRefresh"
             >
-              当前展示最近容器日志，可能包含本次操作前的历史输出。
-            </p>
+              <Loader2 class="size-4" :class="isAutoRefreshing ? 'animate-spin' : ''" />
+              {{ isAutoRefreshing ? '自动刷新' : '暂停刷新' }}
+            </button>
           </div>
-          <button
-            v-if="showsContainerLogs && !isTerminalDeployment"
-            class="app-button inline-flex h-8 items-center gap-2 px-3"
-            :class="isAutoRefreshing ? 'text-primary' : ''"
-            @click="toggleAutoRefresh"
-          >
-            <Loader2 class="size-4" :class="isAutoRefreshing ? 'animate-spin' : ''" />
-            {{ isAutoRefreshing ? '自动刷新' : '暂停刷新' }}
-          </button>
-        </div>
-        <div class="min-h-0 flex-1 p-5">
-          <div
-            v-if="!logText"
-            class="flex h-full min-h-[240px] items-center justify-center text-muted-foreground"
-          >
-            <div class="text-center">
-              <AppSpinner v-if="logStatus === 'loading' || logStatus === 'streaming'" />
-              <p v-if="logStatus === 'not_applicable'" class="text-sm">
-                停止操作不展示实时容器日志。
-              </p>
-              <p v-else-if="logStatus === 'loading'" class="mt-2 text-sm">{{ logLoadingText }}</p>
-              <p v-else-if="logStatus === 'streaming'" class="mt-2 text-sm">容器日志刷新中...</p>
-              <p v-else-if="logStatus === 'empty'" class="text-sm">{{ logEmptyText }}</p>
-              <div v-else-if="logStatus === 'error'">
-                <p class="text-sm text-destructive">{{ logErrorText }}</p>
-                <button class="app-link mt-2 text-sm" @click="retryLogs">重试</button>
+          <TabsContent value="operation" class="min-h-0 flex-1 p-5 outline-none">
+            <div
+              v-if="!operationLogText"
+              class="flex h-full min-h-[240px] items-center justify-center text-muted-foreground"
+            >
+              <div class="text-center">
+                <AppSpinner
+                  v-if="operationLogStatus === 'loading' || operationLogStatus === 'streaming'"
+                />
+                <p v-if="operationLogStatus === 'loading'" class="mt-2 text-sm">
+                  加载操作日志中...
+                </p>
+                <p v-else-if="operationLogStatus === 'streaming'" class="mt-2 text-sm">
+                  操作日志刷新中...
+                </p>
+                <p v-else-if="operationLogStatus === 'empty'" class="text-sm">暂无操作日志输出</p>
+                <div v-else-if="operationLogStatus === 'error'">
+                  <p class="text-sm text-destructive">操作日志加载失败</p>
+                  <button class="app-link mt-2 text-sm" @click="retryOperationLogs">重试</button>
+                </div>
               </div>
             </div>
-          </div>
-          <MonacoEditor
-            v-else
-            :model-value="logText"
-            language="plaintext"
-            height="100%"
-            :readonly="true"
-            squared
-            @mount="handleEditorMount"
-          />
-        </div>
+            <MonacoEditor
+              v-else
+              :model-value="operationLogText"
+              language="plaintext"
+              height="100%"
+              :readonly="true"
+              squared
+              @mount="handleOperationLogEditorMount"
+            />
+          </TabsContent>
+
+          <TabsContent value="container" class="min-h-0 flex-1 p-5 outline-none">
+            <p v-if="containerLogSource === 'tail'" class="mt-1 text-xs text-muted-foreground">
+              当前展示最近容器日志，可能包含本次操作前的历史输出。
+            </p>
+            <div
+              v-if="!containerLogText"
+              class="flex h-full min-h-[240px] items-center justify-center text-muted-foreground"
+            >
+              <div class="text-center">
+                <AppSpinner
+                  v-if="containerLogStatus === 'loading' || containerLogStatus === 'streaming'"
+                />
+                <p v-if="containerLogStatus === 'not_applicable'" class="text-sm">
+                  停止操作不展示容器日志。
+                </p>
+                <p v-else-if="containerLogStatus === 'waiting_for_operation'" class="text-sm">
+                  等待操作完成后拉取容器日志。
+                </p>
+                <p v-else-if="containerLogStatus === 'loading'" class="mt-2 text-sm">
+                  加载容器日志中...
+                </p>
+                <p v-else-if="containerLogStatus === 'streaming'" class="mt-2 text-sm">
+                  容器日志刷新中...
+                </p>
+                <p v-else-if="containerLogStatus === 'empty'" class="text-sm">暂无容器日志输出</p>
+                <div v-else-if="containerLogStatus === 'error'">
+                  <p class="text-sm text-destructive">容器日志加载失败</p>
+                  <button class="app-link mt-2 text-sm" @click="retryContainerLogs">重试</button>
+                </div>
+              </div>
+            </div>
+            <MonacoEditor
+              v-else
+              :model-value="containerLogText"
+              language="plaintext"
+              height="100%"
+              :readonly="true"
+              squared
+              @mount="handleContainerLogEditorMount"
+            />
+          </TabsContent>
+        </TabsRoot>
       </div>
     </div>
 
@@ -195,6 +243,7 @@
 <script setup lang="ts">
   import { ArrowLeft, Loader2, X } from 'lucide-vue-next';
   import { computed, onMounted, onUnmounted, ref } from 'vue';
+  import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { deploymentApi } from '@/api/deployment/deployment';
@@ -219,17 +268,27 @@
   const { loading: isCancelling, execute: executeCancel } = useStatusAsync();
 
   const deployment = ref<DeploymentResp>();
-  const logText = ref('');
-  const logMode = ref<'container' | 'operation' | 'none'>('container');
+  type LogStatus =
+    | 'loading'
+    | 'streaming'
+    | 'done'
+    | 'empty'
+    | 'error'
+    | 'not_applicable'
+    | 'waiting_for_operation';
+
+  const operationLogText = ref('');
+  const operationLogOffset = ref(0);
+  const operationLogStatus = ref<LogStatus>('loading');
+  const containerLogText = ref('');
   const containerLogSource = ref('since');
+  const containerLogStatus = ref<LogStatus>('loading');
   const isCancelDialogOpen = ref(false);
   const isAutoRefreshing = ref(false);
-  const logStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error' | 'not_applicable'>(
-    'loading'
-  );
   let refreshAbort: AbortController | null = null;
   let refreshGeneration = 0;
-  let logEditorInstance: editor.IStandaloneCodeEditor | null = null;
+  let operationLogEditor: editor.IStandaloneCodeEditor | null = null;
+  let containerLogEditor: editor.IStandaloneCodeEditor | null = null;
 
   const backButtonText = computed(() => {
     if (route.query.from === 'application') {
@@ -261,33 +320,8 @@
   );
 
   const isTerminalDeployment = computed(() => isTerminalStatus(deployment.value?.status ?? ''));
-  const isFaultedDeployment = computed(() => deployment.value?.status === 'faulted');
   const isCancelable = computed(() =>
     deployment.value ? ['waiting_to_run', 'running'].includes(deployment.value.status) : false
-  );
-  const showsContainerLogs = computed(
-    () =>
-      !!deployment.value &&
-      deployment.value.operation_type !== 'stop' &&
-      deployment.value.status !== 'faulted'
-  );
-  const logSectionTitle = computed(() => {
-    if (logMode.value === 'operation') {
-      return '操作日志';
-    }
-    if (logMode.value === 'none') {
-      return '日志';
-    }
-    return '容器日志';
-  });
-  const logLoadingText = computed(() =>
-    logMode.value === 'operation' ? '加载操作日志中...' : '加载容器日志中...'
-  );
-  const logEmptyText = computed(() =>
-    logMode.value === 'operation' ? '暂无操作日志输出' : '暂无容器日志输出'
-  );
-  const logErrorText = computed(() =>
-    logMode.value === 'operation' ? '操作日志加载失败' : '容器日志加载失败'
   );
 
   function isCurrentRefresh(generation: number, signal: AbortSignal) {
@@ -295,30 +329,41 @@
   }
 
   async function fetchOperationLogs(generation?: number, signal?: AbortSignal) {
-    logMode.value = 'operation';
+    const offset = operationLogOffset.value;
     try {
-      const data = await deploymentApi.getLogs(deploymentId.value, 0, { signal });
+      const data = await deploymentApi.getLogs(deploymentId.value, offset, { signal });
       if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
         return;
       }
-      logText.value = data.logs;
-      logStatus.value = logText.value ? 'done' : 'empty';
-      scrollToBottom();
+      if (operationLogOffset.value !== offset) {
+        return;
+      }
+      operationLogText.value += data.logs;
+      operationLogOffset.value = data.offset;
+      operationLogStatus.value = isTerminalDeployment.value
+        ? operationLogText.value
+          ? 'done'
+          : 'empty'
+        : 'streaming';
+      scrollOperationLogsToBottom();
     } catch {
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
-        logStatus.value = 'error';
+        operationLogStatus.value = 'error';
       }
     }
   }
 
   async function fetchContainerLogs(generation?: number, signal?: AbortSignal) {
     if (!deployment.value || deployment.value.operation_type === 'stop') {
-      logMode.value = 'none';
-      logText.value = '';
-      logStatus.value = 'not_applicable';
+      containerLogText.value = '';
+      containerLogStatus.value = 'not_applicable';
       return;
     }
-    logMode.value = 'container';
+    if (!isTerminalDeployment.value) {
+      containerLogText.value = '';
+      containerLogStatus.value = 'waiting_for_operation';
+      return;
+    }
     try {
       const data = await deploymentApi.getContainerLogs(
         deploymentId.value,
@@ -328,17 +373,17 @@
       if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
         return;
       }
-      logText.value = data.logs;
+      containerLogText.value = data.logs;
       containerLogSource.value = data.source;
-      logStatus.value = isTerminalDeployment.value
-        ? logText.value
+      containerLogStatus.value = isTerminalDeployment.value
+        ? containerLogText.value
           ? 'done'
           : 'empty'
         : 'streaming';
-      scrollToBottom();
+      scrollContainerLogsToBottom();
     } catch {
       if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
-        logStatus.value = 'error';
+        containerLogStatus.value = 'error';
       }
     }
   }
@@ -347,21 +392,16 @@
     if (!deployment.value) {
       return;
     }
-    if (deployment.value.operation_type === 'stop' && !isFaultedDeployment.value) {
-      logMode.value = 'none';
-      logText.value = '';
-      logStatus.value = 'not_applicable';
-      return;
-    }
-    if (isFaultedDeployment.value) {
-      await fetchOperationLogs(generation, signal);
-      return;
-    }
+    await fetchOperationLogs(generation, signal);
     await fetchContainerLogs(generation, signal);
   }
 
-  function retryLogs() {
-    void fetchLogs();
+  function retryOperationLogs() {
+    void fetchOperationLogs();
+  }
+
+  function retryContainerLogs() {
+    void fetchContainerLogs();
   }
 
   function stopAutoRefresh() {
@@ -396,9 +436,7 @@
             await fetchLogs(generation, signal);
             break;
           }
-          if (showsContainerLogs.value) {
-            await fetchContainerLogs(generation, signal);
-          }
+          await fetchLogs(generation, signal);
         } catch {
           // Continue refreshing after a transient detail request failure.
         }
@@ -421,10 +459,12 @@
   function resetState() {
     stopAutoRefresh();
     deployment.value = undefined;
-    logText.value = '';
-    logMode.value = 'container';
+    operationLogText.value = '';
+    operationLogOffset.value = 0;
+    operationLogStatus.value = 'loading';
+    containerLogText.value = '';
     containerLogSource.value = 'since';
-    logStatus.value = 'loading';
+    containerLogStatus.value = 'loading';
     isCancelDialogOpen.value = false;
   }
 
@@ -457,18 +497,31 @@
     }
   }
 
-  function scrollToBottom() {
-    if (logEditorInstance) {
-      const lineCount = logEditorInstance.getModel()?.getLineCount() || 0;
+  function scrollToBottom(logEditor: editor.IStandaloneCodeEditor | null) {
+    if (logEditor) {
+      const lineCount = logEditor.getModel()?.getLineCount() || 0;
       if (lineCount > 0) {
-        logEditorInstance.revealLine(lineCount);
+        logEditor.revealLine(lineCount);
       }
     }
   }
 
-  function handleEditorMount(editor: editor.IStandaloneCodeEditor) {
-    logEditorInstance = editor;
-    scrollToBottom();
+  function scrollOperationLogsToBottom() {
+    scrollToBottom(operationLogEditor);
+  }
+
+  function scrollContainerLogsToBottom() {
+    scrollToBottom(containerLogEditor);
+  }
+
+  function handleOperationLogEditorMount(editor: editor.IStandaloneCodeEditor) {
+    operationLogEditor = editor;
+    scrollOperationLogsToBottom();
+  }
+
+  function handleContainerLogEditorMount(editor: editor.IStandaloneCodeEditor) {
+    containerLogEditor = editor;
+    scrollContainerLogsToBottom();
   }
 
   onMounted(loadDeployment);

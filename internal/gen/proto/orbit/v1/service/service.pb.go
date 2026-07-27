@@ -282,6 +282,150 @@ func (x *ServicePaginatedResp) GetPages() int32 {
 	return 0
 }
 
+type ServiceRuntimeEnvItem struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ComponentName  string                 `protobuf:"bytes,1,opt,name=component_name,json=componentName,proto3" json:"component_name,omitempty"`
+	EnvKey         string                 `protobuf:"bytes,2,opt,name=env_key,json=envKey,proto3" json:"env_key,omitempty"`
+	CredentialId   string                 `protobuf:"bytes,3,opt,name=credential_id,json=credentialId,proto3" json:"credential_id,omitempty"`
+	CredentialName string                 `protobuf:"bytes,4,opt,name=credential_name,json=credentialName,proto3" json:"credential_name,omitempty"`
+	DataKey        string                 `protobuf:"bytes,5,opt,name=data_key,json=dataKey,proto3" json:"data_key,omitempty"`
+	Value          string                 `protobuf:"bytes,6,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ServiceRuntimeEnvItem) Reset() {
+	*x = ServiceRuntimeEnvItem{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceRuntimeEnvItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceRuntimeEnvItem) ProtoMessage() {}
+
+func (x *ServiceRuntimeEnvItem) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceRuntimeEnvItem.ProtoReflect.Descriptor instead.
+func (*ServiceRuntimeEnvItem) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ServiceRuntimeEnvItem) GetComponentName() string {
+	if x != nil {
+		return x.ComponentName
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvItem) GetEnvKey() string {
+	if x != nil {
+		return x.EnvKey
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvItem) GetCredentialId() string {
+	if x != nil {
+		return x.CredentialId
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvItem) GetCredentialName() string {
+	if x != nil {
+		return x.CredentialName
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvItem) GetDataKey() string {
+	if x != nil {
+		return x.DataKey
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvItem) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type ServiceRuntimeEnvResp struct {
+	state         protoimpl.MessageState   `protogen:"open.v1"`
+	ServiceId     string                   `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	VersionId     string                   `protobuf:"bytes,2,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	Items         []*ServiceRuntimeEnvItem `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceRuntimeEnvResp) Reset() {
+	*x = ServiceRuntimeEnvResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceRuntimeEnvResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceRuntimeEnvResp) ProtoMessage() {}
+
+func (x *ServiceRuntimeEnvResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceRuntimeEnvResp.ProtoReflect.Descriptor instead.
+func (*ServiceRuntimeEnvResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ServiceRuntimeEnvResp) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvResp) GetVersionId() string {
+	if x != nil {
+		return x.VersionId
+	}
+	return ""
+}
+
+func (x *ServiceRuntimeEnvResp) GetItems() []*ServiceRuntimeEnvItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
@@ -314,7 +458,20 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xcd\x01\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\xd6\x01\n" +
+	"\x15ServiceRuntimeEnvItem\x12%\n" +
+	"\x0ecomponent_name\x18\x01 \x01(\tR\rcomponentName\x12\x17\n" +
+	"\aenv_key\x18\x02 \x01(\tR\x06envKey\x12#\n" +
+	"\rcredential_id\x18\x03 \x01(\tR\fcredentialId\x12'\n" +
+	"\x0fcredential_name\x18\x04 \x01(\tR\x0ecredentialName\x12\x19\n" +
+	"\bdata_key\x18\x05 \x01(\tR\adataKey\x12\x14\n" +
+	"\x05value\x18\x06 \x01(\tR\x05value\"\x94\x01\n" +
+	"\x15ServiceRuntimeEnvResp\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x01 \x01(\tR\tserviceId\x12\x1d\n" +
+	"\n" +
+	"version_id\x18\x02 \x01(\tR\tversionId\x12=\n" +
+	"\x05items\x18\x03 \x03(\v2'.orbit.v1.service.ServiceRuntimeEnvItemR\x05itemsB\xcd\x01\n" +
 	"\x14com.orbit.v1.serviceB\fServiceProtoP\x01ZEgitee.com/leoninew/PomeloOrbit-go/internal/gen/proto/orbit/v1/service\xa2\x02\x03OVS\xaa\x02\x10Orbit.V1.Service\xca\x02\x10Orbit\\V1\\Service\xe2\x02\x1cOrbit\\V1\\Service\\GPBMetadata\xea\x02\x12Orbit::V1::Serviceb\x06proto3"
 
 var (
@@ -329,20 +486,23 @@ func file_orbit_v1_service_service_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_service_service_proto_rawDescData
 }
 
-var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_orbit_v1_service_service_proto_goTypes = []any{
-	(*ServiceResp)(nil),          // 0: orbit.v1.service.ServiceResp
-	(*ServiceListResp)(nil),      // 1: orbit.v1.service.ServiceListResp
-	(*ServicePaginatedResp)(nil), // 2: orbit.v1.service.ServicePaginatedResp
+	(*ServiceResp)(nil),           // 0: orbit.v1.service.ServiceResp
+	(*ServiceListResp)(nil),       // 1: orbit.v1.service.ServiceListResp
+	(*ServicePaginatedResp)(nil),  // 2: orbit.v1.service.ServicePaginatedResp
+	(*ServiceRuntimeEnvItem)(nil), // 3: orbit.v1.service.ServiceRuntimeEnvItem
+	(*ServiceRuntimeEnvResp)(nil), // 4: orbit.v1.service.ServiceRuntimeEnvResp
 }
 var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	0, // 0: orbit.v1.service.ServiceListResp.items:type_name -> orbit.v1.service.ServiceResp
 	0, // 1: orbit.v1.service.ServicePaginatedResp.items:type_name -> orbit.v1.service.ServiceResp
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: orbit.v1.service.ServiceRuntimeEnvResp.items:type_name -> orbit.v1.service.ServiceRuntimeEnvItem
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_service_service_proto_init() }
@@ -357,7 +517,7 @@ func file_orbit_v1_service_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_service_service_proto_rawDesc), len(file_orbit_v1_service_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

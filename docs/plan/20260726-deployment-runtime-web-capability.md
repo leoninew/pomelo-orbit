@@ -1,9 +1,9 @@
 # 部署运行时能力 Web 支持计划
-最后修改时间: 2026-07-26 21:47:02
+最后修改时间: 2026-07-26 22:11:52
 
 ## Review status
 
-Draft
+Accepted
 
 ## Plan basis
 
@@ -139,4 +139,4 @@ Service 的运行时环境变量卡片展示的是当前持久化 Credential 解
 
 ## User review notes
 
-用户于 2026-07-26 要求从已接受的 Requirement 进入 Plan / 计划阶段。本 Plan 不授权开始产品代码实现；等待用户接受后进入 Implementation / 实现。
+用户于 2026-07-26 要求从已接受的 Requirement 进入 Plan / 计划阶段。本 Plan 经用户随后明确要求“开始实现”而接受，并进入 Implementation / 实现。

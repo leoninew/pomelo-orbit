@@ -54,6 +54,32 @@ func (h Handler) GetService(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
+func (h Handler) DeleteService(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.DeleteService(c.Request.Context(), current.Id, c.Param("service_id")); err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (h Handler) GetServiceRuntimeEnv(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	view, err := h.service.RuntimeEnv(c.Request.Context(), current.Id, c.Param("service_id"))
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := serviceRuntimeEnvResponse(view)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
 // ListApplicationServices uses the service domain's authorization and query path.
 func (h Handler) ListApplicationServices(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)

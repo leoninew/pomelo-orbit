@@ -8,12 +8,14 @@ import (
 
 	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/config"
 	db "gitee.com/leoninew/PomeloOrbit-go/internal/infrastructure/database"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	applicationrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/application"
+	credentialrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/credential"
 	projectrepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/project"
 	servicerepo "gitee.com/leoninew/PomeloOrbit-go/internal/repository/impl/sqlc/service"
 
@@ -23,6 +25,7 @@ import (
 const (
 	serviceTestUserID    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
 	serviceTestProjectID = "01KRRKK0K3T519ZQZES3M4QA9Z"
+	serviceTestSecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 )
 
 func TestServiceRuntimeBindingQueries(t *testing.T) {
@@ -109,6 +112,68 @@ func TestResolveServiceTargetRejectsServiceFromAnotherApplication(t *testing.T) 
 	}
 }
 
+func TestServiceRuntimeEnvResolvesCurrentVersionReferences(t *testing.T) {
+	service, database, applicationStore, serviceStore := newServiceIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app, version := createServiceTestApplication(t, applicationStore, "runtime-env-service")
+	credentialStore := credentialrepo.NewRepository(database)
+	projectID := serviceTestProjectID
+	encrypted, err := security.EncryptString(serviceTestSecretKey, `{"API_TOKEN":"service-secret","DB_PASSWORD":"database-secret"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	credential := model.Credential{
+		Id: idutil.NewId(), ProjectId: &projectID, Name: "runtime credentials", Type: "runtime_env", EncryptedData: encrypted,
+	}
+	if err := credentialStore.CreateCredential(ctx, credential); err != nil {
+		t.Fatal(err)
+	}
+	if err := applicationStore.ReplaceVersionComponents(ctx, version.Id, []model.VersionComponent{
+		{
+			Id: idutil.NewId(), VersionId: version.Id, Name: "api", Image: "api:latest",
+			SecretEnvRefs: []model.VersionComponentSecretEnvRef{
+				{EnvKey: "API_TOKEN", CredentialId: credential.Id, DataKey: "API_TOKEN"},
+				{EnvKey: "DB_PASSWORD", CredentialId: credential.Id, DataKey: "DB_PASSWORD"},
+			},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	binding := model.Service{
+		Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: "default", VersionId: version.Id, Status: status.ServiceStatusRunning,
+	}
+	if err := serviceStore.UpsertService(ctx, binding); err != nil {
+		t.Fatal(err)
+	}
+
+	view, err := service.RuntimeEnv(ctx, serviceTestUserID, binding.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.ServiceId != binding.Id || view.VersionId != version.Id || len(view.Items) != 2 {
+		t.Fatalf("unexpected runtime env view: %+v", view)
+	}
+	if view.Items[0].EnvKey != "API_TOKEN" || view.Items[0].Value != "service-secret" || view.Items[1].EnvKey != "DB_PASSWORD" || view.Items[1].Value != "database-secret" {
+		t.Fatalf("runtime env values were not resolved in stable order: %+v", view.Items)
+	}
+
+	_, err = service.RuntimeEnv(ctx, "not-a-project-member", binding.Id)
+	if apperror.StatusCode(err) != http.StatusForbidden {
+		t.Fatalf("expected forbidden runtime env access, got %v", err)
+	}
+
+	credential.EncryptedData = "not-a-valid-ciphertext"
+	if err := credentialStore.UpdateCredential(ctx, credential); err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.RuntimeEnv(ctx, serviceTestUserID, binding.Id)
+	if apperror.StatusCode(err) != http.StatusInternalServerError {
+		t.Fatalf("expected unreadable credential to be internal, got %v", err)
+	}
+}
+
 func newServiceIntegrationService(t *testing.T) (Service, *sql.DB, applicationrepo.Repository, servicerepo.Repository) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
@@ -122,8 +187,9 @@ func newServiceIntegrationService(t *testing.T) (Service, *sql.DB, applicationre
 	}
 	projectStore := projectrepo.NewRepository(database)
 	applicationStore := applicationrepo.NewRepository(database)
+	credentialStore := credentialrepo.NewRepository(database)
 	serviceStore := servicerepo.NewRepository(database)
-	return New(projectStore, applicationStore, serviceStore), database, applicationStore, serviceStore
+	return New(projectStore, applicationStore, credentialStore, serviceTestSecretKey, serviceStore), database, applicationStore, serviceStore
 }
 
 func createServiceTestApplication(t *testing.T, applicationStore applicationrepo.Repository, code string) (model.Application, model.Version) {

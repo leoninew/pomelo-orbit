@@ -6,10 +6,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
 	CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error)
+	DeleteService(ctx context.Context, id string) error
+	DetachDeploymentServiceRefs(ctx context.Context, serviceID sql.NullString) error
 	InsertService(ctx context.Context, arg InsertServiceParams) error
 	ListServicesByApplication(ctx context.Context, applicationID string) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)

@@ -36,3 +36,18 @@ export interface ServicePaginatedResp {
   per_page: number;
   pages: number;
 }
+
+export interface ServiceRuntimeEnvItem {
+  component_name: string;
+  env_key: string;
+  credential_id: string;
+  credential_name: string;
+  data_key: string;
+  value: string;
+}
+
+export interface ServiceRuntimeEnvResp {
+  service_id: string;
+  version_id: string;
+  items: ServiceRuntimeEnvItem[];
+}

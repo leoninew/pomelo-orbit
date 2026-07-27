@@ -147,28 +147,6 @@ func (r Repository) CredentialReferencedByRepositories(ctx context.Context, proj
 	return count > 0, nil
 }
 
-func (r Repository) CredentialReferencedByVersionComponents(ctx context.Context, credentialId string) (bool, error) {
-	count, err := r.q(ctx).CredentialReferencedByVersionComponents(ctx, credentialId)
-	if err != nil {
-		return false, fmt.Errorf("count credential version component refs %s: %w", credentialId, err)
-	}
-	return count > 0, nil
-}
-
-func (r Repository) VersionComponentSecretEnvRefsByCredential(ctx context.Context, credentialId string) ([]model.VersionComponentSecretEnvRef, error) {
-	rows, err := r.q(ctx).VersionComponentSecretEnvRefsByCredential(ctx, credentialId)
-	if err != nil {
-		return nil, fmt.Errorf("list credential version component refs %s: %w", credentialId, err)
-	}
-	items := make([]model.VersionComponentSecretEnvRef, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, model.VersionComponentSecretEnvRef{
-			ComponentId: row.ComponentID, EnvKey: row.EnvKey, CredentialId: row.CredentialID, DataKey: row.DataKey,
-		})
-	}
-	return items, nil
-}
-
 func credentialFrom(id string, projectID sql.NullString, name, typ, encryptedData string, createdAt time.Time) model.Credential {
 	return model.Credential{
 		Id:            id,

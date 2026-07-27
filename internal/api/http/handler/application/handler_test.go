@@ -22,7 +22,7 @@ func TestWriteErrorMapsRuntimeCredentialReadFailureToSafeContract(t *testing.T) 
 	router := gin.New()
 	router.Use(transportmiddleware.RequestId())
 	router.GET("/", func(c *gin.Context) {
-		handler.writeError(c, apperror.Wrap(apperror.KindInternal, "Failed to read runtime_env credential", errors.New("invalid ciphertext")))
+		handler.writeError(c, apperror.Wrap(apperror.KindInternal, "Failed to read deployment configuration", errors.New("invalid configuration")))
 	})
 
 	requestId := "01J1VY6M3R92K1WSPJ4AK84NQZ"

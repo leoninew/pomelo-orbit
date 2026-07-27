@@ -4,10 +4,11 @@ import "time"
 
 // Service is the runtime binding of an application instance.
 type Service struct {
-	Id                      string    `db:"id"`
-	ApplicationId           string    `db:"application_id"`
-	InstanceKey             string    `db:"instance_key"`
-	VersionId               string    `db:"version_id"`
+	Id                      string `db:"id"`
+	ApplicationId           string `db:"application_id"`
+	InstanceKey             string `db:"instance_key"`
+	VersionId               string `db:"version_id"`
+	RuntimeConfig           map[string]string
 	LastSuccessfulVersionId *string   `db:"last_successful_version_id"`
 	Status                  string    `db:"status"`
 	CreatedAt               time.Time `db:"created_at"`
@@ -16,10 +17,11 @@ type Service struct {
 
 // ServiceListItem is Service plus application and version labels.
 type ServiceListItem struct {
-	Id                         string    `db:"id"`
-	ApplicationId              string    `db:"application_id"`
-	InstanceKey                string    `db:"instance_key"`
-	VersionId                  string    `db:"version_id"`
+	Id                         string `db:"id"`
+	ApplicationId              string `db:"application_id"`
+	InstanceKey                string `db:"instance_key"`
+	VersionId                  string `db:"version_id"`
+	RuntimeConfig              map[string]string
 	LastSuccessfulVersionId    *string   `db:"last_successful_version_id"`
 	Status                     string    `db:"status"`
 	CreatedAt                  time.Time `db:"created_at"`
@@ -38,6 +40,7 @@ func (item ServiceListItem) Service() Service {
 		ApplicationId:           item.ApplicationId,
 		InstanceKey:             item.InstanceKey,
 		VersionId:               item.VersionId,
+		RuntimeConfig:           item.RuntimeConfig,
 		LastSuccessfulVersionId: item.LastSuccessfulVersionId,
 		Status:                  item.Status,
 		CreatedAt:               item.CreatedAt,

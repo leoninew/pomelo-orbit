@@ -11,6 +11,14 @@ import (
 type stores struct {
 	project     repository.ProjectReader
 	application repository.ApplicationStore
+	service     repository.ServiceReader
+}
+
+func (s stores) ListServicesByApplication(ctx context.Context, applicationID string) ([]model.Service, error) {
+	if s.service == nil {
+		return nil, nil
+	}
+	return s.service.ListServicesByApplication(ctx, applicationID)
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {

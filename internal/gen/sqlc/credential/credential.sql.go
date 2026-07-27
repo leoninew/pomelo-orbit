@@ -170,19 +170,6 @@ func (q *Queries) CredentialReferencedByRepositories(ctx context.Context, arg Cr
 	return count, err
 }
 
-const credentialReferencedByVersionComponents = `-- name: CredentialReferencedByVersionComponents :one
-SELECT COUNT(*)
-FROM version_component_secret_env_ref
-WHERE credential_id = ?
-`
-
-func (q *Queries) CredentialReferencedByVersionComponents(ctx context.Context, credentialID string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, credentialReferencedByVersionComponents, credentialID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deleteCredential = `-- name: DeleteCredential :exec
 DELETE FROM credential
 WHERE id = ?
@@ -272,39 +259,4 @@ type UpdateCredentialParams struct {
 func (q *Queries) UpdateCredential(ctx context.Context, arg UpdateCredentialParams) error {
 	_, err := q.db.ExecContext(ctx, updateCredential, arg.Name, arg.EncryptedData, arg.ID)
 	return err
-}
-
-const versionComponentSecretEnvRefsByCredential = `-- name: VersionComponentSecretEnvRefsByCredential :many
-SELECT component_id, env_key, credential_id, data_key
-FROM version_component_secret_env_ref
-WHERE credential_id = ?
-ORDER BY component_id, env_key
-`
-
-func (q *Queries) VersionComponentSecretEnvRefsByCredential(ctx context.Context, credentialID string) ([]VersionComponentSecretEnvRef, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentSecretEnvRefsByCredential, credentialID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionComponentSecretEnvRef
-	for rows.Next() {
-		var i VersionComponentSecretEnvRef
-		if err := rows.Scan(
-			&i.ComponentID,
-			&i.EnvKey,
-			&i.CredentialID,
-			&i.DataKey,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

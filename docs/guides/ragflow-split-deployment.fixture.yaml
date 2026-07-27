@@ -1,10 +1,10 @@
 # RAGFlow split deployment desired-state fixture
 # Last updated: 2026-07-26 20:06:12
 #
-# This is a non-secret semantic fixture. An adapter must encode the fields named
-# in payload_encoding before passing Components to the Orbit Version API or MCP.
-# Do not replace any placeholder with a live credential, resource ID, host path,
-# or Project ID in this file.
+# This is a semantic fixture. An adapter must encode the fields named in
+# payload_encoding before passing Components to the Orbit Version API or MCP.
+# Do not replace any placeholder with a live runtime configuration value,
+# resource ID, host path, or Project ID in this file.
 
 schema_version: 1
 kind: pomelo-orbit-ragflow-desired-state
@@ -26,7 +26,6 @@ payload_encoding:
   restart_policy: Task 1 VersionComponent field
   tmpfs: Task 1 tmpfs_json field as a JSON array
   ulimits: Task 1 ulimits_json field as a JSON array
-  secret_env_refs: Task 1 secret_env_refs field as a structured array
 
 runtime_contract:
   application_kind: standard
@@ -43,19 +42,12 @@ runtime_contract:
     - direct_env_file
     - dependency_host_port
 
-credential_templates:
-  - name: ragflow-mysql
-    type: runtime_env
-    keys: [MYSQL_PASSWORD]
-  - name: ragflow-redis
-    type: runtime_env
-    keys: [REDIS_PASSWORD]
-  - name: ragflow-minio
-    type: runtime_env
-    keys: [MINIO_USER, MINIO_PASSWORD]
-  - name: ragflow-elasticsearch
-    type: runtime_env
-    keys: [ELASTIC_PASSWORD]
+runtime_config_keys:
+  - MYSQL_PASSWORD
+  - REDIS_PASSWORD
+  - MINIO_USER
+  - MINIO_PASSWORD
+  - ELASTIC_PASSWORD
 
 applications:
   - name: RAGFlow MySQL
@@ -74,6 +66,8 @@ applications:
         environment:
           - key: MYSQL_DATABASE
             value: rag_flow
+          - key: MYSQL_ROOT_PASSWORD
+            value: ${MYSQL_PASSWORD}
         mounts:
           - source_type: logical
             source: data
@@ -85,10 +79,6 @@ applications:
           timeout: 10s
           retries: 120
         restart_policy: unless-stopped
-        secret_env_refs:
-          - env_key: MYSQL_ROOT_PASSWORD
-            credential_name: ragflow-mysql
-            data_key: MYSQL_PASSWORD
     exposes: []
 
   - name: RAGFlow Redis
@@ -101,6 +91,9 @@ applications:
           - sh
           - -c
           - "exec redis-server --requirepass \"$${REDIS_PASSWORD}\" --maxmemory 128mb --maxmemory-policy allkeys-lru"
+        environment:
+          - key: REDIS_PASSWORD
+            value: ${REDIS_PASSWORD}
         mounts:
           - source_type: logical
             source: data
@@ -112,10 +105,6 @@ applications:
           timeout: 10s
           retries: 120
         restart_policy: unless-stopped
-        secret_env_refs:
-          - env_key: REDIS_PASSWORD
-            credential_name: ragflow-redis
-            data_key: REDIS_PASSWORD
     exposes: []
 
   - name: RAGFlow MinIO
@@ -125,6 +114,11 @@ applications:
       - name: minio
         image: pgsty/minio:RELEASE.2026-03-25T00-00-00Z
         command: [server, --console-address, ":9001", /data]
+        environment:
+          - key: MINIO_ROOT_USER
+            value: ${MINIO_USER}
+          - key: MINIO_ROOT_PASSWORD
+            value: ${MINIO_PASSWORD}
         mounts:
           - source_type: logical
             source: data
@@ -136,13 +130,6 @@ applications:
           timeout: 10s
           retries: 120
         restart_policy: unless-stopped
-        secret_env_refs:
-          - env_key: MINIO_ROOT_USER
-            credential_name: ragflow-minio
-            data_key: MINIO_USER
-          - env_key: MINIO_ROOT_PASSWORD
-            credential_name: ragflow-minio
-            data_key: MINIO_PASSWORD
     exposes: []
 
   - name: RAGFlow Elasticsearch
@@ -170,6 +157,8 @@ applications:
             value: 3gb
           - key: cluster.routing.allocation.disk.watermark.flood_stage
             value: 2gb
+          - key: ELASTIC_PASSWORD
+            value: ${ELASTIC_PASSWORD}
         mounts:
           - source_type: logical
             source: data
@@ -192,10 +181,6 @@ applications:
           - name: memlock
             soft: -1
             hard: -1
-        secret_env_refs:
-          - env_key: ELASTIC_PASSWORD
-            credential_name: ragflow-elasticsearch
-            data_key: ELASTIC_PASSWORD
     exposes: []
 
   - name: RAGFlow
@@ -232,28 +217,22 @@ applications:
             value: ragflow-elasticsearch-es01
           - key: ES_USER
             value: elastic
+          - key: MYSQL_PASSWORD
+            value: ${MYSQL_PASSWORD}
+          - key: REDIS_PASSWORD
+            value: ${REDIS_PASSWORD}
+          - key: MINIO_USER
+            value: ${MINIO_USER}
+          - key: MINIO_PASSWORD
+            value: ${MINIO_PASSWORD}
+          - key: ELASTIC_PASSWORD
+            value: ${ELASTIC_PASSWORD}
         mounts:
           - source_type: logical
             source: logs
             target: /ragflow/logs
             read_only: false
         restart_policy: unless-stopped
-        secret_env_refs:
-          - env_key: MYSQL_PASSWORD
-            credential_name: ragflow-mysql
-            data_key: MYSQL_PASSWORD
-          - env_key: REDIS_PASSWORD
-            credential_name: ragflow-redis
-            data_key: REDIS_PASSWORD
-          - env_key: MINIO_USER
-            credential_name: ragflow-minio
-            data_key: MINIO_USER
-          - env_key: MINIO_PASSWORD
-            credential_name: ragflow-minio
-            data_key: MINIO_PASSWORD
-          - env_key: ELASTIC_PASSWORD
-            credential_name: ragflow-elasticsearch
-            data_key: ELASTIC_PASSWORD
     expose_variants:
       local:
         - component_name: ragflow-cpu
@@ -287,6 +266,6 @@ deployment_order:
 post_deploy_assertions:
   - "Every dependency has no VersionExpose and no host port mapping."
   - "Every component joins the external traefik network with the stated alias."
-  - "Preview, runtime config, inspect, logs, and verification evidence redact secret values."
+  - "Service runtime configuration is saved before deployment and deployment records snapshot it."
   - "Each dependency is stable and healthy before RAGFlow is deployed."
   - "RAGFlow is exposed through exactly one selected access variant."

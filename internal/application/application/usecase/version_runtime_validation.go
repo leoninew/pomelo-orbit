@@ -1,16 +1,12 @@
 package applicationsvc
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
 
 const (
@@ -18,7 +14,6 @@ const (
 	maxTmpfsSizeBytes = 8 << 30
 )
 
-var runtimeEnvNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 var tmpfsModePattern = regexp.MustCompile(`^[0-7]{3,4}$`)
 
 type tmpfsSpec struct {
@@ -33,10 +28,6 @@ type ulimitSpec struct {
 	Hard int64  `json:"hard"`
 }
 
-type componentEnvVar struct {
-	Key string `json:"key"`
-}
-
 func validateComponentRuntimeFields(component model.VersionComponent) error {
 	if component.RestartPolicy != nil && *component.RestartPolicy != "no" && *component.RestartPolicy != "unless-stopped" {
 		return fmt.Errorf("component %s restart_policy must be no or unless-stopped", component.Name)
@@ -47,7 +38,7 @@ func validateComponentRuntimeFields(component model.VersionComponent) error {
 	if err := validateUlimits(component.Name, component.UlimitsJSON); err != nil {
 		return err
 	}
-	return validateSecretEnvRefs(component)
+	return nil
 }
 
 func validateTmpfs(component string, raw *string) error {
@@ -125,92 +116,6 @@ func validateUlimits(component string, raw *string) error {
 		}
 		if entry.Soft < 0 || entry.Hard < 0 || entry.Soft > entry.Hard {
 			return fmt.Errorf("component %s ulimit %s requires 0 <= soft <= hard", component, entry.Name)
-		}
-	}
-	return nil
-}
-
-func validateSecretEnvRefs(component model.VersionComponent) error {
-	if len(component.SecretEnvRefs) == 0 {
-		return nil
-	}
-	if len(component.SecretEnvRefs) > 64 {
-		return fmt.Errorf("component %s secret_env_refs supports at most 64 entries", component.Name)
-	}
-	envKeys, err := componentEnvKeys(component.EnvJSON)
-	if err != nil {
-		return fmt.Errorf("component %s env_json: %w", component.Name, err)
-	}
-	seen := make(map[string]struct{}, len(component.SecretEnvRefs))
-	for _, ref := range component.SecretEnvRefs {
-		if !runtimeEnvNamePattern.MatchString(ref.EnvKey) || !runtimeEnvNamePattern.MatchString(ref.DataKey) || ref.CredentialId == "" {
-			return fmt.Errorf("component %s has invalid secret_env_ref", component.Name)
-		}
-		if _, exists := seen[ref.EnvKey]; exists {
-			return fmt.Errorf("component %s has duplicate secret env key %s", component.Name, ref.EnvKey)
-		}
-		if _, exists := envKeys[ref.EnvKey]; exists {
-			return fmt.Errorf("component %s secret env key %s conflicts with env_json", component.Name, ref.EnvKey)
-		}
-		seen[ref.EnvKey] = struct{}{}
-	}
-	return nil
-}
-
-func componentEnvKeys(raw *string) (map[string]struct{}, error) {
-	keys := map[string]struct{}{}
-	if raw == nil || *raw == "" {
-		return keys, nil
-	}
-	var entries []componentEnvVar
-	if err := json.Unmarshal([]byte(*raw), &entries); err != nil {
-		return nil, fmt.Errorf("must be an array of key/value entries")
-	}
-	for _, entry := range entries {
-		keys[entry.Key] = struct{}{}
-	}
-	return keys, nil
-}
-
-func runtimeEnvData(raw string) (map[string]string, error) {
-	var values map[string]string
-	if err := json.Unmarshal([]byte(raw), &values); err != nil {
-		return nil, fmt.Errorf("data must be a JSON object of string values")
-	}
-	if len(values) == 0 {
-		return nil, fmt.Errorf("data must not be empty")
-	}
-	for key, value := range values {
-		if !runtimeEnvNamePattern.MatchString(key) || value == "" {
-			return nil, fmt.Errorf("data contains an invalid runtime environment value")
-		}
-	}
-	return values, nil
-}
-
-func (s Service) validateRuntimeEnvReferences(ctx context.Context, app model.Application, components []model.VersionComponent) error {
-	for _, component := range components {
-		for _, ref := range component.SecretEnvRefs {
-			if s.credential == nil || s.secretKey == "" {
-				return apperror.New(apperror.KindInternal, "runtime_env credential validation is not configured")
-			}
-			credential, err := s.credential.Credential(ctx, ref.CredentialId)
-			if err != nil {
-				if errors.Is(err, repository.ErrNotFound) {
-					return apperror.New(apperror.KindValidation, "runtime_env credential "+ref.CredentialId+" not found")
-				}
-				return apperror.Wrap(apperror.KindInternal, "Failed to load runtime_env credential", err)
-			}
-			if credential.Type != "runtime_env" || app.ProjectId == nil || credential.ProjectId == nil || *credential.ProjectId != *app.ProjectId {
-				return apperror.New(apperror.KindValidation, "runtime_env credential does not belong to the application project")
-			}
-			values, err := s.decryptRuntimeEnvData(credential.EncryptedData)
-			if err != nil {
-				return apperror.Wrap(apperror.KindInternal, "Failed to read runtime_env credential", err)
-			}
-			if _, exists := values[ref.DataKey]; !exists {
-				return apperror.New(apperror.KindValidation, "runtime_env credential data_key is missing")
-			}
 		}
 	}
 	return nil

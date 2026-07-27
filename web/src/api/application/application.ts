@@ -69,7 +69,7 @@ export const applicationApi = {
 
   getStatus(
     id: string,
-    params?: { instance_key?: string; service_id?: string }
+    params?: { service_id?: string }
   ): Promise<ApplicationStatusResp> {
     return request.get(`/api/application/${id}/status`, { params });
   },
@@ -78,7 +78,6 @@ export const applicationApi = {
     id: string,
     params?: {
       tail?: number;
-      instance_key?: string;
       service_id?: string;
       component?: string;
     }

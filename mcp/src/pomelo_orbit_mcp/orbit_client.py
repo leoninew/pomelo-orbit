@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -195,37 +194,39 @@ class OrbitClient:
             json_body={"instance_key": instance_key},
         )
 
-    async def list_runtime_env_credentials(self, project_id: str) -> list[dict[str, Any]]:
-        credentials = _items(
-            await self.request("GET", "/api/credential", params={"project_id": project_id, "per_page": 100})
-        )
-        return [item for item in credentials if item.get("type") == "runtime_env"]
-
-    async def create_runtime_env_credential(
-        self, project_id: str, name: str, values: Mapping[str, str]
-    ) -> dict[str, Any]:
-        return await self.request(
-            "POST",
-            "/api/credential",
-            params={"project_id": project_id},
-            json_body={"name": name, "type": "runtime_env", "data": json.dumps(dict(values), separators=(",", ":"))},
-        )
-
-    async def update_runtime_env_credential(
-        self, credential_id: str, name: str | None, values: Mapping[str, str] | None
-    ) -> dict[str, Any]:
-        payload: dict[str, Any] = {}
-        if name is not None:
-            payload["name"] = name
-        if values is not None:
-            payload["data"] = json.dumps(dict(values), separators=(",", ":"))
-        return await self.request("PUT", f"/api/credential/{credential_id}", json_body=payload)
-
     async def list_application_services(self, application_id: str) -> list[dict[str, Any]]:
         return _items(await self.request("GET", f"/api/application/{application_id}/service"))
 
     async def get_service(self, service_id: str) -> dict[str, Any]:
         return await self.request("GET", f"/api/service/{service_id}")
+
+    async def create_service(
+        self,
+        application_id: str,
+        version_id: str,
+        instance_key: str,
+        runtime_config: Mapping[str, str],
+    ) -> dict[str, Any]:
+        return await self.request(
+            "POST",
+            "/api/service",
+            json_body={
+                "application_id": application_id,
+                "version_id": version_id,
+                "instance_key": instance_key,
+                "runtime_config": dict(runtime_config),
+            },
+        )
+
+    async def get_service_runtime_config(self, service_id: str) -> dict[str, Any]:
+        return await self.request("GET", f"/api/service/{service_id}/runtime-config")
+
+    async def update_service_runtime_config(
+        self, service_id: str, runtime_config: Mapping[str, str]
+    ) -> dict[str, Any]:
+        return await self.request(
+            "PUT", f"/api/service/{service_id}/runtime-config", json_body={"runtime_config": dict(runtime_config)}
+        )
 
     async def deploy_application(self, application_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return await self.request("POST", f"/api/application/{application_id}/deploy", json_body=payload)

@@ -99,8 +99,7 @@ func (h Handler) DeployApplication(c *gin.Context) {
 		return
 	}
 	deploymentID, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentdto.DeployInput{
-		VersionId: req.VersionId, InstanceKey: req.InstanceKey,
-		ForceRecreate: req.ForceRecreate, RuntimeConfig: req.RuntimeConfig,
+		VersionId: req.VersionId, ServiceId: req.ServiceId, ForceRecreate: req.ForceRecreate,
 	})
 	if err != nil {
 		h.writeError(c, err)
@@ -119,7 +118,7 @@ func (h Handler) StopApplication(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deploymentID, err := h.service.StopApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(derefString(req.InstanceKey), derefString(req.ServiceId), req.RemoveVolumes))
+	deploymentID, err := h.service.StopApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(req.ServiceId, req.RemoveVolumes))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -137,7 +136,7 @@ func (h Handler) RestartApplication(c *gin.Context) {
 		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	deploymentID, err := h.service.RestartApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(derefString(req.InstanceKey), derefString(req.ServiceId), false))
+	deploymentID, err := h.service.RestartApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentTarget(req.ServiceId, false))
 	if err != nil {
 		h.writeError(c, err)
 		return
@@ -201,12 +200,12 @@ func (h Handler) DeleteApplication(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func deploymentTarget(instanceKey string, serviceID string, removeVolumes bool) deploymentdto.ServiceTargetInput {
-	return deploymentdto.ServiceTargetInput{InstanceKey: instanceKey, ServiceId: serviceID, RemoveVolumes: removeVolumes}
+func deploymentTarget(serviceID string, removeVolumes bool) deploymentdto.ServiceTargetInput {
+	return deploymentdto.ServiceTargetInput{ServiceId: serviceID, RemoveVolumes: removeVolumes}
 }
 
 func deploymentTargetFromQuery(c *gin.Context) deploymentdto.ServiceTargetInput {
-	return deploymentTarget(c.Request.URL.Query().Get("instance_key"), c.Request.URL.Query().Get("service_id"), false)
+	return deploymentTarget(c.Request.URL.Query().Get("service_id"), false)
 }
 
 func derefString(value *string) string {

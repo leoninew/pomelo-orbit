@@ -287,68 +287,69 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             "preview": preview,
         }
 
-    @mcp.tool(name="orbit_list_runtime_env_credentials")
-    async def orbit_list_runtime_env_credentials(project_id: str) -> dict[str, Any]:
-        """List runtime_env Credential metadata without exposing credential values."""
-        credentials = await client.list_runtime_env_credentials(project_id)
-        return {
-            "project_id": project_id,
-            "credentials": [runtime_env_credential_metadata(item) for item in credentials],
-        }
-
-    @mcp.tool(name="orbit_create_runtime_env_credential")
-    async def orbit_create_runtime_env_credential(project_id: str, name: str, values: dict[str, str]) -> dict[str, Any]:
-        """Create a runtime_env Credential; values are never returned or recorded in the request summary."""
-        credential = await client.create_runtime_env_credential(project_id, name, values)
-        metadata = runtime_env_credential_metadata(credential)
+    @mcp.tool(name="orbit_create_service")
+    async def orbit_create_service(
+        application_id: str,
+        version_id: str,
+        instance_key: str,
+        runtime_config: dict[str, str],
+    ) -> dict[str, Any]:
+        """Create a stopped Service with its plain runtime K/V configuration."""
+        service = await client.create_service(application_id, version_id, instance_key, runtime_config)
+        service_id = str(service.get("id") or "")
+        if not service_id:
+            raise ValueError("Orbit service create response did not contain an id")
         return write_result(
-            "create_runtime_env_credential",
-            {"project_id": project_id, "credential_id": str(metadata["id"])},
+            "create_service",
+            {"application_id": application_id, "service_id": service_id},
             "POST",
-            "/api/credential",
-            request_body={"name": name, "type": "runtime_env"},
-            data={"credential": metadata},
+            "/api/service",
+            request_body={
+                "application_id": application_id,
+                "version_id": version_id,
+                "instance_key": instance_key,
+                "runtime_config": runtime_config,
+            },
+            data={"service": service},
         )
 
-    @mcp.tool(name="orbit_update_runtime_env_credential")
-    async def orbit_update_runtime_env_credential(
-        credential_id: str, name: str | None = None, values: dict[str, str] | None = None
-    ) -> dict[str, Any]:
-        """Update runtime_env Credential metadata or values without returning the values."""
-        if name is None and values is None:
-            raise ValueError("name or values must be supplied")
-        credential = await client.update_runtime_env_credential(credential_id, name, values)
-        metadata = runtime_env_credential_metadata(credential)
+    @mcp.tool(name="orbit_get_service_runtime_config")
+    async def orbit_get_service_runtime_config(service_id: str) -> dict[str, Any]:
+        """Read the saved Service runtime configuration, not container process state."""
+        return {"runtime_config": await client.get_service_runtime_config(service_id)}
+
+    @mcp.tool(name="orbit_update_service_runtime_config")
+    async def orbit_update_service_runtime_config(service_id: str, runtime_config: dict[str, str]) -> dict[str, Any]:
+        """Replace a Service runtime configuration; it takes effect on a later deploy or restart."""
+        result = await client.update_service_runtime_config(service_id, runtime_config)
         return write_result(
-            "update_runtime_env_credential",
-            {"credential_id": credential_id},
+            "update_service_runtime_config",
+            {"service_id": service_id},
             "PUT",
-            f"/api/credential/{credential_id}",
-            request_body=compact({"name": name, "values_updated": values is not None}),
-            data={"credential": metadata},
+            f"/api/service/{service_id}/runtime-config",
+            request_body={"runtime_config": runtime_config},
+            data={"runtime_config": result},
         )
 
     @mcp.tool(name="orbit_deploy")
     async def orbit_deploy(
         application_id: str,
         version_id: str,
-        instance_key: str = "default",
+        service_id: str,
         force_recreate: bool = False,
-        runtime_config: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Create an Orbit deployment and immediately return its persisted command summary."""
         body = {
             "version_id": version_id,
-            "instance_key": instance_key,
+            "service_id": service_id,
             "force_recreate": force_recreate,
-            "runtime_config": runtime_config or {},
         }
         action = await client.deploy_application(application_id, body)
         deployment_id = str(action["deployment_id"])
         deployment = await client.get_deployment(deployment_id)
         return write_result(
             "deploy_application",
-            {"application_id": application_id, "version_id": version_id, "deployment_id": deployment_id},
+            {"application_id": application_id, "version_id": version_id, "service_id": service_id, "deployment_id": deployment_id},
             "POST",
             f"/api/application/{application_id}/deploy",
             request_body=body,
@@ -363,14 +364,12 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     @mcp.tool(name="orbit_stop")
     async def orbit_stop(
         application_id: str,
-        instance_key: str | None = None,
-        service_id: str | None = None,
+        service_id: str,
         remove_volumes: bool = False,
     ) -> dict[str, Any]:
         """Create an Orbit stop deployment, optionally requesting managed volume removal."""
         body = compact(
             {
-                "instance_key": instance_key,
                 "service_id": service_id,
                 "remove_volumes": remove_volumes,
             }
@@ -395,11 +394,10 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     @mcp.tool(name="orbit_restart")
     async def orbit_restart(
         application_id: str,
-        instance_key: str | None = None,
-        service_id: str | None = None,
+        service_id: str,
     ) -> dict[str, Any]:
         """Create an Orbit restart deployment and immediately return its command summary."""
-        body = compact({"instance_key": instance_key, "service_id": service_id})
+        body = {"service_id": service_id}
         action = await client.restart_application(application_id, body)
         deployment_id = str(action["deployment_id"])
         deployment = await client.get_deployment(deployment_id)
@@ -432,12 +430,3 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """Wait only until an Orbit Deployment reaches a terminal state or the configured timeout."""
         result = await client.wait_deployment(deployment_id, timeout_seconds)
         return {"operation": "wait_deployment", "deployment_id": deployment_id, **result}
-
-
-def runtime_env_credential_metadata(credential: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "id": credential.get("id"),
-        "name": credential.get("name"),
-        "type": credential.get("type"),
-        "created_at": credential.get("created_at"),
-    }

@@ -16,11 +16,9 @@ type Querier interface {
 	CredentialExists(ctx context.Context, id string) (int64, error)
 	CredentialName(ctx context.Context, id string) (string, error)
 	CredentialReferencedByRepositories(ctx context.Context, arg CredentialReferencedByRepositoriesParams) (int64, error)
-	CredentialReferencedByVersionComponents(ctx context.Context, credentialID string) (int64, error)
 	DeleteCredential(ctx context.Context, id string) error
 	ListCredentials(ctx context.Context, arg ListCredentialsParams) ([]ListCredentialsRow, error)
 	UpdateCredential(ctx context.Context, arg UpdateCredentialParams) error
-	VersionComponentSecretEnvRefsByCredential(ctx context.Context, credentialID string) ([]VersionComponentSecretEnvRef, error)
 }
 
 var _ Querier = (*Queries)(nil)

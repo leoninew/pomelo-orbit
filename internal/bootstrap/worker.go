@@ -42,7 +42,6 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	deploymentService := deploymentsvc.NewExecutionService(
 		stores.project,
 		stores.application,
-		stores.credential,
 		stores.service,
 		stores.deployment,
 		gatewayService,
@@ -50,7 +49,6 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		deploymentWorkspace,
 		deploymentrunner.ShellRunner{},
 		logStore,
-		cfg.JWT.SecretKey,
 	)
 
 	router := worker.NewRouter()

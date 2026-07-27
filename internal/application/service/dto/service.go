@@ -24,23 +24,19 @@ type ServiceListInput struct {
 
 // ServiceTargetInput identifies a runtime binding for a command or runtime query.
 type ServiceTargetInput struct {
-	InstanceKey string
-	ServiceId   string
-}
-
-// RuntimeEnvView is the current persisted runtime_env configuration for a service version.
-// It describes the values that a subsequent deployment will materialize, not a container snapshot.
-type RuntimeEnvView struct {
 	ServiceId string
-	VersionId string
-	Items     []RuntimeEnvItem
 }
 
-type RuntimeEnvItem struct {
-	ComponentName  string
-	EnvKey         string
-	CredentialId   string
-	CredentialName string
-	DataKey        string
-	Value          string
+type ServiceCreateInput struct {
+	ApplicationId string
+	VersionId     string
+	InstanceKey   string
+	RuntimeConfig map[string]string
+}
+
+// RuntimeConfigView is the stored Service configuration, not a container snapshot.
+type RuntimeConfigView struct {
+	ServiceId     string
+	VersionId     string
+	RuntimeConfig map[string]string
 }

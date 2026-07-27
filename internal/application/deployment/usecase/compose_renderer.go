@@ -594,9 +594,6 @@ func renderVersionComponentService(
 	if len(env) > 0 {
 		service["environment"] = env
 	}
-	if len(component.SecretEnvRefs) > 0 {
-		service["env_file"] = []string{runtimeEnvFilePath(component.Name)}
-	}
 	if err := applyComponentRuntimeFields(service, component); err != nil {
 		return nil, nil, err
 	}

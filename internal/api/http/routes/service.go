@@ -10,7 +10,9 @@ func (r Router) registerService(engine *gin.Engine) {
 	handler := servicehandler.New(r.logger, r.deps.ServiceService, r.deps.Authenticator)
 
 	engine.GET("/api/service", handler.ListServices)
+	engine.POST("/api/service", handler.CreateService)
 	engine.GET("/api/service/:service_id", handler.GetService)
 	engine.DELETE("/api/service/:service_id", handler.DeleteService)
-	engine.GET("/api/service/:service_id/runtime-env", handler.GetServiceRuntimeEnv)
+	engine.GET("/api/service/:service_id/runtime-config", handler.GetServiceRuntimeConfig)
+	engine.PUT("/api/service/:service_id/runtime-config", handler.UpdateServiceRuntimeConfig)
 }

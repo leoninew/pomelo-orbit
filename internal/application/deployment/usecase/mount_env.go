@@ -6,11 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
-
-	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
-	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
 const (
@@ -170,30 +166,6 @@ type placeholderNeed struct {
 	HasDefault bool
 }
 
-func collectPlaceholders(varsList ...[]EnvVar) map[string]placeholderNeed {
-	out := map[string]placeholderNeed{}
-	for _, vars := range varsList {
-		for _, item := range vars {
-			name, need, ok := parsePlaceholder(item.Value)
-			if !ok {
-				continue
-			}
-			existing, exists := out[name]
-			if !exists {
-				out[name] = need
-				continue
-			}
-			if need.Required {
-				existing.Required = true
-				existing.HasDefault = false
-				existing.Default = ""
-			}
-			out[name] = existing
-		}
-	}
-	return out
-}
-
 func parsePlaceholder(value string) (string, placeholderNeed, bool) {
 	if m := envPlaceholderRequired.FindStringSubmatch(value); len(m) == 2 {
 		return m[1], placeholderNeed{Required: true}, true
@@ -202,27 +174,6 @@ func parsePlaceholder(value string) (string, placeholderNeed, bool) {
 		return m[1], placeholderNeed{HasDefault: true, Default: m[2]}, true
 	}
 	return "", placeholderNeed{}, false
-}
-
-func resolveRuntimeConfig(placeholders map[string]placeholderNeed, provided map[string]string) (map[string]string, []string) {
-	resolved := map[string]string{}
-	var missing []string
-	for name, need := range placeholders {
-		if provided != nil {
-			if v, ok := provided[name]; ok {
-				resolved[name] = v
-				continue
-			}
-		}
-		if need.HasDefault {
-			resolved[name] = need.Default
-			continue
-		}
-		if need.Required {
-			missing = append(missing, name)
-		}
-	}
-	return resolved, missing
 }
 
 func applyEnvPlaceholders(vars []EnvVar, runtime map[string]string) map[string]string {
@@ -375,27 +326,4 @@ func materializeFile(path string, content string, mode string) error {
 		return fmt.Errorf("create mount file %s: %w", path, err)
 	}
 	return nil
-}
-
-func resolveDeployRuntimeConfig(version model.Version, components []model.VersionComponent, provided map[string]string) (map[string]string, error) {
-	versionEnv, err := parseEnvVars(version.EnvJSON)
-	if err != nil {
-		return nil, apperror.New(apperror.KindValidation, "version env_json: "+err.Error())
-	}
-	var lists [][]EnvVar
-	lists = append(lists, versionEnv)
-	for _, component := range components {
-		componentEnv, err := parseEnvVars(component.EnvJSON)
-		if err != nil {
-			return nil, apperror.New(apperror.KindValidation, "component "+component.Name+" env_json: "+err.Error())
-		}
-		lists = append(lists, componentEnv)
-	}
-	placeholders := collectPlaceholders(lists...)
-	resolved, missing := resolveRuntimeConfig(placeholders, provided)
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		return nil, apperror.New(apperror.KindValidation, "missing runtime_config keys: "+strings.Join(missing, ", "))
-	}
-	return resolved, nil
 }

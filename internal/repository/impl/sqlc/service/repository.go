@@ -3,6 +3,7 @@ package servicerepo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -39,7 +40,11 @@ func (r Repository) ListServicesByApplication(ctx context.Context, applicationId
 	}
 	items := make([]model.Service, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, serviceFrom(row))
+		item, err := serviceFrom(row)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
 	}
 	return items, nil
 }
@@ -84,7 +89,11 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId string,
 	}
 	items := make([]model.ServiceListItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel))
+		item, err := serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.RuntimeConfigJson, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel)
+		if err != nil {
+			return repository.Page[model.ServiceListItem]{}, err
+		}
+		items = append(items, item)
 	}
 	return repository.Page[model.ServiceListItem]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -94,7 +103,11 @@ func (r Repository) ServiceListItem(ctx context.Context, id string) (model.Servi
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel), nil
+	item, err := serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.RuntimeConfigJson, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel)
+	if err != nil {
+		return model.ServiceListItem{}, err
+	}
+	return item, nil
 }
 
 func (r Repository) ServiceByKey(ctx context.Context, applicationId string, instanceKey string) (model.Service, error) {
@@ -105,7 +118,7 @@ func (r Repository) ServiceByKey(ctx context.Context, applicationId string, inst
 	if err != nil {
 		return model.Service{}, fmt.Errorf("load service by key: %w", sqlcommon.TranslateError(err))
 	}
-	return serviceFrom(row), nil
+	return serviceFrom(row)
 }
 
 func (r Repository) Service(ctx context.Context, id string) (model.Service, error) {
@@ -113,7 +126,7 @@ func (r Repository) Service(ctx context.Context, id string) (model.Service, erro
 	if err != nil {
 		return model.Service{}, fmt.Errorf("load service %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return serviceFrom(row), nil
+	return serviceFrom(row)
 }
 
 func (r Repository) UpsertService(ctx context.Context, svc model.Service) error {
@@ -123,6 +136,10 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 		InstanceKey:   svc.InstanceKey,
 	})
 	now := time.Now().UTC()
+	runtimeConfigJSON, configErr := marshalRuntimeConfig(svc.RuntimeConfig)
+	if configErr != nil {
+		return configErr
+	}
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("lookup service for application %s: %w", svc.ApplicationId, err)
@@ -139,6 +156,7 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 			ApplicationID:           svc.ApplicationId,
 			InstanceKey:             svc.InstanceKey,
 			VersionID:               svc.VersionId,
+			RuntimeConfigJson:       runtimeConfigJSON,
 			LastSuccessfulVersionID: dbmodel.NullString(svc.LastSuccessfulVersionId),
 			Status:                  svc.Status,
 			CreatedAt:               createdAt,
@@ -154,12 +172,28 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 	}
 	if err := q.UpdateService(ctx, servicesqlc.UpdateServiceParams{
 		VersionID:               svc.VersionId,
+		RuntimeConfigJson:       runtimeConfigJSON,
 		LastSuccessfulVersionID: dbmodel.NullString(svc.LastSuccessfulVersionId),
 		Status:                  svc.Status,
 		UpdatedAt:               now,
 		ID:                      id,
 	}); err != nil {
 		return fmt.Errorf("update service %s: %w", id, err)
+	}
+	return nil
+}
+
+func (r Repository) UpdateServiceRuntimeConfig(ctx context.Context, id string, runtimeConfig map[string]string) error {
+	raw, err := marshalRuntimeConfig(runtimeConfig)
+	if err != nil {
+		return err
+	}
+	if err := r.q(ctx).UpdateServiceRuntimeConfig(ctx, servicesqlc.UpdateServiceRuntimeConfigParams{
+		RuntimeConfigJson: raw,
+		UpdatedAt:         time.Now().UTC(),
+		ID:                id,
+	}); err != nil {
+		return fmt.Errorf("update service runtime config %s: %w", id, err)
 	}
 	return nil
 }
@@ -201,30 +235,40 @@ func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, id string, sta
 	return nil
 }
 
-func serviceFrom(row servicesqlc.Service) model.Service {
+func serviceFrom(row servicesqlc.Service) (model.Service, error) {
+	runtimeConfig, err := unmarshalRuntimeConfig(row.RuntimeConfigJson)
+	if err != nil {
+		return model.Service{}, fmt.Errorf("decode service runtime config %s: %w", row.ID, err)
+	}
 	return model.Service{
 		Id:                      row.ID,
 		ApplicationId:           row.ApplicationID,
 		InstanceKey:             row.InstanceKey,
 		VersionId:               row.VersionID,
+		RuntimeConfig:           runtimeConfig,
 		LastSuccessfulVersionId: dbmodel.StringPtr(row.LastSuccessfulVersionID),
 		Status:                  row.Status,
 		CreatedAt:               row.CreatedAt,
 		UpdatedAt:               row.UpdatedAt,
-	}
+	}, nil
 }
 
 func serviceListFrom(
-	id, applicationID, instanceKey, versionID string, lastSuccessfulVersionID sql.NullString,
+	id, applicationID, instanceKey, versionID, runtimeConfigJSON string, lastSuccessfulVersionID sql.NullString,
 	svcStatus string, createdAt, updatedAt time.Time,
 	applicationName, applicationCode, applicationKind, versionLabel string,
 	lastSuccessfulVersionLabel sql.NullString,
-) model.ServiceListItem {
+) (model.ServiceListItem, error) {
+	runtimeConfig, err := unmarshalRuntimeConfig(runtimeConfigJSON)
+	if err != nil {
+		return model.ServiceListItem{}, fmt.Errorf("decode service runtime config %s: %w", id, err)
+	}
 	return model.ServiceListItem{
 		Id:                         id,
 		ApplicationId:              applicationID,
 		InstanceKey:                instanceKey,
 		VersionId:                  versionID,
+		RuntimeConfig:              runtimeConfig,
 		LastSuccessfulVersionId:    dbmodel.StringPtr(lastSuccessfulVersionID),
 		Status:                     svcStatus,
 		CreatedAt:                  createdAt,
@@ -234,5 +278,24 @@ func serviceListFrom(
 		ApplicationKind:            applicationKind,
 		VersionLabel:               versionLabel,
 		LastSuccessfulVersionLabel: dbmodel.StringPtr(lastSuccessfulVersionLabel),
+	}, nil
+}
+
+func marshalRuntimeConfig(values map[string]string) (string, error) {
+	if values == nil {
+		values = map[string]string{}
 	}
+	raw, err := json.Marshal(values)
+	if err != nil {
+		return "", fmt.Errorf("encode runtime config: %w", err)
+	}
+	return string(raw), nil
+}
+
+func unmarshalRuntimeConfig(raw string) (map[string]string, error) {
+	values := map[string]string{}
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return nil, err
+	}
+	return values, nil
 }

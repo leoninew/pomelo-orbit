@@ -384,13 +384,6 @@ export default {
       softLimit: 'Soft limit',
       hardLimit: 'Hard limit',
       ulimitInvalid: 'Ulimits must use unique memlock or nofile values within the supported range',
-      secretEnvRefs: 'Runtime environment references',
-      addSecretEnvRef: 'Add reference',
-      targetEnvKey: 'Target environment key',
-      selectCredential: 'Select runtime_env credential',
-      selectDataKey: 'Select credential key',
-      secretEnvRefInvalid:
-        'Each reference needs unique valid environment, credential, and data keys',
       summary: {
         command: 'command',
         args: 'args',
@@ -399,7 +392,6 @@ export default {
         restart: 'restart',
         tmpfs: 'tmpfs',
         ulimits: 'ulimits',
-        secretEnvRefs: '{count} secret refs',
         empty: 'Not configured',
       },
     },
@@ -467,15 +459,6 @@ export default {
       loadPreviewFailed: 'Failed to load preview',
     },
   },
-  credential: {
-    runtimeEnv: {
-      variables: 'Runtime environment variables',
-      add: 'Add variable',
-      remove: 'Remove variable',
-      keyPlaceholder: 'KEY',
-      valuePlaceholder: 'Value',
-    },
-  },
   service: {
     toolbar: 'Services toolbar',
     searchPlaceholder: 'Search app / instance / version',
@@ -496,6 +479,7 @@ export default {
       lastSuccessfulVersion: 'Last successful version',
     },
     actions: {
+	  create: 'Create service',
       view: 'Details',
       deployments: 'Deployments',
       logs: 'Logs',
@@ -513,16 +497,21 @@ export default {
         components: 'Runtime status',
       },
     },
-    runtimeEnv: {
-      title: 'Runtime environment variables',
-      nextDeployment: 'Current persisted configuration for the next deployment.',
-      empty: 'No runtime environment references are configured for this version.',
-      loadFailed: 'Failed to load runtime environment variables',
-      retry: 'Retry',
-      envKey: 'Environment key',
-      credential: 'Credential',
-      dataKey: 'Credential key',
-      value: 'Current value',
+    runtimeConfig: {
+      title: 'Runtime configuration',
+      editTitle: 'Edit runtime configuration',
+      nextDeployment: 'Saved changes take effect on the next deployment or restart.',
+      empty: 'No runtime key/value entries are configured.',
+      loadFailed: 'Failed to load runtime configuration',
+      invalid: 'Keys are required and must be unique.',
+      saved: 'Runtime configuration saved',
+      key: 'Key',
+      value: 'Value',
+    },
+    create: {
+      title: 'Create service',
+      required: 'Application, version, and instance are required.',
+      saved: 'Service created',
     },
     deploy: {
       dialogTitle: 'Deploy service',

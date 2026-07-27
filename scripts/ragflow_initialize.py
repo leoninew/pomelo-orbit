@@ -28,7 +28,7 @@ from mcp.client.stdio import stdio_client
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FIXTURE = REPO_ROOT / "docs" / "guides" / "ragflow-split-deployment.fixture.yaml"
 DEFAULT_RUN_ROOT = REPO_ROOT / "data" / "ragflow" / "runs"
-REQUIRED_COMPONENT_FIELDS = frozenset({"restart_policy", "tmpfs_json", "ulimits_json", "secret_env_refs"})
+REQUIRED_COMPONENT_FIELDS = frozenset({"restart_policy", "tmpfs_json", "ulimits_json"})
 REQUIRED_EXTERNAL_NETWORK = "traefik"
 REQUIRED_MCP_TOOLS = frozenset(
     {
@@ -36,8 +36,7 @@ REQUIRED_MCP_TOOLS = frozenset(
         "orbit_bootstrap_application",
         "orbit_create_version",
         "orbit_update_version",
-        "orbit_create_runtime_env_credential",
-        "orbit_list_runtime_env_credentials",
+        "orbit_create_service",
         "orbit_preview_version",
         "orbit_publish_version",
         "orbit_deploy",
@@ -137,22 +136,12 @@ def validate_fixture(fixture: Mapping[str, Any]) -> None:
     if contains_key(fixture, "environment_id"):
         raise FixtureError("fixture must not contain environment_id")
 
-    templates = as_list(fixture.get("credential_templates"), "credential_templates")
-    credential_keys: dict[str, set[str]] = {}
-    for index, raw_template in enumerate(templates):
-        template = as_mapping(raw_template, f"credential_templates[{index}]")
-        name = string_value(template.get("name"), f"credential_templates[{index}].name")
-        if template.get("type") != "runtime_env":
-            raise FixtureError(f"credential {name} must have type runtime_env")
-        if "values" in template:
-            raise FixtureError(f"credential {name} must not contain values")
-        keys = {
-            string_value(item, f"credential {name}.keys")
-            for item in as_list(template.get("keys"), f"credential {name}.keys")
-        }
-        if not keys:
-            raise FixtureError(f"credential {name} must declare at least one key")
-        credential_keys[name] = keys
+    runtime_config_keys = {
+        string_value(item, "runtime_config_keys")
+        for item in as_list(fixture.get("runtime_config_keys"), "runtime_config_keys")
+    }
+    if not runtime_config_keys:
+        raise FixtureError("runtime_config_keys must not be empty")
 
     applications = as_list(fixture.get("applications"), "applications")
     expected_codes = {
@@ -175,13 +164,14 @@ def validate_fixture(fixture: Mapping[str, Any]) -> None:
         component = as_mapping(components[0], f"application {code}.components[0]")
         string_value(component.get("name"), f"application {code}.component.name")
         string_value(component.get("image"), f"application {code}.component.image")
-        for raw_ref in as_list(component.get("secret_env_refs", []), f"application {code}.secret_env_refs"):
-            ref = as_mapping(raw_ref, f"application {code}.secret_env_ref")
-            credential_name = string_value(ref.get("credential_name"), "secret_env_ref.credential_name")
-            data_key = string_value(ref.get("data_key"), "secret_env_ref.data_key")
-            string_value(ref.get("env_key"), "secret_env_ref.env_key")
-            if data_key not in credential_keys.get(credential_name, set()):
-                raise FixtureError(f"application {code} references unknown credential key {credential_name}.{data_key}")
+        for entry in as_list(component.get("environment", []), f"application {code}.environment"):
+            env = as_mapping(entry, f"application {code}.environment entry")
+            value = env.get("value")
+            if not isinstance(value, str) or not value.startswith("${") or not value.endswith("}"):
+                continue
+            key = value[2:-1].split(":-", 1)[0]
+            if key not in runtime_config_keys:
+                raise FixtureError(f"application {code} references unknown runtime config key {key}")
         if code != "ragflow" and application.get("exposes") != []:
             raise FixtureError(f"dependency application {code} must not define exposes")
 
@@ -213,9 +203,6 @@ def validate_fixture(fixture: Mapping[str, Any]) -> None:
 def planned_operations(fixture: Mapping[str, Any]) -> list[dict[str, str]]:
     applications = as_list(fixture["applications"], "applications")
     operations = [{"id": "check", "operation": "check MCP capabilities and target conflicts"}]
-    for credential in as_list(fixture["credential_templates"], "credential_templates"):
-        name = string_value(as_mapping(credential, "credential").get("name"), "credential.name")
-        operations.append({"id": f"credential:{name}", "operation": "create runtime_env credential"})
     for application in applications:
         app = as_mapping(application, "application")
         code = string_value(app.get("code"), "application.code")
@@ -224,6 +211,7 @@ def planned_operations(fixture: Mapping[str, Any]) -> list[dict[str, str]]:
                 {"id": f"bootstrap:{code}", "operation": "create application and initial version"},
                 {"id": f"preview:{code}", "operation": "preview and inspect redacted compose"},
                 {"id": f"publish:{code}", "operation": "publish version"},
+                {"id": f"service:{code}", "operation": "create Service with runtime configuration"},
                 {"id": f"deploy:{code}", "operation": "deploy application"},
                 {"id": f"verify:{code}", "operation": "wait and verify deployment"},
             ]
@@ -274,7 +262,7 @@ class RunJournal:
             "created_at": utc_now(),
             "updated_at": utc_now(),
             "steps": {item["id"]: {"status": "pending"} for item in operations},
-            "resources": {"credentials": {}, "applications": {}, "versions": {}, "deployments": {}},
+            "resources": {"applications": {}, "versions": {}, "services": {}, "deployments": {}},
         }
         journal = cls(directory, state)
         journal._write_state()
@@ -493,26 +481,6 @@ async def check_live_gate(
             continue
         blockers.append(f"application_conflict:{code}")
 
-    credential_result = await gateway.call("orbit_list_runtime_env_credentials", {"project_id": project_id})
-    credentials = credential_result.get("credentials")
-    if not isinstance(credentials, list):
-        raise ToolCallError("orbit_list_runtime_env_credentials")
-    existing_credentials = {
-        str(item.get("name")): item
-        for item in credentials
-        if isinstance(item, dict) and isinstance(item.get("name"), str)
-    }
-    for raw_credential in as_list(fixture["credential_templates"], "credential_templates"):
-        credential = as_mapping(raw_credential, "credential")
-        name = string_value(credential.get("name"), "credential.name")
-        existing = existing_credentials.get(name)
-        if existing is None:
-            continue
-        known_id = recorded_resource_id(known_resources, "credentials", name)
-        if known_id is not None and existing.get("id") == known_id:
-            continue
-        blockers.append(f"credential_conflict:{name}")
-
     doctor = await gateway.call(
         "runtime_doctor",
         {
@@ -535,37 +503,28 @@ async def check_live_gate(
     }
 
 
-def load_secrets(path: Path, fixture: Mapping[str, Any]) -> dict[str, dict[str, str]]:
+def load_runtime_config(path: Path, fixture: Mapping[str, Any]) -> dict[str, str]:
     try:
         resolved = path.resolve(strict=True)
     except OSError as error:
-        raise InitializerError("secrets file could not be read") from error
+        raise InitializerError("runtime config file could not be read") from error
     if resolved.is_relative_to(REPO_ROOT):
-        raise InitializerError("secrets file must be outside the repository")
+        raise InitializerError("runtime config file must be outside the repository")
     try:
         raw = json.loads(resolved.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        raise InitializerError("secrets file must be valid JSON") from error
+        raise InitializerError("runtime config file must be valid JSON") from error
     if not isinstance(raw, dict):
-        raise InitializerError("secrets file root must be an object")
-    expected: dict[str, set[str]] = {}
-    for item in as_list(fixture["credential_templates"], "credential_templates"):
-        template = as_mapping(item, "credential template")
-        expected[string_value(template["name"], "credential name")] = set(as_list(template["keys"], "credential keys"))
-    if set(raw) != set(expected):
-        raise InitializerError("secrets file credential names do not match fixture")
-    values: dict[str, dict[str, str]] = {}
-    for credential_name, keys in expected.items():
-        credential_values = raw.get(credential_name)
-        if not isinstance(credential_values, dict) or set(credential_values) != keys:
-            raise InitializerError("secrets file keys do not match fixture")
-        if not all(isinstance(value, str) and value for value in credential_values.values()):
-            raise InitializerError("secrets file values must be non-empty strings")
-        values[credential_name] = {key: str(value) for key, value in credential_values.items()}
-    return values
+        raise InitializerError("runtime config file root must be an object")
+    expected = set(as_list(fixture["runtime_config_keys"], "runtime_config_keys"))
+    if set(raw) != expected:
+        raise InitializerError("runtime config file keys do not match fixture")
+    if not all(isinstance(value, str) for value in raw.values()):
+        raise InitializerError("runtime config values must be strings")
+    return {str(key): str(value) for key, value in raw.items()}
 
 
-def encode_component(component: Mapping[str, Any], credential_ids: Mapping[str, str]) -> dict[str, Any]:
+def encode_component(component: Mapping[str, Any]) -> dict[str, Any]:
     encoded: dict[str, Any] = {"name": component["name"], "image": component["image"]}
     mapping = {
         "command": "command_json",
@@ -582,23 +541,20 @@ def encode_component(component: Mapping[str, Any], credential_ids: Mapping[str, 
             encoded[payload_key] = json.dumps(component[fixture_key], ensure_ascii=True, separators=(",", ":"))
     if "restart_policy" in component:
         encoded["restart_policy"] = component["restart_policy"]
-    refs: list[dict[str, str]] = []
-    for item in as_list(component.get("secret_env_refs", []), "secret_env_refs"):
-        ref = as_mapping(item, "secret_env_ref")
-        credential_name = string_value(ref.get("credential_name"), "secret_env_ref.credential_name")
-        credential_id = credential_ids.get(credential_name)
-        if not credential_id:
-            raise InitializerError("credential reference was not created")
-        refs.append(
-            {
-                "env_key": string_value(ref.get("env_key"), "secret_env_ref.env_key"),
-                "credential_id": credential_id,
-                "data_key": string_value(ref.get("data_key"), "secret_env_ref.data_key"),
-            }
-        )
-    if refs:
-        encoded["secret_env_refs"] = refs
     return encoded
+
+
+def application_runtime_config(application: Mapping[str, Any], values: Mapping[str, str]) -> dict[str, str]:
+    component = as_mapping(as_list(application["components"], "components")[0], "component")
+    keys: set[str] = set()
+    for entry in as_list(component.get("environment", []), "component.environment"):
+        value = as_mapping(entry, "component environment entry").get("value")
+        if not isinstance(value, str) or not value.startswith("${") or not value.endswith("}"):
+            continue
+        key = value[2:-1].split(":-", 1)[0]
+        if key:
+            keys.add(key)
+    return {key: values[key] for key in sorted(keys) if key in values}
 
 
 def component_for_apply(application: Mapping[str, Any]) -> dict[str, Any]:
@@ -713,15 +669,13 @@ def bundled_version_source(source: RunJournal, fixture: Mapping[str, Any]) -> tu
 
     resources = as_mapping(source.state.get("resources"), "source resources")
     applications = as_mapping(resources.get("applications"), "source applications")
-    credentials = as_mapping(resources.get("credentials"), "source credentials")
+    services = as_mapping(resources.get("services"), "source services")
     versions = as_mapping(resources.get("versions"), "source versions")
     for application in as_list(fixture["applications"], "applications"):
         code = string_value(as_mapping(application, "application").get("code"), "application.code")
         string_value(applications.get(code), f"source application {code}")
-    for template in as_list(fixture["credential_templates"], "credential_templates"):
-        name = string_value(as_mapping(template, "credential template").get("name"), "credential name")
-        string_value(credentials.get(name), f"source credential {name}")
     string_value(versions.get("ragflow"), "source ragflow version")
+    string_value(services.get("ragflow"), "source ragflow service")
     return bundle_parameters, resources
 
 
@@ -735,7 +689,7 @@ def create_bundled_version_journal(
     journal = RunJournal.create(directory, fixture, parameters, bundled_version_operations())
     resources = as_mapping(journal.state["resources"], "bundle resources")
     resources["applications"] = dict(as_mapping(source_resources.get("applications"), "source applications"))
-    resources["credentials"] = dict(as_mapping(source_resources.get("credentials"), "source credentials"))
+    resources["services"] = dict(as_mapping(source_resources.get("services"), "source services"))
     resources["versions"] = {
         "ragflow-existing": string_value(
             as_mapping(source_resources.get("versions"), "source versions").get("ragflow"),
@@ -756,26 +710,12 @@ async def apply_fixture(
     instance_key: str,
     access: str,
     local_http_port: int | None,
-    secrets: Mapping[str, Mapping[str, str]],
+    runtime_config: Mapping[str, str],
 ) -> None:
     resources = as_mapping(journal.state["resources"], "resources")
-    credential_ids = as_mapping(resources["credentials"], "resources.credentials")
-    for raw_credential in as_list(fixture["credential_templates"], "credential_templates"):
-        credential = as_mapping(raw_credential, "credential")
-        name = string_value(credential["name"], "credential.name")
-        step_id = f"credential:{name}"
-        if name in credential_ids:
-            continue
-        result = await gateway.call(
-            "orbit_create_runtime_env_credential",
-            {"project_id": project_id, "name": name, "values": dict(secrets[name])},
-        )
-        credential_id = identifier(result, "credential_id")
-        journal.resource("credentials", name, credential_id)
-        journal.step(step_id, "complete", {"credential_id": credential_id})
-
     application_ids = as_mapping(resources["applications"], "resources.applications")
     version_ids = as_mapping(resources["versions"], "resources.versions")
+    service_ids = as_mapping(resources["services"], "resources.services")
     for raw_application in as_list(fixture["applications"], "applications"):
         application = as_mapping(raw_application, "application")
         code = string_value(application["code"], "application.code")
@@ -791,7 +731,7 @@ async def apply_fixture(
                 "name": string_value(application["name"], f"{code}.name"),
                 "code": code,
                 "version_label": string_value(application["version_label"], f"{code}.version_label"),
-                "components": [encode_component(component, credential_ids)],
+                "components": [encode_component(component)],
                 "exposes": selected_exposes(application, access, local_http_port),
                 "image_pull_policy": "missing",
                 "kind": "standard",
@@ -817,6 +757,20 @@ async def apply_fixture(
         if as_mapping(journal.state["steps"], "steps")[f"publish:{code}"].get("status") != "complete":
             await gateway.call("orbit_publish_version", {"version_id": version_id})
             journal.step(f"publish:{code}", "complete", {"version_id": version_id})
+        if code not in service_ids:
+            result = await gateway.call(
+                "orbit_create_service",
+                {
+                    "application_id": application_id,
+                    "version_id": version_id,
+                    "instance_key": instance_key,
+                    "runtime_config": application_runtime_config(application, runtime_config),
+                },
+            )
+            service_id = identifier(result, "service_id")
+            journal.resource("services", code, service_id)
+            journal.step(f"service:{code}", "complete", {"service_id": service_id})
+        service_id = string_value(service_ids.get(code), f"service id {code}")
         deployments = as_mapping(resources["deployments"], "resources.deployments")
         verification_step = as_mapping(journal.state["steps"], "steps")[f"verify:{code}"]
         if code in deployments and verification_step.get("status") != "complete":
@@ -825,7 +779,7 @@ async def apply_fixture(
             if previous_deployment.get("status") in {"faulted", "canceled"}:
                 result = await gateway.call(
                     "orbit_deploy",
-                    {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
+                    {"application_id": application_id, "version_id": version_id, "service_id": service_id},
                 )
                 deployment_id = identifier(result, "deployment_id")
                 journal.resource("deployments", code, deployment_id)
@@ -833,7 +787,7 @@ async def apply_fixture(
         if code not in deployments:
             result = await gateway.call(
                 "orbit_deploy",
-                {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
+                {"application_id": application_id, "version_id": version_id, "service_id": service_id},
             )
             deployment_id = identifier(result, "deployment_id")
             journal.resource("deployments", code, deployment_id)
@@ -850,11 +804,12 @@ async def apply_bundled_version(
 ) -> None:
     resources = as_mapping(journal.state["resources"], "resources")
     applications = as_mapping(resources["applications"], "resources.applications")
-    credentials = as_mapping(resources["credentials"], "resources.credentials")
+    services = as_mapping(resources["services"], "resources.services")
     versions = as_mapping(resources["versions"], "resources.versions")
     deployments = as_mapping(resources["deployments"], "resources.deployments")
     parameters = as_mapping(journal.state["parameters"], "bundle parameters")
     application_id = string_value(applications.get("ragflow"), "ragflow application id")
+    service_id = string_value(services.get("ragflow"), "ragflow service id")
     instance_key = string_value(parameters.get("instance_key"), "instance key")
     access = string_value(parameters.get("access"), "access")
     raw_port = parameters.get("local_http_port")
@@ -872,7 +827,7 @@ async def apply_bundled_version(
             {
                 "application_id": application_id,
                 "label": version_label,
-                "components": [encode_component(component, credentials) for component in bundled_version_components(fixture)],
+                "components": [encode_component(component) for component in bundled_version_components(fixture)],
                 "exposes": selected_exposes(ragflow_application, access, local_http_port),
             },
         )
@@ -892,7 +847,7 @@ async def apply_bundled_version(
     if deployment_id is None:
         result = await gateway.call(
             "orbit_deploy",
-            {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
+            {"application_id": application_id, "version_id": version_id, "service_id": service_id},
         )
         deployment_id = identifier(result, "deployment_id")
         journal.resource("deployments", "ragflow-bundled", deployment_id)
@@ -940,7 +895,6 @@ async def reconcile_draft_versions(
     local_http_port: int | None,
 ) -> None:
     resources = as_mapping(journal.state["resources"], "resources")
-    credential_ids = as_mapping(resources["credentials"], "resources.credentials")
     version_ids = as_mapping(resources["versions"], "resources.versions")
     for raw_application in as_list(fixture["applications"], "applications"):
         application = as_mapping(raw_application, "application")
@@ -951,7 +905,7 @@ async def reconcile_draft_versions(
             {
                 "version_id": version_id,
                 "label": string_value(application["version_label"], f"{code}.version_label"),
-                "components": [encode_component(component_for_apply(application), credential_ids)],
+                "components": [encode_component(component_for_apply(application))],
                 "exposes": selected_exposes(application, access, local_http_port),
             },
         )
@@ -1029,7 +983,7 @@ def parser() -> argparse.ArgumentParser:
         command.add_argument("--gateway-instance-key", default="default")
         command.add_argument("--run-dir", type=Path)
     apply = subparsers.choices["apply"]
-    apply.add_argument("--secrets-file", type=Path, required=True)
+    apply.add_argument("--runtime-config-file", type=Path, required=True)
     apply.add_argument("--confirm", action="store_true")
     apply.add_argument("--resume", type=Path)
     bundle = subparsers.add_parser("bundle", help="create and deploy an all-in-one second RAGFlow Version")
@@ -1150,7 +1104,7 @@ async def run(arguments: argparse.Namespace) -> dict[str, Any]:
         journal.step("check", "complete", result)
         if arguments.mode == "check":
             return {"status": "ready", "run_directory": str(journal.directory), "fixture_digest": digest}
-        secrets = load_secrets(arguments.secrets_file, fixture)
+        runtime_config = load_runtime_config(arguments.runtime_config_file, fixture)
         await apply_fixture(
             gateway,
             journal,
@@ -1159,7 +1113,7 @@ async def run(arguments: argparse.Namespace) -> dict[str, Any]:
             arguments.instance_key,
             arguments.access,
             arguments.local_http_port,
-            secrets,
+            runtime_config,
         )
     return {"status": "applied", "run_directory": str(journal.directory), "fixture_digest": digest}
 

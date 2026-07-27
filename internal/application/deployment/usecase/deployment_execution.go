@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
+	runtimeconfig "gitee.com/leoninew/PomeloOrbit-go/internal/common/runtimeconfig"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 )
 
@@ -232,13 +234,13 @@ func (s Service) renderAndDeployWithOptions(
 	if err != nil {
 		return err
 	}
-	secretValues, err := s.materializeRuntimeEnvFiles(ctx, app, components, svc)
+	resolvedRuntimeConfig, extraKeys, err := runtimeconfig.Resolve(runtimeConfig, version.EnvJSON, components)
 	if err != nil {
 		return err
 	}
 	result, err := s.RenderComposeDetailed(ctx, RenderInput{
 		App: app, Version: version, Components: components, Exposes: exposes,
-		Service: svc, Gateway: gateway, RuntimeConfig: runtimeConfig, PhysicalSvcDir: physicalDir,
+		Service: svc, Gateway: gateway, RuntimeConfig: resolvedRuntimeConfig, PhysicalSvcDir: physicalDir,
 	})
 	if err != nil {
 		return err
@@ -251,18 +253,20 @@ func (s Service) renderAndDeployWithOptions(
 		return err
 	}
 	defer func() { _ = logWriter.Close() }()
-	redactedLogWriter := &secretRedactingWriter{destination: logWriter, redactor: NewSecretRedactor(secretValues)}
-	defer func() { _ = redactedLogWriter.Flush() }()
-
-	if err := writeWorkingDirectory(redactedLogWriter, serviceDir); err != nil {
+	if err := writeWorkingDirectory(logWriter, serviceDir); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintf(redactedLogWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
+	if len(extraKeys) > 0 {
+		if _, err := fmt.Fprintf(logWriter, "Warning: ignored unused runtime config keys: %s\n", strings.Join(extraKeys, ", ")); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintf(logWriter, "Rendering version %s (%s) with %d component(s) into instance %s\n",
 		version.Label, version.Id, len(components), svc.InstanceKey); err != nil {
 		return err
 	}
 	if len(result.ResolvedMounts) > 0 {
-		if _, err := fmt.Fprintf(redactedLogWriter, "Materializing %d logical mount source(s)\n", countLogicalMounts(result.ResolvedMounts)); err != nil {
+		if _, err := fmt.Fprintf(logWriter, "Materializing %d logical mount source(s)\n", countLogicalMounts(result.ResolvedMounts)); err != nil {
 			return err
 		}
 		if err := MaterializeLogicalMountSources(result.ResolvedMounts); err != nil {
@@ -274,8 +278,8 @@ func (s Service) renderAndDeployWithOptions(
 	}
 	projectName := composeProjectName(app.Code, svc.InstanceKey)
 	command := deployComposeCommand(projectName, app.ImagePullPolicy, forceRecreate)
-	if err := s.runner.Run(ctx, serviceDir, redactedLogWriter, command.Name, command.Args...); err != nil {
-		return fmt.Errorf("%s", redactedLogWriter.redactor.RedactText(err.Error()))
+	if err := s.runner.Run(ctx, serviceDir, logWriter, command.Name, command.Args...); err != nil {
+		return err
 	}
 	return nil
 }
@@ -395,7 +399,7 @@ func (s Service) deployGatewayInPlace(ctx context.Context, gateway *model.Gatewa
 		return err
 	}
 	logID := parentDeploymentId + "-gw"
-	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logID, true, nil); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logID, true, cloneRuntimeConfig(active.RuntimeConfig)); err != nil {
 		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id, active.LastSuccessfulVersionId)
 		return fmt.Errorf("gateway reconcile deploy failed (business deploy aborted): %w", err)
 	}

@@ -49,14 +49,3 @@ WHERE id = ?;
 SELECT COUNT(*)
 FROM repository
 WHERE project_id = ? AND git_credential_id = ?;
-
--- name: CredentialReferencedByVersionComponents :one
-SELECT COUNT(*)
-FROM version_component_secret_env_ref
-WHERE credential_id = ?;
-
--- name: VersionComponentSecretEnvRefsByCredential :many
-SELECT component_id, env_key, credential_id, data_key
-FROM version_component_secret_env_ref
-WHERE credential_id = ?
-ORDER BY component_id, env_key;

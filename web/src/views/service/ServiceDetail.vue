@@ -116,61 +116,66 @@
 
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between gap-3">
-          <h2 class="font-semibold text-foreground">{{ t('service.runtimeEnv.title') }}</h2>
-          <button
-            class="app-button inline-flex h-8 items-center gap-2 px-3"
-            :disabled="runtimeEnvLoading"
-            @click="loadRuntimeEnv"
-          >
-            <RefreshCw class="size-4" :class="{ 'animate-spin': runtimeEnvLoading }" />
-            {{ t('common.refresh') }}
-          </button>
+          <h2 class="font-semibold text-foreground">{{ t('service.runtimeConfig.title') }}</h2>
+          <div class="flex items-center gap-2">
+            <button class="app-button h-8 px-3" :disabled="runtimeConfigLoading" @click="loadRuntimeConfig">
+              <RefreshCw class="size-4" :class="{ 'animate-spin': runtimeConfigLoading }" />
+              {{ t('common.refresh') }}
+            </button>
+            <button class="app-button-primary h-8 px-3" :disabled="runtimeConfigLoading" @click="openRuntimeConfigDialog">
+              <Pencil class="size-4" />
+              {{ t('common.edit') }}
+            </button>
+          </div>
         </div>
         <div class="px-5 py-4">
-          <AppSpinner v-if="runtimeEnvLoading && !runtimeEnv" class="py-8" />
-          <div v-else-if="runtimeEnvError" class="flex flex-wrap items-center gap-3">
-            <p class="text-sm text-destructive">{{ runtimeEnvError }}</p>
-            <button class="app-link text-sm" @click="loadRuntimeEnv">
-              {{ t('service.runtimeEnv.retry') }}
+          <p class="mb-3 text-sm text-muted-foreground">{{ t('service.runtimeConfig.nextDeployment') }}</p>
+          <AppSpinner v-if="runtimeConfigLoading && !runtimeConfig" class="py-8" />
+          <div v-else-if="runtimeConfigError" class="flex flex-wrap items-center gap-3">
+            <p class="text-sm text-destructive">{{ runtimeConfigError }}</p>
+            <button class="app-link text-sm" @click="loadRuntimeConfig">
+              {{ t('common.retry') }}
             </button>
           </div>
           <AppEmptyState
-            v-else-if="!runtimeEnv || runtimeEnv.items.length === 0"
-            :message="t('service.runtimeEnv.empty')"
+            v-else-if="runtimeConfigEntries.length === 0"
+            :message="t('service.runtimeConfig.empty')"
           />
           <div v-else class="overflow-x-auto">
-            <table class="app-table-detail min-w-[900px]">
+            <table class="app-table-detail min-w-[600px]">
               <thead>
                 <tr>
-                  <th>{{ t('service.fields.component') }}</th>
-                  <th>{{ t('service.runtimeEnv.envKey') }}</th>
-                  <th>{{ t('service.runtimeEnv.credential') }}</th>
-                  <th>{{ t('service.runtimeEnv.dataKey') }}</th>
-                  <th>{{ t('service.runtimeEnv.value') }}</th>
+                  <th>{{ t('service.runtimeConfig.key') }}</th>
+                  <th>{{ t('service.runtimeConfig.value') }}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr
-                  v-for="item in runtimeEnv.items"
-                  :key="`${item.component_name}:${item.env_key}`"
-                >
-                  <td class="text-foreground">{{ item.component_name }}</td>
-                  <td class="break-all text-sm text-foreground">{{ item.env_key }}</td>
-                  <td>
-                    <router-link :to="`/credential/${item.credential_id}`" class="app-link">
-                      {{ item.credential_name }}
-                    </router-link>
-                  </td>
-                  <td class="break-all text-sm text-foreground">{{ item.data_key }}</td>
-                  <td class="min-w-[240px] whitespace-pre-wrap break-all text-sm text-foreground">
-                    {{ item.value }}
-                  </td>
+                <tr v-for="item in runtimeConfigEntries" :key="item.key">
+                  <td class="break-all font-mono text-sm text-foreground">{{ item.key }}</td>
+                  <td class="min-w-[240px] whitespace-pre-wrap break-all text-sm text-foreground">{{ item.value }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+      <AppDialog v-model:open="isRuntimeConfigDialogOpen" :title="t('service.runtimeConfig.editTitle')">
+        <div class="space-y-3">
+          <p class="text-sm text-muted-foreground">{{ t('service.runtimeConfig.nextDeployment') }}</p>
+          <div v-for="(item, index) in runtimeConfigDraft" :key="index" class="grid grid-cols-[1fr_1fr_auto] gap-2">
+            <input v-model="item.key" class="app-input font-mono text-sm" :placeholder="t('service.runtimeConfig.key')" />
+            <input v-model="item.value" class="app-input text-sm" :placeholder="t('service.runtimeConfig.value')" />
+            <button class="app-button-danger size-9" :aria-label="t('common.delete')" @click="runtimeConfigDraft.splice(index, 1)"><Trash2 class="size-4" /></button>
+          </div>
+          <button class="app-link inline-flex items-center gap-1" @click="runtimeConfigDraft.push({ key: '', value: '' })">{{ t('common.add') }}</button>
+          <p v-if="runtimeConfigSaveError" class="app-field-error text-xs">{{ runtimeConfigSaveError }}</p>
+        </div>
+        <template #footer>
+          <button class="app-button" @click="isRuntimeConfigDialogOpen = false">{{ t('common.cancel') }}</button>
+          <button class="app-button-primary" :disabled="operating" @click="saveRuntimeConfig">{{ t('common.save') }}</button>
+        </template>
+      </AppDialog>
 
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between gap-3">
@@ -400,6 +405,7 @@
   import {
     ArrowLeft,
     Loader2,
+    Pencil,
     RefreshCw,
     Rocket,
     ScrollText,
@@ -423,7 +429,7 @@
   import { useToast } from '@/composables/useToast';
   import type { ApplicationContainerStatusResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
-  import type { ServiceResp, ServiceRuntimeEnvResp } from '@/gen/proto/orbit/v1/service/service';
+  import type { ServiceResp, ServiceRuntimeConfigResp } from '@/gen/proto/orbit/v1/service/service';
   import { appStatusTone, containerStateTone } from '@/utils/status';
   import { delayAsync, formatTime } from '@/utils/time';
 
@@ -440,9 +446,12 @@
   const containers = ref<ApplicationContainerStatusResp[]>([]);
   const containersLoading = ref(false);
   const containersError = ref('');
-  const runtimeEnv = ref<ServiceRuntimeEnvResp | null>(null);
-  const runtimeEnvLoading = ref(false);
-  const runtimeEnvError = ref('');
+  const runtimeConfig = ref<ServiceRuntimeConfigResp | null>(null);
+  const runtimeConfigLoading = ref(false);
+  const runtimeConfigError = ref('');
+  const runtimeConfigDraft = ref<Array<{ key: string; value: string }>>([]);
+  const runtimeConfigSaveError = ref('');
+  const isRuntimeConfigDialogOpen = ref(false);
   const versions = ref<VersionResp[]>([]);
 
   const isDeployDialogOpen = ref(false);
@@ -473,6 +482,11 @@
     return s === 'running' || s === 'faulted';
   });
   const canDelete = computed(() => service.value?.status === 'stopped');
+  const runtimeConfigEntries = computed(() =>
+    Object.entries(runtimeConfig.value?.runtime_config ?? {})
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => a.key.localeCompare(b.key))
+  );
 
   const versionSelectOptions = computed(() =>
     versions.value.map((v) => ({
@@ -535,22 +549,53 @@
     }
   }
 
-  async function loadRuntimeEnv() {
+  async function loadRuntimeConfig() {
     if (!service.value) {
-      runtimeEnv.value = null;
-      runtimeEnvError.value = '';
+      runtimeConfig.value = null;
+      runtimeConfigError.value = '';
       return;
     }
-    runtimeEnvLoading.value = true;
-    runtimeEnvError.value = '';
+    runtimeConfigLoading.value = true;
+    runtimeConfigError.value = '';
     try {
-      runtimeEnv.value = await serviceApi.getRuntimeEnv(service.value.id);
+      runtimeConfig.value = await serviceApi.getRuntimeConfig(service.value.id);
     } catch (err: unknown) {
-      runtimeEnv.value = null;
-      runtimeEnvError.value =
-        err instanceof Error ? err.message : t('service.runtimeEnv.loadFailed');
+      runtimeConfig.value = null;
+      runtimeConfigError.value =
+        err instanceof Error ? err.message : t('service.runtimeConfig.loadFailed');
     } finally {
-      runtimeEnvLoading.value = false;
+      runtimeConfigLoading.value = false;
+    }
+  }
+
+  function openRuntimeConfigDialog() {
+    runtimeConfigDraft.value = runtimeConfigEntries.value.map((item) => ({ ...item }));
+    runtimeConfigSaveError.value = '';
+    isRuntimeConfigDialogOpen.value = true;
+  }
+
+  async function saveRuntimeConfig() {
+    if (!service.value) {
+      return;
+    }
+	const currentServiceID = service.value.id;
+    const values: Record<string, string> = {};
+    for (const item of runtimeConfigDraft.value) {
+      const key = item.key.trim();
+      if (!key || Object.prototype.hasOwnProperty.call(values, key)) {
+        runtimeConfigSaveError.value = t('service.runtimeConfig.invalid');
+        return;
+      }
+      values[key] = item.value;
+    }
+    try {
+      await executeOp(async () => {
+        runtimeConfig.value = await serviceApi.updateRuntimeConfig(currentServiceID, values);
+        isRuntimeConfigDialogOpen.value = false;
+        toast.success(t('service.runtimeConfig.saved'));
+      });
+    } catch (err: unknown) {
+      runtimeConfigSaveError.value = err instanceof Error ? err.message : t('service.runtimeConfig.loadFailed');
     }
   }
 
@@ -589,11 +634,11 @@
   async function handleRefresh() {
     await fetchService();
     if (service.value) {
-      await Promise.all([loadContainers(), loadVersions(), loadRuntimeEnv()]);
+      await Promise.all([loadContainers(), loadVersions(), loadRuntimeConfig()]);
       return;
     }
-    runtimeEnv.value = null;
-    runtimeEnvError.value = '';
+    runtimeConfig.value = null;
+    runtimeConfigError.value = '';
   }
 
   function openDeployDialog() {
@@ -625,9 +670,8 @@
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.application_id, {
           version_id: deployForm.version_id,
-          instance_key: current.instance_key || 'default',
+          service_id: current.id,
           force_recreate: deployForm.force_recreate,
-          runtime_config: {},
         });
         toast.success(t('service.toast.deployQueued'));
         isDeployDialogOpen.value = false;

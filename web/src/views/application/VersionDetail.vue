@@ -378,7 +378,6 @@
     <VersionComponentRuntimeDialog
       v-model:open="isComponentRuntimeDialogOpen"
       :component="editingComponent"
-      :runtime-env-credentials="runtimeEnvCredentials"
       :readonly="!isEditable"
       :saving="operating"
       @save="saveComponentRuntime"
@@ -539,13 +538,14 @@
         </p>
         <div>
           <label class="app-field-label mb-1.5 block">
-            {{ t('application.detail.fields.instanceKey') }}
+            {{ t('service.fields.instanceKey') }}
           </label>
-          <input
-            v-model="deployForm.instance_key"
-            type="text"
-            class="app-input"
-            :placeholder="t('application.versionDetail.instanceKeyPlaceholder')"
+          <ComboboxSelect
+            :model-value="deployForm.service_id"
+            :options="deployServiceOptions"
+            :placeholder="t('service.empty')"
+            width-class="w-full"
+            @update:model-value="deployForm.service_id = String($event || '')"
           />
         </div>
         <label class="flex items-center gap-2">
@@ -610,7 +610,6 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import { credentialApi } from '@/api/credential/credential';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -633,16 +632,15 @@
   } from 'reka-ui';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import { useProjectStore } from '@/stores/project';
   import type {
     VersionComponentReq,
     VersionComponentResp,
     VersionExposeReq,
     VersionResp,
   } from '@/gen/proto/orbit/v1/application/version';
+  import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import { parseRuntimeEnvRows } from '@/utils/runtimeEnv';
   import {
     parseEnvJson,
     parsePortsJson,
@@ -654,7 +652,6 @@
   const router = useRouter();
   const { t } = useI18n();
   const toast = useToast();
-  const projectStore = useProjectStore();
   const versionId = route.params.id as string;
 
   const { loading, execute } = useStatusAsync();
@@ -686,10 +683,17 @@
   const exposeFormError = ref('');
   const deployError = ref('');
   const deployForm = reactive({
-    instance_key: 'default',
+    service_id: '',
     force_recreate: false,
   });
-  const runtimeEnvCredentials = ref<Array<{ id: string; name: string; dataKeys: string[] }>>([]);
+  const deployServices = ref<ServiceResp[]>([]);
+  const deployServiceOptions = computed(() =>
+    deployServices.value.map((service) => ({
+      value: service.id,
+      label: service.instance_key || 'default',
+      description: service.version_label || service.version_id,
+    }))
+  );
 
   const basicForm = reactive({
     label: '',
@@ -741,13 +745,6 @@
     if (component.restart_policy) parts.push(t('application.runtime.summary.restart'));
     if (component.tmpfs_json) parts.push(t('application.runtime.summary.tmpfs'));
     if (component.ulimits_json) parts.push(t('application.runtime.summary.ulimits'));
-    if ((component.secret_env_refs ?? []).length > 0) {
-      parts.push(
-        t('application.runtime.summary.secretEnvRefs', {
-          count: component.secret_env_refs.length,
-        })
-      );
-    }
     return parts.length > 0 ? parts.join(' · ') : t('application.runtime.summary.empty');
   }
 
@@ -768,7 +765,6 @@
       restart_policy: component.restart_policy,
       tmpfs_json: component.tmpfs_json,
       ulimits_json: component.ulimits_json,
-      secret_env_refs: component.secret_env_refs ?? [],
     };
   }
 
@@ -927,40 +923,13 @@
     isComponentMountsDialogOpen.value = true;
   }
 
-  async function openComponentRuntimeDialog(index: number) {
+  function openComponentRuntimeDialog(index: number) {
     const component = version.value?.components?.[index];
     if (!component) {
       return;
     }
     editingComponentIndex.value = index;
-    try {
-      await loadRuntimeEnvCredentials();
-      isComponentRuntimeDialogOpen.value = true;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  async function loadRuntimeEnvCredentials() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      runtimeEnvCredentials.value = [];
-      return;
-    }
-    const page = await credentialApi.list({ project_id: projectId, page: 1, per_page: 100 });
-    const credentials = (page.items ?? []).filter(
-      (credential) => credential.type === 'runtime_env'
-    );
-    runtimeEnvCredentials.value = await Promise.all(
-      credentials.map(async (credential) => {
-        const detail = await credentialApi.get(credential.id);
-        return {
-          id: detail.id,
-          name: detail.name,
-          dataKeys: parseRuntimeEnvRows(detail.data).map((row) => row.key),
-        };
-      })
-    );
+	 isComponentRuntimeDialogOpen.value = true;
   }
 
   async function updateComponents(next: VersionComponentReq[], exposes = exposesPayload()) {
@@ -974,7 +943,7 @@
     let next = componentsPayload();
     const editingIndex = editingComponentIndex.value;
     if (editingIndex === null) {
-      next.push({ name, image, secret_env_refs: [] });
+      next.push({ name, image });
     } else {
       const oldName = version.value?.components?.[editingIndex]?.name;
       if (!oldName) {
@@ -1063,7 +1032,6 @@
       | 'restart_policy'
       | 'tmpfs_json'
       | 'ulimits_json'
-      | 'secret_env_refs'
     >
   ) {
     const index = editingComponentIndex.value;
@@ -1288,8 +1256,17 @@
     }
     deployError.value = '';
     deployForm.force_recreate = false;
-    deployForm.instance_key = 'default';
-    isDeployDialogOpen.value = true;
+    try {
+      const services = await applicationApi.listServices(version.value.application_id);
+      deployServices.value = services.items ?? [];
+      deployForm.service_id = deployServices.value[0]?.id ?? '';
+      if (!deployForm.service_id) {
+        deployError.value = t('service.empty');
+      }
+      isDeployDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
+    }
   }
 
   async function handleDeployOk() {
@@ -1302,14 +1279,17 @@
       isDeployDialogOpen.value = false;
       return;
     }
+	if (!deployForm.service_id) {
+		deployError.value = t('service.empty');
+		return;
+	}
     deployError.value = '';
     try {
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.application_id, {
           version_id: current.id,
-          instance_key: deployForm.instance_key.trim() || 'default',
+          service_id: deployForm.service_id,
           force_recreate: deployForm.force_recreate,
-          runtime_config: {},
         });
         toast.success(t('application.toast.deployTriggeredDetail'));
         isDeployDialogOpen.value = false;

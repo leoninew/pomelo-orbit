@@ -29,7 +29,6 @@ type Querier interface {
 	DetachDeploymentServiceRefsByApplication(ctx context.Context, applicationID string) error
 	DetachDeploymentVersionRefsByApplication(ctx context.Context, applicationID string) error
 	InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error
-	InsertVersionComponentSecretEnvRef(ctx context.Context, arg InsertVersionComponentSecretEnvRefParams) error
 	InsertVersionExpose(ctx context.Context, arg InsertVersionExposeParams) error
 	ListApplications(ctx context.Context, arg ListApplicationsParams) ([]ListApplicationsRow, error)
 	ListVersions(ctx context.Context, applicationID string) ([]Version, error)
@@ -38,7 +37,6 @@ type Querier interface {
 	UpdateVersion(ctx context.Context, arg UpdateVersionParams) error
 	UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error
 	VersionByID(ctx context.Context, id string) (Version, error)
-	VersionComponentSecretEnvRefsByVersion(ctx context.Context, versionID string) ([]VersionComponentSecretEnvRef, error)
 	VersionComponentsByVersion(ctx context.Context, versionID string) ([]VersionComponent, error)
 	VersionExposesByVersion(ctx context.Context, versionID string) ([]VersionExpose, error)
 }

@@ -10,6 +10,10 @@
           @search="handleSearch"
         />
       </div>
+      <button class="app-button-primary h-10 px-3" @click="openCreateDialog">
+        <Plus class="size-4" />
+        {{ t('service.actions.create') }}
+      </button>
       <ToggleGroupRoot
         v-model="viewMode"
         type="single"
@@ -259,6 +263,36 @@
       </template>
     </AppDialog>
 
+    <AppDialog v-model:open="isCreateDialogOpen" :title="t('service.create.title')">
+      <div class="space-y-4">
+        <div>
+          <label class="app-field-label mb-1.5 block">{{ t('service.fields.application') }}</label>
+          <ComboboxSelect :model-value="createForm.application_id" :options="applicationSelectOptions" width-class="w-full" @update:model-value="handleCreateApplicationChange" />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">{{ t('service.fields.version') }}</label>
+          <ComboboxSelect :model-value="createForm.version_id" :options="createVersionSelectOptions" width-class="w-full" @update:model-value="createForm.version_id = String($event || '')" />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">{{ t('service.fields.instanceKey') }}</label>
+          <input v-model="createForm.instance_key" class="app-input" />
+        </div>
+        <div class="space-y-2">
+          <div v-for="(item, index) in createForm.runtime_config" :key="index" class="grid grid-cols-[1fr_1fr_auto] gap-2">
+            <input v-model="item.key" class="app-input font-mono text-sm" :placeholder="t('service.runtimeConfig.key')" />
+            <input v-model="item.value" class="app-input text-sm" :placeholder="t('service.runtimeConfig.value')" />
+            <button class="app-button-danger size-9" :aria-label="t('common.delete')" @click="createForm.runtime_config.splice(index, 1)"><Trash2 class="size-4" /></button>
+          </div>
+          <button class="app-link" @click="createForm.runtime_config.push({ key: '', value: '' })">{{ t('common.add') }}</button>
+        </div>
+        <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>
+      </div>
+      <template #footer>
+        <button class="app-button" @click="isCreateDialogOpen = false">{{ t('common.cancel') }}</button>
+        <button class="app-button-primary" :disabled="operating" @click="handleCreateOk">{{ t('common.create') }}</button>
+      </template>
+    </AppDialog>
+
     <AppDialog
       v-model:open="isStopDialogOpen"
       :title="t('service.stop.dialogTitle')"
@@ -303,7 +337,7 @@
 </template>
 
 <script setup lang="ts">
-  import { LayoutGrid, List } from 'lucide-vue-next';
+  import { LayoutGrid, List, Plus, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -319,6 +353,7 @@
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
@@ -342,6 +377,7 @@
   });
 
   const selectedService = ref<ServiceResp | null>(null);
+  const applications = ref<ApplicationResp[]>([]);
   const versions = ref<VersionResp[]>([]);
   const isDeployDialogOpen = ref(false);
   const deployOptionsLoading = ref(false);
@@ -353,6 +389,14 @@
   const isStopDialogOpen = ref(false);
   const stopRemoveVolumes = ref(false);
   const isDeleteDialogOpen = ref(false);
+  const isCreateDialogOpen = ref(false);
+  const createError = ref('');
+  const createForm = reactive({
+    application_id: '',
+    version_id: '',
+    instance_key: 'default',
+    runtime_config: [] as Array<{ key: string; value: string }>,
+  });
 
   const versionSelectOptions = computed(() =>
     versions.value.map((version) => ({
@@ -360,6 +404,12 @@
       label: version.label,
       description: version.status,
     }))
+  );
+  const applicationSelectOptions = computed(() =>
+    applications.value.map((application) => ({ value: application.id, label: application.name }))
+  );
+  const createVersionSelectOptions = computed(() =>
+    versions.value.map((version) => ({ value: version.id, label: version.label, description: version.status }))
   );
 
   const deployTargetLabel = computed(() => serviceTargetLabel(selectedService.value));
@@ -419,6 +469,67 @@
     }
   }
 
+  async function openCreateDialog() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
+    try {
+      const page = await applicationApi.list({ project_id: projectId, per_page: 100 });
+      applications.value = page.items ?? [];
+      Object.assign(createForm, { application_id: applications.value[0]?.id ?? '', version_id: '', instance_key: 'default', runtime_config: [] });
+      createError.value = '';
+      if (createForm.application_id) {
+        await handleCreateApplicationChange(createForm.application_id);
+      }
+      isCreateDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
+    }
+  }
+
+  async function handleCreateApplicationChange(value: ComboboxOptionValue) {
+    createForm.application_id = String(value || '');
+    createForm.version_id = '';
+    versions.value = [];
+    if (!createForm.application_id) {
+      return;
+    }
+    try {
+      const page = await applicationApi.listVersions(createForm.application_id, { per_page: 100 });
+      versions.value = page.items ?? [];
+      createForm.version_id = versions.value[0]?.id ?? '';
+    } catch (error) {
+      createError.value = error instanceof Error ? error.message : t('service.toast.loadFailed');
+    }
+  }
+
+  async function handleCreateOk() {
+    const runtime_config: Record<string, string> = {};
+    for (const item of createForm.runtime_config) {
+      const key = item.key.trim();
+      if (!key || Object.prototype.hasOwnProperty.call(runtime_config, key)) {
+        createError.value = t('service.runtimeConfig.invalid');
+        return;
+      }
+      runtime_config[key] = item.value;
+    }
+    if (!createForm.application_id || !createForm.version_id || !createForm.instance_key.trim()) {
+      createError.value = t('service.create.required');
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const created = await serviceApi.create({ application_id: createForm.application_id, version_id: createForm.version_id, instance_key: createForm.instance_key.trim(), runtime_config });
+        isCreateDialogOpen.value = false;
+        toast.success(t('service.create.saved'));
+        await router.push(`/service/${created.id}`);
+      });
+    } catch (error) {
+      createError.value = error instanceof Error ? error.message : t('service.toast.deployFailed');
+    }
+  }
+
   function serviceTargetLabel(service: ServiceResp | null) {
     if (!service) {
       return '';
@@ -463,9 +574,8 @@
       await executeOp(async () => {
         const result = await applicationApi.deploy(service.application_id, {
           version_id: deployForm.version_id,
-          instance_key: service.instance_key || 'default',
+          service_id: service.id,
           force_recreate: deployForm.force_recreate,
-          runtime_config: {},
         });
         toast.success(t('service.toast.deployQueued'));
         isDeployDialogOpen.value = false;

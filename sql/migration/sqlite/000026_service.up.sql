@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS service (
     application_id TEXT NOT NULL,
     instance_key TEXT NOT NULL DEFAULT 'default',
     version_id TEXT NOT NULL,
+    runtime_config_json TEXT NOT NULL DEFAULT '{}',
     last_successful_version_id TEXT,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),

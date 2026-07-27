@@ -135,7 +135,3 @@ func parseRuntimeUlimits(raw *string) (map[string]map[string]int64, error) {
 	}
 	return result, nil
 }
-
-func runtimeEnvFilePath(componentName string) string {
-	return ".runtime/" + componentName + ".env"
-}

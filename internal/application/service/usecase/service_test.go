@@ -42,8 +42,6 @@ func newDeleteServiceTestService(serviceStatus string) (Service, *deleteServiceS
 	return New(
 		deleteServiceProjectFake{},
 		deleteServiceApplicationFake{application: model.Application{Id: "application-1", ProjectId: &projectID}},
-		deleteServiceCredentialFake{},
-		"",
 		store,
 	), store
 }
@@ -74,12 +72,6 @@ func (deleteServiceApplicationFake) VersionComponentsByVersion(_ context.Context
 	return nil, nil
 }
 
-type deleteServiceCredentialFake struct{}
-
-func (deleteServiceCredentialFake) Credential(_ context.Context, _ string) (model.Credential, error) {
-	return model.Credential{}, repository.ErrNotFound
-}
-
 type deleteServiceStoreFake struct {
 	item      model.ServiceListItem
 	deletedID string
@@ -107,5 +99,11 @@ func (f *deleteServiceStoreFake) Service(_ context.Context, _ string) (model.Ser
 
 func (f *deleteServiceStoreFake) DeleteService(_ context.Context, id string) error {
 	f.deletedID = id
+	return nil
+}
+
+func (f *deleteServiceStoreFake) UpsertService(_ context.Context, _ model.Service) error { return nil }
+
+func (f *deleteServiceStoreFake) UpdateServiceRuntimeConfig(_ context.Context, _ string, _ map[string]string) error {
 	return nil
 }

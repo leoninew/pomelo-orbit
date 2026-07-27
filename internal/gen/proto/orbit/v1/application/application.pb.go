@@ -254,9 +254,8 @@ func (x *ApplicationUpdateReq) GetImagePullPolicy() string {
 type ApplicationDeployReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	InstanceKey   string                 `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 	ForceRecreate bool                   `protobuf:"varint,3,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
-	RuntimeConfig map[string]string      `protobuf:"bytes,4,rep,name=runtime_config,json=runtimeConfig,proto3" json:"runtime_config,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -298,9 +297,9 @@ func (x *ApplicationDeployReq) GetVersionId() string {
 	return ""
 }
 
-func (x *ApplicationDeployReq) GetInstanceKey() string {
+func (x *ApplicationDeployReq) GetServiceId() string {
 	if x != nil {
-		return x.InstanceKey
+		return x.ServiceId
 	}
 	return ""
 }
@@ -312,18 +311,10 @@ func (x *ApplicationDeployReq) GetForceRecreate() bool {
 	return false
 }
 
-func (x *ApplicationDeployReq) GetRuntimeConfig() map[string]string {
-	if x != nil {
-		return x.RuntimeConfig
-	}
-	return nil
-}
-
 type ApplicationStopReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	RemoveVolumes bool                   `protobuf:"varint,1,opt,name=remove_volumes,json=removeVolumes,proto3" json:"remove_volumes,omitempty"`
-	InstanceKey   *string                `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
-	ServiceId     *string                `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,3,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -365,24 +356,16 @@ func (x *ApplicationStopReq) GetRemoveVolumes() bool {
 	return false
 }
 
-func (x *ApplicationStopReq) GetInstanceKey() string {
-	if x != nil && x.InstanceKey != nil {
-		return *x.InstanceKey
-	}
-	return ""
-}
-
 func (x *ApplicationStopReq) GetServiceId() string {
-	if x != nil && x.ServiceId != nil {
-		return *x.ServiceId
+	if x != nil {
+		return x.ServiceId
 	}
 	return ""
 }
 
 type ApplicationRestartReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	InstanceKey   *string                `protobuf:"bytes,1,opt,name=instance_key,json=instanceKey,proto3,oneof" json:"instance_key,omitempty"`
-	ServiceId     *string                `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3,oneof" json:"service_id,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -417,16 +400,9 @@ func (*ApplicationRestartReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_application_application_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *ApplicationRestartReq) GetInstanceKey() string {
-	if x != nil && x.InstanceKey != nil {
-		return *x.InstanceKey
-	}
-	return ""
-}
-
 func (x *ApplicationRestartReq) GetServiceId() string {
-	if x != nil && x.ServiceId != nil {
-		return *x.ServiceId
+	if x != nil {
+		return x.ServiceId
 	}
 	return ""
 }
@@ -761,29 +737,20 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
 	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policy\"\xa7\x02\n" +
+	"\x12_image_pull_policy\"{\n" +
 	"\x14ApplicationDeployReq\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x01 \x01(\tR\tversionId\x12!\n" +
-	"\finstance_key\x18\x02 \x01(\tR\vinstanceKey\x12%\n" +
-	"\x0eforce_recreate\x18\x03 \x01(\bR\rforceRecreate\x12d\n" +
-	"\x0eruntime_config\x18\x04 \x03(\v2=.orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntryR\rruntimeConfig\x1a@\n" +
-	"\x12RuntimeConfigEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa7\x01\n" +
+	"version_id\x18\x01 \x01(\tR\tversionId\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x02 \x01(\tR\tserviceId\x12%\n" +
+	"\x0eforce_recreate\x18\x03 \x01(\bR\rforceRecreate\"Z\n" +
 	"\x12ApplicationStopReq\x12%\n" +
-	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12&\n" +
-	"\finstance_key\x18\x02 \x01(\tH\x00R\vinstanceKey\x88\x01\x01\x12\"\n" +
+	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12\x1d\n" +
 	"\n" +
-	"service_id\x18\x03 \x01(\tH\x01R\tserviceId\x88\x01\x01B\x0f\n" +
-	"\r_instance_keyB\r\n" +
-	"\v_service_id\"\x83\x01\n" +
-	"\x15ApplicationRestartReq\x12&\n" +
-	"\finstance_key\x18\x01 \x01(\tH\x00R\vinstanceKey\x88\x01\x01\x12\"\n" +
+	"service_id\x18\x03 \x01(\tR\tserviceId\"6\n" +
+	"\x15ApplicationRestartReq\x12\x1d\n" +
 	"\n" +
-	"service_id\x18\x02 \x01(\tH\x01R\tserviceId\x88\x01\x01B\x0f\n" +
-	"\r_instance_keyB\r\n" +
-	"\v_service_id\";\n" +
+	"service_id\x18\x02 \x01(\tR\tserviceId\";\n" +
 	"\x14DeploymentActionResp\x12#\n" +
 	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\"\xba\x01\n" +
 	"\x1eApplicationContainerStatusResp\x12\x0e\n" +
@@ -820,7 +787,7 @@ func file_orbit_v1_application_application_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_application_application_proto_rawDescData
 }
 
-var file_orbit_v1_application_application_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_orbit_v1_application_application_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_orbit_v1_application_application_proto_goTypes = []any{
 	(*ApplicationResp)(nil),                // 0: orbit.v1.application.ApplicationResp
 	(*ApplicationCreateReq)(nil),           // 1: orbit.v1.application.ApplicationCreateReq
@@ -833,17 +800,15 @@ var file_orbit_v1_application_application_proto_goTypes = []any{
 	(*ApplicationStatusResp)(nil),          // 8: orbit.v1.application.ApplicationStatusResp
 	(*ApplicationLogsResp)(nil),            // 9: orbit.v1.application.ApplicationLogsResp
 	(*ApplicationPaginatedResp)(nil),       // 10: orbit.v1.application.ApplicationPaginatedResp
-	nil,                                    // 11: orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntry
 }
 var file_orbit_v1_application_application_proto_depIdxs = []int32{
-	11, // 0: orbit.v1.application.ApplicationDeployReq.runtime_config:type_name -> orbit.v1.application.ApplicationDeployReq.RuntimeConfigEntry
-	7,  // 1: orbit.v1.application.ApplicationStatusResp.containers:type_name -> orbit.v1.application.ApplicationContainerStatusResp
-	0,  // 2: orbit.v1.application.ApplicationPaginatedResp.items:type_name -> orbit.v1.application.ApplicationResp
-	3,  // [3:3] is the sub-list for method output_type
-	3,  // [3:3] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	7, // 0: orbit.v1.application.ApplicationStatusResp.containers:type_name -> orbit.v1.application.ApplicationContainerStatusResp
+	0, // 1: orbit.v1.application.ApplicationPaginatedResp.items:type_name -> orbit.v1.application.ApplicationResp
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_application_application_proto_init() }
@@ -854,15 +819,13 @@ func file_orbit_v1_application_application_proto_init() {
 	file_orbit_v1_application_application_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_application_application_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_application_application_proto_msgTypes[2].OneofWrappers = []any{}
-	file_orbit_v1_application_application_proto_msgTypes[4].OneofWrappers = []any{}
-	file_orbit_v1_application_application_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_application_application_proto_rawDesc), len(file_orbit_v1_application_application_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

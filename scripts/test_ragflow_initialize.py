@@ -23,12 +23,10 @@ class FakeGateway:
         tools: set[str],
         *,
         applications: list[dict[str, str]] | None = None,
-        credentials: list[dict[str, str]] | None = None,
         doctor: Mapping[str, Any] | None = None,
     ) -> None:
         self.tools = tools
         self.applications = applications or []
-        self.credentials = credentials or []
         self.doctor = (
             dict(doctor)
             if doctor is not None
@@ -46,8 +44,6 @@ class FakeGateway:
         self.calls.append((name, arguments))
         if name == "orbit_list_applications":
             return {"applications": self.applications}
-        if name == "orbit_list_runtime_env_credentials":
-            return {"credentials": self.credentials}
         if name == "runtime_doctor":
             return self.doctor
         if name == "orbit_wait_deployment":
@@ -66,6 +62,8 @@ class FakeGateway:
             return {}
         if name == "orbit_deploy":
             return {"resource_ids": {"deployment_id": "deployment-ragflow-bundled"}}
+        if name == "orbit_create_service":
+            return {"resource_ids": {"service_id": "service-ragflow"}}
         raise AssertionError(name)
 
 
@@ -76,7 +74,7 @@ class RAGFlowInitializerTests(unittest.TestCase):
     def test_fixture_is_valid_and_plan_is_deterministic(self) -> None:
         initializer.validate_fixture(self.fixture)
         operations = initializer.planned_operations(self.fixture)
-        self.assertEqual(len(operations), 30)
+        self.assertEqual(len(operations), 31)
         self.assertEqual(initializer.fixture_digest(self.fixture), initializer.fixture_digest(self.fixture))
         self.assertIn("bootstrap:ragflow", {item["id"] for item in operations})
 
@@ -93,25 +91,17 @@ class RAGFlowInitializerTests(unittest.TestCase):
             )
             state = (Path(result["run_directory"]) / "state.json").read_text(encoding="utf-8")
         self.assertEqual(result["status"], "planned")
-        self.assertNotIn("credential_values", state)
+        self.assertNotIn("runtime_config_values", state)
         self.assertNotIn("environment_id", state)
 
-    def test_encode_component_resolves_only_credential_ids(self) -> None:
+    def test_encode_component_keeps_runtime_placeholders_in_the_version(self) -> None:
         application = next(item for item in self.fixture["applications"] if item["code"] == "ragflow")
         component = application["components"][0]
-        encoded = initializer.encode_component(
-            component,
-            {
-                "ragflow-mysql": "credential-mysql",
-                "ragflow-redis": "credential-redis",
-                "ragflow-minio": "credential-minio",
-                "ragflow-elasticsearch": "credential-elasticsearch",
-            },
-        )
-        refs = encoded["secret_env_refs"]
-        self.assertEqual(refs[0]["credential_id"], "credential-mysql")
+        encoded = initializer.encode_component(component)
+        environment = {item["key"]: item["value"] for item in initializer.json.loads(encoded["env_json"])}
+        self.assertEqual(environment["MYSQL_PASSWORD"], "${MYSQL_PASSWORD}")
         self.assertNotIn("environment_id", encoded)
-        self.assertNotIn("values", encoded)
+        self.assertEqual(set(encoded), {"name", "image", "command_json", "env_json", "mounts_json", "restart_policy"})
 
     def test_bundled_version_uses_all_components_and_internal_service_names(self) -> None:
         components = initializer.bundled_version_components(self.fixture)
@@ -136,7 +126,7 @@ class RAGFlowInitializerTests(unittest.TestCase):
                 "ragflow-cpu": "ragflow-cpu/logs",
             },
         )
-        encoded = initializer.encode_component(ragflow, {"ragflow-mysql": "credential-mysql", "ragflow-redis": "credential-redis", "ragflow-minio": "credential-minio", "ragflow-elasticsearch": "credential-elasticsearch"})
+        encoded = initializer.encode_component(ragflow)
         self.assertEqual(initializer.json.loads(encoded["depends_on_json"]), ["mysql", "redis", "minio", "es01"])
         self.assertEqual(initializer.json.loads(encoded["mounts_json"])[0]["source"], "ragflow-cpu/logs")
 
@@ -155,9 +145,8 @@ class RAGFlowInitializerTests(unittest.TestCase):
             source = initializer.RunJournal.create(directory, self.fixture, parameters)
             for application in self.fixture["applications"]:
                 source.resource("applications", application["code"], f"application-{application['code']}")
-            for credential in self.fixture["credential_templates"]:
-                source.resource("credentials", credential["name"], f"credential-{credential['name']}")
             source.resource("versions", "ragflow", "version-ragflow-existing")
+            source.resource("services", "ragflow", "service-ragflow")
             bundle_parameters, source_resources = initializer.bundled_version_source(source, self.fixture)
             bundle_directory = Path(temporary) / "bundle-run"
             bundle_directory.mkdir()
@@ -207,7 +196,7 @@ class RAGFlowInitializerTests(unittest.TestCase):
         self.assertEqual(result["status"], "ready")
         self.assertEqual(
             [call[0] for call in gateway.calls],
-            ["orbit_list_applications", "orbit_list_runtime_env_credentials", "runtime_doctor"],
+            ["orbit_list_applications", "runtime_doctor"],
         )
         self.assertEqual(
             gateway.calls[-1][1],
@@ -218,7 +207,6 @@ class RAGFlowInitializerTests(unittest.TestCase):
         gateway = FakeGateway(
             set(initializer.REQUIRED_MCP_TOOLS),
             applications=[{"id": "application-mysql", "code": "ragflow-mysql"}],
-            credentials=[{"id": "credential-mysql", "name": "ragflow-mysql"}],
         )
         with tempfile.TemporaryDirectory() as temporary:
             contract_path = Path(temporary) / "contract.json"
@@ -236,7 +224,6 @@ class RAGFlowInitializerTests(unittest.TestCase):
                     "default",
                     {
                         "applications": {"ragflow-mysql": "application-mysql"},
-                        "credentials": {"ragflow-mysql": "credential-mysql"},
                     },
                 )
             )
@@ -269,7 +256,7 @@ class RAGFlowInitializerTests(unittest.TestCase):
             directory.mkdir()
             journal = initializer.RunJournal.create(directory, self.fixture, {"project_id": "project-1"})
             changed = copy.deepcopy(self.fixture)
-            changed["payload_encoding"]["secret_env_refs"] = "structured secret reference array"
+            changed["runtime_config_keys"].append("EXTRA_CONFIG")
             resumed = initializer.RunJournal.resume(journal.directory, changed)
         self.assertTrue(resumed.needs_fixture_reconciliation)
         self.assertEqual(resumed.state["fixture_digest"], initializer.fixture_digest(changed))
@@ -288,7 +275,7 @@ class RAGFlowInitializerTests(unittest.TestCase):
             journal = initializer.RunJournal.create(directory, self.fixture, {"project_id": "project-1"})
             journal.step("publish:ragflow-mysql", "complete")
             changed = copy.deepcopy(self.fixture)
-            changed["payload_encoding"]["secret_env_refs"] = "structured secret reference array"
+            changed["runtime_config_keys"].append("EXTRA_CONFIG")
             with self.assertRaises(initializer.FixtureError):
                 initializer.RunJournal.resume(journal.directory, changed)
 
@@ -301,8 +288,6 @@ class RAGFlowInitializerTests(unittest.TestCase):
             for application in self.fixture["applications"]:
                 code = application["code"]
                 journal.resource("versions", code, f"version-{code}")
-            for credential in self.fixture["credential_templates"]:
-                journal.resource("credentials", credential["name"], f"credential-{credential['name']}")
             journal.state["fixture_reconciliation"] = {"status": "pending"}
             journal._write_state()
             asyncio.run(initializer.reconcile_draft_versions(gateway, journal, self.fixture, "local", 9380))

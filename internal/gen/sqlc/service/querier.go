@@ -22,6 +22,7 @@ type Querier interface {
 	ServiceListItemByID(ctx context.Context, id string) (ServiceListItemByIDRow, error)
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error
 	UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error
+	UpdateServiceRuntimeConfig(ctx context.Context, arg UpdateServiceRuntimeConfigParams) error
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error
 }
 

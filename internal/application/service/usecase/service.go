@@ -2,15 +2,15 @@ package servicesvc
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"sort"
+	"fmt"
 	"strings"
 
 	servicedto "gitee.com/leoninew/PomeloOrbit-go/internal/application/service/dto"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
-	security "gitee.com/leoninew/PomeloOrbit-go/internal/common/crypto"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	runtimeconfig "gitee.com/leoninew/PomeloOrbit-go/internal/common/runtimeconfig"
+	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
 )
@@ -21,26 +21,22 @@ type applicationReader interface {
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
 }
 
-type credentialReader interface {
-	Credential(ctx context.Context, id string) (model.Credential, error)
-}
-
 type serviceStore interface {
 	repository.ServiceReader
+	UpsertService(ctx context.Context, service model.Service) error
 	DeleteService(ctx context.Context, id string) error
+	UpdateServiceRuntimeConfig(ctx context.Context, id string, runtimeConfig map[string]string) error
 }
 
 type Service struct {
 	project     repository.ProjectReader
 	application applicationReader
-	credential  credentialReader
-	secretKey   string
 	service     serviceStore
 }
 
-func New(project repository.ProjectReader, application applicationReader, credential credentialReader, secretKey string, service serviceStore) Service {
+func New(project repository.ProjectReader, application applicationReader, service serviceStore) Service {
 	return Service{
-		project: project, application: application, credential: credential, secretKey: secretKey, service: service,
+		project: project, application: application, service: service,
 	}
 }
 
@@ -108,95 +104,72 @@ func (s Service) GetService(ctx context.Context, userId string, serviceId string
 	return serviceViewFromListItem(item), nil
 }
 
-// RuntimeEnv returns the persisted credential values referenced by the service's current Version.
-func (s Service) RuntimeEnv(ctx context.Context, userId string, serviceId string) (servicedto.RuntimeEnvView, error) {
-	serviceId = strings.TrimSpace(serviceId)
-	if serviceId == "" {
-		return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindValidation, "service_id is required")
+func (s Service) CreateService(ctx context.Context, userId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
+	applicationID := strings.TrimSpace(input.ApplicationId)
+	versionID := strings.TrimSpace(input.VersionId)
+	instanceKey := strings.TrimSpace(input.InstanceKey)
+	if applicationID == "" || versionID == "" || instanceKey == "" {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "application_id, version_id and instance_key are required")
 	}
-	item, err := s.service.ServiceListItem(ctx, serviceId)
+	app, err := s.loadApplicationForUser(ctx, userId, applicationID)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
-		}
-		return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+		return servicedto.ServiceView{}, err
 	}
-	app, err := s.loadApplicationForUser(ctx, userId, item.ApplicationId)
+	version, components, err := s.versionComponents(ctx, versionID, app.Id)
 	if err != nil {
-		return servicedto.RuntimeEnvView{}, err
+		return servicedto.ServiceView{}, err
 	}
-	version, err := s.application.Version(ctx, item.VersionId)
+	runtimeConfig, err := normalizeRuntimeConfig(input.RuntimeConfig)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Version "+item.VersionId+" not found")
-		}
-		return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service version", err)
+		return servicedto.ServiceView{}, err
 	}
-	if version.ApplicationId != app.Id {
-		return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
+	if err := validateRuntimeConfig(runtimeConfig, version, components); err != nil {
+		return servicedto.ServiceView{}, err
 	}
-	components, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	if _, err := s.service.ServiceByKey(ctx, app.Id, instanceKey); err == nil {
+		return servicedto.ServiceView{}, apperror.New(apperror.KindConflict, "Service instance already exists")
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	svc := model.Service{Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: instanceKey, VersionId: version.Id, RuntimeConfig: runtimeConfig, Status: status.ServiceStatusStopped}
+	if err := s.service.UpsertService(ctx, svc); err != nil {
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to create service", err)
+	}
+	created, err := s.service.ServiceListItem(ctx, svc.Id)
 	if err != nil {
-		return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
+		return servicedto.ServiceView{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
-	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
-
-	items := make([]servicedto.RuntimeEnvItem, 0)
-	for _, component := range components {
-		refs := append([]model.VersionComponentSecretEnvRef(nil), component.SecretEnvRefs...)
-		sort.Slice(refs, func(i, j int) bool {
-			if refs[i].EnvKey != refs[j].EnvKey {
-				return refs[i].EnvKey < refs[j].EnvKey
-			}
-			if refs[i].CredentialId != refs[j].CredentialId {
-				return refs[i].CredentialId < refs[j].CredentialId
-			}
-			return refs[i].DataKey < refs[j].DataKey
-		})
-		for _, ref := range refs {
-			credential, err := s.credential.Credential(ctx, ref.CredentialId)
-			if err != nil {
-				if errors.Is(err, repository.ErrNotFound) {
-					return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindNotFound, "Credential "+ref.CredentialId+" not found")
-				}
-				return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to load runtime_env credential", err)
-			}
-			if credential.Type != "runtime_env" || app.ProjectId == nil || credential.ProjectId == nil || *credential.ProjectId != *app.ProjectId {
-				return servicedto.RuntimeEnvView{}, apperror.New(apperror.KindInternal, "Invalid runtime_env credential reference")
-			}
-			value, err := s.runtimeEnvCredentialValue(credential.EncryptedData, ref.DataKey)
-			if err != nil {
-				return servicedto.RuntimeEnvView{}, apperror.Wrap(apperror.KindInternal, "Failed to read runtime_env credential", err)
-			}
-			items = append(items, servicedto.RuntimeEnvItem{
-				ComponentName: component.Name, EnvKey: ref.EnvKey, CredentialId: credential.Id,
-				CredentialName: credential.Name, DataKey: ref.DataKey, Value: value,
-			})
-		}
-	}
-	return servicedto.RuntimeEnvView{ServiceId: item.Id, VersionId: version.Id, Items: items}, nil
+	return serviceViewFromListItem(created), nil
 }
 
-func (s Service) runtimeEnvCredentialValue(encryptedData string, dataKey string) (string, error) {
-	if s.secretKey == "" {
-		return "", errors.New("runtime_env credential decryption is not configured")
-	}
-	plain, err := security.DecryptString(s.secretKey, encryptedData)
+func (s Service) RuntimeConfig(ctx context.Context, userId string, serviceId string) (servicedto.RuntimeConfigView, error) {
+	svc, err := s.serviceForUser(ctx, userId, serviceId)
 	if err != nil {
-		return "", err
+		return servicedto.RuntimeConfigView{}, err
 	}
-	var values map[string]string
-	if err := json.Unmarshal([]byte(plain), &values); err != nil || len(values) == 0 {
-		if err != nil {
-			return "", err
-		}
-		return "", errors.New("runtime_env credential data is empty")
+	return servicedto.RuntimeConfigView{ServiceId: svc.Id, VersionId: svc.VersionId, RuntimeConfig: cloneRuntimeConfig(svc.RuntimeConfig)}, nil
+}
+
+func (s Service) UpdateRuntimeConfig(ctx context.Context, userId string, serviceId string, values map[string]string) (servicedto.RuntimeConfigView, error) {
+	svc, err := s.serviceForUser(ctx, userId, serviceId)
+	if err != nil {
+		return servicedto.RuntimeConfigView{}, err
 	}
-	value, exists := values[dataKey]
-	if !exists {
-		return "", errors.New("runtime_env credential data_key is missing")
+	version, components, err := s.versionComponents(ctx, svc.VersionId, svc.ApplicationId)
+	if err != nil {
+		return servicedto.RuntimeConfigView{}, err
 	}
-	return value, nil
+	runtimeConfig, err := normalizeRuntimeConfig(values)
+	if err != nil {
+		return servicedto.RuntimeConfigView{}, err
+	}
+	if err := validateRuntimeConfig(runtimeConfig, version, components); err != nil {
+		return servicedto.RuntimeConfigView{}, err
+	}
+	if err := s.service.UpdateServiceRuntimeConfig(ctx, svc.Id, runtimeConfig); err != nil {
+		return servicedto.RuntimeConfigView{}, apperror.Wrap(apperror.KindInternal, "Failed to update service runtime config", err)
+	}
+	return servicedto.RuntimeConfigView{ServiceId: svc.Id, VersionId: svc.VersionId, RuntimeConfig: runtimeConfig}, nil
 }
 
 // ListServicesByApplication returns runtime bindings after authorizing access to the application.
@@ -234,32 +207,91 @@ func (s Service) ResolveServiceTarget(ctx context.Context, userId string, applic
 }
 
 func (s Service) resolveServiceTarget(ctx context.Context, applicationId string, input servicedto.ServiceTargetInput) (model.Service, error) {
-	if serviceId := strings.TrimSpace(input.ServiceId); serviceId != "" {
-		svc, err := s.service.Service(ctx, serviceId)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
-			}
-			return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-		}
-		if svc.ApplicationId != applicationId {
-			return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
-		}
-		return svc, nil
+	serviceID := strings.TrimSpace(input.ServiceId)
+	if serviceID == "" {
+		return model.Service{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
-
-	if input.InstanceKey == "" {
-		return model.Service{}, apperror.New(apperror.KindValidation, "instance_key is required")
-	}
-
-	svc, err := s.service.ServiceByKey(ctx, applicationId, input.InstanceKey)
+	svc, err := s.service.Service(ctx, serviceID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return model.Service{}, apperror.New(apperror.KindValidation, "应用未在运行中")
+			return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
 		}
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
+	if svc.ApplicationId != applicationId {
+		return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
+	}
 	return svc, nil
+}
+
+func (s Service) serviceForUser(ctx context.Context, userId string, serviceId string) (model.Service, error) {
+	serviceId = strings.TrimSpace(serviceId)
+	if serviceId == "" {
+		return model.Service{}, apperror.New(apperror.KindValidation, "service_id is required")
+	}
+	svc, err := s.service.Service(ctx, serviceId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Service{}, apperror.New(apperror.KindNotFound, "Service "+serviceId+" not found")
+		}
+		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	if _, err := s.loadApplicationForUser(ctx, userId, svc.ApplicationId); err != nil {
+		return model.Service{}, err
+	}
+	return svc, nil
+}
+
+func (s Service) versionComponents(ctx context.Context, versionId string, applicationId string) (model.Version, []model.VersionComponent, error) {
+	version, err := s.application.Version(ctx, versionId)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Version{}, nil, apperror.New(apperror.KindNotFound, "Version "+versionId+" not found")
+		}
+		return model.Version{}, nil, apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
+	}
+	if version.ApplicationId != applicationId {
+		return model.Version{}, nil, apperror.New(apperror.KindValidation, "Version does not belong to the service application")
+	}
+	components, err := s.application.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return model.Version{}, nil, apperror.Wrap(apperror.KindInternal, "Failed to load version components", err)
+	}
+	return version, components, nil
+}
+
+func normalizeRuntimeConfig(values map[string]string) (map[string]string, error) {
+	result := make(map[string]string, len(values))
+	for key, value := range values {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			return nil, apperror.New(apperror.KindValidation, "runtime config key is required")
+		}
+		if _, exists := result[key]; exists {
+			return nil, apperror.New(apperror.KindValidation, "runtime config contains duplicate keys")
+		}
+		result[key] = value
+	}
+	return result, nil
+}
+
+func validateRuntimeConfig(values map[string]string, version model.Version, components []model.VersionComponent) error {
+	missing, _, err := runtimeconfig.Validate(values, version.EnvJSON, components)
+	if err != nil {
+		return apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
+	}
+	if len(missing) > 0 {
+		return apperror.New(apperror.KindValidation, fmt.Sprintf("missing runtime config keys: %s", strings.Join(missing, ", ")))
+	}
+	return nil
+}
+
+func cloneRuntimeConfig(values map[string]string) map[string]string {
+	result := make(map[string]string, len(values))
+	for key, value := range values {
+		result[key] = value
+	}
+	return result
 }
 
 func serviceViewFromListItem(item model.ServiceListItem) servicedto.ServiceView {

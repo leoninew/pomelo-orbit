@@ -37,17 +37,19 @@ export interface ServicePaginatedResp {
   pages: number;
 }
 
-export interface ServiceRuntimeEnvItem {
-  component_name: string;
-  env_key: string;
-  credential_id: string;
-  credential_name: string;
-  data_key: string;
-  value: string;
+export interface ServiceCreateReq {
+  application_id: string;
+  version_id: string;
+  instance_key: string;
+  runtime_config: { [key: string]: string };
 }
 
-export interface ServiceRuntimeEnvResp {
+export interface ServiceRuntimeConfigReq {
+  runtime_config: { [key: string]: string };
+}
+
+export interface ServiceRuntimeConfigResp {
   service_id: string;
   version_id: string;
-  items: ServiceRuntimeEnvItem[];
+  runtime_config: { [key: string]: string };
 }

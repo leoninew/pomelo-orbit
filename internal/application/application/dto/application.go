@@ -51,13 +51,6 @@ type VersionComponentInput struct {
 	RestartPolicy   *string
 	TmpfsJSON       *string
 	UlimitsJSON     *string
-	SecretEnvRefs   []VersionComponentSecretEnvRefInput
-}
-
-type VersionComponentSecretEnvRefInput struct {
-	EnvKey       string
-	CredentialId string
-	DataKey      string
 }
 
 type VersionExposeInput struct {

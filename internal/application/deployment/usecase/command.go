@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
 	deploymentport "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/port"
 	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	apperror "gitee.com/leoninew/PomeloOrbit-go/internal/common/errors"
+	runtimeconfig "gitee.com/leoninew/PomeloOrbit-go/internal/common/runtimeconfig"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -48,7 +50,6 @@ func NewCommandService(
 func NewExecutionService(
 	project repository.ProjectReader,
 	application repository.ApplicationStore,
-	credential repository.CredentialStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
 	gatewayCoordinator gatewayport.DeploymentCoordinator,
@@ -56,7 +57,6 @@ func NewExecutionService(
 	workspace deploymentport.Workspace,
 	runner deploymentport.CommandRunner,
 	logStore deploymentport.ExecutionLogStore,
-	secretKey string,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -68,7 +68,6 @@ func NewExecutionService(
 		logger: logger, workspace: workspace, runner: runner,
 		logStore: logStore, executionLogStore: logStore,
 		gatewayCoordinator: gatewayCoordinator,
-		credential:         credential, secretKey: secretKey,
 	}
 }
 
@@ -79,6 +78,9 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	}
 	if input.VersionId == "" {
 		return "", apperror.New(apperror.KindValidation, "version_id is required")
+	}
+	if strings.TrimSpace(input.ServiceId) == "" {
+		return "", apperror.New(apperror.KindValidation, "service_id is required")
 	}
 	version, err := s.commandStore.Version(ctx, input.VersionId)
 	if err != nil {
@@ -106,32 +108,25 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 			return "", apperror.New(apperror.KindValidation, "another gateway is already deploying or running; multiple gateways are not supported")
 		}
 	}
-	runtimeConfig, err := resolveDeployRuntimeConfig(version, components, input.RuntimeConfig)
+	service, err := s.resolveServiceTarget(ctx, app.Id, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId})
 	if err != nil {
 		return "", err
 	}
-	if input.InstanceKey == "" {
-		return "", apperror.New(apperror.KindValidation, "instance_key is required")
+	missing, _, err := runtimeconfig.Validate(service.RuntimeConfig, version.EnvJSON, components)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
+	}
+	if len(missing) > 0 {
+		return "", apperror.New(apperror.KindValidation, "missing runtime config keys: "+strings.Join(missing, ", "))
 	}
 	deployment := newDeployment(app, "deploy")
 	deployment.VersionId = &version.Id
-	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: input.InstanceKey, RuntimeConfig: runtimeConfig}
+	opts := deploymentdto.DeployOptionsJSON{ForceRecreate: input.ForceRecreate, InstanceKey: service.InstanceKey, RuntimeConfig: cloneRuntimeConfig(service.RuntimeConfig)}
 	if err := setDeploymentOptions(&deployment, opts); err != nil {
 		return "", err
 	}
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
-	}
-	service, err := s.commandStore.ServiceByKey(ctx, app.Id, input.InstanceKey)
-	if err != nil && !errors.Is(err, repository.ErrNotFound) {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-	}
-	if errors.Is(err, repository.ErrNotFound) {
-		service = model.Service{
-			Id:            idutil.NewId(),
-			ApplicationId: app.Id,
-			InstanceKey:   input.InstanceKey,
-		}
 	}
 	service.VersionId = version.Id
 	service.Status = status.ServiceStatusDeploying
@@ -139,7 +134,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to prepare service", err)
 	}
 	deployment.ServiceId = &service.Id
-	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, input.InstanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), app.ImagePullPolicy, input.ForceRecreate).String()
 	if err := s.commandStore.CreateDeployment(ctx, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -203,10 +198,17 @@ func (s Service) RestartApplication(ctx context.Context, userId string, applicat
 	if err := validateVersionComponents(components); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
+	missing, _, err := runtimeconfig.Validate(service.RuntimeConfig, version.EnvJSON, components)
+	if err != nil {
+		return "", apperror.Wrap(apperror.KindValidation, "Invalid version runtime config", err)
+	}
+	if len(missing) > 0 {
+		return "", apperror.New(apperror.KindValidation, "missing runtime config keys: "+strings.Join(missing, ", "))
+	}
 	deployment := newDeployment(app, "restart")
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
-	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey}); err != nil {
+	if err := setDeploymentOptions(&deployment, deploymentdto.DeployOptionsJSON{InstanceKey: service.InstanceKey, RuntimeConfig: cloneRuntimeConfig(service.RuntimeConfig)}); err != nil {
 		return "", err
 	}
 	deployment.CommandText = deployComposeCommand(composeProjectName(app.Code, service.InstanceKey), app.ImagePullPolicy, false).String()
@@ -242,28 +244,19 @@ func (s Service) loadApplicationForUser(ctx context.Context, userID string, appl
 }
 
 func (s Service) resolveServiceTarget(ctx context.Context, applicationID string, input deploymentdto.ServiceTargetInput) (model.Service, error) {
-	if input.ServiceId != "" {
-		service, err := s.commandStore.Service(ctx, input.ServiceId)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
-			}
-			return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-		}
-		if service.ApplicationId != applicationID {
-			return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
-		}
-		return service, nil
+	serviceID := strings.TrimSpace(input.ServiceId)
+	if serviceID == "" {
+		return model.Service{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
-	if input.InstanceKey == "" {
-		return model.Service{}, apperror.New(apperror.KindValidation, "instance_key is required")
-	}
-	service, err := s.commandStore.ServiceByKey(ctx, applicationID, input.InstanceKey)
+	service, err := s.commandStore.Service(ctx, serviceID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return model.Service{}, apperror.New(apperror.KindValidation, "应用未在运行中")
+			return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
 		}
 		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	if service.ApplicationId != applicationID {
+		return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
 	}
 	return service, nil
 }
@@ -297,4 +290,12 @@ func setDeploymentOptions(deployment *model.Deployment, options deploymentdto.De
 	text := string(raw)
 	deployment.OptionsJSON = &text
 	return nil
+}
+
+func cloneRuntimeConfig(values map[string]string) map[string]string {
+	clone := make(map[string]string, len(values))
+	for key, value := range values {
+		clone[key] = value
+	}
+	return clone
 }

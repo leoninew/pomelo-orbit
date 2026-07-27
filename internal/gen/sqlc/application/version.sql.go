@@ -180,28 +180,6 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 	return err
 }
 
-const insertVersionComponentSecretEnvRef = `-- name: InsertVersionComponentSecretEnvRef :exec
-INSERT INTO version_component_secret_env_ref (component_id, env_key, credential_id, data_key)
-VALUES (?, ?, ?, ?)
-`
-
-type InsertVersionComponentSecretEnvRefParams struct {
-	ComponentID  string `db:"component_id"`
-	EnvKey       string `db:"env_key"`
-	CredentialID string `db:"credential_id"`
-	DataKey      string `db:"data_key"`
-}
-
-func (q *Queries) InsertVersionComponentSecretEnvRef(ctx context.Context, arg InsertVersionComponentSecretEnvRefParams) error {
-	_, err := q.db.ExecContext(ctx, insertVersionComponentSecretEnvRef,
-		arg.ComponentID,
-		arg.EnvKey,
-		arg.CredentialID,
-		arg.DataKey,
-	)
-	return err
-}
-
 const insertVersionExpose = `-- name: InsertVersionExpose :exec
 INSERT INTO version_expose (
   id, version_id, component_name, protocol, container_port, path_prefix, access, listen_port, created_at, updated_at
@@ -405,42 +383,6 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const versionComponentSecretEnvRefsByVersion = `-- name: VersionComponentSecretEnvRefsByVersion :many
-SELECT ref.component_id, ref.env_key, ref.credential_id, ref.data_key
-FROM version_component_secret_env_ref AS ref
-JOIN version_component AS component ON component.id = ref.component_id
-WHERE component.version_id = ?
-ORDER BY component.name, ref.env_key
-`
-
-func (q *Queries) VersionComponentSecretEnvRefsByVersion(ctx context.Context, versionID string) ([]VersionComponentSecretEnvRef, error) {
-	rows, err := q.db.QueryContext(ctx, versionComponentSecretEnvRefsByVersion, versionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []VersionComponentSecretEnvRef
-	for rows.Next() {
-		var i VersionComponentSecretEnvRef
-		if err := rows.Scan(
-			&i.ComponentID,
-			&i.EnvKey,
-			&i.CredentialID,
-			&i.DataKey,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many

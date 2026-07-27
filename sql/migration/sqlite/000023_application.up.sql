@@ -1,5 +1,5 @@
 -- Domain: application
--- Tables: application, version, version_component, version_component_secret_env_ref, version_expose
+-- Tables: application, version, version_component, version_expose
 -- Ref: docs/analyze/20260724-domain-split-consensus-共识.md
 
 CREATE TABLE IF NOT EXISTS application (
@@ -59,19 +59,6 @@ CREATE TABLE IF NOT EXISTS version_component (
 );
 
 CREATE INDEX IF NOT EXISTS idx_version_component_version ON version_component(version_id);
-
-CREATE TABLE IF NOT EXISTS version_component_secret_env_ref (
-    component_id TEXT NOT NULL,
-    env_key TEXT NOT NULL,
-    credential_id TEXT NOT NULL,
-    data_key TEXT NOT NULL,
-    PRIMARY KEY (component_id, env_key),
-    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE,
-    FOREIGN KEY (credential_id) REFERENCES credential(id) ON DELETE RESTRICT
-);
-
-CREATE INDEX IF NOT EXISTS idx_version_component_secret_env_ref_credential
-    ON version_component_secret_env_ref(credential_id);
 
 CREATE TABLE IF NOT EXISTS version_expose (
     id TEXT PRIMARY KEY,

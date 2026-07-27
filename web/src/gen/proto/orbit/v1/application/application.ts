@@ -36,14 +36,8 @@ export interface ApplicationUpdateReq {
 
 export interface ApplicationDeployReq {
   version_id: string;
-  instance_key: string;
+  service_id: string;
   force_recreate: boolean;
-  runtime_config: { [key: string]: string };
-}
-
-export interface ApplicationDeployReq_RuntimeConfigEntry {
-  key: string;
-  value: string;
 }
 
 export interface ApplicationStopReq {

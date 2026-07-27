@@ -2,12 +2,6 @@ syntax = "proto3";
 
 package orbit.v1.application;
 
-message VersionComponentSecretEnvRef {
-  string env_key = 1;
-  string credential_id = 2;
-  string data_key = 3;
-}
-
 message VersionComponentReq {
   string name = 1;
   string image = 2;
@@ -24,7 +18,6 @@ message VersionComponentReq {
   optional string restart_policy = 13;
   optional string tmpfs_json = 14;
   optional string ulimits_json = 15;
-  repeated VersionComponentSecretEnvRef secret_env_refs = 16;
 }
 
 message VersionComponentResp {
@@ -47,7 +40,6 @@ message VersionComponentResp {
   optional string restart_policy = 17;
   optional string tmpfs_json = 18;
   optional string ulimits_json = 19;
-  repeated VersionComponentSecretEnvRef secret_env_refs = 20;
 }
 
 message VersionExposeReq {

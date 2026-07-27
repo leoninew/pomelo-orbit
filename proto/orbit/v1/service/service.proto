@@ -31,17 +31,19 @@ message ServicePaginatedResp {
   int32 pages = 5;
 }
 
-message ServiceRuntimeEnvItem {
-  string component_name = 1;
-  string env_key = 2;
-  string credential_id = 3;
-  string credential_name = 4;
-  string data_key = 5;
-  string value = 6;
+message ServiceCreateReq {
+  string application_id = 1;
+  string version_id = 2;
+  string instance_key = 3;
+  map<string, string> runtime_config = 4;
 }
 
-message ServiceRuntimeEnvResp {
+message ServiceRuntimeConfigReq {
+  map<string, string> runtime_config = 1;
+}
+
+message ServiceRuntimeConfigResp {
   string service_id = 1;
   string version_id = 2;
-  repeated ServiceRuntimeEnvItem items = 3;
+  map<string, string> runtime_config = 3;
 }

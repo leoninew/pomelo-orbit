@@ -273,6 +273,7 @@ type Service struct {
 	ApplicationID           string         `db:"application_id"`
 	InstanceKey             string         `db:"instance_key"`
 	VersionID               string         `db:"version_id"`
+	RuntimeConfigJson       string         `db:"runtime_config_json"`
 	LastSuccessfulVersionID sql.NullString `db:"last_successful_version_id"`
 	Status                  string         `db:"status"`
 	CreatedAt               time.Time      `db:"created_at"`
@@ -332,13 +333,6 @@ type VersionComponent struct {
 	UlimitsJson     sql.NullString `db:"ulimits_json"`
 	CreatedAt       time.Time      `db:"created_at"`
 	UpdatedAt       time.Time      `db:"updated_at"`
-}
-
-type VersionComponentSecretEnvRef struct {
-	ComponentID  string `db:"component_id"`
-	EnvKey       string `db:"env_key"`
-	CredentialID string `db:"credential_id"`
-	DataKey      string `db:"data_key"`
 }
 
 type VersionExpose struct {

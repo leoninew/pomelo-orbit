@@ -20,6 +20,7 @@ type ServiceStore interface {
 	ServiceReader
 	UpsertService(ctx context.Context, svc model.Service) error
 	DeleteService(ctx context.Context, id string) error
+	UpdateServiceRuntimeConfig(ctx context.Context, id string, runtimeConfig map[string]string) error
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
 	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error
 }

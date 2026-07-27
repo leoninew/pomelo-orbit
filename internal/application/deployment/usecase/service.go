@@ -33,8 +33,6 @@ type Service struct {
 	runner             deploymentport.CommandRunner
 	commandStore       deploymentport.CommandStore
 	gatewayCoordinator gatewayport.DeploymentCoordinator
-	credential         repository.CredentialStore
-	secretKey          string
 }
 
 func New(

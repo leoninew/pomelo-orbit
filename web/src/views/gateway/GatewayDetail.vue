@@ -428,11 +428,14 @@
     deployError.value = '';
     try {
       await executeOp(async () => {
+		const service = await applicationApi.getService(current.id);
+		if (!service) {
+			throw new Error(t('service.empty'));
+		}
         const result = await applicationApi.deploy(current.id, {
           version_id: deployForm.version_id,
-          instance_key: deployForm.instance_key.trim() || 'default',
+          service_id: service.id,
           force_recreate: deployForm.force_recreate,
-          runtime_config: {},
         });
         toast.success(t('gateway.toast.deployQueued'));
         isDeployDialogOpen.value = false;

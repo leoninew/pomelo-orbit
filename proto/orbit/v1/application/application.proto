@@ -30,20 +30,17 @@ message ApplicationUpdateReq {
 
 message ApplicationDeployReq {
   string version_id = 1;
-  string instance_key = 2;
+  string service_id = 2;
   bool force_recreate = 3;
-  map<string, string> runtime_config = 4;
 }
 
 message ApplicationStopReq {
   bool remove_volumes = 1;
-  optional string instance_key = 2;
-  optional string service_id = 3;
+  string service_id = 3;
 }
 
 message ApplicationRestartReq {
-  optional string instance_key = 1;
-  optional string service_id = 2;
+  string service_id = 2;
 }
 
 message DeploymentActionResp {

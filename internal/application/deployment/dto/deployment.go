@@ -14,14 +14,12 @@ type DeploymentListInput struct {
 // DeployInput describes a user-requested deployment of an application version.
 type DeployInput struct {
 	VersionId     string
-	InstanceKey   string
+	ServiceId     string
 	ForceRecreate bool
-	RuntimeConfig map[string]string
 }
 
-// ServiceTargetInput identifies the runtime service affected by a restart or stop.
+// ServiceTargetInput identifies the runtime service affected by an operation.
 type ServiceTargetInput struct {
-	InstanceKey   string
 	ServiceId     string
 	RemoveVolumes bool
 }
@@ -31,7 +29,7 @@ type DeployOptionsJSON struct {
 	ForceRecreate bool              `json:"force_recreate"`
 	InstanceKey   string            `json:"instance_key"`
 	RemoveVolumes bool              `json:"remove_volumes"`
-	RuntimeConfig map[string]string `json:"runtime_config,omitempty"`
+	RuntimeConfig map[string]string `json:"runtime_config"`
 }
 
 type DeployDispatchInput struct {

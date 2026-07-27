@@ -103,6 +103,28 @@ func TestUnpublishVersionChangesPublishedVersionToUnpublished(t *testing.T) {
 	}
 }
 
+func TestUpdateVersionRejectsMissingRuntimeConfigForBoundService(t *testing.T) {
+	_, database, applicationStore := newVersionIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app, version := createPublishedVersion(t, ctx, applicationStore, "runtime-config-validation")
+	serviceStore := servicerepo.NewRepository(database)
+	if err := serviceStore.UpsertService(ctx, model.Service{
+		Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: "default", VersionId: version.Id,
+		RuntimeConfig: map[string]string{}, Status: status.ServiceStatusStopped,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	service := New(projectrepo.NewRepository(database), applicationStore, serviceStore)
+	envJSON := `[{"key":"API_TOKEN","value":"${API_TOKEN}"}]`
+	components := []applicationdto.VersionComponentInput{{Name: "web", Image: "nginx", EnvJSON: &envJSON}}
+	_, err := service.UpdateVersion(ctx, versionTestUserId, version.Id, applicationdto.VersionUpdateInput{Components: &components})
+	if apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected missing runtime config to reject version update, got %v", err)
+	}
+}
+
 func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *testing.T) {
 	service, database, applicationStore := newVersionIntegrationService(t)
 	defer func() { _ = database.Close() }()

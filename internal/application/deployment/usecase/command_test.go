@@ -3,9 +3,12 @@ package deploymentsvc
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 	"testing"
 
 	deploymentdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/deployment/dto"
+	gatewayport "gitee.com/leoninew/PomeloOrbit-go/internal/application/gateway/port"
 	status "gitee.com/leoninew/PomeloOrbit-go/internal/common/constant"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
 	"gitee.com/leoninew/PomeloOrbit-go/internal/repository"
@@ -15,7 +18,7 @@ func TestDeployApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 
 	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", ServiceId: "service-1", ForceRecreate: true,
+		VersionId: "version-1", InstanceKey: "default", ForceRecreate: true,
 	})
 	if err != nil {
 		t.Fatalf("DeployApplication returned error: %v", err)
@@ -48,12 +51,51 @@ func TestDeployApplicationCreatesAndDispatchesDeployment(t *testing.T) {
 	}
 }
 
+func TestDeployApplicationCreatesDefaultServiceBeforeFirstDeployment(t *testing.T) {
+	service, store, _ := newCommandTestService()
+	store.service = model.Service{}
+
+	deploymentID, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+		VersionId: "version-1", InstanceKey: "default",
+	})
+	if err != nil {
+		t.Fatalf("DeployApplication returned error: %v", err)
+	}
+	if len(store.service.Id) != 26 {
+		t.Fatalf("expected a generated service id, got %q", store.service.Id)
+	}
+	if store.service.ApplicationId != "app-1" || store.service.InstanceKey != "default" {
+		t.Fatalf("unexpected service: %+v", store.service)
+	}
+	if store.service.VersionId != "version-1" || store.service.Status != status.ServiceStatusDeploying {
+		t.Fatalf("unexpected prepared service: %+v", store.service)
+	}
+	deployment := store.deployments[0]
+	if deployment.Id != deploymentID || deployment.ServiceId == nil || *deployment.ServiceId != store.service.Id {
+		t.Fatalf("deployment must reference the created service: %+v", deployment)
+	}
+}
+
+func TestDeployApplicationReusesDefaultService(t *testing.T) {
+	service, store, _ := newCommandTestService()
+
+	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+		VersionId: "version-1", InstanceKey: "default",
+	})
+	if err != nil {
+		t.Fatalf("DeployApplication returned error: %v", err)
+	}
+	if store.service.Id != "service-1" {
+		t.Fatalf("expected the existing default service to be reused, got %+v", store.service)
+	}
+}
+
 func TestDeployApplicationRejectsVersionWithoutComponents(t *testing.T) {
 	service, store, dispatcher := newCommandTestService()
 	store.components = nil
 
 	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", ServiceId: "service-1",
+		VersionId: "version-1", InstanceKey: "default",
 	})
 	if err == nil {
 		t.Fatal("expected deployment validation error")
@@ -117,7 +159,7 @@ func TestDeployApplicationRejectsMissingDispatcherBeforePersisting(t *testing.T)
 	service.dispatcher = nil
 
 	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
-		VersionId: "version-1", ServiceId: "service-1",
+		VersionId: "version-1", InstanceKey: "default",
 	})
 	if err == nil {
 		t.Fatal("expected deployment dispatcher error")
@@ -141,7 +183,7 @@ func newCommandTestService() (Service, *commandStoreFake, *commandDispatcherFake
 		},
 	}
 	dispatcher := &commandDispatcherFake{}
-	return Service{commandStore: store, dispatcher: dispatcher}, store, dispatcher
+	return Service{commandStore: store, dispatcher: dispatcher, gatewayCoordinator: commandGatewayCoordinator{}}, store, dispatcher
 }
 
 type commandStoreFake struct {
@@ -173,8 +215,22 @@ func (s *commandStoreFake) VersionComponentsByVersion(_ context.Context, _ strin
 	return s.components, nil
 }
 
-func (s *commandStoreFake) ServiceByKey(_ context.Context, _, _ string) (model.Service, error) {
-	if s.service.Id == "" {
+func TestDeployApplicationRejectsMissingInstanceKey(t *testing.T) {
+	service, store, dispatcher := newCommandTestService()
+
+	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+		VersionId: "version-1", InstanceKey: "  ",
+	})
+	if err == nil {
+		t.Fatal("expected instance key validation error")
+	}
+	if len(store.deployments) != 0 || len(store.operations) != 0 || dispatcher.deploy.DeploymentID != "" {
+		t.Fatalf("missing instance key must not persist or dispatch: deployments=%+v operations=%v dispatch=%+v", store.deployments, store.operations, dispatcher.deploy)
+	}
+}
+
+func (s *commandStoreFake) ServiceByKey(_ context.Context, applicationID string, instanceKey string) (model.Service, error) {
+	if s.service.Id == "" || s.service.ApplicationId != applicationID || s.service.InstanceKey != instanceKey {
 		return model.Service{}, repository.ErrNotFound
 	}
 	return s.service, nil
@@ -208,6 +264,37 @@ type commandDispatcherFake struct {
 	deploy  deploymentdto.DeployDispatchInput
 	restart deploymentdto.RestartDispatchInput
 	stop    deploymentdto.StopDispatchInput
+}
+
+type commandGatewayCoordinator struct {
+	ensureErr error
+}
+
+func (commandGatewayCoordinator) GatewayForDeployment(context.Context, model.Application, []model.VersionExpose) (*model.GatewayConfig, error) {
+	return nil, nil
+}
+
+func (commandGatewayCoordinator) PrepareDeployment(context.Context, model.Application, []model.VersionExpose) (gatewayport.DeploymentPreparation, error) {
+	return gatewayport.DeploymentPreparation{}, nil
+}
+
+func (c commandGatewayCoordinator) EnsureGatewayRunning(context.Context, model.Application) error {
+	return c.ensureErr
+}
+
+func TestDeployApplicationRejectsUndeployedGatewayBeforePersisting(t *testing.T) {
+	service, store, dispatcher := newCommandTestService()
+	service.gatewayCoordinator = commandGatewayCoordinator{ensureErr: errors.New("gateway traefik is configured but not running")}
+
+	_, err := service.DeployApplication(context.Background(), "user-1", "app-1", deploymentdto.DeployInput{
+		VersionId: "version-1", InstanceKey: "default",
+	})
+	if err == nil || !strings.Contains(err.Error(), "gateway traefik is configured but not running") {
+		t.Fatalf("expected gateway readiness error, got %v", err)
+	}
+	if len(store.deployments) != 0 || dispatcher.deploy.DeploymentID != "" {
+		t.Fatalf("gateway preflight must reject before persistence: deployments=%+v dispatch=%+v", store.deployments, dispatcher.deploy)
+	}
 }
 
 func (d *commandDispatcherFake) DispatchDeploy(_ context.Context, input deploymentdto.DeployDispatchInput) error {

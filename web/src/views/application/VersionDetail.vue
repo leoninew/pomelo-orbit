@@ -69,7 +69,7 @@
           <h2 class="font-semibold text-foreground">
             {{ t('application.detail.sections.basicInfo') }}
           </h2>
-          <button v-if="isEditable" class="app-button h-8 px-3" @click="openBasicModal">
+          <button v-if="isEditable" class="app-button h-9 px-3" @click="openBasicModal">
             <Pencil class="size-4" />
             {{ t('common.edit') }}
           </button>
@@ -125,7 +125,7 @@
           </h2>
           <button
             v-if="isEditable"
-            class="app-button-primary h-8 px-3"
+            class="app-button-primary h-9 px-3"
             @click="openComponentModal()"
           >
             <Plus class="size-4" />
@@ -214,7 +214,7 @@
           </h2>
           <button
             v-if="isEditable"
-            class="app-button-primary h-8 px-3"
+            class="app-button-primary h-9 px-3"
             :disabled="(version.components ?? []).length === 0"
             @click="openExposeModal()"
           >
@@ -539,13 +539,14 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('service.fields.instanceKey') }}
+            <span class="text-destructive">*</span>
           </label>
-          <ComboboxSelect
-            :model-value="deployForm.service_id"
-            :options="deployServiceOptions"
-            :placeholder="t('service.empty')"
-            width-class="w-full"
-            @update:model-value="deployForm.service_id = String($event || '')"
+          <input
+            v-model="deployForm.instance_key"
+            type="text"
+            required
+            class="app-input"
+            :placeholder="t('application.versionDetail.instanceKeyPlaceholder')"
           />
         </div>
         <label class="flex items-center gap-2">
@@ -638,7 +639,6 @@
     VersionExposeReq,
     VersionResp,
   } from '@/gen/proto/orbit/v1/application/version';
-  import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import {
@@ -683,17 +683,9 @@
   const exposeFormError = ref('');
   const deployError = ref('');
   const deployForm = reactive({
-    service_id: '',
+    instance_key: 'default',
     force_recreate: false,
   });
-  const deployServices = ref<ServiceResp[]>([]);
-  const deployServiceOptions = computed(() =>
-    deployServices.value.map((service) => ({
-      value: service.id,
-      label: service.instance_key || 'default',
-      description: service.version_label || service.version_id,
-    }))
-  );
 
   const basicForm = reactive({
     label: '',
@@ -1246,7 +1238,7 @@
     }
   }
 
-  async function openDeployModal() {
+  function openDeployModal() {
     if (!version.value || !isDeployable.value) {
       return;
     }
@@ -1256,17 +1248,8 @@
     }
     deployError.value = '';
     deployForm.force_recreate = false;
-    try {
-      const services = await applicationApi.listServices(version.value.application_id);
-      deployServices.value = services.items ?? [];
-      deployForm.service_id = deployServices.value[0]?.id ?? '';
-      if (!deployForm.service_id) {
-        deployError.value = t('service.empty');
-      }
-      isDeployDialogOpen.value = true;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.deployFailed'));
-    }
+    deployForm.instance_key = 'default';
+    isDeployDialogOpen.value = true;
   }
 
   async function handleDeployOk() {
@@ -1279,16 +1262,12 @@
       isDeployDialogOpen.value = false;
       return;
     }
-	if (!deployForm.service_id) {
-		deployError.value = t('service.empty');
-		return;
-	}
     deployError.value = '';
     try {
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.application_id, {
           version_id: current.id,
-          service_id: deployForm.service_id,
+          instance_key: deployForm.instance_key,
           force_recreate: deployForm.force_recreate,
         });
         toast.success(t('application.toast.deployTriggeredDetail'));

@@ -155,11 +155,6 @@ class OrbitClient:
     async def create_application(self, project_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return await self.request("POST", "/api/application", params={"project_id": project_id}, json_body=payload)
 
-    async def import_application(self, project_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-        return await self.request(
-            "POST", "/api/application/import", params={"project_id": project_id}, json_body=payload
-        )
-
     async def get_application(self, application_id: str) -> dict[str, Any]:
         return await self.request("GET", f"/api/application/{application_id}")
 
@@ -221,9 +216,7 @@ class OrbitClient:
     async def get_service_runtime_config(self, service_id: str) -> dict[str, Any]:
         return await self.request("GET", f"/api/service/{service_id}/runtime-config")
 
-    async def update_service_runtime_config(
-        self, service_id: str, runtime_config: Mapping[str, str]
-    ) -> dict[str, Any]:
+    async def update_service_runtime_config(self, service_id: str, runtime_config: Mapping[str, str]) -> dict[str, Any]:
         return await self.request(
             "PUT", f"/api/service/{service_id}/runtime-config", json_body={"runtime_config": dict(runtime_config)}
         )

@@ -10,33 +10,35 @@
           @search="handleSearch"
         />
       </div>
-      <button class="app-button-primary h-10 px-3" @click="openCreateDialog">
-        <Plus class="size-4" />
-        {{ t('service.actions.create') }}
-      </button>
-      <ToggleGroupRoot
-        v-model="viewMode"
-        type="single"
-        class="flex h-10 shrink-0 overflow-hidden rounded-md border border-border bg-background"
-        :aria-label="t('service.viewMode')"
-      >
-        <ToggleGroupItem
-          value="card"
-          class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-          :aria-label="t('service.cardView')"
-          :title="t('service.cardView')"
+      <div class="ml-auto flex shrink-0 items-center gap-3">
+        <ToggleGroupRoot
+          v-model="viewMode"
+          type="single"
+          class="flex h-10 shrink-0 overflow-hidden rounded-md border border-border bg-background"
+          :aria-label="t('service.viewMode')"
         >
-          <LayoutGrid class="size-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="table"
-          class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
-          :aria-label="t('service.tableView')"
-          :title="t('service.tableView')"
-        >
-          <List class="size-4" />
-        </ToggleGroupItem>
-      </ToggleGroupRoot>
+          <ToggleGroupItem
+            value="card"
+            class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+            :aria-label="t('service.cardView')"
+            :title="t('service.cardView')"
+          >
+            <LayoutGrid class="size-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem
+            value="table"
+            class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+            :aria-label="t('service.tableView')"
+            :title="t('service.tableView')"
+          >
+            <List class="size-4" />
+          </ToggleGroupItem>
+        </ToggleGroupRoot>
+        <button class="app-button-primary h-10 px-3" @click="openCreateDialog">
+          <Plus class="size-4" />
+          {{ t('service.actions.create') }}
+        </button>
+      </div>
     </ToolbarRoot>
 
     <div v-if="status === 'loading'" class="app-surface">
@@ -230,6 +232,19 @@
         <p class="text-sm text-muted-foreground">{{ t('service.deploy.description') }}</p>
         <div>
           <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.instanceKey') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="deployForm.instance_key"
+            type="text"
+            required
+            class="app-input"
+            placeholder="default"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
             {{ t('service.fields.version') }}
             <span class="text-destructive">*</span>
           </label>
@@ -384,6 +399,7 @@
   const deployError = ref('');
   const deployForm = reactive({
     version_id: '',
+    instance_key: 'default',
     force_recreate: false,
   });
   const isStopDialogOpen = ref(false);
@@ -550,6 +566,7 @@
     selectedService.value = service;
     versions.value = [];
     deployForm.version_id = service.version_id;
+    deployForm.instance_key = 'default';
     deployForm.force_recreate = false;
     deployError.value = '';
     isDeployDialogOpen.value = true;
@@ -574,7 +591,7 @@
       await executeOp(async () => {
         const result = await applicationApi.deploy(service.application_id, {
           version_id: deployForm.version_id,
-          service_id: service.id,
+          instance_key: deployForm.instance_key,
           force_recreate: deployForm.force_recreate,
         });
         toast.success(t('service.toast.deployQueued'));

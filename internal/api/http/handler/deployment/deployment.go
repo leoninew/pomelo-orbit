@@ -99,7 +99,7 @@ func (h Handler) DeployApplication(c *gin.Context) {
 		return
 	}
 	deploymentID, err := h.service.DeployApplication(c.Request.Context(), current.Id, c.Param("app_id"), deploymentdto.DeployInput{
-		VersionId: req.VersionId, ServiceId: req.ServiceId, ForceRecreate: req.ForceRecreate,
+		VersionId: req.VersionId, InstanceKey: req.InstanceKey, ForceRecreate: req.ForceRecreate,
 	})
 	if err != nil {
 		h.writeError(c, err)

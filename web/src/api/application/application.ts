@@ -23,7 +23,7 @@ import type {
   VersionResp,
   VersionUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
-import type { ServiceListResp, ServiceResp } from '@/gen/proto/orbit/v1/service/service';
+import type { ServiceListResp } from '@/gen/proto/orbit/v1/service/service';
 import request from '@/utils/request';
 
 export const applicationApi = {
@@ -98,13 +98,6 @@ export const applicationApi = {
 
   listServices(id: string): Promise<ServiceListResp> {
     return request.get(`/api/application/${id}/service`);
-  },
-
-  getService(id: string): Promise<ServiceResp | null> {
-    return applicationApi.listServices(id).then((resp) => {
-      const items = resp.items ?? [];
-      return items[0] ?? null;
-    });
   },
 
   listVersions(

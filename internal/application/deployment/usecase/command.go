@@ -79,8 +79,9 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	if input.VersionId == "" {
 		return "", apperror.New(apperror.KindValidation, "version_id is required")
 	}
-	if strings.TrimSpace(input.ServiceId) == "" {
-		return "", apperror.New(apperror.KindValidation, "service_id is required")
+	instanceKey := strings.TrimSpace(input.InstanceKey)
+	if instanceKey == "" {
+		return "", apperror.New(apperror.KindValidation, "instance_key is required")
 	}
 	version, err := s.commandStore.Version(ctx, input.VersionId)
 	if err != nil {
@@ -91,6 +92,9 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 	}
 	if version.ApplicationId != app.Id {
 		return "", apperror.New(apperror.KindValidation, "Version does not belong to this application")
+	}
+	if err := s.ensureBusinessGatewayRunning(ctx, app); err != nil {
+		return "", err
 	}
 	components, err := s.commandStore.VersionComponentsByVersion(ctx, version.Id)
 	if err != nil {
@@ -108,7 +112,7 @@ func (s Service) DeployApplication(ctx context.Context, userId string, applicati
 			return "", apperror.New(apperror.KindValidation, "another gateway is already deploying or running; multiple gateways are not supported")
 		}
 	}
-	service, err := s.resolveServiceTarget(ctx, app.Id, deploymentdto.ServiceTargetInput{ServiceId: input.ServiceId})
+	service, err := s.resolveDeployService(ctx, app, instanceKey)
 	if err != nil {
 		return "", err
 	}
@@ -175,9 +179,22 @@ func (s Service) StopApplication(ctx context.Context, userId string, application
 	return deployment.Id, nil
 }
 
+func (s Service) ensureBusinessGatewayRunning(ctx context.Context, app model.Application) error {
+	if app.Kind == status.ApplicationKindGateway {
+		return nil
+	}
+	if s.gatewayCoordinator == nil {
+		return apperror.New(apperror.KindInternal, "gateway deployment coordinator is not configured")
+	}
+	return s.gatewayCoordinator.EnsureGatewayRunning(ctx, app)
+}
+
 func (s Service) RestartApplication(ctx context.Context, userId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, applicationId)
 	if err != nil {
+		return "", err
+	}
+	if err := s.ensureBusinessGatewayRunning(ctx, app); err != nil {
 		return "", err
 	}
 	service, err := s.resolveServiceTarget(ctx, app.Id, input)
@@ -259,6 +276,23 @@ func (s Service) resolveServiceTarget(ctx context.Context, applicationID string,
 		return model.Service{}, apperror.New(apperror.KindNotFound, "Service not found")
 	}
 	return service, nil
+}
+
+func (s Service) resolveDeployService(ctx context.Context, app model.Application, instanceKey string) (model.Service, error) {
+	service, err := s.commandStore.ServiceByKey(ctx, app.Id, instanceKey)
+	if err == nil {
+		return service, nil
+	}
+	if !errors.Is(err, repository.ErrNotFound) {
+		return model.Service{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
+	}
+	return model.Service{
+		Id:            idutil.NewId(),
+		ApplicationId: app.Id,
+		InstanceKey:   instanceKey,
+		RuntimeConfig: map[string]string{},
+		Status:        status.ServiceStatusStopped,
+	}, nil
 }
 
 func (s Service) ensureCommandProjectMembership(ctx context.Context, projectID string, userID string) error {

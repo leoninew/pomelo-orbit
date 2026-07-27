@@ -505,7 +505,7 @@ func validateVersionComponents(components []model.VersionComponent) error {
 		}
 	}
 	for _, component := range components {
-		depends, err := parseStringSliceJSON(component.DependsOnJSON)
+		_, depends, err := parseDependsOnJSON(component.DependsOnJSON)
 		if err != nil {
 			return fmt.Errorf("component %s depends_on_json: %w", component.Name, err)
 		}
@@ -622,9 +622,9 @@ func renderVersionComponentService(
 	} else if networks != nil {
 		service["networks"] = networks
 	}
-	if depends, err := parseStringSliceJSON(component.DependsOnJSON); err != nil {
+	if depends, _, err := parseDependsOnJSON(component.DependsOnJSON); err != nil {
 		return nil, nil, err
-	} else if len(depends) > 0 {
+	} else if depends != nil {
 		service["depends_on"] = depends
 	}
 	if healthcheck, err := parseAnyJSON(component.HealthcheckJSON); err != nil {
@@ -666,6 +666,41 @@ func parseStringSliceJSON(raw *string) ([]string, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+func parseDependsOnJSON(raw *string) (any, []string, error) {
+	if raw == nil || *raw == "" {
+		return nil, nil, nil
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(*raw), &names); err == nil {
+		return names, names, nil
+	}
+	var configured map[string]struct {
+		Condition string `json:"condition"`
+	}
+	if err := json.Unmarshal([]byte(*raw), &configured); err != nil {
+		return nil, nil, fmt.Errorf("depends_on_json must be a string array or a condition map")
+	}
+	names = make([]string, 0, len(configured))
+	rendered := make(map[string]map[string]string, len(configured))
+	for name, dependency := range configured {
+		if strings.TrimSpace(name) == "" {
+			return nil, nil, fmt.Errorf("depends_on_json contains an empty component name")
+		}
+		switch dependency.Condition {
+		case "", "service_started", "service_healthy", "service_completed_successfully":
+		default:
+			return nil, nil, fmt.Errorf("depends_on_json component %s has unsupported condition %q", name, dependency.Condition)
+		}
+		names = append(names, name)
+		if dependency.Condition == "" {
+			rendered[name] = map[string]string{}
+		} else {
+			rendered[name] = map[string]string{"condition": dependency.Condition}
+		}
+	}
+	return rendered, names, nil
 }
 
 func parseAnyJSON(raw *string) (any, error) {

@@ -27,6 +27,14 @@ uv --directory mcp run pomelo-orbit-mcp
 
 该进程使用 stdio transport。将此命令配置为 MCP client 的 server command；不要通过 HTTP 暴露该本地 Server。
 
+## Codex project registration
+
+受信任项目通过仓库根目录的 `.codex/config.toml` 注册 `pomelo_orbit`。打开新的 Codex 会话后，工具列表中应出现该 Server 的工具和 input schema；已有会话不会热加载新增配置。
+
+manifest 不包含 Orbit URL、用户名、密码、JWT、Docker 参数或用户绝对路径。它只启动本目录的已有 stdio entrypoint；`mcp/.env`、进程环境、Docker context 和 data-root 配置仍由本地操作者提供。
+
+若 Server 无法建立 session，例如 `uv` 不可用或 `mcp/.env` 不完整，调用方必须将其视为 Server unavailable，不能把任何依赖操作记作成功或继续执行。
+
 ## Development checks
 
 ```text

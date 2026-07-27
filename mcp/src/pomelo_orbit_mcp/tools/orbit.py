@@ -7,6 +7,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from ..orbit_client import OrbitClient
+from ..version_specs import VersionComponent, VersionExpose, version_component_payload, version_expose_payload
 from .common import compact, write_result
 
 
@@ -25,6 +26,12 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             "applications": await client.list_applications(project_id, kind),
         }
 
+    @mcp.tool(name="orbit_list_application_services")
+    async def orbit_list_application_services(application_id: str) -> dict[str, Any]:
+        """List non-sensitive Service summaries for an Orbit Application."""
+        services = await client.list_application_services(application_id)
+        return application_service_list_result(application_id, services)
+
     @mcp.tool(name="orbit_list_gateways")
     async def orbit_list_gateways(project_id: str) -> dict[str, Any]:
         """List Gateway metadata in a Project through Orbit."""
@@ -33,11 +40,11 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     @mcp.tool(name="orbit_create_gateway")
     async def orbit_create_gateway(
         project_id: str,
-        code: str,
-        name: str,
-        rest_api_url: str,
-        base_domain: str,
-        image: str | None = None,
+        code: str = "traefik",
+        name: str = "Traefik",
+        rest_api_url: str = "http://localhost:8080",
+        base_domain: str = "lvh.me",
+        image: str = "traefik:3.6",
         image_pull_policy: str = "missing",
         default_entrypoint: str | None = None,
         tls_mode: str | None = None,
@@ -141,48 +148,6 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             data={"application": application, "initial_version": initial},
         )
 
-    @mcp.tool(name="orbit_bootstrap_application")
-    async def orbit_bootstrap_application(
-        project_id: str,
-        name: str,
-        code: str,
-        version_label: str,
-        components: list[dict[str, Any]],
-        exposes: list[dict[str, Any]],
-        image_pull_policy: str = "missing",
-        kind: str = "standard",
-        version_env_json: str | None = None,
-        version_note: str | None = None,
-    ) -> dict[str, Any]:
-        """Create an Application and its first complete Version in one Orbit import request."""
-        if kind != "standard":
-            raise ValueError("MCP creation only supports kind=standard")
-        body = compact(
-            {
-                "name": name,
-                "code": code,
-                "kind": kind,
-                "image_pull_policy": image_pull_policy,
-                "version_label": version_label,
-                "version_env_json": version_env_json,
-                "version_note": version_note,
-                "components": components,
-                "exposes": exposes,
-            }
-        )
-        application = await client.import_application(project_id, body)
-        versions = await client.list_versions(str(application["id"]))
-        initial = next((item for item in versions if item.get("label") == version_label), None)
-        return write_result(
-            "bootstrap_application",
-            compact({"application_id": str(application["id"]), "version_id": str(initial["id"]) if initial else None}),
-            "POST",
-            "/api/application/import",
-            request_body=body,
-            steps=["Created Application and Version specification through Orbit", "Read created Version through Orbit"],
-            data={"application": application, "version": initial},
-        )
-
     @mcp.tool(name="orbit_get_application")
     async def orbit_get_application(application_id: str) -> dict[str, Any]:
         """Read one Orbit Application, including its current service summary."""
@@ -214,14 +179,20 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     async def orbit_create_version(
         application_id: str,
         label: str,
-        components: list[dict[str, Any]],
-        exposes: list[dict[str, Any]],
+        components: list[VersionComponent],
+        exposes: list[VersionExpose],
         env_json: str | None = None,
         note: str | None = None,
     ) -> dict[str, Any]:
         """Create a Version using complete Component and Expose collections."""
         body = compact(
-            {"label": label, "components": components, "exposes": exposes, "env_json": env_json, "note": note}
+            {
+                "label": label,
+                "components": [version_component_payload(component) for component in components],
+                "exposes": [version_expose_payload(expose) for expose in exposes],
+                "env_json": env_json,
+                "note": note,
+            }
         )
         version = await client.create_version(application_id, body)
         return write_result(
@@ -239,12 +210,20 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         label: str | None = None,
         env_json: str | None = None,
         note: str | None = None,
-        components: list[dict[str, Any]] | None = None,
-        exposes: list[dict[str, Any]] | None = None,
+        components: list[VersionComponent] | None = None,
+        exposes: list[VersionExpose] | None = None,
     ) -> dict[str, Any]:
         """Update a Version; explicit empty Components or Exposes replace that collection with empty."""
         body = compact(
-            {"label": label, "env_json": env_json, "note": note, "components": components, "exposes": exposes}
+            {
+                "label": label,
+                "env_json": env_json,
+                "note": note,
+                "components": [version_component_payload(component) for component in components]
+                if components is not None
+                else None,
+                "exposes": [version_expose_payload(expose) for expose in exposes] if exposes is not None else None,
+            }
         )
         if not body:
             raise ValueError("at least one Version field must be supplied")
@@ -335,13 +314,13 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
     async def orbit_deploy(
         application_id: str,
         version_id: str,
-        service_id: str,
+        instance_key: str = "default",
         force_recreate: bool = False,
     ) -> dict[str, Any]:
         """Create an Orbit deployment and immediately return its persisted command summary."""
         body = {
             "version_id": version_id,
-            "service_id": service_id,
+            "instance_key": instance_key,
             "force_recreate": force_recreate,
         }
         action = await client.deploy_application(application_id, body)
@@ -349,7 +328,12 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         deployment = await client.get_deployment(deployment_id)
         return write_result(
             "deploy_application",
-            {"application_id": application_id, "version_id": version_id, "service_id": service_id, "deployment_id": deployment_id},
+            {
+                "application_id": application_id,
+                "version_id": version_id,
+                "instance_key": instance_key,
+                "deployment_id": deployment_id,
+            },
             "POST",
             f"/api/application/{application_id}/deploy",
             request_body=body,
@@ -430,3 +414,25 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         """Wait only until an Orbit Deployment reaches a terminal state or the configured timeout."""
         result = await client.wait_deployment(deployment_id, timeout_seconds)
         return {"operation": "wait_deployment", "deployment_id": deployment_id, **result}
+
+
+def application_service_list_result(application_id: str, services: list[dict[str, Any]]) -> dict[str, Any]:
+    """Expose only Service fields needed for lifecycle actions."""
+    return {
+        "application_id": application_id,
+        "services": [service_summary(service) for service in services],
+    }
+
+
+def service_summary(service: dict[str, Any]) -> dict[str, Any]:
+    allowed = (
+        "id",
+        "application_id",
+        "instance_key",
+        "status",
+        "version_id",
+        "last_successful_version_id",
+        "created_at",
+        "updated_at",
+    )
+    return {field: service[field] for field in allowed if service.get(field) is not None}

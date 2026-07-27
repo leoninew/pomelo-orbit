@@ -14,7 +14,7 @@ type DeploymentListInput struct {
 // DeployInput describes a user-requested deployment of an application version.
 type DeployInput struct {
 	VersionId     string
-	ServiceId     string
+	InstanceKey   string
 	ForceRecreate bool
 }
 

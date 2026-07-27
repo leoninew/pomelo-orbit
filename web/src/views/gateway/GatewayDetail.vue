@@ -194,10 +194,12 @@
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('gateway.deploy.instanceKey') }}
+            <span class="text-destructive">*</span>
           </label>
           <input
             v-model="deployForm.instance_key"
             type="text"
+            required
             class="app-input"
             :placeholder="t('gateway.deploy.instanceKeyPlaceholder')"
           />
@@ -401,7 +403,7 @@
     }
     deployError.value = '';
     deployForm.force_recreate = false;
-    deployForm.instance_key = primaryService.value?.instance_key || 'default';
+    deployForm.instance_key = 'default';
     try {
       await loadDeployOptions();
     } catch (err: unknown) {
@@ -428,13 +430,9 @@
     deployError.value = '';
     try {
       await executeOp(async () => {
-		const service = await applicationApi.getService(current.id);
-		if (!service) {
-			throw new Error(t('service.empty'));
-		}
         const result = await applicationApi.deploy(current.id, {
           version_id: deployForm.version_id,
-          service_id: service.id,
+          instance_key: deployForm.instance_key,
           force_recreate: deployForm.force_recreate,
         });
         toast.success(t('gateway.toast.deployQueued'));

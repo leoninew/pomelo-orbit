@@ -36,19 +36,17 @@ export interface ApplicationUpdateReq {
 
 export interface ApplicationDeployReq {
   version_id: string;
-  service_id: string;
+  instance_key: string;
   force_recreate: boolean;
 }
 
 export interface ApplicationStopReq {
   remove_volumes: boolean;
-  instance_key?: string | undefined;
-  service_id?: string | undefined;
+  service_id: string;
 }
 
 export interface ApplicationRestartReq {
-  instance_key?: string | undefined;
-  service_id?: string | undefined;
+  service_id: string;
 }
 
 export interface DeploymentActionResp {

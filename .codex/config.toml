@@ -1,0 +1,6 @@
+[mcp_servers.pomelo_orbit]
+command = "uv"
+args = ["--directory", "mcp", "run", "pomelo-orbit-mcp"]
+cwd = "."
+startup_timeout_sec = 10.0
+tool_timeout_sec = 300.0

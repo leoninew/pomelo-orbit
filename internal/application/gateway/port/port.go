@@ -57,6 +57,7 @@ type DeploymentPreparation struct {
 // DeploymentCoordinator keeps Gateway configuration, exposure conflict rules,
 // and managed listener compilation inside the Gateway domain.
 type DeploymentCoordinator interface {
+	EnsureGatewayRunning(ctx context.Context, app model.Application) error
 	GatewayForDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (*model.GatewayConfig, error)
 	PrepareDeployment(ctx context.Context, app model.Application, exposes []model.VersionExpose) (DeploymentPreparation, error)
 }

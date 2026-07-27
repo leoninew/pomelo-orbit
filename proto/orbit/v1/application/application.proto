@@ -30,7 +30,7 @@ message ApplicationUpdateReq {
 
 message ApplicationDeployReq {
   string version_id = 1;
-  string service_id = 2;
+  string instance_key = 2;
   bool force_recreate = 3;
 }
 

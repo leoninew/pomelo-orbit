@@ -270,6 +270,10 @@ type fakeGatewayCoordinator struct {
 	prepareErr  error
 }
 
+func (f *fakeGatewayCoordinator) EnsureGatewayRunning(_ context.Context, _ model.Application) error {
+	return nil
+}
+
 func (f *fakeGatewayCoordinator) GatewayForDeployment(_ context.Context, app model.Application, exposes []model.VersionExpose) (*model.GatewayConfig, error) {
 	if f.prepareErr != nil {
 		return nil, f.prepareErr

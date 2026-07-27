@@ -562,6 +562,7 @@ dependencies = [
     { name = "dynaconf" },
     { name = "httpx" },
     { name = "mcp" },
+    { name = "pydantic" },
     { name = "pyyaml" },
 ]
 
@@ -579,6 +580,7 @@ requires-dist = [
     { name = "dynaconf", specifier = ">=3.2.11" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", specifier = ">=1.25.0" },
+    { name = "pydantic", specifier = ">=2.11.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
 ]
 

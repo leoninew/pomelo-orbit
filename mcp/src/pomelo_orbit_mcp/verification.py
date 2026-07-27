@@ -10,7 +10,7 @@ from typing import Any, cast
 import yaml
 
 from .docker_runtime import DockerRuntime, DockerRuntimeError
-from .orbit_client import OrbitAPIError, OrbitClient
+from .orbit_client import OrbitClient
 from .settings import Settings
 from .workspace import RuntimeTarget, RuntimeTargetError, build_runtime_target
 
@@ -60,10 +60,7 @@ async def verify_deployment(
     *,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> VerificationResult:
-    try:
-        deployment = await client.get_deployment(deployment_id)
-    except OrbitAPIError as error:
-        return VerificationResult("inconclusive", {"deployment_id": deployment_id}, [str(error)])
+    deployment = await client.get_deployment(deployment_id)
     if deployment.get("application_id") != application_id:
         return VerificationResult(
             "inconclusive", {"deployment": deployment}, ["deployment does not belong to application"]
@@ -83,19 +80,14 @@ async def verify_deployment(
         return VerificationResult(
             "inconclusive", {"deployment": deployment}, ["deployment lacks service or version linkage"]
         )
-    try:
-        application = await client.get_application(application_id)
-        version = await client.get_version(version_id)
-        service = await client.get_service(service_id)
-        target = build_runtime_target(
-            settings, application, service, _nonempty_string(service.get("instance_key")) or ""
-        )
-        preview = await client.preview_version(version_id, target.instance_key)
-        compose_config = await runtime.compose_config(target)
-        ps = await runtime.compose_ps(target)
-        inspections = await _inspect_containers(runtime, target, ps["containers"])
-    except (OrbitAPIError, DockerRuntimeError, RuntimeTargetError) as error:
-        return VerificationResult("inconclusive", {"deployment": deployment}, [str(error)])
+    application = await client.get_application(application_id)
+    version = await client.get_version(version_id)
+    service = await client.get_service(service_id)
+    target = build_runtime_target(settings, application, service, _nonempty_string(service.get("instance_key")) or "")
+    preview = await client.preview_version(version_id, target.instance_key)
+    compose_config = await runtime.compose_config(target)
+    ps = await runtime.compose_ps(target)
+    inspections = await _inspect_containers(runtime, target, ps["containers"])
 
     stability = await observe_stability(runtime, target, settings, sleep=sleep)
     evidence: dict[str, Any] = {
@@ -139,18 +131,15 @@ async def observe_stability(
     baseline_restarts: dict[str, int] = {}
     samples: list[dict[str, Any]] = []
     while True:
-        try:
-            ps = await runtime.compose_ps(target)
-            containers = ps["containers"]
-            if not containers:
-                return {
-                    "state": "failed",
-                    "issues": ["no containers are running for the managed Compose project"],
-                    "samples": samples,
-                }
-            inspections = await _inspect_containers(runtime, target, containers)
-        except DockerRuntimeError as error:
-            return {"state": "inconclusive", "issues": [str(error)], "samples": samples}
+        ps = await runtime.compose_ps(target)
+        containers = ps["containers"]
+        if not containers:
+            return {
+                "state": "failed",
+                "issues": ["no containers are running for the managed Compose project"],
+                "samples": samples,
+            }
+        inspections = await _inspect_containers(runtime, target, containers)
 
         current: list[dict[str, Any]] = []
         issues: list[str] = []
@@ -209,7 +198,7 @@ def _compare_runtime(
         preview = yaml.safe_load(preview_yaml) or {}
         config = yaml.safe_load(config_yaml) or {}
     except yaml.YAMLError as error:
-        return [f"Compose YAML could not be parsed: {error}"]
+        raise DockerRuntimeError("Compose configuration could not be parsed") from error
     if not isinstance(preview, dict) or not isinstance(config, dict):
         return ["Compose YAML did not contain an object"]
     preview_services = _mapping(preview.get("services"))

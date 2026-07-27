@@ -254,7 +254,7 @@ func (x *ApplicationUpdateReq) GetImagePullPolicy() string {
 type ApplicationDeployReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	VersionId     string                 `protobuf:"bytes,1,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	InstanceKey   string                 `protobuf:"bytes,2,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
 	ForceRecreate bool                   `protobuf:"varint,3,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -297,9 +297,9 @@ func (x *ApplicationDeployReq) GetVersionId() string {
 	return ""
 }
 
-func (x *ApplicationDeployReq) GetServiceId() string {
+func (x *ApplicationDeployReq) GetInstanceKey() string {
 	if x != nil {
-		return x.ServiceId
+		return x.InstanceKey
 	}
 	return ""
 }
@@ -737,12 +737,11 @@ const file_orbit_v1_application_application_proto_rawDesc = "" +
 	"\x11image_pull_policy\x18\x03 \x01(\tH\x02R\x0fimagePullPolicy\x88\x01\x01B\a\n" +
 	"\x05_nameB\a\n" +
 	"\x05_codeB\x14\n" +
-	"\x12_image_pull_policy\"{\n" +
+	"\x12_image_pull_policy\"\x7f\n" +
 	"\x14ApplicationDeployReq\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x01 \x01(\tR\tversionId\x12\x1d\n" +
-	"\n" +
-	"service_id\x18\x02 \x01(\tR\tserviceId\x12%\n" +
+	"version_id\x18\x01 \x01(\tR\tversionId\x12!\n" +
+	"\finstance_key\x18\x02 \x01(\tR\vinstanceKey\x12%\n" +
 	"\x0eforce_recreate\x18\x03 \x01(\bR\rforceRecreate\"Z\n" +
 	"\x12ApplicationStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\x12\x1d\n" +

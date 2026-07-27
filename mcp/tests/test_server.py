@@ -20,11 +20,11 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
     assert names == {
         "orbit_list_projects",
         "orbit_list_applications",
+        "orbit_list_application_services",
         "orbit_list_gateways",
         "orbit_create_application",
         "orbit_create_gateway",
         "orbit_update_gateway",
-        "orbit_bootstrap_application",
         "orbit_get_application",
         "orbit_get_gateway",
         "orbit_delete_application",
@@ -53,3 +53,22 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "runtime_http_probe",
         "verify_deployment",
     }
+
+
+@pytest.mark.asyncio
+async def test_create_gateway_exposes_local_traefik_defaults(tmp_path) -> None:
+    settings = make_settings(tmp_path)
+    client = OrbitClient(settings)
+    try:
+        server = create_server(settings=settings, client=client)
+        tools = {tool.name: tool for tool in await server.list_tools()}
+    finally:
+        await client.aclose()
+
+    schema = tools["orbit_create_gateway"].inputSchema
+    assert schema["required"] == ["project_id"]
+    assert schema["properties"]["code"]["default"] == "traefik"
+    assert schema["properties"]["name"]["default"] == "Traefik"
+    assert schema["properties"]["rest_api_url"]["default"] == "http://localhost:8080"
+    assert schema["properties"]["base_domain"]["default"] == "lvh.me"
+    assert schema["properties"]["image"]["default"] == "traefik:3.6"

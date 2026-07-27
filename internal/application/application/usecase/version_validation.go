@@ -38,11 +38,9 @@ func validateVersionComponents(components []model.VersionComponent) error {
 		names[name] = struct{}{}
 	}
 	for _, component := range components {
-		var depends []string
-		if component.DependsOnJSON != nil && strings.TrimSpace(*component.DependsOnJSON) != "" {
-			if err := json.Unmarshal([]byte(*component.DependsOnJSON), &depends); err != nil {
-				return fmt.Errorf("component %s depends_on_json: must be a string array", component.Name)
-			}
+		depends, err := dependencyNames(component.DependsOnJSON)
+		if err != nil {
+			return fmt.Errorf("component %s depends_on_json: %w", component.Name, err)
 		}
 		for _, dependency := range depends {
 			if _, ok := names[dependency]; !ok {
@@ -51,6 +49,35 @@ func validateVersionComponents(components []model.VersionComponent) error {
 		}
 	}
 	return nil
+}
+
+func dependencyNames(raw *string) ([]string, error) {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return nil, nil
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(*raw), &names); err == nil {
+		return names, nil
+	}
+	var configured map[string]struct {
+		Condition string `json:"condition"`
+	}
+	if err := json.Unmarshal([]byte(*raw), &configured); err != nil {
+		return nil, fmt.Errorf("must be a string array or a condition map")
+	}
+	names = make([]string, 0, len(configured))
+	for name, dependency := range configured {
+		if strings.TrimSpace(name) == "" {
+			return nil, fmt.Errorf("condition map contains an empty component name")
+		}
+		switch dependency.Condition {
+		case "", "service_started", "service_healthy", "service_completed_successfully":
+		default:
+			return nil, fmt.Errorf("component %s has unsupported condition %q", name, dependency.Condition)
+		}
+		names = append(names, name)
+	}
+	return names, nil
 }
 
 func validateVersionExposes(exposes []model.VersionExpose, components []model.VersionComponent) error {

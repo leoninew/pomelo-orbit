@@ -155,6 +155,39 @@ func (s *gatewayTestStore) ListServicesByApplication(_ context.Context, applicat
 	return append([]model.Service(nil), s.services[applicationId]...), nil
 }
 
+func TestEnsureGatewayRunningRejectsConfiguredButUndeployedGateway(t *testing.T) {
+	service, store := newGatewayTestService()
+	projectID := "project-1"
+	gateway := model.Application{Id: "gateway-1", ProjectId: &projectID, Name: "Traefik", Code: "traefik", Kind: status.ApplicationKindGateway}
+	business := model.Application{Id: "app-1", ProjectId: &projectID, Name: "RAGFlow", Code: "ragflow", Kind: status.ApplicationKindStandard}
+	store.applications[gateway.Id] = gateway
+	store.applications[business.Id] = business
+	store.configs[gateway.Id] = model.GatewayConfig{ApplicationId: gateway.Id, BaseDomain: "lvh.me"}
+
+	err := service.EnsureGatewayRunning(context.Background(), business)
+	if err == nil {
+		t.Fatal("expected configured but undeployed gateway to reject business deployment")
+	}
+	if got := err.Error(); !strings.Contains(got, "gateway \"traefik\" (gateway-1) is configured but not running") || !strings.Contains(got, "deploy the gateway") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEnsureGatewayRunningAcceptsRunningGateway(t *testing.T) {
+	service, store := newGatewayTestService()
+	projectID := "project-1"
+	gateway := model.Application{Id: "gateway-1", ProjectId: &projectID, Name: "Traefik", Code: "traefik", Kind: status.ApplicationKindGateway}
+	business := model.Application{Id: "app-1", ProjectId: &projectID, Name: "RAGFlow", Code: "ragflow", Kind: status.ApplicationKindStandard}
+	store.applications[gateway.Id] = gateway
+	store.applications[business.Id] = business
+	store.configs[gateway.Id] = model.GatewayConfig{ApplicationId: gateway.Id, BaseDomain: "lvh.me"}
+	store.services[gateway.Id] = []model.Service{{Id: "gateway-service", ApplicationId: gateway.Id, Status: status.ServiceStatusRunning}}
+
+	if err := service.EnsureGatewayRunning(context.Background(), business); err != nil {
+		t.Fatalf("running gateway rejected: %v", err)
+	}
+}
+
 func (s *gatewayTestStore) RemoveAppDir(appCode string) error {
 	s.removedDirs = append(s.removedDirs, appCode)
 	return nil

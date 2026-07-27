@@ -770,7 +770,6 @@ async def apply_fixture(
             service_id = identifier(result, "service_id")
             journal.resource("services", code, service_id)
             journal.step(f"service:{code}", "complete", {"service_id": service_id})
-        service_id = string_value(service_ids.get(code), f"service id {code}")
         deployments = as_mapping(resources["deployments"], "resources.deployments")
         verification_step = as_mapping(journal.state["steps"], "steps")[f"verify:{code}"]
         if code in deployments and verification_step.get("status") != "complete":
@@ -779,7 +778,7 @@ async def apply_fixture(
             if previous_deployment.get("status") in {"faulted", "canceled"}:
                 result = await gateway.call(
                     "orbit_deploy",
-                    {"application_id": application_id, "version_id": version_id, "service_id": service_id},
+                    {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
                 )
                 deployment_id = identifier(result, "deployment_id")
                 journal.resource("deployments", code, deployment_id)
@@ -787,7 +786,7 @@ async def apply_fixture(
         if code not in deployments:
             result = await gateway.call(
                 "orbit_deploy",
-                {"application_id": application_id, "version_id": version_id, "service_id": service_id},
+                {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
             )
             deployment_id = identifier(result, "deployment_id")
             journal.resource("deployments", code, deployment_id)
@@ -804,12 +803,10 @@ async def apply_bundled_version(
 ) -> None:
     resources = as_mapping(journal.state["resources"], "resources")
     applications = as_mapping(resources["applications"], "resources.applications")
-    services = as_mapping(resources["services"], "resources.services")
     versions = as_mapping(resources["versions"], "resources.versions")
     deployments = as_mapping(resources["deployments"], "resources.deployments")
     parameters = as_mapping(journal.state["parameters"], "bundle parameters")
     application_id = string_value(applications.get("ragflow"), "ragflow application id")
-    service_id = string_value(services.get("ragflow"), "ragflow service id")
     instance_key = string_value(parameters.get("instance_key"), "instance key")
     access = string_value(parameters.get("access"), "access")
     raw_port = parameters.get("local_http_port")
@@ -847,7 +844,7 @@ async def apply_bundled_version(
     if deployment_id is None:
         result = await gateway.call(
             "orbit_deploy",
-            {"application_id": application_id, "version_id": version_id, "service_id": service_id},
+            {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
         )
         deployment_id = identifier(result, "deployment_id")
         journal.resource("deployments", "ragflow-bundled", deployment_id)

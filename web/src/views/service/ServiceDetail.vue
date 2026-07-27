@@ -118,11 +118,11 @@
         <div class="app-section-header flex items-center justify-between gap-3">
           <h2 class="font-semibold text-foreground">{{ t('service.runtimeConfig.title') }}</h2>
           <div class="flex items-center gap-2">
-            <button class="app-button h-8 px-3" :disabled="runtimeConfigLoading" @click="loadRuntimeConfig">
+            <button class="app-button h-9 px-3" :disabled="runtimeConfigLoading" @click="loadRuntimeConfig">
               <RefreshCw class="size-4" :class="{ 'animate-spin': runtimeConfigLoading }" />
               {{ t('common.refresh') }}
             </button>
-            <button class="app-button-primary h-8 px-3" :disabled="runtimeConfigLoading" @click="openRuntimeConfigDialog">
+            <button class="app-button-primary h-9 px-3" :disabled="runtimeConfigLoading" @click="openRuntimeConfigDialog">
               <Pencil class="size-4" />
               {{ t('common.edit') }}
             </button>
@@ -183,7 +183,7 @@
             {{ t('service.detail.sections.components') }}
           </h2>
           <button
-            class="app-button inline-flex h-8 items-center gap-2 px-3"
+            class="app-button inline-flex h-9 items-center gap-2 px-3"
             :disabled="containersLoading"
             @click="loadContainers"
           >
@@ -264,6 +264,19 @@
         <p class="text-sm text-muted-foreground">{{ t('service.deploy.description') }}</p>
         <div>
           <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.instanceKey') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="deployForm.instance_key"
+            type="text"
+            required
+            class="app-input"
+            placeholder="default"
+          />
+        </div>
+        <div>
+          <label class="app-field-label mb-1.5 block">
             {{ t('service.fields.version') }}
             <span class="text-destructive">*</span>
           </label>
@@ -342,7 +355,7 @@
             {{ t('service.logs.description') }}
           </p>
           <button
-            class="app-button inline-flex h-8 items-center gap-2 px-3"
+            class="app-button inline-flex h-9 items-center gap-2 px-3"
             :class="isLogsAutoRefreshing ? 'text-primary' : ''"
             @click="toggleLogsAutoRefresh"
           >
@@ -458,6 +471,7 @@
   const deployError = ref('');
   const deployForm = reactive({
     version_id: '',
+    instance_key: 'default',
     force_recreate: false,
   });
 
@@ -646,6 +660,7 @@
       return;
     }
     deployForm.version_id = service.value.version_id;
+    deployForm.instance_key = 'default';
     deployForm.force_recreate = false;
     deployError.value = '';
     void loadVersions();
@@ -670,7 +685,7 @@
       await executeOp(async () => {
         const result = await applicationApi.deploy(current.application_id, {
           version_id: deployForm.version_id,
-          service_id: current.id,
+          instance_key: deployForm.instance_key,
           force_recreate: deployForm.force_recreate,
         });
         toast.success(t('service.toast.deployQueued'));

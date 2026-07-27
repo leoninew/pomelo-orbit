@@ -96,7 +96,7 @@
           <h2 class="text-base font-semibold text-foreground">
             {{ t('application.detail.sections.versions') }}
           </h2>
-          <button class="app-button-primary h-8 px-3" @click="openCreateVersionModal">
+          <button class="app-button-primary h-9 px-3" @click="openCreateVersionModal">
             <Plus class="size-4" />
             {{ t('application.detail.actions.createVersion') }}
           </button>
@@ -147,7 +147,7 @@
                 <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
                   <div class="flex flex-wrap items-center gap-3">
-                    <button v-if="versionsOnly" class="app-link" @click="openPreview(version.id)">
+                    <button class="app-link" @click="openPreview(version.id)">
                       {{ t('application.detail.actions.preview') }}
                     </button>
                     <button
@@ -363,7 +363,6 @@
 
     <!-- Compose 预览 -->
     <AppDrawer
-      v-if="versionsOnly"
       :open="composePreviewDrawerOpen"
       :title="t('application.detail.drawer.composePreview')"
       width-class="w-[min(960px,100vw)]"

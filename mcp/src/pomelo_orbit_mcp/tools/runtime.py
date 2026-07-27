@@ -78,7 +78,7 @@ def register_runtime_tools(mcp: FastMCP, client: OrbitClient, runtime: DockerRun
 
     @mcp.tool(name="runtime_compose_ps")
     async def runtime_compose_ps(application_id: str, instance_key: str = "default") -> dict[str, Any]:
-        """Read Docker Compose container state for one managed runtime target."""
+        """Read Docker Compose container state, including stopped containers, for one managed runtime target."""
         target = await _target(client, settings, application_id, instance_key)
         return runtime_result(target, await runtime.compose_ps(target))
 

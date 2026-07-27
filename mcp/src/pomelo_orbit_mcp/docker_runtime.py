@@ -92,7 +92,9 @@ class DockerRuntime:
         return {"command": result.rendered_command, "compose_yaml": result.stdout, "stderr": result.stderr}
 
     async def compose_ps(self, target: RuntimeTarget) -> dict[str, Any]:
-        result = await self._run(self._compose_command(target, "ps", "--format", "json"), target.working_directory)
+        result = await self._run(
+            self._compose_command(target, "ps", "--all", "--format", "json"), target.working_directory
+        )
         return {
             "command": result.rendered_command,
             "containers": _parse_compose_ps(result.stdout),

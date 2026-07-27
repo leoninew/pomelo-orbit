@@ -86,6 +86,26 @@ async def test_runtime_builds_only_read_only_compose_commands(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_runtime_compose_ps_includes_stopped_containers(tmp_path) -> None:
+    runner = FakeRunner()
+    runtime = DockerRuntime(make_settings(tmp_path), runner)
+    result = await runtime.compose_ps(target(tmp_path))
+    assert result["containers"] == [{"ID": "container-1", "Service": "web", "State": "running"}]
+    assert runner.calls[-1][0] == [
+        "docker",
+        "compose",
+        "-p",
+        "demo-default",
+        "-f",
+        "docker-compose.yml",
+        "ps",
+        "--all",
+        "--format",
+        "json",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_runtime_rejects_container_not_derived_from_ps(tmp_path) -> None:
     runtime = DockerRuntime(make_settings(tmp_path), FakeRunner())
     with pytest.raises(DockerRuntimeError, match="was not returned"):

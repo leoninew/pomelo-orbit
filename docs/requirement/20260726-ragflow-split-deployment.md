@@ -1,5 +1,5 @@
 # RAGFlow 拆分应用部署需求
-最后修改时间: 2026-07-26 19:37:51
+最后修改时间: 2026-07-27 10:29:04
 
 ## Review status
 
@@ -13,6 +13,8 @@ RAGFlow 源码位于 `D:\SourceCodes\opensource\ragflow`。其 `docker/docker-co
 
 本需求是任务二「RAGFlow 拆分部署」。任务一「既有实现的功能补充」仍单独记录在 `docs/requirement/20260726-orbit-deployment-capability-gaps.md`；本需求消费其 Version 与 Credential 契约，并同时拥有为该部署编排所需的 Gateway MCP、受管 `traefik` 网络预检和固定 HTTP Probe。
 
+后续用户授权在同一 `ragflow` Application 新增一个聚合 Version，用于将五个组件作为一个 Compose 项目运行。它是既有拆分 Version 的补充，不替换、更新或删除拆分 Version；聚合 Version 中的所有 logical mount 必须按组件命名空间隔离。
+
 ## Goal
 
 1. 在同一 Project、Docker context 和实例键中部署独立的 RAGFlow、MySQL、Redis、MinIO 和一个选定的向量数据库 Application。
@@ -22,6 +24,7 @@ RAGFlow 源码位于 `D:\SourceCodes\opensource\ragflow`。其 `docker/docker-co
 5. 在实施前完成方案审查，并记录环境移除、任务一能力的前置依赖、凭据策略、目标部署上下文及回滚边界。
 6. 通过 MCP 创建或读取受管 Gateway，并只从已部署的 `kind=gateway` target 派生、验证固定的 bridge `traefik` Docker 网络。
 7. 在 RAGFlow 部署后，以已由受管 Compose `ps` 返回的组件容器执行固定 HTTP Probe；不接受手写 readiness proof 或任意 Docker 命令。
+8. 聚合 Version 的 MySQL、Redis、MinIO、Elasticsearch 和 RAGFlow 日志目录互不共享，防止不同服务将不兼容的数据写入同一宿主目录。
 
 ## Non-goal
 
@@ -51,6 +54,7 @@ RAGFlow 源码位于 `D:\SourceCodes\opensource\ragflow`。其 `docker/docker-co
 8. `runtime_doctor` 只有在提供 Gateway Application / instance 时才验证固定 `traefik` 网络，拒绝非 Gateway target，且只报告从该 target 派生的网络状态。
 9. HTTP Probe 仅对目标 Compose `ps` 返回的 service container 执行固定 `curl`；非法 port/path、Docker 或 curl 失败均不回显 stdout / stderr。
 10. 单元测试覆盖 Gateway MCP 映射、非 Gateway 拒绝、缺失网络、Probe argv 约束、失败脱敏和初始化器的 Gateway 参数及依赖顺序。
+11. 聚合 Version 保留拆分 Version，并将 logical mount 分别编码为 `mysql/data`、`redis/data`、`minio/data`、`es01/data` 和 `ragflow-cpu/logs`。
 
 ## Open questions
 
@@ -69,6 +73,7 @@ RAGFlow 源码位于 `D:\SourceCodes\opensource\ragflow`。其 `docker/docker-co
 4. 原 Compose 的 `include`、`profiles` 和 `env_file` 不直接导入。每个目标服务以独立 Application Version 的结构化字段表达。
 5. Gateway 的 `traefik` 网络由其 Orbit Compose 定义创建；MCP 不直接执行 `docker network create`，`traefik` 也不是调用方可传入的参数。
 6. HTTP Probe 固定使用从目标 Compose `ps` 派生的 container ID、`curl -fsS --max-time 10 --output /dev/null` 和 `http://127.0.0.1:<port><path>`；不运行 shell。
+7. 聚合 Version 复用拆分 Fixture 的镜像、环境与 Credential 引用，但在创建时重写 logical mount source 为 `<component>/<source>`；参考 Compose 使用对应的 `./data/<component>` bind mount。
 
 ## Risk
 
@@ -79,9 +84,12 @@ RAGFlow 源码位于 `D:\SourceCodes\opensource\ragflow`。其 `docker/docker-co
 5. 默认示例配置包含开发用默认凭据，不能用于实际部署。
 6. RAGFlow 依赖启动时建表和可选模型迁移；必须在 Spec 中明确初始化幂等性及失败恢复方式。
 7. Gateway 尚未发布或部署、镜像中缺少 curl、或候选端点非成功都会阻断 RAGFlow 就绪；这是预期的 fail-fast 行为，诊断仅使用既有脱敏日志。
+8. 同一 Application 的组件共享物理 Service 目录；若聚合 Version 使用裸 `data` 或 `logs` source，多个组件会共用该目录并可能损坏有状态服务数据。
 
 ## User review notes
 
 用户于 2026-07-26 要求进入 Task 2 的 Spec / 规格阶段。环境移除任务由独立 agent 负责；未决的向量引擎、目标 Project、实例键、入口和凭据实际值作为 Spec review 项，不授权实施。
 
 用户于 2026-07-26 要求将 `20260726-runtime-preflight-probe` 合并入本任务；其 Gateway MCP、受管 `traefik` 预检与固定 HTTP Probe 的需求、约束和验收项自此由本需求拥有。
+
+用户于 2026-07-27 要求保留既有拆分 Version，并新增聚合 RAGFlow Version；随后确认共享 `data` 目录会导致 MySQL 启动失败，要求对聚合布局使用组件独立目录并完成受管部署验证。

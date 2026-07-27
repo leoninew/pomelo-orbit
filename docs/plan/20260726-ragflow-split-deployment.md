@@ -1,5 +1,5 @@
 # RAGFlow 拆分应用部署计划
-最后修改时间: 2026-07-26 20:06:12
+最后修改时间: 2026-07-27 10:29:04
 
 ## Review status
 
@@ -13,6 +13,7 @@ Accepted
 - Environment baseline: 环境移除任务已完成 MCP 的 Environment-free 契约调整和复核；本任务的实际 MCP 写入与部署必须基于其最终合入版本，且不得恢复 Environment 参数。
 - Parallel peer: Task 1 同步实现运行时字段、Credential 引用、env-file 物化、脱敏和 MCP 契约；本任务不修改其拥有的 `mcp/**`、`internal/**`、`proto/**` 或 `sql/**` 文件。
 - Live integration gate: Task 1 的 Version / MCP 契约与本任务的非秘密 fixture 已核对。创建实际 Credential、Application、Version 或 Deployment 前，Task 1 必须完成 Verification，证明运行时字段、Credential 引用、env-file 物化和脱敏行为可用。
+- 后续范围：在保留拆分 Version 的前提下，为 `ragflow` 创建独立的聚合 Version；该 Version 的所有 logical mount 使用组件命名空间，不共享宿主 `data` 目录。
 
 ## Implementation steps
 
@@ -64,6 +65,13 @@ Accepted
 3. 不删除成功部署的数据目录；停止或回滚只经 MCP lifecycle 工具执行，并保留 `remove_volumes=false`。
 4. 停在 Implementation / 实现阶段，记录实际写入、命令结果、未运行验证和残余风险，等待人工验收后进入 Verification。
 
+### Step 6: 聚合 Version 与目录隔离
+
+1. 从已验证的拆分 Fixture 复制五个组件创建新 RAGFlow Version，不更新既有拆分或聚合 Version；聚合组件使用内部服务名 `mysql`、`redis`、`minio`、`es01` 并声明同一 Version 的 `depends_on`。
+2. 初始化器在编码聚合组件前，将每个 logical mount source 重写为 `<component>/<source>`；禁止 `data` 或 `logs` 裸 source，以避免它们解析到同一 Service workspace 目录。
+3. 在 `scripts/ragflow-bundled/docker-compose.yml` 使用与上述布局对应的 `./data/<component>` bind mount，移除无法反映 Orbit logical mount 布局的顶层 named volumes；拆分 Compose 示例保持不变。
+4. 通过 MCP 创建、发布、部署新聚合 Version，等待 MySQL 首次初始化和 RAGFlow 自动重试完成，再使用 `verify_deployment` 稳定性窗口与 `runtime_http_probe` 验证；不删除旧 Version、实例或数据目录。
+
 ## Files to change
 
 ### 必改
@@ -71,6 +79,7 @@ Accepted
 - `docs/guides/ragflow-split-deployment.fixture.yaml`：脱敏 desired-state payload fixture，用于与 Task 1 的 Version / MCP 契约进行集成核对；不写入 Credential value、实际 Project ID、资源 ID 或主机路径。
 - `docs/guides/ragflow-split-deployment.md`：受管部署 Runbook，定义 fixture 编码、集成门槛、MCP 操作顺序和验证边界。
 - `scripts/ragflow_initialize.py` 与 `scripts/test_ragflow_initialize.py`：可重复调用的 stdio MCP 初始化器及其离线/占位能力测试；不修改 MCP Server。
+- `scripts/ragflow-bundled/docker-compose.yml` 与 `.env.example`：五组件聚合参考 Compose，目录布局须与聚合 Version logical mount 一致。
 - `mcp/src/pomelo_orbit_mcp/orbit_client.py`、`mcp/src/pomelo_orbit_mcp/tools/orbit.py`：Gateway list/create/get 的受控 Orbit HTTP 映射。
 - `mcp/src/pomelo_orbit_mcp/docker_runtime.py`、`mcp/src/pomelo_orbit_mcp/tools/runtime.py`：Gateway-aware `runtime_doctor` 和从 Compose `ps` 派生容器的固定 HTTP Probe。
 - `mcp/tests/**`：Gateway mapping、非 Gateway 拒绝、固定 `traefik` network proof、Probe argv 与失败脱敏测试。
@@ -95,6 +104,7 @@ Accepted
 5. 每个 Deployment 到达成功终态，`verify_deployment` 返回 `consistent`，容器在稳定性窗口内未退出、unhealthy 或重启。
 6. Compose preview、runtime config、inspect、logs、MCP 响应和验证证据不含测试秘密或实际 Credential values。
 7. RAGFlow HTTP 入口、数据库初始化和依赖连接通过指定的 local / public 验证；备份目录和恢复责任被记录。
+8. 聚合 Version 的五个 mount source 均在组件命名空间中；渲染 Compose、运行时 inspect 和参考 Compose 不出现共享数据目录。
 
 ## Blockers
 
@@ -119,6 +129,7 @@ Accepted
 3. Elasticsearch 对内存、tmpfs、ulimit 和宿主机目录权限敏感，Docker Desktop 与 Linux Docker 的结果可能不同。
 4. 本机 Docker 高权限用户仍可访问容器环境和受管 workspace，MCP 脱敏不构成宿主机隔离。
 5. 秘密文件在本机由初始化器读取，必须在仓库外保存、受操作系统权限保护，并从运行记录和错误文本中排除。
+6. 聚合 Version 中 Orbit 尚不能表达 `depends_on.condition: service_healthy`；MySQL 首次初始化可能使 RAGFlow 临时重启，必须等待稳定性窗口而非仅检查首次 Deployment 命令完成。
 
 ## Rollback
 
@@ -135,3 +146,5 @@ Accepted
 用户于 2026-07-26 要求以可重复调用、可日志、可验证的 Python 初始化器承载 RAGFlow 业务初始化；本 Plan 的该部分按 capability gate 支持任务一未完成时的显式占位。
 
 用户于 2026-07-26 要求将 `20260726-runtime-preflight-probe` 合并入本 Plan；其 MCP Gateway 映射、受管网络预检、固定 Probe 与相关测试按本计划的必改范围实施。
+
+用户于 2026-07-27 要求新增但不修改既有 RAGFlow Version 的聚合部署，并在发现共享数据目录导致 MySQL 启动失败后，要求将聚合目录改为组件隔离并完成 MCP 验证。

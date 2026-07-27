@@ -1,5 +1,5 @@
 # RAGFlow 拆分应用部署规格
-最后修改时间: 2026-07-26 20:06:12
+最后修改时间: 2026-07-27 10:29:04
 
 ## Review status
 
@@ -18,6 +18,8 @@ Accepted
 
 该规格以非秘密 desired-state fixture、受管 MCP Runbook 和可重复调用的 Python 初始化编排器描述目标数据，不导入原 Compose 的 `include`、`profiles` 或 `env_file`。所有密码来自任务一的 `runtime_env` Credential 引用，不能使用 RAGFlow 源码 `.env` 中的默认值。
 
+聚合变体在同一 `ragflow` Application 创建新的发布 Version，包含上述五个组件，并以 Compose 内部服务名连接依赖。它保留拆分 Version；因为聚合组件共用一个物理 Service 目录，所有逻辑挂载必须从裸 `data` / `logs` 重写为组件命名空间路径。
+
 ## Initializer contract
 
 任务二提供 `scripts/ragflow_initialize.py`。该脚本是 fixture 到受管 MCP 操作的唯一编排入口，不调用 Docker lifecycle CLI，也不直连 Orbit REST API。它必须支持：
@@ -28,6 +30,8 @@ Accepted
 4. `verify`：对已记录的 Deployment 调用 MCP 等待和 `verify_deployment`；RAGFlow 还必须执行固定 `runtime_http_probe`，写入脱敏状态与结论；不在运行记录中持久化任何 Credential value。
 
 初始化器的输入为 fixture、显式参数和位于仓库外的秘密文件。`check` 与 `apply` 还必须接收已部署 Gateway 的 Application ID，instance key 默认为 `default`。秘密文件只允许在 `apply` 进程内读取，不写入日志、状态文件、异常消息或命令行参数。任务一尚未交付的工具和 Component 字段由 capability gate 占位；它们不会阻塞 `plan`，但阻塞 `check`、`apply` 和 `verify` 的相关阶段。初始化器通过该 Gateway target 的 `runtime_doctor` 证明固定 bridge `traefik` 网络；RAGFlow 候选 healthcheck 随 Version 发布，部署后的实际就绪由固定 `runtime_http_probe` 判断并写入无秘密 journal。`check` 同时拒绝未知的同名 Application / Credential；`--resume` 仅可继续同一运行目录已记录 ID 的资源。
+
+`bundle` 在来源 run 已记录的 Application 与 Credential 上创建新的 RAGFlow Version，绝不更新已发布的拆分或既有聚合 Version。它为每个 `source_type=logical` mount 写入 `<component>/<source>`，使物理布局分别为 `mysql/data`、`redis/data`、`minio/data`、`es01/data` 和 `ragflow-cpu/logs`。
 
 ## Gateway preflight and HTTP Probe contract
 
@@ -66,6 +70,18 @@ Accepted
 | `ragflow` | `ragflow-cpu` | `infiniflow/ragflow:v0.26.4` | `logs` -> `/ragflow/logs` | `ragflow-ragflow-cpu` |
 
 所有 Application 使用 `kind=standard`、`image_pull_policy=missing`、同一 Project 和 `instance_key=default`。平台为标准组件自动加入共享网络并写入上述 alias；任何 Component 均不得自行声明另一跨 Application 网络。
+
+## Bundled Version topology
+
+| Component | Logical mount source | Container target | Reference Compose bind mount |
+|---|---|---|---|
+| `mysql` | `mysql/data` | `/var/lib/mysql` | `./data/mysql` |
+| `redis` | `redis/data` | `/data` | `./data/redis` |
+| `minio` | `minio/data` | `/data` | `./data/minio` |
+| `es01` | `es01/data` | `/usr/share/elasticsearch/data` | `./data/es01` |
+| `ragflow-cpu` | `ragflow-cpu/logs` | `/ragflow/logs` | `./data/ragflow-cpu/logs` |
+
+参考文件 `scripts/ragflow-bundled/docker-compose.yml` 保留 `depends_on.condition: service_healthy`。Orbit 当前 VersionComponent 只编码同一 Version 的启动顺序，不能表达该 health condition；因此聚合 Version 依赖 `restart_policy=unless-stopped` 处理 MySQL 首次初始化期间的短暂连接拒绝，并以稳定性窗口和 HTTP Probe 确认最终就绪。
 
 ## Version specification
 

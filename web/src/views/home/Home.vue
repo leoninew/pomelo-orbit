@@ -21,7 +21,7 @@
         <!-- 指标文字 -->
         <div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
           <p class="text-base font-medium text-foreground">{{ card.label }}</p>
-          <span class="text-4xl font-bold leading-none tracking-tight text-foreground">
+          <span class="text-4xl font-bold leading-none text-foreground">
             {{ card.value }}
           </span>
           <span class="text-sm text-muted-foreground">{{ card.description }}</span>

@@ -80,7 +80,7 @@
           </h2>
           <div class="flex items-center gap-2">
             <ViewModeToggle v-model="viewMode" />
-            <button class="app-button-primary h-8 px-3" @click="openAddOrchModal">
+            <button class="app-button-primary h-9 px-3" @click="openAddOrchModal">
               <Plus class="size-4" />
               {{ t('pipelineTemplate.addStage') }}
             </button>
@@ -169,7 +169,7 @@
           <h2 class="font-semibold text-foreground">
             {{ t('pipelineTemplate.variableDeclarations') }}
           </h2>
-          <button class="app-button-primary h-8 px-3" @click="openAddVarModal">
+          <button class="app-button-primary h-9 px-3" @click="openAddVarModal">
             <Plus class="size-4" />
             {{ t('pipelineTemplate.addVariable') }}
           </button>

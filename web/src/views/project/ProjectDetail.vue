@@ -74,7 +74,7 @@
     <div class="app-surface">
       <div class="app-section-header flex flex-wrap items-center justify-between gap-3">
         <h2 class="font-semibold text-foreground">{{ t('project.members') }}</h2>
-        <button class="app-button-primary h-8 px-3" :disabled="operating" @click="openMemberModal">
+        <button class="app-button-primary h-9 px-3" :disabled="operating" @click="openMemberModal">
           <UserPlus class="size-4" />
           {{ t('common.add') }}
         </button>

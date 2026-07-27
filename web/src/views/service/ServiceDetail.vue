@@ -151,7 +151,7 @@
               </thead>
               <tbody>
                 <tr v-for="item in runtimeConfigEntries" :key="item.key">
-                  <td class="break-all font-mono text-sm text-foreground">{{ item.key }}</td>
+                  <td class="break-all text-sm text-foreground">{{ item.key }}</td>
                   <td class="min-w-[240px] whitespace-pre-wrap break-all text-sm text-foreground">{{ item.value }}</td>
                 </tr>
               </tbody>
@@ -164,7 +164,7 @@
         <div class="space-y-3">
           <p class="text-sm text-muted-foreground">{{ t('service.runtimeConfig.nextDeployment') }}</p>
           <div v-for="(item, index) in runtimeConfigDraft" :key="index" class="grid grid-cols-[1fr_1fr_auto] gap-2">
-            <input v-model="item.key" class="app-input font-mono text-sm" :placeholder="t('service.runtimeConfig.key')" />
+            <input v-model="item.key" class="app-input text-sm" :placeholder="t('service.runtimeConfig.key')" />
             <input v-model="item.value" class="app-input text-sm" :placeholder="t('service.runtimeConfig.value')" />
             <button class="app-button-danger size-9" :aria-label="t('common.delete')" @click="runtimeConfigDraft.splice(index, 1)"><Trash2 class="size-4" /></button>
           </div>

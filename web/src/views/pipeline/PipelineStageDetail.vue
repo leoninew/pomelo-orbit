@@ -82,11 +82,11 @@
         <div class="app-section-header flex items-center justify-between">
           <h2 class="font-semibold text-foreground">{{ t('buildStageDetail.script') }}</h2>
           <div class="flex items-center gap-2">
-            <button class="app-button-primary h-8 px-3" @click="openScriptDrawer">
+            <button class="app-button-primary h-9 px-3" @click="openScriptDrawer">
               <Pencil class="size-4" />
               {{ t('common.edit') }}
             </button>
-            <button v-if="stage.script" class="app-button h-8 px-3" @click="handleCopyScript">
+            <button v-if="stage.script" class="app-button h-9 px-3" @click="handleCopyScript">
               <Copy class="size-4" />
               {{ t('common.copy') }}
             </button>
@@ -110,7 +110,7 @@
       <div class="app-surface">
         <div class="app-section-header flex items-center justify-between">
           <h2 class="font-semibold text-foreground">{{ t('buildStageDetail.artifactConfig') }}</h2>
-          <button class="app-button-primary h-8 px-3" @click="openAddArtifactModal">
+          <button class="app-button-primary h-9 px-3" @click="openAddArtifactModal">
             <Plus class="size-4" />
             {{ t('buildStageDetail.addArtifact') }}
           </button>

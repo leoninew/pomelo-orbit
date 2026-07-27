@@ -68,7 +68,7 @@
         <h2 class="font-semibold text-foreground">{{ t('roleManagement.permissions') }}</h2>
         <button
           v-if="role && canWriteRoles"
-          class="app-button-primary h-8 px-3"
+          class="app-button-primary h-9 px-3"
           :disabled="operating"
           @click="openPermissionModal"
         >

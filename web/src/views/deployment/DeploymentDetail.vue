@@ -126,7 +126,7 @@
             </TabsList>
             <button
               v-if="!isTerminalDeployment"
-              class="app-button inline-flex h-8 items-center gap-2 px-3"
+              class="app-button inline-flex h-9 items-center gap-2 px-3"
               :class="isAutoRefreshing ? 'text-primary' : ''"
               @click="toggleAutoRefresh"
             >

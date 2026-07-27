@@ -100,7 +100,7 @@
       <div class="app-surface">
         <div class="app-section-header flex flex-wrap items-center justify-between gap-3">
           <h2 class="font-semibold text-foreground">变量配置</h2>
-          <button class="app-button-primary h-8 px-3" @click="openAddVariableDialog">
+          <button class="app-button-primary h-9 px-3" @click="openAddVariableDialog">
             <Plus class="size-4" />
             添加自定义变量
           </button>

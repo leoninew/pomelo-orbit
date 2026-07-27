@@ -58,6 +58,14 @@ class FakeGateway:
             return {"status": "reachable"}
         if name == "orbit_update_version":
             return {}
+        if name == "orbit_create_version":
+            return {"resource_ids": {"version_id": "version-ragflow-bundled"}}
+        if name == "orbit_preview_version":
+            return {}
+        if name == "orbit_publish_version":
+            return {}
+        if name == "orbit_deploy":
+            return {"resource_ids": {"deployment_id": "deployment-ragflow-bundled"}}
         raise AssertionError(name)
 
 
@@ -104,6 +112,79 @@ class RAGFlowInitializerTests(unittest.TestCase):
         self.assertEqual(refs[0]["credential_id"], "credential-mysql")
         self.assertNotIn("environment_id", encoded)
         self.assertNotIn("values", encoded)
+
+    def test_bundled_version_uses_all_components_and_internal_service_names(self) -> None:
+        components = initializer.bundled_version_components(self.fixture)
+        self.assertEqual([component["name"] for component in components], ["mysql", "redis", "minio", "es01", "ragflow-cpu"])
+        ragflow = components[-1]
+        environment = {item["key"]: item["value"] for item in ragflow["environment"]}
+        self.assertEqual(
+            {key: environment[key] for key in ("MYSQL_HOST", "REDIS_HOST", "MINIO_HOST", "ES_HOST")},
+            {"MYSQL_HOST": "mysql", "REDIS_HOST": "redis", "MINIO_HOST": "minio", "ES_HOST": "es01"},
+        )
+        self.assertEqual(ragflow["depends_on"], ["mysql", "redis", "minio", "es01"])
+        self.assertEqual(
+            {
+                component["name"]: component["mounts"][0]["source"]
+                for component in components
+            },
+            {
+                "mysql": "mysql/data",
+                "redis": "redis/data",
+                "minio": "minio/data",
+                "es01": "es01/data",
+                "ragflow-cpu": "ragflow-cpu/logs",
+            },
+        )
+        encoded = initializer.encode_component(ragflow, {"ragflow-mysql": "credential-mysql", "ragflow-redis": "credential-redis", "ragflow-minio": "credential-minio", "ragflow-elasticsearch": "credential-elasticsearch"})
+        self.assertEqual(initializer.json.loads(encoded["depends_on_json"]), ["mysql", "redis", "minio", "es01"])
+        self.assertEqual(initializer.json.loads(encoded["mounts_json"])[0]["source"], "ragflow-cpu/logs")
+
+    def test_bundled_version_creates_a_new_version_without_updating_the_existing_one(self) -> None:
+        parameters = {
+            "project_id": "project-1",
+            "instance_key": "default",
+            "access": "local",
+            "local_http_port": "9380",
+            "gateway_application_id": "gateway-1",
+            "gateway_instance_key": "default",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "bundle"
+            directory.mkdir()
+            source = initializer.RunJournal.create(directory, self.fixture, parameters)
+            for application in self.fixture["applications"]:
+                source.resource("applications", application["code"], f"application-{application['code']}")
+            for credential in self.fixture["credential_templates"]:
+                source.resource("credentials", credential["name"], f"credential-{credential['name']}")
+            source.resource("versions", "ragflow", "version-ragflow-existing")
+            bundle_parameters, source_resources = initializer.bundled_version_source(source, self.fixture)
+            bundle_directory = Path(temporary) / "bundle-run"
+            bundle_directory.mkdir()
+            journal = initializer.create_bundled_version_journal(
+                bundle_directory, self.fixture, bundle_parameters, source, source_resources
+            )
+            gateway = FakeGateway(set(initializer.REQUIRED_MCP_TOOLS))
+            asyncio.run(
+                initializer.apply_bundled_version(
+                    gateway, journal, self.fixture, initializer.bundled_version_label(self.fixture)
+                )
+            )
+        self.assertEqual(journal.state["resources"]["versions"]["ragflow-existing"], "version-ragflow-existing")
+        self.assertEqual(journal.state["resources"]["versions"]["ragflow-bundled"], "version-ragflow-bundled")
+        self.assertEqual(
+            [name for name, _ in gateway.calls],
+            [
+                "orbit_create_version",
+                "orbit_preview_version",
+                "orbit_publish_version",
+                "orbit_deploy",
+                "orbit_wait_deployment",
+                "verify_deployment",
+                "runtime_http_probe",
+            ],
+        )
+        self.assertNotIn("orbit_update_version", [name for name, _ in gateway.calls])
 
     def test_missing_capabilities_block_without_read_calls(self) -> None:
         gateway = FakeGateway({"orbit_list_applications"})
@@ -192,6 +273,13 @@ class RAGFlowInitializerTests(unittest.TestCase):
             resumed = initializer.RunJournal.resume(journal.directory, changed)
         self.assertTrue(resumed.needs_fixture_reconciliation)
         self.assertEqual(resumed.state["fixture_digest"], initializer.fixture_digest(changed))
+
+    def test_new_journal_does_not_need_fixture_reconciliation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / "run"
+            directory.mkdir()
+            journal = initializer.RunJournal.create(directory, self.fixture, {"project_id": "project-1"})
+        self.assertFalse(journal.needs_fixture_reconciliation)
 
     def test_journal_refuses_rebase_after_publish(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

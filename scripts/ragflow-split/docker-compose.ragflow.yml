@@ -1,0 +1,44 @@
+services:
+  ragflow-cpu:
+    image: infiniflow/ragflow:v0.26.4
+    command: [--enable-adminserver, --init-model-provider-tables]
+    environment:
+      DOC_ENGINE: elasticsearch
+      DEVICE: cpu
+      API_PROXY_SCHEME: python
+      TZ: Asia/Shanghai
+      MYSQL_HOST: ragflow-mysql-mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DBNAME: rag_flow
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
+      MYSQL_MAX_PACKET: "1073741824"
+      REDIS_HOST: ragflow-redis-redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      MINIO_HOST: ragflow-minio-minio
+      MINIO_USER: ${MINIO_USER:?MINIO_USER must be set}
+      MINIO_PASSWORD: ${MINIO_PASSWORD:?MINIO_PASSWORD must be set}
+      ES_HOST: ragflow-elasticsearch-es01
+      ES_USER: elastic
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD must be set}
+    ports:
+      - 127.0.0.1:${RAGFLOW_HTTP_PORT:-9380}:80
+    volumes:
+      - ragflow_logs:/ragflow/logs
+    networks:
+      traefik:
+        aliases:
+          - ragflow-ragflow-cpu
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    restart: unless-stopped
+
+volumes:
+  ragflow_logs:
+
+networks:
+  traefik:
+    external: true

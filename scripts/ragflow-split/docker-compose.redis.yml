@@ -1,0 +1,28 @@
+services:
+  redis:
+    image: valkey/valkey:8
+    command:
+      - sh
+      - -c
+      - exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory 128mb --maxmemory-policy allkeys-lru
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    volumes:
+      - redis_data:/data
+    networks:
+      traefik:
+        aliases:
+          - ragflow-redis-redis
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  traefik:
+    external: true

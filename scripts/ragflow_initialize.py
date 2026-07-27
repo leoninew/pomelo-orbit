@@ -34,6 +34,7 @@ REQUIRED_MCP_TOOLS = frozenset(
     {
         "orbit_list_applications",
         "orbit_bootstrap_application",
+        "orbit_create_version",
         "orbit_update_version",
         "orbit_create_runtime_env_credential",
         "orbit_list_runtime_env_credentials",
@@ -256,8 +257,14 @@ class RunJournal:
         self.state = state
 
     @classmethod
-    def create(cls, directory: Path, fixture: Mapping[str, Any], parameters: Mapping[str, str]) -> RunJournal:
-        operations = planned_operations(fixture)
+    def create(
+        cls,
+        directory: Path,
+        fixture: Mapping[str, Any],
+        parameters: Mapping[str, str],
+        operations: Sequence[Mapping[str, str]] | None = None,
+    ) -> RunJournal:
+        operations = list(operations or planned_operations(fixture))
         state = {
             "schema_version": 1,
             "fixture_name": DEFAULT_FIXTURE.name,
@@ -313,7 +320,10 @@ class RunJournal:
 
     @property
     def needs_fixture_reconciliation(self) -> bool:
-        reconciliation = as_mapping(self.state.get("fixture_reconciliation"), "fixture reconciliation")
+        raw_reconciliation = self.state.get("fixture_reconciliation")
+        if raw_reconciliation is None:
+            return False
+        reconciliation = as_mapping(raw_reconciliation, "fixture reconciliation")
         return reconciliation.get("status") == "pending"
 
     def complete_fixture_reconciliation(self) -> None:
@@ -565,6 +575,7 @@ def encode_component(component: Mapping[str, Any], credential_ids: Mapping[str, 
         "resources": "resources_json",
         "tmpfs": "tmpfs_json",
         "ulimits": "ulimits_json",
+        "depends_on": "depends_on_json",
     }
     for fixture_key, payload_key in mapping.items():
         if fixture_key in component:
@@ -598,6 +609,66 @@ def component_for_apply(application: Mapping[str, Any]) -> dict[str, Any]:
     return component
 
 
+def bundled_version_components(fixture: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Build the independent, all-in-one RAGFlow Version from the split fixture."""
+    applications = {
+        string_value(as_mapping(item, "application").get("code"), "application.code"): as_mapping(item, "application")
+        for item in as_list(fixture["applications"], "applications")
+    }
+    dependencies = ("ragflow-mysql", "ragflow-redis", "ragflow-minio", "ragflow-elasticsearch")
+    components = [bundled_component(component_for_apply(applications[code])) for code in dependencies]
+    ragflow = component_for_apply(applications["ragflow"])
+    hostnames = {
+        "MYSQL_HOST": "mysql",
+        "REDIS_HOST": "redis",
+        "MINIO_HOST": "minio",
+        "ES_HOST": "es01",
+    }
+    ragflow["environment"] = [
+        {**as_mapping(item, "ragflow environment"), "value": hostnames.get(item["key"], item["value"])}
+        for item in as_list(ragflow.get("environment"), "ragflow environment")
+    ]
+    ragflow["depends_on"] = ["mysql", "redis", "minio", "es01"]
+    components.append(bundled_component(ragflow))
+    return components
+
+
+def bundled_component(component: Mapping[str, Any]) -> dict[str, Any]:
+    """Namespace logical mounts because bundled components share one service directory."""
+    bundled = dict(component)
+    name = string_value(bundled.get("name"), "bundled component.name")
+    mounts: list[dict[str, Any]] = []
+    for raw_mount in as_list(bundled.get("mounts", []), "bundled component mounts"):
+        mount = dict(as_mapping(raw_mount, "bundled component mount"))
+        if mount.get("source_type") == "logical":
+            source = string_value(mount.get("source"), "bundled logical mount.source")
+            mount["source"] = f"{name}/{source}"
+        mounts.append(mount)
+    if mounts:
+        bundled["mounts"] = mounts
+    return bundled
+
+
+def bundled_version_operations() -> list[dict[str, str]]:
+    return [
+        {"id": "check", "operation": "check MCP capabilities and recorded split resources"},
+        {"id": "bundle:create", "operation": "create the all-in-one RAGFlow Version"},
+        {"id": "bundle:preview", "operation": "preview the all-in-one RAGFlow Version"},
+        {"id": "bundle:publish", "operation": "publish the all-in-one RAGFlow Version"},
+        {"id": "bundle:deploy", "operation": "deploy the all-in-one RAGFlow Version"},
+        {"id": "bundle:verify", "operation": "wait and verify the all-in-one RAGFlow deployment"},
+    ]
+
+
+def bundled_version_label(fixture: Mapping[str, Any]) -> str:
+    ragflow = next(
+        as_mapping(item, "ragflow application")
+        for item in as_list(fixture["applications"], "applications")
+        if as_mapping(item, "application").get("code") == "ragflow"
+    )
+    return f"{string_value(ragflow.get('version_label'), 'ragflow.version_label')}-bundled"
+
+
 def selected_exposes(application: Mapping[str, Any], access: str, local_http_port: int | None) -> list[dict[str, Any]]:
     if application.get("code") != "ragflow":
         return as_list(application.get("exposes", []), "exposes")
@@ -621,6 +692,60 @@ def identifier(result: Mapping[str, Any], name: str) -> str:
     if isinstance(value, str) and value:
         return value
     raise ToolCallError(f"response:{name}")
+
+
+def bundled_version_source(source: RunJournal, fixture: Mapping[str, Any]) -> tuple[dict[str, str], dict[str, Any]]:
+    parameters = as_mapping(source.state.get("parameters"), "source parameters")
+    required_parameters = (
+        "project_id",
+        "instance_key",
+        "access",
+        "gateway_application_id",
+        "gateway_instance_key",
+    )
+    bundle_parameters = {
+        name: string_value(parameters.get(name), f"source parameter {name}") for name in required_parameters
+    }
+    if "local_http_port" in parameters:
+        bundle_parameters["local_http_port"] = string_value(
+            parameters.get("local_http_port"), "source parameter local_http_port"
+        )
+
+    resources = as_mapping(source.state.get("resources"), "source resources")
+    applications = as_mapping(resources.get("applications"), "source applications")
+    credentials = as_mapping(resources.get("credentials"), "source credentials")
+    versions = as_mapping(resources.get("versions"), "source versions")
+    for application in as_list(fixture["applications"], "applications"):
+        code = string_value(as_mapping(application, "application").get("code"), "application.code")
+        string_value(applications.get(code), f"source application {code}")
+    for template in as_list(fixture["credential_templates"], "credential_templates"):
+        name = string_value(as_mapping(template, "credential template").get("name"), "credential name")
+        string_value(credentials.get(name), f"source credential {name}")
+    string_value(versions.get("ragflow"), "source ragflow version")
+    return bundle_parameters, resources
+
+
+def create_bundled_version_journal(
+    directory: Path,
+    fixture: Mapping[str, Any],
+    parameters: Mapping[str, str],
+    source: RunJournal,
+    source_resources: Mapping[str, Any],
+) -> RunJournal:
+    journal = RunJournal.create(directory, fixture, parameters, bundled_version_operations())
+    resources = as_mapping(journal.state["resources"], "bundle resources")
+    resources["applications"] = dict(as_mapping(source_resources.get("applications"), "source applications"))
+    resources["credentials"] = dict(as_mapping(source_resources.get("credentials"), "source credentials"))
+    resources["versions"] = {
+        "ragflow-existing": string_value(
+            as_mapping(source_resources.get("versions"), "source versions").get("ragflow"),
+            "source ragflow version",
+        )
+    }
+    journal.state["source_run_directory"] = str(source.directory)
+    journal._write_state()
+    journal.event("bundle_source", {"run_directory": str(source.directory)})
+    return journal
 
 
 async def apply_fixture(
@@ -715,6 +840,96 @@ async def apply_fixture(
             journal.step(f"deploy:{code}", "complete", {"deployment_id": deployment_id})
         if code != "ragflow":
             await wait_and_verify_one(gateway, journal, fixture, code)
+
+
+async def apply_bundled_version(
+    gateway: ToolGateway,
+    journal: RunJournal,
+    fixture: Mapping[str, Any],
+    version_label: str,
+) -> None:
+    resources = as_mapping(journal.state["resources"], "resources")
+    applications = as_mapping(resources["applications"], "resources.applications")
+    credentials = as_mapping(resources["credentials"], "resources.credentials")
+    versions = as_mapping(resources["versions"], "resources.versions")
+    deployments = as_mapping(resources["deployments"], "resources.deployments")
+    parameters = as_mapping(journal.state["parameters"], "bundle parameters")
+    application_id = string_value(applications.get("ragflow"), "ragflow application id")
+    instance_key = string_value(parameters.get("instance_key"), "instance key")
+    access = string_value(parameters.get("access"), "access")
+    raw_port = parameters.get("local_http_port")
+    local_http_port = int(raw_port) if raw_port is not None else None
+    ragflow_application = next(
+        as_mapping(item, "ragflow application")
+        for item in as_list(fixture["applications"], "applications")
+        if as_mapping(item, "application").get("code") == "ragflow"
+    )
+
+    version_id = versions.get("ragflow-bundled")
+    if version_id is None:
+        result = await gateway.call(
+            "orbit_create_version",
+            {
+                "application_id": application_id,
+                "label": version_label,
+                "components": [encode_component(component, credentials) for component in bundled_version_components(fixture)],
+                "exposes": selected_exposes(ragflow_application, access, local_http_port),
+            },
+        )
+        version_id = identifier(result, "version_id")
+        journal.resource("versions", "ragflow-bundled", version_id)
+        journal.step("bundle:create", "complete", {"version_id": version_id})
+    version_id = string_value(version_id, "bundled ragflow version id")
+
+    steps = as_mapping(journal.state["steps"], "steps")
+    if as_mapping(steps["bundle:preview"], "bundle preview step").get("status") != "complete":
+        await gateway.call("orbit_preview_version", {"version_id": version_id, "instance_key": instance_key})
+        journal.step("bundle:preview", "complete", {"version_id": version_id})
+    if as_mapping(steps["bundle:publish"], "bundle publish step").get("status") != "complete":
+        await gateway.call("orbit_publish_version", {"version_id": version_id})
+        journal.step("bundle:publish", "complete", {"version_id": version_id})
+    deployment_id = deployments.get("ragflow-bundled")
+    if deployment_id is None:
+        result = await gateway.call(
+            "orbit_deploy",
+            {"application_id": application_id, "version_id": version_id, "instance_key": instance_key},
+        )
+        deployment_id = identifier(result, "deployment_id")
+        journal.resource("deployments", "ragflow-bundled", deployment_id)
+        journal.step("bundle:deploy", "complete", {"deployment_id": deployment_id})
+    deployment_id = string_value(deployment_id, "bundled ragflow deployment id")
+    if as_mapping(steps["bundle:verify"], "bundle verify step").get("status") == "complete":
+        return
+
+    await gateway.call("orbit_wait_deployment", {"deployment_id": deployment_id})
+    verification = await gateway.call(
+        "verify_deployment", {"application_id": application_id, "deployment_id": deployment_id}
+    )
+    conclusion = verification.get("conclusion")
+    if conclusion != "consistent":
+        raise GateBlocked([f"verification:ragflow-bundled:{conclusion or 'unknown'}"])
+    probe = ragflow_http_probe(fixture)
+    probe_result = await gateway.call(
+        "runtime_http_probe",
+        {
+            "application_id": application_id,
+            "component_name": probe["component_name"],
+            "port": probe["port"],
+            "path": probe["path"],
+            "instance_key": instance_key,
+        },
+    )
+    if probe_result.get("status") != "reachable":
+        raise GateBlocked(["ragflow_bundled_http_probe"])
+    journal.step(
+        "bundle:verify",
+        "complete",
+        {
+            "deployment_id": deployment_id,
+            "conclusion": conclusion,
+            "http_probe": {"status": "reachable", **probe},
+        },
+    )
 
 
 async def reconcile_draft_versions(
@@ -817,6 +1032,12 @@ def parser() -> argparse.ArgumentParser:
     apply.add_argument("--secrets-file", type=Path, required=True)
     apply.add_argument("--confirm", action="store_true")
     apply.add_argument("--resume", type=Path)
+    bundle = subparsers.add_parser("bundle", help="create and deploy an all-in-one second RAGFlow Version")
+    bundle.add_argument("--source-run", type=Path, required=True)
+    bundle.add_argument("--capability-contract", type=Path, required=True)
+    bundle.add_argument("--version-label")
+    bundle.add_argument("--run-dir", type=Path)
+    bundle.add_argument("--confirm", action="store_true")
     verify = subparsers.add_parser("verify", help="resume a prior apply run and verify deployments")
     verify.add_argument("--resume", type=Path, required=True)
     verify.add_argument("--capability-contract", type=Path, required=True)
@@ -835,6 +1056,42 @@ async def run(arguments: argparse.Namespace) -> dict[str, Any]:
             "plan_digest": journal.state["plan_digest"],
             "run_directory": str(journal.directory),
             "operations": planned_operations(fixture),
+        }
+
+    if arguments.mode == "bundle":
+        if not arguments.confirm:
+            raise InitializerError("bundle requires --confirm")
+        source = RunJournal.resume(arguments.source_run, fixture)
+        parameters, source_resources = bundled_version_source(source, fixture)
+        directory = (
+            explicit_run_directory(arguments.run_dir) if arguments.run_dir else make_run_directory(arguments.run_root)
+        )
+        journal = create_bundled_version_journal(directory, fixture, parameters, source, source_resources)
+        async with open_mcp() as gateway:
+            try:
+                result = await check_live_gate(
+                    gateway,
+                    fixture,
+                    parameters["project_id"],
+                    arguments.capability_contract,
+                    parameters["gateway_application_id"],
+                    parameters["gateway_instance_key"],
+                    source_resources,
+                )
+            except GateBlocked as error:
+                journal.step("check", "blocked", {"blockers": error.blockers})
+                return {"status": "blocked", "blockers": error.blockers, "run_directory": str(journal.directory)}
+            journal.step("check", "complete", result)
+            await apply_bundled_version(
+                gateway,
+                journal,
+                fixture,
+                arguments.version_label or bundled_version_label(fixture),
+            )
+        return {
+            "status": "applied",
+            "run_directory": str(journal.directory),
+            "fixture_digest": digest,
         }
 
     if arguments.mode == "verify":

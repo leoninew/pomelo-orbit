@@ -8,6 +8,8 @@ export default {
     search: '搜索',
     clearSearch: '清空搜索',
     perPage: '{size} 条/页',
+    previousPage: '上一页',
+    nextPage: '下一页',
     refresh: '刷新',
     add: '添加',
     back: '返回',

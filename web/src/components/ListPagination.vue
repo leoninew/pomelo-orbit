@@ -15,6 +15,8 @@
         <button
           class="flex size-9 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="current <= 1"
+          :aria-label="t('common.previousPage')"
+          :title="t('common.previousPage')"
           @click="goPage(current - 1)"
         >
           <ChevronLeft class="size-4" />
@@ -29,6 +31,7 @@
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-input bg-background text-foreground hover:bg-muted/50'
             "
+            :aria-current="page === current ? 'page' : undefined"
             @click="goPage(page)"
           >
             {{ page }}
@@ -36,8 +39,8 @@
         </template>
         <template v-else>
           <button
-            v-for="page in visiblePages"
-            :key="page"
+            v-for="(page, index) in visiblePages"
+            :key="page === -1 ? `ellipsis-${index}` : page"
             class="flex size-9 items-center justify-center rounded-lg border text-sm font-medium transition-colors"
             :class="
               page === current
@@ -47,6 +50,7 @@
                   : 'border-input bg-background text-foreground hover:bg-muted/50'
             "
             :disabled="page === -1"
+            :aria-current="page === current ? 'page' : undefined"
             @click="page !== -1 && goPage(page)"
           >
             {{ page === -1 ? '...' : page }}
@@ -55,6 +59,8 @@
         <button
           class="flex size-9 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="current >= totalPages"
+          :aria-label="t('common.nextPage')"
+          :title="t('common.nextPage')"
           @click="goPage(current + 1)"
         >
           <ChevronRight class="size-4" />

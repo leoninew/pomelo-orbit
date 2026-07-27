@@ -8,6 +8,8 @@ export default {
     search: 'Search',
     clearSearch: 'Clear search',
     perPage: '{size} / page',
+    previousPage: 'Previous page',
+    nextPage: 'Next page',
     refresh: 'Refresh',
     add: 'Add',
     back: 'Back',

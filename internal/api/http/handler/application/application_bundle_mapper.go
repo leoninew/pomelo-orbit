@@ -62,22 +62,96 @@ func applicationExportResponse(exported applicationdto.ApplicationExport) *appli
 
 func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdto.VersionComponentInput {
 	return applicationdto.VersionComponentInput{
-		Name:            req.Name,
-		Image:           req.Image,
-		CommandJSON:     req.CommandJson,
-		ArgsJSON:        req.ArgsJson,
-		EnvJSON:         req.EnvJson,
-		PortsJSON:       req.PortsJson,
-		MountsJSON:      req.MountsJson,
-		NetworksJSON:    req.NetworksJson,
-		DependsOnJSON:   req.DependsOnJson,
-		HealthcheckJSON: req.HealthcheckJson,
-		ResourcesJSON:   req.ResourcesJson,
-		PullPolicy:      req.PullPolicy,
-		RestartPolicy:   req.RestartPolicy,
-		TmpfsJSON:       req.TmpfsJson,
-		UlimitsJSON:     req.UlimitsJson,
+		Name: req.Name, Image: req.Image,
+		Command: append([]string(nil), req.Command...), Args: append([]string(nil), req.Args...),
+		Env: componentEnvInput(req.Env), Ports: componentPortInput(req.Ports), Mounts: componentMountInput(req.Mounts),
+		Networks: append([]string(nil), req.Networks...), Dependencies: componentDependencyInput(req.Dependencies),
+		Healthcheck: componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
+		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits),
 	}
+}
+
+func componentEnvInput(items []*applicationv1.ComponentEnv) []model.VersionComponentEnv {
+	result := make([]model.VersionComponentEnv, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentEnv{Key: item.Key, Value: item.Value})
+		}
+	}
+	return result
+}
+
+func componentPortInput(items []*applicationv1.ComponentPort) []model.VersionComponentPort {
+	result := make([]model.VersionComponentPort, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentPort{HostPort: int(item.HostPort), ContainerPort: int(item.ContainerPort)})
+		}
+	}
+	return result
+}
+
+func componentMountInput(items []*applicationv1.ComponentMount) []model.VersionComponentMount {
+	result := make([]model.VersionComponentMount, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentMount{
+				SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly,
+				Content: stringValue(item.Content), ContentMode: stringValue(item.ContentMode),
+			})
+		}
+	}
+	return result
+}
+
+func componentDependencyInput(items []*applicationv1.ComponentDependency) []model.VersionComponentDependency {
+	result := make([]model.VersionComponentDependency, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentDependency{Name: item.Name, Condition: item.Condition})
+		}
+	}
+	return result
+}
+
+func componentHealthcheckInput(input *applicationv1.ComponentHealthcheck) *model.VersionComponentHealthcheck {
+	if input == nil {
+		return nil
+	}
+	return &model.VersionComponentHealthcheck{
+		TestMode: input.TestMode, Test: append([]string(nil), input.Test...), Interval: input.Interval, Timeout: input.Timeout,
+		Retries: intValue(input.Retries), StartPeriod: input.StartPeriod, StartInterval: input.StartInterval, Disabled: input.Disabled,
+	}
+}
+
+func componentResourcesInput(input *applicationv1.ComponentResources) *model.VersionComponentResources {
+	if input == nil {
+		return nil
+	}
+	return &model.VersionComponentResources{
+		LimitCPUs: input.LimitCpus, LimitMemory: input.LimitMemory,
+		ReservationCPUs: input.ReservationCpus, ReservationMemory: input.ReservationMemory,
+	}
+}
+
+func componentTmpfsInput(items []*applicationv1.ComponentTmpfs) []model.VersionComponentTmpfs {
+	result := make([]model.VersionComponentTmpfs, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentTmpfs{Target: item.Target, SizeBytes: item.SizeBytes, Mode: item.Mode})
+		}
+	}
+	return result
+}
+
+func componentUlimitInput(items []*applicationv1.ComponentUlimit) []model.VersionComponentUlimit {
+	result := make([]model.VersionComponentUlimit, 0, len(items))
+	for _, item := range items {
+		if item != nil {
+			result = append(result, model.VersionComponentUlimit{Name: item.Name, Soft: item.Soft, Hard: item.Hard})
+		}
+	}
+	return result
 }
 
 func versionExposeInput(req *applicationv1.VersionExposeReq) applicationdto.VersionExposeInput {
@@ -115,9 +189,7 @@ func versionCreateInput(req *applicationv1.VersionCreateReq) applicationdto.Vers
 	}
 }
 
-// versionUpdateInputFromJSON maps VersionUpdateReq and preserves empty repeated fields.
-// protojson unmarshals "exposes":[] / "components":[] as nil, which would otherwise mean
-// "leave unchanged"; raw JSON key presence is required to clear collections.
+// versionUpdateInputFromJSON preserves an explicit empty expose collection.
 func versionUpdateInputFromJSON(data []byte) (applicationdto.VersionUpdateInput, error) {
 	var req applicationv1.VersionUpdateReq
 	if err := codec.UnmarshalProtoJSON(data, &req); err != nil {
@@ -131,16 +203,6 @@ func versionUpdateInputFromJSON(data []byte) (applicationdto.VersionUpdateInput,
 		Label:   req.Label,
 		EnvJSON: req.EnvJson,
 		Note:    req.Note,
-	}
-	if _, ok := present["components"]; ok {
-		components := make([]applicationdto.VersionComponentInput, 0, len(req.Components))
-		for _, item := range req.Components {
-			if item == nil {
-				continue
-			}
-			components = append(components, versionComponentInput(item))
-		}
-		input.Components = &components
 	}
 	if _, ok := present["exposes"]; ok {
 		exposes := make([]applicationdto.VersionExposeInput, 0, len(req.Exposes))
@@ -192,26 +254,115 @@ func versionResponse(view applicationdto.VersionView) applicationv1.VersionResp 
 
 func versionComponentResponse(component model.VersionComponent) applicationv1.VersionComponentResp {
 	return applicationv1.VersionComponentResp{
-		Id:              component.Id,
-		VersionId:       component.VersionId,
-		Name:            component.Name,
-		Image:           component.Image,
-		CommandJson:     component.CommandJSON,
-		ArgsJson:        component.ArgsJSON,
-		EnvJson:         component.EnvJSON,
-		PortsJson:       component.PortsJSON,
-		MountsJson:      component.MountsJSON,
-		NetworksJson:    component.NetworksJSON,
-		DependsOnJson:   component.DependsOnJSON,
-		HealthcheckJson: component.HealthcheckJSON,
-		ResourcesJson:   component.ResourcesJSON,
-		PullPolicy:      component.PullPolicy,
-		RestartPolicy:   component.RestartPolicy,
-		TmpfsJson:       component.TmpfsJSON,
-		UlimitsJson:     component.UlimitsJSON,
-		CreatedAt:       transportresponse.FormatTime(component.CreatedAt),
-		UpdatedAt:       transportresponse.FormatTime(component.UpdatedAt),
+		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image,
+		Command: append([]string(nil), component.Command...), Args: append([]string(nil), component.Args...),
+		Env: componentEnvResponse(component.Env), Ports: componentPortResponse(component.Ports), Mounts: componentMountResponse(component.Mounts),
+		Networks: append([]string(nil), component.Networks...), Dependencies: componentDependencyResponse(component.Dependencies),
+		Healthcheck: componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
+		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
+		CreatedAt: transportresponse.FormatTime(component.CreatedAt), UpdatedAt: transportresponse.FormatTime(component.UpdatedAt),
 	}
+}
+
+func componentEnvResponse(items []model.VersionComponentEnv) []*applicationv1.ComponentEnv {
+	result := make([]*applicationv1.ComponentEnv, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentEnv{Key: item.Key, Value: item.Value})
+	}
+	return result
+}
+
+func componentPortResponse(items []model.VersionComponentPort) []*applicationv1.ComponentPort {
+	result := make([]*applicationv1.ComponentPort, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentPort{HostPort: int32(item.HostPort), ContainerPort: int32(item.ContainerPort)})
+	}
+	return result
+}
+
+func componentMountResponse(items []model.VersionComponentMount) []*applicationv1.ComponentMount {
+	result := make([]*applicationv1.ComponentMount, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentMount{
+			SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly,
+			Content: optionalString(item.Content), ContentMode: optionalString(item.ContentMode),
+		})
+	}
+	return result
+}
+
+func componentDependencyResponse(items []model.VersionComponentDependency) []*applicationv1.ComponentDependency {
+	result := make([]*applicationv1.ComponentDependency, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentDependency{Name: item.Name, Condition: item.Condition})
+	}
+	return result
+}
+
+func componentHealthcheckResponse(input *model.VersionComponentHealthcheck) *applicationv1.ComponentHealthcheck {
+	if input == nil {
+		return nil
+	}
+	return &applicationv1.ComponentHealthcheck{
+		TestMode: input.TestMode, Test: append([]string(nil), input.Test...), Interval: input.Interval, Timeout: input.Timeout,
+		Retries: int32Value(input.Retries), StartPeriod: input.StartPeriod, StartInterval: input.StartInterval, Disabled: input.Disabled,
+	}
+}
+
+func componentResourcesResponse(input *model.VersionComponentResources) *applicationv1.ComponentResources {
+	if input == nil {
+		return nil
+	}
+	return &applicationv1.ComponentResources{
+		LimitCpus: input.LimitCPUs, LimitMemory: input.LimitMemory,
+		ReservationCpus: input.ReservationCPUs, ReservationMemory: input.ReservationMemory,
+	}
+}
+
+func componentTmpfsResponse(items []model.VersionComponentTmpfs) []*applicationv1.ComponentTmpfs {
+	result := make([]*applicationv1.ComponentTmpfs, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentTmpfs{Target: item.Target, SizeBytes: item.SizeBytes, Mode: item.Mode})
+	}
+	return result
+}
+
+func componentUlimitResponse(items []model.VersionComponentUlimit) []*applicationv1.ComponentUlimit {
+	result := make([]*applicationv1.ComponentUlimit, 0, len(items))
+	for _, item := range items {
+		result = append(result, &applicationv1.ComponentUlimit{Name: item.Name, Soft: item.Soft, Hard: item.Hard})
+	}
+	return result
+}
+
+func stringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func intValue(value *int32) *int {
+	if value == nil {
+		return nil
+	}
+	converted := int(*value)
+	return &converted
+}
+
+func int32Value(value *int) *int32 {
+	if value == nil {
+		return nil
+	}
+	converted := int32(*value)
+	return &converted
 }
 
 func versionExposeResponse(expose model.VersionExpose) applicationv1.VersionExposeResp {

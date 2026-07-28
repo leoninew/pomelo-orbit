@@ -28,8 +28,12 @@ type ApplicationStore interface {
 	DeleteVersion(ctx context.Context, id string) error
 	CountVersionRuntimeRefs(ctx context.Context, versionId string) (int, error)
 	VersionComponentsByVersion(ctx context.Context, versionId string) ([]model.VersionComponent, error)
+	VersionComponent(ctx context.Context, id string) (model.VersionComponent, error)
 	VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error)
 	ReplaceVersionComponents(ctx context.Context, versionId string, components []model.VersionComponent) error
+	CreateVersionComponent(ctx context.Context, component model.VersionComponent) error
+	UpdateVersionComponent(ctx context.Context, component model.VersionComponent, oldName string) error
+	DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error
 	ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error
 	CreateVersionWithVersionComponentsAndExposes(ctx context.Context, version model.Version, components []model.VersionComponent, exposes []model.VersionExpose) error
 }

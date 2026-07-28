@@ -28,29 +28,28 @@ type VersionCreateInput struct {
 
 // VersionUpdateInput updates version metadata and optionally components/exposes.
 type VersionUpdateInput struct {
-	Label      *string
-	EnvJSON    *string
-	Note       *string
-	Components *[]VersionComponentInput
-	Exposes    *[]VersionExposeInput
+	Label   *string
+	EnvJSON *string
+	Note    *string
+	Exposes *[]VersionExposeInput
 }
 
 type VersionComponentInput struct {
-	Name            string
-	Image           string
-	CommandJSON     *string
-	ArgsJSON        *string
-	EnvJSON         *string
-	PortsJSON       *string
-	MountsJSON      *string
-	NetworksJSON    *string
-	DependsOnJSON   *string
-	HealthcheckJSON *string
-	ResourcesJSON   *string
-	PullPolicy      *string
-	RestartPolicy   *string
-	TmpfsJSON       *string
-	UlimitsJSON     *string
+	Name          string
+	Image         string
+	Command       []string
+	Args          []string
+	Env           []model.VersionComponentEnv
+	Ports         []model.VersionComponentPort
+	Mounts        []model.VersionComponentMount
+	Networks      []string
+	Dependencies  []model.VersionComponentDependency
+	Healthcheck   *model.VersionComponentHealthcheck
+	Resources     *model.VersionComponentResources
+	PullPolicy    *string
+	RestartPolicy *string
+	Tmpfs         []model.VersionComponentTmpfs
+	Ulimits       []model.VersionComponentUlimit
 }
 
 type VersionExposeInput struct {

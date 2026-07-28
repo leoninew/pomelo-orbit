@@ -3,6 +3,7 @@ package applicationsvc
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 
 	applicationdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/application/dto"
@@ -62,18 +63,18 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
-	label := strings.TrimSpace(input.Label)
-	if label == "" || len(label) > 128 {
+	label := input.Label
+	if strings.TrimSpace(label) == "" || len(label) > 128 {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
 	}
-	components, err := normalizeVersionComponents(input.Components)
+	components, err := versionComponentsFromInputs(input.Components)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
 	if err := validateVersionComponents(components); err != nil {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	exposes, err := normalizeVersionExposes(input.Exposes)
+	exposes, err := versionExposesFromInputs(input.Exposes)
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
@@ -85,8 +86,8 @@ func (s Service) CreateVersion(ctx context.Context, userId string, input applica
 		ApplicationId: app.Id,
 		Label:         label,
 		Status:        status.VersionStatusUnpublished,
-		EnvJSON:       normalizeOptionalText(input.EnvJSON),
-		Note:          normalizeOptionalText(input.Note),
+		EnvJSON:       optionalText(input.EnvJSON),
+		Note:          optionalText(input.Note),
 	}
 	for i := range components {
 		components[i].Id = idutil.NewId()
@@ -108,37 +109,21 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 		return applicationdto.VersionView{}, err
 	}
 	if input.Label != nil {
-		label := strings.TrimSpace(*input.Label)
-		if label == "" || len(label) > 128 {
+		label := *input.Label
+		if strings.TrimSpace(label) == "" || len(label) > 128 {
 			return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
 		}
 		version.Label = label
 	}
 	if input.EnvJSON != nil {
-		version.EnvJSON = normalizeOptionalText(input.EnvJSON)
+		version.EnvJSON = optionalText(input.EnvJSON)
 	}
 	if input.Note != nil {
-		version.Note = normalizeOptionalText(input.Note)
+		version.Note = optionalText(input.Note)
 	}
-	var components []model.VersionComponent
-	replaceComponents := input.Components != nil
-	if input.Components != nil {
-		components, err = normalizeVersionComponents(*input.Components)
-		if err != nil {
-			return applicationdto.VersionView{}, err
-		}
-		if err := validateVersionComponents(components); err != nil {
-			return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, err.Error())
-		}
-		for i := range components {
-			components[i].Id = idutil.NewId()
-			components[i].VersionId = version.Id
-		}
-	} else {
-		components, err = s.store.VersionComponentsByVersion(ctx, version.Id)
-		if err != nil {
-			return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
-		}
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
 	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
 		return applicationdto.VersionView{}, err
@@ -146,13 +131,8 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 	if err := s.store.UpdateVersion(ctx, version); err != nil {
 		return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to update version", err)
 	}
-	if replaceComponents {
-		if err := s.store.ReplaceVersionComponents(ctx, version.Id, components); err != nil {
-			return applicationdto.VersionView{}, apperror.Wrap(apperror.KindInternal, "Failed to replace components", err)
-		}
-	}
 	if input.Exposes != nil {
-		exposes, err := normalizeVersionExposes(*input.Exposes)
+		exposes, err := versionExposesFromInputs(*input.Exposes)
 		if err != nil {
 			return applicationdto.VersionView{}, err
 		}
@@ -168,6 +148,148 @@ func (s Service) UpdateVersion(ctx context.Context, userId string, versionId str
 		}
 	}
 	return s.VersionForUser(ctx, userId, version.Id)
+}
+
+func (s Service) VersionComponentForUser(ctx context.Context, userId string, versionId string, componentId string) (model.VersionComponent, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	component, err := s.store.VersionComponent(ctx, strings.TrimSpace(componentId))
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.VersionComponent{}, apperror.New(apperror.KindNotFound, "Component "+componentId+" not found")
+		}
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to load component", err)
+	}
+	if component.VersionId != version.Id {
+		return model.VersionComponent{}, apperror.New(apperror.KindNotFound, "Component "+componentId+" not found")
+	}
+	return component, nil
+}
+
+func (s Service) CreateVersionComponent(ctx context.Context, userId string, versionId string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	if version.Status != status.VersionStatusUnpublished {
+		return model.VersionComponent{}, apperror.New(apperror.KindValidation, "Published version components cannot be changed")
+	}
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	componentsFromInput, err := versionComponentsFromInputs([]applicationdto.VersionComponentInput{input})
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	component := componentsFromInput[0]
+	component.Id = idutil.NewId()
+	component.VersionId = version.Id
+	components = append(components, component)
+	if err := validateVersionComponents(components); err != nil {
+		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
+		return model.VersionComponent{}, err
+	}
+	if err := s.store.CreateVersionComponent(ctx, component); err != nil {
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to create component", err)
+	}
+	return s.VersionComponentForUser(ctx, userId, version.Id, component.Id)
+}
+
+func (s Service) UpdateVersionComponent(ctx context.Context, userId string, versionId string, componentId string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	if version.Status != status.VersionStatusUnpublished {
+		return model.VersionComponent{}, apperror.New(apperror.KindValidation, "Published version components cannot be changed")
+	}
+	existing, err := s.VersionComponentForUser(ctx, userId, version.Id, componentId)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	componentsFromInput, err := versionComponentsFromInputs([]applicationdto.VersionComponentInput{input})
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	component := componentsFromInput[0]
+	component.Id = existing.Id
+	component.VersionId = version.Id
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	for index := range components {
+		if components[index].Id == component.Id {
+			components[index] = component
+			break
+		}
+	}
+	if existing.Name != component.Name {
+		for componentIndex := range components {
+			for dependencyIndex := range components[componentIndex].Dependencies {
+				if components[componentIndex].Dependencies[dependencyIndex].Name == existing.Name {
+					components[componentIndex].Dependencies[dependencyIndex].Name = component.Name
+				}
+			}
+		}
+	}
+	if err := validateVersionComponents(components); err != nil {
+		return model.VersionComponent{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if err := s.validateServicesRuntimeConfig(ctx, version, components); err != nil {
+		return model.VersionComponent{}, err
+	}
+	if err := s.store.UpdateVersionComponent(ctx, component, existing.Name); err != nil {
+		return model.VersionComponent{}, apperror.Wrap(apperror.KindInternal, "Failed to update component", err)
+	}
+	return s.VersionComponentForUser(ctx, userId, version.Id, component.Id)
+}
+
+func (s Service) DeleteVersionComponent(ctx context.Context, userId string, versionId string, componentId string) error {
+	version, err := s.loadVersionForUser(ctx, userId, versionId)
+	if err != nil {
+		return err
+	}
+	if version.Status != status.VersionStatusUnpublished {
+		return apperror.New(apperror.KindValidation, "Published version components cannot be changed")
+	}
+	component, err := s.VersionComponentForUser(ctx, userId, version.Id, componentId)
+	if err != nil {
+		return err
+	}
+	components, err := s.store.VersionComponentsByVersion(ctx, version.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
+	}
+	exposes, err := s.store.VersionExposesByVersion(ctx, version.Id)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to list exposes", err)
+	}
+	references := make([]string, 0)
+	for _, expose := range exposes {
+		if expose.ComponentName == component.Name {
+			references = append(references, "expose "+expose.Protocol+":"+strconv.Itoa(expose.ContainerPort))
+		}
+	}
+	for _, candidate := range components {
+		for _, dependency := range candidate.Dependencies {
+			if dependency.Name == component.Name {
+				references = append(references, "component "+candidate.Name)
+			}
+		}
+	}
+	if len(references) > 0 {
+		return apperror.New(apperror.KindValidation, "Component is referenced by "+strings.Join(references, ", "))
+	}
+	if err := s.store.DeleteVersionComponent(ctx, component); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to delete component", err)
+	}
+	return nil
 }
 
 func (s Service) PublishVersion(ctx context.Context, userId string, versionId string) (applicationdto.VersionView, error) {
@@ -243,8 +365,7 @@ func (s Service) ForkVersion(ctx context.Context, userId string, versionId strin
 	if err != nil {
 		return applicationdto.VersionView{}, err
 	}
-	label = strings.TrimSpace(label)
-	if label == "" || len(label) > 128 {
+	if strings.TrimSpace(label) == "" || len(label) > 128 {
 		return applicationdto.VersionView{}, apperror.New(apperror.KindValidation, "Invalid version label")
 	}
 	components, err := s.store.VersionComponentsByVersion(ctx, source.Id)
@@ -310,67 +431,76 @@ func (s Service) loadVersionForUser(ctx context.Context, userId string, versionI
 	return version, nil
 }
 
-func normalizeVersionComponents(inputs []applicationdto.VersionComponentInput) ([]model.VersionComponent, error) {
+func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) ([]model.VersionComponent, error) {
 	// Empty is allowed for unpublished drafts; PublishVersion enforces at least one component.
 	if len(inputs) == 0 {
 		return []model.VersionComponent{}, nil
 	}
 	components := make([]model.VersionComponent, 0, len(inputs))
 	for _, input := range inputs {
-		name := strings.TrimSpace(input.Name)
-		image := strings.TrimSpace(input.Image)
+		name := input.Name
+		image := input.Image
 		if name == "" || image == "" {
 			return nil, apperror.New(apperror.KindValidation, "Component name and image are required")
 		}
 		if !applicationCreateCodePattern.MatchString(name) {
 			return nil, apperror.New(apperror.KindValidation, "Component name must match ^[a-z][a-z0-9-]*$")
 		}
+		if input.PullPolicy != nil && !validImagePullPolicy(*input.PullPolicy) {
+			return nil, apperror.New(apperror.KindValidation, "Component pull_policy must be always, missing or never")
+		}
 		components = append(components, model.VersionComponent{
-			Name:            name,
-			Image:           image,
-			CommandJSON:     normalizeOptionalText(input.CommandJSON),
-			ArgsJSON:        normalizeOptionalText(input.ArgsJSON),
-			EnvJSON:         normalizeOptionalText(input.EnvJSON),
-			PortsJSON:       normalizeOptionalText(input.PortsJSON),
-			MountsJSON:      normalizeOptionalText(input.MountsJSON),
-			NetworksJSON:    normalizeOptionalText(input.NetworksJSON),
-			DependsOnJSON:   normalizeOptionalText(input.DependsOnJSON),
-			HealthcheckJSON: normalizeOptionalText(input.HealthcheckJSON),
-			ResourcesJSON:   normalizeOptionalText(input.ResourcesJSON),
-			PullPolicy:      normalizeOptionalText(input.PullPolicy),
-			RestartPolicy:   input.RestartPolicy,
-			TmpfsJSON:       input.TmpfsJSON,
-			UlimitsJSON:     input.UlimitsJSON,
+			Name: name, Image: image,
+			Command: append([]string(nil), input.Command...), Args: append([]string(nil), input.Args...),
+			Env: append([]model.VersionComponentEnv(nil), input.Env...), Ports: append([]model.VersionComponentPort(nil), input.Ports...),
+			Mounts: append([]model.VersionComponentMount(nil), input.Mounts...), Networks: append([]string(nil), input.Networks...),
+			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: cloneComponentHealthcheck(input.Healthcheck),
+			Resources: cloneComponentResources(input.Resources), PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy,
+			Tmpfs: append([]model.VersionComponentTmpfs(nil), input.Tmpfs...), Ulimits: append([]model.VersionComponentUlimit(nil), input.Ulimits...),
 		})
 	}
 	return components, nil
 }
 
-func normalizeVersionExposes(inputs []applicationdto.VersionExposeInput) ([]model.VersionExpose, error) {
+func cloneComponentHealthcheck(input *model.VersionComponentHealthcheck) *model.VersionComponentHealthcheck {
+	if input == nil {
+		return nil
+	}
+	copy := *input
+	copy.Test = append([]string(nil), input.Test...)
+	return &copy
+}
+
+func cloneComponentResources(input *model.VersionComponentResources) *model.VersionComponentResources {
+	if input == nil {
+		return nil
+	}
+	copy := *input
+	return &copy
+}
+
+func versionExposesFromInputs(inputs []applicationdto.VersionExposeInput) ([]model.VersionExpose, error) {
 	exposes := make([]model.VersionExpose, 0, len(inputs))
 	for _, input := range inputs {
-		protocol := strings.ToLower(strings.TrimSpace(input.Protocol))
-		componentName := strings.TrimSpace(input.ComponentName)
+		protocol := input.Protocol
+		componentName := input.ComponentName
 		if componentName == "" || (protocol != "http" && protocol != "tcp") || input.ContainerPort < 1 || input.ContainerPort > 65535 {
 			return nil, apperror.New(apperror.KindValidation, "Invalid expose fields")
 		}
-		access := strings.ToLower(strings.TrimSpace(input.Access))
-		if access == "" {
-			access = exposeAccessPublic
-		}
+		access := input.Access
 		if access != exposeAccessLocal && access != exposeAccessPublic {
 			return nil, apperror.New(apperror.KindValidation, "expose access must be local or public")
 		}
 		var listenPort *int
-		if input.ListenPort != nil && *input.ListenPort > 0 {
-			if *input.ListenPort > 65535 {
+		if input.ListenPort != nil {
+			if *input.ListenPort < 1 || *input.ListenPort > 65535 {
 				return nil, apperror.New(apperror.KindValidation, "expose listen_port out of range")
 			}
 			v := *input.ListenPort
 			listenPort = &v
 		}
-		pathPrefix := normalizeOptionalText(input.PathPrefix)
-		if protocol == "tcp" && pathPrefix != nil && strings.TrimSpace(*pathPrefix) != "" {
+		pathPrefix := optionalText(input.PathPrefix)
+		if protocol == "tcp" && pathPrefix != nil && *pathPrefix != "" {
 			return nil, apperror.New(apperror.KindValidation, "path_prefix is only allowed for http expose")
 		}
 		exposes = append(exposes, model.VersionExpose{

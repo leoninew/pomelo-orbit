@@ -11,19 +11,19 @@ export const protobufPackage = "orbit.v1.application";
 export interface VersionComponentReq {
   name: string;
   image: string;
-  command_json?: string | undefined;
-  args_json?: string | undefined;
-  env_json?: string | undefined;
-  ports_json?: string | undefined;
-  mounts_json?: string | undefined;
-  networks_json?: string | undefined;
-  depends_on_json?: string | undefined;
-  healthcheck_json?: string | undefined;
-  resources_json?: string | undefined;
+  command: string[];
+  args: string[];
+  env: ComponentEnv[];
+  ports: ComponentPort[];
+  mounts: ComponentMount[];
+  networks: string[];
+  dependencies: ComponentDependency[];
+  healthcheck: ComponentHealthcheck | undefined;
+  resources: ComponentResources | undefined;
   pull_policy?: string | undefined;
   restart_policy?: string | undefined;
-  tmpfs_json?: string | undefined;
-  ulimits_json?: string | undefined;
+  tmpfs: ComponentTmpfs[];
+  ulimits: ComponentUlimit[];
 }
 
 export interface VersionComponentResp {
@@ -31,21 +31,75 @@ export interface VersionComponentResp {
   version_id: string;
   name: string;
   image: string;
-  command_json?: string | undefined;
-  args_json?: string | undefined;
-  env_json?: string | undefined;
-  ports_json?: string | undefined;
-  mounts_json?: string | undefined;
-  networks_json?: string | undefined;
-  depends_on_json?: string | undefined;
-  healthcheck_json?: string | undefined;
-  resources_json?: string | undefined;
+  command: string[];
+  args: string[];
+  env: ComponentEnv[];
+  ports: ComponentPort[];
+  mounts: ComponentMount[];
+  networks: string[];
+  dependencies: ComponentDependency[];
+  healthcheck: ComponentHealthcheck | undefined;
+  resources: ComponentResources | undefined;
   pull_policy?: string | undefined;
   created_at: string;
   updated_at: string;
   restart_policy?: string | undefined;
-  tmpfs_json?: string | undefined;
-  ulimits_json?: string | undefined;
+  tmpfs: ComponentTmpfs[];
+  ulimits: ComponentUlimit[];
+}
+
+export interface ComponentEnv {
+  key: string;
+  value: string;
+}
+
+export interface ComponentPort {
+  host_port: number;
+  container_port: number;
+}
+
+export interface ComponentMount {
+  source_type: string;
+  source: string;
+  target: string;
+  read_only: boolean;
+  content?: string | undefined;
+  content_mode?: string | undefined;
+}
+
+export interface ComponentDependency {
+  name: string;
+  condition: string;
+}
+
+export interface ComponentHealthcheck {
+  test_mode: string;
+  test: string[];
+  interval?: string | undefined;
+  timeout?: string | undefined;
+  retries?: number | undefined;
+  start_period?: string | undefined;
+  start_interval?: string | undefined;
+  disabled: boolean;
+}
+
+export interface ComponentResources {
+  limit_cpus?: string | undefined;
+  limit_memory?: string | undefined;
+  reservation_cpus?: string | undefined;
+  reservation_memory?: string | undefined;
+}
+
+export interface ComponentTmpfs {
+  target: string;
+  size_bytes: number;
+  mode: string;
+}
+
+export interface ComponentUlimit {
+  name: string;
+  soft: number;
+  hard: number;
 }
 
 export interface VersionExposeReq {
@@ -87,7 +141,6 @@ export interface VersionUpdateReq {
   label?: string | undefined;
   env_json?: string | undefined;
   note?: string | undefined;
-  components: VersionComponentReq[];
   exposes: VersionExposeReq[];
 }
 

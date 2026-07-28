@@ -1,21 +1,27 @@
 package deploymentsvc
 
-import "testing"
+import (
+	"testing"
 
-func TestParseDependsOnJSONPreservesHealthConditions(t *testing.T) {
-	raw := `{"mysql":{"condition":"service_healthy"},"redis":{"condition":"service_started"}}`
-	depends, names, err := parseDependsOnJSON(&raw)
+	"gitee.com/leoninew/PomeloOrbit-go/internal/model"
+)
+
+func TestRenderComponentPreservesDependencyConditions(t *testing.T) {
+	service, _, err := renderVersionComponentService(model.VersionComponent{
+		Name: "api", Image: "nginx",
+		Dependencies: []model.VersionComponentDependency{
+			{Name: "mysql", Condition: "service_healthy"},
+			{Name: "redis", Condition: "service_started"},
+		},
+	}, nil, "demo", "", nil)
 	if err != nil {
-		t.Fatalf("parse depends_on: %v", err)
+		t.Fatal(err)
 	}
-	if len(names) != 2 {
-		t.Fatalf("dependency names = %#v", names)
-	}
-	configured, ok := depends.(map[string]map[string]string)
+	depends, ok := service["depends_on"].(map[string]map[string]string)
 	if !ok {
-		t.Fatalf("depends type = %T", depends)
+		t.Fatalf("depends type = %T", service["depends_on"])
 	}
-	if configured["mysql"]["condition"] != "service_healthy" {
-		t.Fatalf("mysql condition = %#v", configured["mysql"])
+	if depends["mysql"]["condition"] != "service_healthy" {
+		t.Fatalf("mysql condition = %#v", depends["mysql"])
 	}
 }

@@ -210,18 +210,14 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
         label: str | None = None,
         env_json: str | None = None,
         note: str | None = None,
-        components: list[VersionComponent] | None = None,
         exposes: list[VersionExpose] | None = None,
     ) -> dict[str, Any]:
-        """Update a Version; explicit empty Components or Exposes replace that collection with empty."""
+        """Update Version metadata or replace its exposes; components have dedicated tools."""
         body = compact(
             {
                 "label": label,
                 "env_json": env_json,
                 "note": note,
-                "components": [version_component_payload(component) for component in components]
-                if components is not None
-                else None,
                 "exposes": [version_expose_payload(expose) for expose in exposes] if exposes is not None else None,
             }
         )
@@ -235,6 +231,22 @@ def register_orbit_tools(mcp: FastMCP, client: OrbitClient) -> None:
             f"/api/version/{version_id}",
             request_body=body,
             data={"version": version},
+        )
+
+    @mcp.tool(name="orbit_update_version_component")
+    async def orbit_update_version_component(
+        version_id: str, component_id: str, component: VersionComponent
+    ) -> dict[str, Any]:
+        """Replace one Version component through Orbit's component route."""
+        body = version_component_payload(component)
+        updated = await client.update_version_component(version_id, component_id, body)
+        return write_result(
+            "update_version_component",
+            {"version_id": version_id, "component_id": component_id},
+            "PUT",
+            f"/api/version/{version_id}/component/{component_id}",
+            request_body=body,
+            data={"component": updated},
         )
 
     @mcp.tool(name="orbit_publish_version")

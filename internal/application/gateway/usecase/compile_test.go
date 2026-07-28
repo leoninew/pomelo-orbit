@@ -1,7 +1,6 @@
 package gatewaysvc
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -23,49 +22,41 @@ func TestBuildTraefikStaticConfigIncludesProvidersAndTCP(t *testing.T) {
 
 func TestBuildManagedGatewayMountsRemainValid(t *testing.T) {
 	mounts := buildManagedGatewayMounts(model.GatewayConfig{}, nil)
-	raw, err := json.Marshal(mounts)
-	if err != nil {
-		t.Fatal(err)
+	for _, mount := range mounts {
+		if err := validateMountSpec(mount); err != nil {
+			t.Fatalf("managed mount must pass schema: %v", err)
+		}
 	}
-	serialized := string(raw)
-	parsed, err := parseMountSpecs(&serialized)
-	if err != nil {
-		t.Fatalf("managed mounts must pass schema: %v", err)
+	if len(mounts) != 3 {
+		t.Fatalf("managed mount count = %d, want 3", len(mounts))
 	}
-	if len(parsed) != 3 {
-		t.Fatalf("managed mount count = %d, want 3", len(parsed))
+	if mounts[0].SourceType != mountSourceSpecial || mounts[0].Source != specialDockerSock || !mounts[0].ReadOnly {
+		t.Fatalf("docker socket mount = %+v", mounts[0])
 	}
-	if parsed[0].SourceType != mountSourceSpecial || parsed[0].Source != specialDockerSock || !parsed[0].ReadOnly {
-		t.Fatalf("docker socket mount = %+v", parsed[0])
+	if mounts[1].ContentMode != contentModeSync || !strings.Contains(mounts[1].Content, "providers:") {
+		t.Fatalf("traefik config mount = %+v", mounts[1])
 	}
-	if parsed[1].ContentMode != contentModeSync || !strings.Contains(parsed[1].Content, "providers:") {
-		t.Fatalf("traefik config mount = %+v", parsed[1])
-	}
-	if parsed[2].ContentMode != contentModeSeed {
-		t.Fatalf("acme mount = %+v", parsed[2])
+	if mounts[2].ContentMode != contentModeSeed {
+		t.Fatalf("acme mount = %+v", mounts[2])
 	}
 }
 
 func TestBuildManagedGatewayComponentPreservesCustomMounts(t *testing.T) {
 	image := "traefik:3.6"
-	existingMounts := `[{
-  "source_type":"logical",
-  "source":"custom.conf",
-  "target":"/etc/custom.conf",
-  "content":"x",
-  "content_mode":"seed"
-}]`
 	component, err := buildManagedGatewayComponent(model.GatewayConfig{Image: &image}, []model.VersionComponent{{
-		Name: gatewayManagedComponentName, MountsJSON: &existingMounts,
+		Name: gatewayManagedComponentName,
+		Mounts: []model.VersionComponentMount{{
+			SourceType: mountSourceFile, Source: "custom.conf", Target: "/etc/custom.conf", Content: "x", ContentMode: contentModeSeed,
+		}},
 	}}, []int{6379})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if component.PortsJSON == nil || !strings.Contains(*component.PortsJSON, "6379:6379") {
-		t.Fatalf("managed ports = %v", component.PortsJSON)
+	if len(component.Ports) != 4 || component.Ports[3].HostPort != 6379 || component.Ports[3].ContainerPort != 6379 {
+		t.Fatalf("managed ports = %v", component.Ports)
 	}
-	if component.MountsJSON == nil || !strings.Contains(*component.MountsJSON, "/etc/custom.conf") {
-		t.Fatalf("custom mount was not retained: %v", component.MountsJSON)
+	if len(component.Mounts) != 4 || component.Mounts[0].Target != "/etc/custom.conf" {
+		t.Fatalf("custom mount was not retained: %v", component.Mounts)
 	}
 	if _, err := buildManagedGatewayComponent(model.GatewayConfig{}, nil, nil); err == nil {
 		t.Fatal("expected missing image error")

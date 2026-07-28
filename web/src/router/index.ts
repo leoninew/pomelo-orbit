@@ -92,6 +92,12 @@ const router = createRouter({
       meta: { title: '版本', menuKey: 'applications' },
     },
     {
+      path: '/version/:versionId/component/:componentId',
+      name: 'VersionComponentDetail',
+      component: () => import('@/views/application/VersionComponentDetail.vue'),
+      meta: { title: '组件详情', menuKey: 'applications' },
+    },
+    {
       path: '/version/:id',
       name: 'VersionDetail',
       component: () => import('@/views/application/VersionDetail.vue'),

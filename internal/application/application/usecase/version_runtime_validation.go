@@ -1,7 +1,6 @@
 package applicationsvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -16,41 +15,22 @@ const (
 
 var tmpfsModePattern = regexp.MustCompile(`^[0-7]{3,4}$`)
 
-type tmpfsSpec struct {
-	Target    string `json:"target"`
-	SizeBytes int64  `json:"size_bytes"`
-	Mode      string `json:"mode"`
-}
-
-type ulimitSpec struct {
-	Name string `json:"name"`
-	Soft int64  `json:"soft"`
-	Hard int64  `json:"hard"`
-}
-
 func validateComponentRuntimeFields(component model.VersionComponent) error {
 	if component.RestartPolicy != nil && *component.RestartPolicy != "no" && *component.RestartPolicy != "unless-stopped" {
 		return fmt.Errorf("component %s restart_policy must be no or unless-stopped", component.Name)
 	}
-	if err := validateTmpfs(component.Name, component.TmpfsJSON); err != nil {
+	if err := validateTmpfs(component.Name, component.Tmpfs); err != nil {
 		return err
 	}
-	if err := validateUlimits(component.Name, component.UlimitsJSON); err != nil {
+	if err := validateUlimits(component.Name, component.Ulimits); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateTmpfs(component string, raw *string) error {
-	if raw == nil || *raw == "" {
-		return nil
-	}
-	var entries []tmpfsSpec
-	if err := json.Unmarshal([]byte(*raw), &entries); err != nil {
-		return fmt.Errorf("component %s tmpfs_json must be an array: %w", component, err)
-	}
+func validateTmpfs(component string, entries []model.VersionComponentTmpfs) error {
 	if len(entries) > 8 {
-		return fmt.Errorf("component %s tmpfs_json supports at most 8 entries", component)
+		return fmt.Errorf("component %s tmpfs supports at most 8 entries", component)
 	}
 	seen := make(map[string]struct{}, len(entries))
 	for _, entry := range entries {
@@ -88,16 +68,9 @@ func validTmpfsTarget(target string) bool {
 	return true
 }
 
-func validateUlimits(component string, raw *string) error {
-	if raw == nil || *raw == "" {
-		return nil
-	}
-	var entries []ulimitSpec
-	if err := json.Unmarshal([]byte(*raw), &entries); err != nil {
-		return fmt.Errorf("component %s ulimits_json must be an array: %w", component, err)
-	}
+func validateUlimits(component string, entries []model.VersionComponentUlimit) error {
 	if len(entries) > 8 {
-		return fmt.Errorf("component %s ulimits_json supports at most 8 entries", component)
+		return fmt.Errorf("component %s ulimits supports at most 8 entries", component)
 	}
 	seen := make(map[string]struct{}, len(entries))
 	for _, entry := range entries {

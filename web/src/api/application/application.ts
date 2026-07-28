@@ -15,6 +15,8 @@ import type {
   ApplicationImportReq,
 } from '@/gen/proto/orbit/v1/application/application_bundle';
 import type {
+  VersionComponentReq,
+  VersionComponentResp,
   VersionCreateReq,
   VersionForkReq,
   VersionPaginatedResp,
@@ -67,10 +69,7 @@ export const applicationApi = {
     return request.post(`/api/application/${id}/restart`, data);
   },
 
-  getStatus(
-    id: string,
-    params?: { service_id?: string }
-  ): Promise<ApplicationStatusResp> {
+  getStatus(id: string, params?: { service_id?: string }): Promise<ApplicationStatusResp> {
     return request.get(`/api/application/${id}/status`, { params });
   },
 
@@ -113,6 +112,29 @@ export const applicationApi = {
 
   getVersion(versionId: string): Promise<VersionResp> {
     return request.get(`/api/version/${versionId}`);
+  },
+
+  getVersionComponent(versionId: string, componentId: string): Promise<VersionComponentResp> {
+    return request.get(`/api/version/${versionId}/component/${componentId}`);
+  },
+
+  createVersionComponent(
+    versionId: string,
+    data: VersionComponentReq
+  ): Promise<VersionComponentResp> {
+    return request.post(`/api/version/${versionId}/component`, data);
+  },
+
+  updateVersionComponent(
+    versionId: string,
+    componentId: string,
+    data: VersionComponentReq
+  ): Promise<VersionComponentResp> {
+    return request.put(`/api/version/${versionId}/component/${componentId}`, data);
+  },
+
+  deleteVersionComponent(versionId: string, componentId: string): Promise<void> {
+    return request.delete(`/api/version/${versionId}/component/${componentId}`);
   },
 
   updateVersion(versionId: string, data: VersionUpdateReq): Promise<VersionResp> {

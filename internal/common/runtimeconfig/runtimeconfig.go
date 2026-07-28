@@ -22,37 +22,37 @@ type Requirement struct {
 
 // Requirements returns the K/V names consumed by the Version environment fields.
 func Requirements(versionEnv *string, components []model.VersionComponent) (map[string]Requirement, error) {
-	items := make([]*string, 0, len(components)+1)
-	items = append(items, versionEnv)
-	for _, component := range components {
-		items = append(items, component.EnvJSON)
-	}
 	requirements := map[string]Requirement{}
-	for _, raw := range items {
-		if raw == nil || strings.TrimSpace(*raw) == "" {
-			continue
-		}
+	if versionEnv != nil && strings.TrimSpace(*versionEnv) != "" {
 		var vars []envVar
-		if err := json.Unmarshal([]byte(*raw), &vars); err != nil {
+		if err := json.Unmarshal([]byte(*versionEnv), &vars); err != nil {
 			return nil, fmt.Errorf("env_json must be an array of key/value entries: %w", err)
 		}
 		for _, variable := range vars {
-			name, requirement, ok := parsePlaceholder(variable.Value)
-			if !ok {
-				continue
-			}
-			existing, exists := requirements[name]
-			if !exists || requirement.Required {
-				requirements[name] = requirement
-				continue
-			}
-			if existing.Required {
-				continue
-			}
-			requirements[name] = requirement
+			addRequirement(requirements, variable.Value)
+		}
+	}
+	for _, component := range components {
+		for _, variable := range component.Env {
+			addRequirement(requirements, variable.Value)
 		}
 	}
 	return requirements, nil
+}
+
+func addRequirement(requirements map[string]Requirement, value string) {
+	name, requirement, ok := parsePlaceholder(value)
+	if !ok {
+		return
+	}
+	existing, exists := requirements[name]
+	if !exists || requirement.Required {
+		requirements[name] = requirement
+		return
+	}
+	if !existing.Required {
+		requirements[name] = requirement
+	}
 }
 
 func Validate(values map[string]string, versionEnv *string, components []model.VersionComponent) (missing []string, extra []string, err error) {

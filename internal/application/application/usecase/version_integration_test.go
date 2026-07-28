@@ -32,24 +32,14 @@ func TestPublishedVersionCanBeUpdatedAndDeletedWhenUnreferenced(t *testing.T) {
 
 	app, version := createPublishedVersion(t, ctx, applicationStore, "published-editable")
 	label := "v2"
-	components := []applicationdto.VersionComponentInput{{Name: "web", Image: "nginx:latest"}}
-	exposes := []applicationdto.VersionExposeInput{{ComponentName: "web", Protocol: "http", ContainerPort: 8080, Access: "local"}}
 	updated, err := service.UpdateVersion(ctx, versionTestUserId, version.Id, applicationdto.VersionUpdateInput{
-		Label:      &label,
-		Components: &components,
-		Exposes:    &exposes,
+		Label: &label,
 	})
 	if err != nil {
 		t.Fatalf("update published version: %v", err)
 	}
 	if updated.Version.Label != label || updated.Version.Status != status.VersionStatusPublished {
 		t.Fatalf("unexpected updated version: %+v", updated.Version)
-	}
-	if len(updated.Components) != 1 || updated.Components[0].Image != "nginx:latest" {
-		t.Fatalf("unexpected updated components: %+v", updated.Components)
-	}
-	if len(updated.Exposes) != 1 || updated.Exposes[0].ContainerPort != 8080 {
-		t.Fatalf("unexpected updated exposes: %+v", updated.Exposes)
 	}
 	if err := service.DeleteVersion(ctx, versionTestUserId, version.Id); err != nil {
 		t.Fatalf("delete published version: %v", err)
@@ -109,6 +99,14 @@ func TestUpdateVersionRejectsMissingRuntimeConfigForBoundService(t *testing.T) {
 	ctx := context.Background()
 
 	app, version := createPublishedVersion(t, ctx, applicationStore, "runtime-config-validation")
+	component := model.VersionComponent{Id: idutil.NewId(), VersionId: version.Id, Name: "web", Image: "nginx"}
+	if err := applicationStore.CreateVersionComponent(ctx, component); err != nil {
+		t.Fatal(err)
+	}
+	version.Status = status.VersionStatusUnpublished
+	if err := applicationStore.UpdateVersion(ctx, version); err != nil {
+		t.Fatal(err)
+	}
 	serviceStore := servicerepo.NewRepository(database)
 	if err := serviceStore.UpsertService(ctx, model.Service{
 		Id: idutil.NewId(), ApplicationId: app.Id, InstanceKey: "default", VersionId: version.Id,
@@ -117,9 +115,9 @@ func TestUpdateVersionRejectsMissingRuntimeConfigForBoundService(t *testing.T) {
 		t.Fatal(err)
 	}
 	service := New(projectrepo.NewRepository(database), applicationStore, serviceStore)
-	envJSON := `[{"key":"API_TOKEN","value":"${API_TOKEN}"}]`
-	components := []applicationdto.VersionComponentInput{{Name: "web", Image: "nginx", EnvJSON: &envJSON}}
-	_, err := service.UpdateVersion(ctx, versionTestUserId, version.Id, applicationdto.VersionUpdateInput{Components: &components})
+	_, err := service.UpdateVersionComponent(ctx, versionTestUserId, version.Id, component.Id, applicationdto.VersionComponentInput{
+		Name: "web", Image: "nginx", Env: []model.VersionComponentEnv{{Key: "API_TOKEN", Value: "${API_TOKEN}"}},
+	})
 	if apperror.StatusCode(err) != http.StatusBadRequest {
 		t.Fatalf("expected missing runtime config to reject version update, got %v", err)
 	}
@@ -170,14 +168,24 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 		t.Fatalf("version list unexpectedly loaded details: %+v", item)
 	}
 
-	components := []applicationdto.VersionComponentInput{{Name: "web", Image: "caddy:2.8"}}
-	updated, err := service.UpdateVersion(ctx, versionTestUserId, created.Version.Id, applicationdto.VersionUpdateInput{
-		Components: &components,
-	})
+	var apiID string
+	for _, component := range created.Components {
+		if component.Name == "api" {
+			apiID = component.Id
+		}
+	}
+	updatedComponent, err := service.UpdateVersionComponent(ctx, versionTestUserId, created.Version.Id, apiID, applicationdto.VersionComponentInput{Name: "api", Image: "caddy:2.8"})
 	if err != nil {
 		t.Fatalf("update version components: %v", err)
 	}
-	if got, want := updated.Version.ComponentSummary, "caddy:2.8"; got != want {
+	if updatedComponent.Image != "caddy:2.8" {
+		t.Fatalf("updated component image = %q", updatedComponent.Image)
+	}
+	updated, err := service.VersionForUser(ctx, versionTestUserId, created.Version.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := updated.Version.ComponentSummary, "caddy:2.8, busybox:1.36"; got != want {
 		t.Fatalf("updated component summary = %q, want %q", got, want)
 	}
 	persisted, err := applicationStore.Version(ctx, created.Version.Id)
@@ -187,6 +195,87 @@ func TestVersionComponentSummaryTracksComponentUpdatesAndListIsLightweight(t *te
 	if persisted.ComponentSummary != updated.Version.ComponentSummary {
 		t.Fatalf("persisted component summary = %q, want %q", persisted.ComponentSummary, updated.Version.ComponentSummary)
 	}
+}
+
+func TestVersionComponentRenamePreservesValuesAndUpdatesReferences(t *testing.T) {
+	service, database, applicationStore := newVersionIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+
+	app := model.Application{
+		Id:              idutil.NewId(),
+		Name:            "component-reference-" + idutil.NewId(),
+		Code:            "component-reference-" + idutil.NewId(),
+		Kind:            status.ApplicationKindStandard,
+		ImagePullPolicy: "missing",
+	}
+	if err := applicationStore.CreateApplication(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.CreateVersion(ctx, versionTestUserId, applicationdto.VersionCreateInput{
+		ApplicationId: app.Id,
+		Label:         " v1 ",
+		Note:          ptr("  keep this note exactly  "),
+		Components: []applicationdto.VersionComponentInput{
+			{
+				Name:  "api",
+				Image: "nginx:1.27",
+				Env:   []model.VersionComponentEnv{{Key: "TOKEN", Value: "  ${TOKEN}  "}},
+			},
+			{
+				Name: "worker", Image: "busybox:1.36",
+				Dependencies: []model.VersionComponentDependency{{
+					Name: "api", Condition: "service_started",
+				}},
+			},
+		},
+		Exposes: []applicationdto.VersionExposeInput{{
+			ComponentName: "api", Protocol: "http", ContainerPort: 8080, Access: "local",
+		}},
+	})
+	if err != nil {
+		t.Fatalf("create version: %v", err)
+	}
+	if created.Version.Label != " v1 " || created.Version.Note == nil || *created.Version.Note != "  keep this note exactly  " {
+		t.Fatalf("version text was changed: %+v", created.Version)
+	}
+
+	var apiID string
+	for _, item := range created.Components {
+		if item.Name == "api" {
+			apiID = item.Id
+		}
+	}
+	updated, err := service.UpdateVersionComponent(ctx, versionTestUserId, created.Version.Id, apiID, applicationdto.VersionComponentInput{
+		Name: "backend", Image: "nginx:1.27",
+		Env: []model.VersionComponentEnv{{Key: "TOKEN", Value: "  ${TOKEN}  "}},
+	})
+	if err != nil {
+		t.Fatalf("rename component: %v", err)
+	}
+	if updated.Env[0].Value != "  ${TOKEN}  " {
+		t.Fatalf("component env value was changed: %q", updated.Env[0].Value)
+	}
+
+	view, err := service.VersionForUser(ctx, versionTestUserId, created.Version.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Exposes[0].ComponentName != "backend" {
+		t.Fatalf("expose reference = %q, want backend", view.Exposes[0].ComponentName)
+	}
+	for _, item := range view.Components {
+		if item.Name == "worker" && item.Dependencies[0].Name != "backend" {
+			t.Fatalf("worker dependency = %q, want backend", item.Dependencies[0].Name)
+		}
+	}
+	if err := service.DeleteVersionComponent(ctx, versionTestUserId, created.Version.Id, apiID); apperror.StatusCode(err) != http.StatusBadRequest {
+		t.Fatalf("expected referenced component delete to fail, got %v", err)
+	}
+}
+
+func ptr(value string) *string {
+	return &value
 }
 
 func newVersionIntegrationService(t *testing.T) (Service, *sql.DB, applicationrepo.Repository) {

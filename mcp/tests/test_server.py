@@ -32,6 +32,7 @@ async def test_server_registers_the_accepted_tool_surface(tmp_path) -> None:
         "orbit_get_version",
         "orbit_create_version",
         "orbit_update_version",
+        "orbit_update_version_component",
         "orbit_publish_version",
         "orbit_delete_version",
         "orbit_preview_version",

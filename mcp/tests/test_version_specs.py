@@ -14,19 +14,19 @@ def test_version_component_payload_serializes_protocol_json_fields() -> None:
         name="mysql",
         image="mysql:8.0.39",
         command=["--max_connections=1000"],
-        environment=[EnvironmentVariable(key="MYSQL_ROOT_PASSWORD", value="${MYSQL_PASSWORD}")],
-        mounts=[LogicalMount(source_type="logical", source="mysql", target="/var/lib/mysql")],
-        depends_on=[ComponentDependency(component="database", condition="service_healthy")],
+        env=[EnvironmentVariable(key="MYSQL_ROOT_PASSWORD", value="${MYSQL_PASSWORD}")],
+        mounts=[LogicalMount(source_type="directory", source="mysql", target="/var/lib/mysql")],
+        dependencies=[ComponentDependency(name="database", condition="service_healthy")],
         restart_policy="unless-stopped",
     )
 
     assert version_component_payload(component) == {
         "name": "mysql",
         "image": "mysql:8.0.39",
-        "command_json": '["--max_connections=1000"]',
-        "env_json": '[{"key":"MYSQL_ROOT_PASSWORD","value":"${MYSQL_PASSWORD}"}]',
-        "mounts_json": '[{"source_type":"logical","source":"mysql","target":"/var/lib/mysql","read_only":false}]',
-        "depends_on_json": '{"database":{"condition":"service_healthy"}}',
+        "command": ["--max_connections=1000"],
+        "env": [{"key": "MYSQL_ROOT_PASSWORD", "value": "${MYSQL_PASSWORD}"}],
+        "mounts": [{"source_type": "directory", "source": "mysql", "target": "/var/lib/mysql", "read_only": False}],
+        "dependencies": [{"name": "database", "condition": "service_healthy"}],
         "restart_policy": "unless-stopped",
     }
 

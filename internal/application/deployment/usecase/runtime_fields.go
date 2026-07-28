@@ -1,7 +1,6 @@
 package deploymentsvc
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -15,57 +14,50 @@ const (
 )
 
 var runtimeTmpfsModePattern = regexp.MustCompile(`^[0-7]{3,4}$`)
-var runtimeEnvNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-
-type runtimeTmpfsSpec struct {
-	Target    string `json:"target"`
-	SizeBytes int64  `json:"size_bytes"`
-	Mode      string `json:"mode"`
-}
-
-type runtimeUlimitSpec struct {
-	Name string `json:"name"`
-	Soft int64  `json:"soft"`
-	Hard int64  `json:"hard"`
-}
 
 func applyComponentRuntimeFields(service map[string]any, component model.VersionComponent) error {
-	if component.RestartPolicy != nil {
-		switch *component.RestartPolicy {
-		case "no":
-		case "unless-stopped":
-			service["restart"] = "unless-stopped"
-		default:
-			return fmt.Errorf("restart_policy must be no or unless-stopped")
-		}
-	}
-	tmpfs, err := parseRuntimeTmpfs(component.TmpfsJSON)
-	if err != nil {
+	if err := validateComponentRuntimeFields(component); err != nil {
 		return err
 	}
-	if len(tmpfs) > 0 {
+	if component.RestartPolicy != nil && *component.RestartPolicy == "unless-stopped" {
+		service["restart"] = "unless-stopped"
+	}
+	if len(component.Tmpfs) > 0 {
+		tmpfs, _ := renderRuntimeTmpfs(component.Tmpfs)
 		service["tmpfs"] = tmpfs
 	}
-	ulimits, err := parseRuntimeUlimits(component.UlimitsJSON)
-	if err != nil {
-		return err
-	}
-	if len(ulimits) > 0 {
+	if len(component.Ulimits) > 0 {
+		ulimits, _ := renderRuntimeUlimits(component.Ulimits)
 		service["ulimits"] = ulimits
 	}
 	return nil
 }
 
-func parseRuntimeTmpfs(raw *string) ([]string, error) {
-	if raw == nil || *raw == "" {
-		return nil, nil
+func validateComponentRuntimeFields(component model.VersionComponent) error {
+	if component.RestartPolicy != nil {
+		switch *component.RestartPolicy {
+		case "no":
+		case "unless-stopped":
+		default:
+			return fmt.Errorf("restart_policy must be no or unless-stopped")
+		}
 	}
-	var entries []runtimeTmpfsSpec
-	if err := json.Unmarshal([]byte(*raw), &entries); err != nil {
-		return nil, fmt.Errorf("tmpfs_json must be an array: %w", err)
+	if len(component.Tmpfs) > 0 {
+		if _, err := renderRuntimeTmpfs(component.Tmpfs); err != nil {
+			return err
+		}
 	}
+	if len(component.Ulimits) > 0 {
+		if _, err := renderRuntimeUlimits(component.Ulimits); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderRuntimeTmpfs(entries []model.VersionComponentTmpfs) ([]string, error) {
 	if len(entries) > 8 {
-		return nil, fmt.Errorf("tmpfs_json supports at most 8 entries")
+		return nil, fmt.Errorf("tmpfs supports at most 8 entries")
 	}
 	seen := make(map[string]struct{}, len(entries))
 	result := make([]string, 0, len(entries))
@@ -105,16 +97,9 @@ func validRuntimeTmpfsTarget(target string) bool {
 	return true
 }
 
-func parseRuntimeUlimits(raw *string) (map[string]map[string]int64, error) {
-	if raw == nil || *raw == "" {
-		return nil, nil
-	}
-	var entries []runtimeUlimitSpec
-	if err := json.Unmarshal([]byte(*raw), &entries); err != nil {
-		return nil, fmt.Errorf("ulimits_json must be an array: %w", err)
-	}
+func renderRuntimeUlimits(entries []model.VersionComponentUlimit) (map[string]map[string]int64, error) {
 	if len(entries) > 8 {
-		return nil, fmt.Errorf("ulimits_json supports at most 8 entries")
+		return nil, fmt.Errorf("ulimits supports at most 8 entries")
 	}
 	result := make(map[string]map[string]int64, len(entries))
 	for _, entry := range entries {

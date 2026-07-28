@@ -95,7 +95,7 @@
             <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
               {{ t('application.detail.fields.note') }}
             </dt>
-            <dd class="text-foreground">{{ version.note || '—' }}</dd>
+            <dd class="text-foreground">{{ version.note === undefined ? '—' : version.note }}</dd>
           </div>
           <div class="flex gap-2">
             <dt class="w-32 shrink-0 whitespace-nowrap text-muted-foreground">
@@ -123,78 +123,31 @@
           <h2 class="font-semibold text-foreground">
             {{ t('application.detail.fields.components') }}
           </h2>
-          <button
-            v-if="isEditable"
-            class="app-button-primary h-9 px-3"
-            @click="openComponentModal()"
-          >
+          <button v-if="isEditable" class="app-button h-9 px-3" @click="openComponentPage()">
             <Plus class="size-4" />
             {{ t('application.detail.actions.addComponent') }}
           </button>
         </div>
         <AppEmptyState v-if="(version.components ?? []).length === 0" size="compact" />
         <div v-else class="overflow-x-auto">
-          <table class="app-table-detail min-w-[960px]">
+          <table class="app-table-detail min-w-[640px]">
             <thead>
               <tr>
                 <th>{{ t('application.detail.fields.component') }}</th>
                 <th>{{ t('application.detail.fields.image') }}</th>
-                <th>{{ t('application.detail.fields.ports') }}</th>
-                <th>{{ t('application.detail.fields.runtimeConfig') }}</th>
-                <th v-if="isEditable">{{ t('common.operation') }}</th>
+                <th class="w-28">{{ t('common.operation') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(comp, index) in version.components" :key="comp.id || index">
+              <tr v-for="comp in version.components" :key="comp.id">
                 <td class="text-foreground">{{ comp.name }}</td>
                 <td class="max-w-xs truncate text-xs text-muted-foreground" :title="comp.image">
                   {{ comp.image }}
                 </td>
-                <td class="text-muted-foreground">{{ portsSummary(comp.ports_json) }}</td>
                 <td>
-                  <button class="app-link text-left" @click="openComponentRuntimeDialog(index)">
-                    {{ runtimeSummary(comp) }}
+                  <button class="app-link" @click="openComponentPage(comp.id)">
+                    {{ t('application.view') }}
                   </button>
-                </td>
-                <td v-if="isEditable">
-                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <button class="app-link" @click="openComponentBaseDialog(index)">
-                      {{ t('application.versionDetail.actions.componentBase') }}
-                    </button>
-                    <button class="app-link" @click="openComponentPortsDialog(index)">
-                      {{ t('application.versionDetail.actions.componentPorts') }}
-                    </button>
-                    <button class="app-link" @click="openComponentEnvDialog(index)">
-                      {{ t('application.versionDetail.actions.componentEnv') }}
-                    </button>
-                    <button class="app-link" @click="openComponentMountsDialog(index)">
-                      {{ t('application.versionDetail.actions.componentMounts') }}
-                    </button>
-                    <DropdownMenuRoot>
-                      <DropdownMenuTrigger
-                        class="app-link inline-flex items-center gap-1"
-                        :aria-label="t('application.versionDetail.actions.componentMore')"
-                      >
-                        {{ t('application.versionDetail.actions.componentMore') }}
-                        <ChevronDown class="size-3" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuPortal>
-                        <DropdownMenuContent
-                          class="z-50 min-w-28 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none"
-                          align="end"
-                          :side-offset="6"
-                        >
-                          <DropdownMenuItem
-                            class="flex cursor-pointer rounded px-3 py-2 text-sm text-destructive outline-none transition-colors data-[highlighted]:bg-destructive/10"
-                            :disabled="operating"
-                            @select="openDeleteComponentDialog(index)"
-                          >
-                            {{ t('common.delete') }}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenuPortal>
-                    </DropdownMenuRoot>
-                  </div>
                 </td>
               </tr>
             </tbody>
@@ -337,50 +290,6 @@
         </button>
       </template>
     </AppDialog>
-
-    <VersionComponentBaseDialog
-      v-model:open="isComponentBaseDialogOpen"
-      :component="editingComponent"
-      :component-names="componentNames"
-      :saving="operating"
-      @save="saveComponentBase"
-    />
-
-    <VersionComponentPortsDialog
-      v-model:open="isComponentPortsDialogOpen"
-      :ports-json="editingComponent?.ports_json"
-      :saving="operating"
-      @save="saveComponentPorts"
-    />
-
-    <VersionComponentEnvDialog
-      v-model:open="isComponentEnvDialogOpen"
-      :env-json="editingComponent?.env_json"
-      :saving="operating"
-      @save="saveComponentEnv"
-    />
-
-    <VersionComponentMountsDialog
-      v-model:open="isComponentMountsDialogOpen"
-      :mounts-json="editingComponent?.mounts_json"
-      :saving="operating"
-      @save="saveComponentMounts"
-    />
-
-    <VersionComponentRuntimeDialog
-      v-model:open="isComponentRuntimeDialogOpen"
-      :component="editingComponent"
-      :readonly="!isEditable"
-      :saving="operating"
-      @save="saveComponentRuntime"
-    />
-
-    <VersionComponentDeleteDialog
-      v-model:open="isDeleteComponentDialogOpen"
-      :component-name="pendingDeleteComponent?.name"
-      :saving="operating"
-      @confirm="confirmDeleteComponent"
-    />
 
     <!-- 暴露表单 -->
     <AppDialog
@@ -598,7 +507,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ChevronDown, Pencil, Plus, Rocket, RotateCcw, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Pencil, Plus, Rocket, RotateCcw, Trash2 } from 'lucide-vue-next';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -611,35 +520,16 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
-  import VersionComponentBaseDialog from '@/views/application/components/VersionComponentBaseDialog.vue';
-  import VersionComponentDeleteDialog from '@/views/application/components/VersionComponentDeleteDialog.vue';
-  import VersionComponentEnvDialog from '@/views/application/components/VersionComponentEnvDialog.vue';
-  import VersionComponentMountsDialog from '@/views/application/components/VersionComponentMountsDialog.vue';
-  import VersionComponentPortsDialog from '@/views/application/components/VersionComponentPortsDialog.vue';
-  import VersionComponentRuntimeDialog from '@/views/application/components/VersionComponentRuntimeDialog.vue';
-  import {
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuPortal,
-    DropdownMenuRoot,
-    DropdownMenuTrigger,
-  } from 'reka-ui';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type {
-    VersionComponentReq,
-    VersionComponentResp,
-    VersionExposeReq,
-    VersionResp,
-  } from '@/gen/proto/orbit/v1/application/version';
+  import type { VersionExposeReq, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import {
-    parseEnvJson,
-    parsePortsJson,
-    serializeEnvRows,
-    type EnvFormRow,
-  } from '@/utils/versionComponentForm';
+    parseVersionEnvJson,
+    serializeVersionEnvRows,
+    type VersionEnvFormRow,
+  } from '@/utils/versionEnvForm';
 
   const route = useRoute();
   const router = useRouter();
@@ -654,12 +544,6 @@
   const version = ref<VersionResp>();
 
   const isBasicDialogOpen = ref(false);
-  const isComponentBaseDialogOpen = ref(false);
-  const isComponentPortsDialogOpen = ref(false);
-  const isComponentEnvDialogOpen = ref(false);
-  const isComponentMountsDialogOpen = ref(false);
-  const isComponentRuntimeDialogOpen = ref(false);
-  const isDeleteComponentDialogOpen = ref(false);
   const isExposeDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
@@ -667,9 +551,7 @@
   const composePreviewDrawerOpen = ref(false);
   const composePreviewYaml = ref('');
   const composePreviewError = ref('');
-  const editingComponentIndex = ref<number | null>(null);
   const editingExposeIndex = ref<number | null>(null);
-  const pendingDeleteComponentIndex = ref<number | null>(null);
   const forkLabel = ref('');
   const forkLabelError = ref('');
   const basicFormError = ref('');
@@ -683,13 +565,13 @@
   const basicForm = reactive({
     label: '',
     note: '',
-    env: [] as EnvFormRow[],
+    env: [] as VersionEnvFormRow[],
   });
   const exposeForm = reactive({
     component_name: '',
-    protocol: 'http',
-    container_port: 80,
-    access: 'local',
+    protocol: '',
+    container_port: 0,
+    access: '',
     listen_port: 0,
   });
 
@@ -699,116 +581,17 @@
   const isPublished = computed(() => version.value?.status === 'published');
   const isDeployable = computed(() => Boolean(version.value));
   const hasComponents = computed(() => (version.value?.components ?? []).length > 0);
-  const envRows = computed(() => parseEnvJson(version.value?.env_json));
+  const envRows = computed(() => parseVersionEnvJson(version.value?.env_json));
   const componentNameValues = computed(() => (version.value?.components ?? []).map((c) => c.name));
-  const componentNames = computed(() =>
-    (version.value?.components ?? []).map((component) => component.name)
-  );
-  const editingComponent = computed(() => {
-    const index = editingComponentIndex.value;
-    return index === null ? undefined : version.value?.components?.[index];
-  });
-  const pendingDeleteComponent = computed(() => {
-    const index = pendingDeleteComponentIndex.value;
-    return index === null ? undefined : version.value?.components?.[index];
-  });
-
-  function portsSummary(raw?: string) {
-    const rows = parsePortsJson(raw);
-    if (rows.length === 0) {
-      return '—';
-    }
-    return rows.map((r) => `${r.host_port}:${r.container_port}`).join(', ');
-  }
-
-  function runtimeSummary(component: VersionComponentResp) {
-    const parts: string[] = [];
-    if (component.command_json) parts.push(t('application.runtime.summary.command'));
-    if (component.args_json) parts.push(t('application.runtime.summary.args'));
-    if (component.healthcheck_json) parts.push(t('application.runtime.summary.healthcheck'));
-    if (component.resources_json) parts.push(t('application.runtime.summary.resources'));
-    if (component.restart_policy) parts.push(t('application.runtime.summary.restart'));
-    if (component.tmpfs_json) parts.push(t('application.runtime.summary.tmpfs'));
-    if (component.ulimits_json) parts.push(t('application.runtime.summary.ulimits'));
-    return parts.length > 0 ? parts.join(' · ') : t('application.runtime.summary.empty');
-  }
-
-  function componentPayload(component: VersionComponentResp): VersionComponentReq {
-    return {
-      name: component.name,
-      image: component.image,
-      command_json: component.command_json,
-      args_json: component.args_json,
-      env_json: component.env_json,
-      ports_json: component.ports_json,
-      mounts_json: component.mounts_json,
-      networks_json: component.networks_json,
-      depends_on_json: component.depends_on_json,
-      healthcheck_json: component.healthcheck_json,
-      resources_json: component.resources_json,
-      pull_policy: component.pull_policy,
-      restart_policy: component.restart_policy,
-      tmpfs_json: component.tmpfs_json,
-      ulimits_json: component.ulimits_json,
-    };
-  }
-
-  function componentsPayload(): VersionComponentReq[] {
-    return (version.value?.components ?? []).map(componentPayload);
-  }
-
-  function replaceComponent(
-    index: number,
-    patch: Partial<VersionComponentReq>
-  ): VersionComponentReq[] | undefined {
-    const next = componentsPayload();
-    if (!next[index]) {
-      return undefined;
-    }
-    next[index] = { ...next[index], ...patch };
-    return next;
-  }
-
-  function renameDependencyReferences(
-    components: VersionComponentReq[],
-    oldName: string,
-    newName: string
-  ): VersionComponentReq[] {
-    if (oldName === newName) {
-      return components;
-    }
-    return components.map((component) => {
-      if (!component.depends_on_json?.trim()) {
-        return component;
-      }
-      try {
-        const dependencies = JSON.parse(component.depends_on_json) as unknown;
-        if (
-          !Array.isArray(dependencies) ||
-          !dependencies.every((item) => typeof item === 'string')
-        ) {
-          return component;
-        }
-        return {
-          ...component,
-          depends_on_json: JSON.stringify(
-            dependencies.map((dependency) => (dependency === oldName ? newName : dependency))
-          ),
-        };
-      } catch {
-        return component;
-      }
-    });
-  }
 
   function exposesPayload(): VersionExposeReq[] {
     return (version.value?.exposes ?? []).map((item) => ({
       component_name: item.component_name,
-      protocol: item.protocol || 'http',
+      protocol: item.protocol,
       container_port: item.container_port,
       path_prefix: item.path_prefix,
-      access: item.access || 'public',
-      listen_port: item.listen_port || undefined,
+      access: item.access,
+      listen_port: item.listen_port,
     }));
   }
 
@@ -837,26 +620,29 @@
       return;
     }
     basicForm.label = version.value.label;
-    basicForm.note = version.value.note || '';
-    basicForm.env = parseEnvJson(version.value.env_json);
+    basicForm.note = version.value.note === undefined ? '' : version.value.note;
+    try {
+      basicForm.env = parseVersionEnvJson(version.value.env_json);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
+      return;
+    }
     basicFormError.value = '';
     isBasicDialogOpen.value = true;
   }
 
   async function saveBasic() {
-    basicFormError.value = basicForm.label.trim()
-      ? ''
-      : t('application.validation.versionLabelRequired');
+    basicFormError.value =
+      basicForm.label === '' ? t('application.validation.versionLabelRequired') : '';
     if (basicFormError.value) {
       return;
     }
     try {
       await executeOp(async () => {
         version.value = await applicationApi.updateVersion(versionId, {
-          label: basicForm.label.trim(),
-          note: basicForm.note.trim(),
-          env_json: serializeEnvRows(basicForm.env) ?? '',
-          components: componentsPayload(),
+          label: basicForm.label,
+          note: basicForm.note,
+          env_json: serializeVersionEnvRows(basicForm.env),
           exposes: exposesPayload(),
         });
         toast.success(t('application.toast.updateSuccess'));
@@ -867,201 +653,8 @@
     }
   }
 
-  function openComponentModal() {
-    editingComponentIndex.value = null;
-    isComponentBaseDialogOpen.value = true;
-  }
-
-  function openComponentBaseDialog(index: number) {
-    const component = version.value?.components?.[index];
-    if (!component) {
-      return;
-    }
-    editingComponentIndex.value = index;
-    isComponentBaseDialogOpen.value = true;
-  }
-
-  function openComponentPortsDialog(index: number) {
-    const component = version.value?.components?.[index];
-    if (!component) {
-      return;
-    }
-    editingComponentIndex.value = index;
-    isComponentPortsDialogOpen.value = true;
-  }
-
-  function openComponentEnvDialog(index: number) {
-    const component = version.value?.components?.[index];
-    if (!component) {
-      return;
-    }
-    editingComponentIndex.value = index;
-    isComponentEnvDialogOpen.value = true;
-  }
-
-  function openComponentMountsDialog(index: number) {
-    const component = version.value?.components?.[index];
-    if (!component) {
-      return;
-    }
-    editingComponentIndex.value = index;
-    isComponentMountsDialogOpen.value = true;
-  }
-
-  function openComponentRuntimeDialog(index: number) {
-    const component = version.value?.components?.[index];
-    if (!component) {
-      return;
-    }
-    editingComponentIndex.value = index;
-	 isComponentRuntimeDialogOpen.value = true;
-  }
-
-  async function updateComponents(next: VersionComponentReq[], exposes = exposesPayload()) {
-    await executeOp(async () => {
-      version.value = await applicationApi.updateVersion(versionId, { components: next, exposes });
-      toast.success(t('application.toast.updateSuccess'));
-    });
-  }
-
-  async function saveComponentBase({ name, image }: Pick<VersionComponentReq, 'name' | 'image'>) {
-    let next = componentsPayload();
-    const editingIndex = editingComponentIndex.value;
-    if (editingIndex === null) {
-      next.push({ name, image });
-    } else {
-      const oldName = version.value?.components?.[editingIndex]?.name;
-      if (!oldName) {
-        return;
-      }
-      next = replaceComponent(editingIndex, { name, image }) ?? next;
-      next = renameDependencyReferences(next, oldName, name);
-      const exposes = exposesPayload().map((expose) =>
-        expose.component_name === oldName ? { ...expose, component_name: name } : expose
-      );
-      try {
-        await updateComponents(next, exposes);
-        isComponentBaseDialogOpen.value = false;
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-      }
-      return;
-    }
-
-    try {
-      await updateComponents(next);
-      isComponentBaseDialogOpen.value = false;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  async function saveComponentPorts(portsJson: string | undefined) {
-    const index = editingComponentIndex.value;
-    if (index === null) {
-      return;
-    }
-    const next = replaceComponent(index, { ports_json: portsJson });
-    if (!next) {
-      return;
-    }
-    try {
-      await updateComponents(next);
-      isComponentPortsDialogOpen.value = false;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  async function saveComponentEnv(envJson: string | undefined) {
-    const index = editingComponentIndex.value;
-    if (index === null) {
-      return;
-    }
-    const next = replaceComponent(index, { env_json: envJson });
-    if (!next) {
-      return;
-    }
-    try {
-      await updateComponents(next);
-      isComponentEnvDialogOpen.value = false;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  async function saveComponentMounts(mountsJson: string | undefined) {
-    const index = editingComponentIndex.value;
-    if (index === null) {
-      return;
-    }
-    const next = replaceComponent(index, { mounts_json: mountsJson });
-    if (!next) {
-      return;
-    }
-    try {
-      await updateComponents(next);
-      isComponentMountsDialogOpen.value = false;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  async function saveComponentRuntime(
-    config: Pick<
-      VersionComponentReq,
-      | 'command_json'
-      | 'args_json'
-      | 'healthcheck_json'
-      | 'resources_json'
-      | 'restart_policy'
-      | 'tmpfs_json'
-      | 'ulimits_json'
-    >
-  ) {
-    const index = editingComponentIndex.value;
-    if (index === null) {
-      return;
-    }
-    const next = replaceComponent(index, config);
-    if (!next) {
-      return;
-    }
-    try {
-      await updateComponents(next);
-      isComponentRuntimeDialogOpen.value = false;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
-  }
-
-  function openDeleteComponentDialog(index: number) {
-    if (!version.value?.components?.[index]) {
-      return;
-    }
-    pendingDeleteComponentIndex.value = index;
-    isDeleteComponentDialogOpen.value = true;
-  }
-
-  async function confirmDeleteComponent() {
-    const index = pendingDeleteComponentIndex.value;
-    const name = pendingDeleteComponent.value?.name;
-    if (index === null || !name) {
-      return;
-    }
-    if ((version.value?.exposes ?? []).some((item) => item.component_name === name)) {
-      toast.error(t('application.versionDetail.validation.componentHasExposes'));
-      return;
-    }
-    try {
-      await updateComponents(
-        componentsPayload().filter((_, componentIndex) => componentIndex !== index)
-      );
-      isDeleteComponentDialogOpen.value = false;
-      pendingDeleteComponentIndex.value = null;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('application.toast.updateFailed'));
-    }
+  function openComponentPage(id = 'new') {
+    router.push(`/version/${versionId}/component/${id}`);
   }
 
   function openExposeModal(index?: number) {
@@ -1072,24 +665,24 @@
     editingExposeIndex.value = index ?? null;
     exposeFormError.value = '';
     if (index === undefined || !version.value?.exposes?.[index]) {
-      exposeForm.component_name = version.value?.components?.[0]?.name || '';
-      exposeForm.protocol = 'http';
-      exposeForm.container_port = 80;
-      exposeForm.access = 'local';
+      exposeForm.component_name = '';
+      exposeForm.protocol = '';
+      exposeForm.container_port = 0;
+      exposeForm.access = '';
       exposeForm.listen_port = 0;
     } else {
       const row = version.value.exposes[index];
       exposeForm.component_name = row.component_name;
-      exposeForm.protocol = row.protocol || 'http';
+      exposeForm.protocol = row.protocol;
       exposeForm.container_port = row.container_port;
-      exposeForm.access = row.access || 'public';
-      exposeForm.listen_port = row.listen_port || 0;
+      exposeForm.access = row.access;
+      exposeForm.listen_port = row.listen_port === undefined ? 0 : row.listen_port;
     }
     isExposeDialogOpen.value = true;
   }
 
   async function saveExpose() {
-    const componentName = exposeForm.component_name.trim();
+    const componentName = exposeForm.component_name;
     const containerPort = Number(exposeForm.container_port);
     if (!componentName) {
       exposeFormError.value = t('application.validation.exposeComponentRequired');
@@ -1099,20 +692,27 @@
       exposeFormError.value = t('application.validation.exposeComponentNotFound');
       return;
     }
+    if (
+      (exposeForm.protocol !== 'http' && exposeForm.protocol !== 'tcp') ||
+      (exposeForm.access !== 'local' && exposeForm.access !== 'public')
+    ) {
+      exposeFormError.value = t('application.validation.exposeFieldsInvalid');
+      return;
+    }
     if (!Number.isInteger(containerPort) || containerPort < 1 || containerPort > 65535) {
       exposeFormError.value = t('application.validation.portRange');
       return;
     }
-    const listen = Number(exposeForm.listen_port) || 0;
-    if (listen !== 0 && (listen < 1 || listen > 65535)) {
+    const listen = Number(exposeForm.listen_port);
+    if (!Number.isInteger(listen) || (listen !== 0 && (listen < 1 || listen > 65535))) {
       exposeFormError.value = t('application.validation.portRange');
       return;
     }
     const req: VersionExposeReq = {
       component_name: componentName,
-      protocol: exposeForm.protocol || 'http',
+      protocol: exposeForm.protocol,
       container_port: containerPort,
-      access: exposeForm.access || 'public',
+      access: exposeForm.access,
       listen_port: listen > 0 ? listen : undefined,
     };
     const next = exposesPayload();
@@ -1124,7 +724,6 @@
     try {
       await executeOp(async () => {
         version.value = await applicationApi.updateVersion(versionId, {
-          components: componentsPayload(),
           exposes: next,
         });
         toast.success(t('application.toast.updateSuccess'));
@@ -1140,7 +739,6 @@
     try {
       await executeOp(async () => {
         version.value = await applicationApi.updateVersion(versionId, {
-          components: componentsPayload(),
           exposes: next,
         });
         toast.success(t('application.toast.updateSuccess'));
@@ -1173,7 +771,7 @@
   }
 
   function openForkModal() {
-    forkLabel.value = `${version.value?.label || 'v'}-copy`;
+    forkLabel.value = version.value ? `${version.value.label}-copy` : '';
     forkLabelError.value = '';
     isForkDialogOpen.value = true;
   }

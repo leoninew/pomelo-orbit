@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import json
-from typing import Literal
+from typing import Any, Literal, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class _Spec(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+SpecT = TypeVar("SpecT", bound=_Spec)
 
 
 class EnvironmentVariable(_Spec):
@@ -18,7 +20,7 @@ class EnvironmentVariable(_Spec):
 
 
 class LogicalMount(_Spec):
-    source_type: Literal["logical", "volume", "special"]
+    source_type: Literal["directory", "file", "named_volume", "special"]
     source: str
     target: str
     read_only: bool = False
@@ -26,30 +28,32 @@ class LogicalMount(_Spec):
     content_mode: Literal["seed", "sync"] | None = None
 
 
-class NetworkAttachment(_Spec):
-    aliases: list[str] = Field(default_factory=list)
-
-
 class ComponentDependency(_Spec):
-    component: str
+    name: str
     condition: Literal["service_started", "service_healthy", "service_completed_successfully"] = "service_started"
 
 
 class Healthcheck(_Spec):
+    test_mode: Literal["CMD", "CMD-SHELL"] = "CMD"
     test: list[str]
     interval: str | None = None
     timeout: str | None = None
     retries: int | None = None
     start_period: str | None = None
-
-
-class ResourceLimits(_Spec):
-    memory: str | None = None
-    cpus: str | None = None
+    start_interval: str | None = None
+    disabled: bool = False
 
 
 class ResourceSpec(_Spec):
-    limits: ResourceLimits | None = None
+    limit_cpus: str | None = None
+    limit_memory: str | None = None
+    reservation_cpus: str | None = None
+    reservation_memory: str | None = None
+
+
+class ComponentPort(_Spec):
+    host_port: int
+    container_port: int
 
 
 class TmpfsSpec(_Spec):
@@ -69,11 +73,11 @@ class VersionComponent(_Spec):
     image: str
     command: list[str] | None = None
     args: list[str] | None = None
-    environment: list[EnvironmentVariable] | None = None
-    ports: list[str] | None = None
+    env: list[EnvironmentVariable] | None = None
+    ports: list[ComponentPort] | None = None
     mounts: list[LogicalMount] | None = None
-    networks: dict[str, NetworkAttachment] | list[str] | None = None
-    depends_on: list[ComponentDependency] | None = None
+    networks: list[str] | None = None
+    dependencies: list[ComponentDependency] | None = None
     healthcheck: Healthcheck | None = None
     resources: ResourceSpec | None = None
     pull_policy: str | None = None
@@ -91,23 +95,23 @@ class VersionExpose(_Spec):
     listen_port: int | None = None
 
 
-def version_component_payload(component: VersionComponent) -> dict[str, str]:
-    values: dict[str, str | None] = {
+def version_component_payload(component: VersionComponent) -> dict[str, Any]:
+    values: dict[str, Any] = {
         "name": component.name,
         "image": component.image,
-        "command_json": _json_text(component.command),
-        "args_json": _json_text(component.args),
-        "env_json": _json_text(component.environment),
-        "ports_json": _json_text(component.ports),
-        "mounts_json": _json_text(component.mounts),
-        "networks_json": _json_text(component.networks),
-        "depends_on_json": _depends_on_json(component.depends_on),
-        "healthcheck_json": _json_text(component.healthcheck),
-        "resources_json": _json_text(component.resources),
+        "command": component.command,
+        "args": component.args,
+        "env": _model_items(component.env),
+        "ports": _model_items(component.ports),
+        "mounts": _model_items(component.mounts),
+        "networks": component.networks,
+        "dependencies": _model_items(component.dependencies),
+        "healthcheck": _model_value(component.healthcheck),
+        "resources": _model_value(component.resources),
         "pull_policy": component.pull_policy,
         "restart_policy": component.restart_policy,
-        "tmpfs_json": _json_text(component.tmpfs),
-        "ulimits_json": _json_text(component.ulimits),
+        "tmpfs": _model_items(component.tmpfs),
+        "ulimits": _model_items(component.ulimits),
     }
     return {key: value for key, value in values.items() if value is not None}
 
@@ -124,22 +128,13 @@ def version_expose_payload(expose: VersionExpose) -> dict[str, str | int]:
     return {key: value for key, value in values.items() if value is not None}
 
 
-def _depends_on_json(dependencies: list[ComponentDependency] | None) -> str | None:
-    if dependencies is None:
-        return None
-    return _json_text({item.component: {"condition": item.condition} for item in dependencies})
-
-
-def _json_text(value: object | None) -> str | None:
+def _model_items(value: list[SpecT] | None) -> list[dict[str, Any]] | None:
     if value is None:
         return None
-    if isinstance(value, BaseModel):
-        value = value.model_dump(exclude_none=True)
-    elif isinstance(value, list):
-        value = [item.model_dump(exclude_none=True) if isinstance(item, BaseModel) else item for item in value]
-    elif isinstance(value, dict):
-        value = {
-            key: item.model_dump(exclude_none=True) if isinstance(item, BaseModel) else item
-            for key, item in value.items()
-        }
-    return json.dumps(value, ensure_ascii=True, separators=(",", ":"))
+    return [item.model_dump(exclude_none=True) for item in value]
+
+
+def _model_value(value: _Spec | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    return value.model_dump(exclude_none=True)

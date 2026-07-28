@@ -313,25 +313,100 @@ type Version struct {
 }
 
 type VersionComponent struct {
-	ID              string         `db:"id"`
-	VersionID       string         `db:"version_id"`
-	Name            string         `db:"name"`
-	Image           string         `db:"image"`
-	CommandJson     sql.NullString `db:"command_json"`
-	ArgsJson        sql.NullString `db:"args_json"`
-	EnvJson         sql.NullString `db:"env_json"`
-	PortsJson       sql.NullString `db:"ports_json"`
-	MountsJson      sql.NullString `db:"mounts_json"`
-	NetworksJson    sql.NullString `db:"networks_json"`
-	DependsOnJson   sql.NullString `db:"depends_on_json"`
-	HealthcheckJson sql.NullString `db:"healthcheck_json"`
-	ResourcesJson   sql.NullString `db:"resources_json"`
-	PullPolicy      sql.NullString `db:"pull_policy"`
-	RestartPolicy   sql.NullString `db:"restart_policy"`
-	TmpfsJson       sql.NullString `db:"tmpfs_json"`
-	UlimitsJson     sql.NullString `db:"ulimits_json"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID            string         `db:"id"`
+	VersionID     string         `db:"version_id"`
+	Name          string         `db:"name"`
+	Image         string         `db:"image"`
+	PullPolicy    sql.NullString `db:"pull_policy"`
+	RestartPolicy sql.NullString `db:"restart_policy"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+}
+
+type VersionComponentArgument struct {
+	ComponentID string `db:"component_id"`
+	Kind        string `db:"kind"`
+	Position    int64  `db:"position"`
+	Value       string `db:"value"`
+}
+
+type VersionComponentDependency struct {
+	ComponentID   string `db:"component_id"`
+	DependsOnName string `db:"depends_on_name"`
+	Condition     string `db:"condition"`
+	Position      int64  `db:"position"`
+}
+
+type VersionComponentEnv struct {
+	ComponentID string `db:"component_id"`
+	EnvKey      string `db:"env_key"`
+	Value       string `db:"value"`
+	Position    int64  `db:"position"`
+}
+
+type VersionComponentHealthcheck struct {
+	ComponentID   string         `db:"component_id"`
+	TestMode      sql.NullString `db:"test_mode"`
+	Interval      sql.NullString `db:"interval"`
+	Timeout       sql.NullString `db:"timeout"`
+	Retries       sql.NullInt64  `db:"retries"`
+	StartPeriod   sql.NullString `db:"start_period"`
+	StartInterval sql.NullString `db:"start_interval"`
+	Disabled      int64          `db:"disabled"`
+}
+
+type VersionComponentHealthcheckArg struct {
+	ComponentID string `db:"component_id"`
+	Position    int64  `db:"position"`
+	Value       string `db:"value"`
+}
+
+type VersionComponentMount struct {
+	ComponentID string         `db:"component_id"`
+	SourceType  string         `db:"source_type"`
+	Source      string         `db:"source"`
+	Target      string         `db:"target"`
+	ReadOnly    int64          `db:"read_only"`
+	Content     sql.NullString `db:"content"`
+	ContentMode sql.NullString `db:"content_mode"`
+	Position    int64          `db:"position"`
+}
+
+type VersionComponentNetwork struct {
+	ComponentID string `db:"component_id"`
+	Name        string `db:"name"`
+	Position    int64  `db:"position"`
+}
+
+type VersionComponentPort struct {
+	ComponentID   string `db:"component_id"`
+	HostPort      int64  `db:"host_port"`
+	ContainerPort int64  `db:"container_port"`
+	Position      int64  `db:"position"`
+}
+
+type VersionComponentResource struct {
+	ComponentID       string         `db:"component_id"`
+	LimitCpus         sql.NullString `db:"limit_cpus"`
+	LimitMemory       sql.NullString `db:"limit_memory"`
+	ReservationCpus   sql.NullString `db:"reservation_cpus"`
+	ReservationMemory sql.NullString `db:"reservation_memory"`
+}
+
+type VersionComponentTmpf struct {
+	ComponentID string `db:"component_id"`
+	Target      string `db:"target"`
+	SizeBytes   int64  `db:"size_bytes"`
+	Mode        string `db:"mode"`
+	Position    int64  `db:"position"`
+}
+
+type VersionComponentUlimit struct {
+	ComponentID string `db:"component_id"`
+	Name        string `db:"name"`
+	Soft        int64  `db:"soft"`
+	Hard        int64  `db:"hard"`
+	Position    int64  `db:"position"`
 }
 
 type VersionExpose struct {

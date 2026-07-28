@@ -39,19 +39,8 @@ CREATE TABLE IF NOT EXISTS version_component (
     version_id TEXT NOT NULL,
     name TEXT NOT NULL,
     image TEXT NOT NULL,
-    command_json TEXT,
-    args_json TEXT,
-    env_json TEXT,
-    ports_json TEXT,
-    mounts_json TEXT,
-    networks_json TEXT,
-    depends_on_json TEXT,
-    healthcheck_json TEXT,
-    resources_json TEXT,
     pull_policy TEXT,
     restart_policy TEXT,
-    tmpfs_json TEXT,
-    ulimits_json TEXT,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (version_id) REFERENCES version(id) ON DELETE CASCADE,
@@ -59,6 +48,117 @@ CREATE TABLE IF NOT EXISTS version_component (
 );
 
 CREATE INDEX IF NOT EXISTS idx_version_component_version ON version_component(version_id);
+
+CREATE TABLE IF NOT EXISTS version_component_argument (
+    component_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('command', 'args')),
+    position INTEGER NOT NULL CHECK (position >= 0),
+    value TEXT NOT NULL,
+    PRIMARY KEY (component_id, kind, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_env (
+    component_id TEXT NOT NULL,
+    env_key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, env_key),
+    UNIQUE (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_port (
+    component_id TEXT NOT NULL,
+    host_port INTEGER NOT NULL CHECK (host_port BETWEEN 1 AND 65535),
+    container_port INTEGER NOT NULL CHECK (container_port BETWEEN 1 AND 65535),
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_mount (
+    component_id TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('directory', 'file', 'named_volume', 'special')),
+    source TEXT NOT NULL,
+    target TEXT NOT NULL,
+    read_only INTEGER NOT NULL DEFAULT 0 CHECK (read_only IN (0, 1)),
+    content TEXT,
+    content_mode TEXT CHECK (content_mode IN ('seed', 'sync')),
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_network (
+    component_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, position),
+    UNIQUE (component_id, name),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_dependency (
+    component_id TEXT NOT NULL,
+    depends_on_name TEXT NOT NULL,
+    condition TEXT NOT NULL CHECK (condition IN ('service_started', 'service_healthy', 'service_completed_successfully')),
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, depends_on_name),
+    UNIQUE (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_healthcheck (
+    component_id TEXT PRIMARY KEY,
+    test_mode TEXT CHECK (test_mode IN ('CMD', 'CMD-SHELL')),
+    interval TEXT,
+    timeout TEXT,
+    retries INTEGER,
+    start_period TEXT,
+    start_interval TEXT,
+    disabled INTEGER NOT NULL DEFAULT 0 CHECK (disabled IN (0, 1)),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_healthcheck_arg (
+    component_id TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    value TEXT NOT NULL,
+    PRIMARY KEY (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_resource (
+    component_id TEXT PRIMARY KEY,
+    limit_cpus TEXT,
+    limit_memory TEXT,
+    reservation_cpus TEXT,
+    reservation_memory TEXT,
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_tmpfs (
+    component_id TEXT NOT NULL,
+    target TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, position),
+    UNIQUE (component_id, target),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS version_component_ulimit (
+    component_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    soft INTEGER NOT NULL,
+    hard INTEGER NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (component_id, name),
+    UNIQUE (component_id, position),
+    FOREIGN KEY (component_id) REFERENCES version_component(id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS version_expose (
     id TEXT PRIMARY KEY,

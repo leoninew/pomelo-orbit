@@ -106,6 +106,126 @@ func (q *Queries) DeleteVersion(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteVersionComponent = `-- name: DeleteVersionComponent :exec
+DELETE FROM version_component
+WHERE id = ?
+`
+
+func (q *Queries) DeleteVersionComponent(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponent, id)
+	return err
+}
+
+const deleteVersionComponentArguments = `-- name: DeleteVersionComponentArguments :exec
+DELETE FROM version_component_argument
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentArguments(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentArguments, componentID)
+	return err
+}
+
+const deleteVersionComponentDependencies = `-- name: DeleteVersionComponentDependencies :exec
+DELETE FROM version_component_dependency
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentDependencies(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentDependencies, componentID)
+	return err
+}
+
+const deleteVersionComponentEnv = `-- name: DeleteVersionComponentEnv :exec
+DELETE FROM version_component_env
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentEnv(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentEnv, componentID)
+	return err
+}
+
+const deleteVersionComponentHealthcheck = `-- name: DeleteVersionComponentHealthcheck :exec
+DELETE FROM version_component_healthcheck
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentHealthcheck(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentHealthcheck, componentID)
+	return err
+}
+
+const deleteVersionComponentHealthcheckArgs = `-- name: DeleteVersionComponentHealthcheckArgs :exec
+DELETE FROM version_component_healthcheck_arg
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentHealthcheckArgs(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentHealthcheckArgs, componentID)
+	return err
+}
+
+const deleteVersionComponentMounts = `-- name: DeleteVersionComponentMounts :exec
+DELETE FROM version_component_mount
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentMounts(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentMounts, componentID)
+	return err
+}
+
+const deleteVersionComponentNetworks = `-- name: DeleteVersionComponentNetworks :exec
+DELETE FROM version_component_network
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentNetworks(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentNetworks, componentID)
+	return err
+}
+
+const deleteVersionComponentPorts = `-- name: DeleteVersionComponentPorts :exec
+DELETE FROM version_component_port
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentPorts(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentPorts, componentID)
+	return err
+}
+
+const deleteVersionComponentResource = `-- name: DeleteVersionComponentResource :exec
+DELETE FROM version_component_resource
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentResource(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentResource, componentID)
+	return err
+}
+
+const deleteVersionComponentTmpfs = `-- name: DeleteVersionComponentTmpfs :exec
+DELETE FROM version_component_tmpfs
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentTmpfs(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentTmpfs, componentID)
+	return err
+}
+
+const deleteVersionComponentUlimits = `-- name: DeleteVersionComponentUlimits :exec
+DELETE FROM version_component_ulimit
+WHERE component_id = ?
+`
+
+func (q *Queries) DeleteVersionComponentUlimits(ctx context.Context, componentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteVersionComponentUlimits, componentID)
+	return err
+}
+
 const deleteVersionComponents = `-- name: DeleteVersionComponents :exec
 DELETE FROM version_component
 WHERE version_id = ?
@@ -128,31 +248,19 @@ func (q *Queries) DeleteVersionExposes(ctx context.Context, versionID string) er
 
 const insertVersionComponent = `-- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json,
-  depends_on_json, healthcheck_json, resources_json, pull_policy, restart_policy, tmpfs_json, ulimits_json, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentParams struct {
-	ID              string         `db:"id"`
-	VersionID       string         `db:"version_id"`
-	Name            string         `db:"name"`
-	Image           string         `db:"image"`
-	CommandJson     sql.NullString `db:"command_json"`
-	ArgsJson        sql.NullString `db:"args_json"`
-	EnvJson         sql.NullString `db:"env_json"`
-	PortsJson       sql.NullString `db:"ports_json"`
-	MountsJson      sql.NullString `db:"mounts_json"`
-	NetworksJson    sql.NullString `db:"networks_json"`
-	DependsOnJson   sql.NullString `db:"depends_on_json"`
-	HealthcheckJson sql.NullString `db:"healthcheck_json"`
-	ResourcesJson   sql.NullString `db:"resources_json"`
-	PullPolicy      sql.NullString `db:"pull_policy"`
-	RestartPolicy   sql.NullString `db:"restart_policy"`
-	TmpfsJson       sql.NullString `db:"tmpfs_json"`
-	UlimitsJson     sql.NullString `db:"ulimits_json"`
-	CreatedAt       time.Time      `db:"created_at"`
-	UpdatedAt       time.Time      `db:"updated_at"`
+	ID            string         `db:"id"`
+	VersionID     string         `db:"version_id"`
+	Name          string         `db:"name"`
+	Image         string         `db:"image"`
+	PullPolicy    sql.NullString `db:"pull_policy"`
+	RestartPolicy sql.NullString `db:"restart_policy"`
+	CreatedAt     time.Time      `db:"created_at"`
+	UpdatedAt     time.Time      `db:"updated_at"`
 }
 
 func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionComponentParams) error {
@@ -161,21 +269,265 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 		arg.VersionID,
 		arg.Name,
 		arg.Image,
-		arg.CommandJson,
-		arg.ArgsJson,
-		arg.EnvJson,
-		arg.PortsJson,
-		arg.MountsJson,
-		arg.NetworksJson,
-		arg.DependsOnJson,
-		arg.HealthcheckJson,
-		arg.ResourcesJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
-		arg.TmpfsJson,
-		arg.UlimitsJson,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+	)
+	return err
+}
+
+const insertVersionComponentArgument = `-- name: InsertVersionComponentArgument :exec
+INSERT INTO version_component_argument (component_id, kind, position, value)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertVersionComponentArgumentParams struct {
+	ComponentID string `db:"component_id"`
+	Kind        string `db:"kind"`
+	Position    int64  `db:"position"`
+	Value       string `db:"value"`
+}
+
+func (q *Queries) InsertVersionComponentArgument(ctx context.Context, arg InsertVersionComponentArgumentParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentArgument,
+		arg.ComponentID,
+		arg.Kind,
+		arg.Position,
+		arg.Value,
+	)
+	return err
+}
+
+const insertVersionComponentDependency = `-- name: InsertVersionComponentDependency :exec
+INSERT INTO version_component_dependency (component_id, depends_on_name, condition, position)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertVersionComponentDependencyParams struct {
+	ComponentID   string `db:"component_id"`
+	DependsOnName string `db:"depends_on_name"`
+	Condition     string `db:"condition"`
+	Position      int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentDependency(ctx context.Context, arg InsertVersionComponentDependencyParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentDependency,
+		arg.ComponentID,
+		arg.DependsOnName,
+		arg.Condition,
+		arg.Position,
+	)
+	return err
+}
+
+const insertVersionComponentEnv = `-- name: InsertVersionComponentEnv :exec
+INSERT INTO version_component_env (component_id, env_key, value, position)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertVersionComponentEnvParams struct {
+	ComponentID string `db:"component_id"`
+	EnvKey      string `db:"env_key"`
+	Value       string `db:"value"`
+	Position    int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentEnv(ctx context.Context, arg InsertVersionComponentEnvParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentEnv,
+		arg.ComponentID,
+		arg.EnvKey,
+		arg.Value,
+		arg.Position,
+	)
+	return err
+}
+
+const insertVersionComponentHealthcheck = `-- name: InsertVersionComponentHealthcheck :exec
+INSERT INTO version_component_healthcheck (
+  component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentHealthcheckParams struct {
+	ComponentID   string         `db:"component_id"`
+	TestMode      sql.NullString `db:"test_mode"`
+	Interval      sql.NullString `db:"interval"`
+	Timeout       sql.NullString `db:"timeout"`
+	Retries       sql.NullInt64  `db:"retries"`
+	StartPeriod   sql.NullString `db:"start_period"`
+	StartInterval sql.NullString `db:"start_interval"`
+	Disabled      int64          `db:"disabled"`
+}
+
+func (q *Queries) InsertVersionComponentHealthcheck(ctx context.Context, arg InsertVersionComponentHealthcheckParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentHealthcheck,
+		arg.ComponentID,
+		arg.TestMode,
+		arg.Interval,
+		arg.Timeout,
+		arg.Retries,
+		arg.StartPeriod,
+		arg.StartInterval,
+		arg.Disabled,
+	)
+	return err
+}
+
+const insertVersionComponentHealthcheckArg = `-- name: InsertVersionComponentHealthcheckArg :exec
+INSERT INTO version_component_healthcheck_arg (component_id, position, value)
+VALUES (?, ?, ?)
+`
+
+type InsertVersionComponentHealthcheckArgParams struct {
+	ComponentID string `db:"component_id"`
+	Position    int64  `db:"position"`
+	Value       string `db:"value"`
+}
+
+func (q *Queries) InsertVersionComponentHealthcheckArg(ctx context.Context, arg InsertVersionComponentHealthcheckArgParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentHealthcheckArg, arg.ComponentID, arg.Position, arg.Value)
+	return err
+}
+
+const insertVersionComponentMount = `-- name: InsertVersionComponentMount :exec
+INSERT INTO version_component_mount (
+  component_id, source_type, source, target, read_only, content, content_mode, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentMountParams struct {
+	ComponentID string         `db:"component_id"`
+	SourceType  string         `db:"source_type"`
+	Source      string         `db:"source"`
+	Target      string         `db:"target"`
+	ReadOnly    int64          `db:"read_only"`
+	Content     sql.NullString `db:"content"`
+	ContentMode sql.NullString `db:"content_mode"`
+	Position    int64          `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentMount(ctx context.Context, arg InsertVersionComponentMountParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentMount,
+		arg.ComponentID,
+		arg.SourceType,
+		arg.Source,
+		arg.Target,
+		arg.ReadOnly,
+		arg.Content,
+		arg.ContentMode,
+		arg.Position,
+	)
+	return err
+}
+
+const insertVersionComponentNetwork = `-- name: InsertVersionComponentNetwork :exec
+INSERT INTO version_component_network (component_id, name, position)
+VALUES (?, ?, ?)
+`
+
+type InsertVersionComponentNetworkParams struct {
+	ComponentID string `db:"component_id"`
+	Name        string `db:"name"`
+	Position    int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentNetwork(ctx context.Context, arg InsertVersionComponentNetworkParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentNetwork, arg.ComponentID, arg.Name, arg.Position)
+	return err
+}
+
+const insertVersionComponentPort = `-- name: InsertVersionComponentPort :exec
+INSERT INTO version_component_port (component_id, host_port, container_port, position)
+VALUES (?, ?, ?, ?)
+`
+
+type InsertVersionComponentPortParams struct {
+	ComponentID   string `db:"component_id"`
+	HostPort      int64  `db:"host_port"`
+	ContainerPort int64  `db:"container_port"`
+	Position      int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentPort(ctx context.Context, arg InsertVersionComponentPortParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentPort,
+		arg.ComponentID,
+		arg.HostPort,
+		arg.ContainerPort,
+		arg.Position,
+	)
+	return err
+}
+
+const insertVersionComponentResource = `-- name: InsertVersionComponentResource :exec
+INSERT INTO version_component_resource (
+  component_id, limit_cpus, limit_memory, reservation_cpus, reservation_memory
+) VALUES (?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentResourceParams struct {
+	ComponentID       string         `db:"component_id"`
+	LimitCpus         sql.NullString `db:"limit_cpus"`
+	LimitMemory       sql.NullString `db:"limit_memory"`
+	ReservationCpus   sql.NullString `db:"reservation_cpus"`
+	ReservationMemory sql.NullString `db:"reservation_memory"`
+}
+
+func (q *Queries) InsertVersionComponentResource(ctx context.Context, arg InsertVersionComponentResourceParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentResource,
+		arg.ComponentID,
+		arg.LimitCpus,
+		arg.LimitMemory,
+		arg.ReservationCpus,
+		arg.ReservationMemory,
+	)
+	return err
+}
+
+const insertVersionComponentTmpfs = `-- name: InsertVersionComponentTmpfs :exec
+INSERT INTO version_component_tmpfs (component_id, target, size_bytes, mode, position)
+VALUES (?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentTmpfsParams struct {
+	ComponentID string `db:"component_id"`
+	Target      string `db:"target"`
+	SizeBytes   int64  `db:"size_bytes"`
+	Mode        string `db:"mode"`
+	Position    int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentTmpfs(ctx context.Context, arg InsertVersionComponentTmpfsParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentTmpfs,
+		arg.ComponentID,
+		arg.Target,
+		arg.SizeBytes,
+		arg.Mode,
+		arg.Position,
+	)
+	return err
+}
+
+const insertVersionComponentUlimit = `-- name: InsertVersionComponentUlimit :exec
+INSERT INTO version_component_ulimit (component_id, name, soft, hard, position)
+VALUES (?, ?, ?, ?, ?)
+`
+
+type InsertVersionComponentUlimitParams struct {
+	ComponentID string `db:"component_id"`
+	Name        string `db:"name"`
+	Soft        int64  `db:"soft"`
+	Hard        int64  `db:"hard"`
+	Position    int64  `db:"position"`
+}
+
+func (q *Queries) InsertVersionComponentUlimit(ctx context.Context, arg InsertVersionComponentUlimitParams) error {
+	_, err := q.db.ExecContext(ctx, insertVersionComponentUlimit,
+		arg.ComponentID,
+		arg.Name,
+		arg.Soft,
+		arg.Hard,
+		arg.Position,
 	)
 	return err
 }
@@ -315,6 +667,50 @@ func (q *Queries) ListVersionsPage(ctx context.Context, arg ListVersionsPagePara
 	return items, nil
 }
 
+const renameVersionComponentDependencies = `-- name: RenameVersionComponentDependencies :exec
+UPDATE version_component_dependency
+SET depends_on_name = ?1
+WHERE component_id IN (
+  SELECT id FROM version_component WHERE version_id = ?2
+)
+  AND depends_on_name = ?3
+`
+
+type RenameVersionComponentDependenciesParams struct {
+	NewName   string `db:"new_name"`
+	VersionID string `db:"version_id"`
+	OldName   string `db:"old_name"`
+}
+
+func (q *Queries) RenameVersionComponentDependencies(ctx context.Context, arg RenameVersionComponentDependenciesParams) error {
+	_, err := q.db.ExecContext(ctx, renameVersionComponentDependencies, arg.NewName, arg.VersionID, arg.OldName)
+	return err
+}
+
+const renameVersionComponentExposes = `-- name: RenameVersionComponentExposes :exec
+UPDATE version_expose
+SET component_name = ?1, updated_at = ?2
+WHERE version_id = ?3
+  AND component_name = ?4
+`
+
+type RenameVersionComponentExposesParams struct {
+	NewName   string    `db:"new_name"`
+	UpdatedAt time.Time `db:"updated_at"`
+	VersionID string    `db:"version_id"`
+	OldName   string    `db:"old_name"`
+}
+
+func (q *Queries) RenameVersionComponentExposes(ctx context.Context, arg RenameVersionComponentExposesParams) error {
+	_, err := q.db.ExecContext(ctx, renameVersionComponentExposes,
+		arg.NewName,
+		arg.UpdatedAt,
+		arg.VersionID,
+		arg.OldName,
+	)
+	return err
+}
+
 const updateVersion = `-- name: UpdateVersion :exec
 UPDATE version
 SET label = ?, status = ?, env_json = ?, note = ?, component_summary = ?, updated_at = ?
@@ -338,6 +734,33 @@ func (q *Queries) UpdateVersion(ctx context.Context, arg UpdateVersionParams) er
 		arg.EnvJson,
 		arg.Note,
 		arg.ComponentSummary,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
+const updateVersionComponent = `-- name: UpdateVersionComponent :exec
+UPDATE version_component
+SET name = ?, image = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateVersionComponentParams struct {
+	Name          string         `db:"name"`
+	Image         string         `db:"image"`
+	PullPolicy    sql.NullString `db:"pull_policy"`
+	RestartPolicy sql.NullString `db:"restart_policy"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+	ID            string         `db:"id"`
+}
+
+func (q *Queries) UpdateVersionComponent(ctx context.Context, arg UpdateVersionComponentParams) error {
+	_, err := q.db.ExecContext(ctx, updateVersionComponent,
+		arg.Name,
+		arg.Image,
+		arg.PullPolicy,
+		arg.RestartPolicy,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -385,9 +808,382 @@ func (q *Queries) VersionByID(ctx context.Context, id string) (Version, error) {
 	return i, err
 }
 
+const versionComponentArgumentsByComponent = `-- name: VersionComponentArgumentsByComponent :many
+SELECT component_id, kind, position, value
+FROM version_component_argument
+WHERE component_id = ?
+ORDER BY kind, position
+`
+
+func (q *Queries) VersionComponentArgumentsByComponent(ctx context.Context, componentID string) ([]VersionComponentArgument, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentArgumentsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentArgument
+	for rows.Next() {
+		var i VersionComponentArgument
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.Kind,
+			&i.Position,
+			&i.Value,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentByID = `-- name: VersionComponentByID :one
+SELECT id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
+FROM version_component
+WHERE id = ?
+`
+
+func (q *Queries) VersionComponentByID(ctx context.Context, id string) (VersionComponent, error) {
+	row := q.db.QueryRowContext(ctx, versionComponentByID, id)
+	var i VersionComponent
+	err := row.Scan(
+		&i.ID,
+		&i.VersionID,
+		&i.Name,
+		&i.Image,
+		&i.PullPolicy,
+		&i.RestartPolicy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const versionComponentDependenciesByComponent = `-- name: VersionComponentDependenciesByComponent :many
+SELECT component_id, depends_on_name, condition, position
+FROM version_component_dependency
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentDependenciesByComponent(ctx context.Context, componentID string) ([]VersionComponentDependency, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentDependenciesByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentDependency
+	for rows.Next() {
+		var i VersionComponentDependency
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.DependsOnName,
+			&i.Condition,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentEnvByComponent = `-- name: VersionComponentEnvByComponent :many
+SELECT component_id, env_key, value, position
+FROM version_component_env
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentEnvByComponent(ctx context.Context, componentID string) ([]VersionComponentEnv, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentEnvByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentEnv
+	for rows.Next() {
+		var i VersionComponentEnv
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.EnvKey,
+			&i.Value,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentHealthcheckArgsByComponent = `-- name: VersionComponentHealthcheckArgsByComponent :many
+SELECT component_id, position, value
+FROM version_component_healthcheck_arg
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentHealthcheckArgsByComponent(ctx context.Context, componentID string) ([]VersionComponentHealthcheckArg, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentHealthcheckArgsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentHealthcheckArg
+	for rows.Next() {
+		var i VersionComponentHealthcheckArg
+		if err := rows.Scan(&i.ComponentID, &i.Position, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentHealthcheckByComponent = `-- name: VersionComponentHealthcheckByComponent :one
+SELECT component_id, test_mode, interval, timeout, retries, start_period, start_interval, disabled
+FROM version_component_healthcheck
+WHERE component_id = ?
+`
+
+func (q *Queries) VersionComponentHealthcheckByComponent(ctx context.Context, componentID string) (VersionComponentHealthcheck, error) {
+	row := q.db.QueryRowContext(ctx, versionComponentHealthcheckByComponent, componentID)
+	var i VersionComponentHealthcheck
+	err := row.Scan(
+		&i.ComponentID,
+		&i.TestMode,
+		&i.Interval,
+		&i.Timeout,
+		&i.Retries,
+		&i.StartPeriod,
+		&i.StartInterval,
+		&i.Disabled,
+	)
+	return i, err
+}
+
+const versionComponentMountsByComponent = `-- name: VersionComponentMountsByComponent :many
+SELECT component_id, source_type, source, target, read_only, content, content_mode, position
+FROM version_component_mount
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, componentID string) ([]VersionComponentMount, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentMountsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentMount
+	for rows.Next() {
+		var i VersionComponentMount
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.SourceType,
+			&i.Source,
+			&i.Target,
+			&i.ReadOnly,
+			&i.Content,
+			&i.ContentMode,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentNetworksByComponent = `-- name: VersionComponentNetworksByComponent :many
+SELECT component_id, name, position
+FROM version_component_network
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentNetworksByComponent(ctx context.Context, componentID string) ([]VersionComponentNetwork, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentNetworksByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentNetwork
+	for rows.Next() {
+		var i VersionComponentNetwork
+		if err := rows.Scan(&i.ComponentID, &i.Name, &i.Position); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentPortsByComponent = `-- name: VersionComponentPortsByComponent :many
+SELECT component_id, host_port, container_port, position
+FROM version_component_port
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentPortsByComponent(ctx context.Context, componentID string) ([]VersionComponentPort, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentPortsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentPort
+	for rows.Next() {
+		var i VersionComponentPort
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.HostPort,
+			&i.ContainerPort,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentResourceByComponent = `-- name: VersionComponentResourceByComponent :one
+SELECT component_id, limit_cpus, limit_memory, reservation_cpus, reservation_memory
+FROM version_component_resource
+WHERE component_id = ?
+`
+
+func (q *Queries) VersionComponentResourceByComponent(ctx context.Context, componentID string) (VersionComponentResource, error) {
+	row := q.db.QueryRowContext(ctx, versionComponentResourceByComponent, componentID)
+	var i VersionComponentResource
+	err := row.Scan(
+		&i.ComponentID,
+		&i.LimitCpus,
+		&i.LimitMemory,
+		&i.ReservationCpus,
+		&i.ReservationMemory,
+	)
+	return i, err
+}
+
+const versionComponentTmpfsByComponent = `-- name: VersionComponentTmpfsByComponent :many
+SELECT component_id, target, size_bytes, mode, position
+FROM version_component_tmpfs
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentTmpfsByComponent(ctx context.Context, componentID string) ([]VersionComponentTmpf, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentTmpfsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentTmpf
+	for rows.Next() {
+		var i VersionComponentTmpf
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.Target,
+			&i.SizeBytes,
+			&i.Mode,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const versionComponentUlimitsByComponent = `-- name: VersionComponentUlimitsByComponent :many
+SELECT component_id, name, soft, hard, position
+FROM version_component_ulimit
+WHERE component_id = ?
+ORDER BY position
+`
+
+func (q *Queries) VersionComponentUlimitsByComponent(ctx context.Context, componentID string) ([]VersionComponentUlimit, error) {
+	rows, err := q.db.QueryContext(ctx, versionComponentUlimitsByComponent, componentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VersionComponentUlimit
+	for rows.Next() {
+		var i VersionComponentUlimit
+		if err := rows.Scan(
+			&i.ComponentID,
+			&i.Name,
+			&i.Soft,
+			&i.Hard,
+			&i.Position,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, command_json, args_json, env_json, ports_json, mounts_json, networks_json,
-       depends_on_json, healthcheck_json, resources_json, pull_policy, restart_policy, tmpfs_json, ulimits_json, created_at, updated_at
+SELECT id, version_id, name, image, pull_policy, restart_policy, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
 ORDER BY name
@@ -407,19 +1203,8 @@ func (q *Queries) VersionComponentsByVersion(ctx context.Context, versionID stri
 			&i.VersionID,
 			&i.Name,
 			&i.Image,
-			&i.CommandJson,
-			&i.ArgsJson,
-			&i.EnvJson,
-			&i.PortsJson,
-			&i.MountsJson,
-			&i.NetworksJson,
-			&i.DependsOnJson,
-			&i.HealthcheckJson,
-			&i.ResourcesJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,
-			&i.TmpfsJson,
-			&i.UlimitsJson,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

@@ -9,7 +9,7 @@ import (
 
 func TestValidateAndResolveRuntimeConfig(t *testing.T) {
 	versionEnv := `[{"key":"REQUIRED","value":"${API_TOKEN}"},{"key":"DEFAULTED","value":"${TIMEOUT:-30}"}]`
-	components := []model.VersionComponent{{EnvJSON: ptr(`[{"key":"COPY","value":"${API_TOKEN}"}]`)}}
+	components := []model.VersionComponent{{Env: []model.VersionComponentEnv{{Key: "COPY", Value: "${API_TOKEN}"}}}}
 
 	missing, extra, err := Validate(map[string]string{"UNUSED": "x"}, &versionEnv, components)
 	if err != nil {

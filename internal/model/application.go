@@ -49,25 +49,79 @@ func VersionComponentSummary(components []VersionComponent) string {
 
 // VersionComponent is a version-scoped specification unit (own table).
 type VersionComponent struct {
-	Id              string    `db:"id"`
-	VersionId       string    `db:"version_id"`
-	Name            string    `db:"name"`
-	Image           string    `db:"image"`
-	CommandJSON     *string   `db:"command_json"`
-	ArgsJSON        *string   `db:"args_json"`
-	EnvJSON         *string   `db:"env_json"`
-	PortsJSON       *string   `db:"ports_json"`
-	MountsJSON      *string   `db:"mounts_json"`
-	NetworksJSON    *string   `db:"networks_json"`
-	DependsOnJSON   *string   `db:"depends_on_json"`
-	HealthcheckJSON *string   `db:"healthcheck_json"`
-	ResourcesJSON   *string   `db:"resources_json"`
-	PullPolicy      *string   `db:"pull_policy"`
-	RestartPolicy   *string   `db:"restart_policy"`
-	TmpfsJSON       *string   `db:"tmpfs_json"`
-	UlimitsJSON     *string   `db:"ulimits_json"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
+	Id            string `db:"id"`
+	VersionId     string `db:"version_id"`
+	Name          string `db:"name"`
+	Image         string `db:"image"`
+	Command       []string
+	Args          []string
+	Env           []VersionComponentEnv
+	Ports         []VersionComponentPort
+	Mounts        []VersionComponentMount
+	Networks      []string
+	Dependencies  []VersionComponentDependency
+	Healthcheck   *VersionComponentHealthcheck
+	Resources     *VersionComponentResources
+	PullPolicy    *string `db:"pull_policy"`
+	RestartPolicy *string `db:"restart_policy"`
+	Tmpfs         []VersionComponentTmpfs
+	Ulimits       []VersionComponentUlimit
+	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
+}
+
+type VersionComponentEnv struct {
+	Key   string
+	Value string
+}
+
+type VersionComponentPort struct {
+	HostPort      int
+	ContainerPort int
+}
+
+type VersionComponentMount struct {
+	SourceType  string
+	Source      string
+	Target      string
+	ReadOnly    bool
+	Content     string
+	ContentMode string
+}
+
+type VersionComponentDependency struct {
+	Name      string
+	Condition string
+}
+
+type VersionComponentHealthcheck struct {
+	TestMode      string
+	Test          []string
+	Interval      *string
+	Timeout       *string
+	Retries       *int
+	StartPeriod   *string
+	StartInterval *string
+	Disabled      bool
+}
+
+type VersionComponentResources struct {
+	LimitCPUs         *string
+	LimitMemory       *string
+	ReservationCPUs   *string
+	ReservationMemory *string
+}
+
+type VersionComponentTmpfs struct {
+	Target    string
+	SizeBytes int64
+	Mode      string
+}
+
+type VersionComponentUlimit struct {
+	Name string
+	Soft int64
+	Hard int64
 }
 
 // VersionExpose is version-scoped protocol/port exposure (no domain).

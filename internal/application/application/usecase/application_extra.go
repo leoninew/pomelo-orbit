@@ -92,13 +92,10 @@ func (s Service) ensureApplicationCodeAvailable(ctx context.Context, code string
 	return nil
 }
 
-func normalizeOptionalText(value *string) *string {
+func optionalText(value *string) *string {
 	if value == nil {
 		return nil
 	}
-	text := strings.TrimSpace(*value)
-	if text == "" {
-		return nil
-	}
+	text := *value
 	return &text
 }

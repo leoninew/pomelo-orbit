@@ -2,7 +2,6 @@ package deploymentsvc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -498,21 +497,27 @@ func validateVersionComponents(components []model.VersionComponent) error {
 			return fmt.Errorf("duplicate component name %s", name)
 		}
 		names[name] = struct{}{}
-		if _, err := parseMountSpecs(component.MountsJSON); err != nil {
-			return fmt.Errorf("component %s mounts_json: %w", name, err)
+		for _, mount := range component.Mounts {
+			if err := validateMountSpec(mount); err != nil {
+				return fmt.Errorf("component %s mount: %w", name, err)
+			}
 		}
-		if _, err := parseEnvVars(component.EnvJSON); err != nil {
-			return fmt.Errorf("component %s env_json: %w", name, err)
+		if err := validateComponentRuntimeFields(component); err != nil {
+			return err
 		}
 	}
 	for _, component := range components {
-		_, depends, err := parseDependsOnJSON(component.DependsOnJSON)
-		if err != nil {
-			return fmt.Errorf("component %s depends_on_json: %w", component.Name, err)
-		}
-		for _, dep := range depends {
-			if _, ok := names[dep]; !ok {
-				return fmt.Errorf("component %s depends on missing component %s", component.Name, dep)
+		for _, dependency := range component.Dependencies {
+			if dependency.Name == component.Name {
+				return fmt.Errorf("component %s depends on itself", component.Name)
+			}
+			if _, ok := names[dependency.Name]; !ok {
+				return fmt.Errorf("component %s depends on missing component %s", component.Name, dependency.Name)
+			}
+			switch dependency.Condition {
+			case "service_started", "service_healthy", "service_completed_successfully":
+			default:
+				return fmt.Errorf("component %s dependency %s has unsupported condition", component.Name, dependency.Name)
 			}
 		}
 	}
@@ -572,42 +577,32 @@ func renderVersionComponentService(
 		"image":          component.Image,
 		"container_name": runtimeName(appCode, component.Name),
 	}
-	if command, err := parseStringSliceJSON(component.CommandJSON); err != nil {
-		return nil, nil, err
-	} else if len(command) > 0 {
-		service["command"] = command
+	if len(component.Command) > 0 {
+		service["command"] = append([]string(nil), component.Command...)
 	}
-	if args, err := parseStringSliceJSON(component.ArgsJSON); err != nil {
-		return nil, nil, err
-	} else if len(args) > 0 {
+	if len(component.Args) > 0 {
 		if existing, ok := service["command"].([]string); ok {
-			service["command"] = append(existing, args...)
+			service["command"] = append(existing, component.Args...)
 		} else {
-			service["command"] = args
+			service["command"] = append([]string(nil), component.Args...)
 		}
 	}
-	componentEnvVars, err := parseEnvVars(component.EnvJSON)
-	if err != nil {
-		return nil, nil, err
-	}
-	componentEnv := applyEnvPlaceholders(componentEnvVars, runtime)
-	env := mergeEnv(versionEnv, componentEnv)
+	runtimeEnv := componentEnv(component.Env, runtime)
+	env := mergeEnv(versionEnv, runtimeEnv)
 	if len(env) > 0 {
 		service["environment"] = env
 	}
 	if err := applyComponentRuntimeFields(service, component); err != nil {
 		return nil, nil, err
 	}
-	if ports, err := parseAnyJSON(component.PortsJSON); err != nil {
-		return nil, nil, err
-	} else if ports != nil {
+	if len(component.Ports) > 0 {
+		ports := make([]string, 0, len(component.Ports))
+		for _, port := range component.Ports {
+			ports = append(ports, fmt.Sprintf("%d:%d", port.HostPort, port.ContainerPort))
+		}
 		service["ports"] = ports
 	}
-	mounts, err := parseMountSpecs(component.MountsJSON)
-	if err != nil {
-		return nil, nil, err
-	}
-	resolved, err := resolveMountSpecs(mounts, physicalServiceDir)
+	resolved, err := resolveMountSpecs(component.Mounts, physicalServiceDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -618,30 +613,71 @@ func renderVersionComponentService(
 		}
 		service["volumes"] = volumes
 	}
-	if networks, err := parseAnyJSON(component.NetworksJSON); err != nil {
-		return nil, nil, err
-	} else if networks != nil {
-		service["networks"] = networks
+	if len(component.Networks) > 0 {
+		service["networks"] = append([]string(nil), component.Networks...)
 	}
-	if depends, _, err := parseDependsOnJSON(component.DependsOnJSON); err != nil {
-		return nil, nil, err
-	} else if depends != nil {
+	if len(component.Dependencies) > 0 {
+		depends := make(map[string]map[string]string, len(component.Dependencies))
+		for _, dependency := range component.Dependencies {
+			depends[dependency.Name] = map[string]string{"condition": dependency.Condition}
+		}
 		service["depends_on"] = depends
 	}
-	if healthcheck, err := parseAnyJSON(component.HealthcheckJSON); err != nil {
-		return nil, nil, err
-	} else if healthcheck != nil {
-		service["healthcheck"] = healthcheck
+	if component.Healthcheck != nil {
+		service["healthcheck"] = renderComponentHealthcheck(component.Healthcheck)
 	}
-	if resources, err := parseAnyJSON(component.ResourcesJSON); err != nil {
-		return nil, nil, err
-	} else if resources != nil {
-		service["deploy"] = map[string]any{"resources": resources}
+	if component.Resources != nil {
+		service["deploy"] = map[string]any{"resources": renderComponentResources(component.Resources)}
 	}
 	if component.PullPolicy != nil && *component.PullPolicy != "" {
 		service["pull_policy"] = *component.PullPolicy
 	}
 	return service, resolved, nil
+}
+
+func renderComponentHealthcheck(healthcheck *model.VersionComponentHealthcheck) map[string]any {
+	if healthcheck.Disabled {
+		return map[string]any{"disable": true}
+	}
+	result := map[string]any{"test": append([]string{healthcheck.TestMode}, healthcheck.Test...)}
+	if healthcheck.Interval != nil {
+		result["interval"] = *healthcheck.Interval
+	}
+	if healthcheck.Timeout != nil {
+		result["timeout"] = *healthcheck.Timeout
+	}
+	if healthcheck.Retries != nil {
+		result["retries"] = *healthcheck.Retries
+	}
+	if healthcheck.StartPeriod != nil {
+		result["start_period"] = *healthcheck.StartPeriod
+	}
+	if healthcheck.StartInterval != nil {
+		result["start_interval"] = *healthcheck.StartInterval
+	}
+	return result
+}
+
+func renderComponentResources(resources *model.VersionComponentResources) map[string]any {
+	result := map[string]any{}
+	if limits := resourceValues(resources.LimitCPUs, resources.LimitMemory); len(limits) > 0 {
+		result["limits"] = limits
+	}
+	if reservations := resourceValues(resources.ReservationCPUs, resources.ReservationMemory); len(reservations) > 0 {
+		result["reservations"] = reservations
+	}
+	return result
+}
+
+func resourceValues(cpus *string, memory *string) map[string]string {
+	values := map[string]string{}
+	if cpus != nil {
+		values["cpus"] = *cpus
+	}
+	if memory != nil {
+		values["memory"] = *memory
+	}
+	return values
 }
 
 func mergeEnv(base map[string]string, override map[string]string) map[string]string {
@@ -656,63 +692,6 @@ func mergeEnv(base map[string]string, override map[string]string) map[string]str
 		out[k] = v
 	}
 	return out
-}
-
-func parseStringSliceJSON(raw *string) ([]string, error) {
-	if raw == nil || *raw == "" {
-		return nil, nil
-	}
-	var out []string
-	if err := json.Unmarshal([]byte(*raw), &out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func parseDependsOnJSON(raw *string) (any, []string, error) {
-	if raw == nil || *raw == "" {
-		return nil, nil, nil
-	}
-	var names []string
-	if err := json.Unmarshal([]byte(*raw), &names); err == nil {
-		return names, names, nil
-	}
-	var configured map[string]struct {
-		Condition string `json:"condition"`
-	}
-	if err := json.Unmarshal([]byte(*raw), &configured); err != nil {
-		return nil, nil, fmt.Errorf("depends_on_json must be a string array or a condition map")
-	}
-	names = make([]string, 0, len(configured))
-	rendered := make(map[string]map[string]string, len(configured))
-	for name, dependency := range configured {
-		if strings.TrimSpace(name) == "" {
-			return nil, nil, fmt.Errorf("depends_on_json contains an empty component name")
-		}
-		switch dependency.Condition {
-		case "", "service_started", "service_healthy", "service_completed_successfully":
-		default:
-			return nil, nil, fmt.Errorf("depends_on_json component %s has unsupported condition %q", name, dependency.Condition)
-		}
-		names = append(names, name)
-		if dependency.Condition == "" {
-			rendered[name] = map[string]string{}
-		} else {
-			rendered[name] = map[string]string{"condition": dependency.Condition}
-		}
-	}
-	return rendered, names, nil
-}
-
-func parseAnyJSON(raw *string) (any, error) {
-	if raw == nil || *raw == "" {
-		return nil, nil
-	}
-	var out any
-	if err := json.Unmarshal([]byte(*raw), &out); err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func validDeploymentRouteDomain(domain string) bool {

@@ -100,6 +100,70 @@ func (h Handler) GetVersion(c *gin.Context) {
 	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
 }
 
+func (h Handler) GetVersionComponent(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	component, err := h.service.VersionComponentForUser(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"))
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := versionComponentResponse(component)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
+func (h Handler) CreateVersionComponent(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req applicationv1.VersionComponentReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	component, err := h.service.CreateVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), versionComponentInput(&req))
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := versionComponentResponse(component)
+	transportresponse.ProtoJSON(c, http.StatusCreated, &resp)
+}
+
+func (h Handler) UpdateVersionComponent(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req applicationv1.VersionComponentReq
+	if err := binding.DecodeJSON(c, &req); err != nil {
+		transportresponse.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	component, err := h.service.UpdateVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id"), versionComponentInput(&req))
+	if err != nil {
+		h.writeError(c, err)
+		return
+	}
+	resp := versionComponentResponse(component)
+	transportresponse.ProtoJSON(c, http.StatusOK, &resp)
+}
+
+func (h Handler) DeleteVersionComponent(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	if err := h.service.DeleteVersionComponent(c.Request.Context(), current.Id, c.Param("version_id"), c.Param("component_id")); err != nil {
+		h.writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (h Handler) UpdateVersion(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

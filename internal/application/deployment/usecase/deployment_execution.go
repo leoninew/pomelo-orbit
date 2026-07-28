@@ -285,7 +285,7 @@ func (s Service) renderAndDeployWithOptions(
 func countLogicalMounts(items []ResolvedMount) int {
 	n := 0
 	for _, item := range items {
-		if item.SourceType == mountSourceLogical {
+		if item.SourceType == mountSourceDirectory || item.SourceType == mountSourceFile {
 			n++
 		}
 	}

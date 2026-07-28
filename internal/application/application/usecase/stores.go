@@ -89,12 +89,28 @@ func (s stores) VersionComponentsByVersion(ctx context.Context, versionID string
 	return s.application.VersionComponentsByVersion(ctx, versionID)
 }
 
+func (s stores) VersionComponent(ctx context.Context, id string) (model.VersionComponent, error) {
+	return s.application.VersionComponent(ctx, id)
+}
+
 func (s stores) VersionExposesByVersion(ctx context.Context, versionID string) ([]model.VersionExpose, error) {
 	return s.application.VersionExposesByVersion(ctx, versionID)
 }
 
 func (s stores) ReplaceVersionComponents(ctx context.Context, versionID string, components []model.VersionComponent) error {
 	return s.application.ReplaceVersionComponents(ctx, versionID, components)
+}
+
+func (s stores) CreateVersionComponent(ctx context.Context, component model.VersionComponent) error {
+	return s.application.CreateVersionComponent(ctx, component)
+}
+
+func (s stores) UpdateVersionComponent(ctx context.Context, component model.VersionComponent, oldName string) error {
+	return s.application.UpdateVersionComponent(ctx, component, oldName)
+}
+
+func (s stores) DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error {
+	return s.application.DeleteVersionComponent(ctx, component)
 }
 
 func (s stores) ReplaceVersionExposes(ctx context.Context, versionID string, exposes []model.VersionExpose) error {

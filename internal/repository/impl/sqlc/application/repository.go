@@ -3,6 +3,7 @@ package applicationrepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -289,9 +290,25 @@ func (r Repository) VersionComponentsByVersion(ctx context.Context, versionId st
 	}
 	items := make([]model.VersionComponent, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, componentFrom(row))
+		component, err := r.componentFromRow(ctx, r.q(ctx), row)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, component)
 	}
 	return items, nil
+}
+
+func (r Repository) VersionComponent(ctx context.Context, id string) (model.VersionComponent, error) {
+	row, err := r.q(ctx).VersionComponentByID(ctx, id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component %s: %w", id, sqlcommon.TranslateError(err))
+	}
+	component, err := r.componentFromRow(ctx, r.q(ctx), row)
+	if err != nil {
+		return model.VersionComponent{}, err
+	}
+	return component, nil
 }
 
 func (r Repository) VersionExposesByVersion(ctx context.Context, versionId string) ([]model.VersionExpose, error) {
@@ -319,35 +336,9 @@ func (r Repository) replaceVersionComponents(ctx context.Context, versionId stri
 	}
 	now := time.Now().UTC()
 	for _, c := range components {
-		createdAt, updatedAt := c.CreatedAt, c.UpdatedAt
-		if createdAt.IsZero() {
-			createdAt = now
-		}
-		if updatedAt.IsZero() {
-			updatedAt = now
-		}
-		if err := q.InsertVersionComponent(ctx, applicationsqlc.InsertVersionComponentParams{
-			ID:              c.Id,
-			VersionID:       versionId,
-			Name:            c.Name,
-			Image:           c.Image,
-			CommandJson:     dbmodel.NullString(c.CommandJSON),
-			ArgsJson:        dbmodel.NullString(c.ArgsJSON),
-			EnvJson:         dbmodel.NullString(c.EnvJSON),
-			PortsJson:       dbmodel.NullString(c.PortsJSON),
-			MountsJson:      dbmodel.NullString(c.MountsJSON),
-			NetworksJson:    dbmodel.NullString(c.NetworksJSON),
-			DependsOnJson:   dbmodel.NullString(c.DependsOnJSON),
-			HealthcheckJson: dbmodel.NullString(c.HealthcheckJSON),
-			ResourcesJson:   dbmodel.NullString(c.ResourcesJSON),
-			PullPolicy:      dbmodel.NullString(c.PullPolicy),
-			RestartPolicy:   dbmodel.NullString(c.RestartPolicy),
-			TmpfsJson:       dbmodel.NullString(c.TmpfsJSON),
-			UlimitsJson:     dbmodel.NullString(c.UlimitsJSON),
-			CreatedAt:       createdAt,
-			UpdatedAt:       updatedAt,
-		}); err != nil {
-			return fmt.Errorf("insert version component %s: %w", c.Name, err)
+		c.VersionId = versionId
+		if err := insertVersionComponent(ctx, q, c, now); err != nil {
+			return err
 		}
 	}
 	if err := q.UpdateVersionComponentSummary(ctx, applicationsqlc.UpdateVersionComponentSummaryParams{
@@ -358,6 +349,62 @@ func (r Repository) replaceVersionComponents(ctx context.Context, versionId stri
 		return fmt.Errorf("update version component summary %s: %w", versionId, err)
 	}
 	return nil
+}
+
+func (r Repository) CreateVersionComponent(ctx context.Context, component model.VersionComponent) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := insertVersionComponent(txCtx, q, component, time.Now().UTC()); err != nil {
+			return err
+		}
+		return r.updateComponentSummary(txCtx, q, component.VersionId)
+	})
+}
+
+func (r Repository) UpdateVersionComponent(ctx context.Context, component model.VersionComponent, oldName string) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		now := time.Now().UTC()
+		if err := q.UpdateVersionComponent(txCtx, applicationsqlc.UpdateVersionComponentParams{
+			Name:          component.Name,
+			Image:         component.Image,
+			PullPolicy:    dbmodel.NullString(component.PullPolicy),
+			RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+			UpdatedAt:     now,
+			ID:            component.Id,
+		}); err != nil {
+			return fmt.Errorf("update version component %s: %w", component.Id, err)
+		}
+		if err := deleteVersionComponentConfig(txCtx, q, component.Id); err != nil {
+			return err
+		}
+		if err := insertVersionComponentConfig(txCtx, q, component); err != nil {
+			return err
+		}
+		if oldName != component.Name {
+			if err := q.RenameVersionComponentExposes(txCtx, applicationsqlc.RenameVersionComponentExposesParams{
+				NewName: component.Name, UpdatedAt: now, VersionID: component.VersionId, OldName: oldName,
+			}); err != nil {
+				return fmt.Errorf("rename version component exposes: %w", err)
+			}
+			if err := q.RenameVersionComponentDependencies(txCtx, applicationsqlc.RenameVersionComponentDependenciesParams{
+				NewName: component.Name, VersionID: component.VersionId, OldName: oldName,
+			}); err != nil {
+				return fmt.Errorf("rename version component dependencies: %w", err)
+			}
+		}
+		return r.updateComponentSummary(txCtx, q, component.VersionId)
+	})
+}
+
+func (r Repository) DeleteVersionComponent(ctx context.Context, component model.VersionComponent) error {
+	return tx.RunInTx(ctx, r.db, func(txCtx context.Context) error {
+		q := r.q(txCtx)
+		if err := q.DeleteVersionComponent(txCtx, component.Id); err != nil {
+			return fmt.Errorf("delete version component %s: %w", component.Id, err)
+		}
+		return r.updateComponentSummary(txCtx, q, component.VersionId)
+	})
 }
 
 func (r Repository) ReplaceVersionExposes(ctx context.Context, versionId string, exposes []model.VersionExpose) error {
@@ -432,28 +479,250 @@ func versionFrom(row applicationsqlc.Version) model.Version {
 	}
 }
 
-func componentFrom(row applicationsqlc.VersionComponent) model.VersionComponent {
-	return model.VersionComponent{
-		Id:              row.ID,
-		VersionId:       row.VersionID,
-		Name:            row.Name,
-		Image:           row.Image,
-		CommandJSON:     dbmodel.StringPtr(row.CommandJson),
-		ArgsJSON:        dbmodel.StringPtr(row.ArgsJson),
-		EnvJSON:         dbmodel.StringPtr(row.EnvJson),
-		PortsJSON:       dbmodel.StringPtr(row.PortsJson),
-		MountsJSON:      dbmodel.StringPtr(row.MountsJson),
-		NetworksJSON:    dbmodel.StringPtr(row.NetworksJson),
-		DependsOnJSON:   dbmodel.StringPtr(row.DependsOnJson),
-		HealthcheckJSON: dbmodel.StringPtr(row.HealthcheckJson),
-		ResourcesJSON:   dbmodel.StringPtr(row.ResourcesJson),
-		PullPolicy:      dbmodel.StringPtr(row.PullPolicy),
-		RestartPolicy:   dbmodel.StringPtr(row.RestartPolicy),
-		TmpfsJSON:       dbmodel.StringPtr(row.TmpfsJson),
-		UlimitsJSON:     dbmodel.StringPtr(row.UlimitsJson),
-		CreatedAt:       row.CreatedAt,
-		UpdatedAt:       row.UpdatedAt,
+func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Queries, row applicationsqlc.VersionComponent) (model.VersionComponent, error) {
+	component := model.VersionComponent{
+		Id: row.ID, VersionId: row.VersionID, Name: row.Name, Image: row.Image,
+		PullPolicy: dbmodel.StringPtr(row.PullPolicy), RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
+	arguments, err := q.VersionComponentArgumentsByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component arguments %s: %w", component.Id, err)
+	}
+	for _, argument := range arguments {
+		switch argument.Kind {
+		case "command":
+			component.Command = append(component.Command, argument.Value)
+		case "args":
+			component.Args = append(component.Args, argument.Value)
+		}
+	}
+	env, err := q.VersionComponentEnvByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component env %s: %w", component.Id, err)
+	}
+	for _, item := range env {
+		component.Env = append(component.Env, model.VersionComponentEnv{Key: item.EnvKey, Value: item.Value})
+	}
+	ports, err := q.VersionComponentPortsByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component ports %s: %w", component.Id, err)
+	}
+	for _, item := range ports {
+		component.Ports = append(component.Ports, model.VersionComponentPort{HostPort: int(item.HostPort), ContainerPort: int(item.ContainerPort)})
+	}
+	mounts, err := q.VersionComponentMountsByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component mounts %s: %w", component.Id, err)
+	}
+	for _, item := range mounts {
+		component.Mounts = append(component.Mounts, model.VersionComponentMount{
+			SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: dbmodel.IntBool(item.ReadOnly),
+			Content: ptrValue(dbmodel.StringPtr(item.Content)), ContentMode: ptrValue(dbmodel.StringPtr(item.ContentMode)),
+		})
+	}
+	networks, err := q.VersionComponentNetworksByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component networks %s: %w", component.Id, err)
+	}
+	for _, item := range networks {
+		component.Networks = append(component.Networks, item.Name)
+	}
+	dependencies, err := q.VersionComponentDependenciesByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component dependencies %s: %w", component.Id, err)
+	}
+	for _, item := range dependencies {
+		component.Dependencies = append(component.Dependencies, model.VersionComponentDependency{Name: item.DependsOnName, Condition: item.Condition})
+	}
+	healthcheck, err := q.VersionComponentHealthcheckByComponent(ctx, component.Id)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return model.VersionComponent{}, fmt.Errorf("load version component healthcheck %s: %w", component.Id, err)
+	}
+	if err == nil {
+		component.Healthcheck = &model.VersionComponentHealthcheck{
+			TestMode: healthcheck.TestMode.String, Interval: dbmodel.StringPtr(healthcheck.Interval), Timeout: dbmodel.StringPtr(healthcheck.Timeout),
+			Retries: dbmodel.IntPtrFromNullInt64(healthcheck.Retries), StartPeriod: dbmodel.StringPtr(healthcheck.StartPeriod),
+			StartInterval: dbmodel.StringPtr(healthcheck.StartInterval), Disabled: dbmodel.IntBool(healthcheck.Disabled),
+		}
+		args, argsErr := q.VersionComponentHealthcheckArgsByComponent(ctx, component.Id)
+		if argsErr != nil {
+			return model.VersionComponent{}, fmt.Errorf("load version component healthcheck arguments %s: %w", component.Id, argsErr)
+		}
+		for _, item := range args {
+			component.Healthcheck.Test = append(component.Healthcheck.Test, item.Value)
+		}
+	}
+	resource, err := q.VersionComponentResourceByComponent(ctx, component.Id)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return model.VersionComponent{}, fmt.Errorf("load version component resource %s: %w", component.Id, err)
+	}
+	if err == nil {
+		component.Resources = &model.VersionComponentResources{
+			LimitCPUs: dbmodel.StringPtr(resource.LimitCpus), LimitMemory: dbmodel.StringPtr(resource.LimitMemory),
+			ReservationCPUs: dbmodel.StringPtr(resource.ReservationCpus), ReservationMemory: dbmodel.StringPtr(resource.ReservationMemory),
+		}
+	}
+	tmpfs, err := q.VersionComponentTmpfsByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component tmpfs %s: %w", component.Id, err)
+	}
+	for _, item := range tmpfs {
+		component.Tmpfs = append(component.Tmpfs, model.VersionComponentTmpfs{Target: item.Target, SizeBytes: item.SizeBytes, Mode: item.Mode})
+	}
+	ulimits, err := q.VersionComponentUlimitsByComponent(ctx, component.Id)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("load version component ulimits %s: %w", component.Id, err)
+	}
+	for _, item := range ulimits {
+		component.Ulimits = append(component.Ulimits, model.VersionComponentUlimit{Name: item.Name, Soft: item.Soft, Hard: item.Hard})
+	}
+	return component, nil
+}
+
+func insertVersionComponent(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent, fallback time.Time) error {
+	createdAt, updatedAt := component.CreatedAt, component.UpdatedAt
+	if createdAt.IsZero() {
+		createdAt = fallback
+	}
+	if updatedAt.IsZero() {
+		updatedAt = fallback
+	}
+	if err := q.InsertVersionComponent(ctx, applicationsqlc.InsertVersionComponentParams{
+		ID: component.Id, VersionID: component.VersionId, Name: component.Name, Image: component.Image,
+		PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		CreatedAt: createdAt, UpdatedAt: updatedAt,
+	}); err != nil {
+		return fmt.Errorf("insert version component %s: %w", component.Name, err)
+	}
+	return insertVersionComponentConfig(ctx, q, component)
+}
+
+func insertVersionComponentConfig(ctx context.Context, q *applicationsqlc.Queries, component model.VersionComponent) error {
+	for position, value := range component.Command {
+		if err := q.InsertVersionComponentArgument(ctx, applicationsqlc.InsertVersionComponentArgumentParams{ComponentID: component.Id, Kind: "command", Position: int64(position), Value: value}); err != nil {
+			return fmt.Errorf("insert component command: %w", err)
+		}
+	}
+	for position, value := range component.Args {
+		if err := q.InsertVersionComponentArgument(ctx, applicationsqlc.InsertVersionComponentArgumentParams{ComponentID: component.Id, Kind: "args", Position: int64(position), Value: value}); err != nil {
+			return fmt.Errorf("insert component args: %w", err)
+		}
+	}
+	for position, item := range component.Env {
+		if err := q.InsertVersionComponentEnv(ctx, applicationsqlc.InsertVersionComponentEnvParams{ComponentID: component.Id, EnvKey: item.Key, Value: item.Value, Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component env: %w", err)
+		}
+	}
+	for position, item := range component.Ports {
+		if err := q.InsertVersionComponentPort(ctx, applicationsqlc.InsertVersionComponentPortParams{ComponentID: component.Id, HostPort: int64(item.HostPort), ContainerPort: int64(item.ContainerPort), Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component port: %w", err)
+		}
+	}
+	for position, item := range component.Mounts {
+		if err := q.InsertVersionComponentMount(ctx, applicationsqlc.InsertVersionComponentMountParams{
+			ComponentID: component.Id, SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: dbmodel.BoolInt(item.ReadOnly),
+			Content: optionalText(item.Content), ContentMode: optionalText(item.ContentMode), Position: int64(position),
+		}); err != nil {
+			return fmt.Errorf("insert component mount: %w", err)
+		}
+	}
+	for position, name := range component.Networks {
+		if err := q.InsertVersionComponentNetwork(ctx, applicationsqlc.InsertVersionComponentNetworkParams{ComponentID: component.Id, Name: name, Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component network: %w", err)
+		}
+	}
+	for position, item := range component.Dependencies {
+		if err := q.InsertVersionComponentDependency(ctx, applicationsqlc.InsertVersionComponentDependencyParams{ComponentID: component.Id, DependsOnName: item.Name, Condition: item.Condition, Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component dependency: %w", err)
+		}
+	}
+	if component.Healthcheck != nil {
+		if err := q.InsertVersionComponentHealthcheck(ctx, applicationsqlc.InsertVersionComponentHealthcheckParams{
+			ComponentID: component.Id, TestMode: optionalText(component.Healthcheck.TestMode), Interval: dbmodel.NullString(component.Healthcheck.Interval),
+			Timeout: dbmodel.NullString(component.Healthcheck.Timeout), Retries: dbmodel.NullInt64FromIntPtr(component.Healthcheck.Retries),
+			StartPeriod: dbmodel.NullString(component.Healthcheck.StartPeriod), StartInterval: dbmodel.NullString(component.Healthcheck.StartInterval),
+			Disabled: dbmodel.BoolInt(component.Healthcheck.Disabled),
+		}); err != nil {
+			return fmt.Errorf("insert component healthcheck: %w", err)
+		}
+		for position, value := range component.Healthcheck.Test {
+			if err := q.InsertVersionComponentHealthcheckArg(ctx, applicationsqlc.InsertVersionComponentHealthcheckArgParams{ComponentID: component.Id, Position: int64(position), Value: value}); err != nil {
+				return fmt.Errorf("insert component healthcheck argument: %w", err)
+			}
+		}
+	}
+	if component.Resources != nil {
+		if err := q.InsertVersionComponentResource(ctx, applicationsqlc.InsertVersionComponentResourceParams{
+			ComponentID: component.Id, LimitCpus: dbmodel.NullString(component.Resources.LimitCPUs), LimitMemory: dbmodel.NullString(component.Resources.LimitMemory),
+			ReservationCpus: dbmodel.NullString(component.Resources.ReservationCPUs), ReservationMemory: dbmodel.NullString(component.Resources.ReservationMemory),
+		}); err != nil {
+			return fmt.Errorf("insert component resources: %w", err)
+		}
+	}
+	for position, item := range component.Tmpfs {
+		if err := q.InsertVersionComponentTmpfs(ctx, applicationsqlc.InsertVersionComponentTmpfsParams{ComponentID: component.Id, Target: item.Target, SizeBytes: item.SizeBytes, Mode: item.Mode, Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component tmpfs: %w", err)
+		}
+	}
+	for position, item := range component.Ulimits {
+		if err := q.InsertVersionComponentUlimit(ctx, applicationsqlc.InsertVersionComponentUlimitParams{ComponentID: component.Id, Name: item.Name, Soft: item.Soft, Hard: item.Hard, Position: int64(position)}); err != nil {
+			return fmt.Errorf("insert component ulimit: %w", err)
+		}
+	}
+	return nil
+}
+
+func deleteVersionComponentConfig(ctx context.Context, q *applicationsqlc.Queries, componentId string) error {
+	for _, deleteConfig := range []func(context.Context, string) error{
+		q.DeleteVersionComponentArguments,
+		q.DeleteVersionComponentEnv,
+		q.DeleteVersionComponentPorts,
+		q.DeleteVersionComponentMounts,
+		q.DeleteVersionComponentNetworks,
+		q.DeleteVersionComponentDependencies,
+		q.DeleteVersionComponentHealthcheckArgs,
+		q.DeleteVersionComponentHealthcheck,
+		q.DeleteVersionComponentResource,
+		q.DeleteVersionComponentTmpfs,
+		q.DeleteVersionComponentUlimits,
+	} {
+		if err := deleteConfig(ctx, componentId); err != nil {
+			return fmt.Errorf("delete component config %s: %w", componentId, err)
+		}
+	}
+	return nil
+}
+
+func (r Repository) updateComponentSummary(ctx context.Context, q *applicationsqlc.Queries, versionId string) error {
+	rows, err := q.VersionComponentsByVersion(ctx, versionId)
+	if err != nil {
+		return fmt.Errorf("list version components for summary %s: %w", versionId, err)
+	}
+	components := make([]model.VersionComponent, 0, len(rows))
+	for _, row := range rows {
+		components = append(components, model.VersionComponent{Name: row.Name, Image: row.Image})
+	}
+	if err := q.UpdateVersionComponentSummary(ctx, applicationsqlc.UpdateVersionComponentSummaryParams{
+		ComponentSummary: model.VersionComponentSummary(components), UpdatedAt: time.Now().UTC(), ID: versionId,
+	}); err != nil {
+		return fmt.Errorf("update version component summary %s: %w", versionId, err)
+	}
+	return nil
+}
+
+func ptrValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func optionalText(value string) sql.NullString {
+	if value == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: value, Valid: true}
 }
 
 func exposeFrom(row applicationsqlc.VersionExpose) model.VersionExpose {

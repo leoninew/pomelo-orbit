@@ -5,19 +5,19 @@ package orbit.v1.application;
 message VersionComponentReq {
   string name = 1;
   string image = 2;
-  optional string command_json = 3;
-  optional string args_json = 4;
-  optional string env_json = 5;
-  optional string ports_json = 6;
-  optional string mounts_json = 7;
-  optional string networks_json = 8;
-  optional string depends_on_json = 9;
-  optional string healthcheck_json = 10;
-  optional string resources_json = 11;
+  repeated string command = 3;
+  repeated string args = 4;
+  repeated ComponentEnv env = 5;
+  repeated ComponentPort ports = 6;
+  repeated ComponentMount mounts = 7;
+  repeated string networks = 8;
+  repeated ComponentDependency dependencies = 9;
+  ComponentHealthcheck healthcheck = 10;
+  ComponentResources resources = 11;
   optional string pull_policy = 12;
   optional string restart_policy = 13;
-  optional string tmpfs_json = 14;
-  optional string ulimits_json = 15;
+  repeated ComponentTmpfs tmpfs = 14;
+  repeated ComponentUlimit ulimits = 15;
 }
 
 message VersionComponentResp {
@@ -25,21 +25,75 @@ message VersionComponentResp {
   string version_id = 2;
   string name = 3;
   string image = 4;
-  optional string command_json = 5;
-  optional string args_json = 6;
-  optional string env_json = 7;
-  optional string ports_json = 8;
-  optional string mounts_json = 9;
-  optional string networks_json = 10;
-  optional string depends_on_json = 11;
-  optional string healthcheck_json = 12;
-  optional string resources_json = 13;
+  repeated string command = 5;
+  repeated string args = 6;
+  repeated ComponentEnv env = 7;
+  repeated ComponentPort ports = 8;
+  repeated ComponentMount mounts = 9;
+  repeated string networks = 10;
+  repeated ComponentDependency dependencies = 11;
+  ComponentHealthcheck healthcheck = 12;
+  ComponentResources resources = 13;
   optional string pull_policy = 14;
   string created_at = 15;
   string updated_at = 16;
   optional string restart_policy = 17;
-  optional string tmpfs_json = 18;
-  optional string ulimits_json = 19;
+  repeated ComponentTmpfs tmpfs = 18;
+  repeated ComponentUlimit ulimits = 19;
+}
+
+message ComponentEnv {
+  string key = 1;
+  string value = 2;
+}
+
+message ComponentPort {
+  int32 host_port = 1;
+  int32 container_port = 2;
+}
+
+message ComponentMount {
+  string source_type = 1;
+  string source = 2;
+  string target = 3;
+  bool read_only = 4;
+  optional string content = 5;
+  optional string content_mode = 6;
+}
+
+message ComponentDependency {
+  string name = 1;
+  string condition = 2;
+}
+
+message ComponentHealthcheck {
+  string test_mode = 1;
+  repeated string test = 2;
+  optional string interval = 3;
+  optional string timeout = 4;
+  optional int32 retries = 5;
+  optional string start_period = 6;
+  optional string start_interval = 7;
+  bool disabled = 8;
+}
+
+message ComponentResources {
+  optional string limit_cpus = 1;
+  optional string limit_memory = 2;
+  optional string reservation_cpus = 3;
+  optional string reservation_memory = 4;
+}
+
+message ComponentTmpfs {
+  string target = 1;
+  int64 size_bytes = 2;
+  string mode = 3;
+}
+
+message ComponentUlimit {
+  string name = 1;
+  int64 soft = 2;
+  int64 hard = 3;
 }
 
 message VersionExposeReq {
@@ -79,7 +133,7 @@ message VersionUpdateReq {
   optional string label = 1;
   optional string env_json = 2;
   optional string note = 3;
-  repeated VersionComponentReq components = 4;
+  reserved 4;
   repeated VersionExposeReq exposes = 5;
 }
 

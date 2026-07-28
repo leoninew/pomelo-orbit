@@ -2,7 +2,6 @@ package gatewaysvc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -80,52 +79,42 @@ func buildManagedGatewayComponent(cfg model.GatewayConfig, existing []model.Vers
 	if cfg.Image == nil || strings.TrimSpace(*cfg.Image) == "" {
 		return model.VersionComponent{}, fmt.Errorf("gateway image is required")
 	}
-	ports := []string{"80:80", "443:443", "8080:8080"}
+	ports := []model.VersionComponentPort{
+		{HostPort: 80, ContainerPort: 80},
+		{HostPort: 443, ContainerPort: 443},
+		{HostPort: 8080, ContainerPort: 8080},
+	}
 	for _, listen := range tcpListens {
-		ports = append(ports, fmt.Sprintf("%d:%d", listen, listen))
+		ports = append(ports, model.VersionComponentPort{HostPort: listen, ContainerPort: listen})
 	}
-	portsJSON, err := json.Marshal(ports)
-	if err != nil {
-		return model.VersionComponent{}, fmt.Errorf("marshal ports: %w", err)
-	}
-	portsRaw := string(portsJSON)
-	var previousMounts []mountSpec
+	var previousMounts []model.VersionComponentMount
 	for _, component := range existing {
 		if component.Name != gatewayManagedComponentName {
 			continue
 		}
-		parsed, err := parseMountSpecs(component.MountsJSON)
-		if err != nil {
-			return model.VersionComponent{}, fmt.Errorf("existing managed component mounts: %w", err)
-		}
-		previousMounts = parsed
+		previousMounts = component.Mounts
 		break
 	}
 	mounts := mergeManagedGatewayMounts(previousMounts, buildManagedGatewayMounts(cfg, tcpListens))
-	mountsJSON, err := json.Marshal(mounts)
-	if err != nil {
-		return model.VersionComponent{}, fmt.Errorf("marshal mounts: %w", err)
-	}
-	mountsRaw := string(mountsJSON)
 	return model.VersionComponent{
 		Name: gatewayManagedComponentName, Image: strings.TrimSpace(*cfg.Image),
-		PortsJSON: &portsRaw, MountsJSON: &mountsRaw,
+		Ports: ports, Mounts: mounts,
 	}, nil
 }
 
-func buildManagedGatewayMounts(cfg model.GatewayConfig, tcpListens []int) []mountSpec {
-	return []mountSpec{
+func buildManagedGatewayMounts(cfg model.GatewayConfig, tcpListens []int) []model.VersionComponentMount {
+	return []model.VersionComponentMount{
 		{SourceType: mountSourceSpecial, Source: specialDockerSock, Target: gatewayMountTargetDockerSock, ReadOnly: true},
-		{SourceType: mountSourceLogical, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildTraefikStaticConfig(cfg, tcpListens), ContentMode: contentModeSync},
-		{SourceType: mountSourceLogical, Source: "acme.json", Target: gatewayMountTargetAcmeJSON, Content: "{}", ContentMode: contentModeSeed},
+		{SourceType: mountSourceFile, Source: "traefik.yml", Target: gatewayMountTargetTraefikYml, Content: buildTraefikStaticConfig(cfg, tcpListens), ContentMode: contentModeSync},
+		{SourceType: mountSourceFile, Source: "acme.json", Target: gatewayMountTargetAcmeJSON, Content: "{}", ContentMode: contentModeSeed},
 	}
 }
 
-func mergeManagedGatewayMounts(existing []mountSpec, managed []mountSpec) []mountSpec {
+func mergeManagedGatewayMounts(existing []model.VersionComponentMount, managed []model.VersionComponentMount) []model.VersionComponentMount {
 	managedTargets := map[string]struct{}{
 		gatewayMountTargetDockerSock: {}, gatewayMountTargetTraefikYml: {}, gatewayMountTargetAcmeJSON: {},
 	}
-	out := make([]mountSpec, 0, len(existing)+len(managed))
+	out := make([]model.VersionComponentMount, 0, len(existing)+len(managed))
 	for _, mount := range existing {
 		if _, isManaged := managedTargets[mount.Target]; !isManaged {
 			out = append(out, mount)
@@ -207,20 +196,9 @@ func CompiledTCPListens(components []model.VersionComponent) []int {
 		if component.Name != gatewayManagedComponentName {
 			continue
 		}
-		var ports []string
-		if component.PortsJSON == nil || json.Unmarshal([]byte(*component.PortsJSON), &ports) != nil {
-			return nil
-		}
-		listens := make([]int, 0, len(ports))
-		for _, port := range ports {
-			parts := strings.Split(port, ":")
-			if len(parts) != 2 {
-				continue
-			}
-			listen, err := strconv.Atoi(strings.TrimSpace(parts[0]))
-			if err == nil {
-				listens = append(listens, listen)
-			}
+		listens := make([]int, 0, len(component.Ports))
+		for _, port := range component.Ports {
+			listens = append(listens, port.HostPort)
 		}
 		return normalizeTCPListens(listens)
 	}

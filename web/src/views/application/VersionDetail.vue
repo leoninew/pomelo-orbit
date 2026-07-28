@@ -132,7 +132,8 @@
             {{ t('application.detail.actions.addComponent') }}
           </button>
         </div>
-        <div class="overflow-x-auto">
+        <AppEmptyState v-if="(version.components ?? []).length === 0" size="compact" />
+        <div v-else class="overflow-x-auto">
           <table class="app-table-detail min-w-[960px]">
             <thead>
               <tr>
@@ -144,11 +145,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="(version.components ?? []).length === 0">
-                <td :colspan="isEditable ? 5 : 4" class="text-center text-muted-foreground">
-                  {{ t('application.versionDetail.empty.components') }}
-                </td>
-              </tr>
               <tr v-for="(comp, index) in version.components" :key="comp.id || index">
                 <td class="text-foreground">{{ comp.name }}</td>
                 <td class="max-w-xs truncate text-xs text-muted-foreground" :title="comp.image">
@@ -222,7 +218,8 @@
             {{ t('application.detail.actions.addExpose') }}
           </button>
         </div>
-        <div class="overflow-x-auto">
+        <AppEmptyState v-if="(version.exposes ?? []).length === 0" size="compact" />
+        <div v-else class="overflow-x-auto">
           <table class="app-table-detail min-w-[720px]">
             <thead>
               <tr>
@@ -235,11 +232,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="(version.exposes ?? []).length === 0">
-                <td :colspan="isEditable ? 6 : 5" class="text-center text-muted-foreground">
-                  {{ t('application.versionDetail.empty.exposes') }}
-                </td>
-              </tr>
               <tr v-for="(row, index) in version.exposes" :key="row.id || index">
                 <td class="text-foreground">{{ row.component_name }}</td>
                 <td>
@@ -615,6 +607,7 @@
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

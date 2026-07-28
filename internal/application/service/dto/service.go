@@ -4,12 +4,11 @@ import "gitee.com/leoninew/PomeloOrbit-go/internal/model"
 
 // ServiceView is the runtime binding for an application instance, with display labels.
 type ServiceView struct {
-	Service                    model.Service
-	ApplicationName            string
-	ApplicationCode            string
-	ApplicationKind            string
-	VersionLabel               string
-	LastSuccessfulVersionLabel *string
+	Service         model.Service
+	ApplicationName string
+	ApplicationCode string
+	ApplicationKind string
+	VersionLabel    string
 }
 
 // ServiceListInput filters project-scoped service listing.

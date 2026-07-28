@@ -101,7 +101,9 @@
             {{ t('application.detail.actions.createVersion') }}
           </button>
         </div>
-        <div class="overflow-x-auto">
+        <AppSpinner v-if="versionListLoading" class="py-8" />
+        <AppEmptyState v-else-if="versions.length === 0" size="compact" />
+        <div v-else class="overflow-x-auto">
           <table class="app-table-detail min-w-[880px]">
             <thead>
               <tr>
@@ -114,16 +116,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="versionListLoading">
-                <td colspan="6" class="text-center text-muted-foreground">
-                  <AppSpinner />
-                </td>
-              </tr>
-              <tr v-else-if="versions.length === 0">
-                <td colspan="6" class="text-center text-muted-foreground">
-                  {{ t('application.detail.empty.versions') }}
-                </td>
-              </tr>
               <tr v-for="version in versions" :key="version.id">
                 <td class="text-foreground">
                   <router-link :to="`/version/${version.id}`" class="app-link">
@@ -410,6 +402,7 @@
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';

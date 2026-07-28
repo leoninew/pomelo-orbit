@@ -89,7 +89,7 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId string,
 	}
 	items := make([]model.ServiceListItem, 0, len(rows))
 	for _, row := range rows {
-		item, err := serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.RuntimeConfigJson, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel)
+		item, err := serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.RuntimeConfigJson, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel)
 		if err != nil {
 			return repository.Page[model.ServiceListItem]{}, err
 		}
@@ -103,7 +103,7 @@ func (r Repository) ServiceListItem(ctx context.Context, id string) (model.Servi
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	item, err := serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.RuntimeConfigJson, row.LastSuccessfulVersionID, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.LastSuccessfulVersionLabel)
+	item, err := serviceListFrom(row.ID, row.ApplicationID, row.InstanceKey, row.VersionID, row.RuntimeConfigJson, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel)
 	if err != nil {
 		return model.ServiceListItem{}, err
 	}
@@ -152,15 +152,14 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 			updatedAt = now
 		}
 		if err := q.InsertService(ctx, servicesqlc.InsertServiceParams{
-			ID:                      svc.Id,
-			ApplicationID:           svc.ApplicationId,
-			InstanceKey:             svc.InstanceKey,
-			VersionID:               svc.VersionId,
-			RuntimeConfigJson:       runtimeConfigJSON,
-			LastSuccessfulVersionID: dbmodel.NullString(svc.LastSuccessfulVersionId),
-			Status:                  svc.Status,
-			CreatedAt:               createdAt,
-			UpdatedAt:               updatedAt,
+			ID:                svc.Id,
+			ApplicationID:     svc.ApplicationId,
+			InstanceKey:       svc.InstanceKey,
+			VersionID:         svc.VersionId,
+			RuntimeConfigJson: runtimeConfigJSON,
+			Status:            svc.Status,
+			CreatedAt:         createdAt,
+			UpdatedAt:         updatedAt,
 		}); err != nil {
 			return fmt.Errorf("create service for application %s: %w", svc.ApplicationId, err)
 		}
@@ -171,12 +170,11 @@ func (r Repository) UpsertService(ctx context.Context, svc model.Service) error 
 		id = svc.Id
 	}
 	if err := q.UpdateService(ctx, servicesqlc.UpdateServiceParams{
-		VersionID:               svc.VersionId,
-		RuntimeConfigJson:       runtimeConfigJSON,
-		LastSuccessfulVersionID: dbmodel.NullString(svc.LastSuccessfulVersionId),
-		Status:                  svc.Status,
-		UpdatedAt:               now,
-		ID:                      id,
+		VersionID:         svc.VersionId,
+		RuntimeConfigJson: runtimeConfigJSON,
+		Status:            svc.Status,
+		UpdatedAt:         now,
+		ID:                id,
 	}); err != nil {
 		return fmt.Errorf("update service %s: %w", id, err)
 	}
@@ -221,13 +219,12 @@ func (r Repository) UpdateServiceStatus(ctx context.Context, id string, status s
 	return nil
 }
 
-func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error {
+func (r Repository) UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string) error {
 	err := r.q(ctx).UpdateServiceAfterDeploy(ctx, servicesqlc.UpdateServiceAfterDeployParams{
-		Status:                  status,
-		VersionID:               versionId,
-		LastSuccessfulVersionID: dbmodel.NullString(lastSuccessfulVersionId),
-		UpdatedAt:               time.Now().UTC(),
-		ID:                      id,
+		Status:    status,
+		VersionID: versionId,
+		UpdatedAt: time.Now().UTC(),
+		ID:        id,
 	})
 	if err != nil {
 		return fmt.Errorf("update service after deploy %s: %w", id, err)
@@ -241,43 +238,39 @@ func serviceFrom(row servicesqlc.Service) (model.Service, error) {
 		return model.Service{}, fmt.Errorf("decode service runtime config %s: %w", row.ID, err)
 	}
 	return model.Service{
-		Id:                      row.ID,
-		ApplicationId:           row.ApplicationID,
-		InstanceKey:             row.InstanceKey,
-		VersionId:               row.VersionID,
-		RuntimeConfig:           runtimeConfig,
-		LastSuccessfulVersionId: dbmodel.StringPtr(row.LastSuccessfulVersionID),
-		Status:                  row.Status,
-		CreatedAt:               row.CreatedAt,
-		UpdatedAt:               row.UpdatedAt,
+		Id:            row.ID,
+		ApplicationId: row.ApplicationID,
+		InstanceKey:   row.InstanceKey,
+		VersionId:     row.VersionID,
+		RuntimeConfig: runtimeConfig,
+		Status:        row.Status,
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
 	}, nil
 }
 
 func serviceListFrom(
-	id, applicationID, instanceKey, versionID, runtimeConfigJSON string, lastSuccessfulVersionID sql.NullString,
+	id, applicationID, instanceKey, versionID, runtimeConfigJSON string,
 	svcStatus string, createdAt, updatedAt time.Time,
 	applicationName, applicationCode, applicationKind, versionLabel string,
-	lastSuccessfulVersionLabel sql.NullString,
 ) (model.ServiceListItem, error) {
 	runtimeConfig, err := unmarshalRuntimeConfig(runtimeConfigJSON)
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("decode service runtime config %s: %w", id, err)
 	}
 	return model.ServiceListItem{
-		Id:                         id,
-		ApplicationId:              applicationID,
-		InstanceKey:                instanceKey,
-		VersionId:                  versionID,
-		RuntimeConfig:              runtimeConfig,
-		LastSuccessfulVersionId:    dbmodel.StringPtr(lastSuccessfulVersionID),
-		Status:                     svcStatus,
-		CreatedAt:                  createdAt,
-		UpdatedAt:                  updatedAt,
-		ApplicationName:            applicationName,
-		ApplicationCode:            applicationCode,
-		ApplicationKind:            applicationKind,
-		VersionLabel:               versionLabel,
-		LastSuccessfulVersionLabel: dbmodel.StringPtr(lastSuccessfulVersionLabel),
+		Id:              id,
+		ApplicationId:   applicationID,
+		InstanceKey:     instanceKey,
+		VersionId:       versionID,
+		RuntimeConfig:   runtimeConfig,
+		Status:          svcStatus,
+		CreatedAt:       createdAt,
+		UpdatedAt:       updatedAt,
+		ApplicationName: applicationName,
+		ApplicationCode: applicationCode,
+		ApplicationKind: applicationKind,
+		VersionLabel:    versionLabel,
 	}, nil
 }
 

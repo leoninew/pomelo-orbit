@@ -40,7 +40,7 @@ type ExecutionStore interface {
 	VersionExposesByVersion(ctx context.Context, versionID string) ([]model.VersionExpose, error)
 	Service(ctx context.Context, id string) (model.Service, error)
 	UpdateServiceStatus(ctx context.Context, id string, status string) error
-	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionID string, lastSuccessfulVersionID *string) error
+	UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionID string) error
 	MarkDeploymentRunning(ctx context.Context, id string) error
 	CompleteDeployment(ctx context.Context, id string, status string, message string) error
 	GatewayConfig(ctx context.Context, applicationID string) (model.GatewayConfig, error)

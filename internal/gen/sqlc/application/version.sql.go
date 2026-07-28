@@ -24,7 +24,7 @@ func (q *Queries) ClearVersionForkRefs(ctx context.Context, createdFromVersionID
 
 const countVersionRuntimeRefs = `-- name: CountVersionRuntimeRefs :one
 SELECT (
-  (SELECT COUNT(*) FROM service WHERE service.version_id = ?1 OR service.last_successful_version_id = ?1) +
+  (SELECT COUNT(*) FROM service WHERE service.version_id = ?1) +
   (SELECT COUNT(*) FROM deployment WHERE deployment.version_id = ?1)
 )
 `

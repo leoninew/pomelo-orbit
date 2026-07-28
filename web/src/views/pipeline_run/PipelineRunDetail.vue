@@ -173,8 +173,14 @@
           <ViewModeToggle v-model="stagesView" />
         </div>
 
+        <AppSpinner v-if="run.snapshot_id && !snapshot" class="py-8" />
+        <AppEmptyState
+          v-else-if="!snapshot || snapshot.stages_snapshot.length === 0"
+          size="compact"
+        />
+
         <!-- List View -->
-        <div v-if="stagesView === 'list'">
+        <div v-else-if="stagesView === 'list'">
           <div class="overflow-x-auto">
             <table class="app-table-detail min-w-[960px]">
               <thead>
@@ -190,16 +196,6 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="run.snapshot_id && !snapshot">
-                  <td colspan="8" class="text-center text-muted-foreground">
-                    <AppSpinner />
-                  </td>
-                </tr>
-                <tr v-else-if="!snapshot || snapshot.stages_snapshot.length === 0">
-                  <td colspan="8" class="text-center text-muted-foreground">
-                    {{ t('pipelineRun.noStageRunResp') }}
-                  </td>
-                </tr>
                 <tr v-for="(stage, index) in snapshot?.stages_snapshot ?? []" :key="stage.id">
                   <td class="text-muted-foreground">{{ index + 1 }}</td>
                   <td>
@@ -255,13 +251,7 @@
 
         <!-- DAG View -->
         <div v-else-if="stagesView === 'dag'" class="p-6">
-          <div
-            v-if="!snapshot?.stages_snapshot || snapshot.stages_snapshot.length === 0"
-            class="text-center text-muted-foreground"
-          >
-            {{ t('pipelineRun.noStageRunResp') }}
-          </div>
-          <div v-else class="h-[500px]">
+          <div class="h-[500px]">
             <StageDAGView
               :stages="snapshot.stages_snapshot"
               :stage-runs="stageRuns"

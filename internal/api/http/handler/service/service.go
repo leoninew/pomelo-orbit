@@ -141,7 +141,7 @@ func applicationServiceResponses(items []model.Service) []servicev1.ServiceResp 
 		resp = append(resp, servicev1.ServiceResp{
 			Id: item.Id, ApplicationId: item.ApplicationId,
 			InstanceKey: item.InstanceKey, VersionId: item.VersionId,
-			LastSuccessfulVersionId: item.LastSuccessfulVersionId, Status: item.Status,
+			Status:    item.Status,
 			CreatedAt: transportresponse.FormatTime(item.CreatedAt), UpdatedAt: transportresponse.FormatTime(item.UpdatedAt),
 		})
 	}

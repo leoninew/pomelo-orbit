@@ -1,5 +1,5 @@
 # MCP 直接部署测试可用性实施计划
-最后修改时间: 2026-07-27 17:11:07
+最后修改时间: 2026-07-28 16:10:16
 
 Review status: Accepted
 
@@ -27,7 +27,7 @@ Review status: Accepted
 
 3. 补足 Application 到 Service 的 MCP 查询接口。
    - 修改 `mcp/src/pomelo_orbit_mcp/tools/orbit.py`，新增 `orbit_list_application_services(application_id)`。
-   - 调用已有 `OrbitClient.list_application_services`，为每个 Service 显式投影允许字段：id、application_id、instance_key、status、version_id、last_successful_version_id、created_at、updated_at。
+   - 调用已有 `OrbitClient.list_application_services`，为每个 Service 显式投影允许字段：id、application_id、instance_key、status、version_id、created_at、updated_at。
    - 修改 `mcp/tests/test_server.py` 并新增或扩展工具测试，锁定工具发现、input schema、响应形状以及 runtime config 不泄露。
 
 4. 纠正 verification 的错误与领域结论边界。

@@ -81,9 +81,7 @@
       </div>
 
       <AppSpinner v-if="loadingMembers" class="px-5 py-10" />
-      <div v-else-if="members.length === 0" class="px-5 py-4">
-        <p class="text-sm text-muted-foreground">{{ t('project.noMembers') }}</p>
-      </div>
+      <AppEmptyState v-else-if="members.length === 0" size="compact" />
       <div v-else class="px-5 py-4">
         <table class="app-table-detail">
           <thead>
@@ -218,6 +216,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

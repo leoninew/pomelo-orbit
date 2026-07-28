@@ -103,8 +103,8 @@ func (s stores) UpsertService(ctx context.Context, svc model.Service) error {
 func (s stores) UpdateServiceStatus(ctx context.Context, id string, status string) error {
 	return s.service.UpdateServiceStatus(ctx, id, status)
 }
-func (s stores) UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error {
-	return s.service.UpdateServiceAfterDeploy(ctx, id, status, versionId, lastSuccessfulVersionId)
+func (s stores) UpdateServiceAfterDeploy(ctx context.Context, id string, status string, versionId string) error {
+	return s.service.UpdateServiceAfterDeploy(ctx, id, status, versionId)
 }
 
 func (s stores) CreateDeployment(ctx context.Context, deployment model.Deployment) error {

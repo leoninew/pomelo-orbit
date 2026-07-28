@@ -86,8 +86,10 @@
             </button>
           </div>
         </div>
+        <AppEmptyState v-if="sortableOrch.length === 0" size="compact" />
+
         <!-- List View -->
-        <div v-if="viewMode === 'list'" class="overflow-x-auto">
+        <div v-else-if="viewMode === 'list'" class="overflow-x-auto">
           <table class="app-table-detail min-w-[760px]">
             <thead>
               <tr>
@@ -99,11 +101,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="sortableOrch.length === 0">
-                <td colspan="5" class="text-center text-muted-foreground">
-                  {{ t('pipelineTemplate.noStageHint') }}
-                </td>
-              </tr>
               <tr v-for="(orch, idx) in sortableOrch" :key="orch.stage_id">
                 <td>
                   <div class="flex items-center gap-2">
@@ -150,10 +147,7 @@
 
         <!-- DAG View -->
         <div v-else-if="viewMode === 'dag'" class="p-6">
-          <div v-if="dagStages.length === 0" class="text-center text-muted-foreground">
-            {{ t('pipelineTemplate.noStageHint') }}
-          </div>
-          <div v-else class="h-[500px]">
+          <div class="h-[500px]">
             <StageDAGView :stages="dagStages" :animated="true" />
           </div>
         </div>

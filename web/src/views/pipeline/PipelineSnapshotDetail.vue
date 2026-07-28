@@ -79,8 +79,10 @@
           </div>
         </div>
 
+        <AppEmptyState v-if="snapshot.stages_snapshot.length === 0" size="compact" />
+
         <!-- 列表视图 -->
-        <div v-if="stagesView === 'list'" class="overflow-x-auto">
+        <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
           <table class="app-table-detail min-w-[760px]">
             <thead>
               <tr>
@@ -93,9 +95,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="snapshot.stages_snapshot.length === 0">
-                <td colspan="6" class="text-center text-muted-foreground">暂无 Stage</td>
-              </tr>
               <tr v-for="(stage, idx) in snapshot.stages_snapshot" :key="stage.id">
                 <td class="text-muted-foreground">{{ idx + 1 }}</td>
                 <td>
@@ -122,7 +121,7 @@
         </div>
 
         <!-- DAG 视图 -->
-        <div v-else-if="snapshot.stages_snapshot.length > 0" class="p-6">
+        <div v-else class="p-6">
           <div class="h-[500px]">
             <StageDAGView :stages="snapshot.stages_snapshot" />
           </div>

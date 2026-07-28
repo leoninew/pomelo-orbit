@@ -249,6 +249,12 @@ func TestApplicationComposePreviewMatchesDeployExposeLabels(t *testing.T) {
 	if !strings.Contains(preview, wantRule) {
 		t.Fatalf("expected derived host rule %q, got:\n%s", wantRule, preview)
 	}
+	if !strings.Contains(preview, "pomelo.orbit.version-id="+store.version.Id) {
+		t.Fatalf("expected version ID label, got:\n%s", preview)
+	}
+	if !strings.Contains(preview, "pomelo.orbit.version-label="+store.version.Label) {
+		t.Fatalf("expected version label, got:\n%s", preview)
+	}
 }
 
 type fakeDeploymentExecutionStore struct {
@@ -338,10 +344,9 @@ func (s *fakeDeploymentExecutionStore) UpdateServiceStatus(_ context.Context, id
 	return nil
 }
 
-func (s *fakeDeploymentExecutionStore) UpdateServiceAfterDeploy(_ context.Context, id string, status string, versionId string, lastSuccessfulVersionId *string) error {
+func (s *fakeDeploymentExecutionStore) UpdateServiceAfterDeploy(_ context.Context, id string, status string, versionId string) error {
 	s.service.Status = status
 	s.service.VersionId = versionId
-	s.service.LastSuccessfulVersionId = lastSuccessfulVersionId
 	s.serviceStatus = status
 	return nil
 }

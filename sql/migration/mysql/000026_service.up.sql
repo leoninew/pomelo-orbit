@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS service (
     instance_key VARCHAR(100) NOT NULL DEFAULT 'default',
     version_id VARCHAR(26) NOT NULL,
     runtime_config_json LONGTEXT NOT NULL,
-    last_successful_version_id VARCHAR(26),
     status VARCHAR(32) NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -16,6 +15,5 @@ CREATE TABLE IF NOT EXISTS service (
     KEY idx_service_version (version_id),
     KEY idx_service_application (application_id),
     CONSTRAINT fk_service_application FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
-    CONSTRAINT fk_service_version FOREIGN KEY (version_id) REFERENCES version(id),
-    CONSTRAINT fk_service_last_successful_version FOREIGN KEY (last_successful_version_id) REFERENCES version(id)
+    CONSTRAINT fk_service_version FOREIGN KEY (version_id) REFERENCES version(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

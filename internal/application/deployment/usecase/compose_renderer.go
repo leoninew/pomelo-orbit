@@ -118,6 +118,7 @@ func renderComposeServices(input RenderInput, injectGatewayNetwork bool) (Render
 			return RenderResult{}, err
 		}
 	}
+	injectContainerVersionLabels(services, input.Version)
 
 	data := map[string]any{"services": services}
 	if injectGatewayNetwork {

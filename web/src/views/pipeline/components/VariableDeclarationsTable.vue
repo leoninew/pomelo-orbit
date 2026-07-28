@@ -1,8 +1,6 @@
 <template>
   <div class="overflow-hidden">
-    <div v-if="declarations.length === 0" class="px-5 py-10 text-center text-muted-foreground">
-      <p class="text-sm">{{ t('variableDeclaration.noVariable') }}</p>
-    </div>
+    <AppEmptyState v-if="declarations.length === 0" size="compact" />
     <table v-else class="app-table-detail">
       <thead>
         <tr>
@@ -59,6 +57,7 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import type { VariableDeclarationResp } from '@/gen/proto/orbit/v1/common/common';
   import { getSourceTone, isVariableEditable } from '@/utils/variableSource';
 

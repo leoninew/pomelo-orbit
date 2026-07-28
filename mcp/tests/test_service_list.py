@@ -13,7 +13,6 @@ def test_application_service_list_exposes_only_lifecycle_summary() -> None:
                 "instance_key": "default",
                 "status": "stopped",
                 "version_id": "version-1",
-                "last_successful_version_id": "version-0",
                 "created_at": "2026-07-27T00:00:00Z",
                 "updated_at": "2026-07-27T01:00:00Z",
                 "runtime_config": {"PASSWORD": "not-for-output"},
@@ -31,7 +30,6 @@ def test_application_service_list_exposes_only_lifecycle_summary() -> None:
                 "instance_key": "default",
                 "status": "stopped",
                 "version_id": "version-1",
-                "last_successful_version_id": "version-0",
                 "created_at": "2026-07-27T00:00:00Z",
                 "updated_at": "2026-07-27T01:00:00Z",
             }

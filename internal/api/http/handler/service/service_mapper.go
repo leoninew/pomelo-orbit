@@ -8,19 +8,17 @@ import (
 
 func serviceViewResponse(item servicedto.ServiceView) servicev1.ServiceResp {
 	return servicev1.ServiceResp{
-		Id:                         item.Service.Id,
-		ApplicationId:              item.Service.ApplicationId,
-		InstanceKey:                item.Service.InstanceKey,
-		VersionId:                  item.Service.VersionId,
-		LastSuccessfulVersionId:    item.Service.LastSuccessfulVersionId,
-		Status:                     item.Service.Status,
-		CreatedAt:                  transportresponse.FormatTime(item.Service.CreatedAt),
-		UpdatedAt:                  transportresponse.FormatTime(item.Service.UpdatedAt),
-		ApplicationName:            item.ApplicationName,
-		ApplicationCode:            item.ApplicationCode,
-		ApplicationKind:            item.ApplicationKind,
-		VersionLabel:               item.VersionLabel,
-		LastSuccessfulVersionLabel: item.LastSuccessfulVersionLabel,
+		Id:              item.Service.Id,
+		ApplicationId:   item.Service.ApplicationId,
+		InstanceKey:     item.Service.InstanceKey,
+		VersionId:       item.Service.VersionId,
+		Status:          item.Service.Status,
+		CreatedAt:       transportresponse.FormatTime(item.Service.CreatedAt),
+		UpdatedAt:       transportresponse.FormatTime(item.Service.UpdatedAt),
+		ApplicationName: item.ApplicationName,
+		ApplicationCode: item.ApplicationCode,
+		ApplicationKind: item.ApplicationKind,
+		VersionLabel:    item.VersionLabel,
 	}
 }
 

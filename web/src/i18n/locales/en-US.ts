@@ -478,7 +478,6 @@ export default {
       runtime: 'Runtime',
       health: 'Health',
       image: 'Image',
-      lastSuccessfulVersion: 'Last successful version',
     },
     actions: {
 	  create: 'Create service',

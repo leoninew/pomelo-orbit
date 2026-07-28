@@ -64,13 +64,15 @@ func applicationStatusResponse(containers []deploymentdto.RuntimeContainer) *app
 	response := make([]*applicationv1.ApplicationContainerStatusResp, 0, len(containers))
 	for _, container := range containers {
 		response = append(response, &applicationv1.ApplicationContainerStatusResp{
-			Id:      container.ID,
-			Name:    container.Name,
-			Service: container.Service,
-			State:   container.State,
-			Status:  container.Status,
-			Health:  container.Health,
-			Image:   container.Image,
+			Id:           container.ID,
+			Name:         container.Name,
+			Service:      container.Service,
+			State:        container.State,
+			Status:       container.Status,
+			Health:       container.Health,
+			Image:        container.Image,
+			VersionId:    container.VersionID,
+			VersionLabel: container.VersionLabel,
 		})
 	}
 	return &applicationv1.ApplicationStatusResp{Containers: response}

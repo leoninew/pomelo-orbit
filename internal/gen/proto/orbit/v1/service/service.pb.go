@@ -22,23 +22,21 @@ const (
 )
 
 type ServiceResp struct {
-	state                   protoimpl.MessageState `protogen:"open.v1"`
-	Id                      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ApplicationId           string                 `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
-	InstanceKey             string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
-	VersionId               string                 `protobuf:"bytes,4,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
-	LastSuccessfulVersionId *string                `protobuf:"bytes,5,opt,name=last_successful_version_id,json=lastSuccessfulVersionId,proto3,oneof" json:"last_successful_version_id,omitempty"`
-	Status                  string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt               string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt               string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ApplicationId string                 `protobuf:"bytes,2,opt,name=application_id,json=applicationId,proto3" json:"application_id,omitempty"`
+	InstanceKey   string                 `protobuf:"bytes,3,opt,name=instance_key,json=instanceKey,proto3" json:"instance_key,omitempty"`
+	VersionId     string                 `protobuf:"bytes,4,opt,name=version_id,json=versionId,proto3" json:"version_id,omitempty"`
+	Status        string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Display labels (filled on project-scoped list; empty on bare app-scoped list).
-	ApplicationName            string  `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
-	ApplicationCode            string  `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
-	ApplicationKind            string  `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
-	VersionLabel               string  `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
-	LastSuccessfulVersionLabel *string `protobuf:"bytes,13,opt,name=last_successful_version_label,json=lastSuccessfulVersionLabel,proto3,oneof" json:"last_successful_version_label,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	ApplicationName string `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
+	ApplicationCode string `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
+	ApplicationKind string `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
+	VersionLabel    string `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ServiceResp) Reset() {
@@ -99,13 +97,6 @@ func (x *ServiceResp) GetVersionId() string {
 	return ""
 }
 
-func (x *ServiceResp) GetLastSuccessfulVersionId() string {
-	if x != nil && x.LastSuccessfulVersionId != nil {
-		return *x.LastSuccessfulVersionId
-	}
-	return ""
-}
-
 func (x *ServiceResp) GetStatus() string {
 	if x != nil {
 		return x.Status
@@ -151,13 +142,6 @@ func (x *ServiceResp) GetApplicationKind() string {
 func (x *ServiceResp) GetVersionLabel() string {
 	if x != nil {
 		return x.VersionLabel
-	}
-	return ""
-}
-
-func (x *ServiceResp) GetLastSuccessfulVersionLabel() string {
-	if x != nil && x.LastSuccessfulVersionLabel != nil {
-		return *x.LastSuccessfulVersionLabel
 	}
 	return ""
 }
@@ -458,14 +442,13 @@ var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xcd\x04\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x8e\x03\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12!\n" +
 	"\finstance_key\x18\x03 \x01(\tR\vinstanceKey\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x04 \x01(\tR\tversionId\x12@\n" +
-	"\x1alast_successful_version_id\x18\x05 \x01(\tH\x00R\x17lastSuccessfulVersionId\x88\x01\x01\x12\x16\n" +
+	"version_id\x18\x04 \x01(\tR\tversionId\x12\x16\n" +
 	"\x06status\x18\x06 \x01(\tR\x06status\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\a \x01(\tR\tcreatedAt\x12\x1d\n" +
@@ -475,10 +458,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x10application_code\x18\n" +
 	" \x01(\tR\x0fapplicationCode\x12)\n" +
 	"\x10application_kind\x18\v \x01(\tR\x0fapplicationKind\x12#\n" +
-	"\rversion_label\x18\f \x01(\tR\fversionLabel\x12F\n" +
-	"\x1dlast_successful_version_label\x18\r \x01(\tH\x01R\x1alastSuccessfulVersionLabel\x88\x01\x01B\x1d\n" +
-	"\x1b_last_successful_version_idB \n" +
-	"\x1e_last_successful_version_label\"F\n" +
+	"\rversion_label\x18\f \x01(\tR\fversionLabelJ\x04\b\x05\x10\x06J\x04\b\r\x10\x0e\"F\n" +
 	"\x0fServiceListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.service.ServiceRespR\x05items\"\xa6\x01\n" +
 	"\x14ServicePaginatedResp\x123\n" +
@@ -554,7 +534,6 @@ func file_orbit_v1_service_service_proto_init() {
 	if File_orbit_v1_service_service_proto != nil {
 		return
 	}
-	file_orbit_v1_service_service_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

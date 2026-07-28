@@ -96,14 +96,6 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt class="w-32 shrink-0 text-muted-foreground">
-              {{ t('service.fields.lastSuccessfulVersion') }}
-            </dt>
-            <dd class="text-foreground">
-              {{ service.last_successful_version_label || '—' }}
-            </dd>
-          </div>
-          <div class="flex gap-2">
             <dt class="w-32 shrink-0 text-muted-foreground">{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(service.created_at) }}</dd>
           </div>
@@ -118,6 +110,15 @@
         <div class="app-section-header flex items-center justify-between gap-3">
           <h2 class="text-base font-semibold text-foreground">{{ t('service.runtimeConfig.title') }}</h2>
           <div v-if="isRuntimeConfigEditing" class="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              class="app-button h-9 px-3"
+              :disabled="operating"
+              @click="addRuntimeConfigEntryFromToolbar"
+            >
+              <Plus class="size-4" />
+              {{ t('common.add') }}
+            </button>
             <button type="button" class="app-button h-9 px-3" :disabled="operating" @click="cancelRuntimeConfigEditing">
               {{ t('common.cancel') }}
             </button>
@@ -126,11 +127,15 @@
             </button>
           </div>
           <div v-else class="flex items-center gap-2">
-            <button class="app-button h-9 px-3" :disabled="runtimeConfigLoading" @click="loadRuntimeConfig">
-              <RefreshCw class="size-4" :class="{ 'animate-spin': runtimeConfigLoading }" />
-              {{ t('common.refresh') }}
+            <button
+              class="app-button h-9 px-3"
+              :disabled="runtimeConfigLoading || operating"
+              @click="addRuntimeConfigEntryFromToolbar"
+            >
+              <Plus class="size-4" />
+              {{ t('common.add') }}
             </button>
-            <button class="app-button-primary h-9 px-3" :disabled="runtimeConfigLoading" @click="startRuntimeConfigEditing">
+            <button class="app-button h-9 px-3" :disabled="runtimeConfigLoading" @click="startRuntimeConfigEditing">
               <Pencil class="size-4" />
               {{ t('common.edit') }}
             </button>
@@ -145,85 +150,109 @@
             </button>
           </div>
           <AppEmptyState
-            v-else-if="!isRuntimeConfigEditing && runtimeConfigEntries.length === 0"
-            :message="t('service.runtimeConfig.empty')"
+            v-else-if="isRuntimeConfigEditing && runtimeConfigDraft.length === 0"
+            size="compact"
           />
-          <div
-            v-else-if="isRuntimeConfigEditing"
-            class="grid max-w-3xl grid-cols-[minmax(8rem,0.45fr)_minmax(0,1fr)] gap-x-3 gap-y-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-x-6"
-          >
-            <div class="app-field-label">{{ t('service.runtimeConfig.key') }}</div>
-            <div class="app-field-label">{{ t('service.runtimeConfig.value') }}</div>
-            <template v-for="item in runtimeConfigDraft" :key="item.id">
-              <input
-                v-model="item.key"
-                class="app-input text-sm"
-                :disabled="operating"
-                :aria-label="t('service.runtimeConfig.key')"
-                :placeholder="t('service.runtimeConfig.key')"
-              />
-              <div class="flex min-w-0 gap-2">
-                <div class="relative min-w-0 flex-1">
-                  <input
-                    v-model="item.value"
-                    :type="item.isValueVisible ? 'text' : 'password'"
-                    class="app-input w-full pr-10 text-sm"
-                    :disabled="operating"
-                    :aria-label="t('service.runtimeConfig.value')"
-                    :placeholder="t('service.runtimeConfig.value')"
-                  />
-                  <button
-                    type="button"
-                    class="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                    :aria-label="item.isValueVisible ? t('service.runtimeConfig.hideValue') : t('service.runtimeConfig.showValue')"
-                    :title="item.isValueVisible ? t('service.runtimeConfig.hideValue') : t('service.runtimeConfig.showValue')"
-                    :disabled="operating"
-                    @click="item.isValueVisible = !item.isValueVisible"
-                  >
-                    <EyeOff v-if="item.isValueVisible" class="size-4" />
-                    <Eye v-else class="size-4" />
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  class="app-link-danger inline-flex size-9 items-center justify-center"
-                  :aria-label="t('common.delete')"
-                  :title="t('common.delete')"
-                  :disabled="operating"
-                  @click="removeRuntimeConfigEntry(item.id)"
-                >
-                  <Trash2 class="size-4" />
-                </button>
-              </div>
-            </template>
-            <p v-if="runtimeConfigSaveError" class="app-field-error col-span-2 text-xs">
+          <div v-else-if="isRuntimeConfigEditing" class="overflow-x-auto">
+            <table class="app-table-detail table-fixed min-w-[720px]">
+              <colgroup>
+                <col class="w-[32%]" />
+                <col />
+                <col class="w-[104px]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>{{ t('service.runtimeConfig.key') }}</th>
+                  <th>{{ t('service.runtimeConfig.value') }}</th>
+                  <th>{{ t('common.operation') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in runtimeConfigDraft" :key="item.id">
+                  <td>
+                    <input
+                      v-model="item.key"
+                      class="app-input w-full text-sm"
+                      :disabled="operating"
+                      :aria-label="t('service.runtimeConfig.key')"
+                      :placeholder="t('service.runtimeConfig.key')"
+                    />
+                  </td>
+                  <td>
+                    <div class="relative min-w-0 w-full">
+                      <input
+                        v-model="item.value"
+                        :type="item.isValueVisible ? 'text' : 'password'"
+                        class="app-input w-full pr-10 text-sm"
+                        :disabled="operating"
+                        :aria-label="t('service.runtimeConfig.value')"
+                        :placeholder="t('service.runtimeConfig.value')"
+                      />
+                      <button
+                        type="button"
+                        class="absolute inset-y-0 right-0 flex w-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                        :aria-label="item.isValueVisible ? t('service.runtimeConfig.hideValue') : t('service.runtimeConfig.showValue')"
+                        :title="item.isValueVisible ? t('service.runtimeConfig.hideValue') : t('service.runtimeConfig.showValue')"
+                        :disabled="operating"
+                        @click="item.isValueVisible = !item.isValueVisible"
+                      >
+                        <EyeOff v-if="item.isValueVisible" class="size-4" />
+                        <Eye v-else class="size-4" />
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      class="app-link-danger inline-flex size-9 items-center justify-center"
+                      :aria-label="t('common.delete')"
+                      :title="t('common.delete')"
+                      :disabled="operating"
+                      @click="removeRuntimeConfigEntry(item.id)"
+                    >
+                      <Trash2 class="size-4" />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-if="runtimeConfigSaveError" class="app-field-error mt-3 text-xs">
               {{ runtimeConfigSaveError }}
             </p>
-            <button
-              type="button"
-              class="app-link col-span-2 inline-flex w-fit items-center gap-1 text-sm font-medium"
-              :disabled="operating"
-              @click="addRuntimeConfigEntry"
-            >
-              <Plus class="size-4" />
-              {{ t('common.add') }}
-            </button>
           </div>
-          <div
-            v-else
-            class="grid max-w-3xl grid-cols-[minmax(8rem,0.45fr)_minmax(0,1fr)] gap-x-3 gap-y-3 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-x-6"
-          >
-            <div class="app-field-label">{{ t('service.runtimeConfig.key') }}</div>
-            <div class="app-field-label">{{ t('service.runtimeConfig.value') }}</div>
-            <template v-for="item in runtimeConfigEntries" :key="item.key">
-              <div class="break-all text-sm text-foreground">{{ item.key }}</div>
-              <SensitiveValue
-                :value="item.value"
-                :label="t('service.runtimeConfig.value')"
-                :show-label="t('service.runtimeConfig.showValue')"
-                :hide-label="t('service.runtimeConfig.hideValue')"
-              />
-            </template>
+          <AppEmptyState v-else-if="runtimeConfigEntries.length === 0" size="compact" />
+          <div v-else class="overflow-x-auto">
+            <table class="app-table-detail table-fixed min-w-[720px]">
+              <colgroup>
+                <col class="w-[32%]" />
+                <col />
+                <col class="w-[104px]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>{{ t('service.runtimeConfig.key') }}</th>
+                  <th>{{ t('service.runtimeConfig.value') }}</th>
+                  <th>{{ t('common.operation') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in runtimeConfigEntries" :key="item.key">
+                  <td class="min-w-0 whitespace-normal break-all text-sm text-foreground">
+                    {{ item.key }}
+                  </td>
+                  <td class="min-w-0">
+                    <SensitiveValue
+                      class="w-full"
+                      :value="item.value"
+                      :label="t('service.runtimeConfig.value')"
+                      :show-label="t('service.runtimeConfig.showValue')"
+                      :hide-label="t('service.runtimeConfig.hideValue')"
+                    />
+                  </td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -247,17 +276,18 @@
           <p v-else-if="containersError" class="text-sm text-destructive">{{ containersError }}</p>
           <AppEmptyState
             v-else-if="containers.length === 0"
-            :message="t('service.containers.empty')"
+            size="compact"
           />
           <div v-else class="overflow-x-auto">
-            <table class="app-table-list min-w-[960px]">
+            <table class="app-table-list min-w-[1080px]">
               <thead>
                 <tr>
                   <th>{{ t('service.fields.component') }}</th>
-                  <th>{{ t('service.fields.container') }}</th>
+                  <th>{{ t('service.fields.version') }}</th>
                   <th>{{ t('common.status') }}</th>
                   <th>{{ t('service.fields.runtime') }}</th>
                   <th>{{ t('service.fields.health') }}</th>
+                  <th>{{ t('service.fields.container') }}</th>
                   <th>{{ t('service.fields.image') }}</th>
                   <th>{{ t('common.operation') }}</th>
                 </tr>
@@ -270,8 +300,15 @@
                   <td class="text-sm text-foreground">
                     {{ container.service || '—' }}
                   </td>
-                  <td class="text-xs text-muted-foreground">
-                    {{ container.name || container.id || '—' }}
+                  <td class="text-sm">
+                    <button
+                      v-if="container.version_id"
+                      class="app-link"
+                      @click="router.push(`/version/${container.version_id}`)"
+                    >
+                      {{ container.version_label || container.version_id }}
+                    </button>
+                    <span v-else class="text-muted-foreground">—</span>
                   </td>
                   <td>
                     <AppBadge variant="pill" :tone="containerStateTone(container.state)">
@@ -285,6 +322,9 @@
                     {{ container.status || '—' }}
                   </td>
                   <td class="text-sm text-foreground">{{ container.health || '—' }}</td>
+                  <td class="text-xs text-muted-foreground">
+                    {{ container.name || container.id || '—' }}
+                  </td>
                   <td
                     class="max-w-[280px] truncate text-xs text-muted-foreground"
                     :title="container.image"
@@ -655,6 +695,13 @@
     );
     runtimeConfigSaveError.value = '';
     isRuntimeConfigEditing.value = true;
+  }
+
+  function addRuntimeConfigEntryFromToolbar() {
+    if (!isRuntimeConfigEditing.value) {
+      startRuntimeConfigEditing();
+    }
+    addRuntimeConfigEntry();
   }
 
   function cancelRuntimeConfigEditing() {

@@ -467,7 +467,6 @@ export default {
       runtime: '运行时间',
       health: '健康',
       image: '镜像',
-      lastSuccessfulVersion: '最近成功版本',
     },
     actions: {
 	  create: '创建服务',

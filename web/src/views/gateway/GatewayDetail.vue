@@ -124,9 +124,7 @@
           <h2 class="font-semibold text-foreground">{{ t('gateway.exposures.title') }}</h2>
         </div>
         <div class="px-5 py-4">
-          <div v-if="!(gateway.exposures || []).length" class="text-sm text-muted-foreground">
-            {{ t('gateway.exposures.empty') }}
-          </div>
+          <AppEmptyState v-if="!(gateway.exposures || []).length" size="compact" />
           <div v-else class="overflow-x-auto">
             <table class="app-table-list min-w-[720px]">
               <thead>
@@ -265,6 +263,7 @@
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

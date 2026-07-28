@@ -3,11 +3,12 @@ syntax = "proto3";
 package orbit.v1.service;
 
 message ServiceResp {
+	reserved 5, 13;
+
   string id = 1;
   string application_id = 2;
   string instance_key = 3;
   string version_id = 4;
-  optional string last_successful_version_id = 5;
   string status = 6;
   string created_at = 7;
   string updated_at = 8;
@@ -16,7 +17,6 @@ message ServiceResp {
   string application_code = 10;
   string application_kind = 11;
   string version_label = 12;
-  optional string last_successful_version_label = 13;
 }
 
 message ServiceListResp {

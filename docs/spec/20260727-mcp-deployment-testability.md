@@ -1,5 +1,5 @@
 # MCP 直接部署测试可用性规格
-最后修改时间: 2026-07-27 18:03:59
+最后修改时间: 2026-07-28 16:10:16
 
 Review status: Accepted
 
@@ -13,7 +13,7 @@ Review status: Accepted
 
 1. 当前 Go HTTP 层已有可复用的统一错误契约。`internal/common/errors` 将受控错误分类为 HTTP status、稳定 code 和安全 message；`response.WriteError` 返回 `{code, error, requestId}`，内部错误不会向客户端暴露 cause。
 2. `tx.Middleware` 有两条绕过或破坏该契约的路径：`BeginTx` 失败直接返回 `{"message":"failed to begin transaction"}`；`Commit` 失败发生在 handler 已写出成功响应之后，目前只记录 `c.Error`，客户端会收到错误的 2xx。
-3. Go 端已存在 `GET /api/application/:app_id/service`。其返回的 `ServiceResp` 恰好包含 id、application_id、instance_key、version_id、last_successful_version_id、status 和时间字段，不含 runtime config；MCP 仍必须做显式允许字段投影，避免未来 API 扩展意外透传敏感字段。
+3. Go 端已存在 `GET /api/application/:app_id/service`。其返回的 `ServiceResp` 包含 id、application_id、instance_key、version_id、status、展示标签和时间字段，不含 runtime config；MCP 仍必须做显式允许字段投影，避免未来 API 扩展意外透传敏感字段。
 4. 本地锁定的 MCP SDK 是 `mcp` 1.28.1。协议原型经 stdio `ClientSession` 验证：工具可返回 `CallToolResult(isError=true, content=[TextContent(...)], structuredContent={...})`，客户端完整接收 `isError`、摘要和结构化对象。
 5. FastMCP 的 `Tool.run` 会把工具函数异常包装为 `ToolError`，但保留原异常为 `__cause__`。覆写项目 Server 的 `call_tool` 并在该边界分类异常，可以在低层 Server 将异常压缩成纯文本之前返回统一 `CallToolResult`。原型已验证输入校验、Orbit API、Docker 失败和正常领域结论四种路径。
 6. 当前 `verify_deployment` 会捕获 Orbit/Docker/runtime 异常并把 `str(error)` 写入 `inconclusive`。这既把工具异常误报为正常结论，也可能把 Docker stderr 暴露到工具成功响应中，必须改正。
@@ -64,7 +64,6 @@ tool_timeout_sec = 300.0
       "instance_key": "default",
       "status": "stopped",
       "version_id": "version-id",
-      "last_successful_version_id": "version-id",
       "created_at": "2026-07-27T00:00:00Z",
       "updated_at": "2026-07-27T00:00:00Z"
     }

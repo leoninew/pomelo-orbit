@@ -53,13 +53,12 @@ func applicationResponse(item model.Application) applicationv1.ApplicationResp {
 
 func serviceResponse(item model.Service) servicev1.ServiceResp {
 	return servicev1.ServiceResp{
-		Id:                      item.Id,
-		ApplicationId:           item.ApplicationId,
-		InstanceKey:             item.InstanceKey,
-		VersionId:               item.VersionId,
-		LastSuccessfulVersionId: item.LastSuccessfulVersionId,
-		Status:                  item.Status,
-		CreatedAt:               transportresponse.FormatTime(item.CreatedAt),
-		UpdatedAt:               transportresponse.FormatTime(item.UpdatedAt),
+		Id:            item.Id,
+		ApplicationId: item.ApplicationId,
+		InstanceKey:   item.InstanceKey,
+		VersionId:     item.VersionId,
+		Status:        item.Status,
+		CreatedAt:     transportresponse.FormatTime(item.CreatedAt),
+		UpdatedAt:     transportresponse.FormatTime(item.UpdatedAt),
 	}
 }

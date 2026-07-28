@@ -55,6 +55,8 @@ message ApplicationContainerStatusResp {
   string status = 5;
   string health = 6;
   string image = 7;
+  string version_id = 8;
+  string version_label = 9;
 }
 
 message ApplicationStatusResp {

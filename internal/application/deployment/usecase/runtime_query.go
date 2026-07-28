@@ -31,6 +31,25 @@ func (s Service) ApplicationStatus(ctx context.Context, userID string, applicati
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to parse compose status", err)
 	}
+	containerIDs := make([]string, 0, len(containers))
+	for _, container := range containers {
+		if container.ID != "" {
+			containerIDs = append(containerIDs, container.ID)
+		}
+	}
+	if len(containerIDs) == 0 {
+		return containers, nil
+	}
+	labelsCommand := containerLabelsCommand(containerIDs)
+	labelsOutput, err := s.queryRunner.Run(ctx, s.workspace.ServiceDir(app.Code, service.InstanceKey), labelsCommand.Name, labelsCommand.Args...)
+	if err != nil {
+		return nil, apperror.New(apperror.KindInternal, outputOrError(labelsOutput, err))
+	}
+	labelsByID, err := parseContainerLabelOutput(labelsOutput)
+	if err != nil {
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to parse container labels", err)
+	}
+	applyContainerVersionLabels(containers, labelsByID)
 	return containers, nil
 }
 

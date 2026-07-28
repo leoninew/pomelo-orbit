@@ -64,11 +64,13 @@ type DeploymentContainerLog struct {
 
 // RuntimeContainer is a normalized docker compose ps record for one container.
 type RuntimeContainer struct {
-	ID      string
-	Name    string
-	Service string
-	State   string
-	Status  string
-	Health  string
-	Image   string
+	ID           string
+	Name         string
+	Service      string
+	State        string
+	Status       string
+	Health       string
+	Image        string
+	VersionID    string
+	VersionLabel string
 }

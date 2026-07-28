@@ -81,12 +81,11 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, applicationId str
 	}
 
 	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, preparation.RenderConfig, deployment.Id, opts.ForceRecreate, opts.RuntimeConfig); err != nil {
-		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
+		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	last := version.Id
-	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id, &last); err != nil {
+	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
 	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
@@ -143,12 +142,11 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, applicationId st
 	}
 
 	if err := s.renderAndDeployWithOptions(ctx, app, version, components, exposes, svc, preparation.RenderConfig, deployment.Id, false, restartOpts.RuntimeConfig); err != nil {
-		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id, svc.LastSuccessfulVersionId)
+		_ = s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusFaulted, version.Id)
 		_ = s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	last := version.Id
-	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id, &last); err != nil {
+	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
 	return s.executionStore.CompleteDeployment(ctx, deployment.Id, status.WorkStatusRanToCompletion, "")
@@ -400,9 +398,8 @@ func (s Service) deployGatewayInPlace(ctx context.Context, gateway *model.Gatewa
 	}
 	logID := parentDeploymentId + "-gw"
 	if err := s.renderAndDeployWithOptions(ctx, gwApp, version, components, exposes, *active, gateway, logID, true, cloneRuntimeConfig(active.RuntimeConfig)); err != nil {
-		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id, active.LastSuccessfulVersionId)
+		_ = s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusFaulted, version.Id)
 		return fmt.Errorf("gateway reconcile deploy failed (business deploy aborted): %w", err)
 	}
-	last := version.Id
-	return s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusRunning, version.Id, &last)
+	return s.store.UpdateServiceAfterDeploy(ctx, active.Id, status.ServiceStatusRunning, version.Id)
 }

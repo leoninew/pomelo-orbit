@@ -296,12 +296,11 @@ func cloneRuntimeConfig(values map[string]string) map[string]string {
 
 func serviceViewFromListItem(item model.ServiceListItem) servicedto.ServiceView {
 	return servicedto.ServiceView{
-		Service:                    item.Service(),
-		ApplicationName:            item.ApplicationName,
-		ApplicationCode:            item.ApplicationCode,
-		ApplicationKind:            item.ApplicationKind,
-		VersionLabel:               item.VersionLabel,
-		LastSuccessfulVersionLabel: item.LastSuccessfulVersionLabel,
+		Service:         item.Service(),
+		ApplicationName: item.ApplicationName,
+		ApplicationCode: item.ApplicationCode,
+		ApplicationKind: item.ApplicationKind,
+		VersionLabel:    item.VersionLabel,
 	}
 }
 

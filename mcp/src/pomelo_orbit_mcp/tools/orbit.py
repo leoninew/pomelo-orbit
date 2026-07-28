@@ -431,7 +431,6 @@ def service_summary(service: dict[str, Any]) -> dict[str, Any]:
         "instance_key",
         "status",
         "version_id",
-        "last_successful_version_id",
         "created_at",
         "updated_at",
     )

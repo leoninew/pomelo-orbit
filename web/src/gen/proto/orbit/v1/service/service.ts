@@ -13,7 +13,6 @@ export interface ServiceResp {
   application_id: string;
   instance_key: string;
   version_id: string;
-  last_successful_version_id?: string | undefined;
   status: string;
   created_at: string;
   updated_at: string;
@@ -22,7 +21,6 @@ export interface ServiceResp {
   application_code: string;
   application_kind: string;
   version_label: string;
-  last_successful_version_label?: string | undefined;
 }
 
 export interface ServiceListResp {

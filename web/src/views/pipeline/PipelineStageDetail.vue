@@ -115,7 +115,8 @@
             {{ t('buildStageDetail.addArtifact') }}
           </button>
         </div>
-        <div class="overflow-x-auto">
+        <AppEmptyState v-if="sortableArtifacts.length === 0" size="compact" />
+        <div v-else class="overflow-x-auto">
           <table class="app-table-detail min-w-[720px]">
             <thead>
               <tr>
@@ -127,11 +128,6 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-if="sortableArtifacts.length === 0">
-                <td colspan="5" class="text-center text-muted-foreground">
-                  {{ t('buildStageDetail.noArtifactConfigResp') }}
-                </td>
-              </tr>
               <tr v-for="(artifact, idx) in sortableArtifacts" :key="idx">
                 <td class="text-muted-foreground">{{ idx + 1 }}</td>
                 <td>
@@ -318,6 +314,7 @@
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
   import AppDialog from '@/components/AppDialog.vue';
   import AppBadge from '@/components/AppBadge.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';

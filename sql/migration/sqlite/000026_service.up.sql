@@ -8,13 +8,11 @@ CREATE TABLE IF NOT EXISTS service (
     instance_key TEXT NOT NULL DEFAULT 'default',
     version_id TEXT NOT NULL,
     runtime_config_json TEXT NOT NULL DEFAULT '{}',
-    last_successful_version_id TEXT,
     status TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (application_id) REFERENCES application(id) ON DELETE CASCADE,
     FOREIGN KEY (version_id) REFERENCES version(id),
-    FOREIGN KEY (last_successful_version_id) REFERENCES version(id),
     UNIQUE(application_id, instance_key)
 );
 

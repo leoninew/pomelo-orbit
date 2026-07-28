@@ -1,0 +1,27 @@
+# CPU-only Text Embeddings Inference deployment for BAAI/bge-m3.
+# The cache bind mount prevents a model download on every container recreation.
+services:
+  tei:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-latest
+    command:
+      - --model-id
+      - /data/bge-m3
+    ports:
+      - 127.0.0.1:${TEI_HTTP_PORT:-8081}:80
+    volumes:
+      - ./data/tei/cache:/data
+    networks:
+      traefik:
+        aliases:
+          - tei-bge-m3-tei
+    healthcheck:
+      test: [CMD, curl, -fsS, http://localhost:80/health]
+      interval: 10s
+      timeout: 10s
+      retries: 120
+      start_period: 10m
+    restart: unless-stopped
+
+networks:
+  traefik:
+    external: true

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy RAGFlow with Orbit"
+  short_description: "Deploy bundled RAGFlow through Pomelo Orbit MCP."
+  default_prompt: "Use $deploy-ragflow-orbit to deploy scripts/ragflow-bundled/docker-compose.yml as one service with five components."

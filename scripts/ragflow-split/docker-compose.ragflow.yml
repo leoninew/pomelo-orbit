@@ -1,3 +1,5 @@
+# Alternate split deployment mode: deploy only when five independent RAGFlow Applications are requested.
+# Do not combine with scripts/ragflow-bundled/docker-compose.yml.
 services:
   ragflow-cpu:
     image: infiniflow/ragflow:v0.26.4

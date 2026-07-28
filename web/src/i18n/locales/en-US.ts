@@ -501,14 +501,14 @@ export default {
     },
     runtimeConfig: {
       title: 'Runtime configuration',
-      editTitle: 'Edit runtime configuration',
-      nextDeployment: 'Saved changes take effect on the next deployment or restart.',
       empty: 'No runtime key/value entries are configured.',
       loadFailed: 'Failed to load runtime configuration',
       invalid: 'Keys are required and must be unique.',
       saved: 'Runtime configuration saved',
       key: 'Key',
       value: 'Value',
+      showValue: 'Show runtime configuration value',
+      hideValue: 'Hide runtime configuration value',
     },
     create: {
       title: 'Create service',

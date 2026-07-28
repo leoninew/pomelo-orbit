@@ -72,19 +72,8 @@
         </div>
         <div class="flex gap-2 sm:col-span-2">
           <dt class="w-32 shrink-0 text-muted-foreground">凭据内容</dt>
-          <dd class="flex min-w-0 flex-1 items-start gap-2">
-            <span class="min-w-0 whitespace-pre-wrap break-all text-foreground">
-              {{ isCredentialDataVisible ? credential.data : '********' }}
-            </span>
-            <button
-              type="button"
-              class="shrink-0 p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-              :aria-label="isCredentialDataVisible ? '隐藏凭据内容' : '显示凭据内容'"
-              @click="isCredentialDataVisible = !isCredentialDataVisible"
-            >
-              <EyeOff v-if="isCredentialDataVisible" class="size-4" />
-              <Eye v-else class="size-4" />
-            </button>
+          <dd class="min-w-0 flex-1">
+            <SensitiveValue :value="credential.data" label="凭据内容" />
           </dd>
         </div>
       </dl>
@@ -141,13 +130,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Download, Eye, EyeOff, Pencil, Trash2 } from 'lucide-vue-next';
+  import { ArrowLeft, Download, Pencil, Trash2 } from 'lucide-vue-next';
   import { onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/AppDialog.vue';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailHeaderMeta from '@/components/DetailHeaderMeta.vue';
+  import SensitiveValue from '@/components/SensitiveValue.vue';
   import AppSpinner from '@/components/AppSpinner.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -161,7 +151,6 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const credential = ref<CredentialDetailResp>();
-  const isCredentialDataVisible = ref(false);
   const isEditModalOpen = ref(false);
   const isDeleteModalOpen = ref(false);
   const form = reactive({ name: '', data: '' });
@@ -171,7 +160,6 @@
     try {
       await execute(async () => {
         credential.value = await credentialApi.get(props.id);
-        isCredentialDataVisible.value = false;
       });
     } catch {
       toast.error('获取凭据详情失败');

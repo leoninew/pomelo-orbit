@@ -490,14 +490,14 @@ export default {
     },
     runtimeConfig: {
       title: '运行时配置',
-      editTitle: '编辑运行时配置',
-      nextDeployment: '保存后在下一次部署或重启时生效。',
       empty: '尚未配置运行时键值对。',
       loadFailed: '加载运行时配置失败',
       invalid: '键不能为空且不能重复。',
       saved: '运行时配置已保存',
       key: '键',
       value: '值',
+      showValue: '显示运行时配置值',
+      hideValue: '隐藏运行时配置值',
     },
     create: {
       title: '创建服务',

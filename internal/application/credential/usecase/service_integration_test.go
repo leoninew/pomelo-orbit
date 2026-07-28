@@ -38,6 +38,9 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 	if created.Id == "" || created.Name != "GitHub Token" || created.Type != "github_token" {
 		t.Fatalf("unexpected credential: %+v", created)
 	}
+	if created.CreatedAt.IsZero() {
+		t.Fatal("expected created credential timestamp to be set")
+	}
 	if created.EncryptedData == "" || created.EncryptedData == plainData {
 		t.Fatalf("expected stored credential data to be encrypted")
 	}

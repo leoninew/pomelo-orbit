@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	credentialdto "gitee.com/leoninew/PomeloOrbit-go/internal/application/credential/dto"
 	idutil "gitee.com/leoninew/PomeloOrbit-go/internal/common/util"
@@ -143,7 +144,7 @@ func (s Service) createCredentialRecord(ctx context.Context, projectId string, n
 	if err != nil {
 		return model.Credential{}, err
 	}
-	credential := model.Credential{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Type: credentialType, EncryptedData: encrypted}
+	credential := model.Credential{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Type: credentialType, EncryptedData: encrypted, CreatedAt: time.Now().UTC()}
 	if err := s.credential.CreateCredential(ctx, credential); err != nil {
 		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to create credential", err)
 	}
